@@ -21,6 +21,12 @@ object ReorderInteraction {
     extends WorkbookInteractionElement[ReorderCodeInteractionFormat.type] {
 
     override val associatedFactory = ReorderCodeInteraction.factory
+    require(orderConstraints.forall((first, second) => lines.indices.contains(first) && lines.indices.contains(second) && first != second),
+      "Order constraints must reference distinct existing lines")
+    override val gradingElements = Seq(ReorderCodeGrader(lines, orderConstraints))
+    override def validateState(state: ReorderInteractionState[String]): Unit =
+      require(state.elements == lines && state.correctOrder == lines.indices && state.elementType == ReorderType.CODELINES(programmingLanguage),
+        "Stored reorder content does not match the exercise")
 
     override val defaultValue = ReorderInteractionState.initStateFromElementsAndSeed(lines, seed, ReorderType.CODELINES(programmingLanguage))
 
@@ -59,6 +65,10 @@ object ReorderInteraction {
   case class ReorderMapIdInteraction(override val elementId: String, ids: Seq[LanguageMapContentId], seed: Long = 0) extends WorkbookInteractionElement[ReorderMapIdInteractionFormat.type] {
 
     override val associatedFactory = ReorderMapIdInteraction.factory
+    override val gradingElements = Seq(ReorderMapIdGrader(ids))
+    override def validateState(state: ReorderInteractionState[LanguageMapContentId]): Unit =
+      require(state.elements == ids && state.correctOrder == ids.indices && state.elementType == ReorderType.LANGUAGE_MAP_IDS,
+        "Stored reorder content does not match the exercise")
 
     override val defaultValue = ReorderInteractionState.initStateFromElementsAndSeed(ids, seed,ReorderType.LANGUAGE_MAP_IDS)
 

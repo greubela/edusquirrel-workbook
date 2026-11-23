@@ -46,6 +46,15 @@ case class LaminarRenderHelper() derives upickle.default.ReadWriter {
 
   /* Signal Fetching */
 
+  def workbookContentSignal(content: it.evadid.core.datastructures.language.WorkbookContent): Signal[String] = {
+    import it.evadid.core.datastructures.language.WorkbookContent.*
+    content match {
+      case LanguageMapBasedContent(map) => plaintextStringSignal(map)
+      case IdBasedContent(id) => plaintextStringSignal(id)
+      case HardcodedContent(text) => Val(text)
+    }
+  }
+
   def plaintextStringSignal(content: LanguageMap[HumanLanguage]): Signal[String] = fullInfo.signals.stringFromLanguageMap(content)
 
   def plaintextStringSignal(contentIdAsString: String): Signal[String] = plaintextStringSignal(LanguageMapContentId.apply(contentIdAsString))

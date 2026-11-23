@@ -9,7 +9,7 @@ import scala.scalajs.js
 trait EditorDomSuite extends FunSuite {
   private val globals = js.Dynamic.global.globalThis
   /** jsdom window properties installed as globals for the suite; a suite may add the ones its components use. */
-  protected def jsdomGlobals: List[String] = List("window", "document", "Element", "Node", "HTMLInputElement", "HTMLTextAreaElement", "HTMLSelectElement", "HTMLButtonElement")
+  protected def jsdomGlobals: List[String] = List("window", "document", "Element", "HTMLElement", "Node", "HTMLInputElement", "HTMLTextAreaElement", "HTMLSelectElement", "HTMLButtonElement")
   private lazy val names = jsdomGlobals.distinct
   private val previous = Var(List.empty[(String, js.Dynamic)])
   private def window = EditorDomSuite.window

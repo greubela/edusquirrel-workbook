@@ -5,7 +5,7 @@ import it.evadid.core.datastructures.state.StateHelper.InteractionVariableOnJS
 import it.evadid.homepage.workbook.htmlRenderer.HtmlRenderFactory.LineBasedRenderingFactory
 import it.evadid.homepage.workbook.htmlRenderer.atomarLineRenderings.AtomarLineRendering
 import it.evadid.workbook.elements.interactionElements.codeTaskToggle.SketchDownloadInteraction
-import it.evadid.workbook.elements.interactionElements.reorderExercise.{ReorderCorrectness, ReorderInteraction}
+import it.evadid.workbook.elements.interactionElements.reorderExercise.ReorderInteraction
 
 object HtmlSketchDownloadRenderer extends LineBasedRenderingFactory[SketchDownloadInteraction] {
 
@@ -14,9 +14,7 @@ object HtmlSketchDownloadRenderer extends LineBasedRenderingFactory[SketchDownlo
       case Some(workbookInfo) =>
         workbookInfo.loadedWorkbook.allContainedInteractionsById.get(download.unlockWhenReorderCorrect) match {
           case Some(reorder: ReorderInteraction.ReorderCodeInteraction) =>
-            reorder.interactionVariable
-              .createInteractionSignal(fullInfo.workbookContextInformation)
-              .map(state => ReorderCorrectness.isOrderCorrect(reorder, state))
+            fullInfo.signals.reportersFor(reorder).grading.summary.map(_.status.isCorrect)
           case _ =>
             Val(false)
         }

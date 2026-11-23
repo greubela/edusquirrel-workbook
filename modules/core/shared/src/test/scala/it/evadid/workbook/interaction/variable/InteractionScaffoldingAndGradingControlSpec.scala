@@ -1,5 +1,7 @@
 package it.evadid.workbook.interaction.variable
 
+import it.evadid.core.datastructures.language.WorkbookContent
+
 import it.evadid.core.datastructures.chat.MessengerModel
 import it.evadid.workbook.abstractions.InteractionFormat.TextInputWithLlmGradingAndScaffoldingFormat
 import it.evadid.core.datastructures.state.State
@@ -148,19 +150,19 @@ class InteractionScaffoldingAndGradingControlSpec extends FunSuite {
     val grader = new CountingGrader()
     val time = java.time.LocalDateTime.of(2026, 11, 7, 0, 0)
     val previous = GradingResult[String, MessengerModel](grader, "answer", GradingStatus.PartiallyCorrect(),
-      Some(LanguageMap.mapBasedLanguageMap[HumanLanguage](Map(German -> "Teilweise richtig"))), Some(MessengerModel.empty), time)
+      Some(WorkbookContent(LanguageMap.mapBasedLanguageMap[HumanLanguage](Map(German -> "Teilweise richtig")))), Some(MessengerModel.empty), time)
     val current = previous.copy(gradingStatus = GradingStatus.Correct(),
-      feedbackInformation = Some(LanguageMap.mapBasedLanguageMap[HumanLanguage](Map(English -> "Correct"))),
+      feedbackInformation = Some(WorkbookContent(LanguageMap.mapBasedLanguageMap[HumanLanguage](Map(English -> "Correct")))),
       additionalData = None, gradingTime = time.plusSeconds(1))
     List(previous.merge(current), current.merge(previous)).foreach { saved =>
       assertEquals(saved.gradingStatus, current.gradingStatus)
-      assertEquals(saved.feedbackInformation.flatMap(_.tryGetInLanguage(German)), Some("Teilweise richtig"))
-      assertEquals(saved.feedbackInformation.flatMap(_.tryGetInLanguage(English)), Some("Correct"))
+      assertEquals(saved.feedbackInformation.collect { case WorkbookContent.LanguageMapBasedContent(map) => map }.flatMap(_.tryGetInLanguage(German)), Some("Teilweise richtig"))
+      assertEquals(saved.feedbackInformation.collect { case WorkbookContent.LanguageMapBasedContent(map) => map }.flatMap(_.tryGetInLanguage(English)), Some("Correct"))
     }
     val sameGrade = previous.copy(gradingStatus = GradingStatus.Correct())
     val combined = sameGrade.merge(current)
-    assertEquals(combined.feedbackInformation.flatMap(_.tryGetInLanguage(German)), Some("Teilweise richtig"))
-    assertEquals(combined.feedbackInformation.flatMap(_.tryGetInLanguage(English)), Some("Correct"))
+    assertEquals(combined.feedbackInformation.collect { case WorkbookContent.LanguageMapBasedContent(map) => map }.flatMap(_.tryGetInLanguage(German)), Some("Teilweise richtig"))
+    assertEquals(combined.feedbackInformation.collect { case WorkbookContent.LanguageMapBasedContent(map) => map }.flatMap(_.tryGetInLanguage(English)), Some("Correct"))
     assertEquals(combined.additionalData, None)
   }
 

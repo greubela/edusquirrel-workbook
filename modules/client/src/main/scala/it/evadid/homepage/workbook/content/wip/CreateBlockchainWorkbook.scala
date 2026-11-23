@@ -5,7 +5,7 @@ import it.evadid.core.datastructures.user.User
 import it.evadid.homepage.control.model.FullInfo
 import it.evadid.homepage.workbook.content.WorkbookFactory
 import it.evadid.workbook.elements.interactionElements.blockchain.*
-import it.evadid.workbook.elements.interactionElements.choice.ChoiceInteraction
+import it.evadid.workbook.elements.interactionElements.choice.WorkbookContentChoiceInteraction
 import it.evadid.workbook.elements.interactionElements.table.*
 import it.evadid.workbook.elements.structureElements.Workbook
 import it.evadid.workbook.model.blockchain.*
@@ -33,7 +33,7 @@ case class CreateBlockchainWorkbook(fullInfo: FullInfo) extends WorkbookFactory 
       instructionMarkdown("blockchainworkbook/ledgerHistory"),
       instructionPlaintext("blockchainworkbook/balanceTask"), CreateBlockchainWorkbook.balanceTable
     ) ++ reflections("derivedBalances") ++ List(
-      ChoiceInteraction("blockchain-ledger-overspend", id("overspendTask"), List(id("transferYes"), id("transferNo")), expected = Some(List(1)))
+      contentChoice("blockchain-ledger-overspend", id("overspendTask"), List(id("transferYes"), id("transferNo")), expected = Some(List(1)))
     ) ++ reflections("overspendReason", "ledgerFraud", "signedLedger") ++ List(
       instructionPlaintext("blockchainworkbook/storageTask"), CreateBlockchainWorkbook.storageComparison
     ) ++ reflections("ledgerTrust", "decentralizedReassessment") ++ List(

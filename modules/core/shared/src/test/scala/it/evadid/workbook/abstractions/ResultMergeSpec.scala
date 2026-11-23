@@ -1,5 +1,7 @@
 package it.evadid.workbook.abstractions
 
+import it.evadid.core.datastructures.language.WorkbookContent
+
 import it.evadid.core.datastructures.language.AppLanguage.{English, German}
 import it.evadid.core.datastructures.language.LanguageMap
 import it.evadid.core.util.crypto.ContentIdentity
@@ -21,9 +23,9 @@ class ResultMergeSpec extends FunSuite {
       Future.successful(GradingResult(this, state, GradingStatus.Correct()))
   }
   private val t0 = LocalDateTime.of(2026, 1, 1, 10, 0)
-  private def grade(status: GradingStatus, time: LocalDateTime = t0, feedback: Option[LanguageMap[it.evadid.core.datastructures.language.AppLanguage.HumanLanguage]] = None) =
+  private def grade(status: GradingStatus, time: LocalDateTime = t0, feedback: Option[WorkbookContent] = None) =
     GradingResult(Grader, "a", status, feedback, None, time)
-  private def text(pairs: (it.evadid.core.datastructures.language.AppLanguage.HumanLanguage, String)*) = Some(LanguageMap.mapBasedLanguageMap(pairs.toMap))
+  private def text(pairs: (it.evadid.core.datastructures.language.AppLanguage.HumanLanguage, String)*) = Some(WorkbookContent(LanguageMap.mapBasedLanguageMap(pairs.toMap)))
 
   test("grading merges prefer finished results, then newer ones, then the more informative status") {
     assertEquals(grade(GradingStatus.NotRequested()).merge(grade(GradingStatus.Correct())).gradingStatus, GradingStatus.Correct())
@@ -37,12 +39,21 @@ class ResultMergeSpec extends FunSuite {
   test("grading merges keep translations the preferred result lacks") {
     val merged = grade(GradingStatus.Correct(), feedback = text(German -> "gut", English -> "good"))
       .merge(grade(GradingStatus.Correct(), t0.plusSeconds(1), text(English -> "fine")))
-    assertEquals((merged.feedbackInformation.get.tryGetInLanguage(English), merged.feedbackInformation.get.tryGetInLanguage(German)), (Some("fine"), Some("gut")))
+    assertEquals((merged.feedbackInformation.collect { case WorkbookContent.LanguageMapBasedContent(map) => map }.get.tryGetInLanguage(English), merged.feedbackInformation.collect { case WorkbookContent.LanguageMapBasedContent(map) => map }.get.tryGetInLanguage(German)), (Some("fine"), Some("gut")))
     val complete = grade(GradingStatus.Correct(), feedback = text(English -> "old"))
       .merge(grade(GradingStatus.Correct(), t0.plusSeconds(1), text(English -> "new", German -> "neu")))
     assertEquals(complete.feedbackInformation, text(English -> "new", German -> "neu"))
     assertEquals(grade(GradingStatus.Correct(), feedback = text(English -> "kept")).merge(grade(GradingStatus.Correct(), t0.plusSeconds(1))).feedbackInformation,
       text(English -> "kept"))
+  }
+
+  test("feedback-free results merge safely and newer content IDs remain content IDs") {
+    val empty = grade(GradingStatus.Correct())
+    assertEquals(empty.merge(empty).feedbackInformation, None)
+    val content = WorkbookContent(it.evadid.core.datastructures.language.LanguageMapContentId("test/feedback"))
+    val latest = empty.copy(feedbackInformation = Some(content), gradingTime = t0.plusSeconds(1))
+    assertEquals(empty.merge(latest).feedbackInformation, Some(content))
+    assertEquals(latest.merge(empty).feedbackInformation, Some(content))
   }
 
   test("scaffolding merges prefer feedback over errors and newer results otherwise") {

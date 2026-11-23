@@ -8,7 +8,7 @@ import it.evadid.homepage.workbook.content.WorkbookFactory
 import it.evadid.workbook.abstractions.{TypeOfTextDisplay, WorkbookElement}
 import it.evadid.workbook.elements.displayElements.CollapsibleInstructionElement
 import it.evadid.workbook.elements.displayElements.WorkbookImageElement.LanguageMapBasedWorkbookImageElement
-import it.evadid.workbook.elements.interactionElements.choice.ChoiceInteraction
+import it.evadid.workbook.elements.interactionElements.choice.WorkbookContentChoiceInteraction
 import it.evadid.workbook.elements.interactionElements.compression.CompressionExperimentInteraction
 import it.evadid.workbook.elements.interactionElements.slideshow.*
 import it.evadid.workbook.elements.structureElements.Workbook
@@ -71,7 +71,7 @@ case class CreateCompressionWorkbook(override val fullInfo: FullInfo) extends Wo
     case "widget" => activity(n.id)
     case "hint" => CollapsibleInstructionElement(n.id, id("common.showHint"), id(n.value))
     case "ethics" => experiment(n.id, "intro.ethicsQuestion", EthicalReflection())
-    case "choice" => ChoiceInteraction(n.id, id(n.value), n.extra.split('|').toList.map(id))
+    case "choice" => contentChoice(n.id, id(n.value), n.extra.split('|').toList.map(id))
     case "compare" => experiment(n.id, "final.task1.b.thenLabel", PreviousAnswer("answer-intro"))
     case key => throw IllegalArgumentException(s"Unmapped source node: $key")
   }

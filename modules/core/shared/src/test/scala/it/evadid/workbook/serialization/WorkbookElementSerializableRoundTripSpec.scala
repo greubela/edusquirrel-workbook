@@ -16,7 +16,10 @@ import it.evadid.workbook.elements.interactionElements.sorting.sortingExercise.{
 import it.evadid.workbook.elements.interactionElements.sorting.sortingReasonExercise.{SortingReasonInteraction, SortingReasonItem}
 import it.evadid.workbook.jsonFactory.{WorkbookElementFactory, WorkbookElementSerializable}
 import upickle.default.*
-import it.evadid.workbook.elements.interactionElements.choice.ChoiceInteraction
+import it.evadid.workbook.elements.interactionElements.choice.WorkbookContentChoiceInteraction
+import WorkbookContentChoiceInteraction.*
+import it.evadid.core.datastructures.language.WorkbookContent
+import it.evadid.workbook.abstractions.grading.GraderRunningBehavior
 import it.evadid.workbook.elements.interactionElements.neuron.*
 import it.evadid.workbook.elements.interactionElements.table.*
 import it.evadid.workbook.elements.interactionElements.pixel.*
@@ -67,7 +70,7 @@ class WorkbookElementSerializableRoundTripSpec extends FunSuite {
       SqlCommandExercise("sql", SqlDatabaseConfig("school_exercises"), s"SELECT '$special';"),
       it.evadid.workbook.elements.interactionElements.plot.CoordinatePlotInteraction("plot", content("plot/title"),
         content("plot/x"), content("plot/y"), it.evadid.workbook.model.plot.PlotAxis(0, 3, 0.5), it.evadid.workbook.model.plot.PlotAxis(0, 30, 10)),
-      ChoiceInteraction("choice", content("choice/prompt"), List(content("choice/a"), content("choice/b")), true, Some(List(0, 1))),
+      WorkbookContentChoiceInteraction("choice", ChoiceConfig(content("choice/prompt"), Some(true), GraderRunningBehavior.RUN_ALWAYS), Seq("choice/a", "choice/b").map(key => ChoiceOptionWorkbookContent(WorkbookContent(content(key)), None))),
       ThresholdNeuronInteraction("neuron", List(content("neuron/input")),
         List(NeuronExample(content("neuron/row"), List(1), true)), NeuronParameters(List(1), 1)),
       AnswerTableInteraction("table", content("table/title"), List(content("table/row")),

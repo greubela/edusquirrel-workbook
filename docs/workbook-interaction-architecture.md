@@ -67,6 +67,14 @@ answer assessed, with localized feedback and optional typed additional data.
 `runningBehavior` decides whether it executes. LLM grading and hints require an
 explicit request through the shared info panel.
 
+Choice options and grading feedback carry `WorkbookContent` (a language-map ID,
+a translated map, or literal content); `LaminarRenderHelper.workbookContentSignal`
+resolves these without flattening the saved model to strings. `WorkbookContentChoiceInteraction`,
+slideshow completion, reorder constraints and answer-table cells attach serializable
+graders registered in their `InteractionFormat`. Renderers update answers; the shared
+grading panel reports correctness. Reorder checks run on request, while choices,
+table cells and slideshow visits are graded automatically.
+
 Pending and completed computations are cached by answer, independently of display
 language. A language change reuses them; result merges retain available feedback
 translations. Synchronization includes feedback updates even when the answer is unchanged.

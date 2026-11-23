@@ -38,9 +38,9 @@ import it.evadid.workbook.elements.interactionElements.reorderExercise.ReorderIn
 import it.evadid.workbook.elements.interactionElements.slideshow.Slideshow
 import it.evadid.workbook.elements.structureElements.{ExerciseContainer, ExerciseGroup, Workbook}
 import org.scalajs.dom.HTMLDivElement
-import it.evadid.workbook.elements.interactionElements.choice.ChoiceInteraction
+import it.evadid.workbook.elements.interactionElements.choice.WorkbookContentChoiceInteraction
 import it.evadid.workbook.elements.interactionElements.neuron.ThresholdNeuronInteraction
-import it.evadid.homepage.workbook.htmlRenderer.interactionRenderer.choice.ChoiceInteractionRenderer
+import it.evadid.homepage.workbook.htmlRenderer.interactionRenderer.choice.WorkbookContentChoiceInteractionRenderer
 import it.evadid.homepage.workbook.htmlRenderer.interactionRenderer.neuron.ThresholdNeuronRenderer
 import it.evadid.workbook.elements.interactionElements.table.AnswerTableInteraction
 import it.evadid.workbook.elements.interactionElements.plot.CoordinatePlotInteraction
@@ -143,7 +143,7 @@ object HtmlRenderFactory {
       case p: BinaryPixelInteraction => BinaryPixelRenderer.renderWorkbookElement(p)
       case t: AnswerTableInteraction => AnswerTableRenderer.renderWorkbookElement(t)
       case p: CoordinatePlotInteraction => CoordinatePlotRenderer.renderWorkbookElement(p)
-      case c: ChoiceInteraction => ChoiceInteractionRenderer.renderWorkbookElement(c)
+      case c: WorkbookContentChoiceInteraction => WorkbookContentChoiceInteractionRenderer.renderWorkbookElement(c)
       case n: ThresholdNeuronInteraction => ThresholdNeuronRenderer.renderWorkbookElement(n)
       case m: MailInteraction => HtmlMailInteractionRenderer.renderWorkbookElement(m)
       case m: MailEditor => HtmlMailEditorRenderer.renderWorkbookElement(m)

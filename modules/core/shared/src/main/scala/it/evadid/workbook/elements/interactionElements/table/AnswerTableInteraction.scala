@@ -23,14 +23,10 @@ case class EditableTableCell(expected: Option[Seq[String]] = None, choices: Seq[
 
   def accepts(value: String): Boolean = value.trim.nonEmpty && (choices.isEmpty || choices.contains(value.trim))
 
-  def isCorrect(value: String): Option[Boolean] = expected.map(_.exists(_.trim == value.trim))
 }
 
 case class TableAnswer(values: Seq[String]) derives ReadWriter
 
-case class TableGrade(correct: Int, total: Int) derives ReadWriter {
-  def passed: Boolean = total > 0 && correct == total
-}
 
 /** Learner values contain only editable cells, in row-major order. Fixed cells cannot be overwritten.
  * `rowHeader` labels the column of row labels; without it the renderer uses a generic "row" label. */
@@ -42,6 +38,7 @@ case class AnswerTableInteraction(elementId: String, caption: LanguageMapContent
   require(rowLabels.nonEmpty && columnLabels.nonEmpty && rows.size == rowLabels.size && rows.forall(_.size == columnLabels.size),
     "Table labels and rectangular cells must have matching dimensions")
   val editableCells: Seq[EditableTableCell] = rows.flatten.collect { case c: EditableTableCell => c }
+  override val gradingElements = editableCells.zipWithIndex.flatMap((cell, index) => cell.expected.map(TableCellGrader(index, _)))
   require(editableCells.nonEmpty, "An answer table requires an editable cell")
   override lazy val childrenOfThisElement = Nil
   override val defaultValue = TableAnswer(List.fill(editableCells.size)(""))
@@ -78,11 +75,6 @@ case class AnswerTableInteraction(elementId: String, caption: LanguageMapContent
     editableCells.zip(answer.values).forall((cell, value) => cell.accepts(value))
   }
 
-  def grade(answer: TableAnswer): Option[TableGrade] = {
-    checked(answer)
-    val results = editableCells.zip(answer.values).flatMap((cell, value) => cell.isCorrect(value))
-    Option.when(results.nonEmpty)(TableGrade(results.count(identity), results.size))
-  }
 }
 
 object AnswerTableInteraction  {

@@ -15,6 +15,7 @@ import it.evadid.workbook.elements.interactionElements.programming.{AdditionalPr
 import it.evadid.workbook.meta.ExecutionContextInformation
 import upickle.default.*
 
+import java.time.LocalDateTime
 import scala.concurrent.Future
 import scala.util.Try
 import scala.util.control.NonFatal
@@ -60,7 +61,7 @@ case class ProgrammingUnitTestGrader(testId: String, pythonTestCode: String,
       val invocation = result.testInvocation.filter(_ => publishInvocationArguments && importance != GradingImportance.HIDDEN_TEST)
       val info = Option.when(result.programObservation.nonEmpty || invocation.nonEmpty)(
         AdditionalProgrammingTestInfo(LanguageMap.empty[HumanLanguage], result.programObservation, invocation))
-      GradingResult[ProgrammingState, AdditionalProgrammingTestInfo](this, state, status, additionalData = info)
+      GradingResult[ProgrammingState, AdditionalProgrammingTestInfo](this, state, status, None, info, LocalDateTime.now())
     }
   }
 

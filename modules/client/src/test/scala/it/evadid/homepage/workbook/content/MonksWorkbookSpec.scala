@@ -9,6 +9,21 @@ import it.evadid.workbook.elements.interactionElements.programming.state.{Progra
 import munit.FunSuite
 
 class MonksWorkbookSpec extends FunSuite {
+  test("Monk choices, tables, slideshows and reorder tasks all expose shared graders") {
+    import it.evadid.workbook.abstractions.WorkbookInteractionElement
+    import it.evadid.workbook.elements.interactionElements.choice.WorkbookContentChoiceInteraction
+    import it.evadid.workbook.elements.interactionElements.table.AnswerTableInteraction
+    import it.evadid.workbook.elements.interactionElements.slideshow.Slideshow
+    import it.evadid.workbook.elements.interactionElements.reorderExercise.ReorderInteraction.ReorderMapIdInteraction
+    val exercises = CreateMonksWorkbook(null).createWorkbook.allChildrenFullSubtree.collect {
+      case exercise: WorkbookContentChoiceInteraction => exercise
+      case exercise: AnswerTableInteraction => exercise
+      case exercise: Slideshow => exercise
+      case exercise: ReorderMapIdInteraction => exercise
+    }
+    assert(exercises.nonEmpty)
+    exercises.foreach(exercise => assert(exercise.gradingElements.nonEmpty, exercise.elementId))
+  }
   private val editorIds = List("e1", "e2", "e3", "e4", "e5", "e6a", "e6b", "e7", "e8")
   private def checked(code: String): JavaTurtleInterpreter.Execution =
     JavaTurtleInterpreter.runVm(JavaTurtleCompiler.compile(code).fold(problem => fail(problem.message), identity))

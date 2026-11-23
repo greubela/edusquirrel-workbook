@@ -1,5 +1,7 @@
 package it.evadid.workbook.elements.interactionElements.programming
 
+import it.evadid.core.datastructures.language.WorkbookContent
+
 import it.evadid.core.datastructures.language.AppLanguage.{Java, Python, SnapLanguage}
 import it.evadid.core.datastructures.language.AppLanguage.{English, Danish}
 import it.evadid.core.datastructures.vectorShapes.svg.TurtleCommand
@@ -47,7 +49,7 @@ class TurtleCommandUsageGraderSpec extends FunSuite {
       Future.traverse(cases) { (measure, maximum, expected) =>
         grader("fd", maximum, measure).gradeStateSafe(state, false, TestExecutionContext()).map { result =>
           assertEquals(result.gradingStatus, expected, clues(state, measure))
-          val feedback = result.feedbackInformation.get
+          val feedback = result.feedbackInformation.collect { case WorkbookContent.LanguageMapBasedContent(map) => map }.get
           assert(feedback.tryGetInLanguage(English).exists(_.contains(maximum.toString)))
           assert(feedback.tryGetInLanguage(Danish).exists(_.nonEmpty))
         }

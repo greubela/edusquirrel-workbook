@@ -1,5 +1,7 @@
 package it.evadid.workbook.elements.interactionElements.gpt
 
+import it.evadid.core.datastructures.language.WorkbookContent
+
 import it.evadid.workbook.abstractions.scaffolding.ScaffoldingStatus
 
 import it.evadid.workbook.support.TestExecutionContext
@@ -82,8 +84,8 @@ class TextInputWithScaffoldingAndGradingSpec extends FunSuite {
       f.grade().map { result =>
         assertEquals(result.gradingStatus, expected)
         assertEquals(result.gradedState, "Meine Antwort")
-        assertEquals(result.feedbackInformation.get.tryGetInLanguage(German), Some("Ein Hinweis."))
-        assertEquals(result.feedbackInformation.get.tryGetInLanguage(English), None)
+        assertEquals(result.feedbackInformation.collect { case WorkbookContent.LanguageMapBasedContent(map) => map }.get.tryGetInLanguage(German), Some("Ein Hinweis."))
+        assertEquals(result.feedbackInformation.collect { case WorkbookContent.LanguageMapBasedContent(map) => map }.get.tryGetInLanguage(English), None)
         assertEquals(result.grader, f.grader)
         assert(result.grader.gradingEntity.isInstanceOf[FeedbackEntity.LlmEntity])
         assertEquals(result.additionalData.get.messages.last.text, s"Ein Hinweis.\r\n$marker \n")
@@ -112,7 +114,7 @@ class TextInputWithScaffoldingAndGradingSpec extends FunSuite {
     val f = new Fixture(List(Right("Deine Erklärung ist teilweise richtig."), Right("PARTIALL_CORRECT\n")))
     f.grade().map { result =>
       assertEquals(result.gradingStatus, GradingStatus.PartiallyCorrect())
-      assertEquals(result.feedbackInformation.get.getInLanguage(German), "Deine Erklärung ist teilweise richtig.")
+      assertEquals(result.feedbackInformation.collect { case WorkbookContent.LanguageMapBasedContent(map) => map }.get.getInLanguage(German), "Deine Erklärung ist teilweise richtig.")
       assertEquals(f.requests.now().size, 2)
       assert(f.requests.now().last.systemPrompt.contains("ONLY one of CORRECT, INCORRECT, PARTIALL_CORRECT"))
       val retry = ujson.read(f.requests.now().last.prompt)
@@ -186,7 +188,7 @@ class TextInputWithScaffoldingAndGradingSpec extends FunSuite {
       val prompt = ujson.read(f.requests.now().head.prompt)
       assertEquals(prompt("criterion").str, "Explain why.")
       assertEquals(prompt("feedbackLanguage").str, German.name)
-      assertEquals(result.feedbackInformation.get.getInLanguage(German), "Gut begründet.")
+      assertEquals(result.feedbackInformation.collect { case WorkbookContent.LanguageMapBasedContent(map) => map }.get.getInLanguage(German), "Gut begründet.")
     }
   }
 
@@ -211,7 +213,7 @@ class TextInputWithScaffoldingAndGradingSpec extends FunSuite {
       pending.success(LanguageMap.mapBasedLanguageMap(Map(German -> "Aufgabe", English -> "Task")))
       result.map { grade =>
         assertEquals(ujson.read(f.requests.now().head.prompt)("feedbackLanguage").str, German.name)
-        assertEquals(grade.feedbackInformation.get.availableLanguages, Set[HumanLanguage](German))
+        assertEquals(grade.feedbackInformation.collect { case WorkbookContent.LanguageMapBasedContent(map) => map }.get.availableLanguages, Set[HumanLanguage](German))
       }
     }
   }
@@ -223,7 +225,7 @@ class TextInputWithScaffoldingAndGradingSpec extends FunSuite {
       f.grade("An updated answer").map { result =>
         assertEquals(ujson.read(f.requests.now().last.prompt)("answer").str, "An updated answer")
         assertEquals(ujson.read(f.requests.now().last.prompt)("criterion").str, "English: test/criterion")
-        assertEquals(result.feedbackInformation.get.tryGetInLanguage(English), Some("Good."))
+        assertEquals(result.feedbackInformation.collect { case WorkbookContent.LanguageMapBasedContent(map) => map }.get.tryGetInLanguage(English), Some("Good."))
       }
     }
   }
@@ -354,7 +356,7 @@ class TextInputWithScaffoldingAndGradingSpec extends FunSuite {
         assertEquals(a, b)
         val result = element.interactionVariable.currentHistory.historyGrading.gradingsMap("answer").testsWithResults.head
         assertEquals(result.gradingStatus, GradingStatus.Correct())
-        assertEquals(result.feedbackInformation.flatMap(_.tryGetInLanguage(German)), Some("Bestehendes Feedback."))
+        assertEquals(result.feedbackInformation.collect { case WorkbookContent.LanguageMapBasedContent(map) => map }.flatMap(_.tryGetInLanguage(German)), Some("Bestehendes Feedback."))
         grade().map { cached =>
           assertEquals(cached, a)
           assertEquals(requests.now(), Vector(German.name))

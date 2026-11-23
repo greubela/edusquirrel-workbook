@@ -1,10 +1,7 @@
 package it.evadid.homepage.workbook.htmlRenderer.interactionRenderer.slideshow
 
-import com.raquo.laminar.DomApi
 import com.raquo.laminar.api.L.{child, *}
-import it.evadid.core.datastructures.language.LanguageMapContentId
 import it.evadid.core.datastructures.state.StateHelper.StateBasedVar
-import it.evadid.core.util.MarkdownToHtml
 import it.evadid.homepage.workbook.htmlRenderer.HtmlRenderFactory
 import it.evadid.homepage.workbook.htmlRenderer.HtmlRenderFactory.LineBasedRenderingFactory
 import it.evadid.homepage.workbook.htmlRenderer.atomarLineRenderings.*
@@ -12,10 +9,7 @@ import it.evadid.workbook.elements.interactionElements.slideshow.*
 import it.evadid.workbook.interaction.sync.UpdateImportance
 import it.evadid.workbook.interaction.sync.UpdateImportance.MAJOR
 
-/**
- * Renders core slideshow interactions using the legacy slide-deck HTML structure and styles.
- * The renderer owns navigation controls and panel layout, while transition-history updates are delegated to the core slideshow state.
- */
+/** Navigation records visits; completion is evaluated by the shared slideshow grader. */
 object HtmlSlideshowEditor extends LineBasedRenderingFactory[Slideshow] {
 
   /**
@@ -64,6 +58,10 @@ object HtmlSlideshowEditor extends LineBasedRenderingFactory[Slideshow] {
 
     val dom = div(
       cls := "slide-deck-container",
+      onMountCallback { _ =>
+        if totalSlides > 0 && stateVar.now().events.isEmpty then
+          stateVar.update(_.recordTransitionByIndex(0, 0))
+      },
       navigation(),
       div(
         cls := "slide-deck-content slide-deck-image" ,
@@ -93,204 +91,4 @@ object HtmlSlideshowEditor extends LineBasedRenderingFactory[Slideshow] {
 
   }
 
-  /**
-   * Renders localized markdown content for slide text areas.
-   * The language-map signal remains reactive, and the converted markdown is wrapped with the existing `markdown-content` CSS hook.
-   */
-  private def markdownContent(contentId: LanguageMapContentId): Element = {
-    div(
-      child <-- laminarHelper.plaintextStringSignal(contentId).map { markdownString =>
-        val markdownHtml = MarkdownToHtml.transform(markdownString)
-        foreignHtmlElement(DomApi.unsafeParseHtmlString(s"<div class=\"markdown-content\">$markdownHtml</div>"))
-      }
-    )
-  }
-  /*
-    /**
-     * Renders a single-image slide with a title and body text using the legacy slide-deck class names.
-     * Image loading is delegated to `HtmlImageElement` so file-backed and language-map-backed image sources share the existing image pipeline.
-     */
-    def createSlideshowPanel(panel: PanelImage): Element = {
-      val dom = div(
-        div(
-          cls := "slide-deck-image",
-          child <-- HtmlImageElement(panel.image).getDomSignal
-        ),
-        div(
-          cls := "slide-deck-text one-column",
-          div(
-            cls := "slide-deck-column",
-            div(
-              cls := "slide-deck-column-title",
-              markdownContent(panel.titleLabel)
-            ),
-            div(
-              cls := "slide-deck-column-body",
-              markdownContent(panel.description)
-            )
-          )
-        )
-      )
-      AtomarLineRendering.basicLine(panel, dom, "slide-deck-panel")
-
-    }
-  /
-    /**
-     * Renders a two-column image slide using the same structure as the old HTML slideshow implementation.
-     * Each column receives localized markdown title and body content while preserving the `slide-deck-text two-columns` styling hook.
-     */
-    def createSlideshowPanel(panel: PanelTwoColumnImage): AtomarLineRendering = {
-      val res = div(
-        div(
-          cls := "slide-deck-image",
-          child <-- HtmlImageElement(panel.image).getDomSignal
-        ),
-        div(
-          cls := "slide-deck-text two-columns",
-          div(
-            cls := "slide-deck-column",
-            div(
-              cls := "slide-deck-column-title",
-              markdownContent(panel.leftLabel)
-            ),
-            div(
-              cls := "slide-deck-column-body",
-              markdownContent(panel.leftBody)
-            )
-          ),
-          div(
-            cls := "slide-deck-column",
-            div(
-              cls := "slide-deck-column-title",
-              markdownContent(panel.rightLabel)
-            ),
-            div(
-              cls := "slide-deck-column-body",
-              markdownContent(panel.rightBody)
-            )
-          )
-        )
-      )
-      AtomarLineRendering.basicLine(panel, res, "slide-deck-panel")
-    }
-
-  */
 }
-
-/*
-
-ALT CODE YANNECK (todo: remove)
-
-import com.raquo.laminar.DomApi
-import com.raquo.laminar.api.L.*
-import it.evadid.core.datastructures.language.LanguageMapContentId
-import it.evadid.core.datastructures.state.StateHelper.InteractionVariableOnJS
-import it.evadid.core.util.MarkdownToHtml
-import it.evadid.homepage.webElements.basic.HtmlImageElement
-import it.evadid.homepage.workbook.htmlRenderer.HtmlRenderFactory
-import it.evadid.workbook.model.interaction.plugins.slideshow.{Slideshow, SlideshowPanel, SlideshowState}
-import it.evadid.workbook.model.interaction.sync.UpdateImportance
-
-import java.time.LocalDateTime
-
-object HtmlSlideshowRenderer extends HtmlRenderFactory[Slideshow] {
-
-  override protected def createDomElement(slideshow: Slideshow): Element = {
-    val panels = slideshow.panels
-    require(panels.nonEmpty, "Slideshow requires at least one panel")
-
-    val stateVar = slideshow.interactionVariable.createBoundVarWithUpdateImportance(UpdateImportance.MAJOR)
-    val currentIndex = Var(0)
-
-    def navigateBy(offset: Int): Unit = {
-      val oldIndex = currentIndex.now()
-      val newIndex = (oldIndex + offset).max(0).min(panels.length - 1)
-      if (newIndex == oldIndex) return
-
-      currentIndex.set(newIndex)
-
-      val currentState = stateVar.now()
-      val oldPanel = panels(oldIndex)
-      val newPanel = panels(newIndex)
-      val alreadySeen = currentState.events.exists(_.newPanel == newPanel)
-      if (!alreadySeen) {
-        val event = SlideshowState.SlideshowProceededEvent(oldPanel, newPanel, LocalDateTime.now())
-        stateVar.set(currentState.copy(events = currentState.events + event))
-      }
-    }
-
-    def markdownFromMapId(contentId: LanguageMapContentId): Element =
-      div(
-        child <-- contentIdStringSignal(contentId).map { markdownString =>
-          val markdownHtml = MarkdownToHtml.transform(markdownString)
-          foreignHtmlElement(
-            DomApi.unsafeParseHtmlString(s"<div class=\"instruction-content markdown-content\">$markdownHtml</div>")
-          )
-        }
-      )
-
-    def renderImageSlide(panel: SlideshowPanel.ImageSlide): Element =
-      div(
-        cls := "slide-deck-container",
-        div(
-          cls := "slide-deck-image",
-          HtmlImageElement(panel.image.location).getDomElement()
-        ),
-        div(
-          cls := "slide-deck-text",
-          div(cls := "slide-deck-text-title", markdownFromMapId(panel.headerMapId)),
-          div(cls := "slide-deck-text-body", markdownFromMapId(panel.bodyMapId))
-        )
-      )
-
-    def renderTwoColumnSlide(panel: SlideshowPanel.TwoColumnImagePanel): Element =
-      div(
-        cls := "slide-deck-container",
-        div(
-          cls := "slide-deck-image",
-          HtmlImageElement(panel.image.location).getDomElement()
-        ),
-        div(
-          cls := "slide-deck-text two-columns",
-          div(
-            cls := "slide-deck-column",
-            div(cls := "slide-deck-column-title", markdownFromMapId(panel.leftLabel)),
-            div(cls := "slide-deck-column-body", markdownFromMapId(panel.leftBody))
-          ),
-          div(
-            cls := "slide-deck-column",
-            div(cls := "slide-deck-column-title", markdownFromMapId(panel.rightLabel)),
-            div(cls := "slide-deck-column-body", markdownFromMapId(panel.rightBody))
-          )
-        )
-      )
-
-    def renderPanel(panel: SlideshowPanel): Element = panel match {
-      case p: SlideshowPanel.ImageSlide => renderImageSlide(p)
-      case p: SlideshowPanel.TwoColumnImagePanel => renderTwoColumnSlide(p)
-    }
-
-    div(
-      cls := "workbook-interaction slide-deck-exercise",
-      div(
-        cls := "slide-deck-navigation",
-        button(
-          child.text <-- contentIdStringSignal(LanguageMapContentId("PlantWorkshop/slideshowBack")),
-          disabled <-- currentIndex.signal.map(_ == 0),
-          onClick.mapTo(-1) --> navigateBy
-        ),
-        span(
-          cls := "slide-deck-counter",
-          child.text <-- currentIndex.signal.map(i => s"${i + 1}/${panels.length}")
-        ),
-        button(
-          child.text <-- contentIdStringSignal(LanguageMapContentId("PlantWorkshop/slideshowNext")),
-          disabled <-- currentIndex.signal.map(_ >= panels.length - 1),
-          onClick.mapTo(1) --> navigateBy
-        )
-      ),
-      child <-- currentIndex.signal.map(i => renderPanel(panels(i)))
-    )
-  }
-}
-*/
