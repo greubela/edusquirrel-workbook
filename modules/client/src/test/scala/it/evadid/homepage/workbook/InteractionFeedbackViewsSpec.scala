@@ -98,7 +98,10 @@ class InteractionFeedbackViewsSpec extends EditorDomSuite {
     try {
       assertEquals(rows(overview.ref).size, 3)
       assert(rows(overview.ref).forall(_._1.contains("feedback-status--neutral")))
-      assert(!overview.ref.querySelector("details.feedback-grading").hasAttribute("open"), "unchecked results start collapsed")
+      val details = overview.ref.querySelector(".feedback-details")
+      val toggle = overview.ref.querySelector("button.feedback-details-toggle").asInstanceOf[org.scalajs.dom.HTMLButtonElement]
+      assert(details.hasAttribute("hidden"), "unchecked results start collapsed")
+      assertEquals(toggle.getAttribute("aria-expanded"), "false")
       val statuses = List(GradingStatus.Correct(), GradingStatus.PartiallyCorrect(), GradingStatus.Incorrect())
       variable.updateHistory(_.addGradings(tests.zip(statuses).map((test, status) =>
         GradingResult(test, variable.currentValue, status, Some(WorkbookContent(feedback)), None, date))), ExecutionContextInformation.default)
@@ -106,7 +109,12 @@ class InteractionFeedbackViewsSpec extends EditorDomSuite {
       assertEquals(rows(overview.ref).map(_._1.split(' ').last), Seq("feedback-status--correct", "feedback-status--partial", "feedback-status--incorrect"))
       assertEquals(overview.ref.querySelector(".feedback-score-chip").textContent, sidebar.ref.querySelector(".feedback-score-chip").textContent)
       assertEquals(overview.ref.querySelectorAll(".feedback-group-chips .feedback-chip").length, 3, "correct, partial and incorrect are counted separately")
-      assert(overview.ref.querySelector("details.feedback-grading").hasAttribute("open"), "results expand once they exist")
+      assert(details.hasAttribute("hidden"), "arriving results do not expand the overview")
+      toggle.click()
+      assert(!details.hasAttribute("hidden"), "the reader expands the results manually")
+      assertEquals(toggle.getAttribute("aria-expanded"), "true")
+      toggle.click()
+      assert(details.hasAttribute("hidden"))
       assert(sidebar.ref.querySelector("details.feedback-grading").hasAttribute("open"), "the sidebar starts expanded")
     } finally close()
   }

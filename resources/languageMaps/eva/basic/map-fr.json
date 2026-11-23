@@ -38,6 +38,8 @@
   "scaffoldingReady": "Prêt",
   "gradingCompactScore": "{correct}/{total} corrects",
   "gradingCompactUnavailable": "({count} en attente / indisponibles)",
+  "gradingDetailsShow": "Afficher les détails",
+  "gradingDetailsHide": "Masquer les détails",
   "resetAllData": "Réinitialiser toutes les réponses enregistrées",
   "resetAllDataRunning": "Suppression des réponses…",
   "resetAllDataRetry": "Réessayer la réinitialisation complète",

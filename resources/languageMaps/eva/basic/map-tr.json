@@ -38,6 +38,8 @@
   "scaffoldingReady": "Hazır",
   "gradingCompactScore": "{correct}/{total} doğru",
   "gradingCompactUnavailable": "({count} bekleyen / kullanılamayan)",
+  "gradingDetailsShow": "Ayrıntıları göster",
+  "gradingDetailsHide": "Ayrıntıları gizle",
   "resetAllData": "Kaydedilmiş tüm yanıtları sıfırla",
   "resetAllDataRunning": "Kaydedilmiş yanıtlar siliniyor…",
   "resetAllDataRetry": "Tam sıfırlamayı yeniden dene",

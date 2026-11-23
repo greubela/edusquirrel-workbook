@@ -75,7 +75,7 @@ class FeedbackPresentationSpec extends EditorDomSuite {
       val panel = InteractionFeedbackPanel(exercise, GradingReporter(exercise)).getDomElement()
       val close = mount(panel)
       try (panel.ref.querySelectorAll("button.feedback-action--primary:not([disabled])").length,
-        panel.ref.querySelectorAll("button.scaffolding-info").length, panel.ref.querySelectorAll("details.feedback-grading").length)
+        panel.ref.querySelectorAll("button.scaffolding-info").length, panel.ref.querySelectorAll(".feedback-grading").length)
       finally close()
     }
     assertEquals(buttons(graded), (1, 0, 1))
