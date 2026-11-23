@@ -1,3 +1,4 @@
+import {seedLocalProfile} from './local-profile.mjs';
 import {installCodeMirrorModules} from './codemirror-test-modules.mjs';
 import assert from 'node:assert/strict';
 import fs from 'node:fs/promises';
@@ -72,8 +73,9 @@ test('test workbook preserves edits across human languages, programming language
       } catch {await route.fulfill({status:404,body:'Not found'});}
     });
     await installCodeMirrorModules(page);
+    // A named local profile, so the reload below continues with the same user and answers.
+    await seedLocalProfile(page);
     await page.goto(origin + '/homepage/workbookDesign/index.html');
-    await page.locator('.section-register .login-area').nth(1).locator('button').click();
     await page.locator('.section-block').first().click();
     await page.waitForFunction(() => window.snapLanguagePreviews?.some(p => p.language === 'en' && p.specs.includes('move %n steps')));
     const preview = page.locator('.be-program-snap-renderer__canvas:not(dialog *)').first();

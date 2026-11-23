@@ -1,3 +1,4 @@
+import {seedLocalProfile} from './local-profile.mjs';
 import {readCommandRequest} from './command-request.mjs';
 import {installCodeMirrorModules} from './codemirror-test-modules.mjs';
 import assert from 'node:assert/strict';
@@ -55,8 +56,9 @@ test('text feedback preserves cached and in-flight grading across display langua
       catch {await route.fulfill({status:404,body:'Not found'});}
     });
     await installCodeMirrorModules(page);
+    // A named local profile, so the reload below continues with the same user and answers.
+    await seedLocalProfile(page);
     await page.goto(origin + prefix + 'homepage/workbookDesign/');
-    await page.locator('.section-register .login-area').nth(1).locator('button').click();
     await page.locator('.section-block').last().click();
     const exercise = page.locator('.interaction-element').filter({has:page.locator('.text-input-feedback')});
     const content = exercise.locator('.text-input-feedback');
