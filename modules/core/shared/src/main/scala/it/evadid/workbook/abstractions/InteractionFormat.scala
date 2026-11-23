@@ -34,6 +34,9 @@ import it.evadid.workbook.elements.interactionElements.gpt.TextInputLlmGrader
 import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseRegular.ProgrammingUnitTestGrader
 import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseTurtle.{ProgramStructureGrader, RecreateShapeGrader, TurtleCommandUsageGrader}
 import it.evadid.workbook.elements.interactionElements.slideshow.SlideshowGrader
+import it.evadid.workbook.elements.interactionElements.choice.ChoiceGrader
+import it.evadid.workbook.elements.interactionElements.reorderExercise.{ReorderCodeGrader, ReorderMapIdGrader}
+import it.evadid.workbook.elements.interactionElements.table.{TableAnswer, TableCellGrader}
 import upickle.default.*
 
 /** A workbook-independent, finite association of saved state, feedback and their codecs. */
@@ -122,7 +125,8 @@ object InteractionFormat {
   case object LabeledCheckboxInteractionFormat extends Typed[Boolean, Unit, Unit]
   case object MessagingInteractionFormat extends Typed[MessengerModelScaffolding, Unit, Unit]
   case object TextInputWithLlmGradingAndScaffoldingFormat extends Typed[String, MessengerModel, MessengerModel](textGraders)
-  case object ChoiceInteractionFormat extends Typed[ChoiceState, Unit, Unit]
+  case object ChoiceInteractionFormat extends Typed[ChoiceState, Unit, Unit](gradersFor(
+    Serializer.serializerForSubclass[ChoiceGrader, WorkbookInteractionGrader[ChoiceState, Unit]](classOf[ChoiceGrader])))
   case object ProgrammingExerciseWithLlmScaffoldingAndGrading extends Typed[ProgrammingState, AdditionalProgrammingTestInfo, AdditionalInfoLlmScaffolding](programmingGraders)
   case object SqlCommandExerciseFormat extends Typed[String, Unit, Unit]
   case object QrCodeInteractionFormat extends Typed[QrCode, Unit, Unit]
@@ -133,13 +137,16 @@ object InteractionFormat {
   case object SketchDownloadInteractionFormat extends Typed[String, Unit, Unit]
   case object MailInteractionFormat extends Typed[InboxStateScaffolding, Unit, Unit]
   case object MailEditorFormat extends Typed[InboxStateScaffolding, Unit, Unit]
-  case object AnswerTableInteractionFormat extends Typed[TableAnswer, Unit, Unit]
+  case object AnswerTableInteractionFormat extends Typed[TableAnswer, Unit, Unit](gradersFor(
+    Serializer.serializerForSubclass[TableCellGrader, WorkbookInteractionGrader[TableAnswer, Unit]](classOf[TableCellGrader])))
   case object UnicodeComparisonInteractionFormat extends Typed[UnicodeComparisonAnswer, Unit, Unit] { val maxTextLength = 256 }
   case object BlockchainInteractionFormat extends Typed[TeachingChain, Unit, Unit]
   case object Sha256InteractionFormat extends Typed[Sha256Answer, Unit, Unit]
   case object SquareMiddleHashInteractionFormat extends Typed[SquareMiddleHashAnswer, Unit, Unit]
-  case object ReorderCodeInteractionFormat extends Typed[ReorderInteractionState[String], Unit, Unit]
-  case object ReorderMapIdInteractionFormat extends Typed[ReorderInteractionState[LanguageMapContentId], Unit, Unit]
+  case object ReorderCodeInteractionFormat extends Typed[ReorderInteractionState[String], Unit, Unit](gradersFor(
+    Serializer.serializerForSubclass[ReorderCodeGrader, WorkbookInteractionGrader[ReorderInteractionState[String], Unit]](classOf[ReorderCodeGrader])))
+  case object ReorderMapIdInteractionFormat extends Typed[ReorderInteractionState[LanguageMapContentId], Unit, Unit](gradersFor(
+    Serializer.serializerForSubclass[ReorderMapIdGrader, WorkbookInteractionGrader[ReorderInteractionState[LanguageMapContentId], Unit]](classOf[ReorderMapIdGrader])))
   case object SortingInteractionFormat extends Typed[SortingInteractionState, Unit, Unit]
   case object SortingReasonInteractionFormat extends Typed[SortingReasonInteractionState, Unit, Unit]
   case object SlideshowFormat extends Typed[SlideshowState, Unit, Unit](slideshowGraders)

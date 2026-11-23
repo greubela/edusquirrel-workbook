@@ -9,6 +9,9 @@ import it.evadid.workbook.elements.interactionElements.gpt.TextInputLlmGrader
 import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseRegular.{ProgramDataTestGrader, ProgrammingUnitTestGrader}
 import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseTurtle.{RecreateShapeGrader, TurtleCommandUsageGrader, ProgramStructureGrader}
 import it.evadid.workbook.elements.interactionElements.slideshow.SlideshowGrader
+import it.evadid.workbook.elements.interactionElements.choice.ChoiceGrader
+import it.evadid.workbook.elements.interactionElements.reorderExercise.{ReorderCodeGrader, ReorderMapIdGrader}
+import it.evadid.workbook.elements.interactionElements.table.TableCellGrader
 import it.evadid.workbook.meta.ExecutionContextInformation
 import upickle.default.*
 
@@ -53,6 +56,10 @@ object WorkbookInteractionGrader {
   type WorkbookInteractionGraderUntyped = WorkbookInteractionGrader[?, ?]
 
   private val knownGraderReadWrites: Map[String, Serializer[WorkbookInteractionGraderUntyped]] = Map(
+    Serializer.serializerForSubclass(classOf[ChoiceGrader]),
+    Serializer.serializerForSubclass(classOf[ReorderCodeGrader]),
+    Serializer.serializerForSubclass(classOf[ReorderMapIdGrader]),
+    Serializer.serializerForSubclass(classOf[TableCellGrader]),
     Serializer.serializerForSubclass(classOf[SlideshowGrader]),
     Serializer.serializerForSubclass(classOf[RecreateShapeGrader]),
     Serializer.serializerForSubclass(classOf[TurtleCommandUsageGrader]),

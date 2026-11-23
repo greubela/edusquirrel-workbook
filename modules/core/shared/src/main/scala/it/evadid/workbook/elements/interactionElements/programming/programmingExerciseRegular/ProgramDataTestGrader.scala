@@ -69,7 +69,7 @@ case class ProgramDataTestGrader(
   override protected def handleGrading(state: ProgrammingState, context: ExecutionContextInformation)
   : Future[GradingResult[ProgrammingState, AdditionalProgrammingTestInfo]] = Future {
     val (status, message) = evaluate(state)
-    val res: GradingResult[ProgrammingState, AdditionalProgrammingTestInfo] = if (message.nonEmpty) {
+    val res: GradingResult[ProgrammingState, AdditionalProgrammingTestInfo] = if (message.nonEmpty && importance != GradingImportance.HIDDEN_TEST) {
       GradingResult[ProgrammingState, AdditionalProgrammingTestInfo](this, state, status, message.map(WorkbookContent(_)), None, LocalDateTime.now())
     } else {
       GradingResult[ProgrammingState, AdditionalProgrammingTestInfo](this, state, status, None, None, LocalDateTime.now())

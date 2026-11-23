@@ -32,7 +32,13 @@ case class Slideshow(
 
   override val defaultValue = SlideshowState(panels.map(_.asRef), Set.empty)
 
-  private val allFinishedGrader: WorkbookInteractionGrader[InteractionStateType, GradingInfoType] = ??? // todo: correct when everything seen, incorrect when nothing seen, partially correct when some stuff seen, some not seen.
+  override def validateState(state: SlideshowState): Unit = {
+    require(state.allPanels == panels.map(_.asRef), "Stored slideshow panels do not match the exercise")
+    require(state.events.forall(event => state.allPanels.contains(event.oldPanel) && state.allPanels.contains(event.newPanel)),
+      "Slideshow event refers to an unknown panel")
+  }
+
+  private val allFinishedGrader = SlideshowGrader(isRequired = true)
 
   override val gradingElements: Seq[WorkbookInteractionGrader[InteractionStateType, GradingInfoType]] = List(allFinishedGrader)
 

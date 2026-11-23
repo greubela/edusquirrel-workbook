@@ -59,7 +59,7 @@ private[interactionInfo] final class InteractionFeedbackView[F <: InteractionFor
 
   def feedback(entry: GradingSummary.Entry): Option[Signal[String]] =
     if entry.hidden then None
-    else entry.result.flatMap(_.feedbackInformation).filter(_.availableLanguages.nonEmpty).map(localized)
+    else entry.result.flatMap(_.feedbackInformation).map(helper.workbookContentSignal)
 
   def scaffoldingLabel(result: ScaffoldingReport): String = result.status.labelKey
 

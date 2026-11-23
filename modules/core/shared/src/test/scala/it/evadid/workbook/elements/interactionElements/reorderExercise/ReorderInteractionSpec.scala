@@ -2,10 +2,15 @@ package it.evadid.workbook.elements.interactionElements.reorderExercise
 
 import it.evadid.core.datastructures.language.AppLanguage.Python
 import munit.FunSuite
+import it.evadid.workbook.support.TestExecutionContext
+import scala.concurrent.{ExecutionContext, Future}
 import upickle.default.*
 
 /** Drag-and-drop ordering and its correctness rules, shared by the reorder and sketch-download renderers. */
 class ReorderInteractionSpec extends FunSuite {
+  private given ExecutionContext = ExecutionContext.global
+  private def correct(exercise: ReorderInteraction.ReorderCodeInteraction, state: ReorderInteractionState[String]): Future[Boolean] =
+    exercise.gradingElements.head.gradeStateSafe(state, true, TestExecutionContext()).map(_.gradingStatus.isCorrect)
   private val lines = List("a = 1", "b = a + 1", "print(b)")
   private def state(order: Int*) = ReorderInteractionState.forCode(lines, order, lines.indices, ReorderType.CODELINES(Python))
   private val exercise = ReorderInteraction.ReorderCodeInteraction("order", lines, Python)
@@ -35,18 +40,21 @@ class ReorderInteractionSpec extends FunSuite {
   }
 
   test("without constraints only the authored order is correct") {
-    assert(ReorderCorrectness.isOrderCorrect(exercise, state(0, 1, 2)))
-    assert(!ReorderCorrectness.isOrderCorrect(exercise, state(1, 0, 2)))
+    for {
+      right <- correct(exercise, state(0, 1, 2))
+      wrong <- correct(exercise, state(1, 0, 2))
+    } yield { assert(right); assert(!wrong) }
   }
 
   test("with constraints every order that respects them is correct") {
     // Only the assignment of `a` must come before its use; the print may move freely relative to `a`.
     val constrained = exercise.copy(orderConstraints = List(0 -> 1, 1 -> 2))
     val loose = exercise.copy(orderConstraints = List(0 -> 1))
-    assert(ReorderCorrectness.isOrderCorrect(constrained, state(0, 1, 2)))
-    assert(!ReorderCorrectness.isOrderCorrect(constrained, state(0, 2, 1)))
-    assertEquals(List(state(0, 1, 2), state(2, 0, 1), state(0, 2, 1), state(1, 0, 2)).map(ReorderCorrectness.isOrderCorrect(loose, _)),
-      List(true, true, true, false))
+    for {
+      right <- correct(constrained, state(0, 1, 2))
+      wrong <- correct(constrained, state(0, 2, 1))
+      alternatives <- Future.traverse(List(state(0, 1, 2), state(2, 0, 1), state(0, 2, 1), state(1, 0, 2)))(correct(loose, _))
+    } yield { assert(right); assert(!wrong); assertEquals(alternatives, List(true, true, true, false)) }
   }
 
   test("orders that are not a permutation of the lines are rejected") {
@@ -58,5 +66,18 @@ class ReorderInteractionSpec extends FunSuite {
   test("a moved state round-trips its serialized form") {
     val moved = state(2, 0, 1).moveElementToIndex(1, 0)
     assertEquals(read[ReorderInteractionState[String]](write(moved)), moved)
+  }
+
+  test("manual grading records a serializable result rather than renderer-only feedback") {
+    val answer = state(0, 1, 2)
+    exercise.interactionVariable.setStateFromUserInteraction(answer, it.evadid.workbook.interaction.sync.UpdateImportance.MAJOR, context = TestExecutionContext())
+    exercise.interactionVariable.control.getOrCalculateGrading(TestExecutionContext()).flatMap { _ =>
+      exercise.interactionVariable.control.getOrCalculateGrading(TestExecutionContext(), true)
+    }.map { result =>
+      assert(result.testsWithResults.forall(_.gradingStatus.isCorrect))
+      val history = exercise.interactionVariable.currentHistory
+      val serializer = exercise.interactionFormat.historySerializer
+      assertEquals(serializer.deserialize(serializer.serialize(history)), history)
+    }
   }
 }

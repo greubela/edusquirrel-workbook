@@ -38,10 +38,10 @@ case class SlideshowState(
     timestampsWhereUserSwitchedFromPanel(panel) ++ timestampsWhereUserSwitchedToPanel(panel)
 
   private def timestampsWhereUserSwitchedFromPanel(panel: WorkbookDisplayElement): Set[LocalDateTime] =
-    eventsSorted.filter(_.oldPanel == panel).map(_.proceededAt).toSet
+    eventsSorted.filter(_.oldPanel == panel.asRef).map(_.proceededAt).toSet
 
   private def timestampsWhereUserSwitchedToPanel(panel: WorkbookDisplayElement): Set[LocalDateTime] =
-    eventsSorted.filter(_.newPanel == panel).map(_.proceededAt).toSet
+    eventsSorted.filter(_.newPanel == panel.asRef).map(_.proceededAt).toSet
 
   def serializer(): Serializer[SlideshowState] = new Serializer[SlideshowState] {
     override def serialize(obj: SlideshowState): String = write(obj)

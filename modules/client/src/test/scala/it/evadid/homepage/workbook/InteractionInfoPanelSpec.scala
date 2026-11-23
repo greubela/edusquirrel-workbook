@@ -1,5 +1,7 @@
 package it.evadid.homepage.workbook
 
+import it.evadid.core.datastructures.language.WorkbookContent
+
 import com.raquo.laminar.api.L.*
 import it.evadid.core.datastructures.language.{LanguageMap, LanguageMapContentId}
 import it.evadid.core.datastructures.language.AppLanguage.{English, German, HumanLanguage}
@@ -30,7 +32,7 @@ class InteractionInfoPanelSpec extends EditorDomSuite {
       (List(GradingStatus.Incorrect(), GradingStatus.Incorrect()), "grading-icon-thumbs-down-path"))
     cases.foreach { (statuses, expected) =>
       val results: Map[WorkbookInteractionGrader[String, MessengerModel], GradingResult[String, MessengerModel]] = interaction.gradingElements.zip(statuses).map { (grader, status) =>
-        grader -> GradingResult(grader, "", status, Some(LanguageMap.universalMap[HumanLanguage]("PRIVATE_FEEDBACK")))
+        grader -> GradingResult(grader, "", status, Some(WorkbookContent(LanguageMap.universalMap[HumanLanguage]("PRIVATE_FEEDBACK"))), None, java.time.LocalDateTime.now())
       }.toMap
       val element = icons.deriveGradingSymbol(GradingSummary(interaction.gradingElements, GradedState("", results)))
       val close = mount(element)

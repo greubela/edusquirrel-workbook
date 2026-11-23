@@ -1,5 +1,7 @@
 package it.evadid.workbook.interaction.sync.model
 
+import it.evadid.core.datastructures.language.WorkbookContent
+
 import it.evadid.core.datastructures.chat.{Message, MessengerModel}
 import it.evadid.core.datastructures.language.{AppLanguage, LanguageMap, LanguageMapContentId}
 import it.evadid.distribution.command.SerializedException
@@ -9,7 +11,7 @@ import it.evadid.workbook.abstractions.InteractionFormat.{ChoiceInteractionForma
   SqlCommandExerciseFormat, TextInputWithLlmGradingAndScaffoldingFormat, TextInteractionFormat}
 import it.evadid.workbook.abstractions.grading.{GradingResult, GradingStatus}
 import it.evadid.workbook.abstractions.scaffolding.{ScaffoldingResult, ScaffoldingStatus}
-import it.evadid.workbook.elements.interactionElements.choice.ChoiceAnswer
+import it.evadid.workbook.elements.interactionElements.choice.WorkbookContentChoiceInteraction.*
 import it.evadid.workbook.elements.interactionElements.gpt.{TextInputLlmGrader, TextInputWithScaffoldingAndGrading}
 import it.evadid.workbook.interaction.sync.UpdateImportance
 import it.evadid.workbook.interaction.variable.InteractionVariableHistory
@@ -32,7 +34,7 @@ class InteractionHistoryJsonSpec extends FunSuite {
     AnswerChangedEvent[FeedbackFormat](answer, time, UpdateImportance.MINOR),
     GradingStartedEvent[FeedbackFormat](answer, time.plusNanos(1), grader),
     GradingCompletedEvent[FeedbackFormat](GradingResult(grader, answer, GradingStatus.Correct(),
-      Some(feedback), Some(transcript), time.plusNanos(2))),
+      Some(WorkbookContent(feedback)), Some(transcript), time.plusNanos(2))),
     ScaffoldingStartedEvent[FeedbackFormat](answer, time.plusNanos(3), FeedbackEntity.LlmEntity()),
     ScaffoldingCompletedEvent[FeedbackFormat](ScaffoldingResult(answer, ScaffoldingStatus.ScaffoldingFeedback(feedback),
       FeedbackEntity.LlmEntity(), Some(transcript), time.plusNanos(4)))
@@ -74,7 +76,7 @@ class InteractionHistoryJsonSpec extends FunSuite {
     val checkbox = InteractionVariableHistory.empty[LabeledCheckboxInteractionFormat.type]
       .addEvent(AnswerChangedEvent[LabeledCheckboxInteractionFormat.type](true, time, UpdateImportance.MAJOR))
     val choice = InteractionVariableHistory.empty[ChoiceInteractionFormat.type]
-      .addEvent(AnswerChangedEvent[ChoiceInteractionFormat.type](ChoiceAnswer(Seq(2, 0)), time, UpdateImportance.MAJOR))
+      .addEvent(AnswerChangedEvent[ChoiceInteractionFormat.type](ChoiceState(Seq(ChoiceSelectedEvent(time, ChoiceOptionWorkbookContent(WorkbookContent(LanguageMapContentId("custom/option")), None)))), time, UpdateImportance.MAJOR))
     assertRoundTrips(LabeledCheckboxInteractionFormat, checkbox)
     assertRoundTrips(ChoiceInteractionFormat, choice)
   }
@@ -98,7 +100,7 @@ class InteractionHistoryJsonSpec extends FunSuite {
     val error = SerializedException("execution failed", Seq(SimpleStackTraceElement("Grader", "run", "Grader.scala", 42)), Some(cause))
     val history = InteractionVariableHistory[FeedbackFormat](InteractionEvents(Set(
       GradingCompletedEvent[FeedbackFormat](GradingResult(grader, answer, GradingStatus.TestError(error),
-        Some(feedback), Some(transcript), time)),
+        Some(WorkbookContent(feedback)), Some(transcript), time)),
       ScaffoldingCompletedEvent[FeedbackFormat](ScaffoldingResult(answer, ScaffoldingStatus.ScaffoldingError(error),
         FeedbackEntity.LlmEntity(), Some(transcript), time.plusNanos(1)))
     )))

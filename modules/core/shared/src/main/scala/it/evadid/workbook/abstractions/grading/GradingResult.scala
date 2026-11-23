@@ -23,13 +23,20 @@ case class GradingResult[T, GA]
   def merge(other: GradingResult[T, GA]): GradingResult[T, GA] = {
     require(grader == other.grader && gradedState == other.gradedState, "Only results for the same grader and state can be merged.")
 
-    if (other.gradingStatus.shouldRetryExecution && !this.gradingStatus.shouldRetryExecution) this
-    else if (!other.gradingStatus.shouldRetryExecution && this.gradingStatus.shouldRetryExecution) other
-    else if (other.gradingTime.isAfter(this.gradingTime)) other
-    else if (this.gradingTime.isAfter(other.gradingTime)) this
-    else if (this.feedbackInformation.isEmpty && other.feedbackInformation.nonEmpty) other
-    else if (this.feedbackInformation.nonEmpty && other.feedbackInformation.isEmpty) this
-    else this.copy(feedbackInformation = Some(other.feedbackInformation.get.merge(this.feedbackInformation.get)))
+    val preferred =
+      if GradingResult.statusPriority(other.gradingStatus) < 2 && GradingResult.statusPriority(gradingStatus) >= 2 then this
+      else if GradingResult.statusPriority(other.gradingStatus) >= 2 && GradingResult.statusPriority(gradingStatus) < 2 then other
+      else if other.gradingTime.isAfter(gradingTime) then other
+      else if gradingTime.isAfter(other.gradingTime) then this
+      else if GradingResult.statusPriority(other.gradingStatus) > GradingResult.statusPriority(gradingStatus) then other
+      else this
+    val remaining = if preferred eq this then other else this
+    val feedback = (remaining.feedbackInformation, preferred.feedbackInformation) match {
+      case (Some(old: WorkbookContent.LanguageMapBasedContent), Some(current: WorkbookContent.LanguageMapBasedContent)) => Some(old.merge(current))
+      case (_, Some(current)) => Some(current)
+      case (previous, None) => previous
+    }
+    preferred.copy(feedbackInformation = feedback)
   }
 
 

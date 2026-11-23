@@ -25,10 +25,13 @@ case class SlideshowGrader(isRequired: Boolean) extends WorkbookInteractionGrade
 
   override protected def handleGrading(state: SlideshowState, contextInformation: ExecutionContextInformation): Future[GradingResult[SlideshowState, Unit]] = Future {
 
-    val gradingStatus: GradingStatus = if (state.unseenPanels.isEmpty) GradingStatus.Correct() else GradingStatus.PartiallyCorrect()
+    val gradingStatus: GradingStatus = if (state.unseenPanels.isEmpty) GradingStatus.Correct()
+      else if state.seenPanels.isEmpty then GradingStatus.Incorrect() else GradingStatus.PartiallyCorrect()
     val feedbackInformation: LanguageMap[HumanLanguage] = gradingStatus.match {
-      case Correct() => LanguageMap.universalMap("All done!")
-      case _ => LanguageMap.universalMap(s"Missing ${state.unseenPanels} Panels!")
+      case Correct() => LanguageMap.mapBasedLanguageMap(Map(AppLanguage.English -> "All slides viewed.",
+        AppLanguage.German -> "Alle Folien angesehen."))
+      case _ => LanguageMap.mapBasedLanguageMap(Map(AppLanguage.English -> s"${state.unseenPanels.size} slides remain.",
+        AppLanguage.German -> s"${state.unseenPanels.size} Folien fehlen noch."))
     }
     val res: GradingResult[SlideshowState, Unit] = GradingResult[SlideshowState, Unit](this, state, gradingStatus, Some(WorkbookContent(feedbackInformation)), None, LocalDateTime.now())
     res

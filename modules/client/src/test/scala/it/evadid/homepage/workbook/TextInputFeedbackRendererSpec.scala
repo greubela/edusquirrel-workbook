@@ -1,5 +1,7 @@
 package it.evadid.homepage.workbook
 
+import it.evadid.core.datastructures.language.WorkbookContent
+
 import it.evadid.core.datastructures.chat.MessengerModel
 import it.evadid.core.datastructures.language.{LanguageMap, LanguageMapContentId}
 import it.evadid.core.datastructures.language.AppLanguage.{English, German, HumanLanguage}
@@ -94,8 +96,7 @@ class TextInputFeedbackRendererSpec extends EditorDomSuite {
     val exercise = TextInputWithScaffoldingAndGrading("renderer-criteria", LanguageMapContentId("test/task"),
       contentGrading = List("first", "second").map(id => ContentForLlmInteraction(LanguageMapContentId(s"test/$id"), Map.empty)))
     val results = exercise.gradingElements.zipWithIndex.map { (grader, index) =>
-      GradingResult[String, MessengerModel](grader, "", if index == 0 then GradingStatus.Correct() else GradingStatus.PartiallyCorrect(),
-        Some(LanguageMap.universalMap[HumanLanguage](s"Feedback for criterion $index")))
+      GradingResult[String, MessengerModel](grader, "", if index == 0 then GradingStatus.Correct() else GradingStatus.PartiallyCorrect(), Some(WorkbookContent(LanguageMap.universalMap[HumanLanguage](s"Feedback for criterion $index"))), None, java.time.LocalDateTime.now())
     }
     exercise.interactionVariable.updateHistory(_.addGradings(results), fullInfo.workbookContextInformation)
     loadExercise(exercise)
@@ -117,10 +118,9 @@ class TextInputFeedbackRendererSpec extends EditorDomSuite {
       contentGrading = List(ContentForLlmInteraction(LanguageMapContentId("test/check"), Map.empty)))
     val grader = exercise.gradingElements.head
     val otherLanguage = if fullInfo.signals.currentLanguage.now() == English then German else English
-    val wrongAnswer = GradingResult[String, MessengerModel](grader, "another answer", GradingStatus.Correct(),
-      Some(LanguageMap.universalMap("Wrong answer feedback")))
-    val wrongLanguage = wrongAnswer.copy(gradedState = "", feedbackInformation = Some(
-      LanguageMap.mapBasedLanguageMap[HumanLanguage](Map(otherLanguage -> "Wrong language feedback"))))
+    val wrongAnswer = GradingResult[String, MessengerModel](grader, "another answer", GradingStatus.Correct(), Some(WorkbookContent(LanguageMap.universalMap("Wrong answer feedback"))), None, java.time.LocalDateTime.now())
+    val wrongLanguage = wrongAnswer.copy(gradedState = "", feedbackInformation = Some(WorkbookContent(
+      LanguageMap.mapBasedLanguageMap[HumanLanguage](Map(otherLanguage -> "Wrong language feedback")))))
     loadExercise(exercise)
     val element = TextInputWithScaffoldingAndGradingRenderer.renderAppElement(exercise).getDomElement()
     val close = mount(element)
@@ -132,8 +132,6 @@ class TextInputFeedbackRendererSpec extends EditorDomSuite {
       exercise.interactionVariable.updateHistory(_.addGrading(wrongLanguage), fullInfo.workbookContextInformation)
       assertEquals(element.ref.querySelectorAll(".feedback-entry").length, 1)
       assert(element.ref.textContent.contains("Wrong language feedback"))
-      assert(element.ref.textContent.contains(fullInfo.signals.stringFromLanguageMap(
-        wrongLanguage.feedbackInformation.get).now()))
     } finally close()
   }
 }
