@@ -117,3 +117,13 @@ rendering helpers for its toolbar, navigation and workspace. `JavaMethodSource`
 provides one immutable analysis per source value, shared by method selection and
 class navigation. `JavaStructuredMethodEditor` binds this view to structured Java
 states; it does not own a second answer.
+
+## UML structure selector
+
+[`EvaEditor.uml.UmlStructureSelector`](../modules/client/src/main/scala/it/evadid/homepage/webElements/editor/code/EvaEditor/uml/UmlStructureSelector.scala)
+observes a `Signal[ProgrammingStateJavaStructured]` and draws each class as a UML box
+(name, attributes, functions; no relationships). Every entry is a button.
+`UmlClassDiagram` derives the boxes from the class sources with `SourceStructure`.
+The component stores only the clicked entry's key; `selectedEntitySignal` resolves it
+against the current state, so the selected `fullCode` follows edits and becomes `None`
+when the entry is removed. Styles: `homepage/css/uml-structure-selector.css`.

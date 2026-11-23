@@ -1,6 +1,7 @@
 @import url("qr-editor.css");
 @import url("editor-appearance.css");
 @import url("block-editor.css");
+@import url("uml-structure-selector.css");
 /* Editor layout and chrome share the workbook's color and dimension tokens. */
 .eva-editor,
 .be-program-snap-fullscreen {

@@ -2,6 +2,12 @@
    Color policy: define colors only in this file and consume them via CSS variables in other stylesheets. */
 :root {
     --color-plot-data: var(--color-accent-active);
+    --color-uml-class-header: var(--color-blue-1);
+    --color-uml-class-header-alt: #D4B8F5;
+    --color-uml-class-border: var(--color-gray-14);
+    --color-uml-class-surface: var(--color-surface-base);
+    --color-uml-entry-hover: var(--color-surface-subtle);
+    --color-uml-entry-selected: color-mix(in srgb, var(--color-accent-active) 16%, var(--color-surface-base));
     --color-evacuation-floor: var(--color-surface-base);
     --color-evacuation-wall: var(--color-gray-12);
     --color-evacuation-exit: var(--color-green-2);
