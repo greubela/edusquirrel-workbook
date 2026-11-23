@@ -15,8 +15,10 @@ The separate artwork under `resources/img/art/marie/monkworkbook/` uses a
 different style and is not mixed into the slideshow.
 
 The theater is aggregated into 13 slides and the tower continuation into 4
-(`CreateMonksWorkbook.theaterScenes` / `countingScenes`). Each slide shows one key
-image from the `beats/` set with the dialogue lines of that part of the story
+(`CreateMonksWorkbook.theaterScenes` / `countingScenes`). The theater slides use the
+in-game screenshots `theater/monks-theater-01.jpg` to `-13.jpg` (one per slide, in
+slide order, downscaled to 1920×1080); the tower slides use key images from the
+`beats/` set. Each slide shows its image with the dialogue lines of that part of the story
 below it, plus short italic narration lines (`narr-*` keys) that replace the
 action-only frames. Unused beat images remain available in the folder.
 

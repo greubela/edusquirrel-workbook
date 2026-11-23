@@ -49,8 +49,8 @@ case class CreateMonksWorkbook(override val fullInfo: FullInfo) extends Workbook
         LanguageMapContentId(key(scene.imageKey)),
         TypeOfTextDisplay.URL_RELATIVE_TO_WORKBOOK_RESOURCES,
         Some(LanguageMapContentId(key(scene.lines.head))),
-        Some(CopyrightInfo.fromAi)
-      ) :: scene.lines.map(line => instructionMarkdown(key(line))))
+        Some(scene.copyright)
+      ) :: (scene.notice.toList ++ scene.lines).map(line => instructionMarkdown(key(line))))
 
   // ---- task builders: the task `id` determines the container title and all language-map keys
 
@@ -181,26 +181,33 @@ object CreateMonksWorkbook {
    * (`...dialogue`, prefixed with the speaker in the text) or of a short narration (`narr-...`).
    * Several beats of the story are aggregated into one slide so the stories stay short.
    */
-  case class Scene(id: String, imageKey: String, lines: List[String]) derives upickle.default.ReadWriter {
+  case class Scene(id: String, imageKey: String, lines: List[String], copyright: CopyrightInfo = CopyrightInfo.fromAi,
+                   notice: Option[String] = None)
+    derives upickle.default.ReadWriter {
     require(lines.nonEmpty, "A slide needs at least one line")
   }
 
+  /** The theater images are Minecraft screenshots whose author is unknown. */
+  val ScreenshotCopyright: CopyrightInfo = CopyrightInfo(CopyrightInfo.UnknownLicence, CopyrightInfo.UnknownAuthorInfo())
+
   val theaterScenes: List[Scene] = List(
-    Scene("arrival", "fileimage2", List("narr-arrival", "entrancedialogue")),
-    Scene("warning", "filebeattravelershout", List("warningdialogue", "shoutdialogue")),
-    Scene("help", "filebeathelpquestion", List("narr-help", "cards-demanddialogue", "in-deed-onedialogue",
+    // The notice is shown above the lines without becoming the image caption.
+    Scene("arrival", "filetheater01", List("narr-arrival", "entrancedialogue"), notice = Some("imagenotice")),
+    Scene("warning", "filetheater02", List("warningdialogue", "shoutdialogue")),
+    Scene("help", "filetheater03", List("narr-help", "cards-demanddialogue", "in-deed-onedialogue",
       "help-uncertaindialogue", "in-deed-onedialogue", "help-questiondialogue", "in-deed-onedialogue")),
-    Scene("journey", "filebeatreturnanswer", List("help-insistentdialogue", "journey-questiondialogue",
+    Scene("journey", "filetheater04", List("help-insistentdialogue", "journey-questiondialogue",
       "journey-answerdialogue", "return-questiondialogue", "return-answerdialogue")),
-    Scene("patience", "filebeatpatiencespeaking", List("patiencedialogue")),
-    Scene("tray", "filebeattraytomaster", List("tray-instructiondialogue", "narr-tray", "watchdialogue")),
-    Scene("select-a", "filebeatselect7held", List("narr-select-a")),
-    Scene("select-b", "filebeatselect2held", List("narr-select-b")),
-    Scene("empty", "filebeatemptyspeaking", List("narr-empty", "emptydialogue", "givebackdialogue")),
-    Scene("insert-a", "filebeatinsert4left", List("narr-insert-a")),
-    Scene("insert-b", "filebeatinsert9left", List("narr-insert-b")),
-    Scene("sorted", "filebeatunderstoodspeaking", List("narr-sorted", "sorteddialogue", "understooddialogue")),
-    Scene("farewell", "fileimage13", List("farewelldialogue", "narr-farewell")))
+    Scene("patience", "filetheater05", List("patiencedialogue")),
+    Scene("tray", "filetheater06", List("tray-instructiondialogue", "narr-tray", "watchdialogue")),
+    Scene("select-a", "filetheater07", List("narr-select-a")),
+    Scene("select-b", "filetheater08", List("narr-select-b")),
+    Scene("empty", "filetheater09", List("narr-empty", "emptydialogue", "givebackdialogue")),
+    Scene("insert-a", "filetheater10", List("narr-insert-a")),
+    Scene("insert-b", "filetheater11", List("narr-insert-b")),
+    Scene("sorted", "filetheater12", List("narr-sorted", "sorteddialogue", "understooddialogue")),
+    Scene("farewell", "filetheater13", List("farewelldialogue", "narr-farewell")))
+    .map(_.copy(copyright = ScreenshotCopyright))
 
   val countingScenes: List[Scene] = List(
     Scene("family", "filebeatfamilychildquestion", List("familydialogue", "family-father-replydialogue",
