@@ -107,13 +107,13 @@ case class HtmlWorkbookDomElement() extends HtmlAppElement {
   lazy val headerChildren: Signal[Seq[Element]] = {
     fullInfo.signals.workbook.combineWith(fullInfo.signals.user, collapsedSignal).map(
       (workbook, user, collapsed) => {
-        val always = List(
-          createTitleLine(workbook, user),
-          DropdownMenuControl(workbook, user).getDomElement(),
-        )
-        val section: Seq[Element] = if (collapsed || workbook.isEmpty || user.isEmpty) List() else List(SectionSelectionLine(workbook.get).getDomElement())
-        val language: Seq[Element] = if (collapsed) List() else List(LanguageSelectionLine().getDomElement())
-        always ++ language ++ section ++ List(createDomToggleButton())
+        // Collapsed, only the toggle remains, so the workbook gets the whole screen.
+        if (collapsed) List(createDomToggleButton())
+        else {
+          val section: Seq[Element] = if (workbook.isEmpty || user.isEmpty) List() else List(SectionSelectionLine(workbook.get).getDomElement())
+          List(createTitleLine(workbook, user), DropdownMenuControl(workbook, user).getDomElement(), LanguageSelectionLine().getDomElement()) ++
+            section ++ List(createDomToggleButton())
+        }
       })
 
   }
