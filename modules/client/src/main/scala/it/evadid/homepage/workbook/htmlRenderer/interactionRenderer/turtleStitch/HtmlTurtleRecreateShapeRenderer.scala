@@ -6,7 +6,7 @@ import it.evadid.core.datastructures.geometry.Point
 import it.evadid.core.datastructures.language.LanguageMapContentId
 import it.evadid.core.datastructures.state.StateHelper.StateBasedVar
 import it.evadid.homepage.webElements.HtmlAppElement
-import it.evadid.homepage.webElements.basic.{DeferredRendering, HtmlButtonElement}
+import it.evadid.homepage.webElements.basic.HtmlButtonElement
 import it.evadid.homepage.webElements.editor.code.EvaEditor.{EvaEditor, EvaEditorConfig, EvaEditorLabels}
 import it.evadid.homepage.webElements.editor.code.SnapEditor.{SnapMorphicSession, SnapPreviewEditor}
 import it.evadid.homepage.webElements.editor.code.SnapEditor.toRefactor.SnapCodeEditorConfig
@@ -30,10 +30,9 @@ case object HtmlTurtleRecreateShapeRenderer extends LineBasedRenderingFactory[Tu
   private val immediately: FiniteDuration = Duration.Zero
 
   /** Editor side module replaying the drawing of `source` step by step; `frame` points always stay in view. */
-  private[homepage] def turtleStepsCard(source: Signal[ProgrammingState], frame: Seq[Point[Double]] = Nil,
-      delay: FiniteDuration = DeferredRendering.defaultDelay): ElementCard =
+  private[homepage] def turtleStepsCard(source: Signal[ProgrammingState], frame: Seq[Point[Double]] = Nil): ElementCard =
     ElementCard(LanguageMapContentId("basic/turtleStepsTitle"),
-      new TurtleStepPanel(source, key => laminarHelper.plaintextStringSignal(LanguageMapContentId(s"basic/$key")), delay, frame)
+      new TurtleStepPanel(source, key => laminarHelper.plaintextStringSignal(LanguageMapContentId(s"basic/$key")), immediately, frame)
         .getDomElement())
 
   /** End points of the target's strokes, so the step replay keeps the target's view while the program is incomplete. */
@@ -43,8 +42,13 @@ case object HtmlTurtleRecreateShapeRenderer extends LineBasedRenderingFactory[Tu
   override protected def createRendering(workbookElement: TurtleRecreateShapeInteraction): AtomarLineRendering = {
     val boundVar = workbookElement.interactionVariable.createBoundStateForTyping(() => fullInfo.keyboardInput.lastKey.now(), fullInfo.workbookContextInformation).toAirstreamVar
 
-    // Drawings follow the last run instead of every edit; typing alone never starts the program.
-    val programRun = new TurtleProgramRun(boundVar)
+    // Drawings and the shape grading follow the last run instead of every edit; typing alone never starts the program.
+    // A requested grading joins a still running automatic one, which skips the shape grader; so it is requested after that.
+    val programRun = new TurtleProgramRun(boundVar, () => {
+      val control = workbookElement.interactionVariable.control
+      val context = fullInfo.workbookContextInformation
+      control.getOrCalculateGrading(context).flatMap(_ => control.getOrCalculateGrading(context, forceGrading = true))(using context.futureExecutionContext)
+    })
 
     val gradingReporter = fullInfo.signals.reportersFor(workbookElement).grading
     val shapeGradingPreview = CompareShapePreview(programRun.executed, workbookElement.desiredResult, workbookElement.comparisonPolicy, immediately)
@@ -70,7 +74,7 @@ case object HtmlTurtleRecreateShapeRenderer extends LineBasedRenderingFactory[Tu
         humanLanguage = fullInfo.signals.currentLanguage,
         labels = EvaEditorLabels.fromContent(laminarHelper.plaintextStringSignal))
       EditorWithWorkbookPanel(workbookElement, Some(associatedInstruction), gradingReporter,
-        List(createShapeGradingCard, turtleStepsCard(programRun.executed, framePoints(workbookElement.desiredResult), immediately)),
+        List(createShapeGradingCard, turtleStepsCard(programRun.executed, framePoints(workbookElement.desiredResult))),
         evaEditor)
     }
 

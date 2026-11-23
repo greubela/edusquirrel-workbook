@@ -102,9 +102,7 @@ case class InteractionVariable[F <: InteractionFormat](underlyingInteraction: Wo
 
   /** Binds a code editor: each change's importance follows [[TypingUpdateImportance]] for the latest typed key. */
   def createBoundStateForTyping(lastKey: () => Option[TypingUpdateImportance.TypedKey], context: ExecutionContextInformation): State[InteractionFormat.State[F]] =
-    createBoundStateWithUpdateLogic(change => TypingUpdateImportance.decide(lastKey(),
-      currentHistory.allStates.filter(_.updateImportance == UpdateImportance.MAJOR).map(_.timestamp).maxOption,
-      change.newState.timestamp), context)
+    createBoundStateWithUpdateLogic(change => TypingUpdateImportance.decide(lastKey(), change.newState.timestamp), context)
 
   def createBoundStateWithUpdateImportance(importance: UpdateImportance, context: ExecutionContextInformation): State[InteractionFormat.State[F]] = this.synchronized {
     createBoundStateWithUpdateLogic(_ => importance, context)

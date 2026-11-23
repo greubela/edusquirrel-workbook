@@ -103,7 +103,7 @@ class TurtleGradingLogicSpec extends FunSuite {
     assert(strokes eq expression.turtleComparison(target, TurtleDrawingPolicy.Strokes))
     assert(strokes ne expression.turtleComparison(target, TurtleDrawingPolicy.Coverage))
     assert(strokes.actual eq expression.turtleGraphic, "the state's drawing is traced once")
-    RecreateShapeGrader(target, REQUIRED_TEST).gradeStateSafe(state, false, ExecutionContextInformation.default)
+    RecreateShapeGrader(target, REQUIRED_TEST).gradeStateSafe(state, true, ExecutionContextInformation.default)
       .map(result => assertEquals(result.gradingStatus, strokes.gradingStatus))
   }
 }

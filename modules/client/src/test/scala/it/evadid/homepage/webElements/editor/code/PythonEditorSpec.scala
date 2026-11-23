@@ -91,16 +91,37 @@ class PythonEditorSpec extends EditorDomSuite {
   test("native typing writes the answer and answer changes reach the native document exactly once") {
     val fixture = Fixture("x = 1")
     finish(fixture.close) {
-      until(fixture.created.now().nonEmpty).map(_ => fixture.loadNative()).flatMap(_ => until(hidden(fallback))).map { _ =>
+      until(fixture.created.now().nonEmpty).map(_ => fixture.loadNative()).flatMap(_ => until(hidden(fallback))).flatMap { _ =>
         val native = fixture.native
         native.type_("x = 2")
-        assertEquals(fixture.text.now(), "x = 2")
-        assertEquals(native.writes.now(), Vector.empty[String], "the user's own edit is not written back")
-        fixture.text.set("x = 3")
-        assertEquals(native.doc.now(), "x = 3")
-        fixture.text.set("x = 3")
-        assertEquals(native.writes.now(), Vector("x = 3"))
-        assertEquals(fixture.created.now().size, 1, "answer changes never rebuild the editor")
+        assertEquals(fixture.text.now(), "x = 1", "the answer follows once typing pauses")
+        until(fixture.text.now() == "x = 2").map { _ =>
+          assertEquals(native.writes.now(), Vector.empty[String], "the user's own edit is not written back")
+          fixture.text.set("x = 3")
+          assertEquals(native.doc.now(), "x = 3")
+          fixture.text.set("x = 3")
+          assertEquals(native.writes.now(), Vector("x = 3"))
+          assertEquals(fixture.created.now().size, 1, "answer changes never rebuild the editor")
+        }
+      }
+    }
+  }
+
+  test("typing writes the answer once per pause, and at once when the editor loses focus or is unmounted") {
+    val fixture = Fixture("x = 1")
+    until(fixture.created.now().nonEmpty).map(_ => fixture.loadNative()).flatMap(_ => until(hidden(fallback))).flatMap { _ =>
+      val native = fixture.native
+      native.type_("x = 2")
+      native.type_("x = 23")
+      assertEquals(fixture.text.now(), "x = 1", "keystrokes stay in the editor while typing")
+      until(fixture.text.now() == "x = 23").map { _ =>
+        native.type_("x = 4")
+        dom.document.querySelector(".code-mirror-editor").dispatchEvent(js.Dynamic.newInstance(
+          js.Dynamic.global.window.Event)("blur").asInstanceOf[dom.Event])
+        assertEquals(fixture.text.now(), "x = 4", "leaving the editor writes the typed text")
+        native.type_("x = 5")
+        fixture.close()
+        assertEquals(fixture.text.now(), "x = 5", "unmounting writes the typed text")
       }
     }
   }

@@ -39,7 +39,6 @@
 /* Turtle drawings follow the last run; the hint marks edits that have not been run yet. */
 .turtle-run { display: flex; flex-direction: column; align-items: flex-start; gap: var(--space-xs); margin-bottom: var(--space-sm); }
 .turtle-run__hint { margin: 0; color: var(--color-text-muted-light); font-size: 0.85rem; }
-.turtle-run__hint--hidden { display: none; }
 
 /* BUTTONS */
 
