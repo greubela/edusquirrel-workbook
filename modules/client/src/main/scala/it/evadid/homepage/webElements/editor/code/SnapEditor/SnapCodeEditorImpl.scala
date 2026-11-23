@@ -40,6 +40,9 @@ trait SnapCodeEditorImpl {
   /** Push any pending Snap XML edits into the change listener immediately. */
   def flushPendingProjectChanges(): Unit
 
+  /** Push Snap XML edits into the change listener, unless a slot is still being edited. */
+  def publishProjectChanges(): Unit
+
   /** The retained IDE's exact live XML, when it has been mounted. */
   def currentProjectXml(): Option[String]
 

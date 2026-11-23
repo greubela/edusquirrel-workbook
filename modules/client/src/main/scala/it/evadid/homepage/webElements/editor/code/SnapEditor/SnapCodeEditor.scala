@@ -103,6 +103,12 @@ case class SnapCodeEditor(
         if !ready && error.isEmpty then p(cls := "code-editor__loading", role := "status", label) else emptyNode
       },
       editorCanvas,
+      // Snap edits come only from input here, so the heavy project comparison runs once the input pauses.
+      onPointerUp.useCapture.mapToUnit --> inputEnded.writer,
+      onKeyUp.useCapture.mapToUnit --> inputEnded.writer,
+      inputEnded.events.debounce(SnapCodeEditor.inputPauseMillis) --> { _ =>
+        if SnapCodeEditor.shownAsSnap(state.now()) then impl.publishProjectChanges()
+      },
       // Morphic's shared textarea lives inside this element. Commit before an
       // outside control (especially a language tab) reads the central answer.
       onBlur.useCapture.filter(_.target == dom.document.getElementById("morphic_keyboard")) --> { _ =>
@@ -118,6 +124,7 @@ case class SnapCodeEditor(
 
   private val renderingError = Var(Option.empty[String])
   private val editorReady = Var(false)
+  private val inputEnded = new EventBus[Unit]
 
   lazy val domElement: L.Element =
     div(
@@ -131,6 +138,9 @@ case class SnapCodeEditor(
 }
 
 object SnapCodeEditor {
+  /** Input pause after which Snap edits become the bound answer. */
+  val inputPauseMillis: Int = 400
+
   /** Snap projects, and expression answers whose Snap view the editor shows (e.g. in previews). */
   private[SnapEditor] def shownAsSnap(state: ProgrammingState): Boolean =
     state.associatedLanguage == SnapLanguage || state.isInstanceOf[ProgrammingStateBeExpression]

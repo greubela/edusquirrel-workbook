@@ -561,6 +561,7 @@ h3 {
 .instruction-callout--warning {
     border-left-color: var(--color-accent-error);
     background: var(--color-surface-subtle);
+    color: var(--color-text-primary);
 }
 
 .programming-exercise-action-button {
