@@ -1,5 +1,7 @@
 package it.evadid.homepage.workbook.htmlRenderer.interactionRenderer.turtleStitch
 
+import it.evadid.workbook.interaction.sync.UpdateImportance
+
 import com.raquo.airstream.state.Var
 import it.evadid.core.datastructures.language.LanguageMapContentId
 import it.evadid.core.datastructures.state.StateHelper.StateBasedVar
@@ -28,7 +30,7 @@ case object HtmlTurtleRecreateShapeRenderer extends LineBasedRenderingFactory[Tu
         key => laminarHelper.plaintextStringSignal(LanguageMapContentId(s"basic/$key"))).getDomElement())
 
   override protected def createRendering(workbookElement: TurtleRecreateShapeInteraction): AtomarLineRendering = {
-    val boundVar = workbookElement.interactionVariable.createBoundStateForTyping(() => fullInfo.keyboardInput.lastKey.now(), fullInfo.workbookContextInformation).toAirstreamVar
+    val boundVar = workbookElement.interactionVariable.createBoundStateWithUpdateImportance(UpdateImportance.MAJOR, fullInfo.workbookContextInformation).toAirstreamVar
 
     val gradingReporter = fullInfo.signals.reportersFor(workbookElement).grading
     val shapeGradingPreview = CompareShapePreview(boundVar, workbookElement.desiredResult, workbookElement.comparisonPolicy)

@@ -7,7 +7,7 @@ import it.evadid.core.datastructures.state.observable.ObserverDerivationLogic.De
 import it.evadid.core.datastructures.state.{ExecutionMethod, State}
 import it.evadid.util.logging.Logger
 import it.evadid.workbook.abstractions.{InteractionFormat, WorkbookInteractionElement}
-import it.evadid.workbook.interaction.sync.{TypingUpdateImportance, UpdateImportance}
+import it.evadid.workbook.interaction.sync.UpdateImportance
 import it.evadid.workbook.interaction.sync.model.InteractionHistoryJson
 import it.evadid.workbook.interaction.variable.InteractionVariableState.{DesignatedInteractionState, InteractionVariableStateChanged}
 import it.evadid.workbook.meta.ExecutionContextInformation
@@ -99,12 +99,6 @@ case class InteractionVariable[F <: InteractionFormat](underlyingInteraction: Wo
     })
     outerState
   }
-
-  /** Binds a code editor: each change's importance follows [[TypingUpdateImportance]] for the latest typed key. */
-  def createBoundStateForTyping(lastKey: () => Option[TypingUpdateImportance.TypedKey], context: ExecutionContextInformation): State[InteractionFormat.State[F]] =
-    createBoundStateWithUpdateLogic(change => TypingUpdateImportance.decide(lastKey(),
-      currentHistory.allStates.filter(_.updateImportance == UpdateImportance.MAJOR).map(_.timestamp).maxOption,
-      change.newState.timestamp), context)
 
   def createBoundStateWithUpdateImportance(importance: UpdateImportance, context: ExecutionContextInformation): State[InteractionFormat.State[F]] = this.synchronized {
     createBoundStateWithUpdateLogic(_ => importance, context)

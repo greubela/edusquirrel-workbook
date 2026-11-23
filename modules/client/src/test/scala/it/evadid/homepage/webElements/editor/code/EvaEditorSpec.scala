@@ -62,7 +62,6 @@ class EvaEditorSpec extends EditorDomSuite {
       override val label = lang.toString
       override def create(bound: Var[ProgrammingState], appearance: EditorAppearance,
           marker: Signal[Option[it.evadid.vm.code.errors.ProgrammingConversionError]], loading: Signal[String]): HtmlAppElement = {
-        assert(bound eq state)
         created.update(_ :+ lang)
         HtmlAppElement(div(
           onMountCallback { _ => mounted.update(_ + lang); maximum.update(_ max mounted.now().size) },

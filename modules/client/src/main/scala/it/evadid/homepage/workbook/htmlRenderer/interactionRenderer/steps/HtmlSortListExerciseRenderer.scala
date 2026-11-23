@@ -1,5 +1,7 @@
 package it.evadid.homepage.workbook.htmlRenderer.interactionRenderer.steps
 
+import it.evadid.workbook.interaction.sync.UpdateImportance
+
 import com.raquo.laminar.api.L.*
 import it.evadid.core.datastructures.language.LanguageMapContentId
 import it.evadid.core.datastructures.state.StateHelper.StateBasedVar
@@ -33,7 +35,7 @@ case object HtmlSortListExerciseRenderer extends LineBasedRenderingFactory[SortL
       key => laminarHelper.plaintextStringSignal(LanguageMapContentId(s"basic/$key"))).getDomElement())
 
   override protected def createRendering(element: SortListExercise): AtomarLineRendering = {
-    val boundVar = element.interactionVariable.createBoundStateForTyping(() => fullInfo.keyboardInput.lastKey.now(), fullInfo.workbookContextInformation).toAirstreamVar
+    val boundVar = element.interactionVariable.createBoundStateWithUpdateImportance(UpdateImportance.MAJOR, fullInfo.workbookContextInformation).toAirstreamVar
     val gradingReporter = fullInfo.signals.reportersFor(element).grading
     def stepsCard = sortStepsCard(element, boundVar)
 
