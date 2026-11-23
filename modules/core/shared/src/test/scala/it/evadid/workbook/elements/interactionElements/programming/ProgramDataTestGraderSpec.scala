@@ -1,5 +1,7 @@
 package it.evadid.workbook.elements.interactionElements.programming
 
+import it.evadid.workbook.interaction.sync.UpdateImportance
+
 import it.evadid.core.datastructures.language.AppLanguage.{English, German, Java, Python, SnapLanguage}
 import it.evadid.core.datastructures.language.LanguageMapContentId
 import it.evadid.vm.simulation.data.{DataWorld, SudokuGrid}
@@ -99,9 +101,9 @@ class ProgramDataTestGraderSpec extends FunSuite {
 
   test("hidden tests report their status without feedback, and grading runs only on request") {
     val hidden = ProgramDataTestGrader("hidden", description, "sortiere", Nil, list, Seq(ListEquals(Nil)), GradingImportance.HIDDEN_TEST)
-    hidden.gradeStateSafe(bubble, true, ExecutionContextInformation.default).map { result =>
+    hidden.gradeStateSafe(bubble, true, UpdateImportance.MAJOR, ExecutionContextInformation.default).map { result =>
       assertEquals((result.gradingStatus, result.feedbackInformation), (GradingStatus.Incorrect(), None))
-    }.flatMap(_ => hidden.gradeStateSafe(bubble, false, ExecutionContextInformation.default)).map { result =>
+    }.flatMap(_ => hidden.gradeStateSafe(bubble, false, UpdateImportance.MAJOR, ExecutionContextInformation.default)).map { result =>
       assertEquals(result.gradingStatus, GradingStatus.NotRequested())
     }
   }

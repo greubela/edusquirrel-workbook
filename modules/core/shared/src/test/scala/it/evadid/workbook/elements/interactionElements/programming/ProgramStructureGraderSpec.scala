@@ -1,5 +1,7 @@
 package it.evadid.workbook.elements.interactionElements.programming
 
+import it.evadid.workbook.interaction.sync.UpdateImportance
+
 import munit.FunSuite
 import it.evadid.core.datastructures.language.LanguageMapContentId
 import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseTurtle.*
@@ -13,7 +15,7 @@ class ProgramStructureGraderSpec extends FunSuite {
   private given ExecutionContext = ExecutionContext.global
   private def grade(state: ProgrammingState, requirement: ProgramStructureRequirement) =
     ProgramStructureGrader(requirement, "structure", LanguageMapContentId("test/structure"))
-      .gradeStateSafe(state, true, TestExecutionContext())
+      .gradeStateSafe(state, true, UpdateImportance.MAJOR, TestExecutionContext())
 
   test("comments and strings do not satisfy structural requirements") {
     val source = ProgrammingStatePythonStructured("# def quadrat(distanz): for i in range(4):\nforward(100)")

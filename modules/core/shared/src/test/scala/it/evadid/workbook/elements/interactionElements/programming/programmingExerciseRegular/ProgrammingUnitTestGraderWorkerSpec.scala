@@ -1,5 +1,7 @@
 package it.evadid.workbook.elements.interactionElements.programming.programmingExerciseRegular
 
+import it.evadid.workbook.interaction.sync.UpdateImportance
+
 import it.evadid.core.datastructures.language.AppLanguage.{English, German, HumanLanguage, Lisp, Python}
 import it.evadid.core.datastructures.language.{LanguageMap, LanguageMapContentId}
 import it.evadid.core.datastructures.language.control.LanguageMapIdResolver
@@ -70,7 +72,7 @@ class ProgrammingUnitTestGraderWorkerSpec extends FunSuite {
     val hidden = public.copy(importance = GradingImportance.HIDDEN_TEST)
     val worker = new Worker(failedReport)
     for {
-      shown <- public.gradeStateSafe(answer, forceGrading = true, TestExecutionContext(List(worker), languageMapIdResolver = Some(resolver)))
+      shown <- public.gradeStateSafe(answer, forceGrading = true, UpdateImportance.MAJOR, TestExecutionContext(List(worker), languageMapIdResolver = Some(resolver)))
       secret <- hidden.gradeState(answer, Seq(new Worker(report("failed", "assertion"))), resolver)
     } yield {
       val info = shown.additionalData.get
@@ -115,7 +117,7 @@ class ProgrammingUnitTestGraderWorkerSpec extends FunSuite {
     val llm = new Llm
     val context = TestExecutionContext(List(new Worker(report("failed", "assertion")), llm), languageMapIdResolver = Some(resolver))
     val state = exercise.defaultValue
-    grader.gradeStateSafe(state, forceGrading = true, context).flatMap { result =>
+    grader.gradeStateSafe(state, forceGrading = true, UpdateImportance.MAJOR, context).flatMap { result =>
       exercise.interactionVariable.updateHistory(_.addGrading(result), context)
       exercise.scaffoldingElement.get.handleFeedbackGeneration(state, context).map { _ =>
         val check = ujson.read(llm.prompts.now().head)("checks")(0)

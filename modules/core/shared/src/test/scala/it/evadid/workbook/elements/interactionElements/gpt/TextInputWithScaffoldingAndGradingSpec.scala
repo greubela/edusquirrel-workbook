@@ -1,5 +1,7 @@
 package it.evadid.workbook.elements.interactionElements.gpt
 
+import it.evadid.workbook.interaction.sync.UpdateImportance
+
 import it.evadid.core.datastructures.language.WorkbookContent
 
 import it.evadid.workbook.abstractions.scaffolding.ScaffoldingStatus
@@ -60,14 +62,14 @@ class TextInputWithScaffoldingAndGradingSpec extends FunSuite {
     }
     val grader = TextInputLlmGrader(task, None, ContentForLlmInteraction(criterion, Map.empty))
     def grade(answer: String = "Meine Antwort", forced: Boolean = true) =
-      grader.gradeStateSafe(answer, forced, TestExecutionContext(List(client), languageMapIdResolver = Some(resolver)))
+      grader.gradeStateSafe(answer, forced, UpdateImportance.MAJOR, TestExecutionContext(List(client), languageMapIdResolver = Some(resolver)))
   }
 
   test("session configuration is carried by grading, classification retries and scaffolding requests") {
     val f = new Fixture(List(Right("Please classify again"), Right("CORRECT"), Right("A helpful hint")))
     val configuration = Some(it.evadid.llm.LlmConfiguration("https://own.example/chat", "own-model", Some("session-key")))
     val context = TestExecutionContext(List(f.client), languageMapIdResolver = Some(f.resolver), llmConfiguration = configuration)
-    f.grader.gradeStateSafe("answer", true, context).flatMap { result =>
+    f.grader.gradeStateSafe("answer", true, UpdateImportance.MAJOR, context).flatMap { result =>
       assertEquals(result.gradingStatus, GradingStatus.Correct())
       TextInputLlmScaffolder(task, None, ContentForLlmInteraction(hint, Map.empty))
         .handleFeedbackGeneration("answer", context).map { _ =>
@@ -173,9 +175,9 @@ class TextInputWithScaffoldingAndGradingSpec extends FunSuite {
 
   test("missing clients and missing localization context fail safely") {
     val f = new Fixture
-    f.grader.gradeStateSafe("answer", true, TestExecutionContext(languageMapIdResolver = Some(f.resolver))).flatMap { missingClient =>
+    f.grader.gradeStateSafe("answer", true, UpdateImportance.MAJOR, TestExecutionContext(languageMapIdResolver = Some(f.resolver))).flatMap { missingClient =>
       assert(missingClient.gradingStatus.isInstanceOf[GradingStatus.TestError])
-      f.grader.gradeStateSafe("answer", true, TestExecutionContext(List(f.client))).map { missingResolver =>
+      f.grader.gradeStateSafe("answer", true, UpdateImportance.MAJOR, TestExecutionContext(List(f.client))).map { missingResolver =>
         assert(missingResolver.gradingStatus.isInstanceOf[GradingStatus.TestError])
         assertEquals(f.requests.now(), Vector.empty)
       }
@@ -207,7 +209,7 @@ class TextInputWithScaffoldingAndGradingSpec extends FunSuite {
     val resolver = new LanguageMapIdResolver(f.language.observable) {
       override def resolveMap(id: LanguageMapContentId) = { started.trySuccess(()); pending.future }
     }
-    val result = f.grader.gradeStateSafe("answer", true, TestExecutionContext(List(f.client), languageMapIdResolver = Some(resolver)))
+    val result = f.grader.gradeStateSafe("answer", true, UpdateImportance.MAJOR, TestExecutionContext(List(f.client), languageMapIdResolver = Some(resolver)))
     started.future.flatMap { _ =>
       f.language.set(English)
       pending.success(LanguageMap.mapBasedLanguageMap(Map(German -> "Aufgabe", English -> "Task")))
@@ -236,7 +238,7 @@ class TextInputWithScaffoldingAndGradingSpec extends FunSuite {
     val example = LanguageMapContentId("test/example-answer")
     val reply = LanguageMapContentId("test/example-feedback")
     val grader = TextInputLlmGrader(task, Some(solution), ContentForLlmInteraction(criterion, Map(example -> reply)))
-    grader.gradeStateSafe("answer", true, TestExecutionContext(List(f.client), Some(f.resolver))).map { result =>
+    grader.gradeStateSafe("answer", true, UpdateImportance.MAJOR, TestExecutionContext(List(f.client), Some(f.resolver))).map { result =>
       val prompt = ujson.read(f.requests.now().head.prompt)
       assertEquals(prompt("solution").str, "Deutsch: test/solution")
       assertEquals(prompt("examples")(0)("answer").str, "Deutsch: test/example-answer")

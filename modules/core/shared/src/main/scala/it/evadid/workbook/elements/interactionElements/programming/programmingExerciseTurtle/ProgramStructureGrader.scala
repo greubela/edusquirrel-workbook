@@ -33,7 +33,7 @@ case class ProgramStructureGrader(
     importance: GradingImportance = GradingImportance.REQUIRED_TEST
 ) extends ProgrammingTestGrader derives ReadWriter {
   require(testId.nonEmpty && testId == testId.trim, "A structure test needs a nonempty ID.")
-  override val runningBehavior = GraderRunningBehavior.RUN_ALWAYS
+  override val runningBehavior = GraderRunningBehavior.RUN_ON_AT_LEAST_MINOR
   override val gradingEntity = FeedbackEntity.TestEntity()
 
   override protected def handleGrading(state: ProgrammingState, context: ExecutionContextInformation)

@@ -1,5 +1,7 @@
 package it.evadid.workbook.elements.interactionElements.reorderExercise
 
+import it.evadid.workbook.interaction.sync.UpdateImportance
+
 import it.evadid.core.datastructures.language.AppLanguage.Python
 import munit.FunSuite
 import it.evadid.workbook.support.TestExecutionContext
@@ -10,7 +12,7 @@ import upickle.default.*
 class ReorderInteractionSpec extends FunSuite {
   private given ExecutionContext = ExecutionContext.global
   private def correct(exercise: ReorderInteraction.ReorderCodeInteraction, state: ReorderInteractionState[String]): Future[Boolean] =
-    exercise.gradingElements.head.gradeStateSafe(state, true, TestExecutionContext()).map(_.gradingStatus.isCorrect)
+    exercise.gradingElements.head.gradeStateSafe(state, true, UpdateImportance.MAJOR, TestExecutionContext()).map(_.gradingStatus.isCorrect)
   private val lines = List("a = 1", "b = a + 1", "print(b)")
   private def state(order: Int*) = ReorderInteractionState.forCode(lines, order, lines.indices, ReorderType.CODELINES(Python))
   private val exercise = ReorderInteraction.ReorderCodeInteraction("order", lines, Python)

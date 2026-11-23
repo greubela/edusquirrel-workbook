@@ -92,7 +92,7 @@ trait WorkbookFactory {
     import it.evadid.workbook.abstractions.grading.*
     require(expected.forall(indices => indices.distinct == indices && indices.forall(options.indices.contains) && (allowMultiple || indices.size <= 1)),
       "Expected choices must belong to the exercise")
-    WorkbookContentChoiceInteraction(elementId, ChoiceConfig(instruction, Some(allowMultiple), GraderRunningBehavior.RUN_ALWAYS),
+    WorkbookContentChoiceInteraction(elementId, ChoiceConfig(instruction, Some(allowMultiple), GraderRunningBehavior.RUN_ON_AT_LEAST_MINOR),
       options.zipWithIndex.map { (id, index) =>
         ChoiceOptionWorkbookContent(WorkbookContent(id), expected.map { indices =>
           val correct = indices.contains(index)

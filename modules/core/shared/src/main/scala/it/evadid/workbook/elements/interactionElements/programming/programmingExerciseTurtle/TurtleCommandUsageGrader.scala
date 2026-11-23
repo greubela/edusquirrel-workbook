@@ -36,7 +36,7 @@ case class TurtleCommandUsageGrader(
   private val canonicalCommand = TurtleCommand.resolveCanonicalNames(command)
     .getOrElse(throw IllegalArgumentException(s"Unknown turtle command: ${command.universalInterpretation()}"))
 
-  override val runningBehavior: GraderRunningBehavior = GraderRunningBehavior.RUN_ALWAYS
+  override val runningBehavior: GraderRunningBehavior = GraderRunningBehavior.RUN_ON_AT_LEAST_MINOR
   override val gradingEntity: FeedbackEntity = FeedbackEntity.TestEntity()
 
   override protected def handleGrading(state: ProgrammingState, contextInformation: ExecutionContextInformation)
