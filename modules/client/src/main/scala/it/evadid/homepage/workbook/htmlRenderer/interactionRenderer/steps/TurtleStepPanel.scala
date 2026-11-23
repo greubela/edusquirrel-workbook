@@ -37,7 +37,7 @@ final class TurtleStepPanel(state: Var[ProgrammingState], text: String => Signal
 
   override def getDomElement(): Element = div(cls := "step-panel turtle-step-panel",
     rendering.status(id => text(id.entryKey)),
-    // One board follows every program and step; stepping redraws it instead of creating a new one.
+    // Each program and step gets a fresh board in its default view.
     TurtleJsxGraphRenderer.render(commands.combineWith(navigator.step).map((all, step) => TurtleStepPanel.scene(all, step)), "Turtle steps"),
     navigator.element,
     p(cls := "step-panel__caption", aria.live := "polite", child.text <-- commands.combineWith(navigator.step).flatMapSwitch { (all, step) =>
