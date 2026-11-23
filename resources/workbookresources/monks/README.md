@@ -35,17 +35,19 @@ last frame shows the empty tower position and three tally marks.
 
 ## Structure
 
-`CreateMonksWorkbook` builds five sections with stable element IDs (`monks-a2`, `monks-e5`, ...).
-Displayed task titles are numbered per section ("Aufgabe 2.3" / "Task 2.3") in the language maps and
-are independent of the element IDs.
+`CreateMonksWorkbook` builds seven sections with stable element IDs (`monks-a2`, `monks-e5`, ...).
+Displayed task titles are numbered per section ("Aufgabe 3.3" / "Task 3.3") in the language maps and
+are independent of the element IDs. The numbers match the section numbers the navigation shows.
 
 | Section | Content |
 | --- | --- |
-| `monks-story` (0) | Theater slideshow, recursion scheme, tasks A1–A4, the story as code (`ac`: one method with four gaps), A5–A8 (tasks 0.1–0.9) |
-| `monks-tower` (1) | Counting slideshow (story ending in the last slide), tasks C1–C5 (1.1–1.5) |
-| `monks-editor` (2) | Editor introduction; E1–E3 (tasks 2.1–2.3) introduce the brick methods `stein`, `hoch`, `runter`, `springe` |
-| `monks-bridge` (3) | Drawing recursively with bricks: E4–E6b, D1, E7 (Cantor wall), E8 (3.1–3.7) |
-| `monks-koch` (4) | Koch curve practice (4.1–4.3) |
+| `welcomeTitle` (0) | Overview |
+| `monks-story` (1) | Theater slideshow, recursion scheme, tasks A1–A4, the story as code (`ac`: one method with four gaps), A5–A8 (tasks 1.1–1.9) |
+| `monks-tower` (2) | Counting slideshow (story ending in the last slide), tasks C1–C5 (2.1–2.5) |
+| `monks-editor` (3) | Editor introduction; E1–E3 (tasks 3.1–3.3) introduce the brick methods `stein`, `hoch`, `runter`, `springe` |
+| `monks-bridge` (4) | Drawing recursively with bricks: E4, E5, E6b, E6a, D1 (4.1–4.5) |
+| `monks-koch` (5) | Koch curve practice (5.1–5.3) |
+| `finishTitle` (6) | Survey and submission |
 
 Task types map to existing interactions: `ChoiceInteraction` (choice, multiple select and one
 row per assignment), `AnswerTableInteraction` (graded inputs; accepted spellings separated by `|`)
@@ -55,7 +57,7 @@ and comments) and live in `map-de.json` / `map-en.json`; `map-universal.json` ho
 names that need no translation.
 
 The programming tasks E1–E8 are `TurtleRecreateShapeInteraction`s with Java starting code
-(`CreateMonksWorkbook.EditorCode`; from E4 on the brick methods from section 2 are prefilled). Each target drawing is
+(`CreateMonksWorkbook.EditorCode`; from E4 on the brick methods from section 3 are prefilled). Each target drawing is
 recorded from the sample solution (`CreateMonksWorkbook.editorTarget`) with the same helper
 methods, so the strokes match what the checked Java runner emits. The runner supports
 `Turtle.forward`, `Turtle.turnRight`, `Turtle.turnLeft`, `Turtle.penUp` and `Turtle.penDown`.

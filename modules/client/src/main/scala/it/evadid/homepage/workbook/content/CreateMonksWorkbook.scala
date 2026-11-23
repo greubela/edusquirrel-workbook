@@ -22,9 +22,9 @@ import it.evadid.workbook.elements.structureElements.{ExerciseGroup, Workbook}
 
 /** Recursion workbook "Die Mönche von Mons Komputarius".
  *
- * Sections 0 (monks), 1 (tower), 2 (editor basics and the building-brick methods),
- * 3 (drawing recursively with bricks) and 4 (Koch curve). Task titles are numbered per section
- * ("Aufgabe 2.3") in the language maps.
+ * Sections 0 (overview), 1 (monks), 2 (tower), 3 (editor basics and the building-brick methods),
+ * 4 (drawing recursively with bricks), 5 (Koch curve) and 6 (submission). Task titles are numbered per
+ * section ("Aufgabe 3.3") in the language maps, matching the section numbers of the navigation.
  *
  * The programming tasks E1–E6 open the Eva editor with Java starting code; their targets are recorded
  * from the sample solutions in [[CreateMonksWorkbook.editorTarget]]. Element IDs are stable per task
@@ -155,7 +155,7 @@ case class CreateMonksWorkbook(override val fullInfo: FullInfo) extends Workbook
         editorTask("e4"), editorTask("e5"), editorTask("e6b"), editorTask("e6a"),
         task("d1", List(choice("d1a", List(1), 4), choice("d1b", List(1, 3), 5, multiple = true))))),
 
-      // Section 3 (Koch curve) is authored separately and intentionally unchanged.
+      // Section 5 (Koch curve) is authored separately and intentionally unchanged.
       section("monks-koch", key("kochtitle"),
         List(container(key("kochintroductioncont"), List(
           instructionMarkdown(key("kochintroduction"))
@@ -229,7 +229,7 @@ object CreateMonksWorkbook {
     Scene("count-blue", "filebeatcountempty", List("narr-count-blue", "count-resultdialogue", "count-brokendialogue",
       "count-rememberdialogue", "narr-count-rebuild", "count-grandmadialogue")))
 
-  /** Java starting code of the editor tasks E1–E6. Section 0 lets the learner write the building-brick methods
+  /** Java starting code of the editor tasks E1–E6. Section 3 lets the learner write the building-brick methods
    * `stein`, `hoch`, `runter` and `springe`; from E4 on they are prefilled ([[EditorCode.helpers]]).
    * Identifiers follow the German task texts; the class name is free, `Turtle` is reserved by the runner.
    */
