@@ -110,20 +110,34 @@ replacement, draft restoration and panel geometry.
 
 The active tab is derived from the current `ProgrammingState`, including the Blocks tab for a `ProgrammingStateBeExpression`. Mounting the editor does not select the first configured tab or convert the answer implicitly. If the native tab is unavailable, the answer remains intact. External controls and Scala tests can await `EvaEditor.setActiveTab(language)` to convert the bound answer and activate that representation. Browser tests select the intended tab explicitly before testing its behavior.
 
-## Java method editing
+## Java component editor
 
-`webElements/code/JavaMethodEditor` owns method selection and drafts, with separate
-rendering helpers for its toolbar, navigation and workspace. `JavaMethodSource`
-provides one immutable analysis per source value, shared by method selection and
-class navigation. `JavaStructuredMethodEditor` binds this view to structured Java
-states; it does not own a second answer.
+Eva's Java tab is [`JavaComponentEditor`](../modules/client/src/main/scala/it/evadid/homepage/webElements/code/JavaComponentEditor.scala),
+bound to a `Var[ProgrammingStateJavaStructured]`. A UML diagram of the classes sits
+above an editing area that shows, for the diagram selection, a `JavaFunctionEditor`
+(a function) or a `JavaClassEditor` (a class or one of its attributes). A Full source
+view, Add class/Add function dialogs and an optional task reference remain. The
+entry point `main` (of class `Main`, if present) opens first; without one, the
+full source does.
 
-## UML structure selector
+Both editors extend [`JavaFragmentEditor`](../modules/client/src/main/scala/it/evadid/homepage/webElements/code/JavaFragmentEditor.scala),
+which owns the shared update logic. An editor shows its fragment in a local
+`Var[String]`; a `JavaFragmentRange` records where the fragment lies in its class
+source. Local edits are spliced into the answer at that range, which then spans the
+draft, so unfinished code stays in place. Any other answer change refreshes the
+local text; if the fragment's text changed, it is located again by identity (a
+class name, or a method signature from `JavaMethodSource`). Subclasses only locate
+and identify their fragment. Renaming a class in its declaration renames its entry
+in place. Line numbers follow the printed program.
+
+### UML structure selector
 
 [`EvaEditor.uml.UmlStructureSelector`](../modules/client/src/main/scala/it/evadid/homepage/webElements/editor/code/EvaEditor/uml/UmlStructureSelector.scala)
 observes a `Signal[ProgrammingStateJavaStructured]` and draws each class as a UML box
-(name, attributes, functions; no relationships). Every entry is a button.
+(name, attributes, functions; no relationships; known library classes such as the
+generated `Turtle` are omitted). Every entry is a button.
 `UmlClassDiagram` derives the boxes from the class sources with `SourceStructure`.
-The component stores only the clicked entry's key; `selectedEntitySignal` resolves it
-against the current state, so the selected `fullCode` follows edits and becomes `None`
-when the entry is removed. Styles: `homepage/css/uml-structure-selector.css`.
+The component stores only the clicked entry's key (`selectedKeySignal`);
+`selectedEntitySignal` resolves it against the current state, so the selected
+`fullCode` follows edits and becomes `None` when the entry is removed.
+Styles: `homepage/css/uml-structure-selector.css`.

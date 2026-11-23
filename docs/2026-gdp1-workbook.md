@@ -44,7 +44,7 @@ Drawing execution, previews and grading use
 `state.toBeExpression.turtleCommandExecutionInfo.completedCommands` for every editor.
 The recreate-shape editor selects the shared interpreter rather than the separate
 checked Java runtime or Python/Snap execution backends. The Java tab uses
-`JavaStructuredMethodEditor` bound to the central state; edits publish
+`JavaComponentEditor` bound to the central state; edits publish
 `ProgrammingStateJavaStructured` instead of retaining a second raw-source state.
 
 ## Java algorithms section

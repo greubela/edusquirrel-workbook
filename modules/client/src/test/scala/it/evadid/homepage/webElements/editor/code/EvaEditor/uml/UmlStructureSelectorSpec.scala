@@ -54,6 +54,15 @@ class UmlStructureSelectorSpec extends EditorDomSuite {
     assertEquals(playerBox.functions.map(_.key.member.map(_.occurrence)), Seq(Some(0), Some(0), Some(0), Some(1)))
   }
 
+  test("the generated Turtle library is not drawn, while an edited copy is") {
+    val source = it.evadid.workbook.elements.interactionElements.programming.state.ProgrammingStateRaw(
+      it.evadid.core.datastructures.language.AppLanguage.Python, "forward(10)").toJava.code
+    assert(source.contains("class Turtle {"), source)
+    assertEquals(UmlClassDiagram(ProgrammingStateJavaStructured(source)).classes.map(_.name), Seq("Main"))
+    val edited = source.replace("move(distance);", "move(2 * distance);")
+    assertEquals(UmlClassDiagram(ProgrammingStateJavaStructured(edited)).classes.map(_.name), Seq("Main", "Turtle"))
+  }
+
   test("clicking names, attributes and functions selects them; the selection follows source edits") {
     val source = Var(state)
     val selector = UmlStructureSelector(source.signal)

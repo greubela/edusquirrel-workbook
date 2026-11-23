@@ -7,7 +7,7 @@ import it.evadid.workbook.elements.interactionElements.programming.state.Program
 import upickle.default.ReadWriter
 
 object UmlStructureSelector {
-  sealed trait SelectedUmlEntity {
+  sealed trait SelectedUmlEntity derives ReadWriter {
     def name: String
     def fullCode: String
   }
