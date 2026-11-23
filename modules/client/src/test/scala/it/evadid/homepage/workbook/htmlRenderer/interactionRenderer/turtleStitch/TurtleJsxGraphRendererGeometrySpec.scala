@@ -37,8 +37,6 @@ class TurtleJsxGraphRendererGeometrySpec extends FunSuite:
     val initialized = ListBuffer.empty[(dom.html.Div, js.Dynamic)]
     val freed = ListBuffer.empty[js.Dynamic]
     val updateCalls = ListBuffer.empty[(String, Int)]
-    val removed = ListBuffer.empty[Obj]
-    val boundsSet = ListBuffer.empty[js.Array[Double]]
     private def board(): js.Dynamic =
       val created = js.Dynamic.literal(
         create = ((kind: String, parents: js.Array[js.Dynamic], attrs: js.Dynamic) => {
@@ -47,12 +45,7 @@ class TurtleJsxGraphRendererGeometrySpec extends FunSuite:
           objects += obj
           obj.value
         }): js.Function3[String, js.Array[js.Dynamic], js.Dynamic, js.Dynamic],
-        update = (() => { updateCalls += (("update", objects.size)); () }): js.Function0[Unit],
-        removeObject = ((value: js.Dynamic) => objects.find(_.value == value).foreach { obj =>
-          removed += obj
-          objects -= obj
-        }): js.Function1[js.Dynamic, Unit],
-        setBoundingBox = ((next: js.Array[Double], _: Boolean) => { boundsSet += next; () }): js.Function2[js.Array[Double], Boolean, Unit]
+        update = (() => { updateCalls += (("update", objects.size)); () }): js.Function0[Unit]
       )
       if batchUpdates then
         created.updateDynamic("suspendUpdate")((() => { updateCalls += (("suspend", objects.size)); () }): js.Function0[Unit])
@@ -193,7 +186,7 @@ class TurtleJsxGraphRendererGeometrySpec extends FunSuite:
     }
   }
 
-  test("a changing scene redraws one board: previous objects and hover labels go, equal scenes are kept") {
+  test("a changing scene replaces the panel with a fresh board in its default view; equal scenes are kept") {
     withDom {
       import L.*
       val graph = new Graph(batchUpdates = true)
@@ -205,18 +198,14 @@ class TurtleJsxGraphRendererGeometrySpec extends FunSuite:
         val mounted = L.render(host, div(TurtleJsxGraphRenderer.renderStrokes(commands.signal, expected)))
         try
           assertEquals(graph.initialized.size, 1)
-          val first = graph.objects.toList
-          graph.ofKind("curve").head.fire("over")
-          val label = graph.ofKind("text").head
+          val firstPanel = host.querySelector(".turtle-gradig-panel")
           commands.set(List(cmd("forward", 5)))
-          assertEquals(graph.initialized.size, 1, "the board is reused")
-          assertEquals(graph.freed.toList, Nil)
-          assertEquals(graph.removed.toSet, (first :+ label).toSet)
-          assertEquals(graph.boundsSet.size, 1)
-          assertEquals(graph.ofKind("segment").size, 3, "the drawn stroke and the two missing target strokes")
-          val drawn = graph.objects.toList
+          assertEquals(graph.initialized.size, 2, "a new board, initialized with the new scene's bounds")
+          assertEquals(graph.freed.toList, graph.initialized.take(1).map(_._2).toList, "the previous board is released")
+          assert(!(host.querySelector(".turtle-gradig-panel") eq firstPanel), "the whole panel is replaced")
+          assertEquals(host.querySelectorAll(".turtle-gradig-panel").length, 1)
           commands.set(List(cmd("forward", 5)))
-          assertEquals(graph.objects.toList, drawn, "an equal scene is not drawn again")
+          assertEquals(graph.initialized.size, 2, "an equal scene keeps its panel")
         finally mounted.unmount()
         assertEquals(graph.freed.toList, graph.initialized.map(_._2).toList)
       }

@@ -28,15 +28,15 @@ final case class CompareShapePreview(source: Signal[ProgrammingState], expected:
 
   private lazy val rendering = new DeferredRendering(source, assess, delay)
 
-  /** One board follows the successful assessments; a failure hides it behind its message until the next success. */
+  /** The last successful assessment stays drawn, each new one on a fresh board; a failure hides it behind its
+    * message until the next success. */
   private def view(assessments: Signal[Try[TurtleDrawingGrading.Assessment]]): Element = {
     val scenes = assessments.scanLeft(_.toOption.map(_.scene))((last, next) => next.toOption.map(_.scene).orElse(last))
     div(
       child.maybe <-- assessments.map(_.failed.toOption.map(_.getMessage)).distinct.map(_.map(message =>
         div(cls := "turtle-preview__error", s"Error while trying to draw turtle: $message"))),
       div(display <-- assessments.map(assessment => if assessment.isSuccess then "" else "none"),
-        child.maybe <-- scenes.map(_.isDefined).distinct.map(drawn =>
-          Option.when(drawn)(TurtleJsxGraphRenderer.render(scenes.map(_.get), "Turtle drawing")))))
+        child.maybe <-- scenes.distinct.map(_.map(scene => TurtleJsxGraphRenderer.render(scene, "Turtle drawing")))))
   }
 
   override def getDomElement(): L.Element =
