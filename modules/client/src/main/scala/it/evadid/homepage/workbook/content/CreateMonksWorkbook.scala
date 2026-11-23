@@ -99,6 +99,9 @@ case class CreateMonksWorkbook(override val fullInfo: FullInfo) extends Workbook
   override lazy val createWorkbook: Workbook = workbook(
     key("workbooktitle"),
     List(
+      section("welcomeTitle", key("part0"), List[WorkbookElement](
+        text("welcome"),
+      )),
       section("monks-story", key("parta"), List(
         container(key("parta"), List(
           text("introduction"),
@@ -166,7 +169,16 @@ case class CreateMonksWorkbook(override val fullInfo: FullInfo) extends Workbook
               ProgrammingStateSnapScalaModel.empty,
               kochTarget(depth),
               customExerciseConfig = Some(EditorConfig))))
-        })
+        }),
+      section("finishTitle", key("partX"), List[WorkbookElement](
+        text("finish"),
+        container(key("survey"), List(
+          text("survey-todo"))
+        ),
+        container(key("submit"), List(
+          text("submit-todo"))
+        ),
+      )),
     ),
     User.AndreGreubel
   )

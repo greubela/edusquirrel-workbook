@@ -1,6 +1,11 @@
 {
   "workbooktitle": "Rekursion mit den Mönchen von Mons Komputarius",
+  "welcome": "Herzlich Willkommen zu der 4. Programmierübung in GdP an der HU!\n\nFür diese Übung probieren wir mit diesem Workbook etwas sehr neues aus. Die Übungen sind etwas anders strukturiert und es gibt mehr Aufgabenformen als \"nur\" Programmieren. \n\nViele der Übungen haben automatisierte Rückmeldung. Diese soll euch als Unterstützung dienen, ist aber nicht bindend: Nach Abgabe werden wir die Einreichungen dennoch manuell korrigieren. \n\nWir hoffen, euch gefällt das Format und ihr lernt dabei etwas - gebt uns gerne mit der Umfrage am Ende Rückmeldung, ob es euch gefallen hat! ",
+  "welcomeTitle": "Überblick",
   "dialoguelabel": "Dialog",
+  "introMonks": "Zuerst wiederholen wir das Konzept der Rekursion... mit einer (albernen) Geschichte!",
+  "finishTitle": "Abgabe",
+  "finish": "Fast geschafft!\n\nFalls du uns Rückmeldung geben magst, kannst du die Umfrage hier ausfüllen. Am Ende des Abschnittes die Möglichkeit, deine Aufgabe abzusenden.\n\nAußer dem Absenden ist nichts zu tun - eine Abgabe über Moodle ist (nur) dieses Mal nicht nötig!",
   "narr-arrival": "*Nach langer Reise erreicht der Reisende den Tempel von Mons Komputarius.*",
   "narr-help": "*Der Reisende fordert Hilfe. Der Meister antwortet jedes Mal nur kurz und schweigt dazwischen lange.*",
   "narr-tray": "*Der Reisende legt seine Karten auf ein Tablett und trägt es zum Meister.*",
