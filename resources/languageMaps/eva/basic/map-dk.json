@@ -129,6 +129,8 @@
   "scaffoldingReady": "Klar",
   "gradingCompactScore": "{correct}/{total} korrekte",
   "gradingCompactUnavailable": "({count} afventer / utilgængelige)",
+  "gradingDetailsShow": "Vis detaljer",
+  "gradingDetailsHide": "Skjul detaljer",
   "resetAllData": "Nulstil alle gemte svar",
   "resetAllDataRunning": "Sletter gemte svar…",
   "resetAllDataRetry": "Prøv fuld nulstilling igen",
