@@ -49,15 +49,20 @@ class CommandPayloadCodecsSpec extends FunSuite {
     intercept[IllegalArgumentException](request.copy(syncContexts = Seq(key, key), histories = Seq(history, history)))
   }
 
-  test("default synchronization uses both backend formats and IndexedDB with explicit send strategies") {
+  test("online accounts sync to IndexedDB and both backend formats; local accounts only to IndexedDB") {
     import it.evadid.core.datastructures.user.UserConfig
     import it.evadid.workbook.interaction.sync.EventSyncStrategy.*
+    import it.evadid.workbook.interaction.sync.SyncInformation
     import it.evadid.workbook.interaction.sync.destination.SyncDestinationDefinition.*
-    val defaults = UserConfig.defaultSyncDestinations
+    val defaults = UserConfig.defaultSyncDestinations(isLocalAccount = false)
     assertEquals(defaults.size, 3)
     assertEquals(defaults.map(info => info.syncDestination -> info.syncStrategy).toSet,
       Set[(it.evadid.workbook.interaction.sync.destination.SyncDestinationDefinition, it.evadid.workbook.interaction.sync.EventSyncStrategy)](defaultBrowserHistory -> SYNC_LAST, defaultDatabase -> SYNC_MAJOR, defaultBlobDatabase -> SYNC_MAJOR))
-    assertEquals(read[UserConfig](write(UserConfig.onlineDefaults)), UserConfig.onlineDefaults)
+    assertEquals(UserConfig.defaultSyncDestinations(isLocalAccount = true), Seq(SyncInformation(defaultBrowserHistory, SYNC_LAST)))
+    assertEquals(UserConfig.defaults(isLocalAccount = true).isOnlineAccount, false)
+    val online = UserConfig.defaults(isLocalAccount = false)
+    assertEquals(online.isOnlineAccount, true)
+    assertEquals(read[UserConfig](write(online)), online)
   }
 
   test("full resets use an explicit current command and reject ambiguous scopes") {

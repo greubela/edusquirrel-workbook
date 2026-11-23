@@ -138,7 +138,7 @@ class UserSessionControlSpec extends EditorDomSuite {
       _ = {
         val user = control.fullInfo.current.userInfo.get
         assert(user.user.isAnonymous)
-        assertEquals(user.config, UserConfig(UserConfig.defaultSyncDestinations, false))
+        assertEquals(user.config, UserConfig.defaults(isLocalAccount = true), "local users sync only to the browser")
         assertEquals(dom.window.localStorage.getItem("edusquirrel-alluserinfo"), null, "anonymous users are not saved")
         assertEquals(control.loginIdentity.now(), Some(local.user), "the login page keeps the last named user")
       }

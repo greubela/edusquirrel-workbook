@@ -120,7 +120,7 @@ final class UserSessionControl(val fullInfo: FullInfo) {
 
   /** Completes once the local profile is the page's user. */
   def tryLocalRegistration(withUser: Option[User], withConfig: Option[UserConfig]): Future[Unit] = Future {
-    val userConfig: UserConfig = withConfig.getOrElse(UserConfig.localDefaults)
+    val userConfig: UserConfig = withConfig.getOrElse(UserConfig.defaults(isLocalAccount = true))
     val user: User = withUser.getOrElse(User.createAnonymous())
     AllUserInfo(user, UserCredentials(signedBackendToken = None), userConfig)
   }.flatMap(allUserInfo => changeUser(Some(allUserInfo))).map(_ => ())
@@ -130,7 +130,7 @@ final class UserSessionControl(val fullInfo: FullInfo) {
     if (!User.isEmail(normalizedEmail)) Future.failed(AuthenticationFailure("login/errorEmail"))
     else if (name.trim.isEmpty) Future.failed(AuthenticationFailure("login/errorName"))
     else {
-      val userConfig = UserConfig.onlineDefaults
+      val userConfig = UserConfig.defaults(isLocalAccount = false)
       val user = AllUserInfo.createNewUser(name.trim, normalizedEmail, userConfig)
       UserCommands.createAccountCommand
         .sendCommandTo(fullInfo.defaults.backendExecutor, CreateAccountRequest(user))

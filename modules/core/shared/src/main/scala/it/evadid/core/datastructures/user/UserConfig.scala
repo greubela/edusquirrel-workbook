@@ -13,18 +13,15 @@ case class UserConfig(syncDestinations: Seq[SyncInformation], isOnlineAccount: B
 
 
 object UserConfig {
-  lazy val defaultSyncDestinations: Seq[SyncInformation] = {
-    List(
-      // Local storage keeps the current answer; remote destinations receive committed (non-TEMPORARY) answers.
-      SyncInformation(defaultBrowserHistory, SYNC_LAST),
+  /** The one definition of default destinations. Local users cannot sign in to the backend, so they keep their
+    * answers only in the browser; online accounts also send committed (non-TEMPORARY) answers to both backend layouts.
+    */
+  def defaultSyncDestinations(isLocalAccount: Boolean): Seq[SyncInformation] =
+    SyncInformation(defaultBrowserHistory, SYNC_LAST) +: (if isLocalAccount then Seq.empty else Seq(
       SyncInformation(defaultDatabase, SYNC_MAJOR),
-      SyncInformation(defaultBlobDatabase, SYNC_MAJOR)
-    )
-  }
+      SyncInformation(defaultBlobDatabase, SYNC_MAJOR)))
 
-  def onlineDefaults: UserConfig = UserConfig(defaultSyncDestinations, isOnlineAccount = true)
-
-  /** Local users cannot sign in to the backend, so they keep their answers only in the browser. */
-  def localDefaults: UserConfig = UserConfig(Seq(SyncInformation(defaultBrowserHistory, SYNC_LAST)), isOnlineAccount = false)
+  def defaults(isLocalAccount: Boolean): UserConfig =
+    UserConfig(defaultSyncDestinations(isLocalAccount), isOnlineAccount = !isLocalAccount)
 
 }
