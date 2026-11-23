@@ -89,8 +89,9 @@ else from the central answer `Var`, running the shared interpreter debounced in 
 Costly drawings use [`DeferredRendering`](../modules/client/src/main/scala/it/evadid/homepage/webElements/basic/DeferredRendering.scala):
 a view is redrawn only after the answer has rested for one second; meanwhile the previous drawing stays,
 dimmed, under a localized status (`basic/renderingWaiting`, `basic/renderingInProgress`). Superseded
-states are never prepared. `CompareShapePreview` and `TurtleStepPanel` draw this way, each mounted view
-redrawing one JSXGraph board (`TurtleJsxGraphRenderer.render(scenes, title)`). Angles are filled curves with
+states are never prepared. `CompareShapePreview` and `TurtleStepPanel` draw this way; each new scene replaces the
+panel with a fresh JSXGraph board (`TurtleJsxGraphRenderer.render(scenes, title)`), since a reused
+board does not return to its default view. Angles are filled curves with
 labels created on hover: JSXGraph angle objects end a suspended update and redraw the board for each angle. The preview and
 `RecreateShapeGrader` share one `ProgrammingStateBeExpression.turtleComparison(target, policy)` per state.
 `TurtleStepPanel` draws the strokes of the first k turtle commands on the JSXGraph board (current step

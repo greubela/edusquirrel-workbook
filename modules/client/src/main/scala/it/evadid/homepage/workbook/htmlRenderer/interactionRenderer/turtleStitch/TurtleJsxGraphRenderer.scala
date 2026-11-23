@@ -23,11 +23,11 @@ import scala.util.control.NonFatal
  */
 object TurtleJsxGraphRenderer:
 
-  def render[T: Fractional](program: Signal[Seq[TurtleCommand[T]]], graphic: TurtleGraphic): Element =
+  def render[T: Fractional](program: Signal[Seq[TurtleCommand[T]]], graphic: TurtleGraphic): Modifier[HtmlElement] =
     render(program.map(commands => buildScene(commands, graphic)), "Turtle drawing")
 
   /** Stitch reproduction accepts any pen-up route between the drawn segments. */
-  def renderStrokes[T: Fractional](program: Signal[Seq[TurtleCommand[T]]], expected: TurtleGraphic): Element =
+  def renderStrokes[T: Fractional](program: Signal[Seq[TurtleCommand[T]]], expected: TurtleGraphic): Modifier[HtmlElement] =
     render(program.map(commands => buildScene(commands, expected, 1e-7, gradeJumps = false)), "Turtle drawing")
 
   def render[T: Fractional](program: Seq[TurtleCommand[T]], expected: TurtleGraphic): Element =
@@ -36,39 +36,35 @@ object TurtleJsxGraphRenderer:
   def render[T: Fractional](program: Seq[TurtleCommand[T]], expected: Seq[LineToRender[T]]): Element =
     render(buildScene(program, expected), "Turtle drawing")
 
-  def render(scene: Scene, title: String): Element = render(Val(scene), title)
-
-  /** One JSXGraph board per mounted element: each new scene replaces the previous objects on the same board.
-    * The board is created once the library is loaded and released on unmount.
+  /** Inserts one panel per scene. Each new scene replaces the whole panel with a fresh board: a reused JSXGraph
+    * board does not return to its default view (zoom, bounds). An unchanged scene keeps its panel.
     */
-  def render(scenes: Signal[Scene], title: String): Element = {
-    val drawing = Var(Option.empty[Drawing])
-    def release(): Unit = {
-      drawing.now().foreach(current => JSXGraph.free(current.board))
-      drawing.set(None)
-    }
-    def show(container: dom.html.Div, scene: Scene): Unit = {
-      // A new board replaces an earlier warning.
-      if drawing.now().isEmpty && container.classList.contains("turtle-gradig-panel--unavailable") then container.textContent = ""
-      scala.util.Try(redraw(drawing.now(), container, scene, title)) match {
-        case scala.util.Success(next) =>
-          drawing.set(Some(next))
+  def render(scenes: Signal[Scene], title: String): Modifier[HtmlElement] =
+    child <-- scenes.distinct.map(scene => render(scene, title))
+
+  /** A panel drawing `scene` on its own board, created once the library is loaded and released on unmount. */
+  def render(scene: Scene, title: String): Element = {
+    val board = Var(Option.empty[JSXGraph.Board])
+    def show(container: dom.html.Div): Unit =
+      scala.util.Try(render(container, scene, title)) match {
+        case scala.util.Success(created) =>
+          board.set(Some(created))
           container.classList.remove("turtle-gradig-panel--unavailable")
           container.setAttribute("aria-busy", "false")
-        case scala.util.Failure(error) =>
-          release()
-          showError(container, error)
+        case scala.util.Failure(error) => showError(container, error)
       }
-    }
     div(
       cls := "turtle-gradig-panel",
       aria.busy := true,
-      onMountBind(context => scenes.combineWith(libraryLoaded) --> {
-        case (scene, Some(scala.util.Success(_))) => show(context.thisNode.ref, scene)
-        case (_, Some(scala.util.Failure(error))) => showError(context.thisNode.ref, error)
-        case (_, None) => ()
+      onMountBind(context => libraryLoaded --> {
+        case Some(scala.util.Success(_)) => if board.now().isEmpty then show(context.thisNode.ref)
+        case Some(scala.util.Failure(error)) => showError(context.thisNode.ref, error)
+        case None => ()
       }),
-      onUnmountCallback(_ => release())
+      onUnmountCallback { _ =>
+        board.now().foreach(JSXGraph.free)
+        board.set(None)
+      }
     )
   }
 
@@ -198,41 +194,25 @@ object TurtleJsxGraphRenderer:
   def render[T: Fractional](container: dom.html.Div, program: Seq[TurtleCommand[T]], expected: TurtleGraphic): JSXGraph.Board =
     render(container, buildScene(program, expected), "Turtle drawing")
 
-  def render(container: dom.html.Div, scene: Scene, title: String): JSXGraph.Board =
-    redraw(None, container, scene, title).board
-
-  /** A scene drawn on a board; `labels` holds the angle labels created on first hover. */
-  private final case class Drawing(board: JSXGraph.Board, scene: Scene, objects: Seq[js.Dynamic],
-      labels: Var[Map[Int, js.Dynamic]])
-
-  /** Draws `scene` on the previous board, or on a new one. An unchanged scene keeps its drawing. */
-  private def redraw(previous: Option[Drawing], container: dom.html.Div, scene: Scene, title: String): Drawing =
-    previous match {
-      case Some(current) if current.scene == scene => current
-      case Some(current) =>
-        val bounds = displayBounds(scene)
-        val board = current.board
-        board.suspendUpdate()
-        (current.objects ++ current.labels.now().values).reverseIterator.foreach(board.removeObject)
-        board.setBoundingBox(js.Array(bounds(0), bounds(1), bounds(2), bounds(3)), true)
-        draw(board, scene, bounds)
-      case None =>
-        val bounds = displayBounds(scene)
-        container.classList.add("turtle-gradig-panel")
-        // SVG tick labels avoid a forced HTML layout for each label on every board update.
-        val axisOptions = js.Dynamic.literal(ticks = js.Dynamic.literal(label = js.Dynamic.literal(display = "internal")))
-        val board = JSXGraph.board(container, js.Dynamic.literal(
-          title = Option(title).map(_.trim).filter(_.nonEmpty).getOrElse("Turtle drawing"),
-          renderer = "svg", boundingbox = js.Array(bounds(0), bounds(1), bounds(2), bounds(3)), axis = true,
-          defaultAxes = js.Dynamic.literal(x = axisOptions, y = axisOptions),
-          keepaspectratio = true, showCopyright = false
-        )).createLoadedInstance()
-        try draw(board, scene, bounds)
-        catch
-          case NonFatal(error) =>
-            JSXGraph.free(board)
-            throw error
-    }
+  def render(container: dom.html.Div, scene: Scene, title: String): JSXGraph.Board = {
+    val bounds = displayBounds(scene)
+    container.classList.add("turtle-gradig-panel")
+    // SVG tick labels avoid a forced HTML layout for each label on every board update.
+    val axisOptions = js.Dynamic.literal(ticks = js.Dynamic.literal(label = js.Dynamic.literal(display = "internal")))
+    val board = JSXGraph.board(container, js.Dynamic.literal(
+      title = Option(title).map(_.trim).filter(_.nonEmpty).getOrElse("Turtle drawing"),
+      renderer = "svg", boundingbox = js.Array(bounds(0), bounds(1), bounds(2), bounds(3)), axis = true,
+      defaultAxes = js.Dynamic.literal(x = axisOptions, y = axisOptions),
+      keepaspectratio = true, showCopyright = false
+    )).createLoadedInstance()
+    try {
+      draw(board, scene, bounds)
+      board
+    } catch
+      case NonFatal(error) =>
+        JSXGraph.free(board)
+        throw error
+  }
 
   /** JSXGraph bounds of the scene; rejects coordinates the board cannot display. */
   private def displayBounds(scene: Scene): Array[Double] =
@@ -250,7 +230,7 @@ object TurtleJsxGraphRenderer:
   /** Creates the scene's objects in one suspended update. Angles are filled curves: JSXGraph angle objects
     * end the suspended update and redraw the whole board for every angle.
     */
-  private def draw(board: JSXGraph.Board, scene: Scene, bounds: Array[Double]): Drawing =
+  private def draw(board: JSXGraph.Board, scene: Scene, bounds: Array[Double]): Unit =
     // Dense embroidery targets otherwise redraw the entire board after each object.
     val canBatch = js.typeOf(board.asInstanceOf[js.Dynamic].selectDynamic("suspendUpdate")) == "function" &&
       js.typeOf(board.asInstanceOf[js.Dynamic].selectDynamic("unsuspendUpdate")) == "function"
@@ -285,7 +265,7 @@ object TurtleJsxGraphRenderer:
         cssClass = "turtle-angle", highlightCssClass = "turtle-angle", fixed = true, withLabel = false, hasInnerPoints = true)), sector, radius)
     }.toMap
 
-    val marker = scene.marker.map { position =>
+    scene.marker.foreach { position =>
       board.create("point", js.Array(position.x, -position.y), js.Dynamic.literal(
         name = "", fixed = true, showInfobox = false, withLabel = false, size = 5,
         cssClass = "turtle-marker", highlightCssClass = "turtle-marker"))
@@ -323,7 +303,6 @@ object TurtleJsxGraphRenderer:
     }
 
     if canBatch then board.unsuspendUpdate() else board.update()
-    Drawing(board, scene, pointObjects.values.toList ++ segments ++ sectors.toList.sortBy(_._1).map(_._2._1) ++ marker, labels)
 
   /** Closed outline of an angle sector in JSXGraph coordinates: vertex, arc from `first` to `last`, vertex. */
   private[turtleStitch] def sectorOutline(vertex: Point[Double], sector: AngleSector, radius: Double): List[Point[Double]] =
