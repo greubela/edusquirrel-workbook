@@ -47,7 +47,8 @@ object PythonToExpression {
       error => ParsedProgram(if source.trim.isEmpty then Nil else Seq(S.Unsupported(source.trim, error.getMessage, unparsable = true))),
       program => {
         val parsed = program.statements.map(_.statement).flatMap(withoutMainGuard)
-        given ProgramNames = ProgramNames(parsed.flatMap(usedNames).toSet, assignedNames(parsed))
+        given ProgramNames = ProgramNames(parsed.flatMap(usedNames).toSet, assignedNames(parsed),
+          parsed.collect { case definition: PyClassDef => definition.name }.toSet)
         ParsedProgram(statements(parsed))
       })
   }
@@ -87,6 +88,7 @@ object PythonToExpression {
     case loop: PyForStatement => forLoop(loop)
     case definition: PyFunctionDef =>
       if definition.decorators.nonEmpty || definition.isAsync then Seq(S.Unsupported(definition.source, "Decorators are not supported outside classes", unparsable = false))
+      else if hasDefaultValues(definition) then Seq(defaultValuesUnsupported(definition))
       else {
         val parsedParameters = parameters(definition.parameters)
         Seq(S.FunctionDef(definition.name, parsedParameters, definition.returnType.map(parsedType),
@@ -94,6 +96,8 @@ object PythonToExpression {
       }
     case definition: PyClassDef => Seq(classDef(definition))
     case statement: PyTryStatement => Seq(S.Unsupported(statement.source, "try/except statements are currently unsupported", unparsable = false))
+    case PySimpleAssignment(_, Some(value)) if turtleObject(value).nonEmpty => Seq(turtleObjectUnsupported(turtleObject(value).get))
+    case value: PyExpression if turtleObject(value).nonEmpty => Seq(turtleObjectUnsupported(turtleObject(value).get))
     case PySimpleAssignment(target, Some(value)) => Seq(assign(target, expression(value)))
     case PySimpleAssignment(target, None) if target.locationString.isEmpty =>
       Seq(S.Declare(target.identifier, target.typeHint.map(parsedType).getOrElse(ParsedType.AnyValue)))
@@ -127,13 +131,44 @@ object PythonToExpression {
     case PySimpleAssignment(target, _) => ParsedParameter(target.identifier, target.typeHint.map(parsedType))
   }
 
-  /** Names the program uses anywhere except as `for` targets. A loop counter outside this set is
-    * never read, so its loop can be a fixed repetition even though Python keeps the counter after it.
+  /** Java and Snap have no default parameter values, so dropping them would change calls that omit them. */
+  private def hasDefaultValues(definition: PyFunctionDef): Boolean =
+    definition.parameters.exists { case PySimpleAssignment(_, Some(_)) => true; case _ => false }
+
+  private def defaultValuesUnsupported(definition: PyFunctionDef): ParsedStatement =
+    S.Unsupported(s"def ${definition.name}(", s"Default parameter values in ${definition.name} are not supported; pass every value in the call", unparsable = false)
+
+  /** `turtle.Turtle()` and `turtle.Screen()` create objects the shared turtle commands cannot address. */
+  private def turtleObject(value: PyExpression)(using program: ProgramNames): Option[String] = {
+    val callee = value match {
+      case PyFunctionCall(target, _) => Some(target.locationString :+ target.identifier)
+      case PyCallExpression(target, _) => names(target)
+      case _ => None
+    }
+    callee.filter {
+      case Seq("turtle", "Turtle" | "Screen") => true
+      case Seq(name @ ("Turtle" | "Screen")) => !program.classes(name)
+      case _ => false
+    }.map(_.mkString("."))
+  }
+
+  private def turtleObjectUnsupported(callee: String): ParsedStatement =
+    S.Unsupported(s"$callee(", "Turtle objects are not supported; use import turtle and call turtle.forward(...) and the other commands directly",
+      unparsable = false)
+
+  /** Names the program reads outside the `for` loops that count with them. A loop counter outside this
+    * set is read at most inside its own loops, so a loop whose body does not read it can be a fixed
+    * repetition even though Python keeps the counter after it.
     */
-  private final case class ProgramNames(names: Set[String], moduleAssigned: Set[String] = Set.empty)
+  private final case class ProgramNames(names: Set[String], moduleAssigned: Set[String] = Set.empty, classes: Set[String] = Set.empty)
+
+  private def counterName(loop: PyForStatement): Option[String] = loop.elementExpression match {
+    case PyTarget(name, Nil, None, _) => Some(name)
+    case _ => None
+  }
 
   private def usedNames(node: GenericAST): Set[String] = node match {
-    case loop: PyForStatement => loop.getChildren().filterNot(_ eq loop.elementExpression).flatMap(usedNames).toSet
+    case loop: PyForStatement => loop.getChildren().filterNot(_ eq loop.elementExpression).flatMap(usedNames).toSet -- counterName(loop)
     case target: PyTarget => target.getChildren().flatMap(usedNames).toSet + target.locationString.headOption.getOrElse(target.identifier)
     case other => other.getChildren().flatMap(usedNames).toSet
   }
@@ -176,10 +211,16 @@ object PythonToExpression {
     case (PyTarget(name, Nil, None, _), PyFunctionCall(PyTarget("range", Nil, None, _), arguments)) if arguments.size >= 1 && arguments.size <= 3 =>
       val (start, stop) = if arguments.size == 1 then (E.Literal("0"), expression(arguments.head)) else (expression(arguments.head), expression(arguments(1)))
       val body = block(loop.bodyBlock)
+      // range(...) is evaluated once in Python, while the counting loops of Java compare against the bound on each pass.
+      val changedBound = arguments.flatMap(usedNames).distinct.sorted.find(assigns(loop.bodyBlock, _))
       arguments.lift(2).fold(Some(1))(step => E.wholeNumber(expression(step))) match {
         case _ if assigns(loop.bodyBlock, name) =>
           Seq(S.Unsupported(s"for $name in range(...)", s"Assigning the loop counter $name inside its loop is not supported", unparsable = false))
-        case Some(step) if step != 0 => S.countingLoop(name, start, stop, step, body, counterObserved = used.names(name))
+        case _ if changedBound.nonEmpty =>
+          Seq(S.Unsupported(s"for $name in range(", s"Assigning ${changedBound.get} inside the loop that uses it in range(...) is not supported; " +
+            "store the bound in another variable before the loop", unparsable = false))
+        case Some(step) if step != 0 =>
+          S.countingLoop(name, start, stop, step, body, counterObserved = used.names(name) || usedNames(loop.bodyBlock)(name))
         case _ => Seq(S.Unsupported("for ... in range(...)", "The step of range(...) must be a nonzero whole number", unparsable = false))
       }
     case _ => Seq(S.Unsupported("for ...", "For statements must use range(...)", unparsable = true))
@@ -205,6 +246,7 @@ object PythonToExpression {
     if definition.parameters.nonEmpty then unsupported("Inheritance")
     else if members.size != methods.size + classFields.size || methods.exists(method => method.decorators.exists(_ != "staticmethod") || method.isAsync) then
       unsupported("Class-body statements or decorators")
+    else if methods.exists(hasDefaultValues) then defaultValuesUnsupported(methods.find(hasDefaultValues).get)
     else {
       val parsedMethods = methods.map { method =>
         val kind = if method.decorators.contains("staticmethod") then ParsedFunctionKind.StaticMethod

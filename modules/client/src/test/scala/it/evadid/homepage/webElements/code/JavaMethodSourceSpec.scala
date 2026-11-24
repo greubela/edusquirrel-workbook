@@ -1,6 +1,7 @@
 package it.evadid.homepage.webElements.code
 
 import munit.FunSuite
+import it.evadid.vm.conversion.structured.SourceStructure
 import it.evadid.vm.parsing.java.clean.JavaParser
 import it.evadid.vm.parsing.java.clean.model.JavaAST.{JavaClassDef, JavaMethodDef}
 
@@ -38,6 +39,93 @@ class JavaMethodSourceSpec extends FunSuite {
     assertEquals(JavaMethodSource.discover(source).map(_.name), List("Main"))
     val edited = source.replace("move(distance);", "move(2 * distance);")
     assertEquals(JavaMethodSource.discover(edited).map(_.name), List("Main", "Turtle"))
+  }
+
+  test("classes list attributes and constructors and format them in UML notation") {
+    val source =
+      """class Counter {
+        |  private int count = 0;
+        |  public static final String UNIT = "steps";
+        |  Counter(int start) { count = start; }
+        |  public int next(int step, String... labels) { return count += step; }
+        |  public static void reset() { }
+        |}
+        |""".stripMargin
+    val Vector(counter) = discover(source).toVector: @unchecked
+    assertEquals(counter.fields.map(umlAttribute), List("- count: int", "+ UNIT: String"))
+    assertEquals(counter.fields.map(_.isStatic), List(false, true))
+    assertEquals(counter.methods.map(umlOperation), List("~ Counter(start: int)", "+ next(step: int, labels: String...): int", "+ reset()"))
+    assertEquals(counter.methods.map(_.isConstructor), List(true, false, false))
+    assert(counter.methods(2).isStatic)
+  }
+
+  test("relationships follow extends, implements, attribute types and other references") {
+    val source =
+      """interface Shape { double area(); }
+        |abstract class Animal { }
+        |class Dog extends Animal implements Shape {
+        |  private Animal friend;
+        |  private java.util.List<Dog> puppies;
+        |  public double area() { return new Helper().size(); }
+        |}
+        |class Helper { int size() { return 1; } }
+        |""".stripMargin
+    val analysis = JavaMethodSource(source)
+    assertEquals(analysis.relations.map(relation => (relation.from, relation.kind, relation.to, relation.role, relation.many)), List(
+      ("Dog", RelationKind.Inheritance, "Animal", None, false),
+      ("Dog", RelationKind.Realization, "Shape", None, false),
+      // An attribute of the supertype's type is an association as well; the list of its own type is not drawn.
+      ("Dog", RelationKind.Association, "Animal", Some("friend"), false),
+      ("Dog", RelationKind.Dependency, "Helper", None, false)
+    ))
+    val withFriend = JavaMethodSource(source.replace("abstract class Animal { }", "abstract class Animal { }\nclass Owner { Dog dog; Dog[] more; }"))
+    assertEquals(withFriend.relations.filter(_.from == "Owner").map(relation => (relation.kind, relation.to, relation.role, relation.many)), List(
+      (RelationKind.Association, "Dog", Some("dog"), false),
+      (RelationKind.Association, "Dog", Some("more"), true)
+    ))
+    assert(analysis.classes.find(_.name == "Shape").exists(clazz => clazz.isInterface && clazz.methods.head.isAbstract))
+  }
+
+  test("library classes show only public members and the classes that use them") {
+    val source = it.evadid.workbook.elements.interactionElements.programming.state.ProgrammingStateRaw(
+      it.evadid.core.datastructures.language.AppLanguage.Python, "forward(10)").toJava.code
+    val analysis = JavaMethodSource(source)
+    assertEquals(analysis.libraries.map(_.name), List("Turtle"))
+    val turtle = analysis.libraries.head
+    assert(turtle.library && turtle.fields.isEmpty, turtle.fields)
+    assert(turtle.methods.exists(_.name == "forward") && turtle.methods.forall(_.visibility == SourceStructure.Visibility.Public))
+    assertEquals(analysis.relations, List(Relation("Main", "Turtle", RelationKind.Dependency)))
+  }
+
+  test("attributes and constructors are inserted at their usual place, and members are removed with their line") {
+    val source = "class Counter {\n  public void increment() {\n    \n  }\n}\n"
+    val field = fieldDeclaration(SourceStructure.Visibility.Private, isStatic = false, "int", "count", "")
+    assertEquals(field, "private int count;")
+    val withField = insertField(source, discover(source).head, field)
+    assertEquals(withField, "class Counter {\n  private int count;\n\n  public void increment() {\n    \n  }\n}\n")
+    val withSecondField = insertField(withField, discover(withField).head,
+      fieldDeclaration(SourceStructure.Visibility.Package, isStatic = true, "String", "name", " \"x\" "))
+    assert(withSecondField.contains("  private int count;\n  static String name = \"x\";\n\n  public void increment()"), withSecondField)
+    val constructor = constructorDeclaration("Counter", SourceStructure.Visibility.Public,
+      List(SourceStructure.Param("int", "count"), SourceStructure.Param("int", "step")), List("count"))
+    assertEquals(constructor, "public Counter(int count, int step) {\n    this.count = count;\n  }")
+    val withConstructor = insertConstructor(withField, discover(withField).head, constructor)
+    assertEquals(withConstructor, "class Counter {\n  private int count;\n\n  public Counter(int count, int step) {\n    this.count = count;\n  }\n\n  public void increment() {\n    \n  }\n}\n")
+    val second = insertConstructor(withConstructor, discover(withConstructor).head, constructorDeclaration("Counter", SourceStructure.Visibility.Package, Nil, Nil))
+    assert(second.contains("  }\n\n  Counter() {\n    \n  }\n\n  public void increment()"), second)
+    assertEquals(discover(second).head.methods.map(umlOperation), List("+ Counter(count: int, step: int)", "~ Counter()", "+ increment()"))
+    val Some(increment) = discover(withConstructor).head.methods.find(_.name == "increment"): @unchecked
+    assertEquals(removeMember(withConstructor, increment.start, increment.end),
+      "class Counter {\n  private int count;\n\n  public Counter(int count, int step) {\n    this.count = count;\n  }\n\n}\n")
+    val inline = "class A { int x; void f() {} }"
+    val Some(x) = discover(inline).head.fields.headOption: @unchecked
+    assertEquals(removeMember(inline, x.start, x.end), "class A { void f() {} }")
+  }
+
+  test("names and types are validated before a declaration is generated") {
+    assert(validName("count") && validName("_x1") && !validName("1x") && !validName("class") && !validName(""))
+    assert(validType("int") && validType("List<Map<String, Integer>>") && validType("int[][]") && validType("String..."))
+    assert(!validType("") && !validType("List<String") && !validType("int[") && !validType("void") && !validType("a;b"))
   }
 
   test("replacing and adding a function preserves a parseable full Java program") {

@@ -1,0 +1,141 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 930" width="720" height="670" role="img">
+<rect x="0" y="0" width="1000" height="930" rx="14" fill="#ffffff"/>
+<defs><marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 z" fill="#15803d"/></marker></defs>
+<text x="10" y="36" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, Arial, sans-serif" font-size="16" font-weight="bold" fill="#1f2937" text-anchor="start">Way there: every call puts a new frame on top of the call stack.</text>
+<path d="M 13 56 L 13 360 L 203 360 L 203 56" fill="none" stroke="#4b5563" stroke-width="3" stroke-linejoin="round"/>
+<rect x="17" y="298" width="182" height="52" rx="6" fill="#dbeafe" stroke="#2563eb" stroke-width="2.5"/>
+<text x="25" y="319" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace" font-size="14" font-weight="bold" fill="#1f2937" text-anchor="start">sort(&quot;7294&quot;)</text>
+<text x="25" y="340" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace" font-size="13.5" font-weight="normal" fill="#1f2937" text-anchor="start">largest = &#x27;9&#x27;</text>
+<text x="191" y="340" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, Arial, sans-serif" font-size="11" font-weight="normal" fill="#5b6472" text-anchor="end">Monk 1</text>
+<text x="108.0" y="386" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, Arial, sans-serif" font-size="13.5" font-weight="normal" fill="#5b6472" text-anchor="middle">1st call</text>
+<path d="M 209 56 L 209 360 L 399 360 L 399 56" fill="none" stroke="#4b5563" stroke-width="3" stroke-linejoin="round"/>
+<rect x="213" y="298" width="182" height="52" rx="6" fill="#eef1f5" stroke="#7b8796" stroke-width="1.5"/>
+<text x="221" y="319" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace" font-size="14" font-weight="bold" fill="#1f2937" text-anchor="start">sort(&quot;7294&quot;)</text>
+<text x="221" y="340" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace" font-size="13.5" font-weight="normal" fill="#1f2937" text-anchor="start">largest = &#x27;9&#x27;</text>
+<text x="387" y="340" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, Arial, sans-serif" font-size="11" font-weight="normal" fill="#5b6472" text-anchor="end">Monk 1</text>
+<rect x="213" y="242" width="182" height="52" rx="6" fill="#dbeafe" stroke="#2563eb" stroke-width="2.5"/>
+<text x="221" y="263" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace" font-size="14" font-weight="bold" fill="#1f2937" text-anchor="start">sort(&quot;724&quot;)</text>
+<text x="221" y="284" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace" font-size="13.5" font-weight="normal" fill="#1f2937" text-anchor="start">largest = &#x27;7&#x27;</text>
+<text x="387" y="284" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, Arial, sans-serif" font-size="11" font-weight="normal" fill="#5b6472" text-anchor="end">Monk 2</text>
+<text x="304.0" y="386" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, Arial, sans-serif" font-size="13.5" font-weight="normal" fill="#5b6472" text-anchor="middle">2nd call</text>
+<path d="M 405 56 L 405 360 L 595 360 L 595 56" fill="none" stroke="#4b5563" stroke-width="3" stroke-linejoin="round"/>
+<rect x="409" y="298" width="182" height="52" rx="6" fill="#eef1f5" stroke="#7b8796" stroke-width="1.5"/>
+<text x="417" y="319" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace" font-size="14" font-weight="bold" fill="#1f2937" text-anchor="start">sort(&quot;7294&quot;)</text>
+<text x="417" y="340" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace" font-size="13.5" font-weight="normal" fill="#1f2937" text-anchor="start">largest = &#x27;9&#x27;</text>
+<text x="583" y="340" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, Arial, sans-serif" font-size="11" font-weight="normal" fill="#5b6472" text-anchor="end">Monk 1</text>
+<rect x="409" y="242" width="182" height="52" rx="6" fill="#eef1f5" stroke="#7b8796" stroke-width="1.5"/>
+<text x="417" y="263" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace" font-size="14" font-weight="bold" fill="#1f2937" text-anchor="start">sort(&quot;724&quot;)</text>
+<text x="417" y="284" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace" font-size="13.5" font-weight="normal" fill="#1f2937" text-anchor="start">largest = &#x27;7&#x27;</text>
+<text x="583" y="284" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, Arial, sans-serif" font-size="11" font-weight="normal" fill="#5b6472" text-anchor="end">Monk 2</text>
+<rect x="409" y="186" width="182" height="52" rx="6" fill="#dbeafe" stroke="#2563eb" stroke-width="2.5"/>
+<text x="417" y="207" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace" font-size="14" font-weight="bold" fill="#1f2937" text-anchor="start">sort(&quot;24&quot;)</text>
+<text x="417" y="228" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace" font-size="13.5" font-weight="normal" fill="#1f2937" text-anchor="start">largest = &#x27;4&#x27;</text>
+<text x="583" y="228" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, Arial, sans-serif" font-size="11" font-weight="normal" fill="#5b6472" text-anchor="end">Monk 3</text>
+<text x="500.0" y="386" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, Arial, sans-serif" font-size="13.5" font-weight="normal" fill="#5b6472" text-anchor="middle">3rd call</text>
+<path d="M 601 56 L 601 360 L 791 360 L 791 56" fill="none" stroke="#4b5563" stroke-width="3" stroke-linejoin="round"/>
+<rect x="605" y="298" width="182" height="52" rx="6" fill="#eef1f5" stroke="#7b8796" stroke-width="1.5"/>
+<text x="613" y="319" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace" font-size="14" font-weight="bold" fill="#1f2937" text-anchor="start">sort(&quot;7294&quot;)</text>
+<text x="613" y="340" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace" font-size="13.5" font-weight="normal" fill="#1f2937" text-anchor="start">largest = &#x27;9&#x27;</text>
+<text x="779" y="340" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, Arial, sans-serif" font-size="11" font-weight="normal" fill="#5b6472" text-anchor="end">Monk 1</text>
+<rect x="605" y="242" width="182" height="52" rx="6" fill="#eef1f5" stroke="#7b8796" stroke-width="1.5"/>
+<text x="613" y="263" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace" font-size="14" font-weight="bold" fill="#1f2937" text-anchor="start">sort(&quot;724&quot;)</text>
+<text x="613" y="284" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace" font-size="13.5" font-weight="normal" fill="#1f2937" text-anchor="start">largest = &#x27;7&#x27;</text>
+<text x="779" y="284" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, Arial, sans-serif" font-size="11" font-weight="normal" fill="#5b6472" text-anchor="end">Monk 2</text>
+<rect x="605" y="186" width="182" height="52" rx="6" fill="#eef1f5" stroke="#7b8796" stroke-width="1.5"/>
+<text x="613" y="207" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace" font-size="14" font-weight="bold" fill="#1f2937" text-anchor="start">sort(&quot;24&quot;)</text>
+<text x="613" y="228" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace" font-size="13.5" font-weight="normal" fill="#1f2937" text-anchor="start">largest = &#x27;4&#x27;</text>
+<text x="779" y="228" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, Arial, sans-serif" font-size="11" font-weight="normal" fill="#5b6472" text-anchor="end">Monk 3</text>
+<rect x="605" y="130" width="182" height="52" rx="6" fill="#dbeafe" stroke="#2563eb" stroke-width="2.5"/>
+<text x="613" y="151" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace" font-size="14" font-weight="bold" fill="#1f2937" text-anchor="start">sort(&quot;2&quot;)</text>
+<text x="613" y="172" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace" font-size="13.5" font-weight="normal" fill="#1f2937" text-anchor="start">largest = &#x27;2&#x27;</text>
+<text x="779" y="172" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, Arial, sans-serif" font-size="11" font-weight="normal" fill="#5b6472" text-anchor="end">Monk 4</text>
+<text x="696.0" y="386" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, Arial, sans-serif" font-size="13.5" font-weight="normal" fill="#5b6472" text-anchor="middle">4th call</text>
+<path d="M 797 56 L 797 360 L 987 360 L 987 56" fill="none" stroke="#4b5563" stroke-width="3" stroke-linejoin="round"/>
+<rect x="801" y="298" width="182" height="52" rx="6" fill="#eef1f5" stroke="#7b8796" stroke-width="1.5"/>
+<text x="809" y="319" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace" font-size="14" font-weight="bold" fill="#1f2937" text-anchor="start">sort(&quot;7294&quot;)</text>
+<text x="809" y="340" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace" font-size="13.5" font-weight="normal" fill="#1f2937" text-anchor="start">largest = &#x27;9&#x27;</text>
+<text x="975" y="340" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, Arial, sans-serif" font-size="11" font-weight="normal" fill="#5b6472" text-anchor="end">Monk 1</text>
+<rect x="801" y="242" width="182" height="52" rx="6" fill="#eef1f5" stroke="#7b8796" stroke-width="1.5"/>
+<text x="809" y="263" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace" font-size="14" font-weight="bold" fill="#1f2937" text-anchor="start">sort(&quot;724&quot;)</text>
+<text x="809" y="284" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace" font-size="13.5" font-weight="normal" fill="#1f2937" text-anchor="start">largest = &#x27;7&#x27;</text>
+<text x="975" y="284" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, Arial, sans-serif" font-size="11" font-weight="normal" fill="#5b6472" text-anchor="end">Monk 2</text>
+<rect x="801" y="186" width="182" height="52" rx="6" fill="#eef1f5" stroke="#7b8796" stroke-width="1.5"/>
+<text x="809" y="207" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace" font-size="14" font-weight="bold" fill="#1f2937" text-anchor="start">sort(&quot;24&quot;)</text>
+<text x="809" y="228" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace" font-size="13.5" font-weight="normal" fill="#1f2937" text-anchor="start">largest = &#x27;4&#x27;</text>
+<text x="975" y="228" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, Arial, sans-serif" font-size="11" font-weight="normal" fill="#5b6472" text-anchor="end">Monk 3</text>
+<rect x="801" y="130" width="182" height="52" rx="6" fill="#eef1f5" stroke="#7b8796" stroke-width="1.5"/>
+<text x="809" y="151" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace" font-size="14" font-weight="bold" fill="#1f2937" text-anchor="start">sort(&quot;2&quot;)</text>
+<text x="809" y="172" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace" font-size="13.5" font-weight="normal" fill="#1f2937" text-anchor="start">largest = &#x27;2&#x27;</text>
+<text x="975" y="172" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, Arial, sans-serif" font-size="11" font-weight="normal" fill="#5b6472" text-anchor="end">Monk 4</text>
+<rect x="801" y="74" width="182" height="52" rx="6" fill="#fef3c7" stroke="#b45309" stroke-width="2.5"/>
+<text x="809" y="95" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace" font-size="14" font-weight="bold" fill="#1f2937" text-anchor="start">sort(&quot;&quot;)</text>
+<text x="809" y="116" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace" font-size="13.5" font-weight="normal" fill="#1f2937" text-anchor="start">return &quot;&quot;</text>
+<text x="975" y="116" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, Arial, sans-serif" font-size="11" font-weight="normal" fill="#5b6472" text-anchor="end">Traveller</text>
+<text x="892.0" y="386" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, Arial, sans-serif" font-size="13.5" font-weight="normal" fill="#5b6472" text-anchor="middle">5th call: base case</text>
+<text x="10" y="446" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, Arial, sans-serif" font-size="16" font-weight="bold" fill="#1f2937" text-anchor="start">Way back: the top frame returns its result and disappears. The frame below continues its work.</text>
+<path d="M 13 466 L 13 770 L 203 770 L 203 466" fill="none" stroke="#4b5563" stroke-width="3" stroke-linejoin="round"/>
+<rect x="17" y="708" width="182" height="52" rx="6" fill="#eef1f5" stroke="#7b8796" stroke-width="1.5"/>
+<text x="25" y="729" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace" font-size="14" font-weight="bold" fill="#1f2937" text-anchor="start">sort(&quot;7294&quot;)</text>
+<text x="25" y="750" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace" font-size="13.5" font-weight="normal" fill="#1f2937" text-anchor="start">largest = &#x27;9&#x27;</text>
+<text x="191" y="750" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, Arial, sans-serif" font-size="11" font-weight="normal" fill="#5b6472" text-anchor="end">Monk 1</text>
+<rect x="17" y="652" width="182" height="52" rx="6" fill="#eef1f5" stroke="#7b8796" stroke-width="1.5"/>
+<text x="25" y="673" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace" font-size="14" font-weight="bold" fill="#1f2937" text-anchor="start">sort(&quot;724&quot;)</text>
+<text x="25" y="694" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace" font-size="13.5" font-weight="normal" fill="#1f2937" text-anchor="start">largest = &#x27;7&#x27;</text>
+<text x="191" y="694" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, Arial, sans-serif" font-size="11" font-weight="normal" fill="#5b6472" text-anchor="end">Monk 2</text>
+<rect x="17" y="596" width="182" height="52" rx="6" fill="#eef1f5" stroke="#7b8796" stroke-width="1.5"/>
+<text x="25" y="617" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace" font-size="14" font-weight="bold" fill="#1f2937" text-anchor="start">sort(&quot;24&quot;)</text>
+<text x="25" y="638" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace" font-size="13.5" font-weight="normal" fill="#1f2937" text-anchor="start">largest = &#x27;4&#x27;</text>
+<text x="191" y="638" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, Arial, sans-serif" font-size="11" font-weight="normal" fill="#5b6472" text-anchor="end">Monk 3</text>
+<rect x="17" y="540" width="182" height="52" rx="6" fill="#dbeafe" stroke="#2563eb" stroke-width="2.5"/>
+<text x="25" y="561" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace" font-size="14" font-weight="bold" fill="#1f2937" text-anchor="start">sort(&quot;2&quot;)</text>
+<text x="25" y="582" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace" font-size="13.5" font-weight="normal" fill="#15803d" text-anchor="start">&#x27;2&#x27; + &quot;&quot; → &quot;2&quot;</text>
+<line x1="50" y1="500" x2="50" y2="536" stroke="#15803d" stroke-width="2.5" marker-end="url(#arrow)"/>
+<text x="60" y="524" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace" font-size="15" font-weight="bold" fill="#15803d" text-anchor="start">&quot;&quot;</text>
+<text x="108.0" y="796" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, Arial, sans-serif" font-size="13.5" font-weight="normal" fill="#5b6472" text-anchor="middle">1st return</text>
+<path d="M 209 466 L 209 770 L 399 770 L 399 466" fill="none" stroke="#4b5563" stroke-width="3" stroke-linejoin="round"/>
+<rect x="213" y="708" width="182" height="52" rx="6" fill="#eef1f5" stroke="#7b8796" stroke-width="1.5"/>
+<text x="221" y="729" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace" font-size="14" font-weight="bold" fill="#1f2937" text-anchor="start">sort(&quot;7294&quot;)</text>
+<text x="221" y="750" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace" font-size="13.5" font-weight="normal" fill="#1f2937" text-anchor="start">largest = &#x27;9&#x27;</text>
+<text x="387" y="750" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, Arial, sans-serif" font-size="11" font-weight="normal" fill="#5b6472" text-anchor="end">Monk 1</text>
+<rect x="213" y="652" width="182" height="52" rx="6" fill="#eef1f5" stroke="#7b8796" stroke-width="1.5"/>
+<text x="221" y="673" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace" font-size="14" font-weight="bold" fill="#1f2937" text-anchor="start">sort(&quot;724&quot;)</text>
+<text x="221" y="694" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace" font-size="13.5" font-weight="normal" fill="#1f2937" text-anchor="start">largest = &#x27;7&#x27;</text>
+<text x="387" y="694" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, Arial, sans-serif" font-size="11" font-weight="normal" fill="#5b6472" text-anchor="end">Monk 2</text>
+<rect x="213" y="596" width="182" height="52" rx="6" fill="#dbeafe" stroke="#2563eb" stroke-width="2.5"/>
+<text x="221" y="617" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace" font-size="14" font-weight="bold" fill="#1f2937" text-anchor="start">sort(&quot;24&quot;)</text>
+<text x="221" y="638" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace" font-size="13.5" font-weight="normal" fill="#15803d" text-anchor="start">&#x27;4&#x27; + &quot;2&quot; → &quot;42&quot;</text>
+<line x1="246" y1="556" x2="246" y2="592" stroke="#15803d" stroke-width="2.5" marker-end="url(#arrow)"/>
+<text x="256" y="580" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace" font-size="15" font-weight="bold" fill="#15803d" text-anchor="start">&quot;2&quot;</text>
+<text x="304.0" y="796" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, Arial, sans-serif" font-size="13.5" font-weight="normal" fill="#5b6472" text-anchor="middle">2nd return</text>
+<path d="M 405 466 L 405 770 L 595 770 L 595 466" fill="none" stroke="#4b5563" stroke-width="3" stroke-linejoin="round"/>
+<rect x="409" y="708" width="182" height="52" rx="6" fill="#eef1f5" stroke="#7b8796" stroke-width="1.5"/>
+<text x="417" y="729" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace" font-size="14" font-weight="bold" fill="#1f2937" text-anchor="start">sort(&quot;7294&quot;)</text>
+<text x="417" y="750" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace" font-size="13.5" font-weight="normal" fill="#1f2937" text-anchor="start">largest = &#x27;9&#x27;</text>
+<text x="583" y="750" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, Arial, sans-serif" font-size="11" font-weight="normal" fill="#5b6472" text-anchor="end">Monk 1</text>
+<rect x="409" y="652" width="182" height="52" rx="6" fill="#dbeafe" stroke="#2563eb" stroke-width="2.5"/>
+<text x="417" y="673" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace" font-size="14" font-weight="bold" fill="#1f2937" text-anchor="start">sort(&quot;724&quot;)</text>
+<text x="417" y="694" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace" font-size="13.5" font-weight="normal" fill="#15803d" text-anchor="start">&#x27;7&#x27; + &quot;42&quot; → &quot;742&quot;</text>
+<line x1="442" y1="612" x2="442" y2="648" stroke="#15803d" stroke-width="2.5" marker-end="url(#arrow)"/>
+<text x="452" y="636" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace" font-size="15" font-weight="bold" fill="#15803d" text-anchor="start">&quot;42&quot;</text>
+<text x="500.0" y="796" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, Arial, sans-serif" font-size="13.5" font-weight="normal" fill="#5b6472" text-anchor="middle">3rd return</text>
+<path d="M 601 466 L 601 770 L 791 770 L 791 466" fill="none" stroke="#4b5563" stroke-width="3" stroke-linejoin="round"/>
+<rect x="605" y="708" width="182" height="52" rx="6" fill="#dbeafe" stroke="#2563eb" stroke-width="2.5"/>
+<text x="613" y="729" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace" font-size="14" font-weight="bold" fill="#1f2937" text-anchor="start">sort(&quot;7294&quot;)</text>
+<text x="613" y="750" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace" font-size="13.5" font-weight="normal" fill="#15803d" text-anchor="start">&#x27;9&#x27; + &quot;742&quot; → &quot;9742&quot;</text>
+<line x1="638" y1="668" x2="638" y2="704" stroke="#15803d" stroke-width="2.5" marker-end="url(#arrow)"/>
+<text x="648" y="692" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace" font-size="15" font-weight="bold" fill="#15803d" text-anchor="start">&quot;742&quot;</text>
+<text x="696.0" y="796" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, Arial, sans-serif" font-size="13.5" font-weight="normal" fill="#5b6472" text-anchor="middle">4th return</text>
+<path d="M 797 466 L 797 770 L 987 770 L 987 466" fill="none" stroke="#4b5563" stroke-width="3" stroke-linejoin="round"/>
+<text x="892.0" y="596.0" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, Arial, sans-serif" font-size="15" font-weight="bold" fill="#1f2937" text-anchor="middle">Result</text>
+<text x="892.0" y="614.0" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, Arial, sans-serif" font-size="12.5" font-weight="normal" fill="#5b6472" text-anchor="middle">of the first call</text>
+<text x="892.0" y="648.0" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace" font-size="26" font-weight="bold" fill="#15803d" text-anchor="middle">&quot;9742&quot;</text>
+<text x="892.0" y="796" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, Arial, sans-serif" font-size="13.5" font-weight="normal" fill="#5b6472" text-anchor="middle">Stack empty</text>
+<rect x="20" y="835" width="34" height="20" rx="4" fill="#dbeafe" stroke="#2563eb" stroke-width="2"/>
+<text x="64" y="850" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, Arial, sans-serif" font-size="14" font-weight="normal" fill="#1f2937" text-anchor="start">active call (top frame)</text>
+<rect x="510" y="835" width="34" height="20" rx="4" fill="#fef3c7" stroke="#b45309" stroke-width="2"/>
+<text x="554" y="850" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, Arial, sans-serif" font-size="14" font-weight="normal" fill="#1f2937" text-anchor="start">base case: empty tray</text>
+<rect x="20" y="871" width="34" height="20" rx="4" fill="#eef1f5" stroke="#7b8796" stroke-width="2"/>
+<text x="64" y="886" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, Arial, sans-serif" font-size="14" font-weight="normal" fill="#1f2937" text-anchor="start">waiting call: keeps its card largest</text>
+<line x1="510" y1="881" x2="544" y2="881" stroke="#15803d" stroke-width="2.5" marker-end="url(#arrow)"/>
+<text x="554" y="886" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, Arial, sans-serif" font-size="14" font-weight="normal" fill="#1f2937" text-anchor="start">return value</text>
+</svg>

@@ -140,6 +140,34 @@ class SnapTurtleCommandExecutionSpec extends FunSuite:
       assertEquals(executor.closes, 1)
   }
 
+  test("Python cancellation keeps an idle worker and discards only a busy one") {
+    val old = new ControlledPythonExecutor(initiallyReady = true)
+    val fresh = new ControlledPythonExecutor(initiallyReady = true)
+    var allocations = 0
+    val runner = new PyodideTurtleCommandRunner(() => { allocations += 1; if allocations == 1 then old else fresh })
+    val first = runner.execute("forward(10)")
+    for
+      _ <- old.started()
+      _ = old.complete()
+      _ <- first
+      _ = runner.cancel()
+      _ = assertEquals(old.closes, 0, "an answer change between runs keeps the loaded worker")
+      second = runner.execute("forward(20)")
+      _ <- old.started(1)
+      _ = runner.cancel()
+      cancelled <- second.transform(outcome => scala.util.Success(outcome))
+      third = runner.execute("forward(30)")
+      _ <- fresh.started()
+      _ = fresh.complete(0, pythonReport(30))
+      actual <- third
+    yield
+      assert(cancelled.failed.toOption.exists(_.isInstanceOf[CancellationException]))
+      assertEquals(old.closes, 1, "a running worker is stopped")
+      assertEquals(allocations, 2)
+      assertEquals(actual, List(TurtleCommand.Forward[Double](30.0)))
+      runner.close()
+  }
+
   test("typed Java comparisons retain NaN infinity and signed zero semantics") {
     for op <- Seq("lt", "le", "gt", "ge", "eq") do {
       assert(!JavaTurtleSnapPrimitives.compare(op, Double.NaN, 1.0, true), clue = op)

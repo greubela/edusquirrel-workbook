@@ -39,6 +39,26 @@ class CodeIndentationSpec extends munit.FunSuite {
     assertEquals(enter("    x = {|}", python = true), "    x = {\n        |\n    }")
   }
 
+  test("Python reads the colon before a comment and ignores colons in comments and strings") {
+    assertEquals(enter("if x > 3:  # the big case|", python = true), "if x > 3:  # the big case\n    |")
+    assertEquals(enter("    # Notes:|", python = true), "    # Notes:\n    |")
+    assertEquals(enter("print('a:')|", python = true), "print('a:')\n|")
+    assertEquals(enter("    else:|", python = true), "    else:\n        |")
+  }
+
+  test("Python dedents after pass, break, continue and raise, but not after a name starting with them") {
+    assertEquals(enter("while True:\n    break|", python = true), "while True:\n    break\n|")
+    assertEquals(enter("def f():\n    pass|", python = true), "def f():\n    pass\n|")
+    assertEquals(enter("def f():\n    passed = 1|", python = true), "def f():\n    passed = 1\n    |")
+  }
+
+  test("brackets in strings and comments neither open blocks nor count as unclosed") {
+    assertEquals(enter("    print(\"{\");|"), "    print(\"{\");\n    |")
+    assertEquals(enter("    a(); // {|"), "    a(); // {\n    |")
+    assertEquals(enter("    void f() {|\n    String s = \"}\";"), "    void f() {\n        |\n    }\n    String s = \"}\";")
+    assertEquals(CodeIndentation.closingBrace("void f() {\n    s = \"{\";\n    ", unit), Some(""))
+  }
+
   test("a closing brace on a blank line takes its block's indentation") {
     assertEquals(CodeIndentation.closingBrace("class Main {\n    void f() {\n        a();\n        ", unit), Some("    "))
     assertEquals(CodeIndentation.closingBrace("void f() {\n    if (x) {\n    }\n    ", unit), Some(""))

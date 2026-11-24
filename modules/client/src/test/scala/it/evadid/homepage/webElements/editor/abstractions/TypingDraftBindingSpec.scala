@@ -30,11 +30,30 @@ class TypingDraftBindingSpec extends EditorDomSuite {
       answer.set("restored")
       assertEquals(binding.draft.now(), "restored", "an outside change replaces the draft")
       typeKey("y", "restoredy")
-      input.ref.dispatchEvent(new dom.FocusEvent("blur"))
+      input.ref.dispatchEvent(new dom.FocusEvent("focusout", new dom.FocusEventInit { bubbles = true }))
       assertEquals(answer.now(), "restoredy", "leaving the editor commits pending edits")
       typeKey("z", "restoredyz")
       unmount()
-      assertEquals(answer.now(), "restoredyz", "closing the editor commits pending edits")
+      eventually(answer.now() == "restoredyz", "closing the editor commits pending edits")
     }
+  }
+
+  test("a nested editor hands over its typed text before the binding commits on blur and on unmount") {
+    val answer = Var("a")
+    val binding = TypingDraftBinding(answer)
+    // Like CodeMirrorEditor: the typed text reaches the draft only when focus leaves or the editor unmounts.
+    var typed = Option.empty[String]
+    def handOver(): Unit = typed.foreach { text => typed = None; binding.draft.set(text) }
+    val input = textArea(onBlur.useCapture --> (_ => handOver()), onUnmountCallback(_ => handOver()))
+    val unmount = mount(div(binding.binders, div(input)))
+    press(input.ref, "b")
+    typed = Some("ab")
+    input.ref.dispatchEvent(new dom.FocusEvent("blur"))
+    input.ref.dispatchEvent(new dom.FocusEvent("focusout", new dom.FocusEventInit { bubbles = true }))
+    assertEquals(answer.now(), "ab", "the text typed just before leaving the editor is committed at once")
+    press(input.ref, "c")
+    typed = Some("abc")
+    unmount()
+    eventually(answer.now() == "abc", "the text typed just before closing the editor is committed")
   }
 }

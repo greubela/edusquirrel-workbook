@@ -41,6 +41,7 @@ final class TurtleProgramExecution(providers: Seq[TurtleExecutionProvider] = Seq
         case _ => Future(source.toBeExpression.turtleCommandExecutionInfo.completedCommands)
       }
     }
-  def cancel(): Unit = { revision.update(_ + 1); python.close(); providers.foreach(_.cancel()) }
+  /** Invalidates pending results; an idle Python worker stays loaded, so the next run starts without reloading Pyodide. */
+  def cancel(): Unit = { revision.update(_ + 1); python.cancel(); providers.foreach(_.cancel()) }
   def close(): Unit = { revision.update(_ + 1); python.close(); providers.foreach(_.close()) }
 }

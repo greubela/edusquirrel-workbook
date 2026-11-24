@@ -9,6 +9,7 @@ import it.evadid.core.datastructures.language.LanguageMapContentId
 import it.evadid.core.datastructures.state.StateHelper.StateBasedVar
 import it.evadid.homepage.webElements.HtmlAppElement
 import it.evadid.homepage.webElements.basic.HtmlButtonElement
+import it.evadid.homepage.webElements.code.JavaStructureFeatures
 import it.evadid.homepage.webElements.editor.code.EvaEditor.{EvaEditor, EvaEditorConfig, EvaEditorLabels}
 import it.evadid.homepage.webElements.editor.code.SnapEditor.{SnapMorphicSession, SnapPreviewEditor}
 import it.evadid.homepage.webElements.editor.code.SnapEditor.toRefactor.SnapCodeEditorConfig
@@ -72,7 +73,9 @@ case object HtmlTurtleRecreateShapeRenderer extends LineBasedRenderingFactory[Tu
         fullInfo.loggerSystemInfo.uiAndDomLogger,
         boundVar,
         Nil,
-        Var(EvaEditorConfig(enabledLanguages = workbookElement.exerciseConfig.allowedEditorLanguages, snapConfig = useConfig)),
+        // Turtle drawings are procedural: the class diagram only offers new methods.
+        Var(EvaEditorConfig(enabledLanguages = workbookElement.exerciseConfig.allowedEditorLanguages, snapConfig = useConfig,
+          javaStructure = JavaStructureFeatures.Procedural)),
         humanLanguage = fullInfo.signals.currentLanguage,
         labels = EvaEditorLabels.fromContent(laminarHelper.plaintextStringSignal))
       EditorWithWorkbookPanel(workbookElement, Some(associatedInstruction), gradingReporter,

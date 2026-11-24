@@ -23,7 +23,9 @@ final class JavaStructuredMethodEditor(
     appearance: Option[EditorAppearance] = None,
     editorConfig: CodeMirrorEditorConfig = CodeMirrorEditorConfig.Default,
     conversionMarker: Signal[Option[ProgrammingConversionError]] = Val(None),
-    loadingLabel: Signal[String] = Val("Loading editor…")
+    loadingLabel: Signal[String] = Val("Loading editor…"),
+    labels: JavaEditorLabels = JavaEditorLabels.keys,
+    features: JavaStructureFeatures = JavaStructureFeatures.Full
 ) extends HtmlAppElement {
   private val source = state.bimap[ProgrammingState](value => ProgrammingStateRaw(Java, value.toString)) {
     case ProgrammingStateRaw(Java, code) => ProgrammingStateJavaStructured(code)
@@ -31,14 +33,16 @@ final class JavaStructuredMethodEditor(
   }
   private val editor = new JavaMethodEditor(logger, source, reference, appearance,
     editorConfig, conversionMarker, loadingLabel, requirePublicMain = false,
-    sameSource = (left, right) => left == right || ProgrammingStateJavaStructured(left) == ProgrammingStateJavaStructured(right))
+    sameSource = (left, right) => left == right || ProgrammingStateJavaStructured(left) == ProgrammingStateJavaStructured(right),
+    labels = labels, features = features)
 
   override def dismissOnOutsideClick: Boolean = false
   override def getDomElement(): Element = editor.getDomElement()
 }
 
 object JavaStructuredMethodEditor {
-  def forEvaTab(logger: Logger, config: CodeMirrorEditorConfig, tabLabel: String = "Java"): EvaEditorTab = new EvaEditorTab {
+  def forEvaTab(logger: Logger, config: CodeMirrorEditorConfig, tabLabel: String = "Java",
+      labels: JavaEditorLabels = JavaEditorLabels.keys, features: JavaStructureFeatures = JavaStructureFeatures.Full): EvaEditorTab = new EvaEditorTab {
     override val language = it.evadid.core.datastructures.language.AppLanguage.Java
     override val label = tabLabel
     override val showLabel = false
@@ -56,7 +60,7 @@ object JavaStructuredMethodEditor {
         case _ => ProgrammingStateJavaStructured(Map.empty)
       }(identity)
       new JavaStructuredMethodEditor(logger, structured, appearance = Some(appearance),
-        editorConfig = config, conversionMarker = marker, loadingLabel = loading)
+        editorConfig = config, conversionMarker = marker, loadingLabel = loading, labels = labels, features = features)
     }
   }
 }

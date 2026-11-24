@@ -155,6 +155,39 @@ class CrossLanguageRoundTripSpec extends FunSuite {
     assertRoundTrips(state, all, Some(Seq(forward(20))))
   }
 
+  test("a Python main() that is not the last statement stays a helper in every language pair") {
+    val python = """def main():
+      |    forward(20)
+      |
+      |main()
+      |left(90)
+      |main()
+      |""".stripMargin
+    assertRoundTrips(ProgrammingStateRaw(Python, python), all, Some(Seq(forward(20), left(90), forward(20))))
+  }
+
+  test("pen up and down survive every language pair") {
+    val python = """forward(10)
+      |penup()
+      |forward(5)
+      |pendown()
+      |forward(10)
+      |""".stripMargin
+    val expected = Seq(forward(10), "PenUp" -> Seq.empty[Double], forward(5), "PenDown" -> Seq.empty[Double], forward(10))
+    Seq(ProgrammingStateRaw(Python, python), ProgrammingStateRaw(Python, python).toJavaStructured,
+      ProgrammingStateRaw(Python, python).toSnapXml).foreach(assertRoundTrips(_, all, Some(expected)))
+  }
+
+  test("Snap's repeat until with and without a negation survives the route through Python") {
+    Seq("x < 30", "not x < 30").foreach { condition =>
+      val python = s"x = 0\nwhile not ($condition):\n    forward(10)\n    x = x + 10\n"
+      val state = ProgrammingStateRaw(Python, python).toSnapXml
+      val expected = if condition.startsWith("not") then Seq(forward(10), forward(10), forward(10)) else Nil
+      assertRoundTrips(state, all, Some(expected))
+      assert(!state.toPythonStructured.toString.contains("not (not"), state.toPythonStructured.toString)
+    }
+  }
+
   test("scenario B: while, fixed repetition, if, if-else and if-elif-else survive every language pair") {
     val python = """length = 10
       |count = 0

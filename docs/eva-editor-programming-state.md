@@ -26,8 +26,11 @@ The central Var is the answer. A change is a change, regardless of whether it
 comes from an editor, restoration, conversion or another component. Use signals
 to observe it. Do not add `onStateEdited`, input-listener constructor arguments,
 or separate stores such as `synchronizedValue` alongside a bound Var. Project
-views with `bimap` where appropriate; for example the Python editor binds the code
-field of the central Python state directly. Java's method fragment is a view of
+views with `bimap` where appropriate; for example the Python editor shows the text of
+the central Python state and writes `ProgrammingStatePythonStructured`, so typed text
+that the structured state represents (classes first, completed empty blocks) stays as typed.
+Typed text is written only onto the answer it was typed over; an answer change that
+arrives meanwhile (restoration, synchronization, conversion) replaces it. Java's method fragment is a view of
 the current source, not a separately saved program.
 
 Keystrokes stay in the editor: Eva's language views edit the draft of a

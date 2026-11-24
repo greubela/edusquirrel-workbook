@@ -104,5 +104,7 @@
   "filebeatcountplaceblue": "monks/beats/count-place-blue.jpg",
   "filebeatcounttallythree": "monks/beats/count-tally-three.jpg",
   "filebeatcountempty": "monks/beats/count-empty.jpg",
-  "filebeatemptywait": "monks/beats/empty-wait.jpg"
+  "filebeatemptywait": "monks/beats/empty-wait.jpg",
+  "filekoch1": "monks/koch/koch-1.svg",
+  "filekoch2": "monks/koch/koch-2.svg"
 }

@@ -75,6 +75,12 @@ class CountingLoopSpec extends FunSuite {
     assertEquals(distances(state), Seq(1.0, 1.0, 1.0, 2.0))
   }
 
+  test("a Python counter read only in another loop counting with it leaves this loop a repetition") {
+    val state = python("for i in range(1, 3):\n    forward(i)\nfor i in range(4):\n    left(90)\n")
+    assertEquals(loops(state), Vector(Loop.For("i", "1", "2"), Loop.Repeat(4)))
+    assertEquals(distances(state), Seq(1.0, 2.0, 90.0, 90.0, 90.0, 90.0))
+  }
+
   test("counts from computed bounds are repetitions too, and a zero count repeats nothing") {
     Seq(python("n = 3\nfor _ in range(n):\n    forward(1)\n"),
         java("double n = 3;\nfor (int i = 0; i < n; i++) {\n    Turtle.forward(1);\n}")).foreach { state =>

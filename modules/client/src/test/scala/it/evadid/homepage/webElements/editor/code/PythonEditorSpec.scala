@@ -57,7 +57,8 @@ class PythonEditorSpec extends EditorDomSuite {
     def failNative(): Unit = ready.now().get.tryFailure(IllegalStateException("CodeMirror unavailable"))
   }
 
-  private def tick(): Future[Unit] = { val done = Promise[Unit](); setTimeout(5)(done.success(())); done.future }
+  private def pause(millis: Int): Future[Unit] = { val done = Promise[Unit](); setTimeout(millis.toDouble)(done.success(())); done.future }
+  private def tick(): Future[Unit] = pause(5)
   private def until(condition: => Boolean, attempts: Int = 400): Future[Unit] =
     if condition then Future.unit
     else if attempts == 0 then Future.failed(AssertionError("condition not reached"))
@@ -139,6 +140,23 @@ class PythonEditorSpec extends EditorDomSuite {
     }
   }
 
+  test("typed text never overwrites an answer change that arrived while it was pending") {
+    val fixture = Fixture("x = 1")
+    until(fixture.created.now().nonEmpty).map(_ => fixture.loadNative()).flatMap(_ => until(hidden(fallback))).flatMap { _ =>
+      val native = fixture.native
+      native.type_("x = 2")
+      fixture.text.set("restored = 1")
+      assertEquals(native.doc.now(), "restored = 1", "the outside change replaces the typed text")
+      pause(CodeMirrorEditor.typingWriteDelayMillis + 100).map { _ =>
+        assertEquals(fixture.text.now(), "restored = 1", "the typing pause does not write the replaced text back")
+        native.type_("x = 3")
+        fixture.text.set("converted")
+        fixture.close()
+        assertEquals(fixture.text.now(), "converted", "unmounting does not undo a conversion")
+      }
+    }.transform { outcome => scala.util.Try(fixture.close()); outcome }
+  }
+
   test("a failed native load leaves the fallback editable and hides the loading notice") {
     val fixture = Fixture("print(1)")
     finish(fixture.close) {
@@ -187,7 +205,7 @@ class PythonEditorSpec extends EditorDomSuite {
     }
   }
 
-  test("the Eva Python tab shows Python answers as text and stores edits as raw Python") {
+  test("the Eva Python tab shows Python answers as text and stores edits as structured Python") {
     val tab = CodeMirrorEditor.pythonEditorForEva(logger, CodeMirrorEditorConfig.Default)
     assertEquals(tab.language, Python)
     val answer = Var[ProgrammingState](ProgrammingStateRaw(Python, "print('raw')"))
@@ -195,7 +213,10 @@ class PythonEditorSpec extends EditorDomSuite {
     finish(close) {
       assertEquals(fallback.value, "print('raw')")
       typeInFallback("print('edited')")
-      assertEquals(answer.now(), ProgrammingStateRaw(Python, "print('edited')"): ProgrammingState)
+      assertEquals(answer.now(), ProgrammingStatePythonStructured("print('edited')"): ProgrammingState)
+      typeInFallback("def f():")
+      assertEquals(answer.now(), ProgrammingStatePythonStructured("def f():"): ProgrammingState)
+      assertEquals(fallback.value, "def f():", "the completed block of the stored state does not replace the typed text")
       val structured = ProgrammingStatePythonStructured("class A:\n    pass\n\nprint(1)")
       answer.set(structured)
       assertEquals(fallback.value, structured.toString)

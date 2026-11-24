@@ -111,7 +111,7 @@ private[evadid] object CodeMirrorRuntime {
     private var javaSource = initial
     private var programmatic = false
     private var destroyed = false
-    private val javaHistory = new Compartment
+    private val undoHistory = new Compartment
     private val theme = new Compartment
     private val editorLanguage = new Compartment
     private val lineNumbers = new Compartment
@@ -139,8 +139,8 @@ private[evadid] object CodeMirrorRuntime {
       extensions = js.Array[Extension](flowchart, sharedExtensions(isPython(language)), CodeMirrorHighlighting.extension(editorTheme.nonEmpty),
         if isJava then js.Array[Extension](
           CodeMirrorJavaLineEndings.field.init((_: State) => CodeMirrorJavaLineEndings.parse(initial)),
-          CodeMirrorJavaLineEndings.historyEffects, javaHistory.of(Libraries.history()))
-        else Libraries.history(),
+          CodeMirrorJavaLineEndings.historyEffects, undoHistory.of(Libraries.history()))
+        else undoHistory.of(Libraries.history()),
         theme.of(currentTheme()), editorLanguage.of(languageExtension(language)),
         lineNumbers.of(numberGutter(config.firstLineNumber)),
         Libraries.EditorView.updateListener.of((update: ViewUpdate) => {
@@ -181,17 +181,24 @@ private[evadid] object CodeMirrorRuntime {
       programmatic = true
       try {
         if isJava then {
-          val withoutHistory = view.state.update(js.Dynamic.literal(effects = javaHistory.reconfigure(js.Array[Extension]())))
+          val withoutHistory = view.state.update(js.Dynamic.literal(effects = undoHistory.reconfigure(js.Array[Extension]())))
           val restored = withoutHistory.state.update(js.Dynamic.literal(
             changes = js.Dynamic.literal(from = 0, to = withoutHistory.state.doc.length, insert = CodeMirrorJavaLineEndings.text(next)),
             effects = js.Array[js.Object](CodeMirrorJavaLineEndings.reset.of(CodeMirrorJavaLineEndings.parse(next)),
-              diagnostics.effect.of(js.Array[js.Object]()), javaHistory.reconfigure(Libraries.history())),
+              diagnostics.effect.of(js.Array[js.Object]()), undoHistory.reconfigure(Libraries.history())),
             annotations = Libraries.Transaction.addToHistory.of(false)))
           view.dispatch(js.Array(withoutHistory, restored))
           javaSource = next
-        } else view.dispatch(js.Dynamic.literal(
-          changes = js.Dynamic.literal(from = 0, to = view.state.doc.length, insert = next),
-          effects = diagnostics.effect.of(js.Array[js.Object]())))
+        } else {
+          // Like Java: an outside change (restoration, synchronization) starts a new undo history,
+          // so undo never brings back text the answer has replaced.
+          val withoutHistory = view.state.update(js.Dynamic.literal(effects = undoHistory.reconfigure(js.Array[Extension]())))
+          val restored = withoutHistory.state.update(js.Dynamic.literal(
+            changes = js.Dynamic.literal(from = 0, to = withoutHistory.state.doc.length, insert = next),
+            effects = js.Array[js.Object](diagnostics.effect.of(js.Array[js.Object]()), undoHistory.reconfigure(Libraries.history())),
+            annotations = Libraries.Transaction.addToHistory.of(false)))
+          view.dispatch(js.Array(withoutHistory, restored))
+        }
       } finally programmatic = false
     }
 

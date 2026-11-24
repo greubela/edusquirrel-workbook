@@ -36,6 +36,7 @@ import it.evadid.workbook.elements.interactionElements.programming.programmingEx
 import it.evadid.workbook.elements.interactionElements.slideshow.SlideshowGrader
 import it.evadid.workbook.elements.interactionElements.choice.ChoiceGrader
 import it.evadid.workbook.elements.interactionElements.reorderExercise.{ReorderCodeGrader, ReorderMapIdGrader}
+import it.evadid.workbook.elements.interactionElements.matching.{MatchingGrader, MatchingInteractionState}
 import it.evadid.workbook.elements.interactionElements.table.{TableAnswer, TableCellGrader}
 import upickle.default.*
 
@@ -147,6 +148,9 @@ object InteractionFormat {
     Serializer.serializerForSubclass[ReorderCodeGrader, WorkbookInteractionGrader[ReorderInteractionState[String], Unit]](classOf[ReorderCodeGrader])))
   case object ReorderMapIdInteractionFormat extends Typed[ReorderInteractionState[LanguageMapContentId], Unit, Unit](gradersFor(
     Serializer.serializerForSubclass[ReorderMapIdGrader, WorkbookInteractionGrader[ReorderInteractionState[LanguageMapContentId], Unit]](classOf[ReorderMapIdGrader])))
+  case object MatchingInteractionFormat extends Typed[MatchingInteractionState, Int, Unit](gradersFor(
+    Serializer.serializerForSubclass[MatchingGrader, WorkbookInteractionGrader[MatchingInteractionState, Int]](classOf[MatchingGrader])))
+  case object LikertScaleInteractionFormat extends Typed[MatchingInteractionState, Unit, Unit]
   case object SortingInteractionFormat extends Typed[SortingInteractionState, Unit, Unit]
   case object SortingReasonInteractionFormat extends Typed[SortingReasonInteractionState, Unit, Unit]
   case object SlideshowFormat extends Typed[SlideshowState, Unit, Unit](slideshowGraders)
@@ -181,6 +185,8 @@ object InteractionFormat {
     SquareMiddleHashInteractionFormat,
     ReorderCodeInteractionFormat,
     ReorderMapIdInteractionFormat,
+    MatchingInteractionFormat,
+    LikertScaleInteractionFormat,
     SortingInteractionFormat,
     SortingReasonInteractionFormat,
     SlideshowFormat,
