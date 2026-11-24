@@ -12,5 +12,7 @@ object SourceWarning {
   enum Kind derives ReadWriter {
     /** A call or attribute that neither the program nor a known dependency defines. */
     case UnknownDependency
+    /** A statement the parser keeps as text because it cannot read it; `subject` is its first line. */
+    case Unreadable
   }
 }

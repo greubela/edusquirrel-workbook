@@ -40,6 +40,9 @@ class ProgramAnalysisSpec extends FunSuite {
     assertEquals(located(ProgrammingStateRaw(Java, source)), expected)
     assertEquals(located(ProgrammingStateJavaStructured(source)), expected)
     assert(ProgramAnalysis.of(ProgrammingStateRaw(Python, "helper(3)\n")).warnings.isEmpty, "Python expressions are not located yet")
+    val unreadable = ProgramAnalysis.of(ProgrammingStateRaw(Java, "class Main {\n  static void main(String[] a) {\n    int x = 1;\n" +
+      "    assert x > 0;\n  }\n}")).warnings
+    assertEquals(unreadable.map(warning => (warning.kind, warning.startLine)), Seq((SourceWarning.Kind.Unreadable, 4)))
   }
 
   test("unsupported source blocks the static drawing but not dynamic execution") {

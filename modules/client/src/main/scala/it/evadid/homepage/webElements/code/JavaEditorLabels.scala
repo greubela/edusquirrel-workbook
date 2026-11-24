@@ -21,7 +21,7 @@ object JavaEditorLabels {
   enum Key {
     case javaTitle, javaSubtitle, javaShowClasses, javaHideClasses, javaNavigation, javaTaskReference
     case javaNoClasses, javaNoClassesHint, javaAddClass, javaAddFunction
-    case javaLibraryClass, javaLibraryClassHint, javaUnknownClass, javaUnknownClassHint, javaUnknownUse
+    case javaLibraryClass, javaLibraryClassHint, javaUnknownClass, javaUnknownClassHint, javaUnknownUse, javaUnreadable
     case javaModes, javaModeClass, javaModeFunction, javaModeFull
     case javaViewFunction, javaViewClass, javaViewSource, javaViewEmpty
     case javaSourceHeading, javaSelectionHeading, javaEditsKept, javaChooseEntry, javaChooseEntryHint, javaDraftWarning

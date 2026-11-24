@@ -40,6 +40,7 @@
   "javaUnknownClass": "unknown",
   "javaUnknownClassHint": "Your program uses this class, but nothing defines it. Define or import it first.",
   "javaUnknownUse": "“{name}” is used, but nothing defines it.",
+  "javaUnreadable": "“{name}” cannot be read; this statement can neither run nor be converted.",
   "javaAddClass": "Add class",
   "javaAddFunction": "Add function",
   "javaModes": "Java editing mode",

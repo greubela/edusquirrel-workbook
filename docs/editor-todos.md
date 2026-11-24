@@ -1,7 +1,7 @@
 # Editor follow-ups
 
 - Nested Python declarations: outer graphs stay hidden where a nested definition interrupts the source region. Inner function graphs remain independent.
-- Diagnostic marks: Java unknown-dependency uses are located by the Java parser (`JavaSourceWarnings`) and marked with a localized warning in every Java mode (`JavaFragmentRange.localize` moves marks into fragments). Still missing: located Python expressions (its parser records only top-level statement lines) and locations of unsupported expressions (the adapter does not keep the AST node). Do not guess positions by searching for repeated source fragments.
+- Diagnostic marks: Java unknown-dependency uses and unreadable statements are located by the Java parser (`JavaSourceWarnings`) and marked with a localized warning in every Java mode (`JavaFragmentRange.localize` moves marks into fragments). Still missing: located Python expressions (its parser records only top-level statement lines) and locations of constructs the Java adapter (not the parser) refuses, since the adapter does not keep the AST node. Do not guess positions by searching for repeated source fragments.
 
 ## Remaining architecture work
 

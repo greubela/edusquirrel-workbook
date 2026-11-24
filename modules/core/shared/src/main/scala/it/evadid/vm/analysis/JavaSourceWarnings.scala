@@ -6,23 +6,26 @@ import it.evadid.vm.parsing.java.clean.{JavaParser, JavaSourceMap}
 import it.evadid.vm.parsing.java.clean.model.JavaAST
 import it.evadid.vm.parsing.java.clean.model.JavaAST.*
 
-/** Locates uses of unknown dependencies in Java source with the ranges of the located Java parser; Python's
-  * parser does not locate expressions yet. Verbatim library definitions are masked first, as for conversion.
+/** Locates uses of unknown dependencies and unreadable statements in Java source with the ranges of the located
+  * Java parser; Python's parser does not locate expressions yet. Verbatim library definitions are masked first, as
+  * for conversion.
   */
 object JavaSourceWarnings {
   private val parser = new JavaParser(retainParentheses = false, retainComments = true)
 
-  /** The uses of the dotted `paths` (unknown calls and attributes) in `source`. */
-  def unknownUses(source: String, paths: Set[Seq[String]]): Seq[SourceWarning] =
-    if paths.isEmpty then Nil
-    else parser.parseWithLocations(KnownDependencies.maskDefinitions(source, Java)).toOption.toSeq.flatMap { located =>
-      def warning(path: Seq[String], range: JavaSourceMap.SourceRange) = for {
+  /** The uses of the dotted `paths` (unknown calls and attributes) and the unreadable statements in `source`. */
+  def of(source: String, paths: Set[Seq[String]]): Seq[SourceWarning] =
+    parser.parseWithLocations(KnownDependencies.maskDefinitions(source, Java)).toOption.toSeq.flatMap { located =>
+      def warning(kind: SourceWarning.Kind, subject: String, range: JavaSourceMap.SourceRange) = for {
         start <- located.position(range.start)
         end <- located.position(range.end)
-      } yield SourceWarning(SourceWarning.Kind.UnknownDependency, path.mkString("."), start.line, start.column, end.line, end.column)
+      } yield SourceWarning(kind, subject, start.line, start.column, end.line, end.column)
       // A use is marked as a whole: its receivers (`System.out2` in `System.out2.println`) are not visited.
-      def visit(node: JavaSourceMap.Node[JavaAST]): Seq[SourceWarning] = useOf(node) match {
-        case Some((path, range, rest)) if paths(path) => warning(path, range).toSeq ++ rest.flatMap(visit)
+      def visit(node: JavaSourceMap.Node[JavaAST]): Seq[SourceWarning] = (node.value, useOf(node)) match {
+        case (JavaUnparsableStatement(text), _) =>
+          warning(SourceWarning.Kind.Unreadable, text.trim.linesIterator.nextOption().getOrElse(""), node.range).toSeq
+        case (_, Some((path, range, rest))) if paths(path) =>
+          warning(SourceWarning.Kind.UnknownDependency, path.mkString("."), range).toSeq ++ rest.flatMap(visit)
         case _ => node.children.flatMap(visit)
       }
       visit(located.root)

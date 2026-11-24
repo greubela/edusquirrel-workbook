@@ -40,6 +40,7 @@
   "javaUnknownClass": "ukendt",
   "javaUnknownClassHint": "Dit program bruger denne klasse, men intet definerer den. Den skal først defineres eller importeres.",
   "javaUnknownUse": "„{name}“ bruges, men er ikke defineret nogen steder.",
+  "javaUnreadable": "„{name}“ kan ikke læses; sætningen kan hverken køres eller overføres.",
   "javaAddClass": "Tilføj klasse",
   "javaAddFunction": "Tilføj funktion",
   "javaModes": "Java-redigeringstilstand",

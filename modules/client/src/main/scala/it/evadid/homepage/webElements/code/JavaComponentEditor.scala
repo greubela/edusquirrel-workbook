@@ -4,6 +4,7 @@ import it.evadid.vm.structure.JavaUmlDiagram
 import com.raquo.laminar.api.L.*
 import it.evadid.homepage.webElements.editor.code.ProgrammingStateView
 import it.evadid.homepage.webElements.editor.code.program.ProgramAnalyzer
+import it.evadid.vm.analysis.SourceWarning
 import com.raquo.laminar.nodes.ReactiveSvgElement
 import it.evadid.core.datastructures.language.AppLanguage.Java
 import it.evadid.homepage.webElements.HtmlAppElement
@@ -45,9 +46,10 @@ final class JavaComponentEditor(
   private val analysis = analyzer.statusOf(state.signal)
   /** What the program uses without defining it, from the worker's analysis; the last result stays while the next is pending. */
   private val externalClasses = analysis.scanLeft(external(UmlClassDiagram(Nil), _))(external)
-  /** Located uses of unknown dependencies, only while the analysis describes the current source. */
-  private[code] val warnings = analysis.combineWith(labels(Key.javaUnknownUse)).map {
-    case (ProgramAnalyzer.Status.Ready(result), text) => result.warnings.map(warning => CodeMirrorEditor.mark(warning, text.replace("{name}", warning.subject)))
+  /** Located warnings (unknown dependencies, unreadable statements), only while the analysis describes the current source. */
+  private[code] val warnings = analysis.combineWith(labels.all).map {
+    case (ProgramAnalyzer.Status.Ready(result), texts) => result.warnings.map(warning =>
+      CodeMirrorEditor.mark(warning, texts(warningText(warning.kind)).replace("{name}", warning.subject)))
     case _ => Nil
   }
   /** Marks of the printed program; the fragment editors show those within their fragment. */
@@ -189,6 +191,11 @@ final class JavaComponentEditor(
 }
 
 object JavaComponentEditor {
+  private def warningText(kind: SourceWarning.Kind): Key = kind match {
+    case SourceWarning.Kind.UnknownDependency => Key.javaUnknownUse
+    case SourceWarning.Kind.Unreadable => Key.javaUnreadable
+  }
+
   private enum Panel(val status: Key) {
     case Function extends Panel(Key.javaViewFunction)
     case Class extends Panel(Key.javaViewClass)
