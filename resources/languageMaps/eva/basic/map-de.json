@@ -129,6 +129,8 @@
   "scaffoldingReady": "Bereit",
   "gradingCompactScore": "{correct}/{total} korrekt",
   "gradingCompactUnavailable": "({count} offen / fehlerhaft)",
+  "gradingDetailsShow": "Details anzeigen",
+  "gradingDetailsHide": "Details ausblenden",
   "resetAllData": "Alle gespeicherten Antworten zurücksetzen",
   "resetAllDataRunning": "Gespeicherte Antworten werden gelöscht…",
   "resetAllDataRetry": "Vollständigen Reset erneut versuchen",

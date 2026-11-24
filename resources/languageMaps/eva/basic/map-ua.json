@@ -38,6 +38,8 @@
   "scaffoldingReady": "Готово",
   "gradingCompactScore": "Правильно: {correct}/{total}",
   "gradingCompactUnavailable": "(очікують / недоступні: {count})",
+  "gradingDetailsShow": "Показати деталі",
+  "gradingDetailsHide": "Сховати деталі",
   "resetAllData": "Скинути всі збережені відповіді",
   "resetAllDataRunning": "Видалення збережених відповідей…",
   "resetAllDataRetry": "Повторити повне скидання",

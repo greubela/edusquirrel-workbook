@@ -130,6 +130,8 @@
   "scaffoldingReady": "Ready",
   "gradingCompactScore": "{correct}/{total} correct",
   "gradingCompactUnavailable": "({count} pending / unavailable)",
+  "gradingDetailsShow": "Show details",
+  "gradingDetailsHide": "Hide details",
   "resetAllData": "Reset all saved answers",
   "resetAllDataRunning": "Deleting saved answers…",
   "resetAllDataRetry": "Retry full reset",

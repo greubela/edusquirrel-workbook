@@ -90,6 +90,8 @@ test('text feedback preserves cached and in-flight grading across display langua
     assert(await hintMessage.isVisible(), 'the below-exercise hint is readable on a narrow viewport');
     assert(await hintMessage.evaluate(element => element.scrollWidth <= element.clientWidth + 1), 'hint text wraps inside its panel');
     await page.setViewportSize({width:1440,height:1000});
+    assert(await feedback.locator('.feedback-details').isHidden(), 'overview results start collapsed');
+    await feedback.locator('button.feedback-details-toggle').click();
     assert.equal(requests[0].answer, answer);
     assert(requests[0].hints.length === 1 && !requests[0].criterion);
     policy.mode = 'hold';
