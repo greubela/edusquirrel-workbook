@@ -31,18 +31,21 @@ case class CodeMirrorEditor(
     loadingLabel: Signal[String] = Val("Loading editor…"),
     firstLineNumber: Signal[Int] = Val(1),
     /** Equivalent documents leave the user's text, including formatting the state cannot represent, untouched. */
-    sameSource: (String, String) => Boolean = _ == _
+    sameSource: (String, String) => Boolean = _ == _,
+    /** The flowchart gutter of each language, shown when the configuration enables it. */
+    flowchartSource: ProgrammingLanguage => Option[CodeMirrorFlowchartSource] = CodeMirrorFlowchartSource.forLanguage
 ) extends SimpleWebEditor[String, CodeMirrorEditorConfig] {
   import CodeMirrorEditor.*
 
   private val handle = Var(Option.empty[CodeMirrorHandle])
   private val loadFailed = Var(false)
+  private val flowchart = flowchartSource(language)
 
   override def getDomElement(): L.Element = div(
     cls := "code-mirror-editor-host",
     child <-- config.signal.map(_.showFlowchartGutter).distinct.map { showFlowchart =>
       div(
-        cls := ("code-editor code-mirror-editor" + (if showFlowchart && language == Python then " code-mirror-editor-flowchart" else "")),
+        cls := ("code-editor code-mirror-editor" + (if showFlowchart && flowchart.nonEmpty then " code-mirror-editor-flowchart" else "")),
         styleAttr <-- config.signal.map(_.editorFont).map(font =>
           s"--code-font-family: '${font.name}', 'Fira Code', 'JetBrains Mono', monospace; --code-font-size: ${font.sizeInPx}px;"),
         p(cls := "code-mirror-editor__loading", role := "status",
@@ -56,12 +59,11 @@ case class CodeMirrorEditor(
           val lineNumbers = firstLineNumber.map(value => math.max(1, value)).distinct.observe(using ctx.owner)
           CodeMirror.inBackground(()).foreach { _ =>
             if !lifetime.isKilled && ctx.thisNode.ref.isConnected then {
-              val analysis = Option.when(showFlowchart && language == Python)(
-                new CodeMirrorFlowchartGutter.Analysis(new CodeMirrorFlowchartGutter.Cache))
+              val analysis = flowchart.filter(_ => showFlowchart).map(_.open())
               // The callback is required by the native CodeMirror API; Scala consumers observe the Var.
               val created = createEditor(EditorConfig(ctx.thisNode.ref, underlyingVar.now(),
                 value => if !lifetime.isKilled && !sameSource(underlyingVar.now(), value) then underlyingVar.set(value),
-                languageToJs(language), analysis.map(current => source => current.chartForDoc(source).map(CodeMirrorFlowchartGutter.render)),
+                languageToJs(language), analysis.map(current => source => current.chart(source).map(CodeMirrorFlowchartGutter.render)),
                 firstLineNumber = lineNumbers.now()))
               created.foreach { native =>
                 if lifetime.isKilled || !ctx.thisNode.ref.isConnected then {
