@@ -1,4 +1,4 @@
-package it.evadid.homepage.webElements.editor.code.SnapEditor.toRefactor
+package it.evadid.homepage.webElements.editor.code.SnapEditor
 
 import it.evadid.homepage.control.info.HomepageLoggerInfo
 import it.evadid.homepage.webElements.editor.code.SnapEditor.SnapCodeEditor.*

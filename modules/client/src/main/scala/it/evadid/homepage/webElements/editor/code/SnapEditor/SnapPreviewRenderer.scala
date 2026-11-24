@@ -3,7 +3,7 @@ package it.evadid.homepage.webElements.editor.code.SnapEditor
 import it.evadid.core.datastructures.language.AppLanguage
 import it.evadid.facades.Snap
 import it.evadid.facades.Snap.*
-import it.evadid.homepage.webElements.editor.code.SnapEditor.toRefactor.{CanvasVisibility, SnapCodeEditorConfig}
+import it.evadid.homepage.webElements.editor.code.SnapEditor.{CanvasVisibility, SnapCodeEditorConfig}
 import it.evadid.workbook.elements.interactionElements.programming.state.ProgrammingStateRaw
 import org.scalajs.dom
 import org.scalajs.dom.CanvasRenderingContext2D

@@ -8,7 +8,7 @@ import it.evadid.workbook.elements.interactionElements.programming.state.{Progra
 import com.raquo.airstream.ownership.{ManualOwner, Owner}
 import com.raquo.laminar.api.L.*
 import com.raquo.airstream.state.Var
-import it.evadid.homepage.webElements.editor.code.SnapEditor.toRefactor.{CanvasVisibility, SnapCodeEditorConfig}
+import it.evadid.homepage.webElements.editor.code.SnapEditor.{CanvasVisibility, SnapCodeEditorConfig}
 import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseRegular.ProgrammingExercise
 import it.evadid.core.datastructures.language.AppLanguage.*
 import munit.FunSuite

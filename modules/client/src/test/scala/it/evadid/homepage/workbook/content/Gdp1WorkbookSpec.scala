@@ -4,7 +4,7 @@ import it.evadid.workbook.interaction.sync.UpdateImportance
 
 import munit.FunSuite
 import it.evadid.core.datastructures.language.AppLanguage.{SnapLanguage, Python, Java}
-import it.evadid.homepage.webElements.editor.code.SnapEditor.toRefactor.SnapCodeEditorConfig
+import it.evadid.homepage.webElements.editor.code.SnapEditor.SnapCodeEditorConfig
 import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseTurtle.*
 import it.evadid.workbook.elements.interactionElements.programming.state.{ProgrammingStateJavaStructured, ProgrammingStatePythonStructured, ProgrammingStateRaw}
 import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseRegular.{ExerciseDataView, ProgramDataTestGrader, ProgrammingExerciseFullJava, SortListExercise}

@@ -2,7 +2,7 @@ package it.evadid.homepage.webElements.editor.code.SnapEditor
 
 import com.raquo.airstream.ownership.Owner
 import it.evadid.core.datastructures.language.AppLanguage.HumanLanguage
-import it.evadid.homepage.webElements.editor.code.SnapEditor.toRefactor.SnapCodeEditorConfig
+import it.evadid.homepage.webElements.editor.code.SnapEditor.SnapCodeEditorConfig
 import it.evadid.workbook.elements.interactionElements.programming.*
 import it.evadid.workbook.elements.interactionElements.programming.state.snap.*
 import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseRegular.*

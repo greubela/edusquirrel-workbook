@@ -7,7 +7,7 @@ import it.evadid.core.datastructures.language.LanguageMapContentId
 import it.evadid.core.datastructures.state.StateHelper.StateBasedVar
 import it.evadid.homepage.webElements.basic.HtmlButtonElement
 import it.evadid.homepage.webElements.editor.code.EvaEditor.EvaEditorConfig
-import it.evadid.homepage.webElements.editor.code.SnapEditor.toRefactor.SnapCodeEditorConfig
+import it.evadid.homepage.webElements.editor.code.SnapEditor.SnapCodeEditorConfig
 import it.evadid.workbook.elements.interactionElements.programming.state.snap.ProgrammingEditorPalette
 import it.evadid.homepage.workbook.htmlRenderer.HtmlRenderFactory.LineBasedRenderingFactory
 import it.evadid.homepage.workbook.htmlRenderer.atomarLineRenderings.{AtomarLineRendering, ElementCard}

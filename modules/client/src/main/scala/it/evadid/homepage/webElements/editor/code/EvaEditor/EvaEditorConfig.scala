@@ -6,7 +6,7 @@ import it.evadid.homepage.webElements.code.JavaComponentEditor
 import it.evadid.homepage.webElements.editor.blocks.BlockProgramEditor
 import it.evadid.homepage.webElements.editor.abstractions.WebEditorConfig
 import it.evadid.homepage.webElements.editor.code.SnapEditor.SnapCodeEditor
-import it.evadid.homepage.webElements.editor.code.SnapEditor.toRefactor.SnapCodeEditorConfig
+import it.evadid.homepage.webElements.editor.code.SnapEditor.SnapCodeEditorConfig
 import it.evadid.homepage.webElements.editor.code.codemirror.CodeMirrorEditor
 import it.evadid.homepage.webElements.editor.config.CodeMirrorEditorConfig
 import it.evadid.util.logging.Logger

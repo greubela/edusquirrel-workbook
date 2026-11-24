@@ -1,4 +1,4 @@
-package it.evadid.homepage.webElements.editor.code.SnapEditor.toRefactor
+package it.evadid.homepage.webElements.editor.code.SnapEditor
 
 import it.evadid.core.datastructures.language.AppLanguage.{English, Java, ProgrammingLanguage, Python}
 import it.evadid.vm.code.abstractions.BeExpression
