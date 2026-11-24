@@ -102,9 +102,9 @@ object FlowchartGutter {
       case Nil => Nil
       case result => FlowLine(result.head.line, "start") :: result ::: List(FlowLine(result.last.line, "stop"))
     }
+    // A function's rows skip nested declarations, which have graphs of their own beside it.
     def declarations(items: List[Positioned]): List[List[FlowLine]] = items.flatMap { item =>
-      val nested = item.body.exists(child => Set("function", "class")(child.kind))
-      val own = if item.kind == "function" && !nested then {
+      val own = if item.kind == "function" then {
         val bodyRows = rows(item.body)
         val end = bodyRows.lastOption.map(_.line).orElse(item.body.lastOption.map(_.line)).getOrElse(item.line)
         List(FlowLine(item.line, "start") :: bodyRows ::: List(FlowLine(end, "stop")))

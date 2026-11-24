@@ -104,4 +104,10 @@ class PythonFlowchartGutterSpec extends FunSuite {
     assertEquals(result.flow.map(rows => (rows.head.line, rows.head.kind, rows.last.line, rows.last.kind)),
       List((3, "start", 4, "stop"), (5, "start", 7, "stop")))
   }
+
+  test("a function keeps its graph around a nested function, which has its own") {
+    val result = chart("def outer():\n    x = 1\n    def inner():\n        print(x)\n    inner()\nouter()")
+    assertEquals(result.flow.map(rows => (rows.head.line, rows.last.line)), List((1, 5), (3, 4)))
+    assert(!result.flow.head.exists(row => row.line == 4), "the outer rows skip the nested body")
+  }
 }

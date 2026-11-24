@@ -42,4 +42,11 @@ class NestedFlowchartGutterSpec extends EditorDomSuite {
     assert(rendered.rows.values.flatMap(_.slices).forall(slice => svg(slice.image).querySelectorAll("text").length == 0))
     assertEquals(CodeMirrorFlowchartGutter.render(FlowchartGutter.empty).rows, Map.empty)
   }
+
+  test("a nested function's graph is drawn beside its outer function's") {
+    val rendered = CodeMirrorFlowchartGutter.render(PythonFlowchartGutter.fromPython(
+      "def outer():\n    x = 1\n    def inner():\n        print(x)\n    inner()\nouter()"))
+    assertEquals(rendered.rows(4).slices.map(_.x).sorted, List(0.0, 12.0))
+    assertEquals(rendered.rows(1).slices.map(_.x), List(0.0))
+  }
 }

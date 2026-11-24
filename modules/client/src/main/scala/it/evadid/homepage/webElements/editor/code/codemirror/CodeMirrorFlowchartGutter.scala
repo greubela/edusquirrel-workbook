@@ -15,7 +15,11 @@ object CodeMirrorFlowchartGutter {
 
     val config = BlockRenderingConfig(segmentSize = 2)
     val height = 16.0
-    val slices = chart.flow.zipWithIndex.flatMap { (plan, group) =>
+    def depthOf(plan: List[FlowchartGutter.FlowLine]) =
+      chart.nodes.filter(node => plan.exists(_.line == node.line)).map(_.depth).minOption.getOrElse(0)
+    // Graphs are offset by their depth below the shallowest one, so a nested function's graph runs beside its outer one.
+    val shallowest = chart.flow.map(depthOf).minOption.getOrElse(0)
+    val slices = chart.flow.flatMap { plan =>
       val expanded = plan.zipWithIndex.flatMap { (line, index) =>
         val next = plan.lift(index + 1).map(_.line).getOrElse(line.line)
         line :: ((line.line + 1) until next).map(FlowchartGutter.FlowLine(_, "gap")).toList
@@ -40,8 +44,7 @@ object CodeMirrorFlowchartGutter {
       svg.setAttribute("viewBox", s"0 0 $width $totalHeight")
       svg.appendChild(SvgLaminarRenderer.renderElementAsSvg(gutterLogger, BlockElements.layout(overlay.toShape(config))).ref)
       val image = "data:image/svg+xml;charset=utf-8," + encodeURIComponent(svg.outerHTML)
-      val depth = chart.nodes.filter(node => plan.exists(_.line == node.line)).map(_.depth).minOption.getOrElse(0)
-      val x = if group == 0 then 0.0 else math.max(12.0, depth * 12.0)
+      val x = (depthOf(plan) - shallowest) * 12.0
       expanded.zipWithIndex.groupBy(_._1.line).toList.map { (line, rows) =>
         val first = rows.map(_._2).min
         val last = rows.map(_._2).max
