@@ -215,9 +215,12 @@ class JavaMethodSourceSpec extends FunSuite {
     assertEquals(candidateFor("/* incomplete"), None)
   }
 
-  test("method projection rejects extra declarations and non-comment text") {
+  test("method projection selects the last newly inserted function") {
+    assertEquals(candidateFor("public void renamed() {} public void pasted() {}").map(_.name), Some("pasted"))
+  }
+
+  test("method projection rejects fields, initializer blocks and non-comment text") {
     List(
-      "public void renamed() {} public void pasted() {}",
       "public void renamed() {} int field = 1;",
       "public void renamed() {} static { int value = 1; }",
       "public void renamed() {} \"not whitespace\"",

@@ -68,7 +68,7 @@ test('Java hints retain in-flight feedback across editor close and display-langu
     await page.getByRole('button', {name: /Editor.*öffnen|Open editor/i}).last().click();
     const editor = page.locator('dialog[open] .eva-editor');
     await editor.getByRole('tab', {name:'Java',exact:true}).click();
-    await editor.getByRole('button', {name: 'Full source', exact: true}).click();
+    await editor.getByRole('tab', {name: 'Full Mode', exact: true}).click();
     const code = editor.locator('.cm-content');
     const draft = 'class Drawing {\n  static void square(int side) {';
     await code.click();
@@ -130,7 +130,7 @@ test('Java method editing and theme changes preserve source and undo history', a
     const editor = page.locator('dialog[open] .eva-editor');
     await editor.getByRole('tab', {name:'Java',exact:true}).click();
     await editor.locator('.cm-content').waitFor();
-    await editor.getByRole('button', {name: 'Full source', exact: true}).click();
+    await editor.getByRole('tab', {name: 'Full Mode', exact: true}).click();
     await page.waitForFunction(() => !!globalThis.EduSquirrelCodeMirrorLibraries?.EditorView);
     async function waitForDocumentPrefix(prefix) {
       await page.waitForFunction(prefix => {
@@ -150,14 +150,14 @@ test('Java method editing and theme changes preserve source and undo history', a
     const original = await page.evaluate(() => EduSquirrelCodeMirrorLibraries.EditorView
       .findFromDOM(document.querySelector('dialog[open] .cm-editor')).state.doc.toString());
     await checkFirstLine(1);
-    await editor.getByRole('button', {name: 'Selection', exact: true}).click();
+    await editor.getByRole('tab', {name: 'Function Mode', exact: true}).click();
     await waitForDocumentPrefix('public static void main(String[] args)');
     const main = await page.evaluate(() => EduSquirrelCodeMirrorLibraries.EditorView
       .findFromDOM(document.querySelector('dialog[open] .cm-editor')).state.doc.toString());
     assert(original.includes(main), 'the method document remains an exact source fragment');
     const mainFirstLine = original.slice(0, original.indexOf(main)).split(/\r\n|\r|\n/).length;
     await checkFirstLine(mainFirstLine);
-    await editor.getByRole('button', {name: 'Full source', exact: true}).click();
+    await editor.getByRole('tab', {name: 'Full Mode', exact: true}).click();
     await waitForDocumentPrefix(original);
     await checkFirstLine(1);
     await page.evaluate(() => {
@@ -188,6 +188,13 @@ test('Java method editing and theme changes preserve source and undo history', a
     await page.keyboard.press(process.platform === 'darwin' ? 'Meta+z' : 'Control+z');
     assert.equal(await page.evaluate(() => appearanceProbe.view.state.doc.toString()), original, 'undo survives theme changes');
     const diagramEntry = label => editor.locator('.uml-entry').filter({hasText: label});
+    const box = editor.locator('.uml-class').first();
+    const classEntry = box.locator('.uml-class__header .uml-entry');
+    const beforeHover = await classEntry.boundingBox();
+    await classEntry.hover();
+    assert.deepEqual(await classEntry.boundingBox(), beforeHover, 'UML hover preserves element geometry');
+    assert.equal(await box.evaluate(node => getComputedStyle(node).borderRadius), '0px', 'UML classes have square corners');
+    assert.equal(await editor.getByRole('tab', {name:'Java',exact:true}).innerText(), 'Java');
     await diagramEntry('square(side: int)').click();
     await waitForDocumentPrefix('static void square(int side)');
     const square = await page.evaluate(() => {
@@ -202,21 +209,21 @@ test('Java method editing and theme changes preserve source and undo history', a
     await checkFirstLine(mainFirstLine);
     assert(await page.evaluate(() => methodNumberingView === EduSquirrelCodeMirrorLibraries.EditorView
       .findFromDOM(document.querySelector('dialog[open] .cm-editor'))), 'switching functions reuses the mounted function editor');
-    await editor.getByRole('button', {name: 'Full source', exact: true}).click();
+    await editor.getByRole('tab', {name: 'Full Mode', exact: true}).click();
     await waitForDocumentPrefix(original);
     assert.equal(await page.evaluate(() => EduSquirrelCodeMirrorLibraries.EditorView
       .findFromDOM(document.querySelector('dialog[open] .cm-editor')).state.doc.toString()), original,
     'diagram navigation preserves the full program');
     await page.locator('.fullscreen-close-button').click();
     await open.last().click();
-    await editor.getByRole('button', {name: 'Full source', exact: true}).click();
+    await editor.getByRole('tab', {name: 'Full Mode', exact: true}).click();
     await waitForDocumentPrefix(original);
     assert.equal(await page.evaluate(() => EduSquirrelCodeMirrorLibraries.EditorView
       .findFromDOM(document.querySelector('dialog[open] .cm-editor')).state.doc.toString()), original, 'source survives reopening');
     async function addMethod(name, parameters, isStatic) {
       const showClasses = editor.getByRole('button', {name: 'Show classes', exact: true});
       if (await showClasses.count()) await showClasses.click();
-      await editor.locator('.java-function-editor__diagram-actions').getByRole('button', {name: 'Add function', exact: true}).click();
+      await editor.locator('.uml-class').filter({has: editor.locator('.uml-class__header').getByText('Drawing', {exact:true})}).getByRole('button', {name: 'Add function', exact: true}).click();
       const dialog = page.getByRole('dialog', {name: 'Add function', exact: true});
       const staticOption = dialog.getByRole('checkbox', {name: 'Static method', exact: true});
       await staticOption.setChecked(isStatic);
@@ -230,7 +237,7 @@ test('Java method editing and theme changes preserve source and undo history', a
     assert.match(await addMethod('drawLine', 'int distance', true), /^public static void drawLine\(int distance\)/);
     assert.match(await addMethod('instanceMethod', '', false), /^public void instanceMethod\(\)/);
     assert.match(await addMethod('staticAgain', '', true), /^public static void staticAgain\(\)/);
-    await editor.getByRole('button', {name: 'Full source', exact: true}).click();
+    await editor.getByRole('tab', {name: 'Full Mode', exact: true}).click();
     await waitForDocumentPrefix('public class Drawing {');
     const withMethods = await page.evaluate(() => EduSquirrelCodeMirrorLibraries.EditorView
       .findFromDOM(document.querySelector('dialog[open] .cm-editor')).state.doc.toString());
@@ -243,7 +250,7 @@ test('Java method editing and theme changes preserve source and undo history', a
       const view = EduSquirrelCodeMirrorLibraries.EditorView.findFromDOM(document.querySelector('dialog[open] .cm-editor'));
       view.dispatch({changes: {from: view.state.doc.toString().indexOf('{') + 1, insert: '\n    Turtle.forward(7);'}});
     });
-    await editor.getByRole('button', {name: 'Full source', exact: true}).click();
+    await editor.getByRole('tab', {name: 'Full Mode', exact: true}).click();
     await waitForDocumentPrefix('public class Drawing {');
     await page.waitForFunction(() => {
       const node = document.querySelector('dialog[open] .cm-editor');
@@ -255,6 +262,10 @@ test('Java method editing and theme changes preserve source and undo history', a
     assert.match(edited, /public static void staticAgain\(\)/);
     assert.match(edited, /public void instanceMethod\(\)\s*\{\s*Turtle\.forward\(7\);/,
       'method edits update the central full program and preserve other methods');
+    await editor.locator('.cm-content').fill('class Main { static void main(String[] args) { System.out.println("first\\nsecond"); System.out.println(); Turtle.forward(20); } }');
+    await editor.locator('.java-component-editor__console').getByRole('button', {name:'Run',exact:true}).click();
+    await page.waitForFunction(() => document.querySelector('dialog[open] [role=log]')?.textContent === 'first\nsecond\n\n');
+    assert(!await editor.innerText().then(text => text.includes('This drawing uses commands that cannot be compared yet.')));
     assert.deepEqual(errors, []);
   } finally { await browser.close(); }
 });
@@ -288,7 +299,7 @@ test('language tabs follow the current draft and commit converted representation
     const python = editor.getByRole('tab', {name: 'Python', exact: true});
     const snap = editor.getByRole('tab', {name: 'Snap!', exact: true});
     await java.click();
-    await editor.getByRole('button', {name: 'Full source', exact: true}).click();
+    await editor.getByRole('tab', {name: 'Full Mode', exact: true}).click();
     await editor.locator('.cm-content').waitFor();
     const readSource = () => page.evaluate(() => {
       const current = document.querySelector('dialog[open] .cm-editor');
@@ -370,7 +381,7 @@ test('language tabs follow the current draft and commit converted representation
     assert.equal(await python.getAttribute('aria-selected'), 'true');
     await java.click();
     await page.waitForFunction(() => document.querySelector('dialog[open] button[aria-label="Java"]')?.getAttribute('aria-selected') === 'true');
-    await editor.getByRole('button', {name: 'Full source', exact: true}).click();
+    await editor.getByRole('tab', {name: 'Full Mode', exact: true}).click();
     assert.match(await readSource(), /Turtle\.forward\(12\);/, 'returning to Java uses the converted program in the central answer');
     assert.match(await readSource(), /void main\s*\(/, "the entry point survives without replaying the original Java wrapper");
     await checkTabs(true);

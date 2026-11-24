@@ -1,9 +1,11 @@
 package it.evadid.homepage.webElements.editor.code.EvaEditor.uml
 
+import it.evadid.vm.structure.JavaUmlDiagram
 import com.raquo.airstream.ownership.ManualOwner
 import com.raquo.laminar.api.L.*
 import it.evadid.homepage.webElements.editor.code.EditorDomSuite
-import it.evadid.homepage.webElements.editor.code.EvaEditor.uml.UmlStructureSelector.*
+import it.evadid.vm.structure.UmlClassDiagram
+import it.evadid.vm.structure.UmlClassDiagram.*
 import it.evadid.workbook.elements.interactionElements.programming.state.ProgrammingStateJavaStructured
 import org.scalajs.dom
 
@@ -30,7 +32,7 @@ class UmlStructureSelectorSpec extends EditorDomSuite {
   private val state = ProgrammingStateJavaStructured("import java.util.*;\n\n" + coach + "\n\n" + player)
 
   test("classes become UML boxes with attribute and function lines in source order") {
-    val diagram = UmlClassDiagram(state)
+    val diagram = JavaUmlDiagram(state)
     assertEquals(diagram.classes.map(_.name), Seq("Coach", "Player"))
     val Seq(coachBox, playerBox) = diagram.classes: @unchecked
     assertEquals(coachBox.code, coach)
@@ -43,7 +45,7 @@ class UmlStructureSelectorSpec extends EditorDomSuite {
   }
 
   test("entities carry the full declarations; overloads are told apart") {
-    val diagram = UmlClassDiagram(state)
+    val diagram = JavaUmlDiagram(state)
     val playerBox = diagram.classes(1)
     assertEquals(diagram.entity(playerBox.key), Some(SelectedClass("Player", player)))
     assertEquals(playerBox.attributes.head.entity, SelectedAttribute("count", "private static int count;"))
@@ -58,14 +60,14 @@ class UmlStructureSelectorSpec extends EditorDomSuite {
     val source = it.evadid.workbook.elements.interactionElements.programming.state.ProgrammingStateRaw(
       it.evadid.core.datastructures.language.AppLanguage.Python, "forward(10)").toJava.code
     assert(source.contains("class Turtle {"), source)
-    assertEquals(UmlClassDiagram(ProgrammingStateJavaStructured(source)).classes.map(_.name), Seq("Main"))
+    assertEquals(JavaUmlDiagram(ProgrammingStateJavaStructured(source)).classes.map(_.name), Seq("Main", "Turtle"))
     val edited = source.replace("move(distance);", "move(2 * distance);")
-    assertEquals(UmlClassDiagram(ProgrammingStateJavaStructured(edited)).classes.map(_.name), Seq("Main", "Turtle"))
+    assertEquals(JavaUmlDiagram(ProgrammingStateJavaStructured(edited)).classes.map(_.name), Seq("Main", "Turtle"))
   }
 
   test("clicking names, attributes and functions selects them; the selection follows source edits") {
     val source = Var(state)
-    val selector = UmlStructureSelector(source.signal)
+    val selector = UmlStructureSelector(source.signal.map(JavaUmlDiagram(_)))
     val owner = ManualOwner()
     val selected = selector.selectedEntitySignal.observe(using owner)
     val unmount = mount(selector.getDomElement())

@@ -17,6 +17,13 @@ final class TurtleTaskEditorExtension(
   override def getDomElement(): Element =
     // With a target every language previews live; without one the program is run on request.
     div(cls := "eva-editor__sidebar turtle-sidebar",
-      preview.fold(panel.getDomElement())(live => div(cls := "turtle-live-preview", live.getDomElement())),
+      preview.fold[Element](div(child <-- state.signal.map {
+        case java: ProgrammingStateJavaStructured =>
+          scala.util.Try(java.toBeExpression.turtleCommandExecutionInfo.completedCommands).fold(
+            error => p(role := "alert", error.getMessage),
+            commands => it.evadid.homepage.workbook.htmlRenderer.interactionRenderer.turtleStitch.TurtleJsxGraphRenderer.render(
+              it.evadid.homepage.workbook.htmlRenderer.interactionRenderer.turtleStitch.TurtleDrawingGrading.drawingScene(commands), "Your drawing"))
+        case _ => panel.getDomElement()
+      }))(live => div(cls := "turtle-live-preview", live.getDomElement())),
       onUnmountCallback(_ => execution.close()))
 }

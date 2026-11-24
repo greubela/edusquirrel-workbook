@@ -109,8 +109,11 @@ abstract class JavaFragmentEditor[I](
       if draft == local.now() && !range.text(state.now()).contains(draft)
       (next, nextRange) <- range.replace(state.now(), draft)
     } {
-      fragment.set(Some(Fragment(identify(next, nextRange, current.identity).getOrElse(current.identity), Some(nextRange))))
+      val identity = identify(next, nextRange, current.identity)
+      val selectedRange = identity.flatMap(locate(next, _)).getOrElse(nextRange)
+      fragment.set(Some(Fragment(identity.getOrElse(current.identity), Some(selectedRange))))
       state.set(next)
+      selectedRange.text(next).filter(_ != draft).foreach(local.set)
     }
 
   private lazy val editor = CodeMirrorEditor(logger, local, language = Java, config = Var(editorConfig),

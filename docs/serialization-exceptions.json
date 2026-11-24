@@ -197,12 +197,6 @@
   "modules/client/src/main/scala/it/evadid/homepage/webElements/code/JavaFragmentEditor.scala#JavaFragmentRange:1": "Transient editor draft range; not a saved programming state",
   "modules/client/src/main/scala/it/evadid/homepage/webElements/code/JavaFragmentEditor.scala#Fragment:1": "Transient editor selection and draft range; not a saved programming state",
   "modules/client/src/main/scala/it/evadid/homepage/webElements/code/JavaFragmentEditor.scala#Function:1": "Transient editor selection derived from the class source",
-  "modules/client/src/main/scala/it/evadid/homepage/webElements/editor/code/EvaEditor/uml/UmlClassDiagram.scala#UmlClassDiagram:1": "View model derived from the structured Java state; never serialized",
-  "modules/client/src/main/scala/it/evadid/homepage/webElements/editor/code/EvaEditor/uml/UmlClassDiagram.scala#Visibility:1": "View model derived from the structured Java state; never serialized",
-  "modules/client/src/main/scala/it/evadid/homepage/webElements/editor/code/EvaEditor/uml/UmlClassDiagram.scala#MemberKind:1": "View model derived from the structured Java state; never serialized",
-  "modules/client/src/main/scala/it/evadid/homepage/webElements/editor/code/EvaEditor/uml/UmlClassDiagram.scala#MemberKey:1": "Transient diagram selection key; never serialized",
-  "modules/client/src/main/scala/it/evadid/homepage/webElements/editor/code/EvaEditor/uml/UmlClassDiagram.scala#EntityKey:1": "Transient diagram selection key; never serialized",
-  "modules/client/src/main/scala/it/evadid/homepage/webElements/editor/code/EvaEditor/uml/UmlClassDiagram.scala#UmlMember:1": "View model derived from the structured Java state; never serialized",
-  "modules/client/src/main/scala/it/evadid/homepage/webElements/editor/code/EvaEditor/uml/UmlClassDiagram.scala#UmlClass:1": "View model derived from the structured Java state; never serialized",
-  "modules/client/src/main/scala/it/evadid/homepage/webElements/editor/code/EvaEditor/uml/UmlStructureSelector.scala#UmlStructureSelector:1": "Laminar component holding a signal and selection Var; never serialized"
+  "modules/client/src/main/scala/it/evadid/homepage/webElements/editor/code/EvaEditor/uml/UmlStructureSelector.scala#UmlStructureSelector:1": "Laminar component holding a signal and selection Var; never serialized",
+  "modules/client/src/main/scala/it/evadid/homepage/webElements/code/JavaComponentEditor.scala#Mode:1": "Transient editing mode; not part of the saved answer"
 }

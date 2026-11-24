@@ -183,12 +183,6 @@
 .java-component-editor__diagram { min-width: 0; margin: 0; padding: 0; border: 0; }
 .java-component-editor__diagram:disabled { opacity: 0.55; }
 .java-component-editor .java-function-editor__diagram-section { overflow: auto; scrollbar-color: var(--editor-scrollbar) transparent; scrollbar-width: thin; }
-@media (min-width: 761px) {
-    .java-function-based-editor.java-component-editor { grid-template-columns: minmax(0, 1fr); grid-template-rows: auto fit-content(40%) minmax(0, 1fr); grid-template-areas: "header" "navigation" "workspace"; }
-    .java-component-editor.java-function-based-editor--with-reference { grid-template-columns: minmax(0, 1fr) minmax(280px, 320px); grid-template-areas: "header header" "navigation reference" "workspace reference"; }
-    .java-function-based-editor.java-component-editor.java-function-based-editor--structure-collapsed { grid-template-rows: auto minmax(0, 1fr); grid-template-areas: "header" "workspace"; }
-    .java-component-editor.java-function-based-editor--with-reference.java-function-based-editor--structure-collapsed { grid-template-areas: "header header" "workspace reference"; }
-}
 
 @media (max-width: 1024px) {
     .java-function-based-editor--with-reference { grid-template-columns: 202px minmax(0, 1fr) 280px; }
@@ -269,4 +263,25 @@
     .java-function-based-editor .cm-scroller,
     .java-function-based-editor .code-mirror-editor__fallback,
     .java-function-based-editor .java-function-editor__field input { font-size: 16px; }
+}
+
+/* Component modes, diagram, source and console form one vertical workspace. */
+.java-function-based-editor.java-component-editor {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: auto auto auto minmax(0, 1fr);
+    grid-template-areas: "modes" "header" "navigation" "workspace";
+}
+.java-component-editor__modes { grid-area: modes; display: flex; gap: var(--space-sm); }
+.java-component-editor__modes [aria-selected="true"] { background: var(--editor-selected); color: var(--editor-accent); }
+.java-component-editor__working-area { grid-area: workspace; display: flex; flex-direction: column; min-height: 0; }
+.java-component-editor__working-area > .java-function-editor__workspace { flex: 1; }
+.java-component-editor__console { flex: 0 0 auto; max-height: 30%; overflow: auto; padding: var(--space-sm); border-top: 1px solid var(--editor-border); }
+.java-component-editor__console pre { margin: var(--space-sm) 0; white-space: pre-wrap; overflow-wrap: anywhere; }
+.java-component-editor > .java-function-editor__diagram-section { max-height: 30vh; overflow: auto; }
+.java-component-editor.java-function-based-editor--structure-collapsed { grid-template-rows: auto auto minmax(0, 1fr); grid-template-areas: "modes" "header" "workspace"; }
+
+.java-component-editor__modes > button { flex: 1; min-width: 0; border: 1px solid var(--editor-border); border-radius: 0; font: inherit; }
+@media (min-width: 761px) {
+    .java-component-editor.java-function-based-editor--with-reference { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); grid-template-areas: "modes modes" "header header" "navigation reference" "workspace reference"; }
+    .java-component-editor.java-function-based-editor--with-reference.java-function-based-editor--structure-collapsed { grid-template-areas: "modes modes" "header header" "workspace reference"; }
 }

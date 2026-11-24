@@ -25,7 +25,7 @@
     max-width: 100%;
     overflow: hidden;
     border: var(--uml-line);
-    border-radius: var(--radius-md);
+    border-radius: 0;
     background: var(--uml-surface);
     font-family: var(--code-font-family, var(--color-code-font));
     font-size: var(--code-font-size, var(--color-code-size));
@@ -60,7 +60,7 @@
     width: 100%;
     padding: var(--space-xs) var(--space-sm);
     border: 1px solid transparent;
-    border-radius: var(--radius-sm);
+    border-radius: 0;
     background: transparent;
     color: var(--uml-ink);
     font: inherit;
@@ -98,3 +98,12 @@
 .uml-structure-selector .uml-entry--abstract {
     font-style: italic;
 }
+
+.uml-structure-selector .uml-entry:is(:hover, :focus, :active) {
+    padding: var(--space-xs) var(--space-sm);
+    border-width: 1px;
+    font-weight: inherit;
+    transform: none;
+}
+.uml-class__actions { padding: var(--space-sm); border-top: var(--uml-line); }
+.uml-add-class { align-self: center; }

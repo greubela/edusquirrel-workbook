@@ -211,7 +211,12 @@ object SymbolTable {
       }
       // A callable parameter/local shadows a cached builtin or turtle alias in this scope.
       if lookupVariable(name.takeWhile(_ != '.')).nonEmpty then definition()
-      else functionsByName.getOrElseUpdate(name, definition())
+      else {
+        val resolved = functionsByName.getOrElseUpdate(name, definition())
+        // print/println accepts zero or several arguments; one call must not fix later calls' arity.
+        if resolved.intrinsic.contains(it.evadid.vm.code.defining.BeIntrinsic.Print) && resolved.inputs.size != arity then definition()
+        else resolved
+      }
     }
 
     def ensureFunctionArity(name: String, function: BeDefineFunction, arity: Int): BeDefineFunction = {

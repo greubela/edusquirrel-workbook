@@ -159,7 +159,7 @@ test('unchanged Java block previews retain their canvas and changed or unfinishe
     await page.getByRole('button',{name:/Editor.*öffnen|Open editor/i}).first().click();
     const editor = page.locator('dialog[open] .eva-editor');
     await editor.getByRole('tab',{name:'Java',exact:true}).click();
-    await editor.getByRole('button',{name:'Full source',exact:true}).click();
+    await editor.getByRole('tab', {name: 'Full Mode',exact:true}).click();
     await editor.locator('.cm-content').waitFor();
     const preview = page.locator('.be-program-snap-renderer:not(dialog *)').first();
     const source = 'public class Drawing {\n  public static void main(String[] args) {\n    Turtle.forward(20);\n  }\n}\n';

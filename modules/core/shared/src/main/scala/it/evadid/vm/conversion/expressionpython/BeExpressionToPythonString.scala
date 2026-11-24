@@ -19,7 +19,8 @@ case class BeExpressionToPythonString
   override protected def currentInstanceName: String = "self"
   override protected def constructorCallPrefix: String = ""
   override protected def callName(call: BeFunctionCall): String =
-    if it.evadid.core.datastructures.vectorShapes.svg.TurtleCommand.isTurtleMethod(call.funcDef) then
+    if call.funcDef.intrinsic.contains(it.evadid.vm.code.defining.BeIntrinsic.Print) then "print"
+    else if it.evadid.core.datastructures.vectorShapes.svg.TurtleCommand.isTurtleMethod(call.funcDef) then
       "turtle." + entityName(call.funcDef.functionTypeInfo.displayName)
     else if it.evadid.vm.modules.BeModules.qualifiedName(call.funcDef).nonEmpty then
       it.evadid.vm.modules.BeModules.qualifiedName(call.funcDef).get + "." + entityName(call.funcDef.functionTypeInfo.displayName)

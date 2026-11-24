@@ -188,7 +188,7 @@ test('test workbook preserves edits across human languages, programming language
     await page.getByRole('button',{name:/Editor.*öffnen|Open editor/i}).first().click();
     assert.match(await code.innerText(), /forward\(123\)\s+(?:turtle\.)?forward\(17\)/);
     await editor.getByRole('tab',{name:'Java',exact:true}).click();
-    await editor.getByRole('button',{name:'Full source',exact:true}).click();
+    await editor.getByRole('tab', {name: 'Full Mode',exact:true}).click();
     await code.fill('public class Drawing {\n  static void line(int size) { Turtle.forward(size); }\n  public static void main(String[] args) { line(64); }\n}\n');
     await editor.getByRole('tab',{name:'Snap!',exact:true}).click();
     await page.waitForFunction(() => {
@@ -198,7 +198,7 @@ test('test workbook preserves edits across human languages, programming language
     await page.locator('.select-language-line > div').first().evaluate(flag => flag.click());
     await page.waitForFunction(() => SnapTranslator.language === 'en');
     await editor.getByRole('tab',{name:'Java',exact:true}).click();
-    await editor.getByRole('button',{name:'Full source',exact:true}).click();
+    await editor.getByRole('tab', {name: 'Full Mode',exact:true}).click();
     assert.match(await code.innerText(), /void line\((?:int|double) size\)/);
     assert.match(await code.innerText(), /line\(64\)/);
     await page.locator('.fullscreen-close-button').click();

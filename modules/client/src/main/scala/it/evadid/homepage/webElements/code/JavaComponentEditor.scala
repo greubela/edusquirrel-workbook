@@ -1,5 +1,6 @@
 package it.evadid.homepage.webElements.code
 
+import it.evadid.vm.structure.JavaUmlDiagram
 import com.raquo.laminar.api.L.{label as labelTag, *}
 import com.raquo.laminar.nodes.ReactiveSvgElement
 import it.evadid.core.datastructures.language.AppLanguage.Java
@@ -7,8 +8,9 @@ import it.evadid.homepage.webElements.HtmlAppElement
 import it.evadid.homepage.webElements.basic.PageScrollLock
 import it.evadid.homepage.webElements.editor.code.EditorAppearance
 import it.evadid.homepage.webElements.editor.code.EvaEditor.EvaEditorTab
-import it.evadid.homepage.webElements.editor.code.EvaEditor.uml.{UmlClassDiagram, UmlStructureSelector}
-import it.evadid.homepage.webElements.editor.code.EvaEditor.uml.UmlClassDiagram.{EntityKey, MemberKind}
+import it.evadid.homepage.webElements.editor.code.EvaEditor.uml.UmlStructureSelector
+import it.evadid.vm.structure.UmlClassDiagram
+import it.evadid.vm.structure.UmlClassDiagram.{EntityKey, MemberKind}
 import it.evadid.homepage.webElements.editor.code.codemirror.CodeMirrorEditor
 import it.evadid.homepage.webElements.editor.config.CodeMirrorEditorConfig
 import it.evadid.util.logging.Logger
@@ -40,7 +42,14 @@ final class JavaComponentEditor(
   import JavaComponentEditor.*
   import JavaMethodSource.*
 
-  private val diagram = UmlStructureSelector(state.signal)
+  private val classDiagram = state.signal.map(JavaUmlDiagram(_))
+  private val structureReady = state.signal.map(_.definedClasses.values.forall(SourceStructure.balanced(_))).distinct
+
+  private val diagram = UmlStructureSelector(classDiagram,
+    classFooter = clazz => button(typ := "button", cls := "java-function-editor__button", "Add function",
+      disabled <-- structureReady.map(!_), onClick --> (_ => openDialog(Dialog.AddMethod(clazz.sourceKey, Var(MethodFields()))))),
+    trailing = button(typ := "button", cls := "java-function-editor__button uml-add-class", "Add class",
+      disabled <-- structureReady.map(!_), onClick --> (_ => openDialog(Dialog.AddClass(Var(""))))))
   private val functionEditor = JavaFunctionEditor(logger, state, editorConfig, loadingLabel)
   private val classEditor = JavaClassEditor(logger, state, editorConfig, loadingLabel)
   private val source = state.bimap(_.toString)(ProgrammingStateJavaStructured(_)).distinct
@@ -48,26 +57,22 @@ final class JavaComponentEditor(
     diagnostics = CodeMirrorEditor.marks(conversionMarker), loadingLabel = loadingLabel,
     sameSource = (left, right) => left == right || ProgrammingStateJavaStructured(left) == ProgrammingStateJavaStructured(right))
 
-  private val initialKey = entryFunction(state.now()).flatMap(function => UmlClassDiagram(state.now())
+  private val initialKey = entryFunction(state.now()).flatMap(function => JavaUmlDiagram(state.now())
     .key(function.className, Some(methodCode(state.now(), function.className, function.method))))
   diagram.select(initialKey)
 
-  private val fullSource = Var(initialKey.isEmpty)
+  private val mode = Var(if initialKey.isEmpty then Mode.Full else Mode.Function)
   private val structureOpen = Var(true)
   private val compactLayout = Var(false)
   private val dialog = Var(Option.empty[Dialog])
   private val dialogError = Var("")
   private val presentation = appearance.getOrElse(new EditorAppearance)
 
-  private val classDiagram = state.signal.map(UmlClassDiagram(_))
-  private val structureReady = state.signal.map(_.definedClasses.values.forall(SourceStructure.balanced(_))).distinct
-  private val selectedClass: Signal[Option[BeEntityName]] =
-    classDiagram.combineWith(diagram.selectedKeySignal).map((classes, key) => key.flatMap(classes.sourceKey)).distinct
   private val panel: Signal[Panel] =
-    fullSource.signal.combineWith(diagram.selectedKeySignal, functionEditor.located.combineWith(classEditor.located)).map {
-      case (true, _, _) => Panel.Source
-      case (_, Some(key), (true, _)) if isFunction(key) => Panel.Function
-      case (_, Some(_), (_, true)) => Panel.Class
+    mode.signal.combineWith(diagram.selectedKeySignal, functionEditor.located.combineWith(classEditor.located)).map {
+      case (Mode.Full, _, _) => Panel.Source
+      case (Mode.Function, Some(key), (true, _)) if isFunction(key) => Panel.Function
+      case (Mode.Class, Some(_), (_, true)) => Panel.Class
       case _ => Panel.Empty
     }.distinct
 
@@ -78,7 +83,7 @@ final class JavaComponentEditor(
   /** Points the editors at a diagram selection: its class, and the function if one is selected. */
   private def open(key: EntityKey): Unit = {
     val current = state.now()
-    val classes = UmlClassDiagram(current)
+    val classes = JavaUmlDiagram(current)
     classes.sourceKey(key).foreach { className =>
       classEditor.select(className)
       if isFunction(key) then
@@ -88,8 +93,8 @@ final class JavaComponentEditor(
   }
 
   private def show(className: BeEntityName, functionCode: Option[String]): Unit = {
-    diagram.select(UmlClassDiagram(state.now()).key(className, functionCode))
-    fullSource.set(false)
+    diagram.select(JavaUmlDiagram(state.now()).key(className, functionCode))
+    mode.set(if functionCode.isDefined then Mode.Function else Mode.Class)
   }
 
   private def openDialog(next: Dialog): Unit = {
@@ -183,22 +188,8 @@ final class JavaComponentEditor(
 
   private def renderDiagram(navigationId: String): Element =
     navTag(idAttr := navigationId, aria.label := "Java classes and members", cls := "java-function-editor__diagram-section",
-      div(cls := "java-function-editor__section-heading",
-        div(h3(cls := "java-function-editor__section-title", "Classes"),
-          p(cls := "java-function-editor__section-hint", "Select a class, attribute or function to edit it.")),
-        div(cls := "java-function-editor__diagram-actions",
-          button(typ := "button", cls := "java-function-editor__button java-function-editor__button--primary", "Add class",
-            disabled <-- structureReady.map(!_), onClick --> (_ => openDialog(Dialog.AddClass(Var(""))))),
-          button(typ := "button", cls := "java-function-editor__button java-function-editor__button--secondary", "Add function",
-            disabled <-- structureReady.combineWith(selectedClass).map((ready, selected) => !ready || selected.isEmpty),
-            onClick.compose(_.sample(selectedClass).collectSome) --> (className =>
-              openDialog(Dialog.AddMethod(className, Var(MethodFields()))))))),
       // A disabled fieldset disables the diagram's buttons while the source has unfinished brackets or comments.
       fieldSet(cls := "java-component-editor__diagram", disabled <-- structureReady.map(!_),
-        onClick.filter(event => event.target match {
-          case element: dom.Element => element.closest(".uml-entry") != null
-          case _ => false
-        }) --> (_ => fullSource.set(false)),
         diagram.getDomElement()),
       child.maybe <-- classDiagram.map(_.classes.isEmpty).distinct.map(empty => Option.when(empty)(
         div(cls := "java-function-editor__empty-diagram",
@@ -217,9 +208,7 @@ final class JavaComponentEditor(
         div(h3(cls := "java-function-editor__section-title",
             child.text <-- panel.combineWith(diagram.selectedKeySignal).map(heading)),
           p(cls := "java-function-editor__section-hint", "Your edits are kept, including unfinished code.")),
-        div(cls := "java-function-editor__view-toggle",
-          viewButton("Selection", "Edit the selected class or function", active = false),
-          viewButton("Full source", "Full Java source", active = true))),
+      ),
       div(cls := "java-function-editor__editor-panel",
         child <-- panel.map {
           case Panel.Source => div(cls := "java-function-editor__source", sourceEditor.getDomElement())
@@ -233,19 +222,61 @@ final class JavaComponentEditor(
             else "java-function-editor__draft-warning"),
           "Your draft is kept. Finish the brackets or comments here, or open the full source to continue.")))
 
-  private def viewButton(text: String, description: String, active: Boolean): Element =
-    button(typ := "button",
-      cls <-- fullSource.signal.map(shown => "java-function-editor__button " +
-        (if shown == active then "java-function-editor__button--primary" else "java-function-editor__button--secondary")),
-      aria.pressed <-- fullSource.signal.map(shown => (shown == active).toString),
-      disabled <-- (if active then Val(false) else structureReady.map(!_)),
-      text, aria.label := text, title := description,
-      onClick --> (_ => fullSource.set(active)))
+  private val running = Var(false)
+  private val consoleOutput = Var("")
+  private val runRevision = Var(0L)
+
+  private def runProgram(): Unit = {
+    runRevision.update(_ + 1)
+    val revision = runRevision.now()
+    val program = state.now()
+    running.set(true)
+    consoleOutput.set("")
+    scala.concurrent.Future(program.toBeExpression.programExecution)(using scala.scalajs.concurrent.JSExecutionContext.queue).onComplete { result =>
+      if revision == runRevision.now() && program == state.now() then {
+        running.set(false)
+        consoleOutput.set(result.fold(error => Option(error.getMessage).getOrElse(error.toString), execution =>
+          execution.stdout + (if execution.completed then "" else s"\n${execution.status}")))
+      }
+    }(using scala.scalajs.concurrent.JSExecutionContext.queue)
+  }
+
+  private def consolePanel: Element = sectionTag(cls := "java-component-editor__console", aria.label := "Console",
+    button(typ := "button", "Run", disabled <-- running.signal, onClick --> (_ => scala.scalajs.concurrent.JSExecutionContext.queue.execute(() => runProgram()))),
+    pre(role := "log", aria.live := "polite", child.text <-- consoleOutput.signal),
+    onUnmountCallback { _ => runRevision.update(_ + 1); running.set(false) },
+    state.signal.changes --> { _ => runRevision.update(_ + 1); running.set(false); consoleOutput.set("") })
+
+  private def switchMode(next: Mode): Unit = {
+    mode.set(next)
+    if next == Mode.Class && diagram.selectedKey.isEmpty then
+      JavaUmlDiagram(state.now()).classes.headOption.foreach(clazz => diagram.select(Some(clazz.key)))
+    if next == Mode.Function && !diagram.selectedKey.exists(isFunction) then {
+      val classes = JavaUmlDiagram(state.now())
+      val selected = diagram.selectedKey.flatMap(key => classes.classes.find(_.name == key.className))
+      selected.orElse(classes.classes.headOption).flatMap(_.functions.headOption).foreach(member => diagram.select(Some(member.key)))
+    }
+  }
+
+  private def modeTabs: Element = div(cls := "java-component-editor__modes", role := "tablist", aria.label := "Java editing mode",
+    Mode.values.toSeq.map { choice => button(typ := "button", role := "tab", choice.label,
+      aria.selected <-- mode.signal.map(_ == choice),
+      disabled <-- structureReady.map(ready => !ready && choice != Mode.Full),
+      onClick --> (_ => switchMode(choice))) })
 
   private def bindEditor(releaseLayout: Var[() => Unit]): Modifier[HtmlElement] =
     onMountCallback { ctx =>
       presentation.watch(ctx.owner)
       diagram.selectedKeySignal.foreach(_.foreach(open))(using ctx.owner)
+      functionEditor.target.combineWith(state.signal).foreach { (selected, program) =>
+        if mode.now() == Mode.Function then selected.foreach { function =>
+          val key = JavaUmlDiagram(program).key(function.className,
+            program.definedClasses.get(function.className).filter(_.length >= function.method.end)
+              .map(_.substring(function.method.start, function.method.end)))
+          key.filterNot(value => diagram.selectedKey.contains(value)).foreach(value => diagram.select(Some(value)))
+        }
+      }(using ctx.owner)
+      diagram.selectedKeySignal.changes.foreach(_.foreach(key => mode.set(if isFunction(key) then Mode.Function else Mode.Class)))(using ctx.owner)
       Try(dom.window.matchMedia("(min-width: 761px) and (min-height: 601px)")).toOption.foreach { query =>
         def adapt(): Unit = {
           compactLayout.set(!query.matches)
@@ -272,9 +303,10 @@ final class JavaComponentEditor(
       onUnmountCallback(_ => releaseLayout.now()()),
       // On a compact screen the diagram covers the editor; choosing an entry closes it.
       diagram.selectedKeySignal.changes --> (_ => if compactLayout.now() then structureOpen.set(false)),
+      modeTabs,
       renderToolbar(navigationId),
       renderDiagram(navigationId),
-      renderWorkspace(),
+      div(cls := "java-component-editor__working-area", renderWorkspace(), consolePanel),
       reference.fold[Modifier[HtmlElement]](emptyMod) { renderReference =>
         asideTag(cls := "java-function-editor__reference", aria.label := "Task reference", renderReference())
       },
@@ -283,6 +315,12 @@ final class JavaComponentEditor(
 }
 
 object JavaComponentEditor {
+  private enum Mode(val label: String) {
+    case Class extends Mode("Class Mode")
+    case Function extends Mode("Function Mode")
+    case Full extends Mode("Full Mode")
+  }
+
   private enum Panel(val status: String) {
     case Function extends Panel("Function view")
     case Class extends Panel("Class view")
@@ -316,7 +354,7 @@ object JavaComponentEditor {
   def forEvaTab(logger: Logger, config: CodeMirrorEditorConfig, tabLabel: String = "Java"): EvaEditorTab = new EvaEditorTab {
     override val language = Java
     override val label = tabLabel
-    override val showLabel = false
+    override val showLabel = true
     override val css = " eva-editor--java"
     override def icon: Option[ReactiveSvgElement[SVGSVGElement]] = Some(svg.svg(svg.cls := "eva-editor__language-icon", svg.viewBox := "0 0 24 24",
       svg.fill := "none", svg.stroke := "currentColor", svg.strokeWidth := "1.6",

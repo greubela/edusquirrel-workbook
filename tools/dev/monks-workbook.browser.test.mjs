@@ -69,7 +69,7 @@ test('monk stories and revised tasks work with the current editor and interactio
     const dialog = page.locator('dialog[open]');
     await dialog.getByRole('tab', {name:'Java',exact:true}).click();
     assert.equal(await dialog.getByRole('tab', {name:'Python',exact:true}).count(), 0);
-    await dialog.getByRole('button', {name:'Full source',exact:true}).click();
+    await dialog.getByRole('tab', {name: 'Full Mode',exact:true}).click();
     const code = dialog.locator('.cm-content');
     await code.waitFor();
     assert.match(await code.innerText(), /Turtle\.turnLeft\(90\)/);
@@ -81,13 +81,13 @@ test('monk stories and revised tasks work with the current editor and interactio
     await dialog.locator('.turtle-execution__status').getByText("Here's your drawing.", {exact:true}).waitFor();
     await dialog.getByRole('tab', {name:'Snap!',exact:true}).click();
     await dialog.getByRole('tab', {name:'Java',exact:true}).click();
-    await dialog.getByRole('button', {name:'Full source',exact:true}).click();
+    await dialog.getByRole('tab', {name: 'Full Mode',exact:true}).click();
     await code.waitFor();
     assert.match(await code.innerText(), /Turtle\.(left|turnLeft)\(90/);
     await page.locator('.fullscreen-close-button').click();
     await open().click();
     await dialog.getByRole('tab', {name:'Java',exact:true}).click();
-    await dialog.getByRole('button', {name:'Full source',exact:true}).click();
+    await dialog.getByRole('tab', {name: 'Full Mode',exact:true}).click();
     assert.match(await code.innerText(), /Turtle\.forward\(60/);
     await page.locator('.fullscreen-close-button').click();
     await section('kochtitle').click();

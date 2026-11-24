@@ -35,7 +35,8 @@ final case class ProgramExecution(
     recorded: List[ModuleCommand],
     world: DataWorld,
     returnValue: Option[Double],
-    status: TurtleExecutionStatus) derives ReadWriter {
+    status: TurtleExecutionStatus,
+    stdout: String = "") derives ReadWriter {
   def completed: Boolean = status == TurtleExecutionStatus.Completed
 
   /** The calls of `module`'s functions in program order, typed as that module's commands. */
@@ -74,7 +75,7 @@ object BeProgramInterpreter {
           after.copy(returned = Some(returned))
       }
     }
-    ProgramExecution(finished.recorded.toList, finished.world, finished.returned.collect { case Value.Num(number) => number }, finished.status)
+    ProgramExecution(finished.recorded.toList, finished.world, finished.returned.collect { case Value.Num(number) => number }, finished.status, finished.stdout)
   }
 
   private val booleanOperators = Set("<", ">", "==", "<=", ">=", "!=", "and", "or", "not")
@@ -115,6 +116,7 @@ object BeProgramInterpreter {
       world: DataWorld,
       /** Calls of module functions in program order; the counts bound each kind separately. */
       recorded: Vector[ModuleCommand] = Vector.empty,
+      stdout: String = "",
       turtleCount: Int = 0,
       dataCount: Int = 0,
       steps: Int = 0,
@@ -238,10 +240,13 @@ object BeProgramInterpreter {
     else if unresolved.isOperator then before
     else {
       val (call, state) = resolveArguments(unresolved, before, limits, isCancelled)
-      if library then dataOperation(call.funcDef, call.arguments.map(evalNumber(_, state)), state, limits)._2
+      if call.funcDef.intrinsic.contains(BeIntrinsic.Print) then
+        state.copy(stdout = state.stdout + call.arguments.map(argument => text(eval(argument, state))).mkString(" ") + "\n")
+      else if library then dataOperation(call.funcDef, call.arguments.map(evalNumber(_, state)), state, limits)._2
       else userDefinition(call, state) match {
         case Some(definition) => invoke(definition, call.arguments.map(eval(_, state)), state, limits, isCancelled)._2
-        case None => turtleCommand(call, state, limits)
+        case None if TurtleCommand.isTurtleMethod(call.funcDef) => turtleCommand(call, state, limits)
+        case None => throw IllegalArgumentException(s"Unsupported function: ${call.funcDef.functionTypeInfo.displayName.universalInterpretation()}")
       }
     }
   }
@@ -345,7 +350,9 @@ object BeProgramInterpreter {
   private def stringArg(expression: BeExpression): Option[String] =
     expression match
       case BeUseValue(BeDataValueLiteral(value), _) if numericLiteral(value).isEmpty =>
-        Some(Serializer.stringLiteralIO(parseEverything = true).deserialize(value))
+        Some(if value.trim.startsWith("\"") then scala.util.Try(ujson.read(value).str)
+          .getOrElse(Serializer.stringLiteralIO(parseEverything = true).deserialize(value))
+        else Serializer.stringLiteralIO(parseEverything = true).deserialize(value))
       case _ => None
 
   private def numericLiteral(value: String): Option[Double] =

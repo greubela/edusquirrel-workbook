@@ -1,66 +1,15 @@
-package it.evadid.homepage.webElements.editor.code.EvaEditor.uml
+package it.evadid.vm.structure
 
-import it.evadid.core.datastructures.language.AppLanguage.Java
-import it.evadid.homepage.webElements.editor.code.EvaEditor.uml.UmlStructureSelector.*
-import it.evadid.vm.conversion.dependencies.KnownDependencies
+import it.evadid.vm.structure.UmlClassDiagram.*
 import it.evadid.vm.conversion.structured.SourceStructure
 import it.evadid.vm.conversion.structured.SourceStructure.{Group, Symbol, Token, Word}
 import it.evadid.vm.naming.BeEntityName
 import it.evadid.workbook.elements.interactionElements.programming.state.ProgrammingStateJavaStructured
 
-/** The classes of a structured Java state as UML class boxes, without relationships. Known library classes,
-  * such as the generated `Turtle`, are left out. Class and member texts are the source declarations, so a box
-  * also lists members the VM cannot parse yet.
-  */
-final case class UmlClassDiagram(classes: Seq[UmlClassDiagram.UmlClass]) {
-  def entity(key: UmlClassDiagram.EntityKey): Option[SelectedUmlEntity] =
-    classes.find(_.name == key.className).flatMap(umlClass =>
-      key.member.fold(Some(umlClass.entity))(member => umlClass.members.find(_.key.member.contains(member)).map(_.entity)))
-
-  /** The structured-state entry of the class of `key`. */
-  def sourceKey(key: UmlClassDiagram.EntityKey): Option[BeEntityName] = classes.find(_.name == key.className).map(_.sourceKey)
-
-  /** The entry of the class stored under `sourceKey`, or of its function declared by `functionCode`. */
-  def key(sourceKey: BeEntityName, functionCode: Option[String] = None): Option[UmlClassDiagram.EntityKey] =
-    classes.find(_.sourceKey == sourceKey).flatMap(umlClass => functionCode.fold(Some(umlClass.key))(code =>
-      umlClass.functions.find(_.code.trim == code.trim).map(_.key)))
-}
-
-object UmlClassDiagram {
-
-  enum Visibility(val symbol: String) {
-    case Public extends Visibility("+")
-    case Private extends Visibility("-")
-    case Protected extends Visibility("#")
-    case Package extends Visibility("~")
-  }
-
-  enum MemberKind { case Attribute, Function }
-
-  /** Identifies a box entry across source edits; `occurrence` separates overloads and repeated names. */
-  final case class MemberKey(kind: MemberKind, name: String, occurrence: Int)
-  final case class EntityKey(className: String, member: Option[MemberKey])
-
-  /** One attribute or function line, e.g. `+name: String` or `+train(hours: int): void`. */
-  final case class UmlMember(key: EntityKey, label: String, visibility: Visibility, isStatic: Boolean, isAbstract: Boolean, code: String) {
-    def kind: MemberKind = key.member.fold(MemberKind.Attribute)(_.kind)
-    def name: String = key.member.fold("")(_.name)
-    def entity: SelectedUmlEntity = kind match {
-      case MemberKind.Attribute => SelectedAttribute(name, code)
-      case MemberKind.Function => SelectedFunction(name, code)
-    }
-  }
-
-  /** `sourceKey` is the class's entry in the structured state. */
-  final case class UmlClass(sourceKey: BeEntityName, name: String, code: String, isAbstract: Boolean, attributes: Seq[UmlMember], functions: Seq[UmlMember]) {
-    def key: EntityKey = EntityKey(name, None)
-    def members: Seq[UmlMember] = attributes ++ functions
-    def entity: SelectedUmlEntity = SelectedClass(name, code)
-  }
-
+/** Parses Java declarations into the language-independent UML model. */
+object JavaUmlDiagram {
   def apply(state: ProgrammingStateJavaStructured): UmlClassDiagram =
     UmlClassDiagram(state.definedClasses.toSeq
-      .filterNot((_, source) => KnownDependencies.definitionRanges(source, Java).nonEmpty)
       .map(umlClass))
 
   /** The box of one class source; its `fullCode` is the declaration without the preamble of imports. */

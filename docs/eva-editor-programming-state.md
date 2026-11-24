@@ -112,32 +112,16 @@ The active tab is derived from the current `ProgrammingState`, including the Blo
 
 ## Java component editor
 
-Eva's Java tab is [`JavaComponentEditor`](../modules/client/src/main/scala/it/evadid/homepage/webElements/code/JavaComponentEditor.scala),
-bound to a `Var[ProgrammingStateJavaStructured]`. A UML diagram of the classes sits
-above an editing area that shows, for the diagram selection, a `JavaFunctionEditor`
-(a function) or a `JavaClassEditor` (a class or one of its attributes). A Full source
-view, Add class/Add function dialogs and an optional task reference remain. The
-entry point `main` (of class `Main`, if present) opens first; without one, the
-full source does.
+`JavaComponentEditor` binds the Java answer to **Class Mode**, **Function Mode** and
+**Full Mode**. Its diagram selects source entities; each class owns its Add function
+button. Inserting another declaration in Function Mode selects only the new function.
+`JavaFragmentEditor` splices drafts into their source range, including unfinished code.
 
-Both editors extend [`JavaFragmentEditor`](../modules/client/src/main/scala/it/evadid/homepage/webElements/code/JavaFragmentEditor.scala),
-which owns the shared update logic. An editor shows its fragment in a local
-`Var[String]`; a `JavaFragmentRange` records where the fragment lies in its class
-source. Local edits are spliced into the answer at that range, which then spans the
-draft, so unfinished code stays in place. Any other answer change refreshes the
-local text; if the fragment's text changed, it is located again by identity (a
-class name, or a method signature from `JavaMethodSource`). Subclasses only locate
-and identify their fragment. Renaming a class in its declaration renames its entry
-in place. Line numbers follow the printed program.
+Language-independent UML data lives in `vm.structure.UmlClassDiagram` in shared core.
+`JavaUmlDiagram` parses Java into that model; `UmlStructureSelector` renders a model
+signal. This lets a future Python parser reuse the same diagram. Library classes,
+including Turtle, remain visible. UML classes have square corners and stable hover geometry.
 
-### UML structure selector
-
-[`EvaEditor.uml.UmlStructureSelector`](../modules/client/src/main/scala/it/evadid/homepage/webElements/editor/code/EvaEditor/uml/UmlStructureSelector.scala)
-observes a `Signal[ProgrammingStateJavaStructured]` and draws each class as a UML box
-(name, attributes, functions; no relationships; known library classes such as the
-generated `Turtle` are omitted). Every entry is a button.
-`UmlClassDiagram` derives the boxes from the class sources with `SourceStructure`.
-The component stores only the clicked entry's key (`selectedKeySignal`);
-`selectedEntitySignal` resolves it against the current state, so the selected
-`fullCode` follows edits and becomes `None` when the entry is removed.
-Styles: `homepage/css/uml-structure-selector.css`.
+Run uses the shared BeExpression interpreter and displays its console output below
+the editor. The side preview consumes only the turtle commands from that same
+interpreter; printing is never interpreted as a drawing command.

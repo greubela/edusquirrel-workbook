@@ -86,6 +86,20 @@ class JavaFragmentEditorSpec extends EditorDomSuite {
     }
   }
 
+  test("adding a second declaration selects only the new function for later edits") {
+    val answer = state()
+    withMounted(JavaFunctionEditor(logger, answer)) { editor =>
+      editor.select(mainFunction(answer))
+      val original = editor.local.now()
+      val added = "static void extra() { forward(42); }"
+      editor.local.set(original + "\n" + added)
+      eventually(editor.local.now() == added, "new method selected").flatMap { _ =>
+        editor.local.set(added.replace("42", "43"))
+        eventually(classes(answer)(main).contains("forward(43)"), "new method edited")
+      }.map { _ => assert(classes(answer)(main).contains(original), "the previous method is preserved") }
+    }
+  }
+
   test("fragment ranges map to lines of the printed program") {
     val answer = state()
     val range = JavaFragmentRange(main, mainClass.indexOf("static void main"), mainClass.length - 2)

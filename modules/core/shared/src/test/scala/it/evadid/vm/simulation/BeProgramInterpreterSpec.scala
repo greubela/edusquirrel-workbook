@@ -10,6 +10,24 @@ import munit.FunSuite
 class BeProgramInterpreterSpec extends FunSuite {
   private def java(body: String) = ProgrammingStateJavaStructured(s"public class Main {\n$body\n}")
 
+  test("println preserves empty lines and escaped newlines through Python and never becomes a turtle command") {
+    val program = java("""static void main(String[] args) {
+      | System.out.println("first\nsecond");
+      | System.out.println();
+      | System.out.println("last");
+      | Turtle.forward(20);
+      |}""".stripMargin)
+    val execution = program.toBeExpression.programExecution
+    assert(execution.completed, execution.status.toString)
+    assertEquals(execution.stdout, "first\nsecond\n\nlast\n")
+    assertEquals(execution.moduleCommands(BeModules.Turtle).size, 1)
+    val python = program.toPython
+    assert(python.code.contains("print("), python.code)
+    val converted = python.toBeExpression.programExecution
+    assertEquals(converted.stdout, execution.stdout)
+    assertEquals(converted.moduleCommands(BeModules.Turtle), execution.moduleCommands(BeModules.Turtle))
+  }
+
   private val swap = java(
     """    static void tausche(int i, int j) {
       |        int merke = NumberList.get(i);

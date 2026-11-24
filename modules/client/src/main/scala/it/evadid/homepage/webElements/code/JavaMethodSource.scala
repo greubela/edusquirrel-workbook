@@ -92,6 +92,8 @@ object JavaMethodSource {
         clazz.methods.filter(function => function.start >= range.start && function.end <= range.end) match
           case List(function) if onlyTrivia(source.substring(range.start, function.start)) &&
             onlyTrivia(source.substring(function.end, range.end)) => Some(function)
+          case functions if functions.size > 1 && onlyTrivia(source.substring(range.start, functions.head.start)) &&
+            onlyTrivia(source.substring(functions.last.end, range.end)) => Some(functions.last)
           case _ => None
       case _ => None
   }

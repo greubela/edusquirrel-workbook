@@ -49,6 +49,17 @@ class JavaComponentEditorSpec extends UiDomSuite {
   private def classCode(state: Var[ProgrammingStateJavaStructured], name: String) =
     state.now().definedClasses(BeEntityName.fromCodeString(name))
 
+  test("Run executes Java through the shared interpreter and displays console text below the editor") {
+    val state = Var(ProgrammingStateJavaStructured("""class Main {
+      | static void main(String[] args) { System.out.println("hello"); System.out.println(); Turtle.forward(10); }
+      |}""".stripMargin))
+    mountedAsync(editor(state).getDomElement()) { root =>
+      assertEquals(all(root, "[role=tab]").map(_.textContent), Seq("Class Mode", "Function Mode", "Full Mode"))
+      click(buttonNamed(root, "Run"))
+      eventually(one(root, "[role=log]").textContent == "hello\n\n", "console output rendered")
+    }
+  }
+
   test("the entry point opens in the function editor; its edits change only that method") {
     val state = answer()
     val component = editor(state)
@@ -88,12 +99,12 @@ class JavaComponentEditorSpec extends UiDomSuite {
       assert(valueOf(field(root)).startsWith("static int twice(int x)"))
       click(entry(root, "~size: int"))
       assertEquals(heading(root), "class Helper", "an attribute is edited in its class")
-      click(buttonNamed(root, "Full source"))
+      click(buttonNamed(root, "Full Mode"))
       assertEquals(status(root), "Full source")
       assertEquals(valueOf(field(root)), state.now().toString)
-      click(buttonNamed(root, "Selection"))
+      click(buttonNamed(root, "Class Mode"))
       assertEquals(status(root), "Class view")
-      click(buttonNamed(root, "Full source"))
+      click(buttonNamed(root, "Full Mode"))
       click(entry(root, "Main"))
       assertEquals(status(root), "Class view", "choosing in the diagram leaves the full source")
       typeInto(field(root), mainClass.replace("x * 2", "x + x"))
@@ -125,7 +136,7 @@ class JavaComponentEditorSpec extends UiDomSuite {
       assertEquals(all(root, "dialog").size, 0)
       assertEquals(classCode(state, "Tool"), "class Tool {\n}")
       assertEquals(heading(root), "class Tool")
-      click(buttonNamed(one(root, ".java-function-editor__diagram-actions"), "Add function"))
+      click(buttonNamed(all(root, ".uml-class").find(_.textContent.contains("Tool")).get, "Add function"))
       typeInto(dialogField("Function name"), "")
       submit("Add function")
       assertEquals(error, "Enter a valid Java function name.")
