@@ -1,11 +1,11 @@
 package it.evadid.homepage.webElements.code
 
 import it.evadid.vm.structure.JavaUmlDiagram
-import com.raquo.laminar.api.L.{label as labelTag, *}
+import com.raquo.laminar.api.L.*
 import com.raquo.laminar.nodes.ReactiveSvgElement
 import it.evadid.core.datastructures.language.AppLanguage.Java
 import it.evadid.homepage.webElements.HtmlAppElement
-import it.evadid.homepage.webElements.basic.PageScrollLock
+import it.evadid.homepage.webElements.code.JavaEditorLabels.Key
 import it.evadid.homepage.webElements.editor.code.EditorAppearance
 import it.evadid.homepage.webElements.editor.code.EvaEditor.EvaEditorTab
 import it.evadid.homepage.webElements.editor.code.EvaEditor.uml.UmlStructureSelector
@@ -21,7 +21,6 @@ import org.scalajs.dom
 import org.scalajs.dom.SVGSVGElement
 
 import java.util.UUID
-import scala.collection.immutable.VectorMap
 import scala.scalajs.js
 import scala.util.Try
 
@@ -32,6 +31,7 @@ import scala.util.Try
 final class JavaComponentEditor(
     logger: Logger,
     val state: Var[ProgrammingStateJavaStructured],
+    labels: JavaEditorLabels,
     reference: Option[() => Element] = None,
     appearance: Option[EditorAppearance] = None,
     editorConfig: CodeMirrorEditorConfig = CodeMirrorEditorConfig.Default,
@@ -45,10 +45,11 @@ final class JavaComponentEditor(
   private val structureReady = state.signal.map(_.definedClasses.values.forall(SourceStructure.balanced(_))).distinct
 
   private val diagram = UmlStructureSelector(classDiagram,
-    classFooter = clazz => button(typ := "button", cls := "java-function-editor__button", "Add function",
-      disabled <-- structureReady.map(!_), onClick --> (_ => openDialog(Dialog.AddMethod(clazz.sourceKey, Var(MethodFields()))))),
-    trailing = button(typ := "button", cls := "java-function-editor__button uml-add-class", "Add class",
-      disabled <-- structureReady.map(!_), onClick --> (_ => openDialog(Dialog.AddClass(Var(""))))))
+    classFooter = clazz => button(typ := "button", cls := "java-function-editor__button", child.text <-- labels(Key.javaAddFunction),
+      disabled <-- structureReady.map(!_), onClick --> (_ => dialog.addFunction(clazz.sourceKey))),
+    trailing = button(typ := "button", cls := "java-function-editor__button uml-add-class", child.text <-- labels(Key.javaAddClass),
+      disabled <-- structureReady.map(!_), onClick --> (_ => dialog.addClass())))
+  private val dialog = JavaStructureDialog(state, labels, show)
   private val functionEditor = JavaFunctionEditor(logger, state, editorConfig, loadingLabel)
   private val classEditor = JavaClassEditor(logger, state, editorConfig, loadingLabel)
   private val source = state.bimap(_.toString)(ProgrammingStateJavaStructured(_)).distinct
@@ -63,8 +64,6 @@ final class JavaComponentEditor(
   private val mode = Var(if initialKey.isEmpty then Mode.Full else Mode.Function)
   private val structureOpen = Var(true)
   private val compactLayout = Var(false)
-  private val dialog = Var(Option.empty[Dialog])
-  private val dialogError = Var("")
   private val presentation = appearance.getOrElse(new EditorAppearance)
 
   private val panel: Signal[Panel] =
@@ -96,117 +95,40 @@ final class JavaComponentEditor(
     mode.set(if functionCode.isDefined then Mode.Function else Mode.Class)
   }
 
-  private def openDialog(next: Dialog): Unit = {
-    dialogError.set("")
-    dialog.set(Some(next))
-  }
-
-  private def addClass(name: String): Unit = {
-    val current = state.now()
-    val key = BeEntityName.fromCodeString(name)
-    if !validName(name) then dialogError.set("Enter a valid Java class name.")
-    else if current.definedClasses.keys.exists(JavaFragmentRange.sameName(_, key)) then dialogError.set("A class with this name already exists.")
-    else {
-      val next = ProgrammingStateJavaStructured(VectorMap.from(current.definedClasses) + (key -> s"class $name {\n}"))
-      if parses(next.toString) then {
-        state.set(next)
-        dialog.set(None)
-        show(key, None)
-      } else dialogError.set("The class could not be added to the current Java source.")
-    }
-  }
-
-  private def addMethod(className: BeEntityName, fields: MethodFields): Unit = {
-    val current = state.now()
-    if !validName(fields.name.trim) then dialogError.set("Enter a valid Java function name.")
-    else if fields.returnType.trim.isEmpty then dialogError.set("Enter a return type.")
-    else for {
-      text <- current.definedClasses.get(className)
-      target <- discover(text).headOption
-    } {
-      val declaration = methodDeclaration(fields.returnType.trim, fields.name.trim, fields.parameters.trim, fields.isStatic)
-      val edited = insertMethod(text, target, declaration)
-      val next = ProgrammingStateJavaStructured(current.definedClasses.updated(className, edited))
-      if parses(next.toString) then {
-        state.set(next)
-        dialog.set(None)
-        show(className, discover(edited).flatMap(_.methods)
-          .find(method => method.start >= target.bodyEnd && method.name == fields.name.trim)
-          .map(methodCode(next, className, _)))
-      } else dialogError.set("The function signature or current Java source is invalid.")
-    }
-  }
-
-  private def renderDialog(current: Dialog): Element = {
-    val (caption, fields, submit) = current match {
-      case Dialog.AddClass(name) => ("Add class", modalField("Class name", name), () => addClass(name.now().trim))
-      case Dialog.AddMethod(className, method) => ("Add function", div(cls := "java-function-editor__dialog-fields",
-        modalField("Function name", method.zoomLazy(_.name)((value, next) => value.copy(name = next))),
-        modalField("Return type", method.zoomLazy(_.returnType)((value, next) => value.copy(returnType = next))),
-        modalField("Parameters (for example: int count, String label)",
-          method.zoomLazy(_.parameters)((value, next) => value.copy(parameters = next))),
-        labelTag(cls := "java-function-editor__method-option",
-          input(typ := "checkbox", checked <-- method.signal.map(_.isStatic),
-            onChange.mapToChecked --> (checked => method.update(_.copy(isStatic = checked)))),
-          span("Static method"))), () => addMethod(className, method.now()))
-    }
-    dialogTag(role := "dialog", aria.label := caption, cls := "java-function-editor__dialog",
-      new EventProp[dom.Event]("cancel") --> { event =>
-        event.preventDefault()
-        event.stopPropagation()
-        dialog.set(None)
-      },
-      onMountCallback(ctx => ctx.thisNode.ref.asInstanceOf[dom.html.Dialog].showModal()),
-      onUnmountCallback(node => node.ref.asInstanceOf[dom.html.Dialog].close()),
-      PageScrollLock.whileMounted,
-      h2(cls := "java-function-editor__dialog-title", caption),
-      fields,
-      p(cls := "java-function-editor__dialog-error", role := "alert", child.text <-- dialogError.signal),
-      div(cls := "java-function-editor__dialog-actions",
-        button(typ := "button", cls := "java-function-editor__button java-function-editor__button--secondary",
-          "Cancel", onClick --> (_ => dialog.set(None))),
-        button(typ := "button", cls := "java-function-editor__button java-function-editor__button--primary",
-          caption, onClick --> (_ => submit()))))
-  }
-
-  private def modalField(fieldLabel: String, fieldValue: Var[String]): Element =
-    labelTag(cls := "java-function-editor__field", span(fieldLabel),
-      input(typ := "text", value <-- fieldValue.signal, onInput.mapToValue --> fieldValue.writer))
-
   private def renderToolbar(navigationId: String): Element =
     div(cls := "java-function-editor__topbar",
-      div(h2(cls := "java-function-editor__title", "Java editor"),
-        p(cls := "java-function-editor__subtitle", "Select a class or function in the diagram to edit it.")),
+      div(h2(cls := "java-function-editor__title", child.text <-- labels(Key.javaTitle)),
+        p(cls := "java-function-editor__subtitle", child.text <-- labels(Key.javaSubtitle))),
       div(cls := "java-function-editor__topbar-actions",
         button(typ := "button", cls := "java-function-editor__button java-function-editor__button--secondary",
           aria.controls := navigationId, aria.expanded <-- structureOpen.signal,
-          child.text <-- structureOpen.signal.map(if _ then "Hide classes" else "Show classes"),
+          child.text <-- labels.select(structureOpen.signal)(open => if open then Key.javaHideClasses else Key.javaShowClasses),
           onClick --> (_ => structureOpen.update(!_))),
         span(cls := "java-function-editor__sync", role := "status", aria.live := "polite",
-          child.text <-- panel.map(_.status))))
+          child.text <-- labels.select(panel)(_.status))))
 
   private def renderDiagram(navigationId: String): Element =
-    navTag(idAttr := navigationId, aria.label := "Java classes and members", cls := "java-function-editor__diagram-section",
+    navTag(idAttr := navigationId, aria.label <-- labels(Key.javaNavigation), cls := "java-function-editor__diagram-section",
       // A disabled fieldset disables the diagram's buttons while the source has unfinished brackets or comments.
       fieldSet(cls := "java-component-editor__diagram", disabled <-- structureReady.map(!_),
         diagram.getDomElement()),
       child.maybe <-- classDiagram.map(_.classes.isEmpty).distinct.map(empty => Option.when(empty)(
         div(cls := "java-function-editor__empty-diagram",
-          strong("No classes yet"), span("Add a class to start building your program.")))))
+          strong(child.text <-- labels(Key.javaNoClasses)), span(child.text <-- labels(Key.javaNoClassesHint))))))
 
-  private def heading(view: Panel, key: Option[UmlEntityKey]): String = view match {
-    case Panel.Source => "Java source"
+  private def heading(view: Panel, key: Option[UmlEntityKey], texts: Map[Key, String]): String = view match {
+    case Panel.Source => texts(Key.javaSourceHeading)
     case Panel.Function => key.flatMap(selected => selected.member.map(member => s"${selected.className}.${member.name}")).getOrElse("")
     case Panel.Class => key.fold("")(selected => s"class ${selected.className}")
-    case Panel.Empty => "Selection"
+    case Panel.Empty => texts(Key.javaSelectionHeading)
   }
 
   private def renderWorkspace(): Element =
     div(cls := "java-function-editor__workspace",
       div(cls := "java-function-editor__workspace-heading",
         div(h3(cls := "java-function-editor__section-title",
-            child.text <-- panel.combineWith(diagram.selectedKeySignal).map(heading)),
-          p(cls := "java-function-editor__section-hint", "Your edits are kept, including unfinished code.")),
+            child.text <-- panel.combineWith(diagram.selectedKeySignal, labels.all).map(heading)),
+          p(cls := "java-function-editor__section-hint", child.text <-- labels(Key.javaEditsKept))),
       ),
       div(cls := "java-function-editor__editor-panel",
         child <-- panel.map {
@@ -214,12 +136,12 @@ final class JavaComponentEditor(
           case Panel.Function => functionEditor.getDomElement()
           case Panel.Class => classEditor.getDomElement()
           case Panel.Empty => div(cls := "java-function-editor__editor-placeholder",
-            strong("Choose a class or function to get started"),
-            span("Select it in the diagram. Its complete source will appear here."))
+            strong(child.text <-- labels(Key.javaChooseEntry)),
+            span(child.text <-- labels(Key.javaChooseEntryHint)))
         },
         span(cls <-- structureReady.map(if _ then "java-function-editor__draft-warning java-function-editor__draft-warning--hidden"
             else "java-function-editor__draft-warning"),
-          "Your draft is kept. Finish the brackets or comments here, or open the full source to continue.")))
+          child.text <-- labels(Key.javaDraftWarning))))
 
   private def switchMode(next: Mode): Unit = {
     mode.set(next)
@@ -232,8 +154,8 @@ final class JavaComponentEditor(
     }
   }
 
-  private def modeTabs: Element = div(cls := "java-component-editor__modes", role := "tablist", aria.label := "Java editing mode",
-    Mode.values.toSeq.map { choice => button(typ := "button", role := "tab", choice.label,
+  private def modeTabs: Element = div(cls := "java-component-editor__modes", role := "tablist", aria.label <-- labels(Key.javaModes),
+    Mode.values.toSeq.map { choice => button(typ := "button", role := "tab", child.text <-- labels(choice.label),
       aria.selected <-- mode.signal.map(_ == choice),
       disabled <-- structureReady.map(ready => !ready && choice != Mode.Full),
       onClick --> (_ => switchMode(choice))) })
@@ -282,35 +204,25 @@ final class JavaComponentEditor(
       renderDiagram(navigationId),
       renderWorkspace(),
       reference.fold[Modifier[HtmlElement]](emptyMod) { renderReference =>
-        asideTag(cls := "java-function-editor__reference", aria.label := "Task reference", renderReference())
+        asideTag(cls := "java-function-editor__reference", aria.label <-- labels(Key.javaTaskReference), renderReference())
       },
-      child <-- dialog.signal.map(_.fold(emptyNode)(renderDialog)))
+      dialog.node)
   }
 }
 
 object JavaComponentEditor {
-  private enum Mode(val label: String) {
-    case Class extends Mode("Class Mode")
-    case Function extends Mode("Function Mode")
-    case Full extends Mode("Full Mode")
+  private enum Mode(val label: Key) {
+    case Class extends Mode(Key.javaModeClass)
+    case Function extends Mode(Key.javaModeFunction)
+    case Full extends Mode(Key.javaModeFull)
   }
 
-  private enum Panel(val status: String) {
-    case Function extends Panel("Function view")
-    case Class extends Panel("Class view")
-    case Source extends Panel("Full source")
-    case Empty extends Panel("No selection")
+  private enum Panel(val status: Key) {
+    case Function extends Panel(Key.javaViewFunction)
+    case Class extends Panel(Key.javaViewClass)
+    case Source extends Panel(Key.javaViewSource)
+    case Empty extends Panel(Key.javaViewEmpty)
   }
-
-  private final case class MethodFields(name: String = "newFunction", returnType: String = "void",
-      parameters: String = "", isStatic: Boolean = true)
-
-  private enum Dialog {
-    case AddClass(name: Var[String])
-    case AddMethod(className: BeEntityName, fields: Var[MethodFields])
-  }
-
-  private def validName(name: String): Boolean = name.matches("[A-Za-z_$][A-Za-z0-9_$]*")
 
   private def methodCode(state: ProgrammingStateJavaStructured, className: BeEntityName, method: JavaMethodSource.JavaMethod): String =
     state.definedClasses(className).substring(method.start, method.end)
@@ -325,7 +237,7 @@ object JavaComponentEditor {
     }
   }
 
-  def forEvaTab(logger: Logger, config: CodeMirrorEditorConfig, tabLabel: String = "Java"): EvaEditorTab = new EvaEditorTab {
+  def forEvaTab(logger: Logger, config: CodeMirrorEditorConfig, labels: JavaEditorLabels, tabLabel: String = "Java"): EvaEditorTab = new EvaEditorTab {
     override val language = Java
     override val label = tabLabel
     override val showLabel = true
@@ -342,7 +254,7 @@ object JavaComponentEditor {
         case value @ ProgrammingStateRaw(Java, _) => value.toJavaStructured
         case _ => ProgrammingStateJavaStructured(Map.empty)
       }(identity)
-      new JavaComponentEditor(logger, structured, appearance = Some(appearance),
+      new JavaComponentEditor(logger, structured, labels, appearance = Some(appearance),
         editorConfig = config, conversionMarker = marker, loadingLabel = loading)
     }
   }

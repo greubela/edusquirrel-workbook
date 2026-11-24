@@ -2,6 +2,7 @@ package it.evadid.homepage.webElements.editor.code.EvaEditor
 
 import com.raquo.laminar.api.L.*
 import it.evadid.core.datastructures.language.LanguageMapContentId
+import it.evadid.homepage.webElements.code.JavaEditorLabels
 import it.evadid.homepage.webElements.editor.blocks.BlockEditorLabels
 
 /** UI strings for Eva; supply via [[fromContent]] from a workbook renderer. */
@@ -11,7 +12,8 @@ final case class EvaEditorLabels(
     switchFailed: Signal[String],
     loading: Signal[String],
     programming: String => Signal[String],
-    blocks: BlockEditorLabels
+    blocks: BlockEditorLabels,
+    java: JavaEditorLabels
 )
 
 object EvaEditorLabels {
@@ -21,6 +23,7 @@ object EvaEditorLabels {
     switchFailed = text(LanguageMapContentId("blockeditor/switchFailed")),
     loading = text(LanguageMapContentId("blockeditor/loading")),
     programming = key => text(LanguageMapContentId(s"blockeditor/$key")),
-    blocks = BlockEditorLabels.fromContent(text)
+    blocks = BlockEditorLabels.fromContent(text),
+    java = JavaEditorLabels.fromContent(text)
   )
 }

@@ -82,6 +82,9 @@ object ProgrammingState {
 }
 
 final case class ProgrammingStateBeExpression(expression: BeExpression) extends ProgrammingState derives ReadWriter {
+  /** Definitions the program calls without defining them and without a configured dependency providing them. */
+  lazy val unknownDependency: Option[it.evadid.vm.code.defining.BeUnknownDependency] =
+    it.evadid.vm.conversion.dependencies.UnknownDependencies.of(expression)
   lazy val turtleCommandSites = TurtleProgramAnalysis.commandSites(expression)
   lazy val turtleCommandExecutionInfo: TurtleCommandExecutionInfo[Double] = TurtleCommandExecutionInfo(
     programExecution.moduleCommands(it.evadid.vm.modules.BeModules.Turtle), turtleCommandSites, programExecution.status)

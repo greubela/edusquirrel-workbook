@@ -38,9 +38,15 @@ class JavaComponentEditorSpec extends UiDomSuite {
     super.afterAll()
   }
 
+  /** The English `blockeditor` map, so the assertions read the texts users see. */
+  private lazy val english: Map[String, String] = upickle.default.read[Map[String, String]](
+    js.Dynamic.global.selectDynamic("require")("fs").readFileSync("resources/languageMaps/eva/blockeditor/map-en.json", "utf8")
+      .asInstanceOf[String]).map((key, value) => key.toLowerCase -> value)
+  private lazy val labels = JavaEditorLabels.fromContent(id => Val(english.getOrElse(id.entryKey, id.fullId)))
+
   private def answer(source: String = mainClass + "\n\n" + helperClass) = Var(ProgrammingStateJavaStructured(source))
   private def editor(state: Var[ProgrammingStateJavaStructured], reference: Option[() => Element] = None) =
-    new JavaComponentEditor(logger, state, reference = reference)
+    new JavaComponentEditor(logger, state, labels, reference = reference)
   private def field(root: dom.Element) = one(root, "textarea.code-mirror-editor__fallback")
   private def heading(root: dom.Element) = one(root, ".java-function-editor__workspace-heading h3").textContent
   private def status(root: dom.Element) = one(root, ".java-function-editor__sync").textContent
@@ -172,8 +178,7 @@ class JavaComponentEditorSpec extends UiDomSuite {
     assertEquals(JavaComponentEditor.entryFunction(otherMain.now()).map(_.className), Some(main), "class Main is preferred")
   }
 
-  private val evaLabels = EvaEditorLabels(Val("Unavailable"), Val("Languages"), Val("Failed"), Val("Loading"), _ => Val("_"),
-    it.evadid.homepage.webElements.editor.blocks.BlockEditorLabels.fromContent(_ => Val("_")))
+  private lazy val evaLabels = EvaEditorLabels.fromContent(id => Val(english.getOrElse(id.entryKey, id.fullId)))
   private def textarea = dom.document.querySelector("textarea").asInstanceOf[dom.html.TextArea]
 
   test("the Eva Java tab projects raw transport and publishes structured method edits") {
@@ -194,7 +199,7 @@ class JavaComponentEditorSpec extends UiDomSuite {
     val state = Var[ProgrammingState](ProgrammingStateJavaStructured("class Main { static void main(String[] args) { forward(10); } }"))
     val config = CodeMirrorEditorConfig.Default
     val eva = EvaEditor(logger, state, Nil, Var(EvaEditorConfig(enabledLanguages = List(Java, Python))),
-      Some(List(JavaComponentEditor.forEvaTab(logger, config), CodeMirrorEditor.pythonEditorForEva(logger, config))), labels = evaLabels)
+      Some(List(JavaComponentEditor.forEvaTab(logger, config, labels), CodeMirrorEditor.pythonEditorForEva(logger, config))), labels = evaLabels)
     val close = mount(eva.getDomElement())
     eva.setActiveTab(Python).flatMap { _ =>
       assert(state.now().isInstanceOf[ProgrammingStatePythonStructured])

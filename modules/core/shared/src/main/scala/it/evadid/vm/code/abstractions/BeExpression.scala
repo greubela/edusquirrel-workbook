@@ -2,7 +2,7 @@ package it.evadid.vm.code.abstractions
 
 import it.evadid.core.datastructures.tree.nodeImpl.NodeBasedTreeImpl
 import it.evadid.vm.code.controlStructures.*
-import it.evadid.vm.code.defining.{BeDefineClass, BeDefineFunction, BeDefineVariable, BeDependency}
+import it.evadid.vm.code.defining.{BeDefineClass, BeDefineFunction, BeDefineVariable, BeDependency, BeUnknownDependency}
 import it.evadid.vm.code.errors.{BeExpressionUnparsable, BeExpressionUnsupported, BeSingleLineComment}
 import it.evadid.vm.code.others.{BeReturn, BeStartProgram}
 import it.evadid.vm.code.tree.*
@@ -62,6 +62,7 @@ object BeExpression {
     taggedExpressionRW[BeDefineFunction],
     taggedExpressionRW[BeDefineClass],
     taggedExpressionRW[BeDependency],
+    taggedExpressionRW[BeUnknownDependency],
   )
 
 

@@ -29,7 +29,7 @@ object EvaEditorConfig {
     config.enabledLanguages.distinct.map {
       case Python => CodeMirrorEditor.pythonEditorForEva(logger, config.codeMirrorConfig)
       case SnapLanguage => SnapCodeEditor.forEvaTab(logger, config.snapConfig, humanLanguage)
-      case Java => JavaComponentEditor.forEvaTab(logger, config.codeMirrorConfig)
+      case Java => JavaComponentEditor.forEvaTab(logger, config.codeMirrorConfig, labels.java)
       case BlockDisplay => BlockProgramEditor.forEvaTab(labels.blocks, humanLanguage)
       case language => throw UnsupportedOperationException(s"No editor is available for '$language'.")
     }

@@ -42,14 +42,7 @@ class EvaEditorSpec extends EditorDomSuite {
     override val futureExecutionContext = queue
   }
 
-  private val specLabels = EvaEditorLabels(
-    unavailable = Val("_"),
-    languages = Val("_"),
-    switchFailed = Val("_"),
-    loading = Val("_"),
-    programming = _ => Val("_"),
-    blocks = it.evadid.homepage.webElements.editor.blocks.BlockEditorLabels.fromContent(_ => Val("_"))
-  )
+  private val specLabels = EvaEditorLabels.fromContent(_ => Val("_"))
   private val logger = Logger.withNameAndPrefixes(Some("EvaEditorSpec"), PrintToStdLogger.printNothing)
 
   private class Fixture(source: ProgrammingState, languages: List[ProgrammingLanguage] = List(SnapLanguage, Python, Java)) {

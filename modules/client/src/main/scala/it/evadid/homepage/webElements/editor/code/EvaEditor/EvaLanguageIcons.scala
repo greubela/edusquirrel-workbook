@@ -12,5 +12,5 @@ object EvaLanguageIcons {
     svg.image(svg.xlinkHref := new dom.URL(path, BrowserLoading.siteRoot).href, svg.width := "24", svg.height := "24"))
 
   def python: ReactiveSvgElement[dom.SVGSVGElement] = asset("resources/icons/python.svg")
-  def snap: ReactiveSvgElement[dom.SVGSVGElement] = asset("resources/programs/20260704Snap/src/snap_logo_sm.png")
+  def snap: ReactiveSvgElement[dom.SVGSVGElement] = asset("resources/icons/snap.svg")
 }
