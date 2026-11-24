@@ -70,7 +70,7 @@ object FeedbackPanels {
         createFeedbackIcon(FeedbackIcon.Hint), span(cls := "feedback-button-label", child.text <-- view.label("scaffoldingRequest")),
         disabled <-- view.scaffolding.combineWith(view.disabled).map((result, disabled) =>
           disabled || result.status == ScaffoldingReport.Status.Pending),
-        dataAttr("tooltip") <-- view.scaffolding.flatMapSwitch(view.scaffoldingText),
+        dataAttr("tooltip") <-- view.scaffoldingText,
         onClick --> (_ => view.requestScaffolding()))),
       toggle)
   }
@@ -169,8 +169,6 @@ object FeedbackPanels {
             toneIcon(view.scaffolding.map(_.status.tone)),
             span(cls := "feedback-chip__text", child.text <-- hintStatusText(view)))),
         p(cls := "feedback-text feedback-section-content feedback-hint-text",
-          child.text <-- (if placement == Placement.Overview
-            then view.scaffolding.flatMapSwitch(result => result.feedback.map(view.localized).getOrElse(Val("")))
-            else view.scaffolding.flatMapSwitch(view.scaffoldingText))))
+          child.text <-- (if placement == Placement.Overview then view.hintText else view.scaffoldingText)))
     }
 }

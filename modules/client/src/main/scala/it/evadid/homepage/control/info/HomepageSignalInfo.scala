@@ -121,7 +121,8 @@ case class HomepageSignalInfo(fullInfo: FullInfo) {
     signal.toObservableValue
   }
 
-  private def localizedText(content: LanguageMap[HumanLanguage], language: HumanLanguage): String =
+  /** `content` in `language`, else English, else any language it has. */
+  def localizedText(content: LanguageMap[HumanLanguage], language: HumanLanguage): String =
     if content.availableLanguages.isEmpty then content.getInLanguage(language)
     else content.getWithLanguagePreference(Seq(language, English))
 

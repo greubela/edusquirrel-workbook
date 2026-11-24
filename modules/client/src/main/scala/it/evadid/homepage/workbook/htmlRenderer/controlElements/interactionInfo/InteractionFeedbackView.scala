@@ -1,8 +1,7 @@
 package it.evadid.homepage.workbook.htmlRenderer.controlElements.interactionInfo
 
 import com.raquo.laminar.api.L.*
-import it.evadid.core.datastructures.language.{LanguageMap, LanguageMapContentId}
-import it.evadid.core.datastructures.language.AppLanguage.HumanLanguage
+import it.evadid.core.datastructures.language.LanguageMapContentId
 import it.evadid.homepage.control.model.FullInfo
 import it.evadid.homepage.workbook.htmlRenderer.LaminarRenderHelper
 import it.evadid.workbook.abstractions.{InteractionFormat, WorkbookInteractionElement}
@@ -13,6 +12,7 @@ import it.evadid.workbook.elements.interactionElements.programming.programmingEx
 import it.evadid.homepage.control.info.interaction.GradingReporter
 import it.evadid.workbook.abstractions.FeedbackEntity
 import it.evadid.workbook.meta.{GradingSummary, ScaffoldingReport}
+import it.evadid.homepage.webElements.basic.LabelSelection
 import FeedbackPresentation.*
 import scala.concurrent.{ExecutionContext, Future}
 
@@ -30,7 +30,6 @@ private[interactionInfo] final class InteractionFeedbackView[F <: InteractionFor
   val scaffolding = reporter.scaffolding
 
   def label(key: String): Signal[String] = helper.plaintextStringSignal(LanguageMapContentId(s"basic/$key"))
-  def localized(content: LanguageMap[HumanLanguage]): Signal[String] = helper.plaintextStringSignal(content)
 
   def description(entry: GradingSummary.Entry): Signal[String] = entry.grader match {
     case grader: ProgramStructureGrader => helper.plaintextStringSignal(grader.publicDescription)
@@ -63,8 +62,17 @@ private[interactionInfo] final class InteractionFeedbackView[F <: InteractionFor
 
   def scaffoldingLabel(result: ScaffoldingReport): String = result.status.labelKey
 
-  def scaffoldingText(result: ScaffoldingReport): Signal[String] =
-    result.feedback.filter(_.availableLanguages.nonEmpty).map(localized).getOrElse(label(result.status.messageKey))
+  /** The hint of the current scaffolding result in the page language; empty without one. */
+  val hintText: Signal[String] = scaffolding.combineWith(fullInfo.signals.currentLanguage).map((result, language) =>
+    result.feedback.fold("")(fullInfo.signals.localizedText(_, language)))
+
+  /** The hint, or the status message while there is none. The hint is a function of the page language and the
+    * status message one of four labels, so no signal is switched (see [[LabelSelection]]).
+    */
+  val scaffoldingText: Signal[String] =
+    LabelSelection(scaffolding, ScaffoldingReport.Status.values.map(_.messageKey), label)(result => Some(result.status.messageKey))
+      .combineWith(scaffolding, fullInfo.signals.currentLanguage).map((status, result, language) =>
+        result.feedback.filter(_.availableLanguages.nonEmpty).fold(status)(fullInfo.signals.localizedText(_, language)))
 
   private def request(operation: => Future[?]): Unit = {
     val result = scala.util.Try(operation).fold(Future.failed, identity)

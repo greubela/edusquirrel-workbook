@@ -5,4 +5,4 @@
 ## Remaining architecture work
 
 - Unknown dependencies: configurable default dependency environments per exercise.
-- `flatMapSwitch` can end on an outdated value when its source changes in consecutive transactions (`LabelSelectionSpec`). Texts chosen from a finite key set use `LabelSelection` (`formatted` fills `{field}` placeholders). Switches remain only over open sets: the feedback panels' hint content and `SimpleTextEditor`'s configured placeholder (dynamic `LanguageMap` content), and `HtmlLoginElement`'s status, whose keys come from authentication failures and change only across asynchronous steps.
+- `flatMapSwitch` can end on an outdated value when its source changes in consecutive transactions (`LabelSelectionSpec`). Texts chosen from a finite key set use `LabelSelection` (`formatted` fills `{field}` placeholders); texts of a `LanguageMap` are `localizedText` of it and the page language. Switches remain only over open sets of content IDs that load on demand: `SimpleTextEditor`'s configured placeholder and `HtmlLoginElement`'s status (keys from authentication failures, changing only across asynchronous steps).
