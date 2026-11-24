@@ -49,16 +49,6 @@ class JavaComponentEditorSpec extends UiDomSuite {
   private def classCode(state: Var[ProgrammingStateJavaStructured], name: String) =
     state.now().definedClasses(BeEntityName.fromCodeString(name))
 
-  test("Run executes Java through the shared interpreter and displays console text below the editor") {
-    val state = Var(ProgrammingStateJavaStructured("""class Main {
-      | static void main(String[] args) { System.out.println("hello"); System.out.println(); Turtle.forward(10); }
-      |}""".stripMargin))
-    mountedAsync(editor(state).getDomElement()) { root =>
-      assertEquals(all(root, "[role=tab]").map(_.textContent), Seq("Class Mode", "Function Mode", "Full Mode"))
-      click(buttonNamed(root, "Run"))
-      eventually(one(root, "[role=log]").textContent == "hello\n\n", "console output rendered")
-    }
-  }
 
   test("the entry point opens in the function editor; its edits change only that method") {
     val state = answer()
@@ -182,7 +172,7 @@ class JavaComponentEditorSpec extends UiDomSuite {
     assertEquals(JavaComponentEditor.entryFunction(otherMain.now()).map(_.className), Some(main), "class Main is preferred")
   }
 
-  private val evaLabels = EvaEditorLabels(Val("Unavailable"), Val("Languages"), Val("Failed"), Val("Loading"),
+  private val evaLabels = EvaEditorLabels(Val("Unavailable"), Val("Languages"), Val("Failed"), Val("Loading"), _ => Val("_"),
     it.evadid.homepage.webElements.editor.blocks.BlockEditorLabels.fromContent(_ => Val("_")))
   private def textarea = dom.document.querySelector("textarea").asInstanceOf[dom.html.TextArea]
 

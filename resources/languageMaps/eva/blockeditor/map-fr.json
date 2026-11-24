@@ -1,0 +1,23 @@
+{
+  "unavailable": "Ce brouillon n'est pas disponible dans les langues configurées.",
+  "languages": "Langages de programmation",
+  "switchFailed": "Impossible de changer de langage",
+  "loading": "Chargement de l'éditeur…",
+  "library": "Blocs",
+  "libraryHint": "Fais glisser un bloc dans le programme. Ramène un bloc du programme ici pour le supprimer.",
+  "program": "Programme",
+  "placeholders": "Afficher les emplacements",
+  "controlFlow": "Flux de contrôle",
+  "flowHidden": "Masquer le flux de contrôle",
+  "flowBackgrounds": "Afficher les fonds de contrôle",
+  "flowFull": "Afficher tout le flux de contrôle",
+  "editValue": "Valeur",
+  "apply": "Appliquer",
+  "cancel": "Annuler",
+  "invalidNumber": "Saisis un nombre, p. ex. 90 ou 2.5.",
+  "invalidInteger": "Saisis un nombre entier, p. ex. 4.",
+  "invalidBoolean": "Saisis true ou false.",
+  "invalidText": "Saisis un texte.",
+  "invalidDate": "Saisis une date au format AAAA-MM-JJ.",
+  "invalidAnyValue": "Saisis une valeur valide."
+}

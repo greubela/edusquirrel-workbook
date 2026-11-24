@@ -4,8 +4,7 @@ import it.evadid.vm.structure.JavaUmlDiagram
 import com.raquo.airstream.ownership.ManualOwner
 import com.raquo.laminar.api.L.*
 import it.evadid.homepage.webElements.editor.code.EditorDomSuite
-import it.evadid.vm.structure.UmlClassDiagram
-import it.evadid.vm.structure.UmlClassDiagram.*
+import it.evadid.core.datastructures.uml.*
 import it.evadid.workbook.elements.interactionElements.programming.state.ProgrammingStateJavaStructured
 import org.scalajs.dom
 
@@ -47,10 +46,10 @@ class UmlStructureSelectorSpec extends EditorDomSuite {
   test("entities carry the full declarations; overloads are told apart") {
     val diagram = JavaUmlDiagram(state)
     val playerBox = diagram.classes(1)
-    assertEquals(diagram.entity(playerBox.key), Some(SelectedClass("Player", player)))
-    assertEquals(playerBox.attributes.head.entity, SelectedAttribute("count", "private static int count;"))
+    assertEquals(diagram.entity(playerBox.key), Some(UmlSelectedEntity(UmlEntityKind.Class, "Player", player)))
+    assertEquals(playerBox.attributes.head.entity, UmlSelectedEntity(UmlEntityKind.Attribute, "count", "private static int count;"))
     val Seq(_, toString, first, second) = playerBox.functions.map(_.entity): @unchecked
-    assertEquals(toString, SelectedFunction("toString", "@Override public String toString() { return position; }"))
+    assertEquals(toString, UmlSelectedEntity(UmlEntityKind.Function, "toString", "@Override public String toString() { return position; }"))
     assertEquals(first.fullCode, "public void train(java.util.Map<String, Integer> plan) { }")
     assertEquals(second.fullCode, "public void train() { }")
     assertEquals(playerBox.functions.map(_.key.member.map(_.occurrence)), Seq(Some(0), Some(0), Some(0), Some(1)))
@@ -80,15 +79,15 @@ class UmlStructureSelectorSpec extends EditorDomSuite {
       assertEquals(dom.document.querySelectorAll(".uml-class").length, 2)
       assertEquals(selected.now(), None)
       click("Coach")
-      assertEquals(selected.now(), Some(SelectedClass("Coach", coach)))
+      assertEquals(selected.now(), Some(UmlSelectedEntity(UmlEntityKind.Class, "Coach", coach)))
       click("+experience: int")
-      assertEquals(selected.now(), Some(SelectedAttribute("experience", "public int experience = 3;")))
+      assertEquals(selected.now(), Some(UmlSelectedEntity(UmlEntityKind.Attribute, "experience", "public int experience = 3;")))
       assertEquals(pressed, Seq("+experience: int"))
       click("+train(): void")
-      assertEquals(selected.now(), Some(SelectedFunction("train", "public void train() { }")))
+      assertEquals(selected.now(), Some(UmlSelectedEntity(UmlEntityKind.Function, "train", "public void train() { }")))
 
       source.set(ProgrammingStateJavaStructured(coach + "\n\n" + player.replace("public void train() { }", "public void train() { run(); }")))
-      assertEquals(selected.now(), Some(SelectedFunction("train", "public void train() { run(); }")))
+      assertEquals(selected.now(), Some(UmlSelectedEntity(UmlEntityKind.Function, "train", "public void train() { run(); }")))
       assertEquals(pressed, Seq("+train(): void"))
 
       source.set(ProgrammingStateJavaStructured(coach))

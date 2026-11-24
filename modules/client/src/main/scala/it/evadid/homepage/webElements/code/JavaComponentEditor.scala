@@ -9,8 +9,7 @@ import it.evadid.homepage.webElements.basic.PageScrollLock
 import it.evadid.homepage.webElements.editor.code.EditorAppearance
 import it.evadid.homepage.webElements.editor.code.EvaEditor.EvaEditorTab
 import it.evadid.homepage.webElements.editor.code.EvaEditor.uml.UmlStructureSelector
-import it.evadid.vm.structure.UmlClassDiagram
-import it.evadid.vm.structure.UmlClassDiagram.{EntityKey, MemberKind}
+import it.evadid.core.datastructures.uml.*
 import it.evadid.homepage.webElements.editor.code.codemirror.CodeMirrorEditor
 import it.evadid.homepage.webElements.editor.config.CodeMirrorEditorConfig
 import it.evadid.util.logging.Logger
@@ -78,10 +77,10 @@ final class JavaComponentEditor(
 
   override def dismissOnOutsideClick: Boolean = false
 
-  private def isFunction(key: EntityKey): Boolean = key.member.exists(_.kind == MemberKind.Function)
+  private def isFunction(key: UmlEntityKey): Boolean = key.member.exists(_.kind == UmlEntityKind.Function)
 
   /** Points the editors at a diagram selection: its class, and the function if one is selected. */
-  private def open(key: EntityKey): Unit = {
+  private def open(key: UmlEntityKey): Unit = {
     val current = state.now()
     val classes = JavaUmlDiagram(current)
     classes.sourceKey(key).foreach { className =>
@@ -195,7 +194,7 @@ final class JavaComponentEditor(
         div(cls := "java-function-editor__empty-diagram",
           strong("No classes yet"), span("Add a class to start building your program.")))))
 
-  private def heading(view: Panel, key: Option[EntityKey]): String = view match {
+  private def heading(view: Panel, key: Option[UmlEntityKey]): String = view match {
     case Panel.Source => "Java source"
     case Panel.Function => key.flatMap(selected => selected.member.map(member => s"${selected.className}.${member.name}")).getOrElse("")
     case Panel.Class => key.fold("")(selected => s"class ${selected.className}")
@@ -221,31 +220,6 @@ final class JavaComponentEditor(
         span(cls <-- structureReady.map(if _ then "java-function-editor__draft-warning java-function-editor__draft-warning--hidden"
             else "java-function-editor__draft-warning"),
           "Your draft is kept. Finish the brackets or comments here, or open the full source to continue.")))
-
-  private val running = Var(false)
-  private val consoleOutput = Var("")
-  private val runRevision = Var(0L)
-
-  private def runProgram(): Unit = {
-    runRevision.update(_ + 1)
-    val revision = runRevision.now()
-    val program = state.now()
-    running.set(true)
-    consoleOutput.set("")
-    scala.concurrent.Future(program.toBeExpression.programExecution)(using scala.scalajs.concurrent.JSExecutionContext.queue).onComplete { result =>
-      if revision == runRevision.now() && program == state.now() then {
-        running.set(false)
-        consoleOutput.set(result.fold(error => Option(error.getMessage).getOrElse(error.toString), execution =>
-          execution.stdout + (if execution.completed then "" else s"\n${execution.status}")))
-      }
-    }(using scala.scalajs.concurrent.JSExecutionContext.queue)
-  }
-
-  private def consolePanel: Element = sectionTag(cls := "java-component-editor__console", aria.label := "Console",
-    button(typ := "button", "Run", disabled <-- running.signal, onClick --> (_ => scala.scalajs.concurrent.JSExecutionContext.queue.execute(() => runProgram()))),
-    pre(role := "log", aria.live := "polite", child.text <-- consoleOutput.signal),
-    onUnmountCallback { _ => runRevision.update(_ + 1); running.set(false) },
-    state.signal.changes --> { _ => runRevision.update(_ + 1); running.set(false); consoleOutput.set("") })
 
   private def switchMode(next: Mode): Unit = {
     mode.set(next)
@@ -306,7 +280,7 @@ final class JavaComponentEditor(
       modeTabs,
       renderToolbar(navigationId),
       renderDiagram(navigationId),
-      div(cls := "java-component-editor__working-area", renderWorkspace(), consolePanel),
+      renderWorkspace(),
       reference.fold[Modifier[HtmlElement]](emptyMod) { renderReference =>
         asideTag(cls := "java-function-editor__reference", aria.label := "Task reference", renderReference())
       },

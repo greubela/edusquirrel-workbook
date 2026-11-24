@@ -117,11 +117,13 @@ The active tab is derived from the current `ProgrammingState`, including the Blo
 button. Inserting another declaration in Function Mode selects only the new function.
 `JavaFragmentEditor` splices drafts into their source range, including unfinished code.
 
-Language-independent UML data lives in `vm.structure.UmlClassDiagram` in shared core.
-`JavaUmlDiagram` parses Java into that model; `UmlStructureSelector` renders a model
+Language-independent UML data lives in `core.datastructures.uml.UmlClassDiagram` in shared core.
+`vm.structure.JavaUmlDiagram` parses Java into that model; `UmlStructureSelector` renders a model
 signal. This lets a future Python parser reuse the same diagram. Library classes,
 including Turtle, remain visible. UML classes have square corners and stable hover geometry.
 
-Run uses the shared BeExpression interpreter and displays its console output below
-the editor. The side preview consumes only the turtle commands from that same
+`ProgrammingExecutionPanel` is language-independent, uses the shared BeExpression interpreter,
+and displays console output below the editor. Unconvertible programs disable Run. The side preview consumes only the turtle commands from that same
 interpreter; printing is never interpreted as a drawing command.
+
+Editor labels resolve from `blockeditor` language maps. Pending gutter work is listed in [editor-todos.md](editor-todos.md).

@@ -2,8 +2,7 @@ package it.evadid.homepage.webElements.editor.code.EvaEditor.uml
 
 import com.raquo.laminar.api.L.*
 import it.evadid.homepage.webElements.HtmlAppElement
-import it.evadid.vm.structure.UmlClassDiagram
-import it.evadid.vm.structure.UmlClassDiagram.{EntityKey, UmlClass, UmlMember}
+import it.evadid.core.datastructures.uml.*
 
 /** A language-independent UML model rendered as clickable class boxes: name, attributes and functions.
   * A click selects an entry; the selection keeps following that entry's current source while the state changes.
@@ -11,21 +10,21 @@ import it.evadid.vm.structure.UmlClassDiagram.{EntityKey, UmlClass, UmlMember}
 case class UmlStructureSelector(diagram: Signal[UmlClassDiagram],
     classFooter: UmlClass => Modifier[HtmlElement] = _ => emptyMod,
     trailing: Modifier[HtmlElement] = emptyMod) extends HtmlAppElement {
-  import it.evadid.vm.structure.UmlClassDiagram.SelectedUmlEntity
+  import it.evadid.core.datastructures.uml.UmlSelectedEntity
 
-  private val selection: Var[Option[EntityKey]] = Var(None)
+  private val selection: Var[Option[UmlEntityKey]] = Var(None)
 
   /** The entry last clicked, or `None` before the first click and after the entry is removed from the source. */
-  val selectedEntitySignal: Signal[Option[SelectedUmlEntity]] =
+  val selectedEntitySignal: Signal[Option[UmlSelectedEntity]] =
     diagram.combineWith(selection.signal).map((classes, key) => key.flatMap(classes.entity)).distinct
 
   /** Which entry is selected; unlike [[selectedEntitySignal]], it does not change while the source is edited. */
-  val selectedKeySignal: Signal[Option[EntityKey]] = selection.signal
+  val selectedKeySignal: Signal[Option[UmlEntityKey]] = selection.signal
 
   /** Selects an entry as a click on it would, e.g. a function that was just added. */
-  def selectedKey: Option[EntityKey] = selection.now()
+  def selectedKey: Option[UmlEntityKey] = selection.now()
 
-  def select(key: Option[EntityKey]): Unit = selection.set(key)
+  def select(key: Option[UmlEntityKey]): Unit = selection.set(key)
 
   override def getDomElement(): Element = div(
     cls := "uml-structure-selector",
@@ -45,7 +44,7 @@ case class UmlStructureSelector(diagram: Signal[UmlClassDiagram],
       cls("uml-entry--static") <-- member.map(_.isStatic),
       cls("uml-entry--abstract") <-- member.map(_.isAbstract)))))
 
-  private def entry(key: Signal[EntityKey], label: Signal[String], modifiers: Modifier[Button]*): Button = {
+  private def entry(key: Signal[UmlEntityKey], label: Signal[String], modifiers: Modifier[Button]*): Button = {
     val selected = key.combineWith(selection.signal).map((entryKey, chosen) => chosen.contains(entryKey))
     button(tpe := "button", cls := "uml-entry",
       cls("uml-entry--selected") <-- selected,

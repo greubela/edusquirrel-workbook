@@ -22,12 +22,7 @@ final class JavaTurtleEditorExtension(
     runnerFactory: () => JavaEditorSession.Runner = JavaEditorSession.defaultRunner
 ) extends TurtleExecutionProvider {
   private val session = Var(Option.empty[JavaEditorSession])
-  private class Attempt {
-    val owner = new ManualOwner
-    val invalidated = Var(false)
-    def invalidate(): Unit = { invalidated.set(true); owner.killSubscriptions() }
-  }
-  private val running = Var(Option.empty[Attempt])
+  private val running = Var(Option.empty[JavaExecutionAttempt])
 
   override def turtleCommands(source: ProgrammingState): Option[() => Future[List[TurtleCommand[Double]]]] = source match {
     case java @ ProgrammingStateRaw(Java, _) => Some(() => run(java))
@@ -37,7 +32,7 @@ final class JavaTurtleEditorExtension(
 
   def run(source: ProgrammingStateRaw): Future[List[TurtleCommand[Double]]] = {
     if running.now().nonEmpty then return Future.failed(IllegalStateException("Java execution is already running."))
-    val attempt = new Attempt
+    val attempt = new JavaExecutionAttempt
     running.set(Some(attempt))
     val original = state.now()
     state.signal.changes.foreach { next =>

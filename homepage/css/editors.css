@@ -380,3 +380,8 @@
 .cm-flowchart-row > svg { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
 
 [data-editor-theme="dark"] .cm-flowchart-row > svg { filter: invert(1) hue-rotate(180deg); }
+
+.eva-editor__workspace { grid-column: 1; grid-row: 2; display: flex; flex-direction: column; min-width: 0; min-height: 0; }
+.eva-editor__workspace > .eva-editor__content { flex: 1; min-height: 0; }
+.programming-execution { flex: 0 0 auto; max-height: 30%; overflow: auto; padding: var(--space-sm); border-top: var(--space-borders) solid var(--editor-border); }
+.programming-execution pre { margin: var(--space-sm) 0; white-space: pre-wrap; overflow-wrap: anywhere; }

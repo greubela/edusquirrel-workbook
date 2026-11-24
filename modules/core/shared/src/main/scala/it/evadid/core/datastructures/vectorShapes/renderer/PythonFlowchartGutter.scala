@@ -28,11 +28,7 @@ object PythonFlowchartGutter {
                                 otherwise: List[Positioned] = Nil,
                                 kind: String = "process", elseLine: Option[Int] = None) derives upickle.default.ReadWriter
 
-  def fromPython(source: String): Chart =
-    parseChart(source).getOrElse {
-      if (hasUnsupportedStatement(source)) empty
-      else recoverIncompleteTail(source).getOrElse(empty)
-    }
+  def fromPython(source: String): Chart = parseChart(source).getOrElse(empty)
 
   /** Parses exactly `source`. `None` means the program is incomplete or unsupported. */
   private def parseChart(source: String): Option[Chart] = try {
@@ -95,48 +91,7 @@ object PythonFlowchartGutter {
 
   private def normalized(source: String): String = PythonAstParserSimple.normalizeLineEndingsAndDetab(source)
 
-  private val CompoundKeywords = Set("for", "while", "if", "elif", "else", "def", "class")
-  private val UnsupportedKeywords = Set("break", "continue", "try", "except", "finally")
-  private val MaxDroppedLines = 3
-
-  /** `break`, `continue` and `try`/`except` stay empty instead of hiding behind a prefix. */
-  private def hasUnsupportedStatement(source: String): Boolean =
-    SourceStructure.pythonCodeLines(normalized(source)).exists(row => UnsupportedKeywords.contains(keywordOf(row.code)))
-
-  /**
-   * Keeps a finished prefix while the tail is still being typed.
-   * Tries the last few code lines from the end; a compound header gets `pass`.
-   * Line numbers of the kept source stay put because the edit is only at the tail.
-   */
-  private def recoverIncompleteTail(source: String): Option[Chart] = {
-    val text = normalized(source)
-    val lines = text.split("\n", -1).toVector
-    val codeRows = SourceStructure.pythonCodeLines(text).map(_.row - 1).reverse.take(MaxDroppedLines)
-    codeRows.iterator.flatMap { last =>
-      val kept = lines.take(last + 1)
-      val candidate =
-        if (isCompoundHeader(codeOf(kept(last)))) withPass(kept, last)
-        else kept.mkString("\n")
-      // parseChart already rejected the original source; skip that candidate.
-      Option.when(candidate != text)(candidate).flatMap(parseChart)
-    }.nextOption()
-  }
-
-  private def withPass(lines: Vector[String], headerIndex: Int): String = {
-    val indent = lines(headerIndex).takeWhile(_ == ' ')
-    val passLine = indent + "    pass"
-    val (before, after) = lines.splitAt(headerIndex + 1)
-    (before :+ passLine :++ after).mkString("\n")
-  }
-
-  private def isCompoundHeader(code: String): Boolean =
-    CompoundKeywords.contains(keywordOf(code)) && code.endsWith(":")
-
-  private def keywordOf(code: String): String =
-    code.trim.takeWhile(ch => ch.isLetterOrDigit || ch == '_')
-
-  /** The line's code without its comment. */
-  private def codeOf(line: String): String = SourceStructure.pythonCodeLines(line).headOption.map(_.code).getOrElse("")
+  private def keywordOf(code: String): String = code.trim.takeWhile(ch => ch.isLetterOrDigit || ch == '_')
 
   private def build(statements: List[Positioned]): Chart = {
     val nodes = mutable.ListBuffer.empty[Node]
@@ -200,6 +155,7 @@ object PythonFlowchartGutter {
             otherwise.headOption.orElse(body.lastOption).map(_.line).getOrElse(item.line)), "else")) :::
             otherwise ::: List(FlowLine(end, "endif"))
         case "loop" => FlowLine(item.line, "loop") :: body ::: List(FlowLine(end, "endloop"))
+        case "function" | "class" => Nil
         case _ => List(FlowLine(item.line, item.kind))
       }
     }
@@ -208,10 +164,16 @@ object PythonFlowchartGutter {
       case result => FlowLine(result.head.line, "start") :: result ::: List(FlowLine(result.last.line, "stop"))
     }
     def declarations(items: List[Positioned]): List[List[FlowLine]] = items.flatMap { item =>
-      val own = if Set("function", "class")(item.kind) then List(group(item.body)).filter(_.nonEmpty) else Nil
+      val nested = item.body.exists(child => Set("function", "class")(child.kind))
+      val own = if item.kind == "function" && !nested then {
+        val bodyRows = rows(item.body)
+        val end = bodyRows.lastOption.map(_.line).orElse(item.body.lastOption.map(_.line)).getOrElse(item.line)
+        List(FlowLine(item.line, "start") :: bodyRows ::: List(FlowLine(end, "stop")))
+      } else Nil
       own ::: declarations(item.body) ::: declarations(item.otherwise)
     }
-    List(group(statements)).filter(_.nonEmpty) ::: declarations(statements)
+    val functions = declarations(statements)
+    if functions.nonEmpty then functions else List(group(statements)).filter(_.nonEmpty)
   }
 
 }

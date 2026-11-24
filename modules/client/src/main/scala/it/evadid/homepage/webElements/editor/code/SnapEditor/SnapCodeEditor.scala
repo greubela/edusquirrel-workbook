@@ -151,6 +151,7 @@ object SnapCodeEditor {
   def forEvaTab(tabLogger: Logger, config: SnapCodeEditorConfig, humanLanguage: Signal[HumanLanguage],
       tabLabel: String = "Snap!"): EvaEditorTab = new EvaEditorTab {
     override val language = SnapLanguage
+    override def icon = Some(it.evadid.homepage.webElements.editor.code.EvaEditor.EvaLanguageIcons.snap)
     override val label = tabLabel
     override def create(state: Var[ProgrammingState], appearance: it.evadid.homepage.webElements.editor.code.EditorAppearance,
         marker: Signal[Option[ProgrammingConversionError]], loading: Signal[String]): HtmlAppElement =

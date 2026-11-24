@@ -273,10 +273,6 @@
 }
 .java-component-editor__modes { grid-area: modes; display: flex; gap: var(--space-sm); }
 .java-component-editor__modes [aria-selected="true"] { background: var(--editor-selected); color: var(--editor-accent); }
-.java-component-editor__working-area { grid-area: workspace; display: flex; flex-direction: column; min-height: 0; }
-.java-component-editor__working-area > .java-function-editor__workspace { flex: 1; }
-.java-component-editor__console { flex: 0 0 auto; max-height: 30%; overflow: auto; padding: var(--space-sm); border-top: 1px solid var(--editor-border); }
-.java-component-editor__console pre { margin: var(--space-sm) 0; white-space: pre-wrap; overflow-wrap: anywhere; }
 .java-component-editor > .java-function-editor__diagram-section { max-height: 30vh; overflow: auto; }
 .java-component-editor.java-function-based-editor--structure-collapsed { grid-template-rows: auto auto minmax(0, 1fr); grid-template-areas: "modes" "header" "workspace"; }
 

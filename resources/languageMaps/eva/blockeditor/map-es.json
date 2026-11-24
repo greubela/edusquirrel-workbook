@@ -1,0 +1,23 @@
+{
+  "unavailable": "Este borrador no está disponible en los lenguajes configurados.",
+  "languages": "Lenguajes de programación",
+  "switchFailed": "No se pudo cambiar de lenguaje",
+  "loading": "Cargando el editor…",
+  "library": "Bloques",
+  "libraryHint": "Arrastra un bloque al programa. Arrastra un bloque del programa de vuelta aquí para eliminarlo.",
+  "program": "Programa",
+  "placeholders": "Mostrar marcadores de posición",
+  "controlFlow": "Flujo de control",
+  "flowHidden": "Ocultar el flujo de control",
+  "flowBackgrounds": "Mostrar fondos de control",
+  "flowFull": "Mostrar todo el flujo de control",
+  "editValue": "Valor",
+  "apply": "Aplicar",
+  "cancel": "Cancelar",
+  "invalidNumber": "Introduce un número, p. ej. 90 o 2.5.",
+  "invalidInteger": "Introduce un número entero, p. ej. 4.",
+  "invalidBoolean": "Introduce true o false.",
+  "invalidText": "Introduce un texto.",
+  "invalidDate": "Introduce una fecha como AAAA-MM-DD.",
+  "invalidAnyValue": "Introduce un valor válido."
+}

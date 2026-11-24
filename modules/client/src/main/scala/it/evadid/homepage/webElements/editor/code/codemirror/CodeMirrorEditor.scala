@@ -98,6 +98,7 @@ object CodeMirrorEditor {
 
   def pythonEditorForEva(logger: Logger, config: CodeMirrorEditorConfig, tabLabel: String = "Python"): EvaEditorTab = new EvaEditorTab {
     override val language = Python
+    override def icon = Some(it.evadid.homepage.webElements.editor.code.EvaEditor.EvaLanguageIcons.python)
     override val label = tabLabel
     override def create(state: Var[ProgrammingState], appearance: it.evadid.homepage.webElements.editor.code.EditorAppearance,
         marker: Signal[Option[ProgrammingConversionError]], loading: Signal[String]): it.evadid.homepage.webElements.HtmlAppElement = {

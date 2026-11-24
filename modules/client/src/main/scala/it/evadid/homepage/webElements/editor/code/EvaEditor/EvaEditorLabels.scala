@@ -10,15 +10,17 @@ final case class EvaEditorLabels(
     languages: Signal[String],
     switchFailed: Signal[String],
     loading: Signal[String],
+    programming: String => Signal[String],
     blocks: BlockEditorLabels
 )
 
 object EvaEditorLabels {
   def fromContent(text: LanguageMapContentId => Signal[String]): EvaEditorLabels = EvaEditorLabels(
-    unavailable = text(LanguageMapContentId("basic/editorUnavailable")),
-    languages = text(LanguageMapContentId("basic/editorLanguages")),
-    switchFailed = text(LanguageMapContentId("basic/editorSwitchFailed")),
-    loading = text(LanguageMapContentId("basic/editorLoading")),
+    unavailable = text(LanguageMapContentId("blockeditor/unavailable")),
+    languages = text(LanguageMapContentId("blockeditor/languages")),
+    switchFailed = text(LanguageMapContentId("blockeditor/switchFailed")),
+    loading = text(LanguageMapContentId("blockeditor/loading")),
+    programming = key => text(LanguageMapContentId(s"blockeditor/$key")),
     blocks = BlockEditorLabels.fromContent(text)
   )
 }

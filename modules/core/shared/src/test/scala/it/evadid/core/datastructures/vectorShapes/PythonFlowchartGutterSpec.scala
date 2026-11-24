@@ -66,32 +66,10 @@ class PythonFlowchartGutterSpec extends FunSuite {
     assertEquals(chart(""), PythonFlowchartGutter.empty)
   }
 
-  test("an unfinished nested loop keeps the finished outer chart") {
-    val dropped = chart("x = 0\nfor i in range(3):\n    print(i)\n    for j in")
-    assertEquals(dropped.nodes.map(_.line), List(1, 2, 3))
-    assert(dropped.nodes.exists(node => node.line == 2 && node.kind == "loop"))
-    val header = chart("x = 0\nfor i in range(3):\n    print(i)\n    for j in range(2):")
-    assertEquals(header.nodes.filter(_.kind == "loop").map(_.line), List(2, 4))
-    assert(header.nodes.exists(_.line == 3))
-  }
-
-  test("a bare incomplete header draws its own node") {
-    val decision = chart("if True:")
-    assertEquals(decision.nodes.map(node => node.line -> node.kind), List(1 -> "decision"))
-    val loop = chart("for i in range(3):")
-    assertEquals(loop.nodes.map(node => node.line -> node.kind), List(1 -> "loop"))
-  }
-
-  test("an unfinished call keeps the finished outer chart") {
-    val result = chart("x = 0\nfor i in range(3):\n    print(i")
-    assertEquals(result.nodes.map(_.line), List(1, 2))
-    assert(result.nodes.exists(node => node.line == 2 && node.kind == "loop"))
-  }
-
-  test("dropping an unfinished body still closes the new loop header") {
-    val result = chart("x = 0\nfor i in range(3):\n    print(i)\n    for j in range(2):\n        print(j")
-    assertEquals(result.nodes.filter(_.kind == "loop").map(_.line), List(2, 4))
-    assert(result.nodes.exists(_.line == 3))
+  test("incomplete code clears the chart instead of showing a recovered prefix") {
+    Seq("if True:", "for i in range(3):", "x = 0\nfor i in range(3):\n    print(i",
+      "x = 0\nfor i in range(3):\n    print(i)\n    for j in").foreach(source =>
+      assertEquals(chart(source), PythonFlowchartGutter.empty))
   }
 
   test("an error above the last few code lines clears the chart") {
@@ -117,8 +95,13 @@ class PythonFlowchartGutterSpec extends FunSuite {
 
   test("overlay scopes separate declarations from bodies and omit unreachable statements") {
     val result = chart("def answer():\n    return 42\n    print(0)\nprint(answer())")
-    assertEquals(result.flow.map(_.map(_.line).distinct), List(List(1, 4), List(2)))
+    assertEquals(result.flow.map(_.map(_.line).distinct), List(List(1, 2)))
     assert(result.flow.forall(rows => rows.head.kind == "start" && rows.last.kind == "stop"))
   }
 
+  test("function graphs start at each definition and never cross another function") {
+    val result = chart("import turtle\n\ndef do_stuff():\n    pass\ndef main():\n    turtle.forward(100)\n    print(1)\nmain()")
+    assertEquals(result.flow.map(rows => (rows.head.line, rows.head.kind, rows.last.line, rows.last.kind)),
+      List((3, "start", 4, "stop"), (5, "start", 7, "stop")))
+  }
 }

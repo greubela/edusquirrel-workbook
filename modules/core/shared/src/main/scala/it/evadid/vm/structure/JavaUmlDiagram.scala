@@ -1,6 +1,6 @@
 package it.evadid.vm.structure
 
-import it.evadid.vm.structure.UmlClassDiagram.*
+import it.evadid.core.datastructures.uml.*
 import it.evadid.vm.conversion.structured.SourceStructure
 import it.evadid.vm.conversion.structured.SourceStructure.{Group, Symbol, Token, Word}
 import it.evadid.vm.naming.BeEntityName
@@ -18,21 +18,21 @@ object JavaUmlDiagram {
     val code = block.fold(source)(_.source).trim
     val name = block.fold(sourceKey.universalInterpretation())(_.name)
     val parsed = SourceStructure.javaMembers(code).flatMap(parseMember)
-    def keyed(kind: MemberKind): Seq[UmlMember] = parsed.collect { case (`kind`, member) => member }
+    def keyed(kind: UmlEntityKind): Seq[UmlMember] = parsed.collect { case (`kind`, member) => member }
       .foldLeft(Vector.empty[UmlMember]) { (done, member) =>
         val occurrence = done.count(_.name == member.name)
-        done :+ member.copy(key = EntityKey(name, Some(MemberKey(kind, member.name, occurrence))))
+        done :+ member.copy(key = UmlEntityKey(name, Some(UmlMemberKey(kind, member.name, occurrence))))
       }
-    UmlClass(sourceKey, name, code, words(SourceStructure.header(code)).contains("abstract"), keyed(MemberKind.Attribute), keyed(MemberKind.Function))
+    UmlClass(sourceKey, name, code, words(SourceStructure.header(code)).contains("abstract"), keyed(UmlEntityKind.Attribute), keyed(UmlEntityKind.Function))
   }
 
   /** A member with a provisional key holding only its name; initializer blocks and nested types yield nothing. */
-  private def parseMember(code: String): Option[(MemberKind, UmlMember)] = {
+  private def parseMember(code: String): Option[(UmlEntityKind, UmlMember)] = {
     val declaration = withoutAnnotations(code)
     val header = SourceStructure.header(declaration).toVector
     val modifiers = words(header)
-    def member(kind: MemberKind, name: String, label: String) = kind -> UmlMember(
-      EntityKey("", Some(MemberKey(kind, name, 0))), s"${visibility(modifiers).symbol}$label",
+    def member(kind: UmlEntityKind, name: String, label: String) = kind -> UmlMember(
+      UmlEntityKey("", Some(UmlMemberKey(kind, name, 0))), s"${visibility(modifiers).symbol}$label",
       visibility(modifiers), modifiers.contains("static"), modifiers.contains("abstract"), code)
     header.indexWhere { case group: Group => group.open == '('; case _ => false } match {
       case parameters if parameters >= 1 => (header(parameters - 1), header(parameters)) match {
@@ -43,11 +43,11 @@ object JavaUmlDiagram {
           }.map(_.start).getOrElse(nameStart)
           val returnType = declaration.substring(typeStart, nameStart).trim
           val parameterList = umlParameters(declaration.substring(group.start + 1, if group.closed then group.end - 1 else group.end))
-          Some(member(MemberKind.Function, name, s"$name($parameterList)${typeSuffix(returnType)}"))
+          Some(member(UmlEntityKind.Function, name, s"$name($parameterList)${typeSuffix(returnType)}"))
         case _ => None
       }
       case _ => SourceStructure.declaration(declaration).map(field =>
-        member(MemberKind.Attribute, field.name, s"${field.name}${typeSuffix(field.javaType.trim)}"))
+        member(UmlEntityKind.Attribute, field.name, s"${field.name}${typeSuffix(field.javaType.trim)}"))
     }
   }
 
@@ -56,11 +56,11 @@ object JavaUmlDiagram {
 
   private def words(tokens: Seq[Token]): Seq[String] = tokens.collect { case Word(_, _, text) => text }
 
-  private def visibility(modifiers: Seq[String]): Visibility =
-    if modifiers.contains("public") then Visibility.Public
-    else if modifiers.contains("private") then Visibility.Private
-    else if modifiers.contains("protected") then Visibility.Protected
-    else Visibility.Package
+  private def visibility(modifiers: Seq[String]): UmlVisibility =
+    if modifiers.contains("public") then UmlVisibility.Public
+    else if modifiers.contains("private") then UmlVisibility.Private
+    else if modifiers.contains("protected") then UmlVisibility.Protected
+    else UmlVisibility.Package
 
   private def typeSuffix(javaType: String): String = if javaType.isEmpty then "" else s": $javaType"
 

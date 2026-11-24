@@ -8,7 +8,6 @@ import com.raquo.laminar.api.L.*
 import it.evadid.core.datastructures.language.{AppLanguage, LanguageMapContentId}
 import it.evadid.core.datastructures.state.StateHelper.StateBasedVar
 import it.evadid.homepage.webElements.basic.HtmlButtonElement
-import it.evadid.homepage.webElements.editor.code.EvaEditor.extensions.turtle.TurtleTaskEditorExtension
 import it.evadid.homepage.webElements.editor.code.EvaEditor.{EvaEditor, EvaEditorConfig, EvaEditorLabels}
 import it.evadid.homepage.workbook.htmlRenderer.DomElementCollection.DomElementSingle
 import it.evadid.homepage.workbook.htmlRenderer.HtmlRenderFactory.LineBasedRenderingFactory
@@ -35,12 +34,14 @@ case object HtmlProgrammingExerciseFullJavaRenderer extends LineBasedRenderingFa
                                        ):
   EditorWithWorkbookPanel[ProgrammingExerciseWithLlmScaffoldingAndGrading.type, EvaEditorConfig] = {
 
-    // Data exercises show the list or sudoku after main; other programs keep the turtle drawing.
-    val draw = Option.when(element.dataView.isEmpty)(new TurtleTaskEditorExtension(boundVar, None))
-    val previewCard = element.dataView match {
-      case Some(view) => ElementCard(LanguageMapContentId("basic/programDataTitle"),
+    val previewCards = element.dataView.toSeq.map { view =>
+      ElementCard(LanguageMapContentId("basic/programDataTitle"),
         new ProgramDataPreview(boundVar, view, key => laminarHelper.plaintextStringSignal(LanguageMapContentId(s"basic/$key"))).getDomElement())
-      case None => ElementCard(LanguageMapContentId("basic/DrawTitle"), draw.get.getDomElement())
+    } ++ element.gradingElements.collect {
+      case grader: it.evadid.workbook.elements.interactionElements.programming.programmingExerciseTurtle.RecreateShapeGrader =>
+        ElementCard(LanguageMapContentId("basic/turtleGradingPanel"),
+          it.evadid.homepage.workbook.htmlRenderer.interactionRenderer.turtleStitch.CompareShapePreview(
+            boundVar, grader.desiredResult, grader.comparisonPolicy).getDomElement())
     }
     val instruction = element.instructionText.map(text => DisplayLangMapContent(element.elementId + "-sidebar-instruction", text,
       LangMapContentIdType(RoleInWorkbook.EXERCISE_DESCRIPTION, TypeOfTextDisplay.MARKDOWN)))
@@ -48,11 +49,11 @@ case object HtmlProgrammingExerciseFullJavaRenderer extends LineBasedRenderingFa
     val evaEditor = EvaEditor(
       fullInfo.loggerSystemInfo.uiAndDomLogger,
       boundVar,
-      draw.toList,
+      Nil,
       Var(EvaEditorConfig(enabledLanguages = List(AppLanguage.Java))),
       humanLanguage = fullInfo.signals.currentLanguage,
       labels = EvaEditorLabels.fromContent(laminarHelper.plaintextStringSignal))
-    EditorWithWorkbookPanel(element, instruction, gradingReporter, List(previewCard), evaEditor)
+    EditorWithWorkbookPanel(element, instruction, gradingReporter, previewCards, evaEditor)
   }
 
   override protected def createRendering(workbookElement: ProgrammingExerciseFullJava): AtomarLineRendering = {

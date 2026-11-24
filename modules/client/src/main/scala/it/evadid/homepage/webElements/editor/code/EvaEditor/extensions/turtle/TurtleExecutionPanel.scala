@@ -13,15 +13,6 @@ import scala.concurrent.Future
 import scala.scalajs.concurrent.JSExecutionContext.Implicits.queue
 import scala.util.{Failure, Success, Try}
 
-object TurtleExecutionPanel {
-  enum Status {
-    case Idle, Running, Stopped
-    case Ready(commands: List[TurtleCommand[Double]], matches: Option[Boolean])
-    case Failed(message: String)
-  }
-
-}
-
 final class TurtleExecutionPanel(
     source: Var[ProgrammingState],
     execute: () => Future[List[TurtleCommand[Double]]],
@@ -29,17 +20,16 @@ final class TurtleExecutionPanel(
     target: Option[TurtleGraphic] = None,
     comparisonPolicy: TurtleDrawingPolicy = TurtleDrawingPolicy.Coverage
 ) extends HtmlAppElement {
-  import TurtleExecutionPanel.*
 
-  private[code] val status = Var[Status](Status.Idle)
+  private[code] val status = Var[TurtleExecutionPanelStatus](TurtleExecutionPanelStatus.Idle)
   private val revision = Var(0L)
   private val scenes = Var(Vector.empty[TurtleJsxGraphRenderer.Scene])
 
   private[code] def reset(): Unit = {
     revision.update(_ + 1)
-    val running = status.now() == Status.Running
+    val running = status.now() == TurtleExecutionPanelStatus.Running
     scenes.set(Vector.empty)
-    status.set(Status.Idle)
+    status.set(TurtleExecutionPanelStatus.Idle)
     if running then cancel()
   }
 
@@ -49,17 +39,17 @@ final class TurtleExecutionPanel(
       case (Some(_), Some(result)) => result.scene
       case _ => TurtleDrawingGrading.drawingScene(commands)
     }))
-    Status.Ready(commands, comparison.map(_.matches))
+    TurtleExecutionPanelStatus.Ready(commands, comparison.map(_.matches))
   }
 
-  private def start[A](execute: () => Future[A])(completed: A => Status): Unit = {
-    if status.now() == Status.Running then return
+  private def start[A](execute: () => Future[A])(completed: A => TurtleExecutionPanelStatus): Unit = {
+    if status.now() == TurtleExecutionPanelStatus.Running then return
     revision.update(_ + 1)
     val requested = revision.now()
     val original = source.now()
     scenes.set(Vector.empty)
-    status.set(Status.Running)
-    if requested != revision.now() || status.now() != Status.Running then return
+    status.set(TurtleExecutionPanelStatus.Running)
+    if requested != revision.now() || status.now() != TurtleExecutionPanelStatus.Running then return
     Try(execute()).fold(Future.failed, identity).onComplete {
       case _ if requested != revision.now() || original != source.now() => ()
       case Success(result) =>
@@ -67,17 +57,17 @@ final class TurtleExecutionPanel(
           case Success(next) => status.set(next)
           case Failure(error) =>
             scenes.set(Vector.empty)
-            status.set(Status.Failed(Option(error.getMessage).getOrElse("The drawing could not be compared.")))
+            status.set(TurtleExecutionPanelStatus.Failed(Option(error.getMessage).getOrElse("The drawing could not be compared.")))
         }
-      case Failure(_: CancellationException) => status.set(Status.Stopped)
-      case Failure(error) => status.set(Status.Failed(Option(error.getMessage).getOrElse("Your program could not finish.")))
+      case Failure(_: CancellationException) => status.set(TurtleExecutionPanelStatus.Stopped)
+      case Failure(error) => status.set(TurtleExecutionPanelStatus.Failed(Option(error.getMessage).getOrElse("Your program could not finish.")))
     }
   }
 
-  private[code] def stop(): Unit = if status.now() == Status.Running then {
+  private[code] def stop(): Unit = if status.now() == TurtleExecutionPanelStatus.Running then {
     revision.update(_ + 1)
     scenes.set(Vector.empty)
-    status.set(Status.Stopped)
+    status.set(TurtleExecutionPanelStatus.Stopped)
     cancel()
   }
 
@@ -91,30 +81,30 @@ final class TurtleExecutionPanel(
     onUnmountCallback(_ => reset()),
     h3("Drawing"),
     div(cls := "turtle-execution__actions",
-      button(typ := "button", disabled <-- status.signal.map(_ == Status.Running), "Run", onClick --> (_ => queue.execute(() => run()))),
-      button(typ := "button", disabled <-- status.signal.map(_ != Status.Running), "Stop", onClick --> (_ => stop()))
+      button(typ := "button", disabled <-- status.signal.map(_ == TurtleExecutionPanelStatus.Running), "Run", onClick --> (_ => queue.execute(() => run()))),
+      button(typ := "button", disabled <-- status.signal.map(_ != TurtleExecutionPanelStatus.Running), "Stop", onClick --> (_ => stop()))
     ),
     p(cls := "turtle-execution__status", role := "status", aria.live := "polite",
       child.text <-- status.signal.map {
-        case Status.Idle => "Run your program to see its drawing."
-        case Status.Running => "Your program is running…"
-        case Status.Stopped => "Stopped. You can edit your program and run it again."
-        case Status.Ready(_, Some(true)) => "Your drawing matches the target. Nicely done!"
-        case Status.Ready(_, Some(false)) => "Your drawing doesn't match the target yet. Check the distances and turns."
-        case Status.Ready(_, None) => "Here's your drawing."
-        case Status.Failed(_) => ""
+        case TurtleExecutionPanelStatus.Idle => "Run your program to see its drawing."
+        case TurtleExecutionPanelStatus.Running => "Your program is running…"
+        case TurtleExecutionPanelStatus.Stopped => "Stopped. You can edit your program and run it again."
+        case TurtleExecutionPanelStatus.Ready(_, Some(true)) => "Your drawing matches the target. Nicely done!"
+        case TurtleExecutionPanelStatus.Ready(_, Some(false)) => "Your drawing doesn't match the target yet. Check the distances and turns."
+        case TurtleExecutionPanelStatus.Ready(_, None) => "Here's your drawing."
+        case TurtleExecutionPanelStatus.Failed(_) => ""
       }),
     child.maybe <-- status.signal.map {
-      case Status.Failed(message) => Some(p(cls := "turtle-execution__error", role := "alert", message))
+      case TurtleExecutionPanelStatus.Failed(message) => Some(p(cls := "turtle-execution__error", role := "alert", message))
       case _ => None
     },
     child.maybe <-- status.signal.map {
-      case Status.Ready(_, _) =>
+      case TurtleExecutionPanelStatus.Ready(_, _) =>
         Some(picture(scenes.now().head, if target.isDefined then "Target comparison" else "Your drawing"))
       case _ => None
     },
     // Every edit resets the status; only a change between result and target may rebuild the (costly) target board.
-    child.maybe <-- status.signal.map(_.isInstanceOf[Status.Ready]).distinct.map(ready => if ready then None else targetPicture)
+    child.maybe <-- status.signal.map(_.isInstanceOf[TurtleExecutionPanelStatus.Ready]).distinct.map(ready => if ready then None else targetPicture)
   )
 
   private lazy val targetPicture: Option[Element] = target.map { graphic =>

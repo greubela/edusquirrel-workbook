@@ -1,5 +1,6 @@
 package it.evadid.homepage.webElements.editor.code
 
+import it.evadid.homepage.webElements.editor.code.EvaEditor.extensions.turtle.TurtleExecutionPanelStatus
 import it.evadid.core.datastructures.language.AppLanguage.{Java, Python, SnapLanguage}
 import it.evadid.homepage.workbook.htmlRenderer.interactionRenderer.turtleStitch.TurtleDrawingGrading
 import munit.FunSuite
@@ -57,7 +58,7 @@ class TurtleExecutionPanelSpec extends EditorDomSuite {
       panel.run()
       Future.unit.flatMap(_ => Future.unit.map { _ =>
         val matches = policy == TurtleDrawingPolicy.Coverage
-        assertEquals(panel.status.now(), TurtleExecutionPanel.Status.Ready(commands, Some(matches)))
+        assertEquals(panel.status.now(), TurtleExecutionPanelStatus.Ready(commands, Some(matches)))
         assertEquals(ProgrammingState.serializer.serialize(state.now()), stored)
         unmountPanel(panel)
       })
@@ -75,7 +76,7 @@ class TurtleExecutionPanelSpec extends EditorDomSuite {
     state.set(ProgrammingStateRaw(Python, "forward(10)"))
     panel.run()
     Future.unit.flatMap(_ => Future.unit.map { _ =>
-      assertEquals(panel.status.now(), TurtleExecutionPanel.Status.Ready(commands, None))
+      assertEquals(panel.status.now(), TurtleExecutionPanelStatus.Ready(commands, None))
       unmountPanel(panel)
     })
   }
@@ -129,70 +130,66 @@ class TurtleExecutionPanelSpec extends EditorDomSuite {
   }
 
   test("Java execution panel publishes assessed drawing only after successful completion") {
-    import TurtleExecutionPanel.Status
     val fixture = new PanelFixture
     fixture.panel.run()
     fixture.panel.run()
     assertEquals(fixture.requests.size, 1)
-    assertEquals(fixture.panel.status.now(), Status.Running)
+    assertEquals(fixture.panel.status.now(), TurtleExecutionPanelStatus.Running)
     fixture.requests.head.success(squareDrawing())
     fixture.requests.head.future.map { _ => () }.flatMap { _ =>
       Future.unit.map { _ =>
-        assertEquals(fixture.panel.status.now(), Status.Ready(squareDrawing(), Some(true)))
+        assertEquals(fixture.panel.status.now(), TurtleExecutionPanelStatus.Ready(squareDrawing(), Some(true)))
         unmountPanel(fixture.panel)
-        assertEquals(fixture.panel.status.now(), Status.Idle)
+        assertEquals(fixture.panel.status.now(), TurtleExecutionPanelStatus.Idle)
       }
     }
   }
 
   test("Java execution panel stop ignores old results and permits a new run") {
-    import TurtleExecutionPanel.Status
     val fixture = new PanelFixture
     fixture.panel.run()
     fixture.panel.stop()
     fixture.panel.stop()
     assertEquals(fixture.stops, 1)
-    assertEquals(fixture.panel.status.now(), Status.Stopped)
+    assertEquals(fixture.panel.status.now(), TurtleExecutionPanelStatus.Stopped)
     fixture.panel.run()
     val newest = fixture.requests.last
     fixture.requests.head.success(squareDrawing())
     fixture.requests.head.future.flatMap { _ => Future.unit.map { _ =>
-      assertEquals(fixture.panel.status.now(), Status.Running)
+      assertEquals(fixture.panel.status.now(), TurtleExecutionPanelStatus.Running)
       newest.success(squareDrawing(24))
     }}.flatMap(_ => newest.future).flatMap(_ => Future.unit.map { _ =>
-      assertEquals(fixture.panel.status.now(), Status.Ready(squareDrawing(24), Some(false)))
+      assertEquals(fixture.panel.status.now(), TurtleExecutionPanelStatus.Ready(squareDrawing(24), Some(false)))
       unmountPanel(fixture.panel)
     })
   }
 
   test("Java execution panel invalidates A-to-B-to-A restores but ignores identical echoes") {
-    import TurtleExecutionPanel.Status
     val fixture = new PanelFixture
     val original = fixture.source.now()
     fixture.panel.run()
     fixture.source.set(original)
-    assertEquals(fixture.panel.status.now(), Status.Running)
+    assertEquals(fixture.panel.status.now(), TurtleExecutionPanelStatus.Running)
     assertEquals(fixture.stops, 0)
     fixture.source.set(ProgrammingStateRaw(Java, "class Changed {}"))
     fixture.source.set(original)
-    assertEquals(fixture.panel.status.now(), Status.Idle)
+    assertEquals(fixture.panel.status.now(), TurtleExecutionPanelStatus.Idle)
     assertEquals(fixture.stops, 1)
     fixture.requests.head.success(squareDrawing())
     fixture.requests.head.future.flatMap(_ => Future.unit.map { _ =>
-      assertEquals(fixture.panel.status.now(), Status.Idle)
+      assertEquals(fixture.panel.status.now(), TurtleExecutionPanelStatus.Idle)
       unmountPanel(fixture.panel)
     })
   }
 
   test("Java execution panel unmount clears results and rejects late completion") {
-    import TurtleExecutionPanel.Status
     val fixture = new PanelFixture
     fixture.panel.run()
     unmountPanel(fixture.panel)
     assertEquals(fixture.stops, 1)
     fixture.requests.head.success(squareDrawing())
     fixture.requests.head.future.flatMap(_ => Future.unit.map { _ =>
-      assertEquals(fixture.panel.status.now(), Status.Idle)
+      assertEquals(fixture.panel.status.now(), TurtleExecutionPanelStatus.Idle)
       mountPanel(fixture.panel)
       fixture.panel.run()
       assertEquals(fixture.requests.size, 2)
@@ -201,40 +198,37 @@ class TurtleExecutionPanelSpec extends EditorDomSuite {
   }
 
   test("Java execution panel catches synchronous failure without fabricating a drawing") {
-    import TurtleExecutionPanel.Status
     val source = Var[ProgrammingState](ProgrammingStateRaw(Java, "class Drawing {}"))
     val panel = new TurtleExecutionPanel(source, () => throw IllegalStateException("unavailable"), () => ())
     panel.run()
     Future.unit.map { _ =>
-      assertEquals(panel.status.now(), Status.Failed("unavailable"))
+      assertEquals(panel.status.now(), TurtleExecutionPanelStatus.Failed("unavailable"))
       unmountPanel(panel)
     }
   }
 
   test("Java execution panel does not launch a run stopped by a status observer") {
-    import TurtleExecutionPanel.Status
     val fixture = new PanelFixture
     val owner = new ManualOwner
     fixture.panel.status.signal.changes.foreach {
-      case Status.Running => fixture.panel.stop()
+      case TurtleExecutionPanelStatus.Running => fixture.panel.stop()
       case _ => ()
     }(using owner)
     fixture.panel.run()
     assertEquals(fixture.requests.size, 0)
-    assertEquals(fixture.panel.status.now(), Status.Stopped)
+    assertEquals(fixture.panel.status.now(), TurtleExecutionPanelStatus.Stopped)
     owner.killSubscriptions()
     unmountPanel(fixture.panel)
   }
 
   test("shared drawing panel accepts a Python source without converting or publishing it") {
-    import TurtleExecutionPanel.Status
     val original = ProgrammingStateRaw(Python, "forward(25)")
     val source = Var[ProgrammingState](original)
     val panel = new TurtleExecutionPanel(source, () => Future.successful(squareDrawing()), () => ())
     mountPanel(panel)
     panel.run()
     Future.unit.flatMap(_ => Future.unit.map { _ =>
-      assertEquals(panel.status.now(), Status.Ready(squareDrawing(), None))
+      assertEquals(panel.status.now(), TurtleExecutionPanelStatus.Ready(squareDrawing(), None))
       assertEquals(source.now(), original)
       unmountPanel(panel)
     })

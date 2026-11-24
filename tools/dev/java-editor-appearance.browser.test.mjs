@@ -263,7 +263,7 @@ test('Java method editing and theme changes preserve source and undo history', a
     assert.match(edited, /public void instanceMethod\(\)\s*\{\s*Turtle\.forward\(7\);/,
       'method edits update the central full program and preserve other methods');
     await editor.locator('.cm-content').fill('class Main { static void main(String[] args) { System.out.println("first\\nsecond"); System.out.println(); Turtle.forward(20); } }');
-    await editor.locator('.java-component-editor__console').getByRole('button', {name:'Run',exact:true}).click();
+    await editor.locator('.programming-execution').getByRole('button', {name:'Run',exact:true}).click();
     await page.waitForFunction(() => document.querySelector('dialog[open] [role=log]')?.textContent === 'first\nsecond\n\n');
     assert(!await editor.innerText().then(text => text.includes('This drawing uses commands that cannot be compared yet.')));
     assert.deepEqual(errors, []);

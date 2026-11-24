@@ -2,6 +2,7 @@ package it.evadid.vm.structure
 
 import it.evadid.core.datastructures.language.AppLanguage.Python
 import it.evadid.workbook.elements.interactionElements.programming.state.ProgrammingStateRaw
+import it.evadid.core.datastructures.uml.UmlClassDiagram
 import munit.FunSuite
 import upickle.default.*
 

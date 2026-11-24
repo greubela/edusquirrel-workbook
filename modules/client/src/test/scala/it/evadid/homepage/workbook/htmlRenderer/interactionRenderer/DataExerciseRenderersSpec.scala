@@ -84,13 +84,13 @@ class DataExerciseRenderersSpec extends EditorDomSuite {
     } finally close()
   }
 
-  test("full Java exercises without a data view keep the turtle drawing and add no task card") {
+  test("full Java exercises without a data view or shape grader do not invent a drawing panel") {
     val element = ProgrammingExerciseFullJava("java-drawing")
     load(element)
     val side = HtmlProgrammingExerciseFullJavaRenderer.createNewEditor(element, Var(java("")), GradingReporter(element)).sidePanel.getDomElement()
     val close = mount(side)
     try {
-      assert(side.ref.textContent.toLowerCase.contains("drawtitle"), side.ref.textContent)
+      assert(!side.ref.textContent.toLowerCase.contains("drawtitle"), side.ref.textContent)
       assert(side.ref.querySelector(".program-data-preview") == null)
       assert(!side.ref.textContent.toLowerCase.contains("sidepanelinstructiontitle"))
     } finally close()

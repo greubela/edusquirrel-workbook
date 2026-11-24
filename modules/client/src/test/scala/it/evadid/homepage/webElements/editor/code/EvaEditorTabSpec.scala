@@ -12,7 +12,7 @@ import it.evadid.core.datastructures.language.AppLanguage.*
 
 class EvaEditorTabSpec extends FunSuite {
   private val logger = Logger.withNameAndPrefixes(Some("tab-test"), PrintToStdLogger.printNothing)
-  private val tabLabels = EvaEditorLabels(Val("_"), Val("_"), Val("_"), Val("_"), it.evadid.homepage.webElements.editor.blocks.BlockEditorLabels.fromContent(_ => Val("_")))
+  private val tabLabels = EvaEditorLabels(Val("_"), Val("_"), Val("_"), Val("_"), _ => Val("_"), it.evadid.homepage.webElements.editor.blocks.BlockEditorLabels.fromContent(_ => Val("_")))
   private val tabs = EvaEditorConfig.tabs(logger, EvaEditorConfig.Default, tabLabels)
   test("language choices convert raw matching drafts without parsing them") {
     val java = ProgrammingStateRaw(Java, "class Unfinished {")

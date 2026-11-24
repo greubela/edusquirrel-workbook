@@ -43,17 +43,7 @@ case class EvaEditor(
   private val focused = Var(Option.empty[ProgrammingLanguage])
   private val tabListId = s"eva-tabs-${java.util.UUID.randomUUID()}"
 
-  private sealed trait ConversionCheck {
-    def source: ProgrammingState
-  }
-
-  private final case class PendingConversion(source: ProgrammingState, result: Future[ConversionResult])
-    extends ConversionCheck
-
-  private final case class CompletedConversion(source: ProgrammingState, result: ConversionResult)
-    extends ConversionCheck
-
-  private val conversionChecks = Var(Map.empty[ProgrammingLanguage, ConversionCheck])
+  private val conversionChecks = Var(Map.empty[ProgrammingLanguage, EvaConversionCheck])
   private val mounted = Var(false)
   private def failure(result: ConversionResult): Option[ProgrammingConversionException] =
     Option.when(result.finalState.isEmpty) {
@@ -90,17 +80,17 @@ case class EvaEditor(
   private def checkConversion(tab: EvaEditorTab, source: ProgrammingState = draft.now()): Future[ConversionResult] =
     if source.associatedLanguage == tab.language then Future.successful(ConversionResult(source, Some(source), Seq.empty))
     else conversionChecks.now().get(tab.language) match {
-      case Some(PendingConversion(`source`, result)) => result
-      case Some(CompletedConversion(`source`, result)) => Future.successful(result)
+      case Some(PendingEditorConversion(`source`, result)) => result
+      case Some(CompletedEditorConversion(`source`, result)) => Future.successful(result)
       case _ =>
         val result = Future(Try(tab.convert(source)).fold(error => ConversionResult.failed(source, error), identity))
-        val pending = PendingConversion(source, result)
+        val pending = PendingEditorConversion(source, result)
         conversionChecks.update(_.updated(tab.language, pending))
         result.foreach { outcome =>
           if mounted.now() && draft.now() == source then
             conversionChecks.update { checks =>
               if checks.get(tab.language).contains(pending) then
-                checks.updated(tab.language, CompletedConversion(source, outcome))
+                checks.updated(tab.language, CompletedEditorConversion(source, outcome))
               else checks
             }
         }
@@ -130,7 +120,7 @@ case class EvaEditor(
   private def tabButton(tab: EvaEditorTab): Element = {
     val status = draft.signal.combineWith(conversionChecks.signal).map { (source, checks) =>
       checks.get(tab.language) match {
-        case Some(CompletedConversion(`source`, result)) => failure(result).map(describeConversionError)
+        case Some(CompletedEditorConversion(`source`, result)) => failure(result).map(describeConversionError)
         case _ => None
       }
     }
@@ -196,10 +186,10 @@ case class EvaEditor(
         }
         case _ => None
       }),
-    div(cls := "eva-editor__content", child <-- selected.map {
+    div(cls := "eva-editor__workspace", div(cls := "eva-editor__content", child <-- selected.map {
       case Some(tab) => tab.create(draft, appearance, marker, labels.loading).getDomElement()
       case None => div(child.text <-- labels.unavailable)
-    }),
+    }), new it.evadid.homepage.webElements.editor.code.ProgrammingExecutionPanel(draft, labels.programming).getDomElement()),
     panels.map(_.getDomElement())
   )
 
