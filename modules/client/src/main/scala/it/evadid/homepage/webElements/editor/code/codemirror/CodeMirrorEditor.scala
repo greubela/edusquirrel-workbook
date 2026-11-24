@@ -6,6 +6,7 @@ import it.evadid.facades.CodeMirror.{CodeMirrorHandle, EditorConfig}
 import com.raquo.airstream.ownership.Subscription
 import com.raquo.laminar.api.L
 import com.raquo.laminar.api.L.*
+import it.evadid.homepage.webElements.editor.code.ProgrammingStateView
 import com.raquo.laminar.nodes.ReactiveSvgElement
 import it.evadid.core.datastructures.language.AppLanguage.{ProgrammingLanguage, Python}
 import it.evadid.facades.CodeMirror
@@ -96,10 +97,9 @@ object CodeMirrorEditor {
     override val language = Python
     override def icon = Some(it.evadid.homepage.webElements.editor.code.EvaEditor.EvaLanguageIcons.python)
     override def create(state: Var[ProgrammingState], context: EvaEditorContext): it.evadid.homepage.webElements.HtmlAppElement = {
-      val text = state.bimap {
+      val text = ProgrammingStateView(state, inactive = "") {
         case ProgrammingStateRaw(Python, code) => code
         case value: ProgrammingStatePythonStructured => value.toString
-        case _ => ""
       }(ProgrammingStateRaw(Python, _))
       CodeMirrorEditor(context.logger, text, Python, Var(config), diagnostics = CodeMirrorEditor.marks(context.conversionMarker),
         loadingLabel = context.loading)

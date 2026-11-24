@@ -1,6 +1,7 @@
 package it.evadid.homepage.webElements.editor.blocks
 
 import com.raquo.laminar.api.L.*
+import it.evadid.homepage.webElements.editor.code.ProgrammingStateView
 import com.raquo.laminar.codecs.StringAsIsCodec
 import com.raquo.laminar.keys.SvgAttr
 import it.evadid.core.datastructures.geometry.{Bounds, Point}
@@ -259,9 +260,8 @@ object BlockProgramEditor {
     override val language: ProgrammingLanguage = BlockDisplay
     override def label(labels: EvaEditorLabels): Signal[String] = labels.blocks.tab
     override def create(state: Var[ProgrammingState], context: EvaEditorContext): HtmlAppElement = {
-      val program = state.bimap {
+      val program = ProgrammingStateView(state, inactive = BeProgram.empty) {
         case ProgrammingStateBeExpression(expression) => BeProgram(expression)
-        case _ => BeProgram.empty // inactive while Eva switches to another language
       }(edited => ProgrammingStateBeExpression(edited.fullProgram))
       BlockProgramEditor(program, library, context.labels.blocks, context.environment.humanLanguage)
     }

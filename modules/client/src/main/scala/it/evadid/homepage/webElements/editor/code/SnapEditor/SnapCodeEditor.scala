@@ -6,6 +6,7 @@ import it.evadid.facades.Snap.*
 import com.raquo.airstream.ownership.{Owner, Subscription}
 import com.raquo.laminar.api.L
 import com.raquo.laminar.api.L.*
+import it.evadid.homepage.webElements.editor.code.ProgrammingStateView
 import it.evadid.core.datastructures.language.AppLanguage.{English, HumanLanguage, SnapLanguage}
 import it.evadid.homepage.webElements.HtmlAppElement
 import it.evadid.homepage.webElements.editor.code.EvaEditor.{EvaEditorContext, EvaEditorLabels, EvaEditorTab}
@@ -28,11 +29,10 @@ case class SnapCodeEditor(
                          ) extends HtmlAppElement {
 
   // A typed view of the interaction Var: no second answer or synchronization store.
-  private[SnapEditor] val snapState: Var[ProgrammingStateSnapScalaModel] = state.bimap {
+  private[SnapEditor] val snapState: Var[ProgrammingStateSnapScalaModel] = ProgrammingStateView(state, inactive = SnapCodeEditor.empty) {
     case model: ProgrammingStateSnapScalaModel => model.persistent
     case xml @ ProgrammingStateRaw(SnapLanguage, _) => SnapCodeEditor.typed(xml)
     case other if SnapCodeEditor.shownAsSnap(other) => SnapCodeEditor.typed(other.toSnapXml)
-    case _ => SnapCodeEditor.empty // inactive while Eva switches to another language
   }(identity)
 
   private def publishProgramFromSnapXml(xml: String): Unit = {

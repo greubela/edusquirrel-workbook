@@ -2,6 +2,7 @@ package it.evadid.homepage.webElements.code
 
 import it.evadid.vm.structure.JavaUmlDiagram
 import com.raquo.laminar.api.L.*
+import it.evadid.homepage.webElements.editor.code.ProgrammingStateView
 import com.raquo.laminar.nodes.ReactiveSvgElement
 import it.evadid.core.datastructures.language.AppLanguage.Java
 import it.evadid.homepage.webElements.HtmlAppElement
@@ -192,11 +193,9 @@ object JavaComponentEditor {
       svg.strokeLineCap := "round", svg.strokeLineJoin := "round",
       svg.path(svg.d := "M5 11h11v5a4 4 0 0 1-4 4H9a4 4 0 0 1-4-4Zm11 1h2a3 3 0 0 1 0 6h-3M4 23h14M8 8c-3-3 3-3 0-6M12 8c-3-3 3-3 0-6")))
     override def create(state: Var[ProgrammingState], context: EvaEditorContext): HtmlAppElement = {
-      // A language change reaches bound signals before Laminar unmounts the old tab.
-      val structured = state.bimap {
+      val structured = ProgrammingStateView(state, inactive = ProgrammingStateJavaStructured(Map.empty)) {
         case value: ProgrammingStateJavaStructured => value
         case value @ ProgrammingStateRaw(Java, _) => value.toJavaStructured
-        case _ => ProgrammingStateJavaStructured(Map.empty)
       }(identity)
       new JavaComponentEditor(context.logger, structured, context.labels.java, appearance = Some(context.appearance),
         editorConfig = config, conversionMarker = context.conversionMarker, loadingLabel = context.loading)
