@@ -20,5 +20,8 @@
   "invalidText": "Introduce un texto.",
   "invalidDate": "Introduce una fecha como AAAA-MM-DD.",
   "invalidAnyValue": "Introduce un valor válido.",
-  "blocksTab": "Bloques"
+  "blocksTab": "Bloques",
+  "stop": "Detener",
+  "executionRunning": "Ejecutando…",
+  "executionStopped": "Detenido."
 }

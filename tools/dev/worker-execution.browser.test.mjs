@@ -109,24 +109,24 @@ test('Pyodide runs on the main thread and in a worker, with independent interpre
       code:"import sys\nid(sys.modules.get('turtle'))"
     }))).value;
     const consoleProgram = result(await page.evaluate(() => request('console-program','worker.runPython',{
-      code:'from turtle import *\nforward(100)\nprintln("hai")\n',logTurtleCalls:true
+      code:'from turtle import *\nforward(100)\nprintln("hai")\n',turtleCalls:'Logged'
     })));
     assert.equal(consoleProgram.stdout,'forward(100)\nhai\n');
     assert.equal(consoleProgram.stderr,'');
     const mixedConsole = result(await page.evaluate(() => request('mixed-console','worker.runPython',{
-      code:'import turtle as t\nfor i in range(2):\n    t.fd(i)\n    print("学校", end="!")\nt.forward(distance=3)\nimport sys\nprint("warning",file=sys.stderr)\n',logTurtleCalls:true
+      code:'import turtle as t\nfor i in range(2):\n    t.fd(i)\n    print("学校", end="!")\nt.forward(distance=3)\nimport sys\nprint("warning",file=sys.stderr)\n',turtleCalls:'Logged'
     })));
     assert.equal(mixedConsole.stdout,'fd(0)\n学校!fd(1)\n学校!forward(distance=3)\n');
     assert.equal(mixedConsole.stderr,'warning\n');
     await page.evaluate(() => request('console-state','worker.runPython',{
-      code:'console_value = 21',logTurtleCalls:true
+      code:'console_value = 21',turtleCalls:'Logged'
     }));
     const retainedConsole = result(await page.evaluate(() => request('console-retained','worker.runPython',{
-      code:'println(console_value * 2)',logTurtleCalls:true,resetGlobals:false
+      code:'println(console_value * 2)',turtleCalls:'Logged',resetGlobals:false
     })));
     assert.equal(retainedConsole.stdout,'42\n','console mode honors explicitly retained globals');
     const failingConsole = await page.evaluate(() => request('failing-console','worker.runPython',{
-      code:'forward(7)\nraise ValueError("stop")',logTurtleCalls:true
+      code:'forward(7)\nraise ValueError("stop")',turtleCalls:'Logged'
     }));
     assert.equal(result(failingConsole),undefined);
     assert(failingConsole.response.additionalOutput.loggerOut.includes('forward(7)'));

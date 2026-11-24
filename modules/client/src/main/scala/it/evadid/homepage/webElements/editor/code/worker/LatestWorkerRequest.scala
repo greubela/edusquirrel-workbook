@@ -20,7 +20,7 @@ import scala.util.{Failure, Success, Try}
 final class LatestWorkerRequest[K, Req, Res](
     command: ExecutionCommandFactory[Req, Res],
     request: K => Req,
-    createWorker: () => WebWorkerExecutionClient = LatestWorkerRequest.workbookWorker,
+    createWorker: () => WebWorkerExecutionClient = () => LatestWorkerRequest.workbookWorker(),
     cache: Option[LatestResult[K, Res]] = None
 ) {
   private val worker = Var(Option.empty[WebWorkerExecutionClient])
@@ -79,6 +79,7 @@ final class LatestWorkerRequest[K, Req, Res](
 }
 
 object LatestWorkerRequest {
-  def workbookWorker(): WebWorkerExecutionClient =
-    WebWorkerExecutionClient.fromWorker(Workers.classic(ClientRuntimeConfig.workerUrl).createLoadedInstance(), timeoutMilliseconds = 30000)
+  /** A new instance of the workbook worker; `timeoutMilliseconds` bounds each request. */
+  def workbookWorker(timeoutMilliseconds: Double = 30000): WebWorkerExecutionClient =
+    WebWorkerExecutionClient.fromWorker(Workers.classic(ClientRuntimeConfig.workerUrl).createLoadedInstance(), timeoutMilliseconds)
 }

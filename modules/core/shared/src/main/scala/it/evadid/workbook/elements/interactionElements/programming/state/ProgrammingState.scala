@@ -191,7 +191,7 @@ final case class ProgrammingStatePythonStructured(definedClasses: Map[BeEntityNa
     * Turtle operations print their calls; they do not create a drawing window.
     */
   def startExecution()(using client: ExecutionClient, ec: ExecutionContext): Future[RunPythonResult] = {
-    val request = WorkerCommands.RunPythonRequest(toString, logTurtleCalls = true)
+    val request = WorkerCommands.RunPythonRequest(toString, turtleCalls = it.evadid.vm.simulation.python.PythonTurtleCalls.Logged)
     val command = ExecutionCommand(WorkerCommands.runPython.name, upickle.default.writeJs(request))
     val logger = BasicLogger()
     client.executeResponse(logger, command).map { response =>

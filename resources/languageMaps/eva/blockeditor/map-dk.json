@@ -62,5 +62,8 @@
   "javaInvalidFunctionName": "Indtast et gyldigt Java-funktionsnavn.",
   "javaMissingReturnType": "Indtast en returtype.",
   "javaFunctionNotAdded": "Funktionssignaturen eller den aktuelle Java-kildekode er ugyldig.",
-  "blocksTab": "Blokke"
+  "blocksTab": "Blokke",
+  "stop": "Stop",
+  "executionRunning": "Kører…",
+  "executionStopped": "Stoppet."
 }

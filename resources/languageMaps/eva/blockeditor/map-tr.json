@@ -20,5 +20,8 @@
   "invalidText": "Bir metin gir.",
   "invalidDate": "Tarihi YYYY-AA-GG biçiminde gir.",
   "invalidAnyValue": "Geçerli bir değer gir.",
-  "blocksTab": "Bloklar"
+  "blocksTab": "Bloklar",
+  "stop": "Durdur",
+  "executionRunning": "Çalışıyor…",
+  "executionStopped": "Durduruldu."
 }

@@ -18,7 +18,8 @@ object WorkerCommands {
   case class CalculateQrCodeResult(code: QrCode, modules: Vector[Vector[Boolean]]) derives ReadWriter
   case class RunPythonRequest(code: String, context: Map[String, ujson.Value] = Map.empty,
       callbacks: Map[String, Seq[String]] = Map.empty, packages: Seq[String] = Nil,
-      resetGlobals: Boolean = true, captureStdout: Boolean = true, captureStderr: Boolean = true, logTurtleCalls: Boolean = false) derives ReadWriter
+      resetGlobals: Boolean = true, captureStdout: Boolean = true, captureStderr: Boolean = true,
+      turtleCalls: it.evadid.vm.simulation.python.PythonTurtleCalls = it.evadid.vm.simulation.python.PythonTurtleCalls.Native) derives ReadWriter
   case class PythonCallback(module: String, method: String, args: Seq[ujson.Value]) derives ReadWriter
   case class RunPythonResult(value: ujson.Value, stdout: String, stderr: String,
       callbackOps: Seq[PythonCallback]) derives ReadWriter
@@ -57,6 +58,9 @@ object WorkerCommands {
 
   lazy val health = ExecutionCommandFactory[HealthRequest, HealthResult]("worker.health")
   lazy val parseSnapXml = ExecutionCommandFactory[ParseSnapXmlRequest, Seq[SnapScalaModel.Element]]("worker.parseSnapXml")
+  /** Static analysis of a program through the shared BeExpression, off the page thread. */
+  lazy val programAnalysis = ExecutionCommandFactory[it.evadid.workbook.elements.interactionElements.programming.state.ProgrammingState,
+    it.evadid.vm.analysis.ProgramAnalysis]("worker.programAnalysis")
   lazy val pythonFlowchart = ExecutionCommandFactory[PythonFlowchartRequest, PythonFlowchartGutter.Chart]("worker.pythonFlowchart")
   lazy val calculateQrCode = ExecutionCommandFactory[CalculateQrCodeRequest, CalculateQrCodeResult]("worker.calculateQrCode")
   lazy val runPython = ExecutionCommandFactory[RunPythonRequest, RunPythonResult]("worker.runPython",
@@ -75,6 +79,6 @@ object WorkerCommands {
           .flatMap(_.get("sourceLength")).flatMap(_.numOpt).filter(n => n >= 0 && n <= Int.MaxValue && n % 1 == 0).map(_.toInt))
       ujson.Obj("redacted" -> true, "sourceLength" -> length.fold[ujson.Value](ujson.Null)(ujson.Num(_)))
     })
-  lazy val supportedCommands: Set[String] = Set(health.name, parseSnapXml.name, pythonFlowchart.name,
+  lazy val supportedCommands: Set[String] = Set(health.name, parseSnapXml.name, pythonFlowchart.name, programAnalysis.name,
     calculateQrCode.name, runPython.name, javaExecutionEvidence.name)
 }

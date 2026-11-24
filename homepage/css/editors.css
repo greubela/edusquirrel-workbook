@@ -331,3 +331,5 @@
 .eva-editor__workspace > .eva-editor__content { flex: 1; min-height: 0; }
 .programming-execution { flex: 0 0 auto; max-height: 30%; overflow: auto; padding: var(--space-sm); border-top: var(--space-borders) solid var(--editor-border); }
 .programming-execution pre { margin: var(--space-sm) 0; white-space: pre-wrap; overflow-wrap: anywhere; }
+.programming-execution__actions { display: flex; gap: var(--space-sm); }
+.programming-execution__errors { color: var(--color-accent-error); }

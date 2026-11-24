@@ -20,5 +20,8 @@
   "invalidText": "Saisis un texte.",
   "invalidDate": "Saisis une date au format AAAA-MM-JJ.",
   "invalidAnyValue": "Saisis une valeur valide.",
-  "blocksTab": "Blocs"
+  "blocksTab": "Blocs",
+  "stop": "Arrêter",
+  "executionRunning": "Exécution…",
+  "executionStopped": "Arrêté."
 }

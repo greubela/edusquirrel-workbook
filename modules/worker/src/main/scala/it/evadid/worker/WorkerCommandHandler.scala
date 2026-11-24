@@ -22,6 +22,7 @@ object WorkerCommandHandler {
     pythonFlowchart.toLocalExecutionClient((request, _) => Future {
       PythonFlowchartGutter.fromPython(request.source)
     }),
+    programAnalysis.toLocalExecutionClient((state, _) => Future(it.evadid.vm.analysis.ProgramAnalysis.of(state))),
     runPython.toLocalExecutionClient((request, logger) => PyodideCommandRuntime.run(request, logger)),
     javaExecutionEvidence.toLocalExecutionClient((request, _) =>
       JavaTurtleEvidenceJob.run(request, python => PyodideCommandRuntime.run(python, BasicLogger()))),

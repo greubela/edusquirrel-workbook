@@ -62,5 +62,8 @@
   "javaInvalidFunctionName": "Enter a valid Java function name.",
   "javaMissingReturnType": "Enter a return type.",
   "javaFunctionNotAdded": "The function signature or current Java source is invalid.",
-  "blocksTab": "Blocks"
+  "blocksTab": "Blocks",
+  "stop": "Stop",
+  "executionRunning": "Running…",
+  "executionStopped": "Stopped."
 }

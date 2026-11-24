@@ -3,7 +3,8 @@ package it.evadid.homepage.webElements.editor.code.EvaEditor
 import com.raquo.laminar.api.L.*
 import it.evadid.core.datastructures.language.AppLanguage.ProgrammingLanguage
 import it.evadid.homepage.webElements.editor.abstractions.{SimpleWebEditor, TypingDraftBinding}
-import it.evadid.homepage.webElements.editor.code.{EditorAppearance, ProgrammingExecutionPanel}
+import it.evadid.homepage.webElements.editor.code.EditorAppearance
+import it.evadid.homepage.webElements.editor.code.program.ProgrammingExecutionPanel
 import it.evadid.workbook.elements.interactionElements.programming.state.ProgrammingState
 
 import scala.concurrent.Future
@@ -68,7 +69,7 @@ final case class EvaEditor(
         case None => div(child.text <-- environment.labels.unavailable)
       }),
       // The console runs what was committed, never the keystrokes of an unfinished token.
-      ProgrammingExecutionPanel(underlyingVar.signal, environment.labels.programming).getDomElement()))
+      ProgrammingExecutionPanel(underlyingVar.signal, environment.labels.execution).getDomElement()))
 
   override def dismissOnOutsideClick: Boolean = false
 }

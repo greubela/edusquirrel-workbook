@@ -88,10 +88,12 @@ class ExecutionCommandRoundTripSpec extends FunSuite {
     Sample(WorkerCommands.parseSnapXml, WorkerCommands.ParseSnapXmlRequest("<project name=\"demo\"/>", "project"), Seq(snapElement)),
     Sample(WorkerCommands.pythonFlowchart, WorkerCommands.PythonFlowchartRequest("if x:\n    y = 1\n"),
       PythonFlowchartGutter.fromPython("if x:\n    y = 1\nelse:\n    y = 2\n")),
+    Sample(WorkerCommands.programAnalysis, it.evadid.workbook.elements.interactionElements.programming.state.ProgrammingStateRaw(it.evadid.core.datastructures.language.AppLanguage.Python, "helper(1)\nforward(10)\n"),
+      it.evadid.vm.analysis.ProgramAnalysis.of(it.evadid.workbook.elements.interactionElements.programming.state.ProgrammingStateRaw(it.evadid.core.datastructures.language.AppLanguage.Python, "helper(1)\nforward(10)\n"))),
     Sample(WorkerCommands.calculateQrCode, WorkerCommands.CalculateQrCodeRequest("https://example.invalid/?q=1", QrErrorCorrection.Q),
       WorkerCommands.CalculateQrCodeResult(qr, qr.modules)),
     Sample(WorkerCommands.runPython, WorkerCommands.RunPythonRequest("forward(n)", Map("n" -> ujson.Num(10)), Map("turtle" -> Seq("forward")),
-      logTurtleCalls = true), WorkerCommands.RunPythonResult(ujson.Obj("done" -> true), "ok\n", "", Seq(WorkerCommands.PythonCallback("turtle", "forward", Seq(ujson.Num(10)))))),
+      turtleCalls = it.evadid.vm.simulation.python.PythonTurtleCalls.Logged), WorkerCommands.RunPythonResult(ujson.Obj("done" -> true), "ok\n", "", Seq(WorkerCommands.PythonCallback("turtle", "forward", Seq(ujson.Num(10)))))),
     Sample(WorkerCommands.javaExecutionEvidence, WorkerCommands.JavaExecutionEvidenceRequest("class Main { static int f(int a) { return a; } }",
       Some("f"), Vector(Evidence.Scalar.Int32(3))), Evidence.Snapshot(Evidence.Outcome.Completed, 2, 0, Vector.empty))
   )

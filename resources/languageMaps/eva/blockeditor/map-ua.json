@@ -20,5 +20,8 @@
   "invalidText": "Введи текст.",
   "invalidDate": "Введи дату у форматі РРРР-ММ-ДД.",
   "invalidAnyValue": "Введи коректне значення.",
-  "blocksTab": "Блоки"
+  "blocksTab": "Блоки",
+  "stop": "Зупинити",
+  "executionRunning": "Виконується…",
+  "executionStopped": "Зупинено."
 }
