@@ -16,7 +16,6 @@ import it.evadid.core.datastructures.uml.*
 import it.evadid.homepage.webElements.editor.code.codemirror.CodeMirrorEditor
 import it.evadid.homepage.webElements.editor.config.CodeMirrorEditorConfig
 import it.evadid.util.logging.Logger
-import it.evadid.vm.code.errors.ProgrammingConversionError
 import it.evadid.vm.conversion.structured.SourceStructure
 import it.evadid.vm.naming.BeEntityName
 import it.evadid.workbook.elements.interactionElements.programming.state.*
@@ -36,7 +35,7 @@ final class JavaComponentEditor(
     reference: Option[() => Element] = None,
     appearance: Option[EditorAppearance] = None,
     editorConfig: CodeMirrorEditorConfig = CodeMirrorEditorConfig.Default,
-    conversionMarker: Signal[Option[ProgrammingConversionError]] = Val(None),
+    diagnostics: Signal[Seq[CodeMirrorEditor.Diagnostic]] = Val(Nil),
     analyzer: ProgramAnalyzer = ProgramAnalyzer.shared
 ) extends HtmlAppElement {
   import JavaComponentEditor.*
@@ -68,7 +67,7 @@ final class JavaComponentEditor(
   private val classEditor = JavaClassEditor(logger, state, loadingLabel, editorConfig)
   private val source = state.bimap(_.toString)(ProgrammingStateJavaStructured(_)).distinct
   private lazy val sourceEditor = CodeMirrorEditor(logger, source, language = Java, config = Var(editorConfig),
-    diagnostics = CodeMirrorEditor.marks(conversionMarker), loadingLabel = loadingLabel,
+    diagnostics = diagnostics, loadingLabel = loadingLabel,
     sameSource = (left, right) => left == right || ProgrammingStateJavaStructured(left) == ProgrammingStateJavaStructured(right))
 
   private val structureOpen = Var(true)
@@ -212,7 +211,7 @@ object JavaComponentEditor {
         case value @ ProgrammingStateRaw(Java, _) => value.toJavaStructured
       }(identity)
       new JavaComponentEditor(context.logger, structured, context.labels.java, context.loading,
-        appearance = Some(context.appearance), editorConfig = config, conversionMarker = context.conversionMarker)
+        appearance = Some(context.appearance), editorConfig = config, diagnostics = context.conversionDiagnostics)
     }
   }
 }

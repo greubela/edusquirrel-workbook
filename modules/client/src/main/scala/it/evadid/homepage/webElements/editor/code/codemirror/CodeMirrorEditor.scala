@@ -101,17 +101,14 @@ object CodeMirrorEditor {
         case ProgrammingStateRaw(Python, code) => code
         case value: ProgrammingStatePythonStructured => value.toString
       }(ProgrammingStateRaw(Python, _))
-      CodeMirrorEditor(context.logger, text, Python, Var(config), diagnostics = CodeMirrorEditor.marks(context.conversionMarker),
+      CodeMirrorEditor(context.logger, text, Python, Var(config), diagnostics = context.conversionDiagnostics,
         loadingLabel = context.loading)
     }
   }
 
-  def marks(marker: Signal[Option[ProgrammingConversionError]]): Signal[Seq[Diagnostic]] = marker.map {
-    case Some(error) =>
-      error.line.toSeq.map(line => Diagnostic(line, fromCh = error.column.map(_ - 1),
-        toCh = error.column, message = "", severity = "error"))
-    case None => Nil
-  }
+  /** The error's line and column (if known), with `message` as its explanation. */
+  def mark(error: ProgrammingConversionError, message: String): Seq[Diagnostic] =
+    error.line.toSeq.map(line => Diagnostic(line, fromCh = error.column.map(_ - 1), toCh = error.column, message = message, severity = "error"))
 
   final case class Diagnostic(
                                line: Int,

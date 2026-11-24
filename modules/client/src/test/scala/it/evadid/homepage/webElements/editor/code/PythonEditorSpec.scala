@@ -149,15 +149,15 @@ class PythonEditorSpec extends EditorDomSuite {
     }
   }
 
-  test("conversion errors mark their line and column in the native editor") {
+  test("conversion errors mark their line and column in the native editor, explained in the page language") {
     val marker = Var(Option.empty[ProgrammingConversionError])
-    val fixture = Fixture("for", diagnostics = CodeMirrorEditor.marks(marker.signal))
+    val fixture = Fixture("for", diagnostics = marker.signal.map(_.toSeq.flatMap(CodeMirrorEditor.mark(_, "cannot convert"))))
     finish(fixture.close) {
       until(fixture.created.now().nonEmpty).map(_ => fixture.loadNative()).flatMap(_ => until(hidden(fallback))).map { _ =>
         marker.set(Some(ProgrammingConversionError(ProgrammingConversionKind.UnsupportedConstruct, Some(2), Some(4))))
         val marked = fixture.native.diagnostics.now()
         assertEquals(marked.map(d => (d.line.asInstanceOf[Int], d.fromCh.asInstanceOf[Int], d.toCh.asInstanceOf[Int],
-          d.severity.asInstanceOf[String])), Vector((2, 3, 4, "error")))
+          d.severity.asInstanceOf[String], d.message.asInstanceOf[String])), Vector((2, 3, 4, "error", "cannot convert")))
         marker.set(Some(ProgrammingConversionError(ProgrammingConversionKind.UnsupportedConstruct)))
         assertEquals(fixture.native.diagnostics.now(), Vector.empty[js.Dynamic], "an error without a position marks nothing")
         marker.set(None)

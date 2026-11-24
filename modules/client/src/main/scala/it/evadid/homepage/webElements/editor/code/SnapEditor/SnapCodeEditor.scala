@@ -10,7 +10,6 @@ import it.evadid.homepage.webElements.editor.code.ProgrammingStateView
 import it.evadid.core.datastructures.language.AppLanguage.{English, HumanLanguage, SnapLanguage}
 import it.evadid.homepage.webElements.HtmlAppElement
 import it.evadid.homepage.webElements.editor.code.EvaEditor.{EvaEditorContext, EvaEditorLabels, EvaEditorTab}
-import it.evadid.vm.code.errors.ProgrammingConversionError
 import it.evadid.homepage.webElements.editor.code.SnapEditor.execution.JavaTurtleSnapPrimitives
 import it.evadid.homepage.webElements.editor.code.SnapEditor.SnapCodeEditorConfig
 import it.evadid.util.logging.Logger
@@ -25,7 +24,7 @@ case class SnapCodeEditor(
                            impl: SnapCodeEditorImpl,
                            loadingLabel: Signal[String],
                            humanLanguage: Signal[HumanLanguage] = Val(English),
-                           conversionMarker: Signal[Option[ProgrammingConversionError]] = Val(None)
+                           conversionMarked: Signal[Boolean] = Val(false)
                          ) extends HtmlAppElement {
 
   // A typed view of the interaction Var: no second answer or synchronization store.
@@ -95,9 +94,9 @@ case class SnapCodeEditor(
 
   lazy val editorDom: L.Element = {
     div(
-      cls <-- conversionMarker.map(mark =>
+      cls <-- conversionMarked.map(mark =>
         "code-editor be-program-snap-renderer be-program-snap-renderer--editor" +
-          (if mark.isDefined then " is-conversion-marked" else "")),
+          (if mark then " is-conversion-marked" else "")),
       child.maybe <-- renderingError.signal.map(_.map(message => p(role := "alert", message))),
       child <-- editorReady.signal.combineWith(renderingError.signal, loadingLabel).map { (ready, error, label) =>
         if !ready && error.isEmpty then p(cls := "code-editor__loading", role := "status", label) else emptyNode
@@ -144,6 +143,6 @@ object SnapCodeEditor {
     override def label(labels: EvaEditorLabels): Signal[String] = Val("Snap!")
     override def create(state: Var[ProgrammingState], context: EvaEditorContext): HtmlAppElement =
       SnapCodeEditor(context.logger, state, config, SnapMorphicSession(), context.loading,
-        context.environment.humanLanguage, context.conversionMarker)
+        context.environment.humanLanguage, context.conversionMarker.map(_.isDefined))
   }
 }

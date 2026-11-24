@@ -2,7 +2,6 @@ package it.evadid.homepage.webElements.editor.code.EvaEditor
 
 import com.raquo.laminar.api.L.*
 import it.evadid.core.datastructures.language.AppLanguage.ProgrammingLanguage
-import it.evadid.vm.code.errors.ProgrammingConversionError
 import it.evadid.vm.conversion.ConversionResult
 import it.evadid.workbook.elements.interactionElements.programming.state.ProgrammingState
 
@@ -27,8 +26,8 @@ final class EvaConversionController(draft: Var[ProgrammingState], commit: Progra
   /** The outcome of the last requested switch until the draft changes. */
   val lastOutcome: Signal[Option[ConversionResult]] = lastSwitch.signal
 
-  /** Where the last failed switch stopped, for the editor to mark in its source. */
-  val marker: Signal[Option[ProgrammingConversionError]] = lastSwitch.signal.map(_.flatMap(EvaConversionFailure.of).map(_.error))
+  /** Why and where the last switch failed, for the editor to mark in its source. */
+  val marker: Signal[Option[EvaConversionFailure]] = lastSwitch.signal.map(_.flatMap(EvaConversionFailure.of))
 
   def error: Option[EvaConversionFailure] = lastSwitch.now().flatMap(EvaConversionFailure.of)
 
