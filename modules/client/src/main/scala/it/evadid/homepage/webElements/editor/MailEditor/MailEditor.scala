@@ -1,6 +1,7 @@
 package it.evadid.homepage.webElements.editor.MailEditor
 
 import com.raquo.laminar.api.L.*
+import it.evadid.homepage.webElements.basic.LabelSelection
 import it.evadid.homepage.webElements.HtmlAppElement
 import it.evadid.workbook.elements.interactionElements.emailSimulator.*
 
@@ -39,7 +40,7 @@ case class MailEditor(underlyingVar: Var[InboxStateScaffolding], account: String
     cls := "mail-simulator",
     headerTag(cls := "mail-toolbar",
       action("compose", Val(allowCompose))(beginDraft(MailDraft())),
-      div(cls := "mail-folder-summary", strong(text <-- folder.signal.flatMapSwitch(labelText)),
+      div(cls := "mail-folder-summary", strong(text <-- LabelSelection(folder.signal, MailFolder.all, labelText)(Some(_))),
         span(text <-- mails.combineWith(labelText("messageCount")).map((ms, label) => label.replace("{count}", ms.size.toString)))),
       action("reply", hasSelection.map(_ && allowCompose))(selectedNow.foreach(m => beginDraft(MailDraft.reply(m, MailBody.plainText(m))))),
       action("forward", hasSelection.map(_ && allowCompose))(selectedNow.foreach(m => beginDraft(MailDraft.forward(m, MailBody.plainText(m))))),
@@ -70,7 +71,8 @@ case class MailEditor(underlyingVar: Var[InboxStateScaffolding], account: String
     ),
     footerTag(cls := "mail-status", role := "status", aria.live := "polite",
       span("🌐 ", text <-- hoverUrl.signal),
-      span(text <-- notice.signal.flatMapSwitch(key => if (key.isEmpty) labelText("simulation") else labelText(key)))
+      span(text <-- LabelSelection(notice.signal, "simulation" +: MailEditorState.notices, labelText)(key =>
+        Some(if (key.isEmpty) "simulation" else key)))
     ),
     div(cls := "mail-feedback",
       action("check", underlyingVar.signal.map(_.inboxState.sortingResult.total > 0))(showFeedback.set(true)),

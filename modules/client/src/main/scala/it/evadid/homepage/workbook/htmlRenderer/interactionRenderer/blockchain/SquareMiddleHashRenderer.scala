@@ -1,6 +1,7 @@
 package it.evadid.homepage.workbook.htmlRenderer.interactionRenderer.blockchain
 
 import com.raquo.laminar.api.L.*
+import it.evadid.homepage.webElements.basic.LabelSelection
 import it.evadid.core.datastructures.state.StateHelper.StateBasedVar
 import it.evadid.homepage.workbook.htmlRenderer.HtmlRenderFactory.LineBasedRenderingFactory
 import it.evadid.homepage.workbook.htmlRenderer.atomarLineRenderings.AtomarLineRendering
@@ -41,12 +42,13 @@ case object SquareMiddleHashRenderer extends LineBasedRenderingFactory[SquareMid
           case None => tr(td(colSpan := 3, text <-- textFor("invalid")))
         })))),
       p(cls := "hash-feedback", role := "status", aria.live := "polite",
-        text <-- state.signal.map(a => if e.results(a).exists(_.isEmpty) then "invalid"
+        text <-- LabelSelection(state.signal, Seq("invalid", "explorationSaved", "correct", "tryAgain"), textFor)(a =>
+          Some(if e.results(a).exists(_.isEmpty) then "invalid"
           else e.isCorrect(a) match {
             case None => "explorationSaved"
             case Some(true) => "correct"
             case Some(false) => "tryAgain"
-          }).flatMapSwitch(textFor))
+          })))
     )
     AtomarLineRendering.basicLine(e, dom)
   }

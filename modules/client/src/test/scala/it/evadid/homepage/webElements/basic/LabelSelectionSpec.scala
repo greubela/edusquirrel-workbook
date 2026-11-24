@@ -29,6 +29,18 @@ class LabelSelectionSpec extends FunSuite {
     scenario.owner.killSubscriptions()
   }
 
+  test("a formatted label fills the chosen text's placeholders from the current value") {
+    val owner = new ManualOwner
+    val count = Var(0)
+    val templates = Map("none" -> Val("nothing yet"), "some" -> Val("{count} of {total}"))
+    val text = LabelSelection.formatted(count.signal, templates.keys, templates)(value =>
+      Some(if value == 0 then "none" -> Nil else "some" -> Seq("count" -> value.toString, "total" -> "5"))).observe(using owner)
+    assertEquals(text.now(), "nothing yet")
+    count.set(3)
+    assertEquals(text.now(), "3 of 5")
+    owner.killSubscriptions()
+  }
+
   test("flatMapSwitch ends on an outdated text in the same situation, which is why labels avoid it") {
     val scenario = Scenario()
     val text = scenario.view.flatMapSwitch(current => scenario.label(scenario.key(current))).observe(using scenario.owner)

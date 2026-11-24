@@ -10,8 +10,16 @@ import com.raquo.laminar.api.L.*
   * selects among them.
   */
 object LabelSelection {
-  def apply[A, K](value: Signal[A], options: Iterable[K], text: K => Signal[String])(key: A => Option[K]): Signal[String] = {
+  def apply[A, K](value: Signal[A], options: Iterable[K], text: K => Signal[String])(key: A => Option[K]): Signal[String] =
+    formatted(value, options, text)(current => key(current).map(_ -> Nil))
+
+  /** Like [[apply]], and fills the chosen text's `{field}` placeholders with the message's values. */
+  def formatted[A, K](value: Signal[A], options: Iterable[K], text: K => Signal[String])(
+      message: A => Option[(K, Seq[(String, String)])]): Signal[String] = {
     val texts = Signal.combineSeq(options.toSeq.distinct.map(option => text(option).map(option -> _))).map(_.toMap)
-    value.combineWith(texts).map((current, all) => key(current).flatMap(all.get).getOrElse(""))
+    value.combineWith(texts).map((current, all) => message(current).flatMap((key, fields) => all.get(key).map(fill(_, fields))).getOrElse(""))
   }
+
+  def fill(template: String, fields: Seq[(String, String)]): String =
+    fields.foldLeft(template) { case (text, (field, value)) => text.replace(s"{$field}", value) }
 }

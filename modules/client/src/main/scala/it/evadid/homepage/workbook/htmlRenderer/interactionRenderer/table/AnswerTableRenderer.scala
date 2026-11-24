@@ -1,6 +1,7 @@
 package it.evadid.homepage.workbook.htmlRenderer.interactionRenderer.table
 
 import com.raquo.laminar.api.L.*
+import it.evadid.homepage.webElements.basic.LabelSelection
 import com.raquo.laminar.codecs.StringAsIsCodec
 import com.raquo.laminar.keys.HtmlAttr
 import it.evadid.core.datastructures.state.StateHelper.StateBasedVar
@@ -41,8 +42,8 @@ case object AnswerTableRenderer extends LineBasedRenderingFactory[AnswerTableInt
           cells.zipWithIndex.map((config, column) => cell(row, column, config)))))
       )),
       p(cls := "answer-table__feedback", role := "status", aria.live := "polite",
-        text <-- state.signal.map(answer => if e.isAnswered(answer) then "tableSaved" else "tableIncomplete")
-          .flatMapSwitch(key => laminarHelper.plaintextStringSignal(s"digitalWorkbooks/$key")))
+        text <-- LabelSelection(state.signal, Seq("tableSaved", "tableIncomplete"), key => laminarHelper.plaintextStringSignal(s"digitalWorkbooks/$key"))(
+          answer => Some(if e.isAnswered(answer) then "tableSaved" else "tableIncomplete")))
     )
     AtomarLineRendering.basicLine(e, dom)
   }

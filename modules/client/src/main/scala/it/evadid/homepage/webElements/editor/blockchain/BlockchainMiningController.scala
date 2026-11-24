@@ -49,3 +49,8 @@ class BlockchainMiningController(state: Var[TeachingChain], zeros: Int,
     enqueue(state.now(), state.now().blocks(index).nonce)
   }
 }
+
+object BlockchainMiningController {
+  /** The label keys `message` takes. */
+  val messages: Seq[String] = Seq("miningIdle", "miningStopped", "miningRunning", "miningChanged", "miningFound", "miningExhausted", "miningBudget")
+}

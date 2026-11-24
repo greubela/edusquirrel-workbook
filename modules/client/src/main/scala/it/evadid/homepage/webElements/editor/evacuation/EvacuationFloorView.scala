@@ -1,6 +1,7 @@
 package it.evadid.homepage.webElements.editor.evacuation
 
 import com.raquo.laminar.api.L.*
+import it.evadid.homepage.webElements.basic.LabelSelection
 import it.evadid.core.datastructures.matrix.PositionInMatrix
 import it.evadid.evacuation.eva2.model.EvaFloorMap
 import it.evadid.homepage.webElements.HtmlAppElement
@@ -21,8 +22,8 @@ case class EvacuationFloorView(floorMap: Signal[EvaFloorMap], locked: Signal[Boo
           cls <-- tile.map(kind => s"evacuation-cell--${kind.toString.toLowerCase}"),
           cls("evacuation-cell--person") <-- occupied, disabled <-- locked,
           aria.label <-- textFor("evacuationCell").combineWith(
-            tile.flatMapSwitch(kind => textFor(s"evacuation$kind")),
-            occupied.flatMapSwitch(present => if (present) textFor("evacuationPerson") else Val("")))
+            LabelSelection(tile, EvacuationTile.values, kind => textFor(s"evacuation$kind"))(Some(_)),
+            LabelSelection(occupied, Seq("evacuationPerson"), textFor)(Option.when(_)("evacuationPerson")))
             .map((template, tileName, personName) =>
               template.replace("{row}", (row + 1).toString).replace("{col}", (col + 1).toString)
                 .replace("{tile}", tileName).replace("{person}", personName)),

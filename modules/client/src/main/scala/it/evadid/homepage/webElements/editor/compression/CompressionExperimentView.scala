@@ -1,17 +1,20 @@
 package it.evadid.homepage.webElements.editor.compression
 
 import com.raquo.laminar.api.L.*
+import it.evadid.homepage.webElements.basic.LabelSelection
 import it.evadid.homepage.workbook.htmlRenderer.LaminarRenderHelper
 import it.evadid.workbook.model.compression.*
 
 object CompressionExperimentView {
   def localized(key: String): Signal[String] = LaminarRenderHelper.singleton.plaintextStringSignal(s"CompressionWorkbook/$key")
-  def format(key: String, fields: (String, String)*): Signal[String] =
-    localized(key).map(template => fields.foldLeft(template) { case (text, (field, value)) =>
-      text.replace(s"{$field}", value)
-    })
+  def format(key: String, fields: (String, String)*): Signal[String] = localized(key).map(LabelSelection.fill(_, fields))
 
-  def summary(value: CompressionExperiment): Signal[String] = {
+  private val summaryKeys = Seq("photoSummary", "videoSummary", "rleSummary", "dictionarySummary", "bitsSummary", "imageSummary",
+    "archiveSummary", "storageSummary", "simulationSummary")
+
+  def summary(value: Signal[CompressionExperiment]): Signal[String] = LabelSelection.formatted(value, summaryKeys, localized)(summaryMessage)
+
+  private def summaryMessage(value: CompressionExperiment): Option[(String, Seq[(String, String)])] = {
     val (key, fields) = value match {
       case v: PhotoBudget => ("photoSummary",Map("count" -> v.count.toString,"size" -> v.photoMB.toString,"capacity" -> v.capacityMB.toString))
       case v: VideoBudget => ("videoSummary", Map("size" -> f"${v.megabytes}%.2f", "capacity" -> v.capacityMB.toString))
@@ -28,6 +31,6 @@ object CompressionExperimentView {
       case v: FileSimulation => ("simulationSummary", Map("size" -> f"${v.bytes.toDouble / (1024*1024)}%.2f", "capacity" -> "16384", "missing" -> f"${math.max(0L,v.bytes-CompressionSimulation.capacity).toDouble / (1024*1024)}%.2f"))
       case _ => ("", Map.empty[String,String])
     }
-    if key.isEmpty then Val("") else localized(key).map(template => fields.foldLeft(template) { case (text, (field, replacement)) => text.replace(s"{$field}", replacement) })
+    Option.when(key.nonEmpty)(key -> fields.toSeq)
   }
 }

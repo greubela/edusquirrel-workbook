@@ -1,6 +1,7 @@
 package it.evadid.homepage.workbook.htmlRenderer.interactionRenderer.steps
 
 import com.raquo.laminar.api.L.*
+import it.evadid.homepage.webElements.basic.LabelSelection
 import it.evadid.core.datastructures.geometry.Point
 import it.evadid.core.datastructures.vectorShapes.svg.TurtleCommand
 import it.evadid.homepage.webElements.HtmlAppElement
@@ -40,9 +41,9 @@ final class TurtleStepPanel(state: Var[ProgrammingState], text: String => Signal
     // Each program and step gets a fresh board in its default view.
     TurtleJsxGraphRenderer.render(commands.combineWith(navigator.step).map((all, step) => TurtleStepPanel.scene(all, step)), "Turtle steps"),
     navigator.element,
-    p(cls := "step-panel__caption", aria.live := "polite", child.text <-- commands.combineWith(navigator.step).flatMapSwitch { (all, step) =>
-      if step == 0 then text("turtleStepStart")
-      else text("stepCommand").map(_.replace("{step}", step.toString).replace("{command}", TurtleStepPanel.describe(all(step - 1))))
+    p(cls := "step-panel__caption", aria.live := "polite", child.text <-- LabelSelection.formatted(commands.combineWith(navigator.step), Seq("turtleStepStart", "stepCommand"), text) { (all, step) =>
+      Some(if step == 0 then "turtleStepStart" -> Nil
+        else "stepCommand" -> Seq("step" -> step.toString, "command" -> TurtleStepPanel.describe(all(step - 1))))
     }),
     child.maybe <-- executions.map {
       case Some(Left(message)) => Some(p(cls := "step-panel__problem", child.text <-- text("programDataUnavailable").map(prefix => s"$prefix $message")))

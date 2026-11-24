@@ -1,6 +1,7 @@
 package it.evadid.homepage.webElements.editor.compression
 
 import com.raquo.laminar.api.L.*
+import it.evadid.homepage.webElements.basic.LabelSelection
 import it.evadid.homepage.webElements.HtmlAppElement
 import it.evadid.workbook.model.compression.*
 
@@ -111,11 +112,11 @@ case class CompressionEditor(answer: Var[CompressionExperiment], initial: Compre
         val v = a.asInstanceOf[ImageBlocks]; v.copy(luminanceBlock = b, chromaBlock = if v.separateChannels then v.chromaBlock else b)
       }), if v.separateChannels then blockControl("colorBlocks", _.asInstanceOf[ImageBlocks].chromaBlock, (a, b) => a.asInstanceOf[ImageBlocks].copy(chromaBlock = b)) else span()),
       CompressionImageView(v.imageResource, answer.signal.map(_.asInstanceOf[ImageBlocks])).getDomElement(),
-      if v.comparison.nonEmpty then p(text <-- answer.signal.flatMapSwitch { a =>
+      if v.comparison.nonEmpty then p(text <-- localized("imageTextComparison").combineWith(answer.signal).map { (template, a) =>
         val state=a.asInstanceOf[ImageBlocks]
         val bytes=math.max(1L,math.round(v.comparison.get.imageBytes * state.estimatePercent / 100.0))
         val textBytes=v.comparison.get.textBytes
-        format("imageTextComparison", "size" -> bytes.toString, "textSize" -> textBytes.toString, "difference" -> (bytes-textBytes).toString)
+        LabelSelection.fill(template, Seq("size" -> bytes.toString, "textSize" -> textBytes.toString, "difference" -> (bytes-textBytes).toString))
       }) else span(),
       p(text <-- localized("jpegModelNote")),
       child <-- answer.signal.map(a => { val v=a.asInstanceOf[ImageBlocks]; if v.comparison.nonEmpty then p(text <-- format("estimatedSize", "percent" -> v.estimatePercent.toString)) else if v.separateChannels then ul(v.challenges.zipWithIndex.map((done,i) => li(if done then "✓ " else "○ ", text <-- localized(s"src_lossy_task3_challenge${i+1}"))),li(text <-- format("estimatedSize", "percent" -> v.estimatePercent.toString))) else p(text <-- format("blockSizeSummary", "original" -> (v.imageWidth*v.imageHeight*24).toString, "encoded" -> (v.sampleBytes*8).toString, "saving" -> ((v.imageWidth*v.imageHeight*3-v.sampleBytes)*8).toString)) }))
@@ -152,7 +153,7 @@ case class CompressionEditor(answer: Var[CompressionExperiment], initial: Compre
   private val playing = Var(false)
   private val speed = Var(700)
   private def dictionaryPlayback: Element = div(
-    button(typ := "button", disabled <-- locked, text <-- playing.signal.flatMapSwitch(p => localized(if p then "pause" else "play")), onClick --> (_ => playing.update(!_))),
+    button(typ := "button", disabled <-- locked, text <-- LabelSelection(playing.signal, Seq("pause", "play"), localized)(p => Some(if p then "pause" else "play")), onClick --> (_ => playing.update(!_))),
     label(span(text <-- localized("speed")), input(typ := "range", minAttr := "200", maxAttr := "1400", stepAttr := "100", value <-- speed.signal.map(_.toString), disabled <-- locked, onInput.mapToValue --> (v => speed.set(v.toInt)))),
     onMountCallback(ctx => { var elapsed = 0
       EventStream.periodic(100).withCurrentValueOf(locked).foreach { (_,isLocked) => if playing.now() && !isLocked then {
@@ -162,7 +163,7 @@ case class CompressionEditor(answer: Var[CompressionExperiment], initial: Compre
     }))
   override def getDomElement(): Element = div(onUnmountCallback(_ => unmount()),cls := "compression-editor",
     controls,
-    p(cls := "compression-summary", role := "status", aria.live := "polite", text <-- answer.signal.flatMapSwitch(summary)),
+    p(cls := "compression-summary", role := "status", aria.live := "polite", text <-- summary(answer.signal)),
     button(typ := "button", disabled <-- locked, text <-- localized("resetExperiment"), onClick --> (_ => {
       playing.set(false); activities.stop(); answer.set(initial); resetDrafts.writer.onNext(())
     })))

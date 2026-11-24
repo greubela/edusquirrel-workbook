@@ -1,6 +1,7 @@
 package it.evadid.homepage.webElements.editor.blockchain
 
 import com.raquo.laminar.api.L.*
+import it.evadid.homepage.webElements.basic.LabelSelection
 import it.evadid.homepage.webElements.HtmlAppElement
 import it.evadid.workbook.model.blockchain.*
 import org.scalajs.dom
@@ -36,12 +37,13 @@ case class BlockchainEditor(state: Var[TeachingChain], initial: TeachingChain, z
         }
       }))),
     p(cls := "blockchain-error", role := "alert",
-      text <-- invalidNonceDrafts.signal.flatMapSwitch(drafts => if drafts.contains(index) then textFor("blockNonceInvalid") else Val(""))),
+      text <-- LabelSelection(invalidNonceDrafts.signal, Seq("blockNonceInvalid"), textFor)(drafts =>
+        Option.when(drafts.contains(index))("blockNonceInvalid"))),
     dl(dt(text <-- textFor("blockPrevious")), dd(code(cls := "blockchain-previous", text <-- state.signal.map(_.previousHash(index)))),
       dt(text <-- textFor("blockHash")), dd(code(cls := "blockchain-hash", text <-- state.signal.map(_.hashes(index))))),
-    p(cls := "blockchain-block-status", role := "status", text <-- state.signal.map(chain =>
-      if chain.validPrefixLength(zeros) > index then "blockValid"
-      else if chain.proofs(zeros)(index) then "blockBlocked" else "blockInvalid").flatMapSwitch(textFor)),
+    p(cls := "blockchain-block-status", role := "status", text <-- LabelSelection(state.signal, Seq("blockValid", "blockBlocked", "blockInvalid"),
+      textFor)(chain => Some(if chain.validPrefixLength(zeros) > index then "blockValid"
+        else if chain.proofs(zeros)(index) then "blockBlocked" else "blockInvalid"))),
     button(typ := "button", text <-- textFor("blockMine"),
       disabled <-- locked.combineWith(mining.running.signal, invalidNonceDrafts.signal)
         .map((disabled, busy, drafts) => disabled || busy || drafts.contains(index)),
@@ -58,8 +60,8 @@ case class BlockchainEditor(state: Var[TeachingChain], initial: TeachingChain, z
       button(typ := "button", text <-- textFor("blockStop"), disabled <-- locked.combineWith(mining.running.signal).map((disabled, busy) => disabled || !busy),
         onClick --> (_ => mining.cancel()))),
     p(cls := "blockchain-mining-status", role := "status", aria.live := "polite",
-      text <-- mining.message.signal.flatMapSwitch(textFor).combineWith(mining.attempts.signal)
-        .map((template, attempts) => template.replace("{attempts}", attempts.toString))),
+      text <-- LabelSelection.formatted(mining.message.signal.combineWith(mining.attempts.signal), BlockchainMiningController.messages, textFor)(
+        (message, attempts) => Some(message -> Seq("attempts" -> attempts.toString)))),
     div(cls := "blockchain-blocks", initial.blocks.indices.toList.map(blockCard)))
   override def dismissOnOutsideClick: Boolean = false
 }

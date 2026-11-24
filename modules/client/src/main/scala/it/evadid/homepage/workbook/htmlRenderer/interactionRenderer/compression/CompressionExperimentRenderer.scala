@@ -19,7 +19,7 @@ case object CompressionExperimentRenderer extends LineBasedRenderingFactory[Comp
     }
     val open = HtmlButtonElement.withTextLabel("CompressionWorkbook/openExperiment", _ =>
       fullInfo.displayControl.setFullscreen(CompressionEditor(state, e.initial, e.isDisabledState.toAirstreamVar.signal)))
-    val preview = div(cls := "compression-preview", p(role := "status", text <-- state.signal.flatMapSwitch(CompressionExperimentView.summary)), open.getDomElement())
+    val preview = div(cls := "compression-preview", p(role := "status", text <-- CompressionExperimentView.summary(state.signal)), open.getDomElement())
     AtomarLineRendering.cardLine(e, List(ElementCard(e.title, preview)))
   }
 }

@@ -1,6 +1,7 @@
 package it.evadid.homepage.webElements.editor.compression
 
 import com.raquo.laminar.api.L.*
+import it.evadid.homepage.webElements.basic.LabelSelection
 import it.evadid.homepage.webElements.HtmlAppElement
 import it.evadid.workbook.model.compression.*
 import org.scalajs.dom
@@ -64,7 +65,7 @@ case class CompressionImageView(imageResource: String, settings: Signal[ImageBlo
           image.addEventListener("error",(_:dom.Event) => if mounted then failed.set(true))
           image.src=fullInfo.contentControl.fileFactory.relativeToTechnicalResources(imageResource).asUrlString
         }),onUnmountCallback(_ => {mounted=false;if image != null then image.onload=null}))),
-      p(role := "status", text <-- failed.signal.combineWith(ready.signal).flatMapSwitch((error,loaded) =>
-        if error then CompressionExperimentView.localized("imageLoadFailed") else if !loaded then CompressionExperimentView.localized("imageLoading") else Val(""))))
+      p(role := "status", text <-- LabelSelection(failed.signal.combineWith(ready.signal), Seq("imageLoadFailed", "imageLoading"),
+        CompressionExperimentView.localized)((error,loaded) => if error then Some("imageLoadFailed") else Option.when(!loaded)("imageLoading"))))
   }
 }
