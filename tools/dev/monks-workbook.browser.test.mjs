@@ -44,19 +44,29 @@ test('monk stories and revised tasks work with the current editor and interactio
     }
     assert(await next.isDisabled());
     const story = page.locator('.interaction-element').filter({has: counter});
+    // Overview results stay collapsed until expanded manually.
+    const expand = async exercise => {
+      assert(await exercise.locator('.feedback-details').isHidden());
+      await exercise.locator('button.feedback-details-toggle').click();
+    };
+    await expand(story);
     await story.locator('.feedback-score-chip').getByText('1/1', {exact:true}).waitFor();
     const choice = page.locator('.interaction-element:has(.choice-interaction input[type=radio])').first();
+    await expand(choice);
     await choice.locator('input[type=radio]').nth(1).check();
     await choice.locator('.feedback-score-chip').getByText('1/1', {exact:true}).waitFor();
     const multiple = page.locator('.interaction-element:has(.choice-interaction input[type=checkbox])').first();
+    await expand(multiple);
     for (const index of [1, 3, 5]) await multiple.locator('input[type=checkbox]').nth(index).check();
     await multiple.locator('.feedback-score-chip').getByText('1/1', {exact:true}).waitFor();
     await multiple.locator('input[type=checkbox]').nth(3).uncheck();
     await multiple.locator('.feedback-entry.feedback-status--partial').waitFor();
     const table = page.locator('.interaction-element:has(.answer-table)').first();
+    await expand(table);
     await table.locator('input[type=text]').first().fill('3');
     await table.locator('.feedback-score-chip').getByText('1/4', {exact:true}).waitFor();
     const reorder = page.locator('.interaction-element:has(.reorder-list)').first();
+    await expand(reorder);
     await reorder.locator('button.feedback-action--primary').click();
     await reorder.locator('.feedback-entry.feedback-status--incorrect').waitFor();
     assert(await page.locator('.choice-interaction code').count() > 0, 'code options render as inline code');

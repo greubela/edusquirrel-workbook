@@ -104,8 +104,10 @@ Feedback is presented by one component set, [`FeedbackPanels`](../modules/client
 an action bar (check/hint buttons, score chip with progress, hint status), a result
 list and a hint card. Both placements render it from the same `InteractionFeedbackView`
 over the shared `GradingReporter`. `InteractionFeedbackPanel` sits below every graded
-or hinted exercise in the workbook overview (results expand once they exist; the hint
-card appears only for a completed hint). `InteractionInfoSidebar` shows it beside the
+or hinted exercise in the workbook overview: graded exercises show only the request
+buttons and a details toggle, and the score and results stay collapsed until the reader
+expands them (arriving results never expand them); the hint card appears only for a
+completed hint. `InteractionInfoSidebar` shows it beside the
 fullscreen editor (results expanded; hint card always present). `FeedbackPresentation`
 maps statuses to tones, icons and labels; styles live in `homepage/css/workbook/interaction-feedback.css`.
 
