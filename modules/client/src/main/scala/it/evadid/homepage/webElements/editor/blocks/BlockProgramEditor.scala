@@ -1,6 +1,8 @@
 package it.evadid.homepage.webElements.editor.blocks
 
 import com.raquo.laminar.api.L.*
+import it.evadid.vm.editing.BeValueInput.Kind
+import it.evadid.homepage.webElements.basic.LabelSelection
 import it.evadid.homepage.webElements.editor.code.ProgrammingStateView
 import com.raquo.laminar.codecs.StringAsIsCodec
 import com.raquo.laminar.keys.SvgAttr
@@ -202,7 +204,7 @@ final case class BlockProgramEditor(program: Var[BeProgram], library: BeBlockLib
             }
           })),
       p(idAttr := errorId, cls := "block-editor__popup-error", role := "alert",
-        child.text <-- rejected.flatMapSwitch(_.fold(Val(""))(labels.invalid))),
+        child.text <-- LabelSelection(rejected, Kind.values, labels.invalid)(identity)),
       div(cls := "block-editor__popup-actions",
         button(typ := "button", cls := "block-editor__popup-apply", disabled <-- rejected.map(_.nonEmpty),
           child.text <-- labels.apply, onClick --> (_ => commitValue())),

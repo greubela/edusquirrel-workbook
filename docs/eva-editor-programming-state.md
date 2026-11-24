@@ -131,4 +131,4 @@ their outcome; no DOM), `EvaLanguageTabs` (the accessible tab list) and the sele
 (logger, labels, display language), Eva's appearance and the conversion marker. Workbook renderers
 create Eva through `WorkbookEvaEditor`.
 
-Editor labels resolve from `blockeditor` language maps. Pending gutter work is listed in [editor-todos.md](editor-todos.md).
+Editor labels resolve from `blockeditor` language maps. Choose among texts with `LabelSelection` (or `JavaEditorLabels.select`), not `flatMapSwitch`, which can end on an outdated text when its source changes in consecutive transactions. `JavaEditorNavigation` holds the Java editor's mode and diagram selection; `ProgrammingStateView` gives each editor its representation of the answer and drops writes of an editor that is being replaced. Pending gutter work is listed in [editor-todos.md](editor-todos.md).

@@ -39,7 +39,7 @@ final class DeferredRendering[S, R](source: Signal[S], prepare: S => R, delay: F
   def status(text: LanguageMapContentId => Signal[String]): Element =
     p(cls := "deferred-rendering__status", role := "status", aria.live := "polite",
       cls("deferred-rendering__status--hidden") <-- phase.map(_ == Phase.Ready),
-      child.text <-- phase.flatMapSwitch(phase => statusText(phase).fold(Val(""))(text)))
+      child.text <-- LabelSelection(phase, Phase.values.flatMap(statusText), text)(statusText))
 
   /** Status line followed by the drawing. `view` is built once, when the first result is ready, and then follows
     * the results, so a view can keep its board instead of being rebuilt.

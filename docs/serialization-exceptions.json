@@ -211,5 +211,10 @@
   "modules/client/src/main/scala/it/evadid/homepage/webElements/code/JavaEditorNavigation.scala#Mode:1": "Transient editing mode; not part of the saved answer",
   "modules/client/src/main/scala/it/evadid/homepage/webElements/code/JavaEditorNavigation.scala#Position:1": "Transient editor navigation (mode and diagram selection); not part of the saved answer",
   "modules/client/src/main/scala/it/evadid/homepage/webElements/editor/code/EvaEditor/EvaConversionFailure.scala#EvaConversionFailure:1": "Transient view of a failed language switch; the conversion result is not persisted",
-  "modules/client/src/main/scala/it/evadid/homepage/webElements/editor/code/EvaEditor/EvaConversionTexts.scala#EvaConversionTexts:1": "Localized label texts of one display language; never serialized"
+  "modules/client/src/main/scala/it/evadid/homepage/webElements/editor/code/EvaEditor/EvaConversionTexts.scala#EvaConversionTexts:1": "Localized label texts of one display language; never serialized",
+  "modules/client/src/main/scala/it/evadid/homepage/webElements/editor/blocks/BlockDragging.scala#DragSource:1": "Transient drag gesture source; never persisted",
+  "modules/client/src/main/scala/it/evadid/homepage/webElements/editor/blocks/BlockDragging.scala#Press:1": "Transient pointer press of a drag gesture; never persisted",
+  "modules/client/src/main/scala/it/evadid/homepage/webElements/editor/blocks/BlockEditorLabels.scala#BlockEditorLabels:1": "Localized label signals; never serialized",
+  "modules/client/src/main/scala/it/evadid/homepage/webElements/editor/blocks/BlockProgramEditor.scala#BlockProgramEditor:1": "Laminar editor component bound to the answer Var; never serialized",
+  "modules/client/src/main/scala/it/evadid/homepage/webElements/editor/blocks/BlockProgramEditor.scala#ValueEdit:1": "Transient value popup draft; never persisted"
 }
