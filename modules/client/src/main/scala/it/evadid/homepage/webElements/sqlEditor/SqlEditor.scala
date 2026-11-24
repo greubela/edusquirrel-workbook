@@ -15,7 +15,8 @@ import it.evadid.workbook.elements.interactionElements.sql.SqlDatabaseConfig
 import scala.scalajs.concurrent.JSExecutionContext.Implicits.queue
 import scala.util.{Failure, Success}
 
-final case class SqlEditor(logger: Logger,state: Var[String], databaseConfig: SqlDatabaseConfig, backend: ExecutionClient) extends HtmlAppElement {
+final case class SqlEditor(logger: Logger, state: Var[String], databaseConfig: SqlDatabaseConfig, backend: ExecutionClient,
+    loadingLabel: Signal[String]) extends HtmlAppElement {
   private case class Block(id: Int, text: String) derives upickle.default.ReadWriter
   private val blockMode = Var(false)
   private var nextId = 0
@@ -32,7 +33,7 @@ final case class SqlEditor(logger: Logger,state: Var[String], databaseConfig: Sq
   private var publishingBlocks = false
   private var draggedBlock = Option.empty[Int]
   override def dismissOnOutsideClick: Boolean = false
-  private val textEditor = CodeMirrorEditor(logger, state, SQL)
+  private val textEditor = CodeMirrorEditor(logger, state, SQL, loadingLabel)
 
   private def publish(next: List[Block]): Unit = {
     blocks.set(next)

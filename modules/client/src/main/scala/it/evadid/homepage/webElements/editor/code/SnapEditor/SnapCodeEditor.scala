@@ -23,9 +23,9 @@ case class SnapCodeEditor(
                            state: Var[ProgrammingState],
                            config: SnapCodeEditorConfig,
                            impl: SnapCodeEditorImpl,
+                           loadingLabel: Signal[String],
                            humanLanguage: Signal[HumanLanguage] = Val(English),
-                           conversionMarker: Signal[Option[ProgrammingConversionError]] = Val(None),
-                           loadingLabel: Signal[String] = Val("Loading editor…")
+                           conversionMarker: Signal[Option[ProgrammingConversionError]] = Val(None)
                          ) extends HtmlAppElement {
 
   // A typed view of the interaction Var: no second answer or synchronization store.
@@ -138,22 +138,12 @@ object SnapCodeEditor {
     xml.toSnapScalaModel.fold(message => throw IllegalArgumentException(message), _.persistent)
   private lazy val empty = typed(ProgrammingStateSnapScalaModel.empty.toSnapXml)
 
-  def apply(logger: Logger, state: Var[ProgrammingState], config: SnapCodeEditorConfig,
-            humanLanguage: Signal[HumanLanguage]): SnapCodeEditor =
-    SnapCodeEditor(logger, state, config, SnapMorphicSession(), humanLanguage)
-
-  def apply(logger: Logger,state: Var[ProgrammingState], config: SnapCodeEditorConfig): SnapCodeEditor =
-    apply(logger, state, config, Val(English))
-
-  def apply(logger: Logger,state: Var[ProgrammingState]): SnapCodeEditor =
-    SnapCodeEditor(logger, state, SnapCodeEditorConfig.Testing, SnapMorphicSession())
-
   def forEvaTab(config: SnapCodeEditorConfig): EvaEditorTab = new EvaEditorTab {
     override val language = SnapLanguage
     override def icon = Some(it.evadid.homepage.webElements.editor.code.EvaEditor.EvaLanguageIcons.snap)
     override def label(labels: EvaEditorLabels): Signal[String] = Val("Snap!")
     override def create(state: Var[ProgrammingState], context: EvaEditorContext): HtmlAppElement =
-      SnapCodeEditor(context.logger, state, config, SnapMorphicSession(), context.environment.humanLanguage,
-        context.conversionMarker, context.loading)
+      SnapCodeEditor(context.logger, state, config, SnapMorphicSession(), context.loading,
+        context.environment.humanLanguage, context.conversionMarker)
   }
 }

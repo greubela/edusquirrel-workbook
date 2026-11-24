@@ -27,9 +27,9 @@ case class CodeMirrorEditor(
     underlyingVar: Var[String],
     language: ProgrammingLanguage,
     config: Var[CodeMirrorEditorConfig],
+    loadingLabel: Signal[String],
     diagnostics: Signal[Seq[CodeMirrorEditor.Diagnostic]] = Val(Nil),
     createEditor: EditorConfig => scala.concurrent.Future[CodeMirrorHandle] = settings => CodeMirror.editor(settings).createInstance(),
-    loadingLabel: Signal[String] = Val("Loading editor…"),
     firstLineNumber: Signal[Int] = Val(1),
     /** Equivalent documents leave the user's text, including formatting the state cannot represent, untouched. */
     sameSource: (String, String) => Boolean = _ == _,
@@ -90,8 +90,8 @@ case class CodeMirrorEditor(
 object CodeMirrorEditor {
   def languageToJs(language: ProgrammingLanguage): String = language.asJsLanguage.getOrElse("python")
 
-  def apply(logger: Logger, state: Var[String], language: ProgrammingLanguage): CodeMirrorEditor =
-    CodeMirrorEditor(logger, state, language, Var(CodeMirrorEditorConfig.Default))
+  def apply(logger: Logger, state: Var[String], language: ProgrammingLanguage, loadingLabel: Signal[String]): CodeMirrorEditor =
+    CodeMirrorEditor(logger, state, language, Var(CodeMirrorEditorConfig.Default), loadingLabel)
 
   def pythonEditorForEva(config: CodeMirrorEditorConfig): EvaEditorTab = new EvaEditorTab {
     override val language = Python

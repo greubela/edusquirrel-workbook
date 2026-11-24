@@ -31,11 +31,11 @@ final class JavaComponentEditor(
     logger: Logger,
     val state: Var[ProgrammingStateJavaStructured],
     labels: JavaEditorLabels,
+    loadingLabel: Signal[String],
     reference: Option[() => Element] = None,
     appearance: Option[EditorAppearance] = None,
     editorConfig: CodeMirrorEditorConfig = CodeMirrorEditorConfig.Default,
-    conversionMarker: Signal[Option[ProgrammingConversionError]] = Val(None),
-    loadingLabel: Signal[String] = Val("Loading editor…")
+    conversionMarker: Signal[Option[ProgrammingConversionError]] = Val(None)
 ) extends HtmlAppElement {
   import JavaComponentEditor.*
   import JavaEditorNavigation.{Mode, isFunction}
@@ -50,8 +50,8 @@ final class JavaComponentEditor(
     trailing = button(typ := "button", cls := "java-function-editor__button uml-add-class", child.text <-- labels(Key.javaAddClass),
       disabled <-- structureReady.map(!_), onClick --> (_ => dialog.addClass())))
   private val dialog = JavaStructureDialog(state, labels, navigation.reveal)
-  private val functionEditor = JavaFunctionEditor(logger, state, editorConfig, loadingLabel)
-  private val classEditor = JavaClassEditor(logger, state, editorConfig, loadingLabel)
+  private val functionEditor = JavaFunctionEditor(logger, state, loadingLabel, editorConfig)
+  private val classEditor = JavaClassEditor(logger, state, loadingLabel, editorConfig)
   private val source = state.bimap(_.toString)(ProgrammingStateJavaStructured(_)).distinct
   private lazy val sourceEditor = CodeMirrorEditor(logger, source, language = Java, config = Var(editorConfig),
     diagnostics = CodeMirrorEditor.marks(conversionMarker), loadingLabel = loadingLabel,
@@ -197,8 +197,8 @@ object JavaComponentEditor {
         case value: ProgrammingStateJavaStructured => value
         case value @ ProgrammingStateRaw(Java, _) => value.toJavaStructured
       }(identity)
-      new JavaComponentEditor(context.logger, structured, context.labels.java, appearance = Some(context.appearance),
-        editorConfig = config, conversionMarker = context.conversionMarker, loadingLabel = context.loading)
+      new JavaComponentEditor(context.logger, structured, context.labels.java, context.loading,
+        appearance = Some(context.appearance), editorConfig = config, conversionMarker = context.conversionMarker)
     }
   }
 }

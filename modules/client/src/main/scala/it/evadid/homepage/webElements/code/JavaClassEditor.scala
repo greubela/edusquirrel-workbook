@@ -12,8 +12,8 @@ import it.evadid.workbook.elements.interactionElements.programming.state.Program
 final class JavaClassEditor(
     logger: Logger,
     state: Var[ProgrammingStateJavaStructured],
-    editorConfig: CodeMirrorEditorConfig = CodeMirrorEditorConfig.Default,
-    loadingLabel: Signal[String] = Val("Loading editor…")
+    loadingLabel: Signal[String],
+    editorConfig: CodeMirrorEditorConfig = CodeMirrorEditorConfig.Default
 ) extends JavaFragmentEditor[BeEntityName](logger, state, editorConfig, loadingLabel) {
   override protected def locate(source: ProgrammingStateJavaStructured, name: BeEntityName): Option[JavaFragmentRange] =
     source.definedClasses.get(name).map(text => JavaFragmentRange(name, 0, text.length))

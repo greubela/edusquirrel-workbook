@@ -29,7 +29,7 @@ final class EvaLanguageTabs(
   }
 
   private def tabButton(tab: EvaEditorTab, active: Signal[Option[ProgrammingLanguage]]): Element = {
-    val reason = conversion.blockedReason(tab)
+    val reason = conversion.blockedBy(tab).combineWith(labels.conversion).map((failure, texts) => failure.map(texts.describe))
     val reasonId = s"${domId(tab.language)}-reason"
     val caption = tab.label(labels)
     button(

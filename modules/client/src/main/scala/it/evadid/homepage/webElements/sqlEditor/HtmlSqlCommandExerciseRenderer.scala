@@ -13,7 +13,8 @@ case object HtmlSqlCommandExerciseRenderer extends LineBasedRenderingFactory[Sql
       UpdateImportance.MAJOR, fullInfo.workbookContextInformation).toAirstreamVar
     AtomarLineRendering.basicLine(exercise, div(
       button(typ := "button", "Open SQL editor", onClick --> (_ =>
-        fullInfo.displayControl.setFullscreen(SqlEditor(fullInfo.loggerSystemInfo.uiAndDomLogger, state, exercise.databaseConfig, fullInfo.defaults.backendExecutor)))),
+        fullInfo.displayControl.setFullscreen(SqlEditor(fullInfo.loggerSystemInfo.uiAndDomLogger, state, exercise.databaseConfig, fullInfo.defaults.backendExecutor,
+          laminarHelper.plaintextStringSignal(it.evadid.core.datastructures.language.LanguageMapContentId("blockeditor/loading")))))),
       pre(child.text <-- state.signal)
     ))
   }

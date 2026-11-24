@@ -209,5 +209,7 @@
   "modules/client/src/main/scala/it/evadid/homepage/webElements/editor/code/program/ProgrammingExecutionPanel.scala#Console:1": "Transient console state of a mounted panel",
   "modules/client/src/main/scala/it/evadid/homepage/workbook/htmlRenderer/workbookEditors/EditorWithWorkbookPanel.scala#EditorWithWorkbookPanel:1": "Laminar composition of an editor and its side panel; never serialized",
   "modules/client/src/main/scala/it/evadid/homepage/webElements/code/JavaEditorNavigation.scala#Mode:1": "Transient editing mode; not part of the saved answer",
-  "modules/client/src/main/scala/it/evadid/homepage/webElements/code/JavaEditorNavigation.scala#Position:1": "Transient editor navigation (mode and diagram selection); not part of the saved answer"
+  "modules/client/src/main/scala/it/evadid/homepage/webElements/code/JavaEditorNavigation.scala#Position:1": "Transient editor navigation (mode and diagram selection); not part of the saved answer",
+  "modules/client/src/main/scala/it/evadid/homepage/webElements/editor/code/EvaEditor/EvaConversionFailure.scala#EvaConversionFailure:1": "Transient view of a failed language switch; the conversion result is not persisted",
+  "modules/client/src/main/scala/it/evadid/homepage/webElements/editor/code/EvaEditor/EvaConversionTexts.scala#EvaConversionTexts:1": "Localized label texts of one display language; never serialized"
 }

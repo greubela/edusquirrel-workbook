@@ -12,6 +12,7 @@ final case class EvaEditorLabels(
     languages: Signal[String],
     switchFailed: Signal[String],
     loading: Signal[String],
+    conversion: Signal[EvaConversionTexts],
     execution: ProgrammingExecutionLabels,
     blocks: BlockEditorLabels,
     java: JavaEditorLabels
@@ -23,6 +24,9 @@ object EvaEditorLabels {
     languages = text(LanguageMapContentId("blockeditor/languages")),
     switchFailed = text(LanguageMapContentId("blockeditor/switchFailed")),
     loading = text(LanguageMapContentId("blockeditor/loading")),
+    conversion = Signal.combine(text(LanguageMapContentId("blockeditor/conversionUnparsable")),
+      text(LanguageMapContentId("blockeditor/conversionUnsupported")), text(LanguageMapContentId("blockeditor/conversionLine")),
+      text(LanguageMapContentId("blockeditor/conversionWarnings"))).map(EvaConversionTexts.apply),
     execution = ProgrammingExecutionLabels.fromContent(text),
     blocks = BlockEditorLabels.fromContent(text),
     java = JavaEditorLabels.fromContent(text)

@@ -23,5 +23,9 @@
   "blocksTab": "Блоки",
   "stop": "Зупинити",
   "executionRunning": "Виконується…",
-  "executionStopped": "Зупинено."
+  "executionStopped": "Зупинено.",
+  "conversionUnparsable": "Частину цієї програми неможливо прочитати",
+  "conversionUnsupported": "Цю конструкцію неможливо перетворити на іншу мову",
+  "conversionLine": "рядок {line}",
+  "conversionWarnings": "Перетворено зі змінами:"
 }

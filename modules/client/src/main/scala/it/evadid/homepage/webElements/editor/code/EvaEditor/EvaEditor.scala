@@ -38,18 +38,19 @@ final case class EvaEditor(
 
   def selectedLanguage: Option[ProgrammingLanguage] = tabs.find(_.language == draft.now().associatedLanguage).map(_.language)
 
-  def error: Option[Throwable] = conversion.error
+  def error: Option[EvaConversionFailure] = conversion.error
 
   /** Convert the bound answer; its resulting representation determines the active editor. */
   def setActiveTab(language: ProgrammingLanguage): Future[Unit] =
     tabs.find(_.language == language).fold(Future.unit)(conversion.switchTo)
 
   private def conversionNotice: Signal[Option[Element]] =
-    conversion.lastOutcome.combineWith(environment.labels.switchFailed).map {
-      case (Some(result), prefix) => EvaConversionController.failure(result) match {
-        case Some(error) => Some(div(cls := "eva-editor__error", role := "alert", s"$prefix: ${EvaConversionController.describe(error)}"))
+    conversion.lastOutcome.combineWith(environment.labels.switchFailed, environment.labels.conversion).map {
+      case (Some(result), prefix, texts) => EvaConversionFailure.of(result) match {
+        case Some(failure) => Some(div(cls := "eva-editor__error", role := "alert", s"$prefix: ${texts.describe(failure)}"))
+        // A successful switch may lose functionality; the details are technical, the heading localized.
         case None => Option.when(result.conversionInfo.nonEmpty)(div(cls := "instruction-callout instruction-callout--warning",
-          role := "status", result.conversionInfo.map(info => div(info.warningMsg))))
+          role := "status", strong(texts.warnings), result.conversionInfo.map(info => div(info.warningMsg))))
       }
       case _ => None
     }

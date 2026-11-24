@@ -61,7 +61,7 @@ class CodeMirrorEditorMountSpec extends FunSuite {
       dom.document.body.appendChild(host)
       val editor = CodeMirrorEditor(it.evadid.util.logging.Logger.withNameAndPrefixes(Some("test"), it.evadid.util.logging.derived.PrintToStdLogger.printNothing),
         Var(if language == Java then "int value = 1;\nvalue++;" else "print(1)"), language = language,
-        config = Var(CodeMirrorEditorConfig(enabled)), createEditor = createEditor,
+        config = Var(CodeMirrorEditorConfig(enabled)), loadingLabel = Val("loading"), createEditor = createEditor,
         diagnostics = Val(if language == Java then Seq(CodeMirrorEditor.Diagnostic(2, Some(2), Some(0), Some(5))) else Nil),
         firstLineNumber = if language == Java then firstLine.signal else Val(1))
       render(host, if language == Python && !enabled then div(child <-- rebuild.signal.map(_ => editor.getDomElement()))

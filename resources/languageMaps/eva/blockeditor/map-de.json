@@ -65,5 +65,9 @@
   "blocksTab": "Blöcke",
   "stop": "Stopp",
   "executionRunning": "Läuft…",
-  "executionStopped": "Angehalten."
+  "executionStopped": "Angehalten.",
+  "conversionUnparsable": "Ein Teil dieses Programms kann nicht gelesen werden",
+  "conversionUnsupported": "Dieses Konstrukt kann nicht in die andere Sprache übertragen werden",
+  "conversionLine": "Zeile {line}",
+  "conversionWarnings": "Mit Änderungen übertragen:"
 }

@@ -10,8 +10,8 @@ import it.evadid.workbook.elements.interactionElements.programming.state.Program
 final class JavaFunctionEditor(
     logger: Logger,
     state: Var[ProgrammingStateJavaStructured],
-    editorConfig: CodeMirrorEditorConfig = CodeMirrorEditorConfig.Default,
-    loadingLabel: Signal[String] = Val("Loading editor…")
+    loadingLabel: Signal[String],
+    editorConfig: CodeMirrorEditorConfig = CodeMirrorEditorConfig.Default
 ) extends JavaFragmentEditor[JavaFunctionEditor.Function](logger, state, editorConfig, loadingLabel) {
   import JavaFunctionEditor.Function
   import JavaMethodSource.*

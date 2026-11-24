@@ -66,11 +66,15 @@ test('Java component editor labels exist in German, English and Danish', () => {
   assertTranslated('blockeditor', keys);
 });
 
-test('console and block editor labels exist in German, English and Danish', () => {
+test('Eva, console and block editor labels exist in German, English and Danish', () => {
   const files = [
     read('modules/client/src/main/scala/it/evadid/homepage/webElements/editor/code/program/ProgrammingExecutionLabels.scala'),
     read('modules/client/src/main/scala/it/evadid/homepage/webElements/editor/blocks/BlockEditorLabels.scala'),
+    read('modules/client/src/main/scala/it/evadid/homepage/webElements/editor/code/EvaEditor/EvaEditorLabels.scala'),
   ].join('\n');
-  const keys = new Set([...matches(files, /label\("(?:blockeditor\/)?([A-Za-z]+)"\)/g)]);
+  const keys = new Set([
+    ...matches(files, /label\("(?:blockeditor\/)?([A-Za-z]+)"\)/g),
+    ...matches(files, /LanguageMapContentId\("blockeditor\/([A-Za-z]+)"\)/g),
+  ]);
   assertTranslated('blockeditor', keys);
 });

@@ -2,8 +2,7 @@ package it.evadid.homepage.webElements.editor.code.EvaEditor
 
 import com.raquo.laminar.api.L.*
 import it.evadid.core.datastructures.language.AppLanguage.ProgrammingLanguage
-import it.evadid.util.logging.LoggingLevel
-import it.evadid.vm.code.errors.{ProgrammingConversionError, ProgrammingConversionException, ProgrammingConversionKind}
+import it.evadid.vm.code.errors.ProgrammingConversionError
 import it.evadid.vm.conversion.ConversionResult
 import it.evadid.workbook.elements.interactionElements.programming.state.ProgrammingState
 
@@ -29,15 +28,15 @@ final class EvaConversionController(draft: Var[ProgrammingState], commit: Progra
   val lastOutcome: Signal[Option[ConversionResult]] = lastSwitch.signal
 
   /** Where the last failed switch stopped, for the editor to mark in its source. */
-  val marker: Signal[Option[ProgrammingConversionError]] = lastSwitch.signal.map(_.flatMap(failure).map(_.error))
+  val marker: Signal[Option[ProgrammingConversionError]] = lastSwitch.signal.map(_.flatMap(EvaConversionFailure.of).map(_.error))
 
-  def error: Option[Throwable] = lastSwitch.now().flatMap(failure)
+  def error: Option[EvaConversionFailure] = lastSwitch.now().flatMap(EvaConversionFailure.of)
 
   /** Why switching to `tab` fails for the current draft, once its check has completed. */
-  def blockedReason(tab: EvaEditorTab): Signal[Option[String]] =
+  def blockedBy(tab: EvaEditorTab): Signal[Option[EvaConversionFailure]] =
     draft.signal.combineWith(checks.signal).map { (source, current) =>
       current.get(tab.language) match {
-        case Some(CompletedEditorConversion(`source`, result)) => failure(result).map(describe)
+        case Some(CompletedEditorConversion(`source`, result)) => EvaConversionFailure.of(result)
         case _ => None
       }
     }
@@ -102,20 +101,4 @@ final class EvaConversionController(draft: Var[ProgrammingState], commit: Progra
 object EvaConversionController {
   /** Identifies one requested switch; a newer request supersedes it. */
   private final class Request
-
-  def failure(result: ConversionResult): Option[ProgrammingConversionException] =
-    Option.when(result.finalState.isEmpty) {
-      val info = result.conversionInfo.find(_.warningLevel == LoggingLevel.ERROR)
-      new ProgrammingConversionException(info.map(_.warningMsg).getOrElse("Conversion failed."),
-        info.flatMap(_.sourceError).getOrElse(ProgrammingConversionError(ProgrammingConversionKind.UnsupportedConstruct)))
-    }
-
-  def describe(error: Throwable): String = {
-    val message = Option(error.getMessage).filter(_.nonEmpty).getOrElse(error.getClass.getSimpleName)
-    error match {
-      case failure: ProgrammingConversionException =>
-        failure.error.line.fold(message)(line => if message.contains(s"line $line") then message else s"$message (line $line)")
-      case _ => message
-    }
-  }
 }

@@ -6,7 +6,6 @@ import com.raquo.airstream.state.Var
 import com.raquo.airstream.ownership.ManualOwner
 import it.evadid.core.datastructures.language.AppLanguage
 import it.evadid.core.datastructures.vectorShapes.svg.TurtleCommand
-import it.evadid.homepage.webElements.editor.code.EvaEditor.extensions.turtle.*
 import it.evadid.workbook.elements.interactionElements.programming.state.*
 import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseRegular.*
 import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseTurtle.*

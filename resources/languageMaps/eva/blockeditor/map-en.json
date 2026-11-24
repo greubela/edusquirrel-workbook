@@ -65,5 +65,9 @@
   "blocksTab": "Blocks",
   "stop": "Stop",
   "executionRunning": "Running…",
-  "executionStopped": "Stopped."
+  "executionStopped": "Stopped.",
+  "conversionUnparsable": "The editor cannot read part of this program",
+  "conversionUnsupported": "This construct cannot be converted to the other language",
+  "conversionLine": "line {line}",
+  "conversionWarnings": "Converted with changes:"
 }

@@ -31,7 +31,7 @@ class JavaFragmentEditorSpec extends EditorDomSuite {
 
   test("a class editor edits the whole class; renaming its declaration renames the entry in place") {
     val answer = state()
-    withMounted(JavaClassEditor(logger, answer)) { editor =>
+    withMounted(JavaClassEditor(logger, answer, Val("loading"))) { editor =>
       editor.select(helper)
       assertEquals(editor.local.now(), helperClass)
       editor.local.set(helperClass.replace("other", "renamed"))
@@ -50,7 +50,7 @@ class JavaFragmentEditorSpec extends EditorDomSuite {
 
   test("a function editor writes its method into the class; unfinished code keeps its place") {
     val answer = state()
-    withMounted(JavaFunctionEditor(logger, answer)) { editor =>
+    withMounted(JavaFunctionEditor(logger, answer, Val("loading"))) { editor =>
       editor.select(mainFunction(answer))
       assertEquals(editor.local.now(), "static void main(String[] args) { forward(10); }")
       editor.local.set("static void main(String[] args) { forward(")
@@ -70,7 +70,7 @@ class JavaFragmentEditorSpec extends EditorDomSuite {
 
   test("outside changes refresh the local text, follow a moved method and report a removed one") {
     val answer = state()
-    withMounted(JavaFunctionEditor(logger, answer)) { editor =>
+    withMounted(JavaFunctionEditor(logger, answer, Val("loading"))) { editor =>
       val owner = ManualOwner()
       val located = editor.located.observe(using owner)
       editor.select(mainFunction(answer))
@@ -88,7 +88,7 @@ class JavaFragmentEditorSpec extends EditorDomSuite {
 
   test("adding a second declaration selects only the new function for later edits") {
     val answer = state()
-    withMounted(JavaFunctionEditor(logger, answer)) { editor =>
+    withMounted(JavaFunctionEditor(logger, answer, Val("loading"))) { editor =>
       editor.select(mainFunction(answer))
       val original = editor.local.now()
       val added = "static void extra() { forward(42); }"

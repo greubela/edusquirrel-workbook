@@ -23,5 +23,9 @@
   "blocksTab": "Bloklar",
   "stop": "Durdur",
   "executionRunning": "Çalışıyor…",
-  "executionStopped": "Durduruldu."
+  "executionStopped": "Durduruldu.",
+  "conversionUnparsable": "Bu programın bir kısmı okunamıyor",
+  "conversionUnsupported": "Bu yapı diğer dile dönüştürülemiyor",
+  "conversionLine": "satır {line}",
+  "conversionWarnings": "Değişikliklerle dönüştürüldü:"
 }

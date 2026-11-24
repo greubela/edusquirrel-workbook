@@ -65,5 +65,9 @@
   "blocksTab": "Blokke",
   "stop": "Stop",
   "executionRunning": "Kører…",
-  "executionStopped": "Stoppet."
+  "executionStopped": "Stoppet.",
+  "conversionUnparsable": "En del af dette program kan ikke læses",
+  "conversionUnsupported": "Denne konstruktion kan ikke overføres til det andet sprog",
+  "conversionLine": "linje {line}",
+  "conversionWarnings": "Overført med ændringer:"
 }

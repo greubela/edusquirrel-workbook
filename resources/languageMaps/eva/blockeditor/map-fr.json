@@ -23,5 +23,9 @@
   "blocksTab": "Blocs",
   "stop": "Arrêter",
   "executionRunning": "Exécution…",
-  "executionStopped": "Arrêté."
+  "executionStopped": "Arrêté.",
+  "conversionUnparsable": "Une partie de ce programme ne peut pas être lue",
+  "conversionUnsupported": "Cette construction ne peut pas être convertie dans l’autre langage",
+  "conversionLine": "ligne {line}",
+  "conversionWarnings": "Converti avec des modifications :"
 }

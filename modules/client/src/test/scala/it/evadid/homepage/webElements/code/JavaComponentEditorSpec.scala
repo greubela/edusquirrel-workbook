@@ -46,7 +46,7 @@ class JavaComponentEditorSpec extends UiDomSuite {
 
   private def answer(source: String = mainClass + "\n\n" + helperClass) = Var(ProgrammingStateJavaStructured(source))
   private def editor(state: Var[ProgrammingStateJavaStructured], reference: Option[() => Element] = None) =
-    new JavaComponentEditor(logger, state, labels, reference = reference)
+    new JavaComponentEditor(logger, state, labels, Val("Loading"), reference = reference)
   private def field(root: dom.Element) = one(root, "textarea.code-mirror-editor__fallback")
   private def heading(root: dom.Element) = one(root, ".java-function-editor__workspace-heading h3").textContent
   private def status(root: dom.Element) = one(root, ".java-function-editor__sync").textContent
