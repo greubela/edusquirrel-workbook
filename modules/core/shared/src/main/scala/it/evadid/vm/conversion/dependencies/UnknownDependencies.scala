@@ -14,8 +14,8 @@ import it.evadid.vm.types.BeDataType
   *
   * Parsers bind such a call to a placeholder function named after its written path (`System.out2.println`):
   * a plain function without an intrinsic. A program definition of the same name is the user's own function.
-  * An unknown attribute read (`Other.value`) stays an unsupported expression whose source is its dotted path;
-  * it counts when the path's root is bound nowhere in the program.
+  * An unknown attribute read (`Other.value`) or write (`Other.value = 3`) stays an unsupported expression whose
+  * source starts with its dotted path; it counts when the path's root is bound nowhere in the program.
   */
 object UnknownDependencies {
   /** A call of the written path `path` (e.g. `Seq("System", "out2", "println")`) with `arity` arguments. */
@@ -36,7 +36,8 @@ object UnknownDependencies {
   /** A read of the attribute at the written path `path` (e.g. `Seq("Config", "screen", "title")`). */
   final case class UnknownAttribute(path: Seq[String])
 
-  private val dottedPath = """[A-Za-z_][A-Za-z0-9_]*(\.[A-Za-z_][A-Za-z0-9_]*)+""".r
+  /** A dotted path, read as a whole or written by an assignment (`=`, not `==`). */
+  private val attributeSource = """([A-Za-z_][A-Za-z0-9_]*(?:\.[A-Za-z_][A-Za-z0-9_]*)+)(?:\s*=(?!=)[\s\S]*)?""".r
 
   def attributes(expression: BeExpression): Seq[UnknownAttribute] = {
     val nodes = expression.subtree
@@ -47,11 +48,9 @@ object UnknownDependencies {
       case definition: BeDefineClass => definition.name
     } ++ nodes.collect { case definition: BeDefineFunction => definition.inputs.map(_.name) }.flatten)
       .map(_.universalInterpretation()).toSet ++ Set("self", "this")
-    nodes.collect {
-      case BeExpressionUnsupported(source, _, _) if dottedPath.matches(source) &&
-          !bound(BeEntityName.fromCodeString(source.takeWhile(_ != '.')).universalInterpretation()) =>
-        UnknownAttribute(source.split('.').toSeq)
-    }.distinct
+    nodes.collect { case BeExpressionUnsupported(attributeSource(path), _, _) => path }
+      .filterNot(path => bound(BeEntityName.fromCodeString(path.takeWhile(_ != '.')).universalInterpretation()))
+      .map(path => UnknownAttribute(path.split('.').toSeq)).distinct
   }
 
   def of(expression: BeExpression): Option[BeUnknownDependency] = from(calls(expression), attributes(expression))

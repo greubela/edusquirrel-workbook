@@ -21,6 +21,7 @@ class UnknownDependencySpec extends FunSuite {
       |    int size = Helper.size(3);
       |    String text = Config.screen.title.read();
       |    Object limit = Config.screen.limit;
+      |    Config.screen.limit = size + 1;
       |    log(size, text);
       |    System.out.println(size);
       |  }
@@ -46,6 +47,18 @@ class UnknownDependencySpec extends FunSuite {
       List("title" -> BeDataType.ClassType(it.evadid.vm.naming.BeEntityName.fromLiteral("ConfigScreenTitle")), "limit" -> BeDataType.AnyType))
     assertEquals(dependency("class Main { int size = 3; void f(Main other) { Object x = other.missing; } }"), None,
       "a member of a known parameter is a type error, not a missing dependency")
+  }
+
+  test("assignments to unknown attributes keep their source and make the attribute unknown") {
+    val java = ProgrammingStateRaw(Java, "class Main { static void main(String[] args) { int a = 2; Settings.limit = a * 3; } }").toBeExpression
+    assertEquals(UnknownDependencies.attributes(java.expression), Seq(UnknownDependencies.UnknownAttribute(Seq("Settings", "limit"))))
+    assert(ProgrammingStateRaw(Java, "class Main { static void main(String[] args) { int a = 2; Settings.limit = a * 3; } }")
+      .toBeExpression.toJava.code.contains("Settings.limit = a * 3;"))
+    val python = ProgrammingStateRaw(Python, "a = 2\nSettings.limit = a * 3\n").toBeExpression
+    assertEquals(python.unknownDependency.map(_.rootClasses.flatMap(_.attributes.map(_.name.spelling()))), Some(List("limit")))
+    assert(python.toPython.code.contains("Settings.limit = a * 3"), python.toPython.code)
+    // A comparison is not an assignment, and a bound receiver is the program's own object.
+    assertEquals(UnknownDependencies.attributes(ProgrammingStateRaw(Python, "class P:\n    pass\n\np = P()\np.size = 2\n").toBeExpression.expression), Nil)
   }
 
   test("qualified paths become a static root class, attribute classes and their methods") {

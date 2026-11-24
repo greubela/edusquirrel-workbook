@@ -1,6 +1,6 @@
 package it.evadid.vm.conversion.parsed
 
-import it.evadid.core.datastructures.language.AppLanguage.ProgrammingLanguage
+import it.evadid.core.datastructures.language.AppLanguage.{English, ProgrammingLanguage}
 import it.evadid.core.datastructures.language.LanguageMap
 import it.evadid.vm.code.abstractions.BeExpression
 import it.evadid.vm.code.controlStructures.{BeFor, BeIfElse, BeRepeatNr, BeSequence, BeWhile}
@@ -73,7 +73,7 @@ final class ParsedProgramBuilder(language: ProgrammingLanguage,
     case S.AssignMember(receiver, member, value) =>
       expression(E.Member(receiver, member), context) match {
         case BeMemberAccess(instance, field) => BeAssignMember(instance, field, expression(value, context))
-        case _ => throw IllegalArgumentException(s"Cannot resolve the member assignment to '$member'.")
+        case _ => unknownAssignment(s"${describe(receiver)}.$member", expression(value, context))
       }
     case S.If(condition, thenBody, elseBody) =>
       BeIfElse(BeSequence.conditionalBody(List(expression(condition, context))), body(thenBody, context), body(elseBody, context))
@@ -191,6 +191,15 @@ final class ParsedProgramBuilder(language: ProgrammingLanguage,
         .getOrElse(throw IllegalArgumentException(s"Cannot convert construction of unknown class '$className'."))
       bind(className, BeCallTarget.Constructor(constructor(owner)), arguments.map(expression(_, context)).toList)
     case E.Unsupported(source) => BeExpressionUnsupported(source, Some(language))
+  }
+
+  /** An assignment to an attribute nothing defines (`Config.limit = 3`) keeps its source, like a read of one;
+    * [[it.evadid.vm.conversion.dependencies.UnknownDependencies]] collects its target.
+    */
+  private def unknownAssignment(target: String, value: BeExpression): BeExpressionUnsupported = {
+    val printed = value.structureInfo.toStringInLanguage(language, English).trim.stripSuffix(";")
+    BeExpressionUnsupported(s"$target = $printed${if language.name == "Java" then ";" else ""}", Some(language),
+      s"Cannot resolve the member assignment to '$target'.")
   }
 
   private def describe(parsed: ParsedExpression): String = parsed match {

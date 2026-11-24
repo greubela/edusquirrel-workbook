@@ -6,6 +6,6 @@
 
 ## Remaining architecture work
 
-- Unknown dependencies: configurable default dependency environments per exercise. Unknown attribute assignments (`Config.limit = 3`) still fail the Java conversion; only reads become `BeUnknownDependency` attributes.
+- Unknown dependencies: configurable default dependency environments per exercise.
 - Static drawings in `CompareShapePreview` and `TurtleStepPanel` still compute on the page thread (deferred); they could read the turtle commands of the worker's `ProgramAnalysis`, but share their comparison with `RecreateShapeGrader` today.
 - `flatMapSwitch` can end on an outdated value when its source changes in consecutive transactions (`LabelSelectionSpec`). Texts chosen from a finite key set use `LabelSelection` (`formatted` fills `{field}` placeholders). Switches remain only over open sets: the feedback panels' hint content and `SimpleTextEditor`'s configured placeholder (dynamic `LanguageMap` content), and `HtmlLoginElement`'s status, whose keys come from authentication failures and change only across asynchronous steps.
