@@ -20,32 +20,6 @@
 
 .eva-editor__language-icon { display: block; width: 24px; height: 24px; }
 
-.editor-appearance[data-editor-theme] .editor-appearance__toggle {
-    display: inline-flex;
-    flex: 0 0 auto;
-    align-items: center;
-    justify-content: center;
-    gap: 8px;
-    min-height: 44px;
-    min-width: 44px;
-    max-width: 100%;
-    padding: 9px 13px;
-    border: 1px solid var(--editor-border);
-    border-radius: 24px;
-    background: linear-gradient(135deg, var(--editor-glass-lens), transparent 90%), var(--editor-chrome-surface);
-    box-shadow: inset 0 1px var(--editor-glass-shine), 0 7px 20px -14px var(--editor-shadow);
-    color: var(--editor-ink);
-    font: inherit;
-    line-height: 1.4;
-    cursor: pointer;
-    transition: background-color 120ms ease, border-color 120ms ease;
-}
-
-.editor-appearance__icon { font-size: 19px; line-height: 1; }
-.editor-appearance[data-editor-theme] .editor-appearance__toggle:hover { background-color: var(--editor-hover); border-color: var(--editor-border-strong); }
-.editor-appearance[data-editor-theme] .editor-appearance__toggle:focus { color: var(--editor-ink); border-color: var(--editor-focus); }
-.editor-appearance[data-editor-theme] .editor-appearance__toggle:focus-visible { outline: 2px solid var(--editor-focus); outline-offset: 3px; }
-
 .eva-editor.editor-appearance { gap: 12px; padding: 14px; }
 .editor-appearance .eva-editor__toolbar {
     display: flex;
@@ -91,8 +65,7 @@
 }
 .eva-editor.editor-appearance .eva-editor__tabs > button:focus-visible { outline: 2px solid var(--editor-focus); outline-offset: 2px; }
 .eva-editor.editor-appearance .eva-editor__tabs > button[aria-disabled="true"] { color: var(--editor-muted); opacity: 0.55; }
-.editor-appearance .code-editor__conversion,
-.editor-appearance .java-function-editor__conversion { color: var(--editor-error); }
+
 .editor-appearance .eva-editor__error { color: var(--editor-error); }
 .editor-appearance .eva-editor__content {
     border-color: var(--editor-border);
@@ -144,7 +117,7 @@
 .editor-appearance .edusquirrel-code-mirror :is(.cm-todo-token, .cm-todo-token *) { color: var(--editor-error) !important; }
 
 @supports ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
-    .editor-appearance[data-editor-theme] :is(.editor-appearance__toggle, .eva-editor__tabs, .java-function-editor__topbar-actions, .java-function-editor__view-toggle, .java-function-editor__reference) {
+    .editor-appearance[data-editor-theme] :is(.eva-editor__tabs, .java-function-editor__topbar-actions, .java-function-editor__reference) {
         background: linear-gradient(135deg, var(--editor-glass-lens), transparent 90%), var(--editor-glass-surface);
         -webkit-backdrop-filter: blur(18px) saturate(125%);
         backdrop-filter: blur(18px) saturate(125%);
@@ -156,10 +129,6 @@
     .editor-appearance .eva-editor__toolbar { padding-inline-end: 3.25rem; gap: 8px; }
     .editor-appearance .eva-editor__tabs { border-radius: 20px; }
     .eva-editor.editor-appearance .eva-editor__tabs > button { padding-inline: 10px; }
-}
-
-@media (max-width: 360px) {
-    .editor-appearance .editor-appearance__toggle { padding-inline: 11px; }
 }
 
 @media (pointer: coarse) {

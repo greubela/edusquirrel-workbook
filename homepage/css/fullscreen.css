@@ -2,22 +2,7 @@
 @import url('generic/colors.css');
 @import url('generic/dimensions.css');
 
-
 /* --- Fullscreen Overlay --- */
-
-.fullscreen-active.workbook-app-shell,
-.fullscreen-active .workbook-main,
-.fullscreen-active .workbook-footer,
-.fullscreen-active .workbook-header,
-.fullscreen-active .workbook-body{
-  overflow:hidden;
-}
-
-
-
-
-
-
 
 .fullscreen-overlay-dialog > .fullscreen-close-button {
   position: absolute;
@@ -47,6 +32,3 @@
   outline-offset: var(--space-xs);
 }
 
-body.fullscreen-active {
-  overflow: hidden;
-}

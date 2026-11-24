@@ -26,11 +26,6 @@
     line-height: 1.6;
 }
 
-.monks-workbook .slide-deck-column {
-    min-width: 0;
-    overflow-wrap: anywhere;
-}
-
 @media (max-width: 768px) {
     .monks-workbook .workbook-title-line {
         box-sizing: border-box;
@@ -72,7 +67,4 @@
         margin: var(--space-sm);
     }
 
-    .monks-workbook .slide-deck-text {
-        padding: var(--space-sm);
-    }
 }

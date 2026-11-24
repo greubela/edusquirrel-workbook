@@ -21,10 +21,6 @@
     padding: var(--space-md);
 }
 
-.eva-editor--error {
-    grid-template-rows: auto auto minmax(0, 1fr);
-}
-
 .eva-editor__error {
     flex: 1 0 100%;
     padding: var(--space-sm) var(--space-md);
@@ -45,9 +41,7 @@
 }
 
 .code-editor__loading,
-.code-mirror-editor__loading,
-.code-editor__conversion,
-.java-function-editor__conversion {
+.code-mirror-editor__loading {
     margin: 0;
     padding: var(--space-sm) var(--space-md);
 }

@@ -48,8 +48,6 @@
     --color-flag-german-red: #d00;
     --color-flag-german-yellow: #ffce00;
 
-
-
     --color-red-0: #fdcfcf;
     --color-red-1: #FBA0A0;
     --color-red-2: #FA7D7D;
@@ -118,8 +116,6 @@
     --color-yellow-14: #3E2F0C;
     --color-yellow-15: #292008;
 
-    /*font-family: PTSans, "Helvetica Neue", "Helvetica", sans-serif;*/
-
     /* Todo: new and lighter gray tones */
 
     --color-gray-0: #F2F2F2;
@@ -163,7 +159,6 @@
     --color-background-colored-accented-strong: var(--color-blue-4);
 
     --color-background-colored-correct: var(--color-green-5);
-    --color-background-colored-correct-ai: var(--color-green-2);
     --color-background-colored-incorrect: var(--color-red-2);
 
     /* Workbook aliases */
@@ -230,7 +225,6 @@
     --color-role-user: var(--color-background-colored-accented);
     --color-role-teacher: #69def1;
     --color-role-ai: #fabc7d;
-
 
     /* UPDATE BROWSER DEFAULTS */
 
@@ -352,8 +346,6 @@
     --editor-diagnostic-warning: 151, 97, 29;
     --editor-diagnostic-error: 180, 35, 55;
     --editor-diagnostic-soft: 55, 103, 193;
-    --editor-reference-figure-surface: #f8fafc;
-    --editor-reference-figure-ink: #26364b;
 }
 
 .editor-appearance[data-editor-theme="dark"] {
