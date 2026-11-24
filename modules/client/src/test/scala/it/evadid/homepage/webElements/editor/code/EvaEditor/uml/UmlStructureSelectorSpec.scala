@@ -66,7 +66,8 @@ class UmlStructureSelectorSpec extends EditorDomSuite {
 
   test("clicking names, attributes and functions selects them; the selection follows source edits") {
     val source = Var(state)
-    val selector = UmlStructureSelector(source.signal.map(JavaUmlDiagram(_)))
+    val selection = Var(Option.empty[UmlEntityKey])
+    val selector = UmlStructureSelector(source.signal.map(JavaUmlDiagram(_)), selection.signal, selection.writer.contramap(Some(_)))
     val owner = ManualOwner()
     val selected = selector.selectedEntitySignal.observe(using owner)
     val unmount = mount(selector.getDomElement())

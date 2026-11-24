@@ -192,7 +192,6 @@
   "modules/client/src/main/scala/it/evadid/homepage/webElements/code/JavaFragmentEditor.scala#Fragment:1": "Transient editor selection and draft range; not a saved programming state",
   "modules/client/src/main/scala/it/evadid/homepage/webElements/code/JavaFunctionEditor.scala#Function:1": "Transient editor selection derived from the class source",
   "modules/client/src/main/scala/it/evadid/homepage/webElements/editor/code/EvaEditor/uml/UmlStructureSelector.scala#UmlStructureSelector:1": "Laminar component holding a signal and selection Var; never serialized",
-  "modules/client/src/main/scala/it/evadid/homepage/webElements/code/JavaComponentEditor.scala#Mode:1": "Transient editing mode; not part of the saved answer",
   "modules/client/src/main/scala/it/evadid/homepage/webElements/editor/code/EvaEditor/PendingEditorConversion.scala#PendingEditorConversion:1": "Transient editor conversion state; owns an in-flight Future or derived result",
   "modules/client/src/main/scala/it/evadid/homepage/webElements/editor/code/EvaEditor/CompletedEditorConversion.scala#CompletedEditorConversion:1": "Transient editor conversion state; owns an in-flight Future or derived result",
   "modules/client/src/main/scala/it/evadid/homepage/webElements/code/JavaEditorLabels.scala#Key:1": "Language-map keys of editor texts; never persisted",
@@ -208,5 +207,7 @@
   "modules/client/src/main/scala/it/evadid/homepage/webElements/editor/code/program/ProgramRunner.scala#Output:1": "Transient console output of one run; never persisted",
   "modules/client/src/main/scala/it/evadid/homepage/webElements/editor/code/program/ProgrammingExecutionLabels.scala#ProgrammingExecutionLabels:1": "Localized label signals; never serialized",
   "modules/client/src/main/scala/it/evadid/homepage/webElements/editor/code/program/ProgrammingExecutionPanel.scala#Console:1": "Transient console state of a mounted panel",
-  "modules/client/src/main/scala/it/evadid/homepage/workbook/htmlRenderer/workbookEditors/EditorWithWorkbookPanel.scala#EditorWithWorkbookPanel:1": "Laminar composition of an editor and its side panel; never serialized"
+  "modules/client/src/main/scala/it/evadid/homepage/workbook/htmlRenderer/workbookEditors/EditorWithWorkbookPanel.scala#EditorWithWorkbookPanel:1": "Laminar composition of an editor and its side panel; never serialized",
+  "modules/client/src/main/scala/it/evadid/homepage/webElements/code/JavaEditorNavigation.scala#Mode:1": "Transient editing mode; not part of the saved answer",
+  "modules/client/src/main/scala/it/evadid/homepage/webElements/code/JavaEditorNavigation.scala#Position:1": "Transient editor navigation (mode and diagram selection); not part of the saved answer"
 }
