@@ -191,6 +191,7 @@
   "modules/client/src/main/scala/it/evadid/homepage/webElements/code/JavaFragmentEditor.scala#Fragment:1": "Transient editor selection and draft range; not a saved programming state",
   "modules/client/src/main/scala/it/evadid/homepage/webElements/code/JavaFunctionEditor.scala#Function:1": "Transient editor selection derived from the class source",
   "modules/client/src/main/scala/it/evadid/homepage/webElements/editor/code/EvaEditor/uml/UmlStructureSelector.scala#UmlStructureSelector:1": "Laminar component holding a signal and selection Var; never serialized",
+  "modules/core/shared/src/main/scala/it/evadid/core/datastructures/vectorShapes/renderer/FlowchartGutter.scala#Positioned:1": "Intermediate statement placement while building a chart; only the Chart crosses the worker boundary",
   "modules/client/src/main/scala/it/evadid/homepage/webElements/basic/DeferredRendering.scala#Phase:1": "Transient drawing phase of a mounted view; never serialized",
   "modules/client/src/main/scala/it/evadid/homepage/webElements/basic/DeferredRendering.scala#Prepared:1": "In-memory result of a superseded or current preparation; never serialized",
   "modules/client/src/main/scala/it/evadid/homepage/webElements/editor/code/EvaEditor/uml/UmlStructureSelector.scala#OriginLabels:1": "Localized label signals of read-only class boxes; never serialized",
