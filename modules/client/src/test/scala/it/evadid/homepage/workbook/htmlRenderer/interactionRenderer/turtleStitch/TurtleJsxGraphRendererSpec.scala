@@ -41,17 +41,17 @@ class TurtleJsxGraphRendererSpec extends FunSuite {
   }
 
   private def previewAssessment(state: ProgrammingState): Try[TurtleDrawingGrading.Assessment] =
-    CompareShapePreview(Var(state), TurtleGraphic.TurtleGraphicSvgString("M0,0 L12,0"), TurtleDrawingPolicy.Strokes).assessment(state)
+    CompareShapePreview(Var(state), TurtleGraphic.TurtleGraphicSvgString("M0,0 L12,0"), TurtleDrawingPolicy.Strokes)
+      .assessment(it.evadid.vm.analysis.ProgramAnalysis.of(state))
 
-  test("previews and graders of one state share a single comparison per target and policy") {
+  test("previews compare the analysed commands as graders compare the state") {
     val state = ProgrammingStateRaw(Python, "forward(12)")
     val target = TurtleGraphic.TurtleGraphicSvgString("M0,0 L12,0")
+    val commands = it.evadid.vm.analysis.ProgramAnalysis.of(state).completedCommands.toOption.get
     TurtleDrawingPolicy.values.toList.foreach { policy =>
-      val preview = TurtleDrawingGrading.assess(state, target, policy)
-      val shared = state.toBeExpression.turtleComparison(target, policy)
-      assert(shared eq state.toBeExpression.turtleComparison(target, policy), clues(policy))
-      assertEquals(preview.matches, shared.gradingStatus.isCorrect)
-      assertEquals(preview, TurtleDrawingGrading.assess(state.toBeExpression.turtleCommandExecutionInfo.completedCommands, target, policy))
+      val preview = TurtleDrawingGrading.assess(commands, target, policy)
+      val graded = state.toBeExpression.turtleComparison(target, policy)
+      assertEquals(preview.matches, graded.gradingStatus.isCorrect, clues(policy))
     }
   }
 

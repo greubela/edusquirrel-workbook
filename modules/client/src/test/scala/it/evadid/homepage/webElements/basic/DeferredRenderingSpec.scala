@@ -21,7 +21,7 @@ class DeferredRenderingSpec extends EditorDomSuite {
     val prepared = Var(Vector.empty[String])
     val rendering = new DeferredRendering[String, String](source.signal, state => {
       prepared.update(_ :+ state)
-      if state == "broken" then throw IllegalArgumentException("cannot draw") else state.toUpperCase
+      if state == "broken" then throw IllegalArgumentException("cannot draw") else scala.concurrent.Future.successful(state.toUpperCase)
     }, delay)
     val phases = Var(Vector.empty[DeferredRendering.Phase])
     val views = Var(0)

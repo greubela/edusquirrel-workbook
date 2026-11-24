@@ -19,14 +19,16 @@ import it.evadid.workbook.abstractions.TypeOfTextDisplay.PLAINTEXT
 import it.evadid.workbook.abstractions.{LangMapContentIdType, TypeOfTextDisplay}
 import it.evadid.workbook.elements.displayElements.DisplayLangMapContent
 import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseTurtle.TurtleRecreateShapeInteraction
+import it.evadid.homepage.webElements.editor.code.program.ProgramAnalyzer
 
 case object HtmlTurtleRecreateShapeRenderer extends LineBasedRenderingFactory[TurtleRecreateShapeInteraction] {
 
   /** Editor side module replaying the drawing of the bound answer step by step. */
-  private[homepage] def turtleStepsCard(boundVar: Var[it.evadid.workbook.elements.interactionElements.programming.state.ProgrammingState]): ElementCard =
+  private[homepage] def turtleStepsCard(boundVar: Var[it.evadid.workbook.elements.interactionElements.programming.state.ProgrammingState],
+      analyzer: ProgramAnalyzer = ProgramAnalyzer.shared): ElementCard =
     ElementCard(LanguageMapContentId("basic/turtleStepsTitle"),
       new it.evadid.homepage.workbook.htmlRenderer.interactionRenderer.steps.TurtleStepPanel(boundVar,
-        key => laminarHelper.plaintextStringSignal(LanguageMapContentId(s"basic/$key"))).getDomElement())
+        key => laminarHelper.plaintextStringSignal(LanguageMapContentId(s"basic/$key")), analyzer = analyzer).getDomElement())
 
   override protected def createRendering(workbookElement: TurtleRecreateShapeInteraction): AtomarLineRendering = {
     val boundVar = workbookElement.interactionVariable.createBoundStateWithUpdateImportance(UpdateImportance.MAJOR, fullInfo.workbookContextInformation).toAirstreamVar

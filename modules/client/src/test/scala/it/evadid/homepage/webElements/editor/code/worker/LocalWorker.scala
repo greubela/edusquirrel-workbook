@@ -32,6 +32,14 @@ final class LocalWorker(executor: ExecutionClient) {
 }
 
 object LocalWorker {
+  /** A page analyzer whose worker runs the core [[it.evadid.vm.analysis.ProgramAnalysis]] locally. */
+  def analyzer(): it.evadid.homepage.webElements.editor.code.program.ProgramAnalyzer = {
+    val executor = ExecutionClient(Seq(it.evadid.distribution.commandTypes.WorkerCommands.programAnalysis
+      .toLocalExecutionClient((state, _) => scala.concurrent.Future(it.evadid.vm.analysis.ProgramAnalysis.of(state)))))
+    val workers = Factory(executor)
+    it.evadid.homepage.webElements.editor.code.program.ProgramAnalyzer(SharedWorker(() => workers()))
+  }
+
   /** Creates a fresh worker per call, as a superseded or failed request discards its worker. */
   final class Factory(executor: ExecutionClient) {
     val created = ListBuffer.empty[LocalWorker]

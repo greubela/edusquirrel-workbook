@@ -89,7 +89,7 @@ class Gdp1WorkbookSpec extends FunSuite {
     val python = ProgrammingStatePythonStructured(oriented)
     val expected = python.toBeExpression.turtleCommandExecutionInfo.completedCommands
     Seq(python, python.toSnapXml, python.toJavaStructured).foreach { source =>
-      assertEquals(it.evadid.vm.analysis.ProgramAnalysis.of(source).turtleCommands, Right(expected), source.associatedLanguage.name)
+      assertEquals(it.evadid.vm.analysis.ProgramAnalysis.of(source).drawing, Right(expected), source.associatedLanguage.name)
     }
   }
 

@@ -12,7 +12,8 @@ Programs are handled in two ways, independently of the editor language:
 Drawings are always static: previews, step panels, graders and
 `StaticTurtleDrawing` use the BeExpression turtle commands of every language,
 Java classes and Snap projects included. No client component executes a program
-to obtain a drawing. Console runs are always dynamic: Python runs as written; other
+to obtain a drawing; previews, step panels and the run card read the worker's `ProgramAnalysis.turtle`
+(`completedCommands` as graders compare them; `drawing` also refuses unsupported source). Console runs are always dynamic: Python runs as written; other
 languages run as the Python their BeExpression prints. When no Python form exists,
 `ProgramAnalysis.python` is a `Left` with the reason, and the console disables
 Run and shows it.

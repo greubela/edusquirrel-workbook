@@ -8,7 +8,9 @@ import it.evadid.homepage.webElements.HtmlAppElement
 import it.evadid.homepage.webElements.basic.DeferredRendering
 import it.evadid.homepage.workbook.htmlRenderer.interactionRenderer.turtleStitch.TurtleJsxGraphRenderer
 import it.evadid.homepage.workbook.htmlRenderer.interactionRenderer.turtleStitch.TurtleJsxGraphRenderer.{LineResult, RenderedAngle, RenderedLine, Scene}
-import it.evadid.vm.simulation.turtle.{TurtleCommandExecutionInfo, TurtleExecutionStatus}
+import it.evadid.homepage.webElements.editor.code.program.ProgramAnalyzer
+import it.evadid.vm.analysis.ProgramAnalysis
+import it.evadid.vm.simulation.turtle.TurtleExecutionStatus
 import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseTurtle.TurtleGraphic
 import it.evadid.workbook.elements.interactionElements.programming.state.ProgrammingState
 
@@ -21,18 +23,18 @@ import scala.concurrent.duration.FiniteDuration
  * highlighted, later strokes stay faint (so the view keeps its bounds), and a marker shows the turtle.
  */
 final class TurtleStepPanel(state: Var[ProgrammingState], text: String => Signal[String],
-    delay: FiniteDuration = DeferredRendering.defaultDelay) extends HtmlAppElement {
+    delay: FiniteDuration = DeferredRendering.defaultDelay, analyzer: ProgramAnalyzer = ProgramAnalyzer.shared) extends HtmlAppElement {
   private given ExecutionContext = ExecutionContext.global
 
-  // Runs the program only once the answer has rested; step navigation itself stays immediate.
-  private val rendering = new DeferredRendering[ProgrammingState, TurtleCommandExecutionInfo[Double]](
-    state.signal, _.toBeExpression.turtleCommandExecutionInfo, delay)
+  // The shared analysis worker runs the program once the answer has rested; step navigation stays immediate.
+  private val rendering = new DeferredRendering[ProgrammingState, Either[String, ProgramAnalysis.TurtleRun]](
+    state.signal, value => analyzer.analyse(value).map(_.turtle), delay)
 
-  private val executions: Signal[Option[Either[String, TurtleCommandExecutionInfo[Double]]]] =
-    rendering.result.map(_.map(_.toEither.left.map(error => Option(error.getMessage).getOrElse(error.getClass.getSimpleName))))
+  private val executions: Signal[Option[Either[String, ProgramAnalysis.TurtleRun]]] =
+    rendering.result.map(_.map(_.toEither.left.map(error => Option(error.getMessage).getOrElse(error.getClass.getSimpleName)).flatten))
 
   private val commands: Signal[Vector[TurtleCommand[Double]]] =
-    executions.map(_.flatMap(_.toOption).fold(Vector.empty)(_.executedTurtleCommandsInOrder.toVector)).distinct
+    executions.map(_.flatMap(_.toOption).fold(Vector.empty)(_.commands.toVector)).distinct
 
   private val navigator = new StepNavigator(commands.map(_.size), text)
 
@@ -47,7 +49,7 @@ final class TurtleStepPanel(state: Var[ProgrammingState], text: String => Signal
     }),
     child.maybe <-- executions.map {
       case Some(Left(message)) => Some(p(cls := "step-panel__problem", child.text <-- text("programDataUnavailable").map(prefix => s"$prefix $message")))
-      case Some(Right(info)) => info.executionStatus match {
+      case Some(Right(run)) => run.status match {
         case TurtleExecutionStatus.Failed(message) => Some(p(cls := "step-panel__problem", child.text <-- text("programDataFailed").map(prefix => s"$prefix $message")))
         case TurtleExecutionStatus.LimitExceeded => Some(p(cls := "step-panel__problem", child.text <-- text("programDataLimit")))
         case _ => None

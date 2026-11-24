@@ -14,7 +14,7 @@ final class StaticTurtleDrawing(source: Signal[ProgrammingState], analyzer: Prog
   override def getDomElement(): Element = {
     div(cls := "static-turtle-drawing",
       child <-- analyzer.statusOf(source).map {
-        case Status.Ready(analysis) => analysis.turtleCommands.fold(
+        case Status.Ready(analysis) => analysis.drawing.fold(
           reason => p(cls := "static-turtle-drawing__unavailable", role := "status", reason),
           commands => TurtleJsxGraphRenderer.render(TurtleDrawingGrading.drawingScene(commands), "Turtle drawing"))
         case Status.Failed(reason) => p(cls := "static-turtle-drawing__unavailable", role := "status", reason)

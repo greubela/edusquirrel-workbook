@@ -35,7 +35,7 @@ class StepPanelsDomSpec extends EditorDomSuite {
 
   test("the turtle panel replays the commands of the bound answer and follows changes") {
     val state: Var[ProgrammingState] = Var(ProgrammingStateRaw(Python, "forward(100)\nright(90)\nforward(50)\n"))
-    val panel = new TurtleStepPanel(state, text, 50.millis).getDomElement()
+    val panel = new TurtleStepPanel(state, text, 50.millis, it.evadid.homepage.webElements.editor.code.worker.LocalWorker.analyzer()).getDomElement()
     val close = mount(panel)
     val root = panel.ref
     (for {

@@ -15,16 +15,26 @@ class ProgramAnalysisSpec extends FunSuite {
 
   test("static facts come from the shared BeExpression") {
     val drawing = ProgramAnalysis.of(ProgrammingStateRaw(Python, "for _ in range(2):\n    forward(10)\n    right(90)\n"))
-    assertEquals(drawing.turtleCommands.map(_.size), Right(4))
+    assertEquals(drawing.drawing.map(_.size), Right(4))
     assertEquals(drawing.unknownDependency, None)
     val unknown = ProgramAnalysis.of(ProgrammingStateRaw(Python, "helper(3)\n"))
     assertEquals(unknown.unknownDependency.map(_.definedFunctions.map(_.functionTypeInfo.displayName.spelling())), Some(List("helper")))
   }
 
+  test("the turtle run keeps the commands of an early stop with its status") {
+    val analysis = ProgramAnalysis.of(ProgrammingStateRaw(Python, "forward(10)\nwhile True:\n    right(1)\n"))
+    val run = analysis.turtle.toOption.get
+    assertEquals(run.status, it.evadid.vm.simulation.turtle.TurtleExecutionStatus.LimitExceeded)
+    assertEquals(run.commands.head, it.evadid.core.datastructures.vectorShapes.svg.TurtleCommand.Forward(10.0))
+    assert(analysis.completedCommands.isLeft)
+    assertEquals(upickle.default.read[ProgramAnalysis](upickle.default.write(analysis)), analysis)
+  }
+
   test("unsupported source blocks the static drawing but not dynamic execution") {
     val analysis = ProgramAnalysis.of(ProgrammingStateRaw(Python, "print('a', end='')\nforward(1)\n"))
     assertEquals(analysis.unsupportedSource.size, 1)
-    assert(analysis.turtleCommands.isLeft)
+    assert(analysis.drawing.isLeft)
+    assert(analysis.completedCommands.isLeft, "the interpreter stops at the unsupported line, as graders see it")
     assert(analysis.python.isRight)
     assertEquals(upickle.default.read[ProgramAnalysis](upickle.default.write(analysis)), analysis)
   }
