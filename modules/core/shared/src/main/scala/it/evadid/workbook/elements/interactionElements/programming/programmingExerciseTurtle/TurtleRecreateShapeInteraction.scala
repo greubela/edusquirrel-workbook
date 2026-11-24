@@ -7,6 +7,7 @@ import it.evadid.workbook.abstractions.grading.GradingImportance.REQUIRED_TEST
 import it.evadid.workbook.abstractions.grading.WorkbookInteractionGrader
 import it.evadid.workbook.abstractions.{InteractionFormat, WorkbookElement, *}
 import it.evadid.workbook.elements.interactionElements.programming.AdditionalProgrammingTestInfo
+import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseRegular.ProgrammingHintScaffolder
 import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseTurtle.RecreateTurtleDidacticConfig.defaultDidacticConfig
 import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseTurtle.TurtleRecreateShapeInteraction.*
 import it.evadid.workbook.elements.interactionElements.programming.state.ProgrammingState
@@ -40,7 +41,11 @@ case class TurtleRecreateShapeInteraction
   override val gradingElements: Seq[WorkbookInteractionGrader[ProgrammingState, AdditionalProgrammingTestInfo]] =
     List(RecreateShapeGrader(desiredResult, REQUIRED_TEST, elementId + "-grader", comparisonPolicy)) ++
       TurtleCommandUsageGrader.forLimits(elementId, exerciseConfig.maxCommandUsage) ++ structureTests
-  //val scaffoldingElement: Option[WorkbookInteractionScaffolder[ProgrammingState, ?]] = None
+  /** The hint button asks about the current program against the public task text. */
+  override val scaffoldingElement: Option[ProgrammingHintScaffolder] = instructionText.map(task => new ProgrammingHintScaffolder(
+    ProgrammingHintScaffolder.Exercise(() => interactionVariable.currentHistory.historyStates.lastStateOption, defaultValue,
+      gradingElements, state => interactionVariable.currentHistory.historyGrading.gradingsMap.get(state).filter(_.state == state)
+        .toList.flatMap(_.graderResultMap.values)), task))
 
 }
 

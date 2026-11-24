@@ -30,7 +30,10 @@ case class ProgrammingExerciseFullJava(
 
   override val defaultValue: ProgrammingState = ProgrammingStateRaw(Java, startingProgram)
   override val gradingElements = testSuite.toList.flatMap(_.graders)
-  override val scaffoldingElement = hintTask.map(task => new ProgrammingHintScaffolder(this, task))
+  override val scaffoldingElement = hintTask.map(task => new ProgrammingHintScaffolder(ProgrammingHintScaffolder.Exercise(
+    () => interactionVariable.currentHistory.historyStates.lastStateOption, defaultValue, gradingElements,
+    state => interactionVariable.currentHistory.historyGrading.gradingsMap.get(state).filter(_.state == state).toList
+      .flatMap(_.graderResultMap.values)), task))
 
   override lazy val childrenOfThisElement: Seq[WorkbookElement] = List()
 }

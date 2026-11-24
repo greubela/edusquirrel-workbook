@@ -68,7 +68,10 @@ answer assessed, with localized feedback and optional typed additional data.
 otherwise its `runningBehavior` decides for the answer's recorded `UpdateImportance`
 (`RUN_ALWAYS`, `RUN_ON_AT_LEAST_MINOR`, which skips TEMPORARY typing and unedited DEFAULT answers,
 or `RUN_ONLY_MANUALLY`). `InteractionVariable` requests unforced grading on history updates.
-LLM grading and hints require an explicit request through the shared info panel.
+LLM grading and hints require an explicit request through the shared info panel. Programming exercises share one
+`ProgrammingHintScaffolder`: full Java exercises with a `hintTask` and recreate-shape exercises with an
+`instructionText` get the hint button. Each exercise supplies its answers, graders and results as a
+`ProgrammingHintScaffolder.Exercise`; Snap and block answers are sent as their Python form.
 
 Choice options and grading feedback carry `WorkbookContent` (a language-map ID,
 a translated map, or literal content); `LaminarRenderHelper.workbookContentSignal`

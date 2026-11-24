@@ -153,7 +153,7 @@ object InteractionFormat {
   case object EvacuationConstructFloorInteractionFormat extends Typed[EvacuationFloorPlan, Unit, Unit]
   case object ThresholdNeuronInteractionFormat extends Typed[NeuronParameters, Unit, Unit]
   case object CompressionExperimentInteractionFormat extends Typed[CompressionExperiment, Unit, Unit]
-  case object TurtleRecreateShapeInteractionFormat extends Typed[ProgrammingState, AdditionalProgrammingTestInfo, Unit](programmingGraders)
+  case object TurtleRecreateShapeInteractionFormat extends Typed[ProgrammingState, AdditionalProgrammingTestInfo, AdditionalInfoLlmScaffolding](programmingGraders)
   case object ProgrammingExerciseFormat extends Typed[ProgrammingState, AdditionalProgrammingTestInfo, Unit](programmingGraders)
   case object SortListExerciseFormat extends Typed[ProgrammingState, AdditionalProgrammingTestInfo, Unit](programmingGraders)
   case object EvacuationExperimentFormat extends Typed[EvacuationExperiment, Unit, Unit]
