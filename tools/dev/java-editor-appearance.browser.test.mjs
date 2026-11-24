@@ -223,7 +223,7 @@ test('Java method editing and theme changes preserve source and undo history', a
     async function addMethod(name, parameters, isStatic) {
       const showClasses = editor.getByRole('button', {name: 'Show classes', exact: true});
       if (await showClasses.count()) await showClasses.click();
-      await editor.locator('.uml-class').filter({has: editor.locator('.uml-class__header').getByText('Drawing', {exact:true})}).getByRole('button', {name: 'Add function', exact: true}).click();
+      await editor.locator('.uml-class').filter({has: page.getByRole('button', {name:'Drawing',exact:true})}).getByRole('button', {name: 'Add function', exact: true}).click();
       const dialog = page.getByRole('dialog', {name: 'Add function', exact: true});
       const staticOption = dialog.getByRole('checkbox', {name: 'Static method', exact: true});
       await staticOption.setChecked(isStatic);

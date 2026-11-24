@@ -78,7 +78,8 @@ test('monk stories and revised tasks work with the current editor and interactio
       'Turtle.forward(60); Turtle.turnLeft(90); Turtle.forward(20); } }';
     await code.fill(solution);
     await dialog.getByRole('button', {name:'Run',exact:true}).click();
-    await dialog.locator('.turtle-execution__status').getByText("Here's your drawing.", {exact:true}).waitFor();
+    await dialog.locator('.turtle-sidebar .turtle-gradig-panel svg').first().waitFor();
+    assert.equal(await dialog.locator('.java-component-editor__console [role=log]').innerText(), '', 'turtle movement does not write console text');
     await dialog.getByRole('tab', {name:'Snap!',exact:true}).click();
     await dialog.getByRole('tab', {name:'Java',exact:true}).click();
     await dialog.getByRole('tab', {name: 'Full Mode',exact:true}).click();

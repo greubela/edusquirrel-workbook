@@ -18,7 +18,7 @@ final class TurtleTaskEditorExtension(
     // With a target every language previews live; without one the program is run on request.
     div(cls := "eva-editor__sidebar turtle-sidebar",
       preview.fold[Element](div(child <-- state.signal.map {
-        case java: ProgrammingStateJavaStructured =>
+        case java if java.associatedLanguage == it.evadid.core.datastructures.language.AppLanguage.Java =>
           scala.util.Try(java.toBeExpression.turtleCommandExecutionInfo.completedCommands).fold(
             error => p(role := "alert", error.getMessage),
             commands => it.evadid.homepage.workbook.htmlRenderer.interactionRenderer.turtleStitch.TurtleJsxGraphRenderer.render(
