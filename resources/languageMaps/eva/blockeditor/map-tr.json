@@ -19,5 +19,6 @@
   "invalidBoolean": "true veya false gir.",
   "invalidText": "Bir metin gir.",
   "invalidDate": "Tarihi YYYY-AA-GG biçiminde gir.",
-  "invalidAnyValue": "Geçerli bir değer gir."
+  "invalidAnyValue": "Geçerli bir değer gir.",
+  "blocksTab": "Bloklar"
 }

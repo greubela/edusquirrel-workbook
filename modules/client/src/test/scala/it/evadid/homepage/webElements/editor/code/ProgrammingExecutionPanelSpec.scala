@@ -13,7 +13,7 @@ class ProgrammingExecutionPanelSpec extends EditorDomSuite {
   ).foreach { program =>
     test(s"${program.associatedLanguage} executes through the shared panel with exact console newlines") {
       val source = Var(program)
-      val panel = new ProgrammingExecutionPanel(source, key => Val(key)).getDomElement()
+      val panel = new ProgrammingExecutionPanel(source.signal, key => Val(key)).getDomElement()
       val close = mount(panel)
       val run = panel.ref.querySelector("button").asInstanceOf[dom.HTMLButtonElement]
       eventually(!run.disabled, "conversion checked asynchronously").flatMap { _ =>

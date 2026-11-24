@@ -4,7 +4,7 @@ import com.raquo.airstream.core.AirstreamError
 import com.raquo.laminar.api.L.*
 import it.evadid.core.datastructures.language.AppLanguage.{Java, Python}
 import it.evadid.homepage.webElements.UiDomSuite
-import it.evadid.homepage.webElements.editor.code.EditorDomSuite
+import it.evadid.homepage.webElements.editor.code.{EditorDomSuite, EvaTestContext}
 import it.evadid.homepage.webElements.editor.code.EvaEditor.{EvaEditor, EvaEditorConfig, EvaEditorLabels}
 import it.evadid.homepage.webElements.editor.code.codemirror.CodeMirrorEditor
 import it.evadid.homepage.webElements.editor.config.CodeMirrorEditorConfig
@@ -183,7 +183,7 @@ class JavaComponentEditorSpec extends UiDomSuite {
 
   test("the Eva Java tab projects raw transport and publishes structured method edits") {
     val state = Var[ProgrammingState](ProgrammingStateRaw(Java, mainClass))
-    val eva = EvaEditor(logger, state, Nil, Var(EvaEditorConfig(enabledLanguages = Seq(Java))), labels = evaLabels)
+    val eva = EvaEditor(state, Var(EvaEditorConfig(enabledLanguages = Seq(Java))), EvaTestContext.environment(evaLabels))
     val close = mount(eva.getDomElement())
     Future.unit.flatMap { _ =>
       assert(textarea.value.contains("forward(10)"), textarea.value)
@@ -198,8 +198,8 @@ class JavaComponentEditorSpec extends UiDomSuite {
     AirstreamError.registerUnhandledErrorCallback(collectErrors)
     val state = Var[ProgrammingState](ProgrammingStateJavaStructured("class Main { static void main(String[] args) { forward(10); } }"))
     val config = CodeMirrorEditorConfig.Default
-    val eva = EvaEditor(logger, state, Nil, Var(EvaEditorConfig(enabledLanguages = List(Java, Python))),
-      Some(List(JavaComponentEditor.forEvaTab(logger, config, labels), CodeMirrorEditor.pythonEditorForEva(logger, config))), labels = evaLabels)
+    val eva = EvaEditor(state, Var(EvaEditorConfig(enabledLanguages = List(Java, Python))), EvaTestContext.environment(evaLabels),
+      Some(List(JavaComponentEditor.forEvaTab(config), CodeMirrorEditor.pythonEditorForEva(config))))
     val close = mount(eva.getDomElement())
     eva.setActiveTab(Python).flatMap { _ =>
       assert(state.now().isInstanceOf[ProgrammingStatePythonStructured])

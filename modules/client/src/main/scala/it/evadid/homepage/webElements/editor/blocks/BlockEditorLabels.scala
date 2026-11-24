@@ -7,6 +7,7 @@ import it.evadid.vm.editing.BeValueInput.Kind
 
 /** UI strings of the block editor; supply them with [[fromContent]] from a workbook renderer. */
 final case class BlockEditorLabels(
+    tab: Signal[String],
     library: Signal[String],
     libraryHint: Signal[String],
     program: Signal[String],
@@ -23,6 +24,7 @@ object BlockEditorLabels {
   def fromContent(text: LanguageMapContentId => Signal[String]): BlockEditorLabels = {
     def label(key: String) = text(LanguageMapContentId(key))
     BlockEditorLabels(
+      tab = label("blockeditor/blocksTab"),
       library = label("blockeditor/library"),
       libraryHint = label("blockeditor/libraryHint"),
       program = label("blockeditor/program"),

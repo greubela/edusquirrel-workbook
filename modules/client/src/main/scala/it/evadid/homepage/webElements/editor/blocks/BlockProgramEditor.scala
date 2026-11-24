@@ -10,7 +10,7 @@ import it.evadid.core.datastructures.vectorShapes.blocks.*
 import it.evadid.core.datastructures.vectorShapes.renderer.SvgLaminarRenderer
 import it.evadid.homepage.webElements.HtmlAppElement
 import it.evadid.homepage.webElements.editor.code.EditorAppearance
-import it.evadid.homepage.webElements.editor.code.EvaEditor.EvaEditorTab
+import it.evadid.homepage.webElements.editor.code.EvaEditor.{EvaEditorContext, EvaEditorLabels, EvaEditorTab}
 import it.evadid.vm.code.errors.ProgrammingConversionError
 import it.evadid.workbook.elements.interactionElements.programming.state.{ProgrammingState, ProgrammingStateBeExpression}
 import it.evadid.util.logging.Logger
@@ -255,17 +255,15 @@ final case class BlockProgramEditor(program: Var[BeProgram], library: BeBlockLib
 
 object BlockProgramEditor {
   /** The Eva tab editing the expression representation; other representations are converted by Eva first. */
-  def forEvaTab(labels: BlockEditorLabels, humanLanguage: Signal[HumanLanguage], library: BeBlockLibrary = BeBlockLibrary.turtle,
-                tabLabel: String = "Blocks"): EvaEditorTab = new EvaEditorTab {
+  def forEvaTab(library: BeBlockLibrary = BeBlockLibrary.turtle): EvaEditorTab = new EvaEditorTab {
     override val language: ProgrammingLanguage = BlockDisplay
-    override val label: String = tabLabel
-    override def create(state: Var[ProgrammingState], appearance: EditorAppearance, marker: Signal[Option[ProgrammingConversionError]],
-                        loading: Signal[String]): HtmlAppElement = {
+    override def label(labels: EvaEditorLabels): Signal[String] = labels.blocks.tab
+    override def create(state: Var[ProgrammingState], context: EvaEditorContext): HtmlAppElement = {
       val program = state.bimap {
         case ProgrammingStateBeExpression(expression) => BeProgram(expression)
         case _ => BeProgram.empty // inactive while Eva switches to another language
       }(edited => ProgrammingStateBeExpression(edited.fullProgram))
-      BlockProgramEditor(program, library, labels, humanLanguage)
+      BlockProgramEditor(program, library, context.labels.blocks, context.environment.humanLanguage)
     }
   }
 }

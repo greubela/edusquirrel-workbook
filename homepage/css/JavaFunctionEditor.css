@@ -145,8 +145,6 @@
 }
 .java-function-editor__reference :is(h2, h3) { font-size: 16px; }
 .java-function-editor__reference p { color: var(--editor-muted); }
-.java-function-editor__reference .turtle-execution__figure { background: var(--editor-reference-figure-surface); }
-.java-function-editor__reference .turtle-execution__figure figcaption { color: var(--editor-reference-figure-ink); }
 .java-function-editor__reference :is(img, svg, canvas) { display: block; max-width: 100%; height: auto; }
 .java-function-editor__dialog::backdrop { background: var(--editor-dialog-backdrop); }
 .java-function-editor__dialog {

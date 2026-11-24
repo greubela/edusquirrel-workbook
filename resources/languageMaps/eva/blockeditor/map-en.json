@@ -61,5 +61,6 @@
   "javaClassNotAdded": "The class could not be added to the current Java source.",
   "javaInvalidFunctionName": "Enter a valid Java function name.",
   "javaMissingReturnType": "Enter a return type.",
-  "javaFunctionNotAdded": "The function signature or current Java source is invalid."
+  "javaFunctionNotAdded": "The function signature or current Java source is invalid.",
+  "blocksTab": "Blocks"
 }

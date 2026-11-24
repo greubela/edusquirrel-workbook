@@ -10,7 +10,7 @@ import com.raquo.laminar.nodes.ReactiveSvgElement
 import it.evadid.core.datastructures.language.AppLanguage.{ProgrammingLanguage, Python}
 import it.evadid.facades.CodeMirror
 import it.evadid.homepage.webElements.editor.abstractions.SimpleWebEditor
-import it.evadid.homepage.webElements.editor.code.EvaEditor.EvaEditorTab
+import it.evadid.homepage.webElements.editor.code.EvaEditor.{EvaEditorContext, EvaEditorLabels, EvaEditorTab}
 import it.evadid.vm.code.errors.ProgrammingConversionError
 import it.evadid.homepage.webElements.editor.config.CodeMirrorEditorConfig
 import it.evadid.util.logging.Logger
@@ -96,18 +96,17 @@ object CodeMirrorEditor {
   def apply(logger: Logger, state: Var[String], language: ProgrammingLanguage): CodeMirrorEditor =
     CodeMirrorEditor(logger, state, language, Var(CodeMirrorEditorConfig.Default))
 
-  def pythonEditorForEva(logger: Logger, config: CodeMirrorEditorConfig, tabLabel: String = "Python"): EvaEditorTab = new EvaEditorTab {
+  def pythonEditorForEva(config: CodeMirrorEditorConfig): EvaEditorTab = new EvaEditorTab {
     override val language = Python
     override def icon = Some(it.evadid.homepage.webElements.editor.code.EvaEditor.EvaLanguageIcons.python)
-    override val label = tabLabel
-    override def create(state: Var[ProgrammingState], appearance: it.evadid.homepage.webElements.editor.code.EditorAppearance,
-        marker: Signal[Option[ProgrammingConversionError]], loading: Signal[String]): it.evadid.homepage.webElements.HtmlAppElement = {
+    override def create(state: Var[ProgrammingState], context: EvaEditorContext): it.evadid.homepage.webElements.HtmlAppElement = {
       val text = state.bimap {
         case ProgrammingStateRaw(Python, code) => code
         case value: ProgrammingStatePythonStructured => value.toString
         case _ => ""
       }(ProgrammingStateRaw(Python, _))
-      CodeMirrorEditor(logger, text, Python, Var(config), diagnostics = CodeMirrorEditor.marks(marker), loadingLabel = loading)
+      CodeMirrorEditor(context.logger, text, Python, Var(config), diagnostics = CodeMirrorEditor.marks(context.conversionMarker),
+        loadingLabel = context.loading)
     }
   }
 

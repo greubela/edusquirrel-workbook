@@ -204,7 +204,6 @@
   "modules/client/src/main/scala/it/evadid/homepage/webElements/editor/code/EvaEditor/CompletedEditorConversion.scala#CompletedEditorConversion:1": "Transient editor conversion state; owns an in-flight Future or derived result",
   "modules/client/src/main/scala/it/evadid/homepage/webElements/editor/code/EvaEditor/extensions/turtle/JavaExecutionAttempt.scala#JavaExecutionAttempt:1": "Live execution ownership and cancellation state; never persisted",
   "modules/client/src/main/scala/it/evadid/homepage/webElements/editor/code/ProgrammingExecutionPanel.scala#ProgrammingExecutionPanel:1": "Reactive console panel; execution output is not part of the saved program",
-  "modules/client/src/main/scala/it/evadid/homepage/webElements/editor/code/EvaEditor/extensions/turtle/TurtleExecutionPanelStatus.scala#TurtleExecutionPanelStatus:1": "Transient drawing execution view status; not saved with the program",
   "modules/client/src/main/scala/it/evadid/homepage/webElements/code/JavaEditorLabels.scala#Key:1": "Language-map keys of editor texts; never persisted",
   "modules/core/shared/src/main/scala/it/evadid/vm/conversion/dependencies/UnknownDependencies.scala#UnknownCall:1": "Intermediate analysis of a converted program; BeUnknownDependency is the serialized structure"
 }

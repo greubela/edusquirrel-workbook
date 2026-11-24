@@ -7,14 +7,13 @@ import it.evadid.core.datastructures.language.LanguageMapContentId
 import it.evadid.core.datastructures.state.StateHelper.StateBasedVar
 import it.evadid.homepage.webElements.HtmlAppElement
 import it.evadid.homepage.webElements.basic.HtmlButtonElement
-import it.evadid.homepage.webElements.editor.code.EvaEditor.extensions.turtle.TurtleTaskEditorExtension
-import it.evadid.homepage.webElements.editor.code.EvaEditor.{EvaEditor, EvaEditorConfig, EvaEditorLabels}
+import it.evadid.homepage.webElements.editor.code.EvaEditor.EvaEditorConfig
 import it.evadid.homepage.webElements.editor.code.SnapEditor.SnapPreviewEditor
 import it.evadid.homepage.webElements.editor.code.SnapEditor.toRefactor.SnapCodeEditorConfig
 import it.evadid.homepage.workbook.htmlRenderer.DomElementCollection.DomElementSingle
 import it.evadid.homepage.workbook.htmlRenderer.HtmlRenderFactory.LineBasedRenderingFactory
 import it.evadid.homepage.workbook.htmlRenderer.atomarLineRenderings.{AtomarLineRendering, ElementCard}
-import it.evadid.homepage.workbook.htmlRenderer.workbookEditors.EditorWithWorkbookPanel
+import it.evadid.homepage.workbook.htmlRenderer.workbookEditors.{EditorWithWorkbookPanel, WorkbookEvaEditor}
 import it.evadid.workbook.abstractions.RoleInWorkbook.EXERCISE_DESCRIPTION
 import it.evadid.workbook.abstractions.TypeOfTextDisplay.PLAINTEXT
 import it.evadid.workbook.abstractions.{LangMapContentIdType, TypeOfTextDisplay}
@@ -38,7 +37,8 @@ case object HtmlTurtleRecreateShapeRenderer extends LineBasedRenderingFactory[Tu
     }.getOrElse(throw IllegalArgumentException("A shape exercise needs its shape grader."))
     val shapeGradingPreview = CompareShapePreview(boundVar, shapeGrader.desiredResult, shapeGrader.comparisonPolicy)
 
-    val associatedInstruction = DisplayLangMapContent(workbookElement.elementId + "-sidebar-instruction", workbookElement.instructionText.getOrElse(LanguageMapContentId("turtlestitch/instructionRecreateShape")), LangMapContentIdType(EXERCISE_DESCRIPTION, TypeOfTextDisplay.MARKDOWN))
+    val associatedInstruction = WorkbookEvaEditor.instruction(workbookElement.elementId,
+      workbookElement.instructionText.getOrElse(LanguageMapContentId("turtlestitch/instructionRecreateShape")))
 
     def createShapeGradingCard: ElementCard = {
       ElementCard(LanguageMapContentId("basic/turtleGradingPanel"), shapeGradingPreview.getDomElement())
@@ -53,13 +53,8 @@ case object HtmlTurtleRecreateShapeRenderer extends LineBasedRenderingFactory[Tu
 
 
       val useConfig: SnapCodeEditorConfig = SnapCodeEditorConfig.forPalette(workbookElement.exerciseConfig.availablePalette)
-      val evaEditor = EvaEditor(
-        fullInfo.loggerSystemInfo.uiAndDomLogger,
-        boundVar,
-        Nil,
-        Var(EvaEditorConfig(enabledLanguages = workbookElement.exerciseConfig.allowedEditorLanguages, snapConfig = useConfig)),
-        humanLanguage = fullInfo.signals.currentLanguage,
-        labels = EvaEditorLabels.fromContent(laminarHelper.plaintextStringSignal))
+      val evaEditor = WorkbookEvaEditor(fullInfo, boundVar,
+        EvaEditorConfig(enabledLanguages = workbookElement.exerciseConfig.allowedEditorLanguages, snapConfig = useConfig))
       val editor = EditorWithWorkbookPanel(workbookElement, Some(associatedInstruction), gradingReporter,
         List(createShapeGradingCard, turtleStepsCard(boundVar)), evaEditor)
 

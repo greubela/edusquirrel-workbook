@@ -19,5 +19,6 @@
   "invalidBoolean": "Saisis true ou false.",
   "invalidText": "Saisis un texte.",
   "invalidDate": "Saisis une date au format AAAA-MM-JJ.",
-  "invalidAnyValue": "Saisis une valeur valide."
+  "invalidAnyValue": "Saisis une valeur valide.",
+  "blocksTab": "Blocs"
 }

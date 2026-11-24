@@ -61,5 +61,6 @@
   "javaClassNotAdded": "Klassen kunne ikke tilføjes til den aktuelle Java-kildekode.",
   "javaInvalidFunctionName": "Indtast et gyldigt Java-funktionsnavn.",
   "javaMissingReturnType": "Indtast en returtype.",
-  "javaFunctionNotAdded": "Funktionssignaturen eller den aktuelle Java-kildekode er ugyldig."
+  "javaFunctionNotAdded": "Funktionssignaturen eller den aktuelle Java-kildekode er ugyldig.",
+  "blocksTab": "Blokke"
 }

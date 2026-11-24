@@ -11,8 +11,8 @@ import it.evadid.core.datastructures.state.StateHelper.StateBasedVar
 import it.evadid.core.datastructures.vectorShapes.renderer.{SvgLaminarRenderer, VmToSvg}
 import it.evadid.core.datastructures.vectorShapes.svg.TurtlePathBuilder
 import it.evadid.homepage.webElements.basic.{HtmlButtonElement, HtmlImageElement}
-import it.evadid.homepage.webElements.editor.code.EvaEditor.extensions.turtle.{JavaTurtleEditorExtension, TurtleTaskEditorExtension}
-import it.evadid.homepage.webElements.editor.code.EvaEditor.{EvaEditor, EvaEditorConfig, EvaEditorLabels}
+import it.evadid.homepage.webElements.editor.code.EvaEditor.extensions.turtle.JavaTurtleEditorExtension
+import it.evadid.homepage.webElements.editor.code.EvaEditor.EvaEditorConfig
 import it.evadid.homepage.webElements.editor.code.SnapEditor.SnapPreviewEditor
 import it.evadid.homepage.webElements.editor.code.SnapEditor.toRefactor.SnapCodeEditorConfig
 import it.evadid.homepage.workbook.htmlRenderer.DomElementCollection.{DomElementList, DomElementSingle}
@@ -20,7 +20,7 @@ import it.evadid.homepage.workbook.htmlRenderer.HtmlRenderFactory.LineBasedRende
 import it.evadid.homepage.workbook.htmlRenderer.atomarLineRenderings.{AtomarLineRendering, ElementCard}
 import it.evadid.homepage.workbook.htmlRenderer.controlElements.interactionInfo.InteractionInfoPanel
 import it.evadid.homepage.workbook.htmlRenderer.interactionRenderer.turtleStitch.TurtleJsxGraphRenderer
-import it.evadid.homepage.workbook.htmlRenderer.workbookEditors.EditorWithWorkbookPanel
+import it.evadid.homepage.workbook.htmlRenderer.workbookEditors.{EditorWithWorkbookPanel, WorkbookEvaEditor}
 import it.evadid.util.logging.Logger
 import it.evadid.util.logging.derived.PrintToStdLogger
 import it.evadid.workbook.elements.interactionElements.programming.state.*
@@ -45,14 +45,7 @@ case object HtmlProgrammingExerciseRenderer extends LineBasedRenderingFactory[Pr
 
     val gradingReporter = fullInfo.signals.reportersFor(workbookElement).grading
 
-    def editor = EvaEditor(
-      fullInfo.loggerSystemInfo.uiAndDomLogger,
-      boundVar,
-      Nil,
-      Var(EvaEditorConfig(snapConfig = editorConfig)),
-      humanLanguage = fullInfo.signals.currentLanguage,
-      labels = EvaEditorLabels.fromContent(laminarHelper.plaintextStringSignal)
-    )
+    def editor = WorkbookEvaEditor(fullInfo, boundVar, EvaEditorConfig(snapConfig = editorConfig))
 
     def buttonPressed(): Unit = {
       val wrappedEditor = EditorWithWorkbookPanel(workbookElement, None, gradingReporter, List(), editor)

@@ -19,5 +19,6 @@
   "invalidBoolean": "Введи true або false.",
   "invalidText": "Введи текст.",
   "invalidDate": "Введи дату у форматі РРРР-ММ-ДД.",
-  "invalidAnyValue": "Введи коректне значення."
+  "invalidAnyValue": "Введи коректне значення.",
+  "blocksTab": "Блоки"
 }

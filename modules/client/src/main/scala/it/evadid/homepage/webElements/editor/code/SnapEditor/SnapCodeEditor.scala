@@ -8,7 +8,7 @@ import com.raquo.laminar.api.L
 import com.raquo.laminar.api.L.*
 import it.evadid.core.datastructures.language.AppLanguage.{English, HumanLanguage, SnapLanguage}
 import it.evadid.homepage.webElements.HtmlAppElement
-import it.evadid.homepage.webElements.editor.code.EvaEditor.EvaEditorTab
+import it.evadid.homepage.webElements.editor.code.EvaEditor.{EvaEditorContext, EvaEditorLabels, EvaEditorTab}
 import it.evadid.vm.code.errors.ProgrammingConversionError
 import it.evadid.homepage.webElements.editor.code.SnapEditor.execution.JavaTurtleSnapPrimitives
 import it.evadid.homepage.webElements.editor.code.SnapEditor.toRefactor.SnapCodeEditorConfig
@@ -148,13 +148,12 @@ object SnapCodeEditor {
   def apply(logger: Logger,state: Var[ProgrammingState]): SnapCodeEditor =
     SnapCodeEditor(logger, state, SnapCodeEditorConfig.Testing, SnapMorphicSession())
 
-  def forEvaTab(tabLogger: Logger, config: SnapCodeEditorConfig, humanLanguage: Signal[HumanLanguage],
-      tabLabel: String = "Snap!"): EvaEditorTab = new EvaEditorTab {
+  def forEvaTab(config: SnapCodeEditorConfig): EvaEditorTab = new EvaEditorTab {
     override val language = SnapLanguage
     override def icon = Some(it.evadid.homepage.webElements.editor.code.EvaEditor.EvaLanguageIcons.snap)
-    override val label = tabLabel
-    override def create(state: Var[ProgrammingState], appearance: it.evadid.homepage.webElements.editor.code.EditorAppearance,
-        marker: Signal[Option[ProgrammingConversionError]], loading: Signal[String]): HtmlAppElement =
-      SnapCodeEditor(tabLogger, state, config, SnapMorphicSession(), humanLanguage, marker, loading)
+    override def label(labels: EvaEditorLabels): Signal[String] = Val("Snap!")
+    override def create(state: Var[ProgrammingState], context: EvaEditorContext): HtmlAppElement =
+      SnapCodeEditor(context.logger, state, config, SnapMorphicSession(), context.environment.humanLanguage,
+        context.conversionMarker, context.loading)
   }
 }

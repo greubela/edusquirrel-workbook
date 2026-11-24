@@ -7,7 +7,7 @@ import it.evadid.core.datastructures.language.AppLanguage.Java
 import it.evadid.homepage.webElements.HtmlAppElement
 import it.evadid.homepage.webElements.code.JavaEditorLabels.Key
 import it.evadid.homepage.webElements.editor.code.EditorAppearance
-import it.evadid.homepage.webElements.editor.code.EvaEditor.EvaEditorTab
+import it.evadid.homepage.webElements.editor.code.EvaEditor.{EvaEditorContext, EvaEditorTab}
 import it.evadid.homepage.webElements.editor.code.EvaEditor.uml.UmlStructureSelector
 import it.evadid.core.datastructures.uml.*
 import it.evadid.homepage.webElements.editor.code.codemirror.CodeMirrorEditor
@@ -237,25 +237,22 @@ object JavaComponentEditor {
     }
   }
 
-  def forEvaTab(logger: Logger, config: CodeMirrorEditorConfig, labels: JavaEditorLabels, tabLabel: String = "Java"): EvaEditorTab = new EvaEditorTab {
+  def forEvaTab(config: CodeMirrorEditorConfig): EvaEditorTab = new EvaEditorTab {
     override val language = Java
-    override val label = tabLabel
-    override val showLabel = true
     override val css = " eva-editor--java"
     override def icon: Option[ReactiveSvgElement[SVGSVGElement]] = Some(svg.svg(svg.cls := "eva-editor__language-icon", svg.viewBox := "0 0 24 24",
       svg.fill := "none", svg.stroke := "currentColor", svg.strokeWidth := "1.6",
       svg.strokeLineCap := "round", svg.strokeLineJoin := "round",
       svg.path(svg.d := "M5 11h11v5a4 4 0 0 1-4 4H9a4 4 0 0 1-4-4Zm11 1h2a3 3 0 0 1 0 6h-3M4 23h14M8 8c-3-3 3-3 0-6M12 8c-3-3 3-3 0-6")))
-    override def create(state: Var[ProgrammingState], appearance: EditorAppearance,
-        marker: Signal[Option[ProgrammingConversionError]], loading: Signal[String]): HtmlAppElement = {
+    override def create(state: Var[ProgrammingState], context: EvaEditorContext): HtmlAppElement = {
       // A language change reaches bound signals before Laminar unmounts the old tab.
       val structured = state.bimap {
         case value: ProgrammingStateJavaStructured => value
         case value @ ProgrammingStateRaw(Java, _) => value.toJavaStructured
         case _ => ProgrammingStateJavaStructured(Map.empty)
       }(identity)
-      new JavaComponentEditor(logger, structured, labels, appearance = Some(appearance),
-        editorConfig = config, conversionMarker = marker, loadingLabel = loading)
+      new JavaComponentEditor(context.logger, structured, context.labels.java, appearance = Some(context.appearance),
+        editorConfig = config, conversionMarker = context.conversionMarker, loadingLabel = context.loading)
     }
   }
 }

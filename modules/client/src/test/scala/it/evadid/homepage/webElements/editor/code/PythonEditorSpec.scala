@@ -167,10 +167,10 @@ class PythonEditorSpec extends EditorDomSuite {
   }
 
   test("the Eva Python tab shows Python answers as text and stores edits as raw Python") {
-    val tab = CodeMirrorEditor.pythonEditorForEva(logger, CodeMirrorEditorConfig.Default)
+    val tab = CodeMirrorEditor.pythonEditorForEva(CodeMirrorEditorConfig.Default)
     assertEquals(tab.language, Python)
     val answer = Var[ProgrammingState](ProgrammingStateRaw(Python, "print('raw')"))
-    val close = mount(tab.create(answer, EditorAppearance(), Val(None), Val("loading")).getDomElement())
+    val close = mount(tab.create(answer, EvaTestContext()).getDomElement())
     finish(close) {
       assertEquals(fallback.value, "print('raw')")
       typeInFallback("print('edited')")

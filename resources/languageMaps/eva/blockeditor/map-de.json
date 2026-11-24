@@ -61,5 +61,6 @@
   "javaClassNotAdded": "Die Klasse konnte dem aktuellen Java-Quelltext nicht hinzugefügt werden.",
   "javaInvalidFunctionName": "Gib einen gültigen Java-Funktionsnamen ein.",
   "javaMissingReturnType": "Gib einen Rückgabetyp ein.",
-  "javaFunctionNotAdded": "Die Funktionssignatur oder der aktuelle Java-Quelltext ist ungültig."
+  "javaFunctionNotAdded": "Die Funktionssignatur oder der aktuelle Java-Quelltext ist ungültig.",
+  "blocksTab": "Blöcke"
 }

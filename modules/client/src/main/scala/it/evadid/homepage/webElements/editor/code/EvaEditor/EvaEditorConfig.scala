@@ -24,13 +24,15 @@ case class EvaEditorConfig(
 object EvaEditorConfig {
   def Default: EvaEditorConfig = EvaEditorConfig()
 
-  def tabs(logger: Logger, config: EvaEditorConfig, labels: EvaEditorLabels,
-           humanLanguage: Signal[HumanLanguage] = Val(English)): Seq[EvaEditorTab] =
+  /** The language choices `config` enables, in its order. Editors receive logging, labels and the display
+    * language through their [[EvaEditorContext]] when created.
+    */
+  def tabs(config: EvaEditorConfig): Seq[EvaEditorTab] =
     config.enabledLanguages.distinct.map {
-      case Python => CodeMirrorEditor.pythonEditorForEva(logger, config.codeMirrorConfig)
-      case SnapLanguage => SnapCodeEditor.forEvaTab(logger, config.snapConfig, humanLanguage)
-      case Java => JavaComponentEditor.forEvaTab(logger, config.codeMirrorConfig, labels.java)
-      case BlockDisplay => BlockProgramEditor.forEvaTab(labels.blocks, humanLanguage)
+      case Python => CodeMirrorEditor.pythonEditorForEva(config.codeMirrorConfig)
+      case SnapLanguage => SnapCodeEditor.forEvaTab(config.snapConfig)
+      case Java => JavaComponentEditor.forEvaTab(config.codeMirrorConfig)
+      case BlockDisplay => BlockProgramEditor.forEvaTab()
       case language => throw UnsupportedOperationException(s"No editor is available for '$language'.")
     }
 }

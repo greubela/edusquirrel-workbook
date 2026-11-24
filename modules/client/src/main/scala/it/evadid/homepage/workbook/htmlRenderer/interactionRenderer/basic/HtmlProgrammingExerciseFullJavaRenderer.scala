@@ -8,11 +8,11 @@ import com.raquo.laminar.api.L.*
 import it.evadid.core.datastructures.language.{AppLanguage, LanguageMapContentId}
 import it.evadid.core.datastructures.state.StateHelper.StateBasedVar
 import it.evadid.homepage.webElements.basic.HtmlButtonElement
-import it.evadid.homepage.webElements.editor.code.EvaEditor.{EvaEditor, EvaEditorConfig, EvaEditorLabels}
+import it.evadid.homepage.webElements.editor.code.EvaEditor.EvaEditorConfig
 import it.evadid.homepage.workbook.htmlRenderer.DomElementCollection.DomElementSingle
 import it.evadid.homepage.workbook.htmlRenderer.HtmlRenderFactory.LineBasedRenderingFactory
 import it.evadid.homepage.workbook.htmlRenderer.atomarLineRenderings.{AtomarLineRendering, ElementCard}
-import it.evadid.homepage.workbook.htmlRenderer.workbookEditors.EditorWithWorkbookPanel
+import it.evadid.homepage.workbook.htmlRenderer.workbookEditors.{EditorWithWorkbookPanel, WorkbookEvaEditor}
 import it.evadid.workbook.abstractions.scaffolding.AdditionalInfoLlmScaffolding
 import it.evadid.workbook.elements.interactionElements.programming.AdditionalProgrammingTestInfo
 import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseRegular.ProgrammingExerciseFullJava
@@ -43,16 +43,8 @@ case object HtmlProgrammingExerciseFullJavaRenderer extends LineBasedRenderingFa
           it.evadid.homepage.workbook.htmlRenderer.interactionRenderer.turtleStitch.CompareShapePreview(
             boundVar, grader.desiredResult, grader.comparisonPolicy).getDomElement())
     }
-    val instruction = element.instructionText.map(text => DisplayLangMapContent(element.elementId + "-sidebar-instruction", text,
-      LangMapContentIdType(RoleInWorkbook.EXERCISE_DESCRIPTION, TypeOfTextDisplay.MARKDOWN)))
-
-    val evaEditor = EvaEditor(
-      fullInfo.loggerSystemInfo.uiAndDomLogger,
-      boundVar,
-      Nil,
-      Var(EvaEditorConfig(enabledLanguages = List(AppLanguage.Java))),
-      humanLanguage = fullInfo.signals.currentLanguage,
-      labels = EvaEditorLabels.fromContent(laminarHelper.plaintextStringSignal))
+    val instruction = element.instructionText.map(WorkbookEvaEditor.instruction(element.elementId, _))
+    val evaEditor = WorkbookEvaEditor(fullInfo, boundVar, EvaEditorConfig(enabledLanguages = List(AppLanguage.Java)))
     EditorWithWorkbookPanel(element, instruction, gradingReporter, previewCards, evaEditor)
   }
 
