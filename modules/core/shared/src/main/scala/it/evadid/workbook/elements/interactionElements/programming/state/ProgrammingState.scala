@@ -83,7 +83,8 @@ object ProgrammingState {
 
 final case class ProgrammingStateBeExpression(expression: BeExpression) extends ProgrammingState derives ReadWriter {
   lazy val turtleCommandSites = TurtleProgramAnalysis.commandSites(expression)
-  lazy val turtleCommandExecutionInfo: TurtleCommandExecutionInfo[Double] = TurtleProgramAnalysis(expression)
+  lazy val turtleCommandExecutionInfo: TurtleCommandExecutionInfo[Double] = TurtleCommandExecutionInfo(
+    programExecution.moduleCommands(it.evadid.vm.modules.BeModules.Turtle), turtleCommandSites, programExecution.status)
   /** The drawing of the completed commands; its trace is computed once for all comparisons. */
   lazy val turtleGraphic: TurtleGraphic = TurtleGraphic(turtleCommandExecutionInfo.completedCommands)
   private val turtleComparisons =
