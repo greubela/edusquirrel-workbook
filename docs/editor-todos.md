@@ -1,6 +1,5 @@
 # Editor follow-ups
 
-- Java function flowcharts: add an asynchronous source-position-preserving Java-to-BeExpression flow plan. Keep the gutter hidden until it describes the actual function; do not render Python or recovered-source approximations.
 - Nested Python declarations: outer graphs stay hidden where a nested definition interrupts the source region. Inner function graphs remain independent.
 - Diagnostic marks: Java unknown-dependency uses are located by the Java parser (`JavaSourceWarnings`) and marked with a localized warning in every Java mode (`JavaFragmentRange.localize` moves marks into fragments). Still missing: located Python expressions (its parser records only top-level statement lines) and locations of unsupported expressions (the adapter does not keep the AST node). Do not guess positions by searching for repeated source fragments.
 

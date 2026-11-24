@@ -1,7 +1,8 @@
 package it.evadid.homepage.webElements.editor.code
 
+import it.evadid.core.datastructures.language.AppLanguage.Python
 import com.raquo.laminar.api.L.*
-import it.evadid.core.datastructures.vectorShapes.renderer.PythonFlowchartGutter
+import it.evadid.core.datastructures.vectorShapes.renderer.FlowchartGutter
 import it.evadid.distribution.clients.WebWorkerExecutionClient
 import it.evadid.distribution.command.SerializedException
 import it.evadid.distribution.formats.{ExecutionClientResponse, WorkerExecutionProtocol}
@@ -24,8 +25,8 @@ import scala.scalajs.concurrent.JSExecutionContext.Implicits.queue
 
 class CodeMirrorEditorConfigSpec extends FunSuite {
   private val logger = it.evadid.util.logging.Logger.withNameAndPrefixes(Some("test"), it.evadid.util.logging.derived.PrintToStdLogger.printNothing)
-  private def chart(label: String) = PythonFlowchartGutter.Chart(
-    List(PythonFlowchartGutter.Node(1, "process", 0, label)), Nil, List(1))
+  private def chart(label: String) = FlowchartGutter.Chart(
+    List(FlowchartGutter.Node(1, "process", 0, label)), Nil, List(1))
 
   private class FakeWorker {
     val sent = ListBuffer.empty[String]
@@ -39,7 +40,7 @@ class CodeMirrorEditorConfigSpec extends FunSuite {
       raw.selectDynamic("onmessage").asInstanceOf[js.Function1[dom.MessageEvent, Unit]](
         js.Dynamic.literal(data = write(WorkerExecutionProtocol.Response(request.requestId, response))).asInstanceOf[dom.MessageEvent])
     }
-    def reply(result: PythonFlowchartGutter.Chart, index: Int = 0): Unit = {
+    def reply(result: FlowchartGutter.Chart, index: Int = 0): Unit = {
       val request = read[WorkerExecutionProtocol.Request](sent(index))
       val now = LocalDateTime.now()
       receive(ExecutionClientResponse.forValue(ExecutionClientResponseTimestamps(now, now, now), result, request.command), index)
@@ -53,7 +54,7 @@ class CodeMirrorEditorConfigSpec extends FunSuite {
   }
 
   private def charts(workers: Workers, capacity: Int = 32) =
-    SharedWorkerCache(WorkerCommands.pythonFlowchart, WorkerCommands.PythonFlowchartRequest(_: String),
+    SharedWorkerCache(WorkerCommands.flowchart, WorkerCommands.FlowchartRequest(Python, _: String),
       SharedWorker(() => workers.create()), capacity)
 
   private class Workers {
@@ -69,7 +70,7 @@ class CodeMirrorEditorConfigSpec extends FunSuite {
     import it.evadid.core.datastructures.language.AppLanguage.{Java, Python, SQL}
     import it.evadid.homepage.webElements.editor.code.codemirror.CodeMirrorFlowchartSource
     assertEquals(CodeMirrorFlowchartSource.forLanguage(Python), Some(CodeMirrorFlowchartSource.python))
-    assertEquals(CodeMirrorFlowchartSource.forLanguage(Java), None, "no approximate Java chart")
+    assertEquals(CodeMirrorFlowchartSource.forLanguage(Java), Some(CodeMirrorFlowchartSource.java))
     assertEquals(CodeMirrorFlowchartSource.forLanguage(SQL), None)
   }
 
@@ -141,10 +142,10 @@ class CodeMirrorEditorConfigSpec extends FunSuite {
   test("a stopped worker is replaced by the next request") {
     val workers = new Workers
     val worker = SharedWorker(() => workers.create())
-    val stopped = worker.send(WorkerCommands.pythonFlowchart, WorkerCommands.PythonFlowchartRequest("print(1)")).failed
+    val stopped = worker.send(WorkerCommands.flowchart, WorkerCommands.FlowchartRequest(Python, "print(1)")).failed
     workers.created.head.client.close()
     stopped.flatMap { _ =>
-      val next = worker.send(WorkerCommands.pythonFlowchart, WorkerCommands.PythonFlowchartRequest("print(2)"))
+      val next = worker.send(WorkerCommands.flowchart, WorkerCommands.FlowchartRequest(Python, "print(2)"))
       assertEquals(workers.created.size, 2)
       workers.created.last.reply(chart("fresh"))
       next

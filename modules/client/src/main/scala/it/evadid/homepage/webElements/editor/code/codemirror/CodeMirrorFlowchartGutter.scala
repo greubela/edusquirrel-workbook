@@ -1,12 +1,12 @@
 package it.evadid.homepage.webElements.editor.code.codemirror
 
 
-import it.evadid.core.datastructures.vectorShapes.renderer.PythonFlowchartGutter
+import it.evadid.core.datastructures.vectorShapes.renderer.FlowchartGutter
 
 object CodeMirrorFlowchartGutter {
   private val gutterLogger = it.evadid.util.logging.Logger.withNameAndPrefixes(Some("CodeMirrorFlowchartGutter"))
   /** The block editor's control-flow overlay, with no expression/content shapes. */
-  def render(chart: PythonFlowchartGutter.Chart): it.evadid.facades.CodeMirror.Flowchart = {
+  def render(chart: FlowchartGutter.Chart): it.evadid.facades.CodeMirror.Flowchart = {
     import it.evadid.facades.CodeMirror.{Flowchart, FlowchartRow, FlowchartSlice}
     import it.evadid.core.datastructures.vectorShapes.blocks.{BlockElements, BlockRenderingConfig, FlowLayout, FlowLine, FlowShape}
     import it.evadid.core.datastructures.vectorShapes.renderer.SvgLaminarRenderer
@@ -18,7 +18,7 @@ object CodeMirrorFlowchartGutter {
     val slices = chart.flow.zipWithIndex.flatMap { (plan, group) =>
       val expanded = plan.zipWithIndex.flatMap { (line, index) =>
         val next = plan.lift(index + 1).map(_.line).getOrElse(line.line)
-        line :: ((line.line + 1) until next).map(PythonFlowchartGutter.FlowLine(_, "gap")).toList
+        line :: ((line.line + 1) until next).map(FlowchartGutter.FlowLine(_, "gap")).toList
       }
       val lines: List[FlowLine] = expanded.map { line => line.kind match {
         case "start" => FlowLine.Plain(FlowShape.ProgramStarter)

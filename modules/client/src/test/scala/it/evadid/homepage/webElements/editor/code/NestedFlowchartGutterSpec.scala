@@ -1,6 +1,6 @@
 package it.evadid.homepage.webElements.editor.code
 
-import it.evadid.core.datastructures.vectorShapes.renderer.PythonFlowchartGutter
+import it.evadid.core.datastructures.vectorShapes.renderer.{FlowchartGutter, PythonFlowchartGutter}
 import it.evadid.homepage.webElements.editor.code.codemirror.CodeMirrorFlowchartGutter
 import scala.scalajs.js.URIUtils.decodeURIComponent
 import org.scalajs.dom
@@ -40,6 +40,6 @@ class NestedFlowchartGutterSpec extends EditorDomSuite {
     assertEquals(rendered.rows(2).slices.size, 1)
     assertEquals(rendered.rows(2).slices.head.x, 0.0)
     assert(rendered.rows.values.flatMap(_.slices).forall(slice => svg(slice.image).querySelectorAll("text").length == 0))
-    assertEquals(CodeMirrorFlowchartGutter.render(PythonFlowchartGutter.empty).rows, Map.empty)
+    assertEquals(CodeMirrorFlowchartGutter.render(FlowchartGutter.empty).rows, Map.empty)
   }
 }

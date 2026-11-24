@@ -1,7 +1,7 @@
 package it.evadid.distribution.commandTypes
 
 import it.evadid.distribution.command.ExecutionCommandFactory
-import it.evadid.core.datastructures.vectorShapes.renderer.PythonFlowchartGutter
+import it.evadid.core.datastructures.vectorShapes.renderer.FlowchartGutter
 import it.evadid.workbook.elements.interactionElements.programming.state.snap.SnapScalaModel
 import it.evadid.workbook.model.qr.{QrCode, QrErrorCorrection}
 import it.evadid.vm.simulation.java.{JavaTurtleExecutionEvidence, JavaTurtleInterpreter, JavaTurtleTrace}
@@ -12,7 +12,7 @@ object WorkerCommands {
   case class HealthRequest() derives ReadWriter
   case class HealthResult(service: String, commands: Seq[String]) derives ReadWriter
   case class ParseSnapXmlRequest(xml: String, tag: String) derives ReadWriter
-  case class PythonFlowchartRequest(source: String) derives ReadWriter
+  case class FlowchartRequest(language: it.evadid.core.datastructures.language.AppLanguage.ProgrammingLanguage, source: String) derives ReadWriter
   case class CalculateQrCodeRequest(text: String, errorCorrection: QrErrorCorrection = QrErrorCorrection.M,
                                     version: Option[Int] = None, mask: Option[Int] = None) derives ReadWriter
   case class CalculateQrCodeResult(code: QrCode, modules: Vector[Vector[Boolean]]) derives ReadWriter
@@ -61,7 +61,8 @@ object WorkerCommands {
   /** Static analysis of a program through the shared BeExpression, off the page thread. */
   lazy val programAnalysis = ExecutionCommandFactory[it.evadid.workbook.elements.interactionElements.programming.state.ProgrammingState,
     it.evadid.vm.analysis.ProgramAnalysis]("worker.programAnalysis")
-  lazy val pythonFlowchart = ExecutionCommandFactory[PythonFlowchartRequest, PythonFlowchartGutter.Chart]("worker.pythonFlowchart")
+  /** The flowchart gutter of a source in a language ([[FlowchartGutter.of]]). */
+  lazy val flowchart = ExecutionCommandFactory[FlowchartRequest, FlowchartGutter.Chart]("worker.flowchart")
   lazy val calculateQrCode = ExecutionCommandFactory[CalculateQrCodeRequest, CalculateQrCodeResult]("worker.calculateQrCode")
   lazy val runPython = ExecutionCommandFactory[RunPythonRequest, RunPythonResult]("worker.runPython",
     privacyFilter = Some { payload =>
@@ -79,6 +80,6 @@ object WorkerCommands {
           .flatMap(_.get("sourceLength")).flatMap(_.numOpt).filter(n => n >= 0 && n <= Int.MaxValue && n % 1 == 0).map(_.toInt))
       ujson.Obj("redacted" -> true, "sourceLength" -> length.fold[ujson.Value](ujson.Null)(ujson.Num(_)))
     })
-  lazy val supportedCommands: Set[String] = Set(health.name, parseSnapXml.name, pythonFlowchart.name, programAnalysis.name,
+  lazy val supportedCommands: Set[String] = Set(health.name, parseSnapXml.name, flowchart.name, programAnalysis.name,
     calculateQrCode.name, runPython.name, javaExecutionEvidence.name)
 }

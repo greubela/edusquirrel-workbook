@@ -18,7 +18,7 @@ object ExecutionCommandFactory {
     UserCommands.loginCommand, UserCommands.updateAccountCommand, UserCommands.createAccountCommand, UserCommands.authMailCommand,
     SQLCommands.StoreToDbCommand, SQLCommands.bulkStoreToDbCommand, SQLCommands.fetchEventsFromDbCommand, SQLCommands.clearValuesDbCommand, SQLCommands.resetUserHistoriesDbCommand,
     MailCommands.sendMailCommand, LLMCommands.completeLLMCommandFactory, LLMCommands.feedbackLlmCommandFactory,
-    SqlEditorCommands.execute, WorkerCommands.health, WorkerCommands.parseSnapXml, WorkerCommands.pythonFlowchart, WorkerCommands.programAnalysis,
+    SqlEditorCommands.execute, WorkerCommands.health, WorkerCommands.parseSnapXml, WorkerCommands.flowchart, WorkerCommands.programAnalysis,
     WorkerCommands.calculateQrCode, WorkerCommands.runPython, WorkerCommands.javaExecutionEvidence)
 
   def forName(name: String): Option[ExecutionCommandFactory[?, ?]] = knownCommands.find(_.name == name)

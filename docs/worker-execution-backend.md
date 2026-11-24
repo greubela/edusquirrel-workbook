@@ -32,7 +32,7 @@ def parseBlocks(fullInfo: FullInfo, xml: String)
 ## Python and supported jobs
 
 Command factories live in `WorkerCommands`; registration belongs to
-`WorkerCommandHandler`. Jobs include health, Snap XML parsing, Python flowchart
+`WorkerCommandHandler`. Jobs include health, Snap XML parsing, Python and Java flowchart
 analysis, static program analysis, QR calculation and Python execution. DOM-dependent
 work stays on the client. Eva's console and static drawings use these jobs as described
 in [program analysis and execution](program-analysis-and-execution.md).

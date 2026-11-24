@@ -2,7 +2,7 @@ package it.evadid.worker
 
 import it.evadid.distribution.clients.{ExecutionClient, ExecutionClientPool}
 import it.evadid.distribution.commandTypes.WorkerCommands.*
-import it.evadid.core.datastructures.vectorShapes.renderer.PythonFlowchartGutter
+import it.evadid.core.datastructures.vectorShapes.renderer.FlowchartGutter
 import it.evadid.vm.conversion.snapxmlmodel.SnapScalaXmlCodec
 import it.evadid.workbook.model.qr.QrCode
 import it.evadid.util.logging.BasicLogger
@@ -19,9 +19,7 @@ object WorkerCommandHandler {
       val document = SnapScalaXmlCodec.parse(request.xml).fold(message => throw IllegalArgumentException(message), identity)
       (document.root +: document.root.descendants).map(_.element).filter(_.tag == request.tag)
     }),
-    pythonFlowchart.toLocalExecutionClient((request, _) => Future {
-      PythonFlowchartGutter.fromPython(request.source)
-    }),
+    flowchart.toLocalExecutionClient((request, _) => Future(FlowchartGutter.of(request.language, request.source))),
     programAnalysis.toLocalExecutionClient((state, _) => Future(it.evadid.vm.analysis.ProgramAnalysis.of(state))),
     runPython.toLocalExecutionClient((request, logger) => PyodideCommandRuntime.run(request, logger)),
     javaExecutionEvidence.toLocalExecutionClient((request, _) =>

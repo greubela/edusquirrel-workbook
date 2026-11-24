@@ -69,7 +69,7 @@ class CodeMirrorEditorMountSpec extends FunSuite {
     }
     assertEquals(received.now(), Nil, "even a cached facade is not mounted synchronously")
     completed.future.flatMap { _ =>
-      assertEquals(received.now(), List(false, true, false))
+      assertEquals(received.now(), List(false, true, true), "Python and Java with a flowchart source get a gutter")
       assertEquals(initialLines.now(), List(1, 1, 7))
       firstLine.set(15)
       renumbered.future.flatMap { _ =>
@@ -80,7 +80,7 @@ class CodeMirrorEditorMountSpec extends FunSuite {
         assertEquals(destroyed.now(), 0)
         rebuild.update(_ + 1)
         remounted.future.map { _ =>
-          assertEquals(received.now(), List(false, true, false, false))
+          assertEquals(received.now(), List(false, true, true, false))
           assertEquals(destroyed.now(), 1)
         }
       }

@@ -1,6 +1,6 @@
 package it.evadid.core.datastructures.vectorShapes
 
-import it.evadid.core.datastructures.vectorShapes.renderer.PythonFlowchartGutter
+import it.evadid.core.datastructures.vectorShapes.renderer.{FlowchartGutter, PythonFlowchartGutter}
 import munit.FunSuite
 
 class PythonFlowchartGutterSpec extends FunSuite {
@@ -62,28 +62,28 @@ class PythonFlowchartGutterSpec extends FunSuite {
   test("tabs, CRLF and comment-only programs are safe") {
     val result = chart("if True:\r\n\tprint(1)\r\nprint(2)")
     assertEquals(result.nodes.map(_.line), List(1, 2, 3))
-    assertEquals(chart("# nothing\n\n"), PythonFlowchartGutter.empty)
-    assertEquals(chart(""), PythonFlowchartGutter.empty)
+    assertEquals(chart("# nothing\n\n"), FlowchartGutter.empty)
+    assertEquals(chart(""), FlowchartGutter.empty)
   }
 
   test("incomplete code clears the chart instead of showing a recovered prefix") {
     Seq("if True:", "for i in range(3):", "x = 0\nfor i in range(3):\n    print(i",
       "x = 0\nfor i in range(3):\n    print(i)\n    for j in").foreach(source =>
-      assertEquals(chart(source), PythonFlowchartGutter.empty))
+      assertEquals(chart(source), FlowchartGutter.empty))
   }
 
   test("an error above the last few code lines clears the chart") {
     assertEquals(
       chart("???\nx = 1\ny = 2\nz = 3\nw = 4"),
-      PythonFlowchartGutter.empty
+      FlowchartGutter.empty
     )
   }
 
   test("unsupported programs clear the chart") {
-    assertEquals(chart("try:\n    print(1)\nexcept:\n    print(2)"), PythonFlowchartGutter.empty)
-    assertEquals(chart("break"), PythonFlowchartGutter.empty)
-    assertEquals(chart("print(1)\nbreak"), PythonFlowchartGutter.empty)
-    assertEquals(chart("continue"), PythonFlowchartGutter.empty)
+    assertEquals(chart("try:\n    print(1)\nexcept:\n    print(2)"), FlowchartGutter.empty)
+    assertEquals(chart("break"), FlowchartGutter.empty)
+    assertEquals(chart("print(1)\nbreak"), FlowchartGutter.empty)
+    assertEquals(chart("continue"), FlowchartGutter.empty)
   }
   test("nested overlay rows retain else locations and close blocks on existing source lines") {
     val result = chart("while True:\n    if True:\n        print(1)\n    else:\n        print(2)\nprint(3)")
