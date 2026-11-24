@@ -184,7 +184,6 @@
   "modules/server/src/main/scala/it/evadid/server/commandHandler/sql/sync/UpsertToDatabase.scala#UpsertToDatabase:1": "Constructor contains runtime services, callbacks, state, or an open service interface",
   "modules/client/src/main/scala/it/evadid/homepage/webElements/code/JavaMethodSource.scala#MethodRange:1": "Transient editor draft range; not a saved programming state",
   "modules/client/src/main/scala/it/evadid/homepage/webElements/editor/code/SnapEditor/SnapSessionResources.scala#SnapSessionResources:1": "Live Morphic/browser handles, callbacks and scheduling state; never serialized",
-  "modules/client/src/main/scala/it/evadid/homepage/webElements/editor/code/SnapEditor/SnapPaletteInstaller.scala#Installation:1": "Live native palette customization handles; released with the mounted editor",
   "modules/client/src/main/scala/it/evadid/homepage/webElements/code/JavaComponentEditor.scala#Panel:1": "Transient editor view derived from the selection; not a saved programming state",
   "modules/client/src/main/scala/it/evadid/homepage/webElements/code/JavaStructureDialog.scala#MethodFields:1": "Transient editor dialog input",
   "modules/client/src/main/scala/it/evadid/homepage/webElements/code/JavaStructureDialog.scala#Request:1": "Transient editor dialog state holding its input Vars",
