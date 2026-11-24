@@ -19,6 +19,15 @@ class DependencySpec extends FunSuite {
         definition.functionTypeInfo.funcType == BeDefineFunction.Function() => definition.functionTypeInfo.displayName.universalInterpretation()
   }.toSet
 
+  test("default dependencies are serializable definition structures with their supplied classes") {
+    import upickle.default.*
+    import it.evadid.vm.code.abstractions.{BeDefineStructure, BeExpression}
+    val dependency: BeExpression = KnownDependencies.system
+    assert(dependency.isInstanceOf[BeDefineStructure])
+    assertEquals(KnownDependencies.system.definedClasses.map(_.name.universalInterpretation()), List("SystemFunctionality"))
+    assertEquals(read[BeExpression](write(dependency)), dependency)
+  }
+
   test("turtle programs carry the library each language needs and parse it back as the library, not a user class") {
     val python = ProgrammingStateRaw(Python, "forward(100)\nright(90)\nforward(50)")
     val java = python.toJava.code

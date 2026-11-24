@@ -411,7 +411,8 @@ object SnapControlFlow {
       Some("unusedCode is reserved for detached scripts and cannot be called")
     else if SnapModuleBlocks.of(call.funcDef).nonEmpty then moduleCallProblems(call, userFunctions)
     else if !call.target.isInstanceOf[it.evadid.vm.code.usage.BeCallTarget.Function] &&
-        !it.evadid.core.datastructures.vectorShapes.svg.TurtleCommand.isTurtleMethod(call.funcDef) then
+        !it.evadid.core.datastructures.vectorShapes.svg.TurtleCommand.isTurtleMethod(call.funcDef) &&
+        !call.funcDef.intrinsic.contains(it.evadid.vm.code.defining.BeIntrinsic.Print) then
       Some("object methods and constructors have no Snap block representation")
     else if call.isOperator then Some(s"${SnapExpressionSupport.pythonName(call)}(...)")
     else

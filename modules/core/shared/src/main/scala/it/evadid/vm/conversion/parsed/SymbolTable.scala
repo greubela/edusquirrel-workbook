@@ -206,7 +206,8 @@ object SymbolTable {
           val params = (0 until arity).map(index => BeDefineVariable(BeEntityName.fromUniversalNameInParts(s"arg$index"), AnyType)).toList
           BeDefineFunction(params, None, BeSequence.optionalBody(Nil),
             BeDefineFunction.functionInfo(canonical.getOrElse(BeEntityName.fromUniversalNameInParts(name))),
-            Option.when(canonical.contains(KnownBeEntityNames.resolveSystemMethods("print").get))(it.evadid.vm.code.defining.BeIntrinsic.Print))
+            canonical.flatMap(name => if name == KnownBeEntityNames.resolveSystemMethods("print").get then Some(it.evadid.vm.code.defining.BeIntrinsic.Print)
+              else if name == KnownBeEntityNames.resolveSystemMethods("print_to_err").get then Some(it.evadid.vm.code.defining.BeIntrinsic.PrintErr) else None))
         }
       }
       // A callable parameter/local shadows a cached builtin or turtle alias in this scope.
@@ -214,8 +215,11 @@ object SymbolTable {
       else {
         val resolved = functionsByName.getOrElseUpdate(name, definition())
         // print/println accepts zero or several arguments; one call must not fix later calls' arity.
-        if resolved.intrinsic.contains(it.evadid.vm.code.defining.BeIntrinsic.Print) && resolved.inputs.size != arity then definition()
-        else resolved
+        resolved.intrinsic match {
+          case Some(value @ (it.evadid.vm.code.defining.BeIntrinsic.Print | it.evadid.vm.code.defining.BeIntrinsic.PrintErr)) =>
+            it.evadid.vm.modules.SystemFunctionality.function(value, arity)
+          case _ => resolved
+        }
       }
     }
 

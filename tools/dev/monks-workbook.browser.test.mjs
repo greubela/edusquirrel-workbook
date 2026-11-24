@@ -87,7 +87,7 @@ test('monk stories and revised tasks work with the current editor and interactio
       'Turtle.forward(60); Turtle.turnLeft(90); Turtle.forward(20); Turtle.turnLeft(90);' +
       'Turtle.forward(60); Turtle.turnLeft(90); Turtle.forward(20); } }';
     await code.fill(solution);
-    await dialog.getByRole('button', {name:'Run',exact:true}).click();
+    await dialog.getByRole('button', {name:/^(Run|Ausführen)$/}).click();
     await dialog.locator('.fullscreen-sidepanel .turtle-gradig-panel svg').first().waitFor();
     assert.equal(await dialog.locator('.programming-execution [role=log]').innerText(), '', 'turtle movement does not write console text');
     await dialog.getByRole('tab', {name:'Snap!',exact:true}).click();

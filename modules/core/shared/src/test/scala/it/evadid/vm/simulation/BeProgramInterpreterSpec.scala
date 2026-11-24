@@ -28,6 +28,25 @@ class BeProgramInterpreterSpec extends FunSuite {
     assertEquals(converted.moduleCommands(BeModules.Turtle), execution.moduleCommands(BeModules.Turtle))
   }
 
+  test("system functions bind to a static module and preserve stdout/stderr separately") {
+    val source = java("""static void main(String[] args) {
+      | System.out.println("out");
+      | System.err.println("error");
+      | System.err.println();
+      |}""".stripMargin)
+    val expression = source.toBeExpression
+    val calls = expression.expression.moduleCalls(BeModules.System)
+    assertEquals(calls.map(_.funcDef.functionTypeInfo.displayName.universalInterpretation()).toList,
+      List("printToOut", "printToErr", "printToErr"))
+    assert(calls.forall(_.target.isInstanceOf[it.evadid.vm.code.usage.BeCallTarget.StaticMethod]))
+    assertEquals(expression.programExecution.stdout, "out\n")
+    assertEquals(expression.programExecution.stderr, "error\n\n")
+    assertEquals(expression.turtleCommandExecutionInfo.completedCommands, Nil)
+    val back = source.toPython.toBeExpression.programExecution
+    assertEquals(back.stdout, expression.programExecution.stdout)
+    assertEquals(back.stderr, expression.programExecution.stderr)
+  }
+
   private val swap = java(
     """    static void tausche(int i, int j) {
       |        int merke = NumberList.get(i);

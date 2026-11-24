@@ -17,7 +17,7 @@ import it.evadid.vm.naming.BeEntityName
 object KnownDependencies {
   /** Python's `turtle` module; Java gets a generated class with the same static methods. */
   val turtle: BeDependency = BeDependency(BeEntityName.fromCodeString("Turtle"),
-    Map(Python -> "import turtle", Java -> JavaTurtleLibrary.source))
+    Map(Python -> "import turtle", Java -> JavaTurtleLibrary.source), definedClasses = List(it.evadid.core.datastructures.vectorShapes.svg.TurtleCommand.turtleClass))
 
   /** Reading the text behind a URL; Snap's `url` reporter provides it natively. */
   val fetchText: BeDependency = BeDependency(BeEntityName.fromUniversalNameInParts("fetch_text"), Map(
@@ -40,7 +40,16 @@ object KnownDependencies {
         |    }
         |}""".stripMargin))
 
-  private val byIntrinsic: Seq[(BeIntrinsic, BeDependency)] = Seq(BeIntrinsic.Turtle -> turtle, BeIntrinsic.FetchText -> fetchText)
+  val system: BeDependency = BeDependency(BeEntityName.fromLiteral("SystemFunctionality"), Map.empty,
+    definedClasses = List(it.evadid.vm.modules.SystemFunctionality.library))
+
+  val systemErrors: BeDependency = system.copy(addDefinitions = Map(Python ->
+    """import sys
+      |
+      |def print_to_err(*values):
+      |    print(*values, file=sys.stderr)""".stripMargin))
+
+  private val byIntrinsic: Seq[(BeIntrinsic, BeDependency)] = Seq(BeIntrinsic.Turtle -> turtle, BeIntrinsic.FetchText -> fetchText, BeIntrinsic.Print -> system, BeIntrinsic.PrintErr -> systemErrors)
 
   /** Python modules that provide a dependency: importing one in any form (`import turtle`,
     * `from turtle import *`, `from turtle import forward`) means that library, not user code.
@@ -59,12 +68,12 @@ object KnownDependencies {
     case (intrinsic, `path`) => byIntrinsic.collectFirst { case (`intrinsic`, dependency) => dependency.structureName.universalInterpretation() }.get
   }
 
-  val all: Seq[BeDependency] = byIntrinsic.map(_._2)
+  val all: Seq[BeDependency] = byIntrinsic.map(_._2).distinct
 
   /** The dependencies a program calls into, in registry order. */
   def requiredBy(expression: BeExpression): Seq[BeDependency] = {
     val used = expression.subtree.collect { case call: BeFunctionCall => call.funcDef.intrinsic }.flatten.toSet
-    byIntrinsic.collect { case (intrinsic, dependency) if used(intrinsic) => dependency }
+    byIntrinsic.collect { case (intrinsic, dependency) if used(intrinsic) => dependency }.distinct
   }
 
   def definitionsFor(expression: BeExpression, language: ProgrammingLanguage): Seq[String] =

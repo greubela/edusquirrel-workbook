@@ -12,7 +12,7 @@ class BeModulesSpec extends FunSuite {
     "forward(10)\nNumberList.swap(0, 1)\nSudoku.set(0, 2, 4)\nright(90)\nNumberList.length()\n").toBeExpression
 
   test("the registry lists the predefined modules, each owning exactly its library's functions") {
-    assertEquals(BeModules.all.map(_.name), Seq("Turtle", "NumberList", "Sudoku"))
+    assertEquals(BeModules.all.map(_.name), Seq("Turtle", "NumberList", "Sudoku", "SystemFunctionality"))
     BeModules.all.foreach { module =>
       assert(module.library.methods.nonEmpty, module.name)
       assert(module.library.methods.forall(module.owns), module.name)
@@ -48,7 +48,10 @@ class BeModulesSpec extends FunSuite {
     assertEquals(run.moduleCommands(BeModules.Turtle).map(_.name.universalInterpretation()), List("forward", "right"))
     assertEquals(run.moduleCommands(BeModules.NumberList), List(ListCommand.Swap(0, 1), ListCommand.Length(2)))
     assertEquals(run.moduleCommands(BeModules.Sudoku), List(SudokuCommand.Set(0, 2, 4)))
-    assertEquals(run.recorded.map(_.ordinal), List(0, 1, 2, 0, 1), "turtle, list, sudoku, turtle, list")
+    assertEquals(run.recorded, List(
+      ModuleCommand.Turtle(TurtleCommand.Forward(10.0)), ModuleCommand.NumberList(ListCommand.Swap(0, 1)),
+      ModuleCommand.Sudoku(SudokuCommand.Set(0, 2, 4)), ModuleCommand.Turtle(TurtleCommand.Right(90.0)),
+      ModuleCommand.NumberList(ListCommand.Length(2))))
     assertEquals(mixed.moduleCommands(BeModules.NumberList), mixed.execute().moduleCommands(BeModules.NumberList), "the state runs startup on the default data")
     assertEquals(mixed.moduleCommands(BeModules.NumberList).last, ListCommand.Length(DataWorld.defaultList.size))
   }

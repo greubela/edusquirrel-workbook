@@ -133,6 +133,7 @@ case class BeExpressionToJavaStr(language: HumanLanguage, skipUnparsable: Boolea
 
   override protected def callName(call: BeFunctionCall): String = call.funcDef.intrinsic match {
     case Some(BeIntrinsic.Print) => "System.out.println"
+    case Some(BeIntrinsic.PrintErr) => "System.err.println"
     case Some(BeIntrinsic.Turtle) => "Turtle." + JavaTurtleLibrary.methodName(call.funcDef)
     case Some(BeIntrinsic.NumberList | BeIntrinsic.Sudoku) =>
       it.evadid.vm.modules.BeModules.qualifiedName(call.funcDef).get + "." + entityName(call.funcDef.functionTypeInfo.displayName)
@@ -189,7 +190,7 @@ case class BeExpressionToJavaStr(language: HumanLanguage, skipUnparsable: Boolea
 
   /** Like Python's `print(a, b)`, several values print on one line separated by spaces. */
   private def printCall(call: BeFunctionCall): String =
-    s"System.out.println(${call.arguments.map(forOperand).mkString(" + \" \" + ")});"
+    s"${if call.funcDef.intrinsic.contains(BeIntrinsic.PrintErr) then "System.err.println" else "System.out.println"}(${call.arguments.map(forOperand).mkString(" + \" \" + ")});"
 
   override protected def conditionText(condition: BeSequence): String = condition.body match {
     case Seq(value) if targetLanguage == Java => JavaSpelling.truthValue(value, forValue(value))
@@ -199,7 +200,7 @@ case class BeExpressionToJavaStr(language: HumanLanguage, skipUnparsable: Boolea
   override def forOther(other: BeExpression): String = other match {
     case BeUseValue(BeDataValueLiteral(raw @ ("True" | "False")), _) => raw.toLowerCase
     case BeUseValue(BeDataValueUnit(), _) if targetLanguage == Java => "null"
-    case call: BeFunctionCall if targetLanguage == Java && call.funcDef.intrinsic.contains(BeIntrinsic.Print) && call.arguments.size != 1 =>
+    case call: BeFunctionCall if targetLanguage == Java && call.funcDef.intrinsic.exists(value => value == BeIntrinsic.Print || value == BeIntrinsic.PrintErr) && call.arguments.size != 1 =>
       printCall(call)
     case call: BeFunctionCall if targetLanguage == Java && call.funcDef.intrinsic.exists(JavaSpelling.handles) =>
       val arguments = call.arguments

@@ -30,7 +30,7 @@ final class ProgrammingExecutionPanel(source: Var[ProgrammingState], label: Stri
       if token == revision.now() && original == source.now() then {
         running.set(false)
         output.set(result.fold(error => Option(error.getMessage).getOrElse(error.toString), execution =>
-          execution.stdout + (if execution.completed then "" else s"\n${execution.status}")))
+          execution.moduleCommands(it.evadid.vm.modules.BeModules.System).map(_.text).mkString + (if execution.completed then "" else s"\n${execution.status}")))
       }
     }
   }

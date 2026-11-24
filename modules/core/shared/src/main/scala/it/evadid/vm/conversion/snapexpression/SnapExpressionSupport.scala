@@ -119,7 +119,8 @@ object SnapExpressionSupport {
 
   /** Python / SnakeCase name used in printed code and allow-list checks. */
   def pythonName(call: BeFunctionCall): String =
-    call.funcDef.functionTypeInfo.displayName
+    if call.funcDef.intrinsic.contains(it.evadid.vm.code.defining.BeIntrinsic.Print) then "print"
+    else call.funcDef.functionTypeInfo.displayName
       .getNameIn(AppLanguage.English, NamingStyle.SnakeCase)
       .trim
 

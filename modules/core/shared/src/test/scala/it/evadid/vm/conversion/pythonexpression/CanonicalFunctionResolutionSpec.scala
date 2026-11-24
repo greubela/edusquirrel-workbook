@@ -87,7 +87,9 @@ class CanonicalFunctionResolutionSpec extends FunSuite {
       assert(KnownBeEntityNames.resolveCanonicalNames(alias).get eq canonical)
     }
     val parsed = calls("print(1)\nprintln(2)\nSystem.out.println(3)")
-    assert(parsed.forall(_.funcDef.functionTypeInfo.displayName eq canonical))
+    assert(parsed.forall(_.funcDef.intrinsic.contains(it.evadid.vm.code.defining.BeIntrinsic.Print)))
+    assert(parsed.forall(_.target.isInstanceOf[it.evadid.vm.code.usage.BeCallTarget.StaticMethod]))
+    assert(parsed.forall(_.funcDef.functionTypeInfo.isMethodInClass.exists(_.name.universalInterpretation() == "SystemFunctionality")))
     val userCalls = calls("def println(n):\n    println(n)\nprintln(1)")
     assertEquals(userCalls.map(name), List("println", "println"))
   }

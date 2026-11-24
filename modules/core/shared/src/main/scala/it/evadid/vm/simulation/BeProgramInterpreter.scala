@@ -35,8 +35,9 @@ final case class ProgramExecution(
     recorded: List[ModuleCommand],
     world: DataWorld,
     returnValue: Option[Double],
-    status: TurtleExecutionStatus,
-    stdout: String = "") derives ReadWriter {
+    status: TurtleExecutionStatus) derives ReadWriter {
+  def stdout: String = moduleCommands(BeModules.System).collect { case it.evadid.vm.modules.SystemCommand.PrintToOut(text) => text }.mkString
+  def stderr: String = moduleCommands(BeModules.System).collect { case it.evadid.vm.modules.SystemCommand.PrintToErr(text) => text }.mkString
   def completed: Boolean = status == TurtleExecutionStatus.Completed
 
   /** The calls of `module`'s functions in program order, typed as that module's commands. */
@@ -75,7 +76,7 @@ object BeProgramInterpreter {
           after.copy(returned = Some(returned))
       }
     }
-    ProgramExecution(finished.recorded.toList, finished.world, finished.returned.collect { case Value.Num(number) => number }, finished.status, finished.stdout)
+    ProgramExecution(finished.recorded.toList, finished.world, finished.returned.collect { case Value.Num(number) => number }, finished.status)
   }
 
   private val booleanOperators = Set("<", ">", "==", "<=", ">=", "!=", "and", "or", "not")
@@ -116,7 +117,6 @@ object BeProgramInterpreter {
       world: DataWorld,
       /** Calls of module functions in program order; the counts bound each kind separately. */
       recorded: Vector[ModuleCommand] = Vector.empty,
-      stdout: String = "",
       turtleCount: Int = 0,
       dataCount: Int = 0,
       steps: Int = 0,
@@ -235,13 +235,17 @@ object BeProgramInterpreter {
 
   private def interpretCall(unresolved: BeFunctionCall, before: State, limits: TurtleExecutionLimits, isCancelled: () => Boolean): State = {
     val library = isDataModule(unresolved.funcDef)
-    if !unresolved.target.isInstanceOf[BeCallTarget.Function] && !TurtleCommand.isTurtleMethod(unresolved.funcDef) && !library then
+    if !unresolved.target.isInstanceOf[BeCallTarget.Function] && !TurtleCommand.isTurtleMethod(unresolved.funcDef) && !library && !it.evadid.vm.modules.BeModules.System.owns(unresolved.funcDef) then
       unsupportedObjectExecution()
     else if unresolved.isOperator then before
     else {
       val (call, state) = resolveArguments(unresolved, before, limits, isCancelled)
-      if call.funcDef.intrinsic.contains(BeIntrinsic.Print) then
-        state.copy(stdout = state.stdout + call.arguments.map(argument => text(eval(argument, state))).mkString(" ") + "\n")
+      if BeModules.System.owns(call.funcDef) then {
+        val message = call.arguments.map(argument => text(eval(argument, state))).mkString(" ") + "\n"
+        val command = if call.funcDef.intrinsic.contains(BeIntrinsic.PrintErr) then it.evadid.vm.modules.SystemCommand.PrintToErr(message)
+          else it.evadid.vm.modules.SystemCommand.PrintToOut(message)
+        state.copy(recorded = state.recorded :+ ModuleCommand.System(command))
+      }
       else if library then dataOperation(call.funcDef, call.arguments.map(evalNumber(_, state)), state, limits)._2
       else userDefinition(call, state) match {
         case Some(definition) => invoke(definition, call.arguments.map(eval(_, state)), state, limits, isCancelled)._2
