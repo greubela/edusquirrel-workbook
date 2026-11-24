@@ -117,8 +117,16 @@ button. Inserting another declaration in Function Mode selects only the new func
 
 Language-independent UML data lives in `core.datastructures.uml.UmlClassDiagram` in shared core.
 `vm.structure.JavaUmlDiagram` parses Java into that model; `UmlStructureSelector` renders a model
-signal. This lets a future Python parser reuse the same diagram. Library classes,
-including Turtle, remain visible. UML classes have square corners and stable hover geometry.
+signal. This lets a future Python parser reuse the same diagram. Each `UmlClass` has an
+`origin`; only `Program` classes are clickable and open editors. Read-only boxes («library», «unknown»):
+
+- a verbatim library definition in the source (the generated `Turtle`); an edited copy is the program's own;
+- `JavaUmlDiagram.external`: the Java form of the libraries the worker's `ProgramAnalysis` reports
+  (`System`/`PrintStream` for printing) and the classes of its `BeUnknownDependency`
+  (`System.out2.println` → `System` with `out2: SystemOut2`).
+
+External boxes follow the last finished analysis, so they do not flicker while typing.
+UML classes have square corners and stable hover geometry.
 
 `ProgrammingExecutionPanel` is the console below the editor. It observes the committed answer, not
 the typing draft, and depends only on `ProgrammingState`: static analysis decides whether and as what

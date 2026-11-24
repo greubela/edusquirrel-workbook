@@ -7,6 +7,11 @@ import it.evadid.homepage.webElements.UiDomSuite
 import it.evadid.homepage.webElements.editor.code.{EditorDomSuite, EvaTestContext}
 import it.evadid.homepage.webElements.editor.code.EvaEditor.{EvaEditor, EvaEditorConfig, EvaEditorLabels}
 import it.evadid.homepage.webElements.editor.code.codemirror.CodeMirrorEditor
+import it.evadid.homepage.webElements.editor.code.program.ProgramAnalyzer
+import it.evadid.homepage.webElements.editor.code.worker.{LocalWorker, SharedWorker}
+import it.evadid.distribution.clients.ExecutionClient
+import it.evadid.distribution.commandTypes.WorkerCommands
+import it.evadid.vm.analysis.ProgramAnalysis
 import it.evadid.homepage.webElements.editor.config.CodeMirrorEditorConfig
 import it.evadid.util.logging.Logger
 import it.evadid.util.logging.derived.PrintToStdLogger
@@ -163,6 +168,29 @@ class JavaComponentEditorSpec extends UiDomSuite {
       state.set(ProgrammingStateJavaStructured(helperClass))
       assertEquals(status(root), "No selection")
       assert(one(root, ".java-function-editor__editor-placeholder").textContent.contains("Choose a class or function"))
+    }
+  }
+
+  test("libraries and unknown classes the program uses appear as read-only boxes after the worker's analysis") {
+    val executor = ExecutionClient(Seq(
+      WorkerCommands.programAnalysis.toLocalExecutionClient((state, _) => Future(ProgramAnalysis.of(state)))))
+    val workers = LocalWorker.Factory(executor)
+    val state = answer("public class Main {\n  public static void main(String[] args) {\n    System.out.println(1);\n" +
+      "    Score.board.show(2);\n  }\n}")
+    val component = new JavaComponentEditor(logger, state, labels, Val("Loading"),
+      analyzer = ProgramAnalyzer(SharedWorker(() => workers())))
+    mountedAsync(component.getDomElement()) { root =>
+      def box(name: String) = all(root, ".uml-class").find(_.querySelector(".uml-class__header").textContent.endsWith(name))
+      eventually(box("ScoreBoard").nonEmpty, "the analysis adds the external classes").map { _ =>
+        assertEquals(all(root, ".uml-class").map(_.querySelector(".uml-class__header").textContent),
+          List("Main", "«library»System", "«library»PrintStream", "«unknown»Score", "«unknown»ScoreBoard"))
+        assert(box("PrintStream").get.classList.contains("uml-class--library"))
+        assertEquals(box("ScoreBoard").get.getAttribute("title"), english("javaunknownclasshint"))
+        assertEquals(all(box("Score").get, ".uml-entry").map(_.textContent), List("Score", "+board: ScoreBoard"))
+        assertEquals(all(box("ScoreBoard").get, "button").size, 0)
+        // Only the program's own class has an "Add function" footer.
+        assertEquals(withText(root, ".uml-class__actions button", english("javaaddfunction")).size, 1)
+      }
     }
   }
 

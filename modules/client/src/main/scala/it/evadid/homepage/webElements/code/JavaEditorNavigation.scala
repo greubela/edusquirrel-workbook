@@ -26,11 +26,11 @@ final class JavaEditorNavigation(state: Var[ProgrammingStateJavaStructured]) {
   /** A click in the diagram. */
   val choose: Observer[UmlEntityKey] = Observer(key => position.update(_.choose(key)))
 
-  def switchTo(next: Mode): Unit = position.update(_.switchTo(next, JavaUmlDiagram(state.now())))
+  def switchTo(next: Mode): Unit = position.update(_.switchTo(next, JavaUmlDiagram(state.now()).editable))
 
   /** Shows an entry that was just added: its class, or its function when `functionCode` names one. */
   def reveal(className: BeEntityName, functionCode: Option[String]): Unit =
-    position.update(_.reveal(JavaUmlDiagram(state.now()), className, functionCode))
+    position.update(_.reveal(JavaUmlDiagram(state.now()).editable, className, functionCode))
 
   /** Keeps the edited function selected while its source changes in Function Mode. */
   def follow(function: JavaFunctionEditor.Function, program: ProgrammingStateJavaStructured): Unit =

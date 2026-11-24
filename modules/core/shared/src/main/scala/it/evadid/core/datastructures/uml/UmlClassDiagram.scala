@@ -10,6 +10,13 @@ final case class UmlClassDiagram(classes: Seq[UmlClass]) derives upickle.default
     classes.find(_.name == key.className).flatMap(umlClass =>
       key.member.fold(Some(umlClass.entity))(member => umlClass.members.find(_.key.member.contains(member)).map(_.entity)))
 
+  /** The program's own classes, which the editors can open. */
+  def editable: UmlClassDiagram = UmlClassDiagram(classes.filter(_.origin.editable))
+
+  /** This diagram followed by the classes of `other` whose names it does not define. */
+  def including(other: UmlClassDiagram): UmlClassDiagram =
+    UmlClassDiagram(classes ++ other.classes.filterNot(external => classes.exists(_.name == external.name)))
+
   /** The structured-state entry of the class of `key`. */
   def sourceKey(key: UmlEntityKey): Option[BeEntityName] = classes.find(_.name == key.className).map(_.sourceKey)
 

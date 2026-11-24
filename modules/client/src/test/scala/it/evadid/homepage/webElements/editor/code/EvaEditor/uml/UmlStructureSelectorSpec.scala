@@ -55,13 +55,33 @@ class UmlStructureSelectorSpec extends EditorDomSuite {
     assertEquals(playerBox.functions.map(_.key.member.map(_.occurrence)), Seq(Some(0), Some(0), Some(0), Some(1)))
   }
 
-  test("generated and edited Turtle libraries both appear in the diagram") {
+  test("the generated Turtle library is a read-only box; an edited copy is clickable") {
     val source = it.evadid.workbook.elements.interactionElements.programming.state.ProgrammingStateRaw(
       it.evadid.core.datastructures.language.AppLanguage.Python, "forward(10)").toJava.code
     assert(source.contains("class Turtle {"), source)
-    assertEquals(JavaUmlDiagram(ProgrammingStateJavaStructured(source)).classes.map(_.name), Seq("Main", "Turtle"))
-    val edited = source.replace("move(distance);", "move(2 * distance);")
-    assertEquals(JavaUmlDiagram(ProgrammingStateJavaStructured(edited)).classes.map(_.name), Seq("Main", "Turtle"))
+    val program = Var(ProgrammingStateJavaStructured(source))
+    val selection = Var(Option.empty[UmlEntityKey])
+    val selector = UmlStructureSelector(program.signal.map(JavaUmlDiagram(_)), selection.signal, selection.writer.contramap(Some(_)),
+      classFooter = _ => span(cls := "spec-footer"),
+      originLabels = origin => Option.when(origin == UmlClassOrigin.Library)(UmlStructureSelector.OriginLabels(Val("library"), Val("view only"))))
+    val unmount = mount(selector.getDomElement())
+    try {
+      def boxes = (0 until dom.document.querySelectorAll(".uml-class").length).map(dom.document.querySelectorAll(".uml-class")(_))
+      def turtle = boxes.find(_.querySelector(".uml-class__header").textContent.contains("Turtle")).getOrElse(fail("No Turtle box"))
+      assertEquals(boxes.size, 2)
+      assert(turtle.classList.contains("uml-class--library"))
+      assertEquals(turtle.querySelector(".uml-class__stereotype").textContent, "«library»")
+      assertEquals(turtle.getAttribute("title"), "view only")
+      assertEquals(turtle.querySelectorAll("button").length, 0)
+      assertEquals(turtle.querySelectorAll(".spec-footer").length, 0)
+      assert(turtle.querySelectorAll(".uml-entry--readonly").length > 1)
+      assertEquals(dom.document.querySelectorAll(".spec-footer").length, 1)
+
+      program.set(ProgrammingStateJavaStructured(source.replace("move(distance);", "move(2 * distance);")))
+      assert(!turtle.classList.contains("uml-class--library"))
+      assert(turtle.querySelectorAll("button").length > 1)
+      assertEquals(dom.document.querySelectorAll(".spec-footer").length, 2)
+    } finally unmount()
   }
 
   test("clicking names, attributes and functions selects them; the selection follows source edits") {

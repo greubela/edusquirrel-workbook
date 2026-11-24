@@ -78,11 +78,17 @@ object KnownDependencies {
 
   private def compact(text: String): String = text.filterNot(_.isWhitespace)
 
+  def named(name: BeEntityName): Option[BeDependency] = all.find(_.structureName == name)
+
+  /** Whether `classSource` is a dependency's Java definition verbatim, ignoring layout. */
+  def isJavaDefinition(classSource: String): Boolean = javaDefinitions(compact(classSource))
+
+  private lazy val javaDefinitions: Set[String] = all.flatMap(_.definition(Java)).map(compact).toSet
+
   /** Where `source` contains a dependency definition verbatim, ignoring layout, as `(start, end)` offsets. */
   def definitionRanges(source: String, language: ProgrammingLanguage): Seq[(Int, Int)] = language match {
     case Java =>
-      val definitions = all.flatMap(_.definition(Java)).map(compact).toSet
-      SourceStructure.javaClasses(source).filter(block => definitions(compact(block.source))).map(block => block.start -> block.end)
+      SourceStructure.javaClasses(source).filter(block => isJavaDefinition(block.source)).map(block => block.start -> block.end)
     case Python => all.flatMap(_.definition(Python)).flatMap(lineRun(source, _))
     case _ => Nil
   }

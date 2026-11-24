@@ -3,6 +3,7 @@ package it.evadid.homepage.webElements.code
 import it.evadid.vm.structure.JavaUmlDiagram
 import com.raquo.laminar.api.L.*
 import it.evadid.homepage.webElements.editor.code.ProgrammingStateView
+import it.evadid.homepage.webElements.editor.code.program.ProgramAnalyzer
 import com.raquo.laminar.nodes.ReactiveSvgElement
 import it.evadid.core.datastructures.language.AppLanguage.Java
 import it.evadid.homepage.webElements.HtmlAppElement
@@ -35,20 +36,33 @@ final class JavaComponentEditor(
     reference: Option[() => Element] = None,
     appearance: Option[EditorAppearance] = None,
     editorConfig: CodeMirrorEditorConfig = CodeMirrorEditorConfig.Default,
-    conversionMarker: Signal[Option[ProgrammingConversionError]] = Val(None)
+    conversionMarker: Signal[Option[ProgrammingConversionError]] = Val(None),
+    analyzer: ProgramAnalyzer = ProgramAnalyzer.shared
 ) extends HtmlAppElement {
   import JavaComponentEditor.*
   import JavaEditorNavigation.{Mode, isFunction}
 
   private val classDiagram = state.signal.map(JavaUmlDiagram(_))
+  /** What the program uses without defining it, from the worker's analysis; the last result stays while the next is pending. */
+  private val externalClasses = analyzer.statusOf(state.signal).scanLeft(external(UmlClassDiagram(Nil), _))(external)
+  private def external(last: UmlClassDiagram, status: ProgramAnalyzer.Status): UmlClassDiagram = status match {
+    case ProgramAnalyzer.Status.Ready(analysis) => JavaUmlDiagram.external(analysis.libraryDependencies, analysis.unknownDependency)
+    case ProgramAnalyzer.Status.Pending => last
+    case ProgramAnalyzer.Status.Failed(_) => UmlClassDiagram(Nil)
+  }
   private val structureReady = state.signal.map(_.definedClasses.values.forall(SourceStructure.balanced(_))).distinct
 
   private val navigation = JavaEditorNavigation(state)
-  private val diagram = UmlStructureSelector(classDiagram, navigation.selection, navigation.choose,
+  private val diagram = UmlStructureSelector(classDiagram.combineWith(externalClasses).map(_.including(_)), navigation.selection, navigation.choose,
     classFooter = clazz => button(typ := "button", cls := "java-function-editor__button", child.text <-- labels(Key.javaAddFunction),
       disabled <-- structureReady.map(!_), onClick --> (_ => dialog.addFunction(clazz.sourceKey))),
     trailing = button(typ := "button", cls := "java-function-editor__button uml-add-class", child.text <-- labels(Key.javaAddClass),
-      disabled <-- structureReady.map(!_), onClick --> (_ => dialog.addClass())))
+      disabled <-- structureReady.map(!_), onClick --> (_ => dialog.addClass())),
+    originLabels = {
+      case UmlClassOrigin.Program => None
+      case UmlClassOrigin.Library => Some(UmlStructureSelector.OriginLabels(labels(Key.javaLibraryClass), labels(Key.javaLibraryClassHint)))
+      case UmlClassOrigin.Unknown => Some(UmlStructureSelector.OriginLabels(labels(Key.javaUnknownClass), labels(Key.javaUnknownClassHint)))
+    })
   private val dialog = JavaStructureDialog(state, labels, navigation.reveal)
   private val functionEditor = JavaFunctionEditor(logger, state, loadingLabel, editorConfig)
   private val classEditor = JavaClassEditor(logger, state, loadingLabel, editorConfig)
@@ -101,7 +115,7 @@ final class JavaComponentEditor(
       // A disabled fieldset disables the diagram's buttons while the source has unfinished brackets or comments.
       fieldSet(cls := "java-component-editor__diagram", disabled <-- structureReady.map(!_),
         diagram.getDomElement()),
-      child.maybe <-- classDiagram.map(_.classes.isEmpty).distinct.map(empty => Option.when(empty)(
+      child.maybe <-- classDiagram.map(_.editable.classes.isEmpty).distinct.map(empty => Option.when(empty)(
         div(cls := "java-function-editor__empty-diagram",
           strong(child.text <-- labels(Key.javaNoClasses)), span(child.text <-- labels(Key.javaNoClassesHint))))))
 

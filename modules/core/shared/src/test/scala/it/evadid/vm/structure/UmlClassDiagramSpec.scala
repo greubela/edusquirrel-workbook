@@ -2,7 +2,9 @@ package it.evadid.vm.structure
 
 import it.evadid.core.datastructures.language.AppLanguage.Python
 import it.evadid.workbook.elements.interactionElements.programming.state.ProgrammingStateRaw
-import it.evadid.core.datastructures.uml.UmlClassDiagram
+import it.evadid.core.datastructures.uml.{UmlClassDiagram, UmlClassOrigin}
+import it.evadid.vm.analysis.ProgramAnalysis
+import it.evadid.workbook.elements.interactionElements.programming.state.ProgrammingStateJavaStructured
 import munit.FunSuite
 import upickle.default.*
 
@@ -12,6 +14,39 @@ class UmlClassDiagramSpec extends FunSuite {
     val diagram = JavaUmlDiagram(source)
     val turtle = diagram.classes.find(_.name == "Turtle").getOrElse(fail(source.toString))
     assert(turtle.functions.exists(_.name == "forward"))
+    assertEquals(read[UmlClassDiagram](write(diagram)), diagram)
+  }
+
+  test("a verbatim library definition is a read-only library box; an edited copy is the program's own class") {
+    val source = ProgrammingStateRaw(Python, "forward(10)").toJava.code
+    def origins(code: String) = JavaUmlDiagram(ProgrammingStateJavaStructured(code)).classes.map(value => value.name -> value.origin)
+    assertEquals(origins(source), Seq("Main" -> UmlClassOrigin.Program, "Turtle" -> UmlClassOrigin.Library))
+    assertEquals(origins(source.replace("move(distance);", "move(2 * distance);")),
+      Seq("Main" -> UmlClassOrigin.Program, "Turtle" -> UmlClassOrigin.Program))
+    assertEquals(JavaUmlDiagram(ProgrammingStateJavaStructured(source)).editable.classes.map(_.name), Seq("Main"))
+  }
+
+  test("libraries and unknown dependencies a program uses become read-only boxes in their Java form") {
+    val program = ProgrammingStateJavaStructured(
+      "class Main { static void main(String[] a) { System.out.println(1); System.out2.println(2); Object limit = Config.screen.limit; Helper.run(4, 5); } }")
+    val analysis = ProgramAnalysis.of(program)
+    val external = JavaUmlDiagram.external(analysis.libraryDependencies, analysis.unknownDependency)
+    def box(name: String) = external.classes.find(_.name == name).getOrElse(fail(external.classes.map(_.name).toString))
+    assertEquals(box("PrintStream").origin, UmlClassOrigin.Library)
+    assertEquals(box("PrintStream").functions.map(_.label), Seq("+print(value: Object): void", "+println(value: Object): void"))
+    // The unknown `System` shadows java.lang's and keeps its streams.
+    assertEquals(box("System").origin, UmlClassOrigin.Unknown)
+    assertEquals(box("System").attributes.map(_.label), Seq("+out: PrintStream", "+err: PrintStream", "+out2: SystemOut2"))
+    assert(box("System").attributes.forall(_.isStatic))
+    assertEquals(box("SystemOut2").functions.map(_.label), Seq("+println(arg0)"))
+    assert(!box("SystemOut2").functions.exists(_.isStatic))
+    assertEquals(box("Helper").functions.map(_.label), Seq("+run(arg0, arg1)"))
+    assertEquals(box("Config").attributes.map(_.label), Seq("+screen: ConfigScreen"))
+    assertEquals(box("ConfigScreen").attributes.map(_.label), Seq("+limit"))
+    assert(external.classes.forall(!_.origin.editable))
+    val diagram = JavaUmlDiagram(program).including(external)
+    assertEquals(diagram.classes.head.name, "Main")
+    assertEquals(diagram.editable.classes.map(_.name), Seq("Main"))
     assertEquals(read[UmlClassDiagram](write(diagram)), diagram)
   }
 }

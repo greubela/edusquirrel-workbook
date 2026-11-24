@@ -5,7 +5,7 @@ Programs are handled in two ways, independently of the editor language:
 | | Static | Dynamic |
 | --- | --- | --- |
 | Engine | shared BeExpression (bounded interpreter, no side effects) | Pyodide in the workbook worker |
-| Provides | turtle commands, unknown dependencies, unsupported source, the Python form of the program | console output (stdout/stderr), network access, real Python semantics |
+| Provides | turtle commands, called libraries, unknown dependencies, unsupported source, the Python form of the program | console output (stdout/stderr), network access, real Python semantics |
 | Entry point | [`ProgramAnalysis.of`](../modules/core/shared/src/main/scala/it/evadid/vm/analysis/ProgramAnalysis.scala) (core), `worker.programAnalysis` | `worker.runPython` with `PythonTurtleCalls.Ignored` |
 | Client | [`ProgramAnalyzer`](../modules/client/src/main/scala/it/evadid/homepage/webElements/editor/code/program/ProgramAnalyzer.scala) | [`ProgramRunner`](../modules/client/src/main/scala/it/evadid/homepage/webElements/editor/code/program/ProgramRunner.scala) |
 

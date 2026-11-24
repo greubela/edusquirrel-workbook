@@ -1,4 +1,5 @@
-/* UmlStructureSelector: classes of a Java answer as UML boxes; every name, attribute and function is a button.
+/* UmlStructureSelector: classes of a Java answer as UML boxes; every name, attribute and function of the program's
+   own classes is a button. Library and unknown classes are read-only boxes under a «stereotype».
    Colors come from the editor appearance theme when present, otherwise from the shared workbook tokens. */
 .uml-structure-selector {
     --uml-ink: var(--editor-code-ink, var(--color-text-primary));
@@ -33,7 +34,8 @@
 
 .uml-class__header {
     display: flex;
-    justify-content: center;
+    flex-direction: column;
+    align-items: center;
     padding: var(--space-md);
     background: var(--uml-header);
     border-bottom: var(--uml-line);
@@ -107,3 +109,38 @@
 }
 .uml-class__actions { padding: var(--space-sm); border-top: var(--uml-line); }
 .uml-add-class { align-self: center; }
+
+.uml-class__stereotype {
+    font-size: 0.85em;
+    color: var(--editor-muted, var(--color-text-secondary, var(--uml-ink)));
+}
+
+.uml-class--library,
+.uml-class--unknown {
+    border-style: dashed;
+}
+
+.uml-class--library .uml-class__header,
+.uml-class--unknown .uml-class__header,
+.uml-class--library:nth-child(even) .uml-class__header,
+.uml-class--unknown:nth-child(even) .uml-class__header {
+    background: var(--uml-header-alt);
+    border-bottom-style: dashed;
+}
+
+.uml-class--unknown {
+    border-color: var(--editor-warning-ink, var(--color-yellow-4));
+}
+
+.uml-class--library .uml-class__compartment + .uml-class__compartment,
+.uml-class--unknown .uml-class__compartment + .uml-class__compartment {
+    border-top-style: dashed;
+}
+
+.uml-structure-selector .uml-entry--readonly {
+    cursor: default;
+}
+
+.uml-structure-selector .uml-entry--readonly:hover {
+    background: transparent;
+}
