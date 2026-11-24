@@ -23,7 +23,8 @@ abstract class JavaFragmentEditor[I](
     logger: Logger,
     val state: Var[ProgrammingStateJavaStructured],
     editorConfig: CodeMirrorEditorConfig,
-    loadingLabel: Signal[String]
+    loadingLabel: Signal[String],
+    diagnostics: Signal[Seq[CodeMirrorEditor.Diagnostic]]
 ) extends HtmlAppElement {
   import JavaFragmentEditor.Fragment
 
@@ -79,6 +80,9 @@ abstract class JavaFragmentEditor[I](
 
   private lazy val editor = CodeMirrorEditor(logger, local, language = Java, config = Var(editorConfig),
     loadingLabel = loadingLabel,
+    // Diagnostics of the printed program, in the fragment's own lines.
+    diagnostics = state.signal.combineWith(fragment.signal, diagnostics).map((source, current, all) =>
+      current.flatMap(_.range).toSeq.flatMap(range => all.flatMap(range.localize(source, _)))),
     firstLineNumber = state.signal.combineWith(fragment.signal)
       .map((source, current) => current.flatMap(_.range).fold(1)(_.firstLineNumber(source))).distinct)
 

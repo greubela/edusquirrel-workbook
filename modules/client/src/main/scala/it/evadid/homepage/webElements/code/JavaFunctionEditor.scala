@@ -1,6 +1,7 @@
 package it.evadid.homepage.webElements.code
 
 import com.raquo.laminar.api.L.*
+import it.evadid.homepage.webElements.editor.code.codemirror.CodeMirrorEditor
 import it.evadid.homepage.webElements.editor.config.CodeMirrorEditorConfig
 import it.evadid.util.logging.Logger
 import it.evadid.vm.naming.BeEntityName
@@ -11,8 +12,9 @@ final class JavaFunctionEditor(
     logger: Logger,
     state: Var[ProgrammingStateJavaStructured],
     loadingLabel: Signal[String],
-    editorConfig: CodeMirrorEditorConfig = CodeMirrorEditorConfig.Default
-) extends JavaFragmentEditor[JavaFunctionEditor.Function](logger, state, editorConfig, loadingLabel) {
+    editorConfig: CodeMirrorEditorConfig = CodeMirrorEditorConfig.Default,
+    diagnostics: Signal[Seq[CodeMirrorEditor.Diagnostic]] = Val(Nil)
+) extends JavaFragmentEditor[JavaFunctionEditor.Function](logger, state, editorConfig, loadingLabel, diagnostics) {
   import JavaFunctionEditor.Function
   import JavaMethodSource.*
 

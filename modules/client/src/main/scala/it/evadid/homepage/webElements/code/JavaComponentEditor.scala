@@ -50,6 +50,8 @@ final class JavaComponentEditor(
     case (ProgramAnalyzer.Status.Ready(result), text) => result.warnings.map(warning => CodeMirrorEditor.mark(warning, text.replace("{name}", warning.subject)))
     case _ => Nil
   }
+  /** Marks of the printed program; the fragment editors show those within their fragment. */
+  private lazy val marks = diagnostics.combineWith(warnings).map(_ ++ _)
   private def external(last: UmlClassDiagram, status: ProgramAnalyzer.Status): UmlClassDiagram = status match {
     case ProgramAnalyzer.Status.Ready(analysis) => JavaUmlDiagram.external(analysis.libraryDependencies, analysis.unknownDependency)
     case ProgramAnalyzer.Status.Pending => last
@@ -69,11 +71,11 @@ final class JavaComponentEditor(
       case UmlClassOrigin.Unknown => Some(UmlStructureSelector.OriginLabels(labels(Key.javaUnknownClass), labels(Key.javaUnknownClassHint)))
     })
   private val dialog = JavaStructureDialog(state, labels, navigation.reveal)
-  private val functionEditor = JavaFunctionEditor(logger, state, loadingLabel, editorConfig)
-  private val classEditor = JavaClassEditor(logger, state, loadingLabel, editorConfig)
+  private val functionEditor = JavaFunctionEditor(logger, state, loadingLabel, editorConfig, marks)
+  private val classEditor = JavaClassEditor(logger, state, loadingLabel, editorConfig, marks)
   private val source = state.bimap(_.toString)(ProgrammingStateJavaStructured(_)).distinct
   private lazy val sourceEditor = CodeMirrorEditor(logger, source, language = Java, config = Var(editorConfig),
-    diagnostics = diagnostics.combineWith(warnings).map(_ ++ _), loadingLabel = loadingLabel,
+    diagnostics = marks, loadingLabel = loadingLabel,
     sameSource = (left, right) => left == right || ProgrammingStateJavaStructured(left) == ProgrammingStateJavaStructured(right))
 
   private val structureOpen = Var(true)

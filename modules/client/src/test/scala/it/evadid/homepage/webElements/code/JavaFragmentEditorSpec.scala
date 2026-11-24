@@ -107,4 +107,19 @@ class JavaFragmentEditorSpec extends EditorDomSuite {
     assertEquals(range.firstLineNumber(answer.now()), 7)
     assertEquals(JavaFragmentRange(helper, 0, 1).firstLineNumber(answer.now()), 1)
   }
+
+  test("diagnostics of the printed program move into the fragment's own lines; others are left out") {
+    import it.evadid.homepage.webElements.editor.code.codemirror.CodeMirrorEditor.Diagnostic
+    val answer = state()
+    val range = JavaFragmentRange(main, mainClass.indexOf("static void main"), mainClass.length - 2)
+    val line = "  static void main(String[] args) { forward(10); }"
+    val call = Diagnostic(7, Some(7), Some(line.indexOf("forward")), Some(line.indexOf("(10)")), "unknown", "warning")
+    assertEquals(range.localize(answer.now(), call),
+      Some(call.copy(line = 1, endLine = Some(1), fromCh = Some(line.indexOf("forward") - 2), toCh = Some(line.indexOf("(10)") - 2))))
+    assertEquals(range.localize(answer.now(), Diagnostic(7, None, None, None, "error", "error")),
+      Some(Diagnostic(1, Some(1), None, None, "error", "error")), "a whole-line mark stays whole")
+    assertEquals(range.localize(answer.now(), call.copy(line = 2, endLine = Some(2))), None, "outside the fragment")
+    val whole = JavaFragmentRange(main, 0, mainClass.length)
+    assertEquals(whole.localize(answer.now(), call).map(mark => (mark.line, mark.fromCh)), Some((3, Some(line.indexOf("forward")))))
+  }
 }
