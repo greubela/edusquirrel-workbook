@@ -30,6 +30,18 @@ class ProgramAnalysisSpec extends FunSuite {
     assertEquals(upickle.default.read[ProgramAnalysis](upickle.default.write(analysis)), analysis)
   }
 
+  test("unknown calls, reads and writes in Java are located by the parser") {
+    val source = "class Main {\n  static void main(String[] a) {\n    System.out2.println(1);\n    Object x = Config.screen.limit;\n" +
+      "    Config.screen.limit = 3;\n    helper(2);\n    System.out.println(x);\n  }\n}"
+    def located(state: ProgrammingState) = ProgramAnalysis.of(state).warnings.map(warning =>
+      (warning.subject, warning.startLine, warning.startColumn, warning.endLine, warning.endColumn))
+    val expected = Seq(("System.out2.println", 3, 5, 3, 24), ("Config.screen.limit", 4, 16, 4, 35),
+      ("Config.screen.limit", 5, 5, 5, 24), ("helper", 6, 5, 6, 11))
+    assertEquals(located(ProgrammingStateRaw(Java, source)), expected)
+    assertEquals(located(ProgrammingStateJavaStructured(source)), expected)
+    assert(ProgramAnalysis.of(ProgrammingStateRaw(Python, "helper(3)\n")).warnings.isEmpty, "Python expressions are not located yet")
+  }
+
   test("unsupported source blocks the static drawing but not dynamic execution") {
     val analysis = ProgramAnalysis.of(ProgrammingStateRaw(Python, "print('a', end='')\nforward(1)\n"))
     assertEquals(analysis.unsupportedSource.size, 1)

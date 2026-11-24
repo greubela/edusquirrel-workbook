@@ -39,6 +39,7 @@
   "javaLibraryClassHint": "Leveret af et bibliotek; kun til visning.",
   "javaUnknownClass": "ukendt",
   "javaUnknownClassHint": "Dit program bruger denne klasse, men intet definerer den. Den skal først defineres eller importeres.",
+  "javaUnknownUse": "„{name}“ bruges, men er ikke defineret nogen steder.",
   "javaAddClass": "Tilføj klasse",
   "javaAddFunction": "Tilføj funktion",
   "javaModes": "Java-redigeringstilstand",

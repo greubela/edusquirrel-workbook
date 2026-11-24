@@ -106,6 +106,10 @@ object CodeMirrorEditor {
     }
   }
 
+  /** A located warning of the program analysis, with `message` as its explanation. */
+  def mark(warning: it.evadid.vm.analysis.SourceWarning, message: String): Diagnostic =
+    Diagnostic(warning.startLine, Some(warning.endLine), Some(warning.startColumn - 1), Some(warning.endColumn - 1), message, "warning")
+
   /** The error's line and column (if known), with `message` as its explanation. */
   def mark(error: ProgrammingConversionError, message: String): Seq[Diagnostic] =
     error.line.toSeq.map(line => Diagnostic(line, fromCh = error.column.map(_ - 1), toCh = error.column, message = message, severity = "error"))

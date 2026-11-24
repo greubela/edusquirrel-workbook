@@ -39,6 +39,7 @@
   "javaLibraryClassHint": "Von einer Bibliothek bereitgestellt; nur zur Ansicht.",
   "javaUnknownClass": "unbekannt",
   "javaUnknownClassHint": "Dein Programm verwendet diese Klasse, aber nichts definiert sie. Sie muss erst definiert oder eingebunden werden.",
+  "javaUnknownUse": "„{name}“ wird verwendet, aber nirgends definiert.",
   "javaAddClass": "Klasse hinzufügen",
   "javaAddFunction": "Funktion hinzufügen",
   "javaModes": "Java-Bearbeitungsmodus",

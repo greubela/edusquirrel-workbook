@@ -183,6 +183,14 @@ class JavaComponentEditorSpec extends UiDomSuite {
         assertEquals(all(box("ScoreBoard").get, "button").size, 0)
         // Only the program's own class has an "Add function" footer.
         assertEquals(withText(root, ".uml-class__actions button", english("javaaddfunction")).size, 1)
+      }.flatMap { _ =>
+        val owner = com.raquo.airstream.ownership.ManualOwner()
+        val warnings = component.warnings.observe(using owner)
+        eventually(warnings.now().nonEmpty, "the analysis locates the unknown use").map { _ =>
+          assertEquals(warnings.now().map(mark => (mark.line, mark.fromCh, mark.toCh, mark.severity, mark.message)),
+            Seq((4, Some(4), Some(20), "warning", english("javaunknownuse").replace("{name}", "Score.board.show"))))
+          owner.killSubscriptions()
+        }
       }
     }
   }

@@ -2,7 +2,7 @@
 
 - Java function flowcharts: add an asynchronous source-position-preserving Java-to-BeExpression flow plan. Keep the gutter hidden until it describes the actual function; do not render Python or recovered-source approximations.
 - Nested Python declarations: outer graphs stay hidden where a nested definition interrupts the source region. Inner function graphs remain independent.
-- Diagnostic gutter: first carry typed source ranges through both parsers and BeExpression conversion. Then render localized `LanguageMap` warnings for syntax errors, unsupported expressions and unknown dependencies; `ProgramAnalysis` already collects the last two per state in the worker. Conversion errors alone cannot accurately locate all three cases; do not guess positions by searching for repeated source fragments.
+- Diagnostic marks: Java unknown-dependency uses are located by the Java parser (`JavaSourceWarnings`) and marked in Full Mode with a localized warning. Still missing: located Python expressions (its parser records only top-level statement lines), locations of unsupported expressions (the adapter does not keep the AST node), and marks in the Class/Function fragment editors (they need fragment offsets in the full source). Do not guess positions by searching for repeated source fragments.
 
 ## Remaining architecture work
 

@@ -39,6 +39,7 @@
   "javaLibraryClassHint": "Provided by a library; view only.",
   "javaUnknownClass": "unknown",
   "javaUnknownClassHint": "Your program uses this class, but nothing defines it. Define or import it first.",
+  "javaUnknownUse": "“{name}” is used, but nothing defines it.",
   "javaAddClass": "Add class",
   "javaAddFunction": "Add function",
   "javaModes": "Java editing mode",

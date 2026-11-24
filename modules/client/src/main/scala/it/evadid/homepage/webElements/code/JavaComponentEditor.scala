@@ -42,8 +42,14 @@ final class JavaComponentEditor(
   import JavaEditorNavigation.{Mode, isFunction}
 
   private val classDiagram = state.signal.map(JavaUmlDiagram(_))
+  private val analysis = analyzer.statusOf(state.signal)
   /** What the program uses without defining it, from the worker's analysis; the last result stays while the next is pending. */
-  private val externalClasses = analyzer.statusOf(state.signal).scanLeft(external(UmlClassDiagram(Nil), _))(external)
+  private val externalClasses = analysis.scanLeft(external(UmlClassDiagram(Nil), _))(external)
+  /** Located uses of unknown dependencies, only while the analysis describes the current source. */
+  private[code] val warnings = analysis.combineWith(labels(Key.javaUnknownUse)).map {
+    case (ProgramAnalyzer.Status.Ready(result), text) => result.warnings.map(warning => CodeMirrorEditor.mark(warning, text.replace("{name}", warning.subject)))
+    case _ => Nil
+  }
   private def external(last: UmlClassDiagram, status: ProgramAnalyzer.Status): UmlClassDiagram = status match {
     case ProgramAnalyzer.Status.Ready(analysis) => JavaUmlDiagram.external(analysis.libraryDependencies, analysis.unknownDependency)
     case ProgramAnalyzer.Status.Pending => last
@@ -67,7 +73,7 @@ final class JavaComponentEditor(
   private val classEditor = JavaClassEditor(logger, state, loadingLabel, editorConfig)
   private val source = state.bimap(_.toString)(ProgrammingStateJavaStructured(_)).distinct
   private lazy val sourceEditor = CodeMirrorEditor(logger, source, language = Java, config = Var(editorConfig),
-    diagnostics = diagnostics, loadingLabel = loadingLabel,
+    diagnostics = diagnostics.combineWith(warnings).map(_ ++ _), loadingLabel = loadingLabel,
     sameSource = (left, right) => left == right || ProgrammingStateJavaStructured(left) == ProgrammingStateJavaStructured(right))
 
   private val structureOpen = Var(true)

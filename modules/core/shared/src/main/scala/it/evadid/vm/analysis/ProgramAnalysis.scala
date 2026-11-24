@@ -1,13 +1,13 @@
 package it.evadid.vm.analysis
 
-import it.evadid.core.datastructures.language.AppLanguage.Python
+import it.evadid.core.datastructures.language.AppLanguage.{Java, Python}
 import it.evadid.core.datastructures.vectorShapes.svg.TurtleCommand
 import it.evadid.vm.code.defining.{BeDependency, BeUnknownDependency}
-import it.evadid.vm.conversion.dependencies.KnownDependencies
+import it.evadid.vm.conversion.dependencies.{KnownDependencies, UnknownDependencies}
 import it.evadid.vm.naming.BeEntityName
 import it.evadid.vm.code.errors.BeSourcePlaceholder
 import it.evadid.vm.simulation.turtle.TurtleExecutionStatus
-import it.evadid.workbook.elements.interactionElements.programming.state.{ProgrammingState, ProgrammingStatePythonStructured, ProgrammingStateRaw}
+import it.evadid.workbook.elements.interactionElements.programming.state.{ProgrammingState, ProgrammingStateJavaStructured, ProgrammingStatePythonStructured, ProgrammingStateRaw}
 import upickle.default.ReadWriter
 
 import scala.util.Try
@@ -16,7 +16,7 @@ import scala.util.Try
   *
   * Static facts come from the shared BeExpression: the turtle run (from the bounded interpreter, without
   * side effects), the libraries it calls, the dependencies it calls without anything defining them and the source
-  * it could not represent. Dynamic execution (console output, network access) runs in Pyodide, so the analysis
+  * it could not represent, with their located uses as `warnings` where the parser locates them (Java). Dynamic execution (console output, network access) runs in Pyodide, so the analysis
   * also carries the Python source: Python as written, other languages converted. A `Left` explains why a fact is
   * unavailable.
   */
@@ -25,7 +25,8 @@ final case class ProgramAnalysis(
     turtle: Either[String, ProgramAnalysis.TurtleRun],
     unknownDependency: Option[BeUnknownDependency],
     unsupportedSource: Seq[String],
-    libraries: Seq[BeEntityName]
+    libraries: Seq[BeEntityName],
+    warnings: Seq[SourceWarning]
 ) derives ReadWriter {
   /** The known dependencies the program calls into. */
   def libraryDependencies: Seq[BeDependency] = libraries.flatMap(KnownDependencies.named)
@@ -58,6 +59,13 @@ object ProgramAnalysis {
     val turtle = expression.flatMap(value => Try(value.turtleCommandExecutionInfo)).toEither.left.map(reason)
       .map(info => TurtleRun(info.executedTurtleCommandsInOrder, info.executionStatus))
     val libraries = expression.toOption.toSeq.flatMap(value => KnownDependencies.requiredBy(value.expression)).map(_.structureName).distinct
-    ProgramAnalysis(python, turtle, expression.toOption.flatMap(_.unknownDependency), unsupported, libraries)
+    val unknownPaths = expression.toOption.toSeq.flatMap(value =>
+      UnknownDependencies.calls(value.expression).map(_.path) ++ UnknownDependencies.attributes(value.expression).map(_.path)).toSet
+    val warnings = state match {
+      case ProgrammingStateRaw(Java, code) => JavaSourceWarnings.unknownUses(code, unknownPaths)
+      case value: ProgrammingStateJavaStructured => JavaSourceWarnings.unknownUses(value.toString, unknownPaths)
+      case _ => Nil
+    }
+    ProgramAnalysis(python, turtle, expression.toOption.flatMap(_.unknownDependency), unsupported, libraries, warnings)
   }
 }
