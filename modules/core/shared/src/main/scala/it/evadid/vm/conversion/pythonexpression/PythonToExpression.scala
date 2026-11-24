@@ -242,7 +242,9 @@ object PythonToExpression {
     case target: PyTarget => targetExpression(target)
     case PyOperationUnary(operator, operand) => E.Unary(operator, expression(operand))
     case PyOperationBinary(left, operator, right) => E.Binary(operator, expression(left), expression(right))
-    case PyFunctionCall(target, arguments) => E.Call(target.locationString :+ target.identifier, arguments.map(expression))
+    case PyFunctionCall(target, arguments) => call(target.locationString :+ target.identifier, arguments)
+    case PyCallExpression(callee, arguments) if arguments.exists(_.isInstanceOf[PyKeywordArgument]) =>
+      names(callee).fold(E.Unsupported("(...)(...)"))(call(_, arguments))
     case PyCallExpression(callee, arguments) =>
       names(callee) match {
         case Some(qualified) => E.Call(qualified, arguments.map(expression))
@@ -256,6 +258,22 @@ object PythonToExpression {
     case NamedExpression(name, _) => E.Unsupported(s"$name := ...")
     case PySubscript(_, _) => E.Unsupported("[...]")
     case other => E.Unsupported(other.getClass.getSimpleName)
+  }
+
+  /** A call of a dotted name. `print(..., file=sys.stderr)` prints to the error stream; other keyword
+    * arguments have no shared meaning and stay explicit placeholders.
+    */
+  private def call(path: Seq[String], arguments: Seq[PyExpression]): ParsedExpression = {
+    val (keywords, positional) = arguments.partitionMap {
+      case PyKeywordArgument(name, value) => Left(name -> value)
+      case value => Right(value)
+    }
+    keywords match {
+      case Seq() => E.Call(path, positional.map(expression))
+      case Seq(("file", stream)) if path == Seq("print") && names(stream).contains(Seq("sys", "stderr")) =>
+        E.Call(Seq("print_to_err"), positional.map(expression))
+      case _ => E.Unsupported(s"${path.mkString(".")}(${keywords.map((name, _) => s"$name=...").mkString(", ")})")
+    }
   }
 
   /** A dotted name such as `turtle.forward` or `self.walker.walk`. */

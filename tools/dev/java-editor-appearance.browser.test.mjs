@@ -7,6 +7,7 @@ import test from 'node:test';
 import {chromium} from 'playwright';
 
 const root = path.resolve(import.meta.dirname, '../..');
+const germanEditorLabels = JSON.parse(await readFile(path.join(root, 'resources/languageMaps/eva/blockeditor/map-de.json'), 'utf8'));
 const origin = 'http://localhost:9000';
 const prefix = '/edusquirrel-workbook/';
 const mime = {'.html': 'text/html', '.js': 'text/javascript', '.css': 'text/css',
@@ -68,7 +69,7 @@ test('Java hints retain in-flight feedback across editor close and display-langu
     await page.getByRole('button', {name: /Editor.*öffnen|Open editor/i}).last().click();
     const editor = page.locator('dialog[open] .eva-editor');
     await editor.getByRole('tab', {name:'Java',exact:true}).click();
-    await editor.getByRole('tab', {name: 'Full Mode', exact: true}).click();
+    await editor.getByRole('tab', {name: germanEditorLabels.javaModeFull, exact: true}).click();
     const code = editor.locator('.cm-content');
     const draft = 'class Drawing {\n  static void square(int side) {';
     await code.click();

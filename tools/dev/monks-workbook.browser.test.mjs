@@ -31,6 +31,7 @@ test('monk stories and revised tasks work with the current editor and interactio
     await page.locator('.select-language-line > div:has(.flag-fill-german-red)').click();
     assert.equal(await page.locator('.section-block').count(), 7);
     const labels = JSON.parse(await readFile(path.join(root, 'resources/languageMaps/eva/monksworkbook/map-de.json'), 'utf8'));
+    const editorLabels = JSON.parse(await readFile(path.join(root, 'resources/languageMaps/eva/blockeditor/map-de.json'), 'utf8'));
     const section = key => page.locator('.section-block').filter({hasText: labels[key]});
     assert.equal(await section('welcomeTitle').count(), 1);
     assert.equal(await section('finishTitle').count(), 1);
@@ -79,7 +80,7 @@ test('monk stories and revised tasks work with the current editor and interactio
     const dialog = page.locator('dialog[open]');
     await dialog.getByRole('tab', {name:'Java',exact:true}).click();
     assert.equal(await dialog.getByRole('tab', {name:'Python',exact:true}).count(), 0);
-    await dialog.getByRole('tab', {name: 'Full Mode',exact:true}).click();
+    await dialog.getByRole('tab', {name: editorLabels.javaModeFull, exact: true}).click();
     const code = dialog.locator('.cm-content');
     await code.waitFor();
     assert.match(await code.innerText(), /Turtle\.turnLeft\(90\)/);
@@ -92,13 +93,13 @@ test('monk stories and revised tasks work with the current editor and interactio
     assert.equal(await dialog.locator('.programming-execution [role=log]').innerText(), '', 'turtle movement does not write console text');
     await dialog.getByRole('tab', {name:'Snap!',exact:true}).click();
     await dialog.getByRole('tab', {name:'Java',exact:true}).click();
-    await dialog.getByRole('tab', {name: 'Full Mode',exact:true}).click();
+    await dialog.getByRole('tab', {name: editorLabels.javaModeFull, exact: true}).click();
     await code.waitFor();
     assert.match(await code.innerText(), /Turtle\.(left|turnLeft)\(90/);
     await page.locator('.fullscreen-close-button').click();
     await open().click();
     await dialog.getByRole('tab', {name:'Java',exact:true}).click();
-    await dialog.getByRole('tab', {name: 'Full Mode',exact:true}).click();
+    await dialog.getByRole('tab', {name: editorLabels.javaModeFull, exact: true}).click();
     assert.match(await code.innerText(), /Turtle\.forward\(60/);
     await page.locator('.fullscreen-close-button').click();
     await section('kochtitle').click();

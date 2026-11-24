@@ -101,7 +101,11 @@ object PythonAstParserSimple extends GenericAstScanner[PyAST] {
     P(STAR.map(_ => Right(true)) | targetList.map(Left(_)))
   }
 
-  def argument_expressions[ctx: P]: P[Seq[PyExpression]] = P(expression.rep(sep = P(SPACES.? ~ COMMA ~ SPACES.?)))
+  def argument_expressions[ctx: P]: P[Seq[PyExpression]] = P(argument.rep(sep = P(SPACES.? ~ COMMA ~ SPACES.?)))
+
+  /** A positional argument or a keyword argument such as `file=sys.stderr` (not `a == b`). */
+  private def argument[ctx: P]: P[PyExpression] =
+    P((NAME ~~ SPACES.? ~~ "=" ~~ !"=" ~~ SPACES.? ~~ expression).map(PyKeywordArgument(_, _)) | expression)
 
   // ==========================================
   // 4. STATEMENTS TYPES

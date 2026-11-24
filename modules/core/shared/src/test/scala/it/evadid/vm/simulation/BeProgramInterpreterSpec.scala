@@ -42,9 +42,24 @@ class BeProgramInterpreterSpec extends FunSuite {
     assertEquals(expression.programExecution.stdout, "out\n")
     assertEquals(expression.programExecution.stderr, "error\n\n")
     assertEquals(expression.turtleCommandExecutionInfo.completedCommands, Nil)
+    val python = source.toPython.code
+    assert(python.startsWith("import sys\n"), python)
+    assert(python.contains("print(\"error\", file=sys.stderr)") && python.contains("print(file=sys.stderr)"), python)
     val back = source.toPython.toBeExpression.programExecution
     assertEquals(back.stdout, expression.programExecution.stdout)
     assertEquals(back.stderr, expression.programExecution.stderr)
+  }
+
+  test("Python keyword arguments: print(..., file=sys.stderr) is the error stream, other keywords stay placeholders") {
+    val written = ProgrammingStateRaw(Python, "import sys\nprint(\"a\", 1, file=sys.stderr)\nprint(\"b\")\nprint(\"c\", end=\"\")\n")
+    val expression = written.toBeExpression
+    assertEquals(expression.programExecution.stderr, "a 1\n")
+    assertEquals(expression.programExecution.stdout, "b\n")
+    val unsupported = expression.expression.subtree.collect { case value: it.evadid.vm.code.errors.BeExpressionUnsupported => value }
+    assertEquals(unsupported.size, 1, expression.expression.toString)
+    val java = ProgrammingStateRaw(Python, "import sys\nprint(\"a\", file=sys.stderr)\n").toJava.code
+    assert(java.contains("System.err.println(\"a\");"), java)
+    intercept[IllegalArgumentException](written.toJava)
   }
 
   private val swap = java(

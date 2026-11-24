@@ -43,11 +43,8 @@ object KnownDependencies {
   val system: BeDependency = BeDependency(BeEntityName.fromLiteral("SystemFunctionality"), Map.empty,
     definedClasses = List(it.evadid.vm.modules.SystemFunctionality.library))
 
-  val systemErrors: BeDependency = system.copy(addDefinitions = Map(Python ->
-    """import sys
-      |
-      |def print_to_err(*values):
-      |    print(*values, file=sys.stderr)""".stripMargin))
+  /** Python prints to the error stream with `print(..., file=sys.stderr)`. */
+  val systemErrors: BeDependency = system.copy(addDefinitions = Map(Python -> "import sys"))
 
   private val byIntrinsic: Seq[(BeIntrinsic, BeDependency)] = Seq(BeIntrinsic.Turtle -> turtle, BeIntrinsic.FetchText -> fetchText, BeIntrinsic.Print -> system, BeIntrinsic.PrintErr -> systemErrors)
 

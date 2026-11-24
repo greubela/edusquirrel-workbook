@@ -192,11 +192,11 @@
   "modules/client/src/main/scala/it/evadid/homepage/webElements/editor/code/SnapEditor/SnapSessionResources.scala#SnapSessionResources:1": "Live Morphic/browser handles, callbacks and scheduling state; never serialized",
   "modules/client/src/main/scala/it/evadid/homepage/webElements/editor/code/SnapEditor/SnapPaletteInstaller.scala#Installation:1": "Live native palette customization handles; released with the mounted editor",
   "modules/client/src/main/scala/it/evadid/homepage/webElements/code/JavaComponentEditor.scala#Panel:1": "Transient editor view derived from the selection; not a saved programming state",
-  "modules/client/src/main/scala/it/evadid/homepage/webElements/code/JavaComponentEditor.scala#MethodFields:1": "Transient editor dialog input",
-  "modules/client/src/main/scala/it/evadid/homepage/webElements/code/JavaComponentEditor.scala#Dialog:1": "Transient editor dialog state holding its input Vars",
-  "modules/client/src/main/scala/it/evadid/homepage/webElements/code/JavaFragmentEditor.scala#JavaFragmentRange:1": "Transient editor draft range; not a saved programming state",
+  "modules/client/src/main/scala/it/evadid/homepage/webElements/code/JavaStructureDialog.scala#MethodFields:1": "Transient editor dialog input",
+  "modules/client/src/main/scala/it/evadid/homepage/webElements/code/JavaStructureDialog.scala#Request:1": "Transient editor dialog state holding its input Vars",
+  "modules/client/src/main/scala/it/evadid/homepage/webElements/code/JavaFragmentRange.scala#JavaFragmentRange:1": "Transient editor draft range; not a saved programming state",
   "modules/client/src/main/scala/it/evadid/homepage/webElements/code/JavaFragmentEditor.scala#Fragment:1": "Transient editor selection and draft range; not a saved programming state",
-  "modules/client/src/main/scala/it/evadid/homepage/webElements/code/JavaFragmentEditor.scala#Function:1": "Transient editor selection derived from the class source",
+  "modules/client/src/main/scala/it/evadid/homepage/webElements/code/JavaFunctionEditor.scala#Function:1": "Transient editor selection derived from the class source",
   "modules/client/src/main/scala/it/evadid/homepage/webElements/editor/code/EvaEditor/uml/UmlStructureSelector.scala#UmlStructureSelector:1": "Laminar component holding a signal and selection Var; never serialized",
   "modules/client/src/main/scala/it/evadid/homepage/webElements/code/JavaComponentEditor.scala#Mode:1": "Transient editing mode; not part of the saved answer",
   "modules/client/src/main/scala/it/evadid/homepage/webElements/editor/code/EvaEditor/EvaConversionCheck.scala#EvaConversionCheck:1": "Transient editor conversion state; owns an in-flight Future or derived result",
@@ -204,5 +204,7 @@
   "modules/client/src/main/scala/it/evadid/homepage/webElements/editor/code/EvaEditor/CompletedEditorConversion.scala#CompletedEditorConversion:1": "Transient editor conversion state; owns an in-flight Future or derived result",
   "modules/client/src/main/scala/it/evadid/homepage/webElements/editor/code/EvaEditor/extensions/turtle/JavaExecutionAttempt.scala#JavaExecutionAttempt:1": "Live execution ownership and cancellation state; never persisted",
   "modules/client/src/main/scala/it/evadid/homepage/webElements/editor/code/ProgrammingExecutionPanel.scala#ProgrammingExecutionPanel:1": "Reactive console panel; execution output is not part of the saved program",
-  "modules/client/src/main/scala/it/evadid/homepage/webElements/editor/code/EvaEditor/extensions/turtle/TurtleExecutionPanelStatus.scala#TurtleExecutionPanelStatus:1": "Transient drawing execution view status; not saved with the program"
+  "modules/client/src/main/scala/it/evadid/homepage/webElements/editor/code/EvaEditor/extensions/turtle/TurtleExecutionPanelStatus.scala#TurtleExecutionPanelStatus:1": "Transient drawing execution view status; not saved with the program",
+  "modules/client/src/main/scala/it/evadid/homepage/webElements/code/JavaEditorLabels.scala#Key:1": "Language-map keys of editor texts; never persisted",
+  "modules/core/shared/src/main/scala/it/evadid/vm/conversion/dependencies/UnknownDependencies.scala#UnknownCall:1": "Intermediate analysis of a converted program; BeUnknownDependency is the serialized structure"
 }

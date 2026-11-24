@@ -64,7 +64,7 @@ case class BeExpressionToPythonString
   override def forOther(other: BeExpression): String = other match {
     case BeUseValue(BeDataValueUnit(), _) => "None"
     case call: BeFunctionCall if call.funcDef.intrinsic.contains(it.evadid.vm.code.defining.BeIntrinsic.PrintErr) =>
-      s"print_to_err(${call.arguments.map(forValue).mkString(", ")})"
+      s"print(${(call.arguments.map(forValue) :+ "file=sys.stderr").mkString(", ")})"
     case call: BeFunctionCall if call.isOperator =>
       formatOperatorCall(call)
     case _ =>
