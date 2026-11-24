@@ -17,13 +17,14 @@ languages run as the Python their BeExpression prints. When no Python form exist
 `ProgramAnalysis.python` is a `Left` with the reason, and the console disables
 Run and shows it.
 
-Both client services send commands through
-[`LatestWorkerRequest`](../modules/client/src/main/scala/it/evadid/homepage/webElements/editor/code/worker/LatestWorkerRequest.scala):
-only the latest request stays alive, requests for the same key share one Future,
-a superseded or failed request terminates its worker (stopping an endless loop),
-and an optional `LatestResult` answers the latest key without the worker. The
-CodeMirror flowchart gutter uses the same channel. Components create their
-analyzer/runner per mount and close them on unmount.
+Static work is bounded, so the whole page shares one lazily created analysis worker
+([`SharedWorker.analysis`](../modules/client/src/main/scala/it/evadid/homepage/webElements/editor/code/worker/SharedWorker.scala)):
+`ProgramAnalyzer.shared` and the CodeMirror flowchart gutter use it through a
+`SharedWorkerCache`, which shares identical requests, remembers recent results and
+forgets failures. A stopped worker is replaced on the next request. Consumers ignore
+results for outdated states. Runs may not end, so each mounted console's `ProgramRunner`
+starts its own worker on Run through `LatestWorkerRequest`: a newer run, Stop or an
+edit terminates it.
 
 ```scala
 import com.raquo.laminar.api.L.*
@@ -32,11 +33,11 @@ import it.evadid.workbook.elements.interactionElements.programming.state.Program
 import scala.scalajs.concurrent.JSExecutionContext.Implicits.queue
 
 def consoleOutput(answer: Signal[ProgrammingState]): Element = {
-  val analyzer = ProgramAnalyzer()
+  val analyzer = ProgramAnalyzer.shared
   val runner = ProgramRunner()
   val output = Var("")
   div(
-    onUnmountCallback(_ => { runner.close(); analyzer.close() }),
+    onUnmountCallback(_ => runner.close()),
     button("Run", onClick.compose(_.sample(analyzer.statusOf(answer))) --> {
       case ProgramAnalyzer.Status.Ready(analysis) =>
         analysis.python.foreach(code => runner.run(code).foreach(result => output.set(result.stdout)))

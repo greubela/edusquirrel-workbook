@@ -59,20 +59,17 @@ case class CodeMirrorEditor(
           val lineNumbers = firstLineNumber.map(value => math.max(1, value)).distinct.observe(using ctx.owner)
           CodeMirror.inBackground(()).foreach { _ =>
             if !lifetime.isKilled && ctx.thisNode.ref.isConnected then {
-              val analysis = flowchart.filter(_ => showFlowchart).map(_.open())
+              val analysis = flowchart.filter(_ => showFlowchart)
               // The callback is required by the native CodeMirror API; Scala consumers observe the Var.
               val created = createEditor(EditorConfig(ctx.thisNode.ref, underlyingVar.now(),
                 value => if !lifetime.isKilled && !sameSource(underlyingVar.now(), value) then underlyingVar.set(value),
                 languageToJs(language), analysis.map(current => source => current.chart(source).map(CodeMirrorFlowchartGutter.render)),
                 firstLineNumber = lineNumbers.now()))
               created.foreach { native =>
-                if lifetime.isKilled || !ctx.thisNode.ref.isConnected then {
-                  native.destroy()
-                  analysis.foreach(_.close())
-                } else {
+                if lifetime.isKilled || !ctx.thisNode.ref.isConnected then native.destroy()
+                else {
                   new Subscription(ctx.owner, () => {
                     native.destroy()
-                    analysis.foreach(_.close())
                     handle.update(_.filterNot(_ == native))
                   })
                   handle.set(Some(native))
@@ -81,10 +78,7 @@ case class CodeMirrorEditor(
                   lineNumbers.foreach(native.setFirstLineNumber)(using ctx.owner)
                 }
               }
-              created.failed.foreach { _ =>
-                analysis.foreach(_.close())
-                if !lifetime.isKilled then loadFailed.set(true)
-              }
+              created.failed.foreach(_ => if !lifetime.isKilled then loadFailed.set(true))
             }
           }
         }

@@ -1,9 +1,8 @@
 package it.evadid.homepage.webElements.editor.code.program
 
 import com.raquo.laminar.api.L.*
-import it.evadid.distribution.clients.WebWorkerExecutionClient
 import it.evadid.distribution.commandTypes.WorkerCommands
-import it.evadid.homepage.webElements.editor.code.worker.{LatestResult, LatestWorkerRequest}
+import it.evadid.homepage.webElements.editor.code.worker.{SharedWorker, SharedWorkerCache}
 import it.evadid.vm.analysis.ProgramAnalysis
 import it.evadid.workbook.elements.interactionElements.programming.state.ProgrammingState
 
@@ -11,17 +10,16 @@ import scala.concurrent.Future
 import scala.scalajs.concurrent.JSExecutionContext.Implicits.queue
 import scala.util.{Failure, Success}
 
-/** Static [[ProgramAnalysis]] of programming states, computed in the workbook worker so that parsing and the
-  * bounded BeExpression interpreter never block the page. Only the latest state is analysed; its result is cached.
-  * The owner closes the analyzer, e.g. when its component unmounts.
+/** Static [[ProgramAnalysis]] of programming states, computed asynchronously in the page's shared analysis
+  * worker, so parsing and the bounded BeExpression interpreter never block the page. Results are shared by all
+  * consumers (console, previews) and remembered per state.
   */
-final class ProgramAnalyzer(createWorker: () => WebWorkerExecutionClient = () => LatestWorkerRequest.workbookWorker()) {
+final class ProgramAnalyzer(worker: SharedWorker) {
   import ProgramAnalyzer.Status
 
-  private val request = LatestWorkerRequest(WorkerCommands.programAnalysis, identity[ProgrammingState], createWorker,
-    Some(LatestResult[ProgrammingState, ProgramAnalysis]()))
+  private val results = SharedWorkerCache(WorkerCommands.programAnalysis, identity[ProgrammingState], worker)
 
-  def analyse(state: ProgrammingState): Future[ProgramAnalysis] = request(state)
+  def analyse(state: ProgrammingState): Future[ProgramAnalysis] = results(state)
 
   /** The analysis of `source`'s current state; a result for an earlier state is never shown. */
   def statusOf(source: Signal[ProgrammingState]): Signal[Status] =
@@ -32,11 +30,11 @@ final class ProgramAnalyzer(createWorker: () => WebWorkerExecutionClient = () =>
       }))
       Signal.fromFuture(completed, Status.Pending).map(state -> _)
     }.combineWith(source).map((analysed, status, current) => if analysed == current then status else Status.Pending)
-
-  def close(): Unit = request.close()
 }
 
 object ProgramAnalyzer {
+  lazy val shared: ProgramAnalyzer = ProgramAnalyzer(SharedWorker.analysis)
+
   enum Status {
     case Pending
     case Ready(analysis: ProgramAnalysis)

@@ -6,7 +6,7 @@ import it.evadid.distribution.clients.ExecutionClient
 import it.evadid.distribution.commandTypes.WorkerCommands
 import it.evadid.distribution.commandTypes.WorkerCommands.{RunPythonRequest, RunPythonResult}
 import it.evadid.homepage.webElements.editor.code.EditorDomSuite
-import it.evadid.homepage.webElements.editor.code.worker.LocalWorker
+import it.evadid.homepage.webElements.editor.code.worker.{LocalWorker, SharedWorker}
 import it.evadid.vm.analysis.ProgramAnalysis
 import it.evadid.vm.simulation.python.PythonTurtleCalls
 import it.evadid.workbook.elements.interactionElements.programming.state.*
@@ -28,7 +28,7 @@ class ProgrammingExecutionPanelSpec extends EditorDomSuite {
     val analysisWorkers = LocalWorker.Factory(executor)
     val runWorkers = LocalWorker.Factory(executor)
     def panel(source: Signal[ProgrammingState]): Element =
-      ProgrammingExecutionPanel(source, labels, () => ProgramAnalyzer(() => analysisWorkers()), () => ProgramRunner(() => runWorkers())).getDomElement()
+      ProgrammingExecutionPanel(source, labels, ProgramAnalyzer(SharedWorker(() => analysisWorkers())), () => ProgramRunner(() => runWorkers())).getDomElement()
   }
 
   /** Runs the converted Python on the shared interpreter, standing in for Pyodide's console. */

@@ -72,8 +72,8 @@ obtain state by reaching into an editor or calling `captureSource()`.
 
 CodeMirror keeps one optional native handle. The fallback textarea's visibility
 is derived from that handle. Diagnostics arrive as a signal; there is no pending
-diagnostic store or copied current-document state. The mount owns the optional
-flowchart analysis and releases it with the native handle. The gutter reuses
+diagnostic store or copied current-document state. The language's optional
+`CodeMirrorFlowchartSource` charts the text in the shared analysis worker. The gutter reuses
 the block editor's `FlowLayout` overlay, mapped to physical source rows; CodeMirror
 alone renders the editable content. Parsing stays in the worker. The library loader
 shares one asynchronous module request between startup warmup and editors;

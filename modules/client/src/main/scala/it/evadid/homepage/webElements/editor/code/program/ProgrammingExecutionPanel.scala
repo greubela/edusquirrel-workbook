@@ -9,19 +9,18 @@ import scala.scalajs.concurrent.JSExecutionContext.Implicits.queue
 import scala.util.{Failure, Success}
 
 /** The console below Eva's editor: runs the committed program dynamically in Pyodide ([[ProgramRunner]]) and
-  * shows what it printed. Whether it can run, and why not, comes from its [[ProgramAnalyzer]]; it depends only on
-  * the programming state, not on the editor's language. Each mount owns its analyzer and runner.
+  * shows what it printed. Whether it can run, and why not, comes from the [[ProgramAnalyzer]]; it depends only on
+  * the programming state, not on the editor's language. Each mount owns its runner, whose worker starts on Run.
   */
 final class ProgrammingExecutionPanel(
     source: Signal[ProgrammingState],
     labels: ProgrammingExecutionLabels,
-    createAnalyzer: () => ProgramAnalyzer = () => ProgramAnalyzer(),
+    analyzer: ProgramAnalyzer = ProgramAnalyzer.shared,
     createRunner: () => ProgramRunner = () => ProgramRunner()
 ) extends HtmlAppElement {
   import ProgrammingExecutionPanel.Console
 
   override def getDomElement(): Element = {
-    val analyzer = createAnalyzer()
     val runner = createRunner()
     val console = Var[Console](Console.Idle)
     val runs = Var(0)
@@ -55,7 +54,6 @@ final class ProgrammingExecutionPanel(
       onUnmountCallback { _ =>
         runs.update(_ + 1)
         runner.close()
-        analyzer.close()
       },
       source.changes --> (_ => stop(Console.Idle)),
       div(cls := "programming-execution__actions",

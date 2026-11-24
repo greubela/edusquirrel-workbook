@@ -10,18 +10,18 @@ import scala.concurrent.Future
 import scala.scalajs.concurrent.JSExecutionContext.Implicits.queue
 import scala.util.{Failure, Success, Try}
 
-/** Sends one worker command per key, keeping only the latest request alive.
+/** Sends one worker command per key on a worker of its own, keeping only the latest request alive: for work that
+  * may not end, such as running a program.
   *
   * Requests for the key in flight share its Future. A request for another key terminates the worker, which
   * fails the superseded Future and stops its computation (e.g. an endless loop), and starts a new worker. A
-  * failed request also discards its worker, so the next request starts fresh. With `cache`, the result for the
-  * latest key is answered without the worker. Results of superseded requests never reach the cache.
+  * failed request also discards its worker, so the next request starts fresh. Bounded work shared by the page
+  * uses [[SharedWorker]] instead.
   */
 final class LatestWorkerRequest[K, Req, Res](
     command: ExecutionCommandFactory[Req, Res],
     request: K => Req,
-    createWorker: () => WebWorkerExecutionClient = () => LatestWorkerRequest.workbookWorker(),
-    cache: Option[LatestResult[K, Res]] = None
+    createWorker: () => WebWorkerExecutionClient = () => LatestWorkerRequest.workbookWorker()
 ) {
   private val worker = Var(Option.empty[WebWorkerExecutionClient])
   private val pending = Var(Option.empty[(K, Future[Res])])
@@ -46,12 +46,7 @@ final class LatestWorkerRequest[K, Req, Res](
 
   def apply(key: K): Future[Res] =
     if closed.now() then Future.failed(IllegalStateException("The worker request is closed"))
-    else cache.flatMap(_.get(key)) match {
-      case Some(result) =>
-        cancel()
-        Future.successful(result)
-      case None => pending.now().filter(_._1 == key).map(_._2).getOrElse(send(key))
-    }
+    else pending.now().filter(_._1 == key).map(_._2).getOrElse(send(key))
 
   private def send(key: K): Future[Res] = {
     cancel()
@@ -66,9 +61,7 @@ final class LatestWorkerRequest[K, Req, Res](
     }.fold(Future.failed, identity)
     val completed = sent.transform { outcome =>
       if !closed.now() && current == generation.now() then outcome match {
-        case Success(result) =>
-          pending.set(None)
-          cache.foreach(_.put(key, result))
+        case Success(_) => pending.set(None)
         case Failure(_) => discardWorker()
       }
       outcome

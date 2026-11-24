@@ -96,7 +96,7 @@ private[evadid] object CodeMirrorRuntime {
     private def prepare(source: String): String = if isJava then source else source.replace("\t", indent)
     private def text(source: String): js.Any = if isJava then CodeMirrorJavaLineEndings.text(source) else prepare(source)
     private val flowchart: Extension =
-      if language == "python" && config.flowchart.nonEmpty then
+      if config.flowchart.nonEmpty then
         CodeMirrorFlowchartRendering.extension(config.flowchart.get)
       else js.Array[Extension]()
 
