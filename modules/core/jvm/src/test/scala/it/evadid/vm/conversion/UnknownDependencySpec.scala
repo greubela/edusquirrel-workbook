@@ -20,6 +20,7 @@ class UnknownDependencySpec extends FunSuite {
       |    System.out2.println("x", 2);
       |    int size = Helper.size(3);
       |    String text = Config.screen.title.read();
+      |    Object limit = Config.screen.limit;
       |    log(size, text);
       |    System.out.println(size);
       |  }
@@ -35,6 +36,16 @@ class UnknownDependencySpec extends FunSuite {
     assertEquals(dependency("class Main { static void main(String[] args) { forward(10); System.out.println(1); draw(); }\n" +
       "  static void draw() {} }"), None, "turtle, system output and the program's own method are defined")
     assertEquals(dependency("def draw():\n    forward(10)\n\ndraw()\nprint(1)", Python), None)
+  }
+
+  test("unknown attribute reads become attributes of the same classes; bound names are not unknown") {
+    val expression = ProgrammingStateRaw(Java, program).toBeExpression.expression
+    assertEquals(UnknownDependencies.attributes(expression), Seq(UnknownDependencies.UnknownAttribute(Seq("Config", "screen", "limit"))))
+    val screen = dependency(program).get.memberClasses.find(_.name.spelling() == "ConfigScreen").get
+    assertEquals(screen.attributes.map(attribute => attribute.name.spelling() -> attribute.variableType),
+      List("title" -> BeDataType.ClassType(it.evadid.vm.naming.BeEntityName.fromLiteral("ConfigScreenTitle")), "limit" -> BeDataType.AnyType))
+    assertEquals(dependency("class Main { int size = 3; void f(Main other) { Object x = other.missing; } }"), None,
+      "a member of a known parameter is a type error, not a missing dependency")
   }
 
   test("qualified paths become a static root class, attribute classes and their methods") {

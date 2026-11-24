@@ -3,7 +3,9 @@ package it.evadid.vm.conversion.dependencies
 import it.evadid.vm.code.abstractions.BeExpression
 import it.evadid.vm.code.controlStructures.BeSequence
 import it.evadid.vm.code.defining.{BeDefineClass, BeDefineFunction, BeDefineVariable, BeUnknownDependency}
-import it.evadid.vm.code.usage.BeFunctionCall
+import it.evadid.vm.code.controlStructures.BeFor
+import it.evadid.vm.code.errors.BeExpressionUnsupported
+import it.evadid.vm.code.usage.{BeAssignVariable, BeFunctionCall}
 import it.evadid.vm.naming.BeEntityName
 import it.evadid.vm.types.BeDataType
 
@@ -12,6 +14,8 @@ import it.evadid.vm.types.BeDataType
   *
   * Parsers bind such a call to a placeholder function named after its written path (`System.out2.println`):
   * a plain function without an intrinsic. A program definition of the same name is the user's own function.
+  * An unknown attribute read (`Other.value`) stays an unsupported expression whose source is its dotted path;
+  * it counts when the path's root is bound nowhere in the program.
   */
 object UnknownDependencies {
   /** A call of the written path `path` (e.g. `Seq("System", "out2", "println")`) with `arity` arguments. */
@@ -29,24 +33,49 @@ object UnknownDependencies {
     }.distinct
   }
 
-  def of(expression: BeExpression): Option[BeUnknownDependency] = from(calls(expression))
+  /** A read of the attribute at the written path `path` (e.g. `Seq("Config", "screen", "title")`). */
+  final case class UnknownAttribute(path: Seq[String])
 
-  def from(calls: Seq[UnknownCall]): Option[BeUnknownDependency] = Option.when(calls.nonEmpty) {
-    val (free, qualified) = calls.partition(_.path.size == 1)
-    // Each owner path (`System`, `System.out2`) becomes a class; its attributes lead to the next owner.
-    val owners = qualified.flatMap(call => (1 until call.path.size).map(call.path.take)).distinct
-    def owner(path: Seq[String]): BeDefineClass = {
-      val signature = BeDefineClass(className(path), Nil, Nil)
-      val attributes = owners.filter(other => other.size == path.size + 1 && other.startsWith(path)).map(other =>
-        BeDefineVariable(BeEntityName.fromCodeString(other.last), BeDataType.ClassType(className(other))))
-      val methods = qualified.filter(_.path.init == path).map(call =>
-        function(call, BeDefineFunction.BeFunctionTypeInfo(Some(signature), Some(BeEntityName.fromCodeString(call.path.last)),
-          if path.size == 1 then BeDefineFunction.StaticMethod() else BeDefineFunction.Method())))
-      signature.copy(attributes = attributes.toList, methods = methods.toList)
-    }
-    BeUnknownDependency(owners.filter(_.size == 1).map(owner).toList, owners.filter(_.size > 1).map(owner).toList,
-      free.map(call => function(call, BeDefineFunction.functionInfo(BeEntityName.fromCodeString(call.path.head)))).toList)
+  private val dottedPath = """[A-Za-z_][A-Za-z0-9_]*(\.[A-Za-z_][A-Za-z0-9_]*)+""".r
+
+  def attributes(expression: BeExpression): Seq[UnknownAttribute] = {
+    val nodes = expression.subtree
+    val bound = (nodes.collect {
+      case definition: BeDefineVariable => definition.name
+      case assignment: BeAssignVariable => assignment.target.name
+      case loop: BeFor => loop.variable.name
+      case definition: BeDefineClass => definition.name
+    } ++ nodes.collect { case definition: BeDefineFunction => definition.inputs.map(_.name) }.flatten)
+      .map(_.universalInterpretation()).toSet ++ Set("self", "this")
+    nodes.collect {
+      case BeExpressionUnsupported(source, _, _) if dottedPath.matches(source) &&
+          !bound(BeEntityName.fromCodeString(source.takeWhile(_ != '.')).universalInterpretation()) =>
+        UnknownAttribute(source.split('.').toSeq)
+    }.distinct
   }
+
+  def of(expression: BeExpression): Option[BeUnknownDependency] = from(calls(expression), attributes(expression))
+
+  def from(calls: Seq[UnknownCall], attributes: Seq[UnknownAttribute] = Nil): Option[BeUnknownDependency] =
+    Option.when(calls.nonEmpty || attributes.nonEmpty) {
+      val (free, qualified) = calls.partition(_.path.size == 1)
+      // Each owner path (`System`, `System.out2`) becomes a class; its attributes lead to the next owner or hold a value.
+      val owners = (qualified.map(_.path) ++ attributes.map(_.path)).flatMap(path => (1 until path.size).map(path.take)).distinct
+      def owner(path: Seq[String]): BeDefineClass = {
+        val signature = BeDefineClass(className(path), Nil, Nil)
+        val nested = owners.filter(other => other.size == path.size + 1 && other.startsWith(path))
+        val values = attributes.map(_.path).filter(read => read.init == path && !nested.contains(read))
+        val members = nested.map(other =>
+          BeDefineVariable(BeEntityName.fromCodeString(other.last), BeDataType.ClassType(className(other)))) ++
+          values.distinct.map(read => BeDefineVariable(BeEntityName.fromCodeString(read.last), BeDataType.AnyType))
+        val methods = qualified.filter(_.path.init == path).map(call =>
+          function(call, BeDefineFunction.BeFunctionTypeInfo(Some(signature), Some(BeEntityName.fromCodeString(call.path.last)),
+            if path.size == 1 then BeDefineFunction.StaticMethod() else BeDefineFunction.Method())))
+        signature.copy(attributes = members.toList, methods = methods.toList)
+      }
+      BeUnknownDependency(owners.filter(_.size == 1).map(owner).toList, owners.filter(_.size > 1).map(owner).toList,
+        free.map(call => function(call, BeDefineFunction.functionInfo(BeEntityName.fromCodeString(call.path.head)))).toList)
+    }
 
   private def className(path: Seq[String]): BeEntityName =
     BeEntityName.fromLiteral(if path.size == 1 then path.head else path.map(_.capitalize).mkString)
@@ -63,7 +92,8 @@ object UnknownDependencies {
           case BeDataType.ClassType(owner) => owner.spelling()
           case _ => "Object"
         }
-        s"    ${modifier(static)}$typeName ${attribute.name.spelling()} = new $typeName();"
+        val initial = if typeName == "Object" then "null" else s"new $typeName()"
+        s"    ${modifier(static)}$typeName ${attribute.name.spelling()} = $initial;"
       }
       val retained = if static then javaLangMembers.getOrElse(definition.name.spelling(), Nil) else Nil
       (s"class ${definition.name.spelling()} {" +: (retained ++ attributes ++ distinctNames(definition.methods).map(javaMethod(_, static))) :+ "}")
@@ -94,7 +124,7 @@ object UnknownDependencies {
           case BeDataType.ClassType(owner) => owner.spelling()
           case _ => "object"
         }
-        s"    ${attribute.name.spelling()} = $typeName()"
+        s"    ${attribute.name.spelling()} = ${if typeName == "object" then "None" else s"$typeName()"}"
       }
       val members = attributes ++ distinctNames(definition.methods).map(function(_, "    ", static))
       (s"class ${definition.name.spelling()}:" +: (if members.isEmpty then Seq("    pass") else members)).mkString("\n")

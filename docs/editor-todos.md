@@ -6,6 +6,6 @@
 
 ## Remaining architecture work
 
-- Unknown dependencies: configurable default dependency environments per exercise; unknown attribute reads (`Other.value`) still become unsupported expressions instead of `BeUnknownDependency` attributes; the UML diagram does not show unknown or library-only classes as read-only boxes.
+- Unknown dependencies: configurable default dependency environments per exercise; the UML diagram does not show unknown or library-only classes as read-only boxes.
 - Static drawings in `CompareShapePreview` and `TurtleStepPanel` still compute on the page thread (deferred); they could read the turtle commands of the worker's `ProgramAnalysis`, but share their comparison with `RecreateShapeGrader` today.
 - `flatMapSwitch` can end on an outdated value when its source changes in consecutive transactions (`LabelSelectionSpec`). Eva, the block editor, deferred previews and the feedback panels choose texts with `LabelSelection`. Remaining label switches are in the evacuation, blockchain, compression, mail, neuron and sorting editors/renderers, `HtmlLoginElement` and `DropdownMenuControl`; the feedback panels' hint content switches over dynamic `LanguageMap` content and has no finite option set.
