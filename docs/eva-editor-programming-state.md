@@ -64,13 +64,11 @@ on unmount. Native CodeMirror handles, Snap worlds, workers, resize observers an
 other resources are released by the DOM that owns them. `dismissOnOutsideClick`
 is a dialog policy on `HtmlAppElement`, not a resource-lifecycle hook.
 
-Optional panels are ordinary `HtmlAppElement`s supplied to Eva. They receive the
-same central Var and their own necessary task configuration. They observe the
-answer downstream; Eva neither binds a context into them nor activates their
-execution services. The turtle panel owns its execution service, cancellation,
-drawing assessment and target. Its subscriptions and worker cleanup follow its
-mount. Panels never obtain state by reaching into an editor or calling
-`captureSource()`.
+Side panels (instruction, grading, previews) belong to the workbook's
+`EditorWithWorkbookPanel`, not to Eva. They receive the same central Var and their
+own task configuration and observe the answer downstream. A component that analyses
+or runs programs owns its analyzer/runner and closes it on unmount. Panels never
+obtain state by reaching into an editor or calling `captureSource()`.
 
 CodeMirror keeps one optional native handle. The fallback textarea's visibility
 is derived from that handle. Diagnostics arrive as a signal; there is no pending
@@ -122,8 +120,15 @@ Language-independent UML data lives in `core.datastructures.uml.UmlClassDiagram`
 signal. This lets a future Python parser reuse the same diagram. Library classes,
 including Turtle, remain visible. UML classes have square corners and stable hover geometry.
 
-`ProgrammingExecutionPanel` is language-independent, uses the shared BeExpression interpreter,
-and displays console output below the editor. Unconvertible programs disable Run. The side preview consumes only the turtle commands from that same
-interpreter; printing is never interpreted as a drawing command.
+`ProgrammingExecutionPanel` is the console below the editor. It observes the committed answer, not
+the typing draft, and depends only on `ProgrammingState`: static analysis decides whether and as what
+Python a program runs, and Pyodide runs it ([program analysis and execution](program-analysis-and-execution.md)).
+Drawings come from the BeExpression turtle commands; printing is never a drawing command.
+
+`EvaEditor` composes three parts: `EvaConversionController` (conversion checks, requested switches,
+their outcome; no DOM), `EvaLanguageTabs` (the accessible tab list) and the selected editor, created by
+`EvaEditorTab.create(state, context)`. `EvaEditorContext` carries the page's `EvaEditorEnvironment`
+(logger, labels, display language), Eva's appearance and the conversion marker. Workbook renderers
+create Eva through `WorkbookEvaEditor`.
 
 Editor labels resolve from `blockeditor` language maps. Pending gutter work is listed in [editor-todos.md](editor-todos.md).

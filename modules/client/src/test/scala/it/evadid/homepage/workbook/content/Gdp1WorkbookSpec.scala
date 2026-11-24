@@ -85,13 +85,12 @@ class Gdp1WorkbookSpec extends FunSuite {
     }
   }
 
-  test("editor execution and grading share the BeExpression drawing for all languages") {
-    val execution = new it.evadid.homepage.webElements.editor.code.EvaEditor.extensions.turtle.TurtleProgramExecution(sharedInterpreter = true)
+  test("previews and grading share the static BeExpression drawing for all languages") {
     val python = ProgrammingStatePythonStructured(oriented)
     val expected = python.toBeExpression.turtleCommandExecutionInfo.completedCommands
-    Future.traverse(Seq(python, python.toSnapXml, python.toJavaStructured)) { source =>
-      execution.commandsFor(source).map(commands => assertEquals(commands, expected))
-    }.andThen { case _ => execution.close() }
+    Seq(python, python.toSnapXml, python.toJavaStructured).foreach { source =>
+      assertEquals(it.evadid.vm.analysis.ProgramAnalysis.of(source).turtleCommands, Right(expected), source.associatedLanguage.name)
+    }
   }
 
   test("correct geometry alone cannot bypass the requested structure") {

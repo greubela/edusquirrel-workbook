@@ -6,7 +6,6 @@ import it.evadid.homepage.webElements.editor.code.SnapEditor.SnapCodeEditorImpl
 import org.scalajs.dom.CanvasRenderingContext2D
 import org.scalajs.dom.html.Canvas
 
-import scala.collection.mutable
 
 
 /** Observes renderer output without modifying it. */
@@ -29,13 +28,8 @@ private[SnapEditor] object CanvasVisibility:
   private def uniqueColorCount(canvas: Canvas, stopAfter: Int): Int =
     val context = canvas.getContext("2d").asInstanceOf[CanvasRenderingContext2D]
     val pixels = context.getImageData(0, 0, canvas.width, canvas.height).data
-    val colors = mutable.HashSet.empty[Int]
-    var index = 0
-    while index < pixels.length && colors.size < stopAfter do
-      colors +=
-        (pixels(index).toInt << 24) |
-          (pixels(index + 1).toInt << 16) |
-          (pixels(index + 2).toInt << 8) |
-          pixels(index + 3).toInt
-      index += 4
-    colors.size
+    def color(index: Int): Int =
+      (pixels(index).toInt << 24) | (pixels(index + 1).toInt << 16) | (pixels(index + 2).toInt << 8) | pixels(index + 3).toInt
+    // Distinct colors seen so far, stopping once `stopAfter` are known.
+    Iterator.range(0, pixels.length, 4).map(color).scanLeft(Set.empty[Int])(_ + _)
+      .takeWhile(_.size <= stopAfter).foldLeft(0)((_, seen) => seen.size)

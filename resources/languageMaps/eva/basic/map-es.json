@@ -11,7 +11,6 @@
   "reorderFeedbackWrongOrder": "⚠️ ¡Casi! La lógica aún no es correcta. Revisa qué pasos deben ir antes que otros.",
   "openEditor": "Abrir editor",
   "canvas": "Tu programa",
-  "runProgram": "Ejecutar",
   "turtleOutput": "Salida de la tortuga",
   "turtleResult": "Tu resultado",
   "targetDrawing": "Dibujo objetivo",

@@ -56,7 +56,6 @@
   "showHeader": "Navigation einblenden",
   "hideHeader": "Navigation ausblenden",
   "canvas": "Dein Programm",
-  "runProgram": "Ausführen (Snap-Animation)",
   "turtleOutput": "Turtle-Ausgabe",
   "turtleResult": "Dein Ergebnis",
   "staticPreviewProgram": "Statische Vorschau",

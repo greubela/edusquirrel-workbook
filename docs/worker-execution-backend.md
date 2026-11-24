@@ -33,10 +33,11 @@ def parseBlocks(fullInfo: FullInfo, xml: String)
 
 Command factories live in `WorkerCommands`; registration belongs to
 `WorkerCommandHandler`. Jobs include health, Snap XML parsing, Python flowchart
-analysis, QR calculation and Python execution. DOM-dependent work stays on the client.
+analysis, static program analysis, QR calculation and Python execution. DOM-dependent
+work stays on the client. Eva's console and static drawings use these jobs as described
+in [program analysis and execution](program-analysis-and-execution.md).
 
-Snap, Java and feedback share core JS’s `PythonExecutionClient`, while owning
-separate interpreter lifetimes. The Pyodide facade also supports direct main-thread
+Legacy feedback uses core JS’s `PythonExecutionClient` with its own interpreter lifetime. The Pyodide facade also supports direct main-thread
 execution through `createInstance()`; its loader selects browser scripts or classic
 worker imports for the current context. CPU-intensive work belongs in a worker.
 Requests supply JSON

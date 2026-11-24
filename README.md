@@ -202,7 +202,7 @@ avoid exhaustive class/method lists and historical test-run logs.
 - [QR interaction](docs/qr-code-interaction.md): encoding model, requirements, region colors and reference tests.
 - [Plant workshop](docs/PlantWorkshop_Quickstart.md): implemented sections and remaining migration work.
 - [Eva programming state](docs/eva-editor-programming-state.md), [Snap editor](docs/snap-editor.md) and [block editor](docs/block-editor.md): representations and editor lifecycle.
-- [Snap command execution service](docs/snap-turtle-command-execution-overview.md): implemented snapshot extraction, Pyodide boundary and editor integration.
+- [Program analysis and execution](docs/program-analysis-and-execution.md): static BeExpression analysis (drawings, dependencies) and dynamic Pyodide runs (console).
 - [Core extraction proposals](docs/core-extraction-proposals.md): reviewed dependency boundaries and proposed follow-up tasks.
 - [Programming conversions](docs/programming-conversions.md): shared VM transformation packages and their state conversion API.
 - [Source parsing](docs/python-parsing-architecture.md): fastparse grammars, the shared parsed model and lexical structure.

@@ -11,7 +11,6 @@
   "reorderFeedbackWrongOrder": "⚠️ Presque ! La logique n'est pas encore tout à fait juste. Vérifie quelles étapes doivent venir avant les autres.",
   "openEditor": "Ouvrir l'éditeur",
   "canvas": "Ton programme",
-  "runProgram": "Exécuter",
   "turtleOutput": "Sortie tortue",
   "turtleResult": "Ton résultat",
   "targetDrawing": "Dessin cible",

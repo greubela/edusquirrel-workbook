@@ -40,7 +40,7 @@ A target sum type is preferable to independent `isStatic`/`isConstructor` flags 
 
 Python and Java object binding, detached Snap export, structured editor conversion results, class hoisting and first-definition-wins warnings are implemented. `ConversionInfo.sourceError` optionally preserves parser categories and positions for editor markers. Raw transport uses one current codec; historical source-state tags are not supported.
 
-Further work should extend the supported type and runtime subsets together with semantic roundtrip tests. Structured and raw sources of a language must use the same execution backend. Turtle tasks run Java on the shared BeExpression interpreter (Python in Pyodide, Snap in its runtime, unless a task selects the shared interpreter for all languages); only the full Java exercise uses the checked Java runner ([`TurtleProgramExecution`](../modules/client/src/main/scala/it/evadid/homepage/webElements/editor/code/EvaEditor/extensions/turtle/TurtleProgramExecution.scala)).
+Further work should extend the supported type and runtime subsets together with semantic roundtrip tests. Structured and raw sources of a language must use the same execution backend. Drawings of every language come from the shared BeExpression; console runs execute the Python form in Pyodide ([program analysis and execution](program-analysis-and-execution.md)).
 
 The shared model does not imply that every object-oriented source program can be parsed or executed. The checked Java drawing runner retains its narrower execution subset.
 
