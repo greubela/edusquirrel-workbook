@@ -173,7 +173,12 @@ object JavaTurtleSnapPrimitives {
       `type` = "command", category = "motion", spec = "Java turn right %n", defaults = js.Array[js.Any](90)))
     blocks.updateDynamic("doJavaReset")(js.Dynamic.literal(
       `type` = "command", category = "motion", spec = "Java reset turtle"))
+    // Internal targets of converted Java programs, not blocks to offer: Snap's block search skips `dev` primitives.
+    Selectors.foreach(selector => blocks.selectDynamic(selector).updateDynamic("dev")(true))
   }
+
+  private val Selectors = List("reportJavaInt", "reportJavaDouble", "reportJavaUpdate", "reportJavaCompare",
+    "reportJavaCell", "reportJavaRead", "doJavaForward", "doJavaTurnRight", "doJavaReset")
 
   def install(): Unit = {
     val globals = js.Dynamic.global.globalThis

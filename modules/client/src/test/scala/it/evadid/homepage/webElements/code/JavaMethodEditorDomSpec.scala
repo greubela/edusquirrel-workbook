@@ -39,7 +39,7 @@ class JavaMethodEditorDomSpec extends UiDomSuite {
   private def field(root: dom.Element) = all(root, "textarea.code-mirror-editor__fallback").head
   private def heading(root: dom.Element) = one(root, ".java-function-editor__workspace-heading h3").textContent
   private def umlLine(root: dom.Element) = one(root, ".java-function-editor__workspace-heading .java-uml-line")
-  private def viewStatus(root: dom.Element) = one(root, ".java-function-editor__sync").textContent
+  private def viewStatus(root: dom.Element) = one(root, ".java-function-editor__view-toggle button[aria-pressed='true']").textContent
   private def classBox(root: dom.Element, name: String) = one(root, s".java-uml__class[data-class-name='$name']")
   private def operation(root: dom.Element, name: String) = one(root, s"button.java-uml__operation[data-member='$name']")
   private def addButton(box: dom.Element, label: String) =

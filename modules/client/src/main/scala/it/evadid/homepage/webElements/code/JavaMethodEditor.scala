@@ -580,12 +580,6 @@ final class JavaMethodEditor
           aria.expanded <-- structureOpen.signal,
           child.text <-- structureOpen.signal.flatMapSwitch(if _ then labels.hideDiagram else labels.showDiagram),
           onClick --> (_ => structureOpen.update(!_))
-        ),
-        span(
-          cls := "java-function-editor__sync",
-          role := "status",
-          aria.live := "polite",
-          child.text <-- sourceView.signal.flatMapSwitch(if _ then labels.sourceView else labels.diagramView)
         )
       )
     )

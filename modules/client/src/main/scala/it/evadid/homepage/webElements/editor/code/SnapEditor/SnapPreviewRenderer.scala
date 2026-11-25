@@ -40,8 +40,8 @@ private[SnapEditor] object SnapPreviewRenderer:
           val scriptsImage = ide.currentSprite.scripts.scriptsPicture().getOrElse(
             dom.document.createElement("canvas").asInstanceOf[Canvas]
           )
-          canvas.width = math.max(1, scriptsImage.width)
-          canvas.height = math.max(1, scriptsImage.height)
+          canvas.width = math.max(1, CanvasSize.roundedWidth(scriptsImage))
+          canvas.height = math.max(1, CanvasSize.roundedHeight(scriptsImage))
           canvas.getContext("2d").asInstanceOf[CanvasRenderingContext2D].drawImage(scriptsImage, 0, 0)
           CanvasVisibility.warnIfUnexpectedlyEmpty("SnapPreviewRenderer", state.code, canvas)
         } finally ide.destroy()

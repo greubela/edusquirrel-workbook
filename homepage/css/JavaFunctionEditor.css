@@ -63,7 +63,6 @@
     background: linear-gradient(135deg, var(--editor-glass-lens), transparent 90%), var(--editor-chrome-surface);
     box-shadow: inset 0 1px var(--editor-glass-shine), 0 7px 20px -14px var(--editor-shadow);
 }
-.java-function-editor__sync { padding-inline: 7px; color: var(--editor-muted); font-size: 12px; overflow-wrap: anywhere; }
 .java-uml,
 .java-function-editor__workspace { display: flex; flex-direction: column; min-width: 0; min-height: 0; }
 .java-uml { grid-area: navigation; gap: 10px; padding: 6px 2px; overflow: hidden; }
@@ -123,14 +122,16 @@
 .java-uml__class-name { font-size: 14px; font-weight: 700; overflow-wrap: anywhere; }
 .java-uml__class-name--abstract { font-style: italic; }
 .java-uml__compartment { display: flex; flex-direction: column; align-items: stretch; gap: 1px; min-height: 14px; padding: 4px; border-top: 1.5px solid var(--editor-ink); }
-.java-uml__member { display: block; width: 100%; padding: 3px 8px; border: 1px solid transparent; border-radius: 4px; background: transparent; color: var(--editor-ink); font: inherit; text-align: left; white-space: pre-wrap; overflow-wrap: anywhere; }
-button.java-uml__member { cursor: pointer; }
-button.java-uml__member:hover:not(:disabled) { border-color: var(--editor-border-strong); background: var(--editor-hover); }
-button.java-uml__member:disabled { cursor: not-allowed; }
+/* Scoped under `.java-uml .java-uml__class` to win over the global `:root button` defaults (incl. :hover/:focus) in colors.css. */
+.java-uml .java-uml__class .java-uml__member { display: block; width: 100%; margin: 0; padding: 3px 8px; border: 1px solid transparent; border-radius: 4px; background: transparent; color: var(--editor-ink); font: inherit; text-align: left; white-space: pre-wrap; overflow-wrap: anywhere; }
+.java-uml .java-uml__class button.java-uml__member { cursor: pointer; }
+.java-uml .java-uml__class button.java-uml__member:hover:not(:disabled) { border-color: var(--editor-border-strong); background: var(--editor-hover); box-shadow: none; transform: none; }
+.java-uml .java-uml__class button.java-uml__member:disabled { cursor: not-allowed; }
 .java-uml__member--static { text-decoration: underline; text-underline-offset: 3px; }
 .java-uml__member--abstract { font-style: italic; }
-.java-uml__member--selected { border-color: var(--editor-border-strong); background: var(--editor-selected); color: var(--editor-accent); font-weight: 600; }
-.java-uml__add {
+.java-uml .java-uml__class .java-uml__member--selected { border-color: var(--editor-border-strong); background: var(--editor-selected); color: var(--editor-accent); font-weight: 600; }
+/* Class selectors only (no element name), so a later re-import of colors.css cannot change padding/border on hover. */
+.java-function-based-editor .java-uml .java-uml__add {
     align-self: flex-start;
     margin: 2px 4px;
     padding: 2px 8px;
@@ -141,14 +142,14 @@ button.java-uml__member:disabled { cursor: not-allowed; }
     cursor: pointer;
     font: 12px/1.5 system-ui, sans-serif;
 }
-.java-uml__heading .java-uml__add { margin: 0; padding: 6px 12px; font-size: 13px; }
-.java-uml__add:hover:not(:disabled) { border-style: solid; color: var(--editor-ink); background: var(--editor-hover); }
+.java-uml .java-uml__heading .java-uml__add { margin: 0; padding: 6px 12px; font-size: 13px; }
+.java-uml .java-uml__add:hover:not(:disabled) { border-style: solid; color: var(--editor-ink); background: var(--editor-hover); box-shadow: none; transform: none; }
 .java-uml__add:disabled { opacity: 0.55; cursor: not-allowed; }
 .java-uml__class--library { border-style: dashed; border-color: var(--editor-muted); color: var(--editor-muted); background: transparent; box-shadow: none; }
 .java-uml__class--library > summary { list-style: none; cursor: pointer; }
 .java-uml__class--library > summary::-webkit-details-marker { display: none; }
 .java-uml__class--library .java-uml__compartment { border-top-color: var(--editor-muted); border-top-style: dashed; }
-.java-uml__class--library .java-uml__member { color: var(--editor-muted); }
+.java-uml .java-uml__class--library .java-uml__member { color: var(--editor-muted); }
 .java-uml__empty { padding: 16px; border: 1px dashed var(--editor-border-strong); border-radius: 11px; background: var(--editor-shell); }
 .java-uml__empty span { display: block; margin-top: 6px; color: var(--editor-muted); }
 /* The relationships as text, for screen readers; the arrows show them visually. */
@@ -297,8 +298,7 @@ button.java-uml__member:disabled { cursor: not-allowed; }
     .eva-editor__content > .java-function-based-editor > .java-function-editor__topbar { padding-top: 8px; }
     .java-function-editor__topbar > div:first-child { display: none; }
     .java-function-editor__title,
-    .java-function-editor__workspace-heading .java-function-editor__section-hint,
-    .java-function-editor__sync { display: none; }
+    .java-function-editor__workspace-heading .java-function-editor__section-hint { display: none; }
     .java-function-editor__workspace-heading { padding: 8px; gap: 6px; }
     .java-function-editor__workspace-heading > div:first-child { display: none; }
     .java-function-editor__compact-navigation { margin: 0; width: 100%; flex-wrap: nowrap; }
@@ -328,7 +328,6 @@ button.java-uml__member:disabled { cursor: not-allowed; }
 @media (max-height: 600px) and (min-width: 761px) {
     .java-function-editor__topbar { padding-block: 8px; gap: 6px; }
     .java-function-editor__topbar > div:first-child,
-    .java-function-editor__sync,
     .java-function-editor__workspace-heading > div:first-child { display: none; }
     .java-function-editor__workspace-heading { padding: 6px; gap: 6px; }
     .java-function-editor__compact-navigation { margin: 0; }
