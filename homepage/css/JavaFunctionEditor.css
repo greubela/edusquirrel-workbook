@@ -247,7 +247,8 @@
 /* Component modes, diagram, source and console form one vertical workspace. */
 .java-function-based-editor.java-component-editor {
     grid-template-columns: minmax(0, 1fr);
-    grid-template-rows: auto auto auto minmax(0, 1fr);
+    /* Shrink the diagram before it consumes the code editor's usable height. */
+    grid-template-rows: auto auto minmax(0, auto) minmax(var(--editor-workspace-min-height), 1fr);
     grid-template-areas: "modes" "header" "navigation" "workspace";
 }
 .java-component-editor__modes { grid-area: modes; display: flex; gap: var(--space-sm); }

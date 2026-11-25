@@ -6,6 +6,7 @@ import test from 'node:test';
 import {chromium} from 'playwright';
 
 const root = path.resolve(import.meta.dirname, '../..');
+const germanEditorLabels = JSON.parse(await fs.readFile(path.join(root, 'resources/languageMaps/eva/blockeditor/map-de.json'), 'utf8'));
 const origin = 'http://localhost:9000';
 const mime = {'.html':'text/html','.js':'text/javascript','.css':'text/css','.json':'application/json','.svg':'image/svg+xml','.png':'image/png'};
 
@@ -188,7 +189,7 @@ test('test workbook preserves edits across human languages, programming language
     await page.getByRole('button',{name:/Editor.*öffnen|Open editor/i}).first().click();
     assert.match(await code.innerText(), /forward\(123\)\s+(?:turtle\.)?forward\(17\)/);
     await editor.getByRole('tab',{name:'Java',exact:true}).click();
-    await editor.getByRole('tab', {name: 'Full Mode',exact:true}).click();
+    await editor.getByRole('tab', {name: germanEditorLabels.javaModeFull,exact:true}).click();
     await code.fill('public class Drawing {\n  static void line(int size) { Turtle.forward(size); }\n  public static void main(String[] args) { line(64); }\n}\n');
     await editor.getByRole('tab',{name:'Snap!',exact:true}).click();
     await page.waitForFunction(() => {

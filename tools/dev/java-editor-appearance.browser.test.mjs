@@ -112,8 +112,15 @@ test('Java method editing and theme changes preserve source and undo history', a
     page.setDefaultTimeout(60000);
     const errors = [];
     page.on('pageerror', error => errors.push(error.message));
-    await page.route('**/*', async route => {
+    // Run now executes converted Python in a worker. Route that worker's runtime too.
+    await page.context().route('**/*', async route => {
       const url = new URL(route.request().url());
+      if (url.href.startsWith('https://cdn.jsdelivr.net/pyodide/v0.29.5/full/')) {
+        const name = url.pathname.split('/').at(-1);
+        return route.fulfill({body: await readFile(path.join(root, 'node_modules/pyodide', name)),
+          contentType: name.endsWith('.wasm') ? 'application/wasm' : name.endsWith('.js') ? 'text/javascript' : 'application/octet-stream',
+          headers: {'access-control-allow-origin': '*'}});
+      }
       if (url.origin !== origin || !url.pathname.startsWith(prefix)) return route.abort();
       const relative = decodeURIComponent(url.pathname.slice(prefix.length));
       if (relative.split('/').includes('..')) return route.abort();

@@ -107,7 +107,9 @@ test('slow CodeMirror loading leaves the app usable, shares one load and ignores
     }
     await dialog.getByRole('tab', {name:'Java',exact:true}).click();
     await dialog.locator('.cm-editor').waitFor();
-    assert.equal(await dialog.locator('.cm-flowchart-gutter').count(), 0, 'Python gutter does not appear for Java');
+    assert.equal(await dialog.locator('.cm-flowchart-gutter').count(), 1, 'Java has its own flowchart gutter');
+    const bounds = await dialog.locator('.cm-editor').boundingBox();
+    assert(bounds.height >= 80, 'the class diagram leaves usable space for the editor at the default viewport');
     assert.equal(requests(), 1, 'all tabs reuse the same module load');
     assert.deepEqual(errors, []);
   } finally { await browser.close(); }

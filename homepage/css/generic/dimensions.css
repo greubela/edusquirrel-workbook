@@ -17,6 +17,7 @@
     --block-editor-library-width: 12rem;
     --block-editor-popup-width: 14rem;
     --uml-class-min-width: 12rem;
+    --editor-workspace-min-height: 10rem;
     --snap-category-row-gap: 4px;
     --snap-category-border: var(--space-borders);
     --snap-category-padding: var(--radius-sm);

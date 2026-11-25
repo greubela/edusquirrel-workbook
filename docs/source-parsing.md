@@ -30,6 +30,11 @@ statements; parser input limits apply) and the Python grammar.
 The step-1 specs (`JavaStructuredSpec`, `PythonStructuredSpec`) test the intermediate structures most thoroughly;
 `SourceParsingSpec` covers the later steps.
 
+Scope gap: Snap XML still uses `SnapScalaXmlCodec` and separate conversion entry points;
+it has no tolerant FastParse step in `SourceParsing`. Unifying all `ProgrammingState`
+parsing still requires moving Snap into this pipeline and converting its existing typed
+document directly instead of serializing and parsing it again.
+
 ## Neutral model
 
 The adapters ([`JavaToExpression`](../modules/core/shared/src/main/scala/it/evadid/vm/conversion/javaexpression/JavaToExpression.scala),
