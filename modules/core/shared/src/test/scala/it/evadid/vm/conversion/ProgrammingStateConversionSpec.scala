@@ -359,7 +359,7 @@ class ProgrammingStateConversionSpec extends FunSuite {
         |draw(2);
         |""".stripMargin
     val python = ProgrammingStateRaw(Java, java).toPython.code
-    assert(python.contains("def draw(count: float) -> None:"), clue = python)
+    assert(python.contains("def draw(count: float):"), clue = python)
     assert(python.contains("while (i < count) and True:"), clue = python)
     assert(python.contains("i = i + 1"), clue = python)
     assert(python.contains("print(\"!;{}\")"), clue = python)
@@ -637,7 +637,8 @@ class ProgrammingStateConversionSpec extends FunSuite {
   }
 
   test("Python int hints convert with a widening warning, which hints in comments and strings do not cause") {
-    val hinted = ProgrammingStateRaw(Python, "def side(length: int) -> int:\n    forward(length)\n    return length\n\nside(10)\n")
+    // The result is used: Snap has no command block for a reporter, so a discarded result would not convert.
+    val hinted = ProgrammingStateRaw(Python, "def side(length: int) -> int:\n    forward(length)\n    return length\n\nforward(side(10))\n")
     Seq(Java, SnapLanguage).foreach { target =>
       val result = hinted.convertToLanguage(target)
       assert(result.finalState.nonEmpty, result.conversionInfo.toString)
@@ -655,7 +656,7 @@ class ProgrammingStateConversionSpec extends FunSuite {
 
   test("unannotated parameters take the type their uses agree on and round trip to Snap") {
     val converted = ProgrammingStateRaw(Python, "def line(length):\n    forward(length)\nline(10)").toBeExpression.toPython
-    assert(converted.code.contains("def line(length: float) -> None:"), clue = converted.code)
+    assert(converted.code.contains("def line(length: float):"), clue = converted.code)
     assert(PythonToSnap.applyPython(converted.code).isRight, clue = converted.code)
     assertEquals(normalized(converted.toBeExpression), converted.code.trim)
   }
@@ -663,7 +664,7 @@ class ProgrammingStateConversionSpec extends FunSuite {
   test("parameters without evidence have usable Any hints") {
     val converted = ProgrammingStateRaw(Python, "def show(value):\n    print(value)\n").toBeExpression.toPython
     assert(converted.code.contains("from typing import Any\n"), clue = converted.code)
-    assert(converted.code.contains("def show(value: Any) -> None:"), clue = converted.code)
+    assert(converted.code.contains("def show(value: Any):"), clue = converted.code)
     assertEquals(normalized(converted.toBeExpression), converted.code.trim)
   }
 

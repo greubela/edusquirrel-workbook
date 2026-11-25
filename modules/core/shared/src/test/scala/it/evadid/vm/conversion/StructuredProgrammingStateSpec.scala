@@ -39,7 +39,7 @@ class StructuredProgrammingStateSpec extends FunSuite {
       assertEquals("<script\\b".r.findAllIn(xml).size, 1, s"$clue: one script")
       assertEquals("""<block s="([^"]+)"""".r.findAllMatchIn(xml).map(_.group(1)).toList, List("receiveGo"), s"$clue: only the green flag")
     case Python =>
-      assertEquals(state.toPythonStructured.toString, "def main() -> None:\n    pass\nmain()", clue)
+      assertEquals(state.toPythonStructured.toString, "def main():\n    pass\nmain()", clue)
     case Java =>
       val classes = state.toJavaStructured.definedClasses
       assertEquals(classes.keySet, Set(name("Main")), clue)
@@ -166,7 +166,7 @@ class StructuredProgrammingStateSpec extends FunSuite {
     val result = ProgrammingStateJavaStructured(java).toPythonStructured
     assertEquals(result.definedClasses, Map.empty)
     assert(result.mainScript.contains("def do_something("), result.mainScript)
-    assert(result.mainScript.trim.endsWith("def main() -> None:\n    do_something()\n    turtle.forward(x)\nmain()"), result.mainScript)
+    assert(result.mainScript.trim.endsWith("def main():\n    do_something()\n    turtle.forward(x)\nmain()"), result.mainScript)
     assertEquals(distances(result), List(20.0, 20.0, 20.0, 100.0))
     assertEquals(distances(result.toJavaStructured.toPythonStructured), distances(result))
   }

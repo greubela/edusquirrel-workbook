@@ -219,8 +219,8 @@ case class CreateMonksWorkbook(override val fullInfo: FullInfo) extends Workbook
 }
 
 object CreateMonksWorkbook {
-  /** Python is hidden in this workbook for now; learners work in Snap! or Java. */
-  val EditorLanguages: List[AppLanguage.ProgrammingLanguage] = List(AppLanguage.SnapLanguage, AppLanguage.Java)
+  /** Learners work in Snap!, Python or Java. */
+  val EditorLanguages: List[AppLanguage.ProgrammingLanguage] = List(AppLanguage.SnapLanguage, AppLanguage.Python, AppLanguage.Java)
 
   val EditorConfig: RecreateTurtleDidacticConfig = RecreateTurtleDidacticConfig.defaultForPalette(ProgrammingEditorPalette.PythonCompatibleSnap)
     .copy(restrictEditorToLanguages = EditorLanguages)

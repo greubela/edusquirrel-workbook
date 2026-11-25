@@ -6,19 +6,16 @@ import it.evadid.vm.conversion.dependencies.KnownDependencies
 import it.evadid.vm.conversion.structured.SourceStructure
 import it.evadid.vm.conversion.structured.SourceStructure.{ClassOutline, MemberOutline, Param, Visibility}
 
-/** One immutable source analysis shared by method selection and the class diagram. */
-private[code] final case class JavaMethodSource(code: String) {
-  private lazy val outlines: List[ClassOutline] = SourceStructure.javaClassOutlines(code).toList
-  private lazy val libraryRanges: Seq[(Int, Int)] = KnownDependencies.definitionRanges(code, Java)
-  lazy val classes: List[JavaMethodSource.JavaClass] =
-    outlines.filterNot(JavaMethodSource.insideAny(libraryRanges, _)).map(JavaMethodSource.javaClass(_, library = false))
+/** One immutable source analysis shared by method selection and the class diagram, in `dialect`'s language. */
+private[code] final case class JavaMethodSource(code: String, dialect: StructureDialect = StructureDialect.JavaDialect) {
+  private lazy val analysed = dialect.analyse(code)
+  lazy val classes: List[JavaMethodSource.JavaClass] = analysed._1
   /** Runtime classes such as the generated `Turtle`, with their public members only. */
-  lazy val libraries: List[JavaMethodSource.JavaClass] =
-    outlines.filter(JavaMethodSource.insideAny(libraryRanges, _)).map(JavaMethodSource.javaClass(_, library = true))
-  lazy val relations: List[JavaMethodSource.Relation] = JavaMethodSource.relations(code, classes, libraries)
-  lazy val balanced: Boolean = SourceStructure.balanced(code)
+  lazy val libraries: List[JavaMethodSource.JavaClass] = analysed._2
+  lazy val relations: List[JavaMethodSource.Relation] = JavaMethodSource.relations(code, classes, libraries, dialect.python)
+  lazy val balanced: Boolean = dialect.balanced(code)
   def initialMethod(requirePublicMain: Boolean): Option[JavaMethodSource.JavaMethod] =
-    JavaMethodSource.entryMethod(code, classes, balanced, requirePublicMain)
+    dialect.entryMethod(code, classes, balanced, requirePublicMain)
 }
 
 object JavaMethodSource {
@@ -62,7 +59,9 @@ object JavaMethodSource {
                                               isAbstract: Boolean = false,
                                               superclasses: List[String] = Nil,
                                               interfaces: List[String] = Nil,
-                                              library: Boolean = false
+                                              library: Boolean = false,
+                                              /** Python's module-level functions; the box has no name of its own. */
+                                              isModule: Boolean = false
                                             )
 
   private[code] enum RelationKind {
@@ -99,7 +98,7 @@ object JavaMethodSource {
     JavaMethodSource(source).initialMethod(requirePublicMain)
   }
 
-  private def entryMethod(source: String, currentClasses: List[JavaClass], balanced: Boolean,
+  private[code] def javaEntryMethod(source: String, currentClasses: List[JavaClass], balanced: Boolean,
       requirePublicMain: Boolean): Option[JavaMethod] = {
     if !balanced then None
     else {
@@ -120,10 +119,10 @@ object JavaMethodSource {
 
   private[code] def structurallyBalanced(source: String): Boolean = SourceStructure.balanced(source)
 
-  private def insideAny(ranges: Seq[(Int, Int)], outline: ClassOutline): Boolean =
+  private[code] def insideAny(ranges: Seq[(Int, Int)], outline: ClassOutline): Boolean =
     ranges.exists((start, end) => start <= outline.bodyOpen && outline.bodyClose < end)
 
-  private def javaClass(outline: ClassOutline, library: Boolean): JavaClass = {
+  private[code] def javaClass(outline: ClassOutline, library: Boolean): JavaClass = {
     def shown(visibility: Visibility) = !library || visibility == Visibility.Public
     val declarations = outline.fields.groupBy(field => (field.start, field.end))
     JavaClass(
@@ -156,31 +155,35 @@ object JavaMethodSource {
   private[code] def discover(source: String): List[JavaClass] = JavaMethodSource(source).classes
 
   /** Identifiers in code, without comments and string literals. */
-  private def words(text: String): Set[String] = {
+  private def words(text: String, python: Boolean = false): Set[String] = {
     def walk(tokens: Seq[SourceStructure.Token]): Seq[String] = tokens.flatMap {
       case SourceStructure.Word(_, _, word) => Seq(word)
       case group: SourceStructure.Group => walk(group.children)
       case _ => Nil
     }
-    walk(SourceStructure.tokens(text, python = false)).toSet
+    walk(SourceStructure.tokens(text, python)).toSet
   }
 
-  private val collections = Set("List", "ArrayList", "LinkedList", "Set", "HashSet", "TreeSet", "Collection", "Queue", "Deque", "ArrayDeque")
+  private val collections = Set("List", "ArrayList", "LinkedList", "Set", "HashSet", "TreeSet", "Collection", "Queue", "Deque",
+    "ArrayDeque", "list", "set", "tuple", "dict")
 
-  private def relations(source: String, classes: List[JavaClass], libraries: List[JavaClass]): List[Relation] = {
-    val names = (classes ++ libraries).map(_.name).toSet
+  private def relations(source: String, classes: List[JavaClass], libraries: List[JavaClass], python: Boolean): List[Relation] = {
+    val names = (classes ++ libraries).filterNot(_.isModule).map(_.name).toSet
     classes.flatMap { clazz =>
       val generalizations = clazz.superclasses.filter(names).map(Relation(clazz.name, _, RelationKind.Inheritance)) ++
         clazz.interfaces.filter(names).map(Relation(clazz.name, _, RelationKind.Realization))
       val associations = clazz.fields.flatMap { field =>
-        val typeWords = words(field.javaType)
+        val typeWords = words(field.javaType, python)
         typeWords.filter(name => names(name) && name != clazz.name).toList.sorted.map { target =>
           Relation(clazz.name, target, RelationKind.Association, Some(field.name),
             many = field.javaType.contains("[") || typeWords.exists(collections))
         }
       }
       val related = (generalizations ++ associations).map(_.to).toSet + clazz.name
-      val dependencies = words(source.substring(clazz.bodyStart, clazz.bodyEnd + 1)).filter(name => names(name) && !related(name))
+      // The module box has no body of its own: its functions are what it uses.
+      val body = if clazz.isModule then clazz.methods.map(method => source.substring(method.start, method.end)).mkString("\n")
+        else source.substring(clazz.bodyStart, math.min(clazz.bodyEnd + 1, source.length))
+      val dependencies = words(body, python).filter(name => names(name) && !related(name))
         .toList.sorted.map(Relation(clazz.name, _, RelationKind.Dependency))
       generalizations ++ associations ++ dependencies
     }.distinct
@@ -189,15 +192,24 @@ object JavaMethodSource {
   // UML notation, shown in the class diagram and above the method editor.
 
   private[code] def umlParameters(params: List[Param]): String =
-    params.map(param => if param.name.isEmpty then param.javaType else s"${param.name}: ${param.javaType}").mkString(", ")
+    params.map(param =>
+      if param.name.isEmpty then param.javaType else if param.javaType.isEmpty then param.name else s"${param.name}: ${param.javaType}"
+    ).mkString(", ")
 
-  /** `+ name(p: T): R`; constructors and `void` methods have no result type, as usual in school UML. */
+  /** `+ name(p: T): R`; constructors and operations without a result (`void`, Python's `None`) have no result type,
+    * as usual in school UML. */
   private[code] def umlOperation(method: JavaMethod): String = {
-    val result = if method.isConstructor || method.returnType == "void" || method.returnType.isEmpty then "" else s": ${method.returnType}"
+    val result = if method.isConstructor || Set("void", "None", "")(method.returnType) then "" else s": ${method.returnType}"
     s"${method.visibility.symbol} ${method.name}(${umlParameters(method.params)})$result"
   }
 
-  private[code] def umlAttribute(field: JavaField): String = s"${field.visibility.symbol} ${field.name}: ${field.javaType}"
+  /** `- name: T`; Python attributes without annotation or recognisable value have no type. */
+  private[code] def umlAttribute(field: JavaField): String =
+    s"${field.visibility.symbol} ${field.name}" + (if field.javaType.isEmpty then "" else s": ${field.javaType}")
+
+  /** `Class.method`, or the bare function name for Python's module functions. */
+  private[code] def qualifiedName(method: JavaMethod): String =
+    if method.className.isEmpty then method.name else s"${method.className}.${method.name}"
 
   // Declarations and edits. Every edit returns new source text; callers validate it before committing.
 
@@ -315,14 +327,15 @@ object JavaMethodSource {
                                         source: String,
                                         currentClasses: List[JavaClass],
                                         previous: JavaMethod,
-                                        range: MethodRange
+                                        range: MethodRange,
+                                        python: Boolean = false
                                       ): Option[JavaMethod] = {
     if !range.isWithin(source) then None
     else currentClasses.filter(_.name == previous.className) match
       case List(clazz) if range.start > clazz.bodyStart && range.end <= clazz.bodyEnd =>
         clazz.methods.filter(function => function.start >= range.start && function.end <= range.end) match
-          case List(function) if onlyTrivia(source.substring(range.start, function.start)) &&
-            onlyTrivia(source.substring(function.end, range.end)) => Some(function)
+          case List(function) if onlyTrivia(source.substring(range.start, function.start), python) &&
+            onlyTrivia(source.substring(function.end, range.end), python) => Some(function)
           case _ => None
       case _ => None
   }
@@ -339,6 +352,6 @@ object JavaMethodSource {
       case _ => None
 
   /** Only whitespace and closed comments. */
-  private def onlyTrivia(source: String): Boolean =
-    SourceStructure.significant(SourceStructure.tokens(source, python = false)).isEmpty && SourceStructure.balanced(source)
+  private def onlyTrivia(source: String, python: Boolean): Boolean =
+    SourceStructure.significant(SourceStructure.tokens(source, python)).isEmpty && SourceStructure.balanced(source, python)
 }

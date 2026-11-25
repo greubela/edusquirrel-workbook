@@ -97,7 +97,7 @@ test('monk stories and revised tasks work with the current editor and interactio
     await open().click();
     const dialog = page.locator('dialog[open]');
     await dialog.getByRole('tab', {name:'Java',exact:true}).click();
-    assert.equal(await dialog.getByRole('tab', {name:'Python',exact:true}).count(), 0);
+    assert.equal(await dialog.getByRole('tab', {name:'Python',exact:true}).count(), 1);
     await dialog.getByRole('button', {name:'Full source',exact:true}).click();
     const code = dialog.locator('.cm-content');
     await code.waitFor();

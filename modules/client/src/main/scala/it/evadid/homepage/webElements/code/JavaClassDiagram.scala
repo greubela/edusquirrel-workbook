@@ -178,26 +178,31 @@ private[code] object JavaClassDiagram {
   private def classBox(clazz: JavaClass, selected: Signal[Option[JavaMethod]], locked: Signal[Boolean],
       features: JavaStructureFeatures, labels: JavaEditorLabels, actions: Actions): Element = {
     val readOnly = clazz.library
+    // Python's module functions: no attributes or constructors, and no class name of its own.
+    val module = clazz.isModule
     val stereotype: Modifier[HtmlElement] =
       if clazz.library then span(cls := "java-uml__stereotype", child.text <-- labels.library.map(text => s"«$text»"))
       else if clazz.isInterface then span(cls := "java-uml__stereotype", "«interface»")
+      else if module then span(cls := "java-uml__stereotype", "«module»")
       else emptyMod
     val name = div(
       cls := "java-uml__name-compartment",
       stereotype,
-      strong(cls := "java-uml__class-name" + (if clazz.isAbstract && !clazz.isInterface then " java-uml__class-name--abstract" else ""), clazz.name)
+      strong(cls := "java-uml__class-name" + (if clazz.isAbstract && !clazz.isInterface then " java-uml__class-name--abstract" else ""),
+        if module then child.text <-- labels.module else clazz.name)
     )
     val attributes = div(
       cls := "java-uml__compartment java-uml__attributes",
       clazz.fields.map(attribute(_, locked, actions, readOnly)),
-      if !readOnly && features.addField && !clazz.isInterface then addButton(labels.addField, locked, () => actions.addField(clazz.name)) else emptyMod
+      if !readOnly && !module && features.addField && !clazz.isInterface then addButton(labels.addField, locked, () => actions.addField(clazz.name)) else emptyMod
     )
     val operations = div(
       cls := "java-uml__compartment java-uml__operations",
       clazz.methods.map(operation(_, selected, locked, actions, readOnly)),
-      if !readOnly && features.addConstructor && !clazz.isInterface then
+      if !readOnly && !module && features.addConstructor && !clazz.isInterface then
         addButton(labels.addConstructor, locked, () => actions.addConstructor(clazz.name)) else emptyMod,
-      if !readOnly && features.addMethod then addButton(labels.addMethod, locked, () => actions.addMethod(clazz.name)) else emptyMod
+      if !readOnly && features.addMethod then
+        addButton(if module then labels.addFunction else labels.addMethod, locked, () => actions.addMethod(clazz.name)) else emptyMod
     )
     val boxClasses = "java-uml__class" + (if clazz.library then " java-uml__class--library" else "") +
       (if clazz.isInterface then " java-uml__class--interface" else "")
@@ -208,20 +213,21 @@ private[code] object JavaClassDiagram {
       operations
     )
     else div(
-      cls := boxClasses,
+      cls := boxClasses + (if module then " java-uml__class--module" else ""),
       dataAttr("class-name") := clazz.name,
       role := "group",
-      aria.label := clazz.name,
+      if module then aria.label <-- labels.module else aria.label := clazz.name,
       name,
-      attributes,
+      if module then emptyMod else attributes,
       operations
     )
   }
 
   private def relationText(relation: Relation, labels: JavaEditorLabels): Signal[String] =
-    kindLabel(relation.kind, labels).map { kind =>
+    kindLabel(relation.kind, labels).combineWith(labels.module).map { (kind, module) =>
+      def named(name: String) = if name.isEmpty then module else name
       val role = relation.role.fold("")(name => s" ($name${if relation.many then " *" else ""})")
-      s"${relation.from} $kind ${relation.to}$role"
+      s"${named(relation.from)} $kind ${named(relation.to)}$role"
     }
 
   def render(

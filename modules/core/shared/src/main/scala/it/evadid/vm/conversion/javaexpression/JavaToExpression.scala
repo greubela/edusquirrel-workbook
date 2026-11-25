@@ -109,7 +109,9 @@ private object JavaAstToParsed {
     }
     if members.exists(isStaticMember) && !members.forall(isStaticMember) then
       throw ProgrammingConversionException.unsupported("Mixed static and instance members are not supported by the shared expression tree.")
-    val main = members.collectFirst { case method: JavaMethodDef if isEntryPoint(method) => method }.get
+    // `main(String[])` is the entry point; a parameterless `main` beside it is a helper (Python's `def main()`).
+    val candidates = members.collect { case method: JavaMethodDef if isEntryPoint(method) => method }
+    val main = candidates.find(_.parameters.nonEmpty).getOrElse(candidates.head)
     main.parameters.headOption.foreach { arguments =>
       if mentions(main.body, arguments.name) then
         throw ProgrammingConversionException.unsupported("Program arguments cannot be represented by the shared startup expression.")

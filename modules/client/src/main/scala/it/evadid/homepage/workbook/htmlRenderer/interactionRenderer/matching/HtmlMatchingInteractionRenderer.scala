@@ -171,12 +171,17 @@ object HtmlMatchingInteractionRenderer extends LineBasedRenderingFactory[Matchin
             val node = context.thisNode.ref
             board.set(Some(node))
             val remeasure: js.Function0[Unit] = () => layoutTick.update(_ + 1)
-            val created = js.Dynamic.newInstance(js.Dynamic.global.ResizeObserver)(remeasure).asInstanceOf[dom.ResizeObserver]
-            created.observe(node)
-            val items = node.querySelectorAll(".matching-item")
-            (0 until items.length).foreach(i => created.observe(items(i)))
-            observer = Some(created)
-            dom.window.requestAnimationFrame(_ => layoutTick.update(_ + 1))
+            // Without ResizeObserver (older browsers, jsdom) the lines are measured once after layout.
+            if js.typeOf(js.Dynamic.global.ResizeObserver) == "function" then {
+              val created = js.Dynamic.newInstance(js.Dynamic.global.ResizeObserver)(remeasure).asInstanceOf[dom.ResizeObserver]
+              created.observe(node)
+              val items = node.querySelectorAll(".matching-item")
+              (0 until items.length).foreach(i => created.observe(items(i)))
+              observer = Some(created)
+            }
+            if js.typeOf(dom.window.asInstanceOf[js.Dynamic].requestAnimationFrame) == "function" then
+              dom.window.requestAnimationFrame(_ => layoutTick.update(_ + 1))
+            else js.timers.setTimeout(0)(layoutTick.update(_ + 1))
           },
           _ => {
             observer.foreach(_.disconnect())
