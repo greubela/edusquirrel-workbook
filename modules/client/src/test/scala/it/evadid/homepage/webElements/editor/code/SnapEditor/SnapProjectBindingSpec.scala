@@ -108,6 +108,23 @@ class SnapProjectBindingSpec extends FunSuite {
     assertEquals(project.now(), Some(model("<project>two</project>")))
   }
 
+  test("a new serialization that already equals the answer is not written again") {
+    val (project, native, binding) = opened("<project>start</project>", "<project app=\"Snap\">start</project>")
+    val owner = new ManualOwner
+    var writes = 0
+    project.signal.changes.foreach(_ => writes += 1)(using owner)
+    try {
+      // Snap serializes differently than when the answer was opened, but the program is the answer itself.
+      native.xml = Some("<project>start</project>")
+      binding.publish()
+      binding.publish()
+      assertEquals(writes, 0)
+      native.xml = Some("<project>edited</project>")
+      binding.publish()
+      assertEquals(writes, 1)
+    } finally owner.killSubscriptions()
+  }
+
   test("regenerated image data is neither an edit nor a different answer") {
     val (project, native, binding) = opened(xml("program", "first"), xml("program", "second"))
     val owner = new ManualOwner

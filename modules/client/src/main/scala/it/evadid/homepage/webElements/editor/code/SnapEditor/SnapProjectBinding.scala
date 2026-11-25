@@ -39,11 +39,13 @@ private[SnapEditor] final class SnapProjectBinding(
   private def open(answer: ProgrammingStateSnapScalaModel): Unit =
     if !shown.now().exists(_.answer.meaningfullyEquals(answer)) && native.open(answer.toSnapXml) then opened(answer)
 
-  /** Writes Snap's current project into `project` when it differs from what was shown. */
+  /** Writes Snap's current project into `project` when it differs from what was shown and from the answer itself
+    * (Snap may re-serialize an unchanged answer differently, e.g. around a language change).
+    */
   def publish(): Unit =
     native.serialized().map(typed).filterNot(live => shown.now().exists(_.native.meaningfullyEquals(live))).foreach { live =>
       shown.set(Some(Shown(live, live)))
-      project.set(Some(live))
+      if !project.now().exists(_.meaningfullyEquals(live)) then project.set(Some(live))
     }
 
   /** [[publish]], at most every [[checkIntervalMs]]: serializing a project is too heavy for every frame. */
