@@ -1,6 +1,7 @@
 package it.evadid.vm.conversion.snapexpression
 
-import it.evadid.vm.conversion.snapxmlmodel.SnapScalaXmlCodec
+import it.evadid.vm.parsing.source.SourceParsing.SourceLanguage
+import it.evadid.vm.parsing.source.SourceParsing
 import it.evadid.vm.code.abstractions.BeExpression
 import it.evadid.workbook.elements.interactionElements.programming.state.snap.{SnapScalaModel, SnapTurtleCatalog}
 
@@ -10,7 +11,7 @@ import it.evadid.workbook.elements.interactionElements.programming.state.snap.{S
 object SnapStateConversion {
 
   def expressionForExecution(xml: String): Either[String, BeExpression] = for {
-    document <- SnapScalaXmlCodec.parse(xml)
+    document <- SourceParsing.parse(xml, SourceLanguage.Snap).syntax
     project <- document.project.filter(_ == document.root).toRight("Unit tests need a complete Snap project.")
     _ <- Either.cond(project.scenes.size <= 1 && project.element.named("scenes").size <= 1, (),
       "Unit tests currently support one Snap scene.")
@@ -44,7 +45,7 @@ object SnapStateConversion {
     }), (), "Unsupported content in a Snap script.")
     _ <- Either.cond(started.forall(_.blocks.forall(supportedExecutionBlock)), (),
       "These Snap blocks do not yet have a verified unit-test translation.")
-  } yield SnapToExpression.parse(xml)
+  } yield SnapToExpression.convert(document).expression
 
   private def supportedExecutionBlock(block: SnapScalaModel.BlockLike): Boolean = block match {
     case value: SnapScalaModel.Block => value.variable.isEmpty &&

@@ -1,10 +1,9 @@
 package it.evadid.vm.conversion.snapexpression
 
+import it.evadid.vm.parsing.source.SourceParsing.SourceLanguage
 import it.evadid.workbook.elements.interactionElements.programming.state.snap.SnapTurtleCatalog
-
-import it.evadid.vm.conversion.snapxmlmodel.SnapScalaXmlCodec
+import it.evadid.vm.parsing.source.SourceParsing
 import it.evadid.workbook.elements.interactionElements.programming.state.snap.SnapScalaModel
-
 import upickle.default.ReadWriter
 
 /**
@@ -171,19 +170,19 @@ object SnapCustomBlockRules {
   }
 
   /** Malformed XML has no definitions; the Snap reader reports it where a program is read. */
-  private def document(xml: String): Option[SnapScalaModel.Document] = SnapScalaXmlCodec.parse(xml).toOption
+  private def document(xml: String): Option[SnapScalaModel.Document] = SourceParsing.parse(xml, SourceLanguage.Snap).syntax.toOption
 
   private def elements(document: SnapScalaModel.Document): Vector[SnapScalaModel.SnapElement] =
     document.root +: document.root.descendants
 
-  private def definitions(document: SnapScalaModel.Document): List[SnapCustomBlock] = {
+  def allDefinitions(document: SnapScalaModel.Document): List[SnapCustomBlock] = {
     // Snap loads the scene's definitions as global blocks; a bare `<blocks>` library has no scene, so all are global.
     val global = elements(document).collectFirst { case scene: SnapScalaModel.Scene => scene }.map(_.definitions)
     elements(document).collect { case definition: SnapScalaModel.BlockDefinition => definition }.zipWithIndex
       .map((element, position) => definition(element, position, global.forall(_.exists(_ eq element)))).toList
   }
 
-  def allDefinitions(xml: String): List[SnapCustomBlock] = document(xml).toList.flatMap(definitions)
+  def allDefinitions(xml: String): List[SnapCustomBlock] = document(xml).toList.flatMap(allDefinitions)
 
   /**
    * Definitions in the scene-level `<blocks>`, which Snap loads as global blocks.
@@ -192,12 +191,12 @@ object SnapCustomBlockRules {
   def globalDefinitions(xml: String): List[SnapCustomBlock] = document(xml).toList.flatMap(globalDefinitions)
 
   private def globalDefinitions(document: SnapScalaModel.Document): List[SnapCustomBlock] =
-    definitions(document).filter(_.isGlobal)
+    allDefinitions(document).filter(_.isGlobal)
 
   def localDefinitions(xml: String): List[SnapCustomBlock] = document(xml).toList.flatMap(localDefinitions)
 
   private def localDefinitions(document: SnapScalaModel.Document): List[SnapCustomBlock] =
-    definitions(document).filterNot(_.isGlobal)
+    allDefinitions(document).filterNot(_.isGlobal)
 
   /** The `<category>` entries of `<palette>`, which Snap adds to the built-ins. */
   def paletteEntries(xml: String): List[SnapScalaModel.Element] = document(xml).toList.flatMap(paletteEntries)
@@ -234,7 +233,7 @@ object SnapCustomBlockRules {
   def obsoleteCalls(xml: String, registered: List[String] = Nil): List[ObsoleteCall] =
     document(xml).toList.flatMap(obsoleteCalls(_, registered))
 
-  private def obsoleteCalls(document: SnapScalaModel.Document, registered: List[String]): List[ObsoleteCall] = {
+  def obsoleteCalls(document: SnapScalaModel.Document, registered: List[String]): List[ObsoleteCall] = {
     val categories = allCategories(document, registered)
     val globals = globalDefinitions(document)
     val locals = localDefinitions(document)

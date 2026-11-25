@@ -2,19 +2,15 @@ package it.evadid.vm.conversion.turtlestitchexpression
 
 import it.evadid.vm.parsing.source.SourceParsing
 import it.evadid.vm.parsing.source.SourceParsing.SourceLanguage
-
 import it.evadid.core.datastructures.language.AppLanguage.{Java, Python, SnapLanguage}
 import it.evadid.vm.conversion.turtlestitchexpression.*
-
 import it.evadid.vm.conversion.expressionpython.ExpressionToPython
 import it.evadid.vm.conversion.pythonsnap.PythonToSnap
 import it.evadid.vm.conversion.snapexpression.SnapCustomBlockRules
 import it.evadid.vm.conversion.snapexpression.SnapExpressionSupport
 import it.evadid.vm.conversion.snapmodelxml.SnapModelToXml.*
 import it.evadid.vm.conversion.snapmodelxml.SnapModelToXml.toXml
-
 import it.evadid.workbook.elements.interactionElements.programming.state.{ProgrammingState, ProgrammingStateRaw}
-
 import it.evadid.vm.conversion.snappython.SnapProgramDerivation
 import it.evadid.vm.conversion.expressionsnap.SnapProjectXml
 import it.evadid.vm.conversion.turtlestitchexpression.TurtleStitchToBeExpressionParser
@@ -38,7 +34,7 @@ class TurtleStitchToBeExpressionParserSpec extends FunSuite {
     Seq("<project><scenes><scene><stage><sprites><sprite><scripts><script><block s=\"forward\"><l>10</l>",
         """<project><scenes><scene><stage><sprites><sprite><scripts><script><block s="gotoXY"><l>10</l><block var="x"/></block><variables><variable name="x"></variable>""")
       .foreach { truncated =>
-        val error = intercept[it.evadid.vm.code.errors.ProgrammingConversionException](TurtleStitchToBeExpressionParser.parseXml(truncated))
+        val error = intercept[it.evadid.vm.code.errors.ProgrammingConversionException](TurtleStitchToBeExpressionParser.parseProjectWithLayout(SourceParsing.parse(truncated, SourceLanguage.Snap).project).expression)
         assertEquals(error.error.kind, it.evadid.vm.code.errors.ProgrammingConversionKind.Unparsable)
       }
   }
@@ -46,14 +42,14 @@ class TurtleStitchToBeExpressionParserSpec extends FunSuite {
   test("gotoXY with mixed literal and variable reporter keeps both arguments") {
     val xml =
       """<project><scenes select="1"><scene><stage><sprites select="1"><sprite><scripts><script><block s="receiveGo"></block><block s="gotoXY"><l>10</l><block var="x"/></block></script></scripts></sprite></sprites></stage><variables><variable name="x"></variable></variables></scene></scenes></project>"""
-    val parsed = TurtleStitchToBeExpressionParser.parseXmlWithLayout(xml)
+    val parsed = TurtleStitchToBeExpressionParser.parseProjectWithLayout(SourceParsing.parse(xml, SourceLanguage.Snap).project)
     val python = ExpressionToPython.printedPython(parsed.expression)
     assert(python.contains("turtle.goto(10, x)"), clue = python)
     assert(!python.contains("turtle.goto(10)"), clue = python)
   }
 
   test("simple_forward XML yields callable function calls") {
-    val expression = TurtleStitchToBeExpressionParser.parseXml(simpleForwardXml)
+    val expression = TurtleStitchToBeExpressionParser.parseProjectWithLayout(SourceParsing.parse(simpleForwardXml, SourceLanguage.Snap).project).expression
     val body = expression.asInstanceOf[BeStartProgram].startSequence.toList.flatMap(_.body)
     assert(body.exists(_.isInstanceOf[BeFunctionCall]), clue = s"expected calls, got: $body")
     assertEquals(body.count(_.isInstanceOf[BeFunctionCall]), 2)
@@ -63,7 +59,7 @@ class TurtleStitchToBeExpressionParserSpec extends FunSuite {
     """<project name="two" app="TurtleStitch 2.11, http://www.turtlestitch.org" version="2"><notes></notes><scenes select="1"><scene name="two"><notes></notes><hidden></hidden><headers></headers><code></code><blocks></blocks><primitives></primitives><stage name="Stage" width="480" height="360" costume="0" color="255,255,255,1" tempo="60" threadsafe="false" penlog="false" volume="100" pan="0" lines="round" ternary="false" hyperops="true" codify="false" inheritance="true" sublistIDs="false" id="6"><costumes><list struct="atomic" id="7"></list></costumes><sounds><list struct="atomic" id="8"></list></sounds><variables></variables><blocks></blocks><scripts></scripts><sprites select="1"><sprite name="Sprite" idx="1" x="0" y="0" heading="90" scale="0.1" volume="100" pan="0" rotation="1" draggable="true" hidden="true" costume="0" color="0,0,0,1" pen="tip" id="13"><costumes><list struct="atomic" id="14"></list></costumes><sounds><list struct="atomic" id="15"></list></sounds><blocks></blocks><variables></variables><scripts><script x="70" y="80"><block s="receiveGo"></block><block s="forward"><l>100</l></block></script><script x="200" y="150"><block s="turn"><l>90</l></block></script></scripts></sprite></sprites></stage><variables></variables></scene></scenes></project>"""
 
   test("two top-level scripts produce layout sidecar and stay separate on XML roundtrip") {
-    val parsed = TurtleStitchToBeExpressionParser.parseXmlWithLayout(twoScriptsXml)
+    val parsed = TurtleStitchToBeExpressionParser.parseProjectWithLayout(SourceParsing.parse(twoScriptsXml, SourceLanguage.Snap).project)
     assertEquals(parsed.canvasLayout.scripts.size, 2)
     assertEquals(parsed.canvasLayout.scripts.map(_.callCount), List(1, 1))
     assertEquals(parsed.canvasLayout.scripts.map(_.hasReceiveGo), List(true, false))
@@ -91,7 +87,7 @@ class TurtleStitchToBeExpressionParserSpec extends FunSuite {
   }
 
   test("doRepeat XML parses to BeRepeatNr and roundtrips") {
-    val parsed = TurtleStitchToBeExpressionParser.parseXmlWithLayout(xmlWithRepeatNoPentrails)
+    val parsed = TurtleStitchToBeExpressionParser.parseProjectWithLayout(SourceParsing.parse(xmlWithRepeatNoPentrails, SourceLanguage.Snap).project)
     val body = parsed.expression.asInstanceOf[BeStartProgram].startSequence.toList.flatMap(_.body)
     assert(body.exists(_.isInstanceOf[it.evadid.vm.code.controlStructures.BeRepeatNr]), clue = body)
     val xmlOut = SnapProjectXml.toXml(parsed.expression, "repeat", parsed.canvasLayout)
@@ -103,7 +99,7 @@ class TurtleStitchToBeExpressionParserSpec extends FunSuite {
   test("doIfElse XML roundtrips through serializer") {
     val xml =
       """<project><scenes select="1"><scene><stage><sprites select="1"><sprite><scripts><script><block s="receiveGo"></block><block s="doIfElse"><block s="reportTrue"></block><script><block s="forward"><l>12</l></block></script><script><block s="turn"><l>30</l></block></script></block></script></scripts></sprite></sprites></stage></scene></scenes></project>"""
-    val parsed = TurtleStitchToBeExpressionParser.parseXmlWithLayout(xml)
+    val parsed = TurtleStitchToBeExpressionParser.parseProjectWithLayout(SourceParsing.parse(xml, SourceLanguage.Snap).project)
     val body = parsed.expression.asInstanceOf[BeStartProgram].startSequence.toList.flatMap(_.body)
     assert(body.exists(_.isInstanceOf[it.evadid.vm.code.controlStructures.BeIfElse]), clue = body)
     val xmlOut = SnapProjectXml.toXml(parsed.expression, "ifelse", parsed.canvasLayout)
@@ -114,7 +110,7 @@ class TurtleStitchToBeExpressionParserSpec extends FunSuite {
   test("doIf with variable reporter in equals prints python if test == 1") {
     val xml =
       """<project><scenes select="1"><scene><stage><sprites select="1"><sprite><scripts><script><block s="receiveGo"></block><block s="doIf"><block s="reportVariadicEquals"><list><block var="test"/><l>1</l></list></block><script><block s="doRepeat"><l>10</l><script><block s="forward"><l>10</l></block><block s="turn"><l>18</l></block></script></block></script><list></list></block></script></scripts></sprite></sprites></stage><variables><variable name="test"></variable></variables></scene></scenes></project>"""
-    val parsed = TurtleStitchToBeExpressionParser.parseXmlWithLayout(xml)
+    val parsed = TurtleStitchToBeExpressionParser.parseProjectWithLayout(SourceParsing.parse(xml, SourceLanguage.Snap).project)
     assert(
       SnapExpressionSupport.hasSupportedStatements(parsed.expression),
       clue = parsed.expression
@@ -139,14 +135,14 @@ class TurtleStitchToBeExpressionParserSpec extends FunSuite {
   test("reportVariadicLessThan in doIf prints infix comparison python") {
     val xml =
       """<project><scenes select="1"><scene><stage><sprites select="1"><sprite><scripts><script><block s="receiveGo"></block><block s="doIf"><block s="reportVariadicLessThan"><list><l>1</l><l>2</l></list></block><script><block s="forward"><l>10</l></block></script></block></script></scripts></sprite></sprites></stage></scene></scenes></project>"""
-    val parsed = TurtleStitchToBeExpressionParser.parseXmlWithLayout(xml)
+    val parsed = TurtleStitchToBeExpressionParser.parseProjectWithLayout(SourceParsing.parse(xml, SourceLanguage.Snap).project)
     val python = ExpressionToPython.printedPython(parsed.expression)
     assert(python.contains("if 1 < 2:"), clue = python)
     assert(!python.contains("<("), clue = python)
   }
 
   test("printed repeat python reapplies without comment rejection") {
-    val parsed = TurtleStitchToBeExpressionParser.parseXmlWithLayout(xmlWithRepeatNoPentrails)
+    val parsed = TurtleStitchToBeExpressionParser.parseProjectWithLayout(SourceParsing.parse(xmlWithRepeatNoPentrails, SourceLanguage.Snap).project)
     val python = ExpressionToPython.printedPython(parsed.expression)
     assert(python.contains("for _ in range(10):"), clue = python)
     val applied = PythonToSnap.applyPython(python)
@@ -182,7 +178,7 @@ class TurtleStitchToBeExpressionParserSpec extends FunSuite {
   test("doSetVar XML roundtrips to python assignment and back to Snap") {
     val xml =
       """<project><scenes select="1"><scene><stage><sprites select="1"><sprite><scripts><script><block s="receiveGo"></block><block s="doSetVar"><l>steps</l><l>10</l></block></script></scripts></sprite></sprites></stage><variables><variable name="steps"></variable></variables></scene></scenes></project>"""
-    val parsed = TurtleStitchToBeExpressionParser.parseXmlWithLayout(xml)
+    val parsed = TurtleStitchToBeExpressionParser.parseProjectWithLayout(SourceParsing.parse(xml, SourceLanguage.Snap).project)
     val python = ExpressionToPython.printedPython(parsed.expression)
     assert(python.contains("steps: Any = 10"), clue = python)
     val xmlOut = SnapProjectXml.toXml(parsed.expression, "vars", parsed.canvasLayout)
@@ -196,7 +192,7 @@ class TurtleStitchToBeExpressionParserSpec extends FunSuite {
   test("doChangeVar and nested variable reporter roundtrip") {
     val xml =
       """<project><scenes select="1"><scene><stage><sprites select="1"><sprite><scripts><script><block s="receiveGo"></block><block s="doSetVar"><l>steps</l><l>1</l></block><block s="doChangeVar"><l>steps</l><l>2</l></block><block s="doIf"><block s="reportVariadicLessThan"><list><block var="steps"/><l>10</l></list></block><script><block s="forward"><block var="steps"/></block></script></block></script></scripts></sprite></sprites></stage><variables><variable name="steps"></variable></variables></scene></scenes></project>"""
-    val parsed = TurtleStitchToBeExpressionParser.parseXmlWithLayout(xml)
+    val parsed = TurtleStitchToBeExpressionParser.parseProjectWithLayout(SourceParsing.parse(xml, SourceLanguage.Snap).project)
     val python = ExpressionToPython.printedPython(parsed.expression)
     assert(python.contains("steps: Any = 1"), clue = python)
     assert(python.contains("steps = steps + 2"), clue = python)
@@ -215,7 +211,7 @@ class TurtleStitchToBeExpressionParserSpec extends FunSuite {
   test("mixed palette blocks roundtrip Snap XML to python and back to Snap") {
     val xml =
       """<project><scenes select="1"><scene><stage><sprites select="1"><sprite><scripts><script><block s="receiveGo"></block><block s="down"></block><block s="doSetVar"><l>steps</l><l>10</l></block><block s="doRepeat"><l>4</l><script><block s="forward"><l>50</l></block><block s="turn"><l>90</l></block></script></block><block s="doIfElse"><block s="reportVariadicLessThan"><list><block var="steps"/><l>20</l></list></block><script><block s="gotoXY"><l>10</l><l>20</l></block></script><script><block s="setHeading"><l>90</l></block></script></block><block s="doUntil"><block s="reportFalse"></block><script><block s="up"></block></script></block><block s="clear"></block></script></scripts></sprite></sprites></stage><variables><variable name="steps"></variable></variables></scene></scenes></project>"""
-    val parsed = TurtleStitchToBeExpressionParser.parseXmlWithLayout(xml)
+    val parsed = TurtleStitchToBeExpressionParser.parseProjectWithLayout(SourceParsing.parse(xml, SourceLanguage.Snap).project)
     assert(
       SnapExpressionSupport.hasSupportedStatements(parsed.expression),
       clue = parsed.expression
@@ -254,7 +250,7 @@ class TurtleStitchToBeExpressionParserSpec extends FunSuite {
     val restored = ProgrammingState.serializer.deserialize(stored)
     assert(restored.toSnapXml.code.contains("""s="doWait""""), clue = restored.toSnapXml.code)
 
-    val parsed = TurtleStitchToBeExpressionParser.parseXmlWithLayout(xml)
+    val parsed = TurtleStitchToBeExpressionParser.parseProjectWithLayout(SourceParsing.parse(xml, SourceLanguage.Snap).project)
     assert(
       SnapExpressionSupport.hasSupportedStatements(parsed.expression),
       clue = parsed.expression
@@ -274,7 +270,7 @@ class TurtleStitchToBeExpressionParserSpec extends FunSuite {
   test("doFor XML roundtrips to python for-range and back to Snap") {
     val xml =
       """<project><scenes select="1"><scene><stage><sprites select="1"><sprite><scripts><script><block s="receiveGo"></block><block s="doFor"><l>i</l><l>1</l><l>4</l><script><block s="forward"><block s="reportVariadicProduct"><list><block var="i"/><l>10</l></list></block></block></script></block></script></scripts></sprite></sprites></stage></scene></scenes></project>"""
-    val parsed = TurtleStitchToBeExpressionParser.parseXmlWithLayout(xml)
+    val parsed = TurtleStitchToBeExpressionParser.parseProjectWithLayout(SourceParsing.parse(xml, SourceLanguage.Snap).project)
     assert(
       SnapExpressionSupport.hasSupportedStatements(parsed.expression),
       clue = parsed.expression
@@ -293,7 +289,7 @@ class TurtleStitchToBeExpressionParserSpec extends FunSuite {
   test("custom block-definition XML roundtrips with body and call") {
     val xml =
       """<project><scenes select="1"><scene><blocks><block-definition s="square %n" type="command" category="other"><inputs><input type="%n" name="n">n</input></inputs><scripts><script><block s="forward"><block var="n"/></block><block s="turn"><l>90</l></block></script></scripts></block-definition></blocks><stage><sprites select="1"><sprite><scripts><script><block s="receiveGo"></block><custom-block s="square %n"><l>50</l></custom-block></script></scripts></sprite></sprites></stage></scene></scenes></project>"""
-    val parsed = TurtleStitchToBeExpressionParser.parseXmlWithLayout(xml)
+    val parsed = TurtleStitchToBeExpressionParser.parseProjectWithLayout(SourceParsing.parse(xml, SourceLanguage.Snap).project)
     val python = ExpressionToPython.printedPython(parsed.expression)
     assert(python.contains("def square"), clue = python)
     assert(python.contains("forward(n)"), clue = python)
@@ -311,7 +307,7 @@ class TurtleStitchToBeExpressionParserSpec extends FunSuite {
   test("native Snap block-definition script child prints the function body") {
     val xml =
       """<project><scenes select="1"><scene><blocks><block-definition s="square %n" type="command" category="Variables"><inputs><input type="%n" name="n">n</input></inputs><script><block s="forward"><block var="n"/></block><block s="turn"><l>90</l></block></script></block-definition></blocks><stage><sprites select="1"><sprite><scripts><script><block s="receiveGo"></block><custom-block s="square %n"><l>50</l></custom-block></script></scripts></sprite></sprites></stage></scene></scenes></project>"""
-    val parsed = TurtleStitchToBeExpressionParser.parseXmlWithLayout(xml)
+    val parsed = TurtleStitchToBeExpressionParser.parseProjectWithLayout(SourceParsing.parse(xml, SourceLanguage.Snap).project)
     val python = ExpressionToPython.printedPython(parsed.expression)
     assert(python.contains("def square(n: float) -> None:"), clue = python)
     assert(python.contains("forward(n)"), clue = python)
@@ -322,7 +318,7 @@ class TurtleStitchToBeExpressionParserSpec extends FunSuite {
   test("native Snap semantic spec plus type-spec call prints one function") {
     val xml =
       """<project><scenes select="1"><scene><blocks><block-definition s="square %size" type="command" category="Variables"><inputs><input type="%n"></input></inputs><script><block s="forward"><block var="size"/></block></script></block-definition></blocks><stage><sprites select="1"><sprite><scripts><script><block s="receiveGo"></block><custom-block s="square %n"><l>50</l></custom-block></script></scripts></sprite></sprites></stage></scene></scenes></project>"""
-    val parsed = TurtleStitchToBeExpressionParser.parseXmlWithLayout(xml)
+    val parsed = TurtleStitchToBeExpressionParser.parseProjectWithLayout(SourceParsing.parse(xml, SourceLanguage.Snap).project)
     val python = ExpressionToPython.printedPython(parsed.expression)
     assert(python.contains("def square(size: float) -> None:"), clue = python)
     assert(python.contains("forward(size)"), clue = python)
@@ -339,7 +335,7 @@ class TurtleStitchToBeExpressionParserSpec extends FunSuite {
   test("setColor setXPosition setYPosition and setSize roundtrip to canonical python names") {
     val xml =
       """<project><scenes select="1"><scene><stage><sprites select="1"><sprite><scripts><script><block s="receiveGo"></block><block s="setColor"><color>255,0,0,1</color></block><block s="setXPosition"><l>10</l></block><block s="setYPosition"><l>20</l></block><block s="setSize"><l>3</l></block></script></scripts></sprite></sprites></stage></scene></scenes></project>"""
-    val parsed = TurtleStitchToBeExpressionParser.parseXmlWithLayout(xml)
+    val parsed = TurtleStitchToBeExpressionParser.parseProjectWithLayout(SourceParsing.parse(xml, SourceLanguage.Snap).project)
     val python = ExpressionToPython.printedPython(parsed.expression)
     assert(python.contains("color("), clue = python)
     assert(!python.contains("set_color"), clue = python)
@@ -362,7 +358,7 @@ class TurtleStitchToBeExpressionParserSpec extends FunSuite {
   test("python aliases roundtrip through Snap XML") {
     val xml =
       """<project><scenes select="1"><scene><stage><sprites select="1"><sprite><scripts><script><block s="turn"><l>90</l></block><block s="turnLeft"><l>15</l></block><block s="gotoXY"><l>1</l><l>2</l></block><block s="up"></block><block s="down"></block></script></scripts></sprite></sprites></stage></scene></scenes></project>"""
-    val parsed = TurtleStitchToBeExpressionParser.parseXmlWithLayout(xml)
+    val parsed = TurtleStitchToBeExpressionParser.parseProjectWithLayout(SourceParsing.parse(xml, SourceLanguage.Snap).project)
     val python = ExpressionToPython.printedPython(parsed.expression)
     assert(python.contains("turtle.right(90)"), clue = python)
     assert(python.contains("turtle.left(15)"), clue = python)
@@ -387,7 +383,7 @@ class TurtleStitchToBeExpressionParserSpec extends FunSuite {
   test("native color slot roundtrips without changing arity") {
     val xml =
       """<project><scenes select="1"><scene><stage><sprites select="1"><sprite><scripts><script><block s="setColor"><color>0,0,255,1</color></block><block s="forward"><l>10</l></block></script></scripts></sprite></sprites></stage></scene></scenes></project>"""
-    val parsed = TurtleStitchToBeExpressionParser.parseXmlWithLayout(xml)
+    val parsed = TurtleStitchToBeExpressionParser.parseProjectWithLayout(SourceParsing.parse(xml, SourceLanguage.Snap).project)
     val python = ExpressionToPython.printedPython(parsed.expression)
     assert(python.contains("color("), clue = python)
     assert(!python.contains("color(0, 0, 255"), clue = python)
@@ -408,7 +404,7 @@ class TurtleStitchToBeExpressionParserSpec extends FunSuite {
     )
     assertEquals(SnapCustomBlockRules.obsoleteCalls(xml), Nil, clue = xml)
 
-    val parsed = TurtleStitchToBeExpressionParser.parseXmlWithLayout(xml)
+    val parsed = TurtleStitchToBeExpressionParser.parseProjectWithLayout(SourceParsing.parse(xml, SourceLanguage.Snap).project)
     val python = ExpressionToPython.printedPython(parsed.expression)
     assert(python.contains("def draw_square(size: Any) -> None:"), clue = python)
     assert(python.contains("forward(size)"), clue = python)
@@ -450,7 +446,7 @@ after.element.element.named("comment").headOption.map(_.element.toXml),
     )
     assertEquals(SnapCustomBlockRules.obsoleteCalls(xml), Nil, clue = xml)
 
-    val parsed = TurtleStitchToBeExpressionParser.parseXmlWithLayout(xml)
+    val parsed = TurtleStitchToBeExpressionParser.parseProjectWithLayout(SourceParsing.parse(xml, SourceLanguage.Snap).project)
     val python = ExpressionToPython.printedPython(parsed.expression)
     assert(python.contains("def draw_square(size: float) -> None:"), clue = python)
     assert(python.contains("def draw_circle(radius: float) -> None:"), clue = python)
@@ -482,7 +478,7 @@ after.element.element.named("comment").headOption.map(_.element.toXml),
   test("custom block extra arguments are dropped on python apply") {
     val xml =
       """<project><scenes select="1"><scene><blocks><block-definition s="square %n" type="command" category="other"><inputs><input type="%n" name="n">n</input></inputs><scripts><script><block s="forward"><block var="n"/></block></script></scripts></block-definition></blocks><stage><sprites select="1"><sprite><scripts><script><block s="receiveGo"></block><custom-block s="square %n"><l>50</l></custom-block></script></scripts></sprite></sprites></stage></scene></scenes></project>"""
-    val parsed = TurtleStitchToBeExpressionParser.parseXmlWithLayout(xml)
+    val parsed = TurtleStitchToBeExpressionParser.parseProjectWithLayout(SourceParsing.parse(xml, SourceLanguage.Snap).project)
     val python = ExpressionToPython.printedPython(parsed.expression)
     assert(python.contains("def square"), clue = python)
     val mismatched = python.stripSuffix("\n") + "\nsquare(1, 2)\n"
@@ -496,7 +492,7 @@ after.element.element.named("comment").headOption.map(_.element.toXml),
   test("boolean literals read the same in every Snap input slot") {
     val xml =
       """<project><scenes select="1"><scene><stage><sprites select="1"><sprite><scripts><script><block s="receiveGo"></block><block s="doSetVar"><l>flag</l><l><bool>true</bool></l></block><block s="doIf"><block var="flag"/><script><block s="forward"><l>10</l></block></script><list></list></block></script></scripts></sprite></sprites></stage><variables><variable name="flag"><l>0</l></variable></variables></scene></scenes></project>"""
-    val parsed = TurtleStitchToBeExpressionParser.parseXmlWithLayout(xml)
+    val parsed = TurtleStitchToBeExpressionParser.parseProjectWithLayout(SourceParsing.parse(xml, SourceLanguage.Snap).project)
     val python = ExpressionToPython.printedPython(parsed.expression)
     assert(python.contains("flag: Any = True"), clue = python)
     assert(!python.contains("= true"), clue = python)

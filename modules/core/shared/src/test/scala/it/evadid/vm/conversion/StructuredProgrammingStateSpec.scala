@@ -194,7 +194,7 @@ class StructuredProgrammingStateSpec extends FunSuite {
     assertEquals(distances(restored), List(20.0, 20.0, 20.0, 100.0))
     assertEquals(distances(restored.toJavaStructured.toPythonStructured.toSnapXml.toPythonStructured), distances(restored))
     val repeated = (1 to 3).foldLeft(snap)((state, _) => state.toPythonStructured.toJavaStructured.toPythonStructured.toSnapXml)
-    def setVariableBlocks(xml: String) = it.evadid.vm.conversion.snapxmlmodel.SnapScalaXmlCodec.parse(xml).toOption.get
+    def setVariableBlocks(xml: String) = SourceParsing.parse(xml, SourceLanguage.Snap).syntax.toOption.get
       .root.descendants.count(_.element.attribute("s").contains("doSetVar"))
     assertEquals(setVariableBlocks(repeated.code), setVariableBlocks(snap.code))
     assertEquals(distances(repeated), distances(restored))

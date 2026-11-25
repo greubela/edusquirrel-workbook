@@ -1,6 +1,7 @@
 package it.evadid.workbook.elements.interactionElements.programming.state.snap
 
-import it.evadid.vm.conversion.snapxmlmodel.SnapScalaXmlCodec
+import it.evadid.vm.parsing.source.SourceParsing.SourceLanguage
+import it.evadid.vm.parsing.source.SourceParsing
 import it.evadid.workbook.elements.interactionElements.programming.state.snap.SnapScalaModel.*
 import it.evadid.workbook.elements.interactionElements.programming.state.snap.SnapVocabulary.*
 import munit.FunSuite
@@ -22,7 +23,7 @@ class SnapScalaModelViewsSpec extends FunSuite {
       """<comment x="1" y="2" w="90" collapsed="false">note</comment></scripts></sprite>""" +
       """<watcher var="count" scope="Turtle" style="normal" x="3" y="4" min="0" max="10" hidden="true"/></sprites></stage></scene></scenes></project>"""
 
-  private val document = SnapScalaXmlCodec.parse(xml).fold(message => fail(message), identity)
+  private val document = SourceParsing.parse(xml, SourceLanguage.Snap).syntax.fold(message => fail(message), identity)
   private val project = document.project.get
   private val scene = project.scenes.head
   private val stage = scene.stage.get

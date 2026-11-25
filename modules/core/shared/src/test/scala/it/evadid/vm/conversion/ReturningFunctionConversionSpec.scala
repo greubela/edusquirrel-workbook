@@ -1,5 +1,7 @@
 package it.evadid.vm.conversion
 
+import it.evadid.vm.parsing.source.SourceParsing
+import it.evadid.vm.parsing.source.SourceParsing.SourceLanguage
 import it.evadid.core.datastructures.language.AppLanguage.{Java, Python, SnapLanguage}
 import it.evadid.core.datastructures.language.AppLanguage.ProgrammingLanguage
 import it.evadid.vm.conversion.snapexpression.SnapCustomBlockRules
@@ -86,7 +88,7 @@ class ReturningFunctionConversionSpec extends FunSuite {
   test("other stop choices cannot silently become a function return") {
     for choice <- List("all", "this script", "other scripts in sprite", "") do {
       val xml = s"""<script><block s="doStopThis"><l><option>$choice</option></l></block></script>"""
-      val state = it.evadid.vm.conversion.snapxmlmodel.SnapScalaXmlCodec.parse(xml).fold(fail(_), ProgrammingStateSnapScalaModel(_))
+      val state = SourceParsing.parse(xml, SourceLanguage.Snap).syntax.fold(fail(_), ProgrammingStateSnapScalaModel(_))
       assert(state.convertToLanguage(Python).finalState.isEmpty, choice)
     }
   }

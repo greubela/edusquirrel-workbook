@@ -3,7 +3,6 @@ package it.evadid.vm.conversion.turtlestitchexpression
 import it.evadid.vm.conversion.snapexpression.SnapControlFlow
 import it.evadid.vm.conversion.snapexpression.SnapExpressionSupport
 import it.evadid.vm.conversion.snapexpression.SnapInputCodec
-
 import it.evadid.vm.conversion.turtlestitchexpression.TurtleStitchProgramModel.{BlockLike, BoolLiteral, ColorLiteral, CustomBlockCall, CustomBlockDefinition, InputValue, ListLiteral, Literal, NestedBlock, NestedScript, PrimitiveBlock, Project, Script}
 import it.evadid.vm.code.abstractions.BeExpression
 import it.evadid.vm.code.controlStructures.*
@@ -13,7 +12,6 @@ import it.evadid.vm.code.usage.{BeFunctionCall, BeUseValue}
 import it.evadid.vm.naming.BeEntityName
 import it.evadid.vm.types.{BeDataType, BeDataValueLiteral}
 import it.evadid.workbook.elements.interactionElements.programming.state.snap.*
-
 import scala.collection.mutable.ListBuffer
 
 object TurtleStitchToBeExpressionParser {
@@ -33,8 +31,6 @@ object TurtleStitchToBeExpressionParser {
       variables = variables(scene.variables), stage = scene.stage.copy(variables = variables(scene.stage.variables)))))
   }
 
-  def parseXml(xml: String): BeExpression = parseXmlWithLayout(xml).expression
-  def parseXmlWithLayout(xml: String): ParseWithLayout = Reader().parseXmlWithLayout(xml)
 
   private final class Reader {
   private val OperatorSymbols = Set(
@@ -75,13 +71,6 @@ object TurtleStitchToBeExpressionParser {
       ParseWithLayout(BeStartProgram(BeSequence.optionalBody(statements)), layout)
     }
   }
-
-  def parseXml(xml: String): BeExpression =
-    parseXmlWithLayout(xml).expression
-
-  /** Snap XML through the single lossless reader; malformed XML is unparsable. */
-  def parseXmlWithLayout(xml: String): ParseWithLayout = parseProjectWithLayout(TurtleStitchXmlLoader.load(xml))
-
 
   private def slotDataType(slot: String): BeDataType = slot match {
     case "%n" => BeDataType.Numeric

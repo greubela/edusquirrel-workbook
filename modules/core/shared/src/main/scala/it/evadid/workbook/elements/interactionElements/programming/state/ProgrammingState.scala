@@ -1,9 +1,9 @@
 package it.evadid.workbook.elements.interactionElements.programming.state
 
+import it.evadid.vm.parsing.source.SourceParsing
+import it.evadid.vm.parsing.source.SourceParsing.SourceLanguage
 import it.evadid.workbook.elements.interactionElements.programming.state.snap.SnapScalaModel
-
 import it.evadid.vm.conversion.expressionsnap.SnapProjectXml
-
 import it.evadid.core.datastructures.language.AppLanguage.{BlockDisplay, Java, Python, SnapLanguage, ProgrammingLanguage}
 import it.evadid.vm.simulation.turtle.{TurtleProgramAnalysis, TurtleCommandExecutionInfo}
 import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseTurtle.{TurtleDrawingPolicy, TurtleGradingLogic, TurtleGraphic}
@@ -179,7 +179,7 @@ object ProgrammingStateSnapScalaModel {
   lazy val empty: ProgrammingStateSnapScalaModel = fromXml(SnapProjectXml.empty)
   lazy val mini: ProgrammingStateSnapScalaModel = fromXml(SnapProjectXml.mini)
   private def fromXml(xml: String): ProgrammingStateSnapScalaModel =
-    it.evadid.vm.conversion.snapxmlmodel.SnapScalaXmlCodec.parse(xml)
+    SourceParsing.parse(xml, SourceLanguage.Snap).syntax
       .fold(message => throw IllegalArgumentException(message), ProgrammingStateSnapScalaModel(_))
 
   private case class Saved(model: snap.SnapScalaModel.Document) derives ReadWriter

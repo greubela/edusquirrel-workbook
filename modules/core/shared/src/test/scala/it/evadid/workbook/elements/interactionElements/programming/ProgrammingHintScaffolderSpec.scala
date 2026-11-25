@@ -216,7 +216,8 @@ class ProgrammingHintScaffolderSpec extends FunSuite {
 
   test("a hint is not accepted when the answer changed while the request was running") {
     val element = ProgrammingExerciseFullJava("java-changing", hintTask = Some(task))
-    element.interactionVariable.setStateFromUserInteraction(ProgrammingStateRaw(Java, source), UpdateImportance.MAJOR, context = TestExecutionContext())
+    element.interactionVariable.setStateFromUserInteraction(ProgrammingStateRaw(Java, source), UpdateImportance.MAJOR,
+      timestamp = LocalDateTime.now().minusSeconds(1), context = TestExecutionContext())
     val backend = new LlmBackend(reply) {
       override protected def rawExecution(logger: Logger, request: LLMCommands.FeedbackLlmRequest): Future[String] = {
         element.interactionVariable.setStateFromUserInteraction(ProgrammingStateRaw(Java, source + "\n// edited"),

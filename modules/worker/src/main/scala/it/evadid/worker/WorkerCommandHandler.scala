@@ -1,9 +1,10 @@
 package it.evadid.worker
 
+import it.evadid.vm.parsing.source.SourceParsing.SourceLanguage
 import it.evadid.distribution.clients.{ExecutionClient, ExecutionClientPool}
 import it.evadid.distribution.commandTypes.WorkerCommands.*
 import it.evadid.core.datastructures.vectorShapes.renderer.FlowchartGutter
-import it.evadid.vm.conversion.snapxmlmodel.SnapScalaXmlCodec
+import it.evadid.vm.parsing.source.SourceParsing
 import it.evadid.workbook.model.qr.QrCode
 import it.evadid.util.logging.BasicLogger
 import scala.concurrent.{ExecutionContext, Future}
@@ -16,7 +17,7 @@ object WorkerCommandHandler {
     parseSnapXml.toLocalExecutionClient((request, _) => Future {
       require(request.tag.matches("[A-Za-z_][A-Za-z0-9_.:-]*"), "Invalid Snap XML tag")
       // Every element with the tag, nested ones included, in document order.
-      val document = SnapScalaXmlCodec.parse(request.xml).fold(message => throw IllegalArgumentException(message), identity)
+      val document = SourceParsing.parse(request.xml, SourceLanguage.Snap).syntax.fold(message => throw IllegalArgumentException(message), identity)
       (document.root +: document.root.descendants).map(_.element).filter(_.tag == request.tag)
     }),
     flowchart.toLocalExecutionClient((request, _) => Future(FlowchartGutter.of(request.language, request.source))),

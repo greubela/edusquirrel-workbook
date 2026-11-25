@@ -1,5 +1,6 @@
 package it.evadid.distribution.commandTypes
 
+import it.evadid.vm.parsing.source.SourceParsing.SourceLanguage
 import it.evadid.core.datastructures.chat.{Message, MessengerModel}
 import it.evadid.core.datastructures.user.{AllUserInfo, User, UserConfig, UserTokenInfo}
 import it.evadid.core.datastructures.user.UserTokenInfo.SignedToken
@@ -8,7 +9,7 @@ import it.evadid.core.datastructures.vectorShapes.renderer.PythonFlowchartGutter
 import it.evadid.distribution.command.{ExecutionCommand, ExecutionCommandFactory}
 import it.evadid.llm.LlmConfiguration
 import it.evadid.sql.{BackendDatabase, DatabaseHistoryFormat}
-import it.evadid.vm.conversion.snapxmlmodel.SnapScalaXmlCodec
+import it.evadid.vm.parsing.source.SourceParsing
 import it.evadid.vm.simulation.java.JavaTurtleExecutionEvidence as Evidence
 import it.evadid.workbook.abstractions.InteractionFormat.TextInteractionFormat
 import it.evadid.workbook.elements.interactionElements.sql.SqlDatabaseConfig
@@ -55,7 +56,7 @@ class ExecutionCommandRoundTripSpec extends FunSuite {
     .addEvent(AnswerChangedEvent[TextInteractionFormat.type]("answer \"quoted\" 学校", at, UpdateImportance.MAJOR)))
   private val synced = SyncSuccess(1, 2, 0, at)
   private val qr = QrCode.fromText("https://example.invalid/?q=1", QrErrorCorrection.Q, None, None)
-  private val snapElement = SnapScalaXmlCodec.parse("""<project name="demo"><scripts><script x="1"/></scripts></project>""")
+  private val snapElement = SourceParsing.parse("""<project name="demo"><scripts><script x="1"/></scripts></project>""", SourceLanguage.Snap).syntax
     .toOption.get.root.element
 
   private val samples: List[Sample[?, ?]] = List(

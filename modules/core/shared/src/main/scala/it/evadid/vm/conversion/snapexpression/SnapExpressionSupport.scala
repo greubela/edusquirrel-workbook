@@ -1,11 +1,11 @@
 package it.evadid.vm.conversion.snapexpression
 
-import it.evadid.vm.conversion.turtlestitchexpression.{TurtleStitchProgramModel, TurtleStitchToBeExpressionParser, TurtleStitchXmlLoader}
+import it.evadid.vm.parsing.source.SourceParsing
+import it.evadid.vm.parsing.source.SourceParsing.SourceLanguage
+import it.evadid.vm.conversion.turtlestitchexpression.{TurtleStitchProgramModel, TurtleStitchToBeExpressionParser}
 import it.evadid.workbook.elements.interactionElements.programming.state.snap.SnapCanvasLayout
 import it.evadid.workbook.elements.interactionElements.programming.state.snap.SnapTurtleCatalog
-
 import it.evadid.vm.conversion.expressionsnap.SnapProjectXml
-
 import it.evadid.core.datastructures.language.AppLanguage
 import it.evadid.core.datastructures.language.AppLanguage.{English, Python}
 import it.evadid.vm.code.abstractions.BeExpression
@@ -80,10 +80,13 @@ object SnapExpressionSupport {
    * hats, sprite-local definitions and script/upvar/variadic slots have no Python form,
    * and a call without a matching definition is already an `Undefined!` block in Snap.
    */
-  def unsupportedSnapSelectors(xml: String): List[String] = unsupportedSnapSelectors(xml, TurtleStitchXmlLoader.load(xml))
+  def unsupportedSnapSelectors(xml: String): List[String] =
+    SourceParsing.parse(xml,
+      SourceLanguage.Snap).unsupportedSelectors
 
   /** Primitive blocks outside the supported set, and custom blocks Python cannot express. */
-  def unsupportedSnapSelectors(xml: String, project: TurtleStitchProgramModel.Project): List[String] = {
+  def unsupportedSnapSelectors(document: it.evadid.workbook.elements.interactionElements.programming.state.snap.SnapScalaModel.Document,
+      project: TurtleStitchProgramModel.Project): List[String] = {
     // Predefined module blocks are implemented with list primitives; their calls are what the program uses.
     val fromBlocks = TurtleStitchToBeExpressionParser.withoutModuleLibraries(project).allBlocks.toList.collect {
       case TurtleStitchProgramModel.PrimitiveBlock(Some("doStopThis"), _, inputs, _)
@@ -91,9 +94,9 @@ object SnapExpressionSupport {
         "stop: only 'this block' has a function-return representation"
       case TurtleStitchProgramModel.PrimitiveBlock(Some(selector), _, _, _) if !AllowedSnapSelectors.contains(selector) => selector
     } ++ project.unreadBlocks.map(block => s"'$block' outside a script")
-    val definitionProblems = SnapCustomBlockRules.allDefinitions(xml).flatMap(_.pythonIncompatibility)
+    val definitionProblems = SnapCustomBlockRules.allDefinitions(document).flatMap(_.pythonIncompatibility)
     val undefinedCalls =
-      SnapCustomBlockRules.obsoleteCalls(xml).map(call => s"'${call.spec}' has no matching block definition")
+      SnapCustomBlockRules.obsoleteCalls(document, Nil).map(call => s"'${call.spec}' has no matching block definition")
     (fromBlocks ++ definitionProblems ++ undefinedCalls).distinct
   }
 

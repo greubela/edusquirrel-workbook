@@ -1,5 +1,7 @@
 package it.evadid.vm.conversion.turtlestitchexpression
 
+import it.evadid.vm.parsing.source.SourceParsing
+import it.evadid.vm.parsing.source.SourceParsing.SourceLanguage
 import it.evadid.vm.conversion.expressionpython.ExpressionToPython
 import munit.FunSuite
 
@@ -18,7 +20,7 @@ class TurtleStitchBlockParsingSpec extends FunSuite {
   private val project =
     s"""<project name="p" app="TurtleStitch" version="2"><scenes select="1"><scene name="p"><stage name="Stage"><sprites select="1"><sprite name="Turtle"><scripts>$script</scripts></sprite></sprites></stage><variables><variable name="size"><l>0</l></variable></variables></scene></scenes></project>"""
 
-  private def python(xml: String): String = ExpressionToPython.printedPython(TurtleStitchToBeExpressionParser.parseXml(xml))
+  private def python(xml: String): String = ExpressionToPython.printedPython(TurtleStitchToBeExpressionParser.parseProjectWithLayout(SourceParsing.parse(xml, SourceLanguage.Snap).project).expression)
 
   test("a well-formed project parses every supported block kind") {
     val code = python(project)
@@ -29,7 +31,7 @@ class TurtleStitchBlockParsingSpec extends FunSuite {
   }
 
   test("unterminated projects are rejected instead of guessed") {
-    intercept[it.evadid.vm.code.errors.ProgrammingConversionException](TurtleStitchToBeExpressionParser.parseXml(project.stripSuffix("</project>")))
+    intercept[it.evadid.vm.code.errors.ProgrammingConversionException](TurtleStitchToBeExpressionParser.parseProjectWithLayout(SourceParsing.parse(project.stripSuffix("</project>"), SourceLanguage.Snap).project).expression)
   }
 
   private def scriptProject(blocks: String, definitions: String = "") =

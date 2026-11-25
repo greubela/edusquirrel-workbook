@@ -1,16 +1,17 @@
-package it.evadid.vm.conversion.snapxmlmodel
+package it.evadid.vm.parsing.source
 
 import it.evadid.vm.conversion.snapxml.SnapXmlText.*
-
 import scala.util.control.NonFatal
 import it.evadid.workbook.elements.interactionElements.programming.state.snap.SnapScalaModel.*
 
-/** Cross-platform lexical reader. Does not use a DOM, resolve references, or fetch DTDs. */
-object SnapScalaXmlCodec {
-  def parse(xml: String): Either[String, Document] = {
+/** Stage 2: validates XML and retains its lexical spelling. Never resolves or fetches DTDs. */
+private[source] object SnapDocumentStep {
+  def apply(structured: SnapSourceStructured): Either[String, Vector[Node]] = {
+    val xml = structured.source
     try {
-      if xml == null || xml.length > 64 * 1024 * 1024 then throw IllegalArgumentException("Snap XML exceeds the 64 MiB input limit.")
-      Right(Reader(xml).document())
+      structured.tokens.find(!_.closed).foreach(token =>
+        throw IllegalArgumentException(s"Unterminated ${token.kind} (offset ${token.start})"))
+      Right(Reader(xml).nodes())
     } catch {
       case NonFatal(error) => Left(Option(error.getMessage).getOrElse("Invalid Snap XML."))
     }
@@ -42,10 +43,10 @@ object SnapScalaXmlCodec {
       cursor = end + close.length
       xml.substring(start, end)
     }
-    def document(): Document = {
+    def nodes(): Vector[Node] = {
       val nodes = Vector.newBuilder[Node]
       while cursor < xml.length do nodes += node(0)
-      Document(nodes.result())
+      nodes.result()
     }
     private def node(depth: Int): Node = {
       count += 1
