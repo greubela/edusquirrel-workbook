@@ -157,6 +157,32 @@ class PythonEditorSpec extends EditorDomSuite {
     }.transform { outcome => scala.util.Try(fixture.close()); outcome }
   }
 
+  test("hiding the page writes the typed text at once") {
+    val fixture = Fixture("x = 1")
+    finish(fixture.close) {
+      until(fixture.created.now().nonEmpty).map(_ => fixture.loadNative()).flatMap(_ => until(hidden(fallback))).map { _ =>
+        fixture.native.type_("x = 2")
+        dom.document.dispatchEvent(js.Dynamic.newInstance(js.Dynamic.global.window.Event)("visibilitychange",
+          js.Dynamic.literal(bubbles = true)).asInstanceOf[dom.Event])
+        assertEquals(fixture.text.now(), "x = 2")
+      }
+    }
+  }
+
+  test("typing goes on over an answer change that equals the typed text") {
+    val fixture = Fixture("x = 1")
+    until(fixture.created.now().nonEmpty).map(_ => fixture.loadNative()).flatMap(_ => until(hidden(fallback))).flatMap { _ =>
+      val native = fixture.native
+      native.type_("x = 2")
+      // e.g. the same edit synchronized from another tab
+      fixture.text.set("x = 2")
+      native.type_("x = 23")
+      pause(CodeMirrorEditor.typingWriteDelayMillis + 100).map { _ =>
+        assertEquals(fixture.text.now(), "x = 23", "the text typed afterwards is written")
+      }
+    }.transform { outcome => scala.util.Try(fixture.close()); outcome }
+  }
+
   test("a failed native load leaves the fallback editable and hides the loading notice") {
     val fixture = Fixture("print(1)")
     finish(fixture.close) {

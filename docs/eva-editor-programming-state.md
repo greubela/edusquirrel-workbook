@@ -29,17 +29,17 @@ or separate stores such as `synchronizedValue` alongside a bound Var. Project
 views with `bimap` where appropriate; for example the Python editor shows the text of
 the central Python state and writes `ProgrammingStatePythonStructured`, so typed text
 that the structured state represents (classes first, completed empty blocks) stays as typed.
-Typed text is written only onto the answer it was typed over; an answer change that
-arrives meanwhile (restoration, synchronization, conversion) replaces it. Java's method fragment is a view of
+An answer change that arrives while typed text is still pending (restoration,
+synchronization, conversion) replaces it. Java's method fragment is a view of
 the current source, not a separately saved program.
 
-Keystrokes stay in the editor: Eva's language views edit the draft of a
-[`TypingDraftBinding`](../modules/client/src/main/scala/it/evadid/homepage/webElements/editor/abstractions/TypingDraftBinding.scala)
-over the central Var, an immutable core `TypingDraft` holding the last committed answer
-and the TEMPORARY edits typed since. A token-ending key, a five-second interval, a
-change without a key (blocks), a language switch, a one-second quiet period, leaving
-the editor and unmounting commit the draft to the central Var; panels, grading and
-storage see only commits. Any other change of the central Var replaces the draft.
+Keystrokes stay in the editor that receives them: Eva's language views edit the central Var
+itself, and only the typing editors buffer. CodeMirror writes its text after a 400 ms typing
+pause, Snap its project after a 400 ms input pause; both also write at once when focus leaves
+them, when the page is hidden and when they unmount, so panels, grading and storage never run
+per keystroke. Block edits, dialog actions and language switches write at once. When the page
+is hidden or left, `RemoteInteractionCacheControl` runs the stores these writes scheduled at
+once and sends its buffered destinations, because a closing page runs no further task.
 
 Conversions and their availability checks execute in `Future`s. A successful
 language switch writes the converted representation to the central Var and thus
