@@ -151,11 +151,16 @@ test('test workbook preserves edits across human languages, programming language
         .some(m => m.selector === 'forward' && Number(m.inputs()[0].evaluate()) === value), value);
     }
     await editForward(42);
-    await page.waitForFunction(count => snapHistoryWrites.length > count, historyBeforeLanguage);
-    const persisted = await page.evaluate(() => snapHistoryWrites.at(-1));
-    const written = await page.evaluate(count => snapHistoryWrites.slice(count)
-      .map(value => String(value).replace(/data:image[^"]*/g, 'data:image…').slice(0, 400)), historyBeforeLanguage);
-    assert(persisted.includes('SnapModel'), `native edits persist a typed model; writes since the language checks: ${JSON.stringify(written)}`);
+    // The store records every interaction; other exercises on the page may write too.
+    const snapWrite = count => snapHistoryWrites.slice(count)
+      .findLast(value => /"format":"(ProgrammingExercise|TurtleRecreateShapeInteraction|SortListExercise)/.test(String(value)));
+    await page.waitForFunction(snapWrite, historyBeforeLanguage).catch(async error => {
+      const written = await page.evaluate(count => snapHistoryWrites.slice(count)
+        .map(value => String(value).replace(/data:image[^"]*/g, 'data:image…').slice(0, 400)), historyBeforeLanguage);
+      throw new Error(`the Snap edit was not persisted; writes since the language checks: ${JSON.stringify(written)}`, {cause: error});
+    });
+    const persisted = await page.evaluate(snapWrite, historyBeforeLanguage);
+    assert(persisted.includes('SnapModel'), 'native edits persist a typed model');
     assert(!persisted.includes('data:image/png;base64,'), 'generated previews are absent from database history');
     // A language switch must also flush a numeric field still being edited.
     await editForward(91, false);
