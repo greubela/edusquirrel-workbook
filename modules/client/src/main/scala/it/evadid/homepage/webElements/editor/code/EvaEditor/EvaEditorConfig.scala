@@ -2,7 +2,7 @@ package it.evadid.homepage.webElements.editor.code.EvaEditor
 
 import it.evadid.core.datastructures.language.AppLanguage.*
 import com.raquo.laminar.api.L.{Signal, Val}
-import it.evadid.homepage.webElements.code.JavaComponentEditor
+import it.evadid.homepage.webElements.editor.code.JavaEditor.JavaComponentEditor
 import it.evadid.homepage.webElements.editor.blocks.BlockProgramEditor
 import it.evadid.homepage.webElements.editor.abstractions.WebEditorConfig
 import it.evadid.homepage.webElements.editor.code.SnapEditor.SnapCodeEditor

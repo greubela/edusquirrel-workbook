@@ -62,7 +62,7 @@ class ReporterExerciseSpec extends FunSuite {
     val python = authored.convertToLanguage(Python).finalState.get.toString
     assert(python.contains("def side_length_of(n: float) -> float:"), python)
     val edited = PythonToSnap.replacing(authored, python.replace("n * 2", "n * 4")).fold(fail(_), identity)
-    val model = edited.toSnapScalaModel.fold(fail(_), _.model)
+    val model = edited.toSnapScalaModel.fold(failure => fail(failure.message), _.model)
     val definitions = (model.root +: model.root.descendants).collect { case d: BlockDefinition => (d.spec, d.blockType, d.category.map(_.xml)) }
     assertEquals(definitions, Vector((Some("side length of %'n'"), Some(BlockType.Reporter), Some("operators"))),
       "the authored label words, quoted slot name, type and category survive")

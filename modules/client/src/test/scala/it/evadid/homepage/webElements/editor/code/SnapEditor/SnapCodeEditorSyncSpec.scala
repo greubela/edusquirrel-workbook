@@ -12,6 +12,7 @@ import it.evadid.homepage.webElements.editor.code.SnapEditor.{CanvasVisibility, 
 import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseRegular.ProgrammingExercise
 import it.evadid.core.datastructures.language.AppLanguage.*
 import munit.FunSuite
+import SnapProjectBindingSpec.FakeNative
 import org.scalajs.dom
 import org.scalajs.dom.html.Canvas
 import scala.scalajs.js
@@ -47,38 +48,20 @@ class SnapCodeEditorSyncSpec extends FunSuite {
   private class RecordingImpl extends SnapCodeEditorImpl {
     val languages = Var(List.empty[HumanLanguage])
     override def changeLanguage(language: HumanLanguage): Unit = languages.update(_ :+ language)
-    var listener: String => Unit = _ => ()
+    var project: Option[Var[Option[ProgrammingStateSnapScalaModel]]] = None
     var current: Option[ProgrammingStateRaw] = None
-    var pendingXml: Option[String] = None
     var previewed = List.empty[ProgrammingStateRaw]
-    var mounts = 0
     var renders = 0
-    var reloads = 0
-    var forcedLoads = 0
-    var loadRequests = 0
+    var flushes = 0
     var librariesCleared = 0
-    override def mount(owner: Owner): Unit = { mounts += 1 }
-    override def renderEditorInto(state: ProgrammingStateRaw, canvas: Canvas, config: SnapCodeEditorConfig): Unit = {
+    override def renderEditorInto(project: Var[Option[ProgrammingStateSnapScalaModel]], canvas: Canvas,
+        config: SnapCodeEditorConfig)(using owner: Owner): Unit = {
       renders += 1
-      current = Some(state)
+      this.project = Some(project)
+      current = project.now().map(_.toSnapXml)
     }
-    override def loadProgramIfChanged(state: ProgrammingStateRaw): Unit = {
-      loadRequests += 1
-      if !current.contains(state) then {
-        reloads += 1
-        current = Some(state)
-      }
-    }
-    override def acknowledgeProgramFromEditor(state: ProgrammingStateRaw): Unit = { current = Some(state) }
-    override def forceLoadProgram(state: ProgrammingStateRaw): Unit = { forcedLoads += 1 }
-    override def setOnProjectXmlChangedListener(callback: String => Unit): Unit = { listener = callback }
     override def renderPreviewInto(state: ProgrammingStateRaw, canvas: Canvas, config: SnapCodeEditorConfig): Unit = { previewed = previewed :+ state }
-    override def flushPendingProjectChanges(): Unit = {
-      val pending = pendingXml
-      pendingXml = None
-      pending.foreach(listener)
-    }
-    override def currentProjectXml(): Option[String] = current.map(_.code)
+    override def flushPendingProjectChanges(): Unit = { flushes += 1 }
     override def startWorldCycles(): Unit = ()
     override def pauseWorldCycles(): Unit = ()
     override def runGreenFlagOnStage(canvas: Canvas): Unit = ()
@@ -89,54 +72,26 @@ class SnapCodeEditorSyncSpec extends FunSuite {
     override def destroy(): Unit = ()
   }
 
-  test("mount once, publish Snap edits once, and reload only external changes") {
+  private def model(xml: String) = SnapProjectBinding.typed(xml)
+
+  test("the editor binds the answer as its Snap project and drops writes once it is no longer Snap") {
     val state = Var[ProgrammingState](ProgrammingStateSnapScalaModel.mini.toSnapXml)
     val impl = new RecordingImpl
-    var edits = List.empty[ProgrammingState]
     val editor = SnapCodeEditor(logger, state, SnapCodeEditorConfig.Testing, impl, Val("loading"))
     val owner = new ManualOwner
-    state.signal.changes.distinct.foreach(next => edits = edits :+ next)(using owner)
     try {
       editor.mountEditorInto(null, owner)
       assertEquals(impl.renders, 1)
-      assertEquals(impl.loadRequests, 0) // no initial signal echo
-      val next = ProgrammingStateRaw(SnapLanguage, "<project>edited</project>").toSnapScalaModel.toOption.get
-      impl.listener(next.toSnapXml.code)
-      assertEquals(state.now(), next)
-      assertEquals(edits, List(next))
-      assertEquals(impl.reloads, 0) // acknowledgement must precede the Var update
-      assertEquals(impl.renders, 1)
-      impl.listener(next.toSnapXml.code)
-      assertEquals(edits, List(next))
-      val restored = ProgrammingStateRaw(SnapLanguage, "<project>restored</project>")
-      state.set(restored)
-      state.set(restored)
-      assertEquals(impl.reloads, 1)
-      assertEquals(impl.renders, 1)
-      assertEquals(impl.forcedLoads, 0)
-      assertEquals(impl.reloads, 1)
-      assertEquals(impl.librariesCleared, 0)
+      val project = impl.project.get
+      val edited = model("<project>edited</project>")
+      project.set(Some(edited))
+      assertEquals(state.now(), edited)
+      val python = ProgrammingStateRaw(Python, "forward(10)")
+      state.set(python)
+      assertEquals(project.now(), None)
+      project.set(Some(edited))
+      assertEquals(state.now(), python)
     } finally owner.killSubscriptions()
-  }
-
-  test("a fresh mount owner observes restores after closing and reopening") {
-    val state = Var[ProgrammingState](ProgrammingStateSnapScalaModel.mini.toSnapXml)
-    val impl = new RecordingImpl
-    val editor = SnapCodeEditor(logger, state, SnapCodeEditorConfig.Testing, impl, Val("loading"))
-    val first = new ManualOwner
-    editor.mountEditorInto(null, first)
-    first.killSubscriptions()
-    state.set(ProgrammingStateSnapScalaModel.empty.toSnapXml)
-    assertEquals(impl.loadRequests, 0)
-    val second = new ManualOwner
-    try {
-      editor.mountEditorInto(null, second)
-      state.set(ProgrammingStateSnapScalaModel.mini.toSnapXml)
-      assertEquals(impl.mounts, 2)
-      assertEquals(impl.loadRequests, 1)
-      assertEquals(impl.reloads, 1)
-      assertEquals(impl.librariesCleared, 0)
-    } finally second.killSubscriptions()
   }
 
   test("preview rendering preserves the shared keyboard draft, selection and style") {
@@ -202,31 +157,6 @@ class SnapCodeEditorSyncSpec extends FunSuite {
       assertEquals(dom.document.getElementById("morphic_keyboard"), keyboard)
       assertEquals(keyboard.value, "preview keyboard")
     } finally keyboard.remove()
-  }
-
-  test("Snap image regeneration commits only cleaned code and never reloads its own edit") {
-    val state = Var[ProgrammingState](ProgrammingStateSnapScalaModel.mini.toSnapXml)
-    val impl = new RecordingImpl
-    var edits = List.empty[ProgrammingState]
-    val editor = SnapCodeEditor(logger, state, SnapCodeEditorConfig.Testing, impl, Val("loading"))
-    val owner = new ManualOwner
-    state.signal.changes.distinct.foreach(next => edits = edits :+ next)(using owner)
-    try {
-      editor.mountEditorInto(null, owner)
-      def liveXml(code: String, image: Int) = s"<project><thumbnail>image-$image</thumbnail><stage><pentrails>trails-$image</pentrails><scripts>$code</scripts></stage></project>"
-      val cleaned = ProgrammingStateRaw(SnapLanguage, "<project><stage><scripts>edited</scripts></stage></project>").toSnapScalaModel.toOption.get
-      impl.listener(liveXml("edited", 0))
-      assertEquals(state.now(), cleaned)
-      assertEquals(edits, List(cleaned))
-      assertEquals(impl.reloads, 0)
-      for (image <- 1 to 20) impl.listener(liveXml("edited", image))
-      assertEquals(edits, List(cleaned))
-      assertEquals(impl.reloads, 0)
-      impl.listener(liveXml("changed again", 21))
-      assertEquals(edits.size, 2)
-      assertEquals(state.now(), ProgrammingStateRaw(SnapLanguage, "<project><stage><scripts>changed again</scripts></stage></project>").toSnapScalaModel.toOption.get)
-      assertEquals(impl.reloads, 0)
-    } finally owner.killSubscriptions()
   }
 
   test("closing an editor before the Snap runtime loads does not touch Process") {
@@ -367,7 +297,6 @@ class SnapCodeEditorSyncSpec extends FunSuite {
     val impl = new SnapMorphicSession()
     impl.destroy()
     impl.destroy()
-    assertEquals(impl.currentProjectXml(), None)
   }
 
   test("closing and reopening while Snap loads mounts only the current canvas") {
@@ -419,12 +348,8 @@ class SnapCodeEditorSyncSpec extends FunSuite {
       val mounted = render(container, editor.getDomElement())
       try withKeyboard { keyboard =>
         container.querySelector(".be-program-snap-renderer--editor").appendChild(keyboard)
-        val pending = ProgrammingStateRaw(SnapLanguage, "<project><notes>pending edit</notes></project>")
-        impl.pendingXml = Some(pending.code)
         keyboard.dispatchEvent(js.Dynamic.newInstance(window.Event)("blur").asInstanceOf[dom.Event])
-        assertEquals(state.now(), pending.toSnapScalaModel.toOption.get)
-        assertEquals(impl.pendingXml, None)
-        assertEquals(impl.reloads, 0)
+        assertEquals(impl.flushes, 1)
       } finally mounted.unmount()
     }
   }
@@ -444,7 +369,6 @@ class SnapCodeEditorSyncSpec extends FunSuite {
         language.set(English)
         assertEquals(impl.languages.now(), List(German, French, English))
         assertEquals(impl.renders, 1)
-        assertEquals(impl.mounts, 1)
         assertEquals(state.now(), initial)
       } finally mounted.unmount()
       language.set(Spanish)
@@ -520,22 +444,31 @@ class SnapCodeEditorSyncSpec extends FunSuite {
     state.signal.changes.foreach(value => changes.update(_ :+ value))(using owner)
     try {
       editor.mountEditorInto(null, owner)
+      val native = FakeNative()
+      native.xml = Some(xml)
+      val binding = SnapProjectBinding(impl.project.get, native)
+      binding.opened(impl.project.get.now().get)
+      binding.observe(owner)
       val cosmetic = xml.replace("name='Turtle' tempo='60'", "tempo=\"60\" name=\"Turtle\"")
         .replace("</project>", "<thumbnail>huge</thumbnail></project>")
-      impl.listener(cosmetic)
+      native.xml = Some(cosmetic)
+      binding.publish()
       assertEquals(changes.now(), Nil)
       assertEquals(state.now(), source)
       val next = cosmetic.replace("<l>10</l>", "<l>20</l>")
-      impl.listener(next)
+      native.xml = Some(next)
+      binding.publish()
       val typed = state.now().asInstanceOf[ProgrammingStateSnapScalaModel]
-      assertEquals(typed, editor.snapState.now())
+      assertEquals(Some(typed), editor.project.now())
       assert(!typed.toSnapXml.code.contains("huge"))
       assertEquals(changes.now(), List(typed))
-      impl.listener(next.replace("huge", "another-preview"))
+      native.xml = Some(next.replace("huge", "another-preview"))
+      binding.publish()
       assertEquals(changes.now(), List(typed))
-      assertEquals(impl.reloads, 0)
+      assertEquals(native.opened, Nil)
       state.set(ProgrammingStateRaw(Python, "unfinished python"))
-      impl.listener(next.replace("20", "30"))
+      native.xml = Some(next.replace("20", "30"))
+      binding.publish()
       assertEquals(state.now(), ProgrammingStateRaw(Python, "unfinished python"))
     } finally owner.killSubscriptions()
   }

@@ -1,6 +1,6 @@
 package it.evadid.workbook.elements.interactionElements.programming.state
 
-import it.evadid.vm.parsing.source.SourceParsing
+import it.evadid.vm.parsing.source.{SourceParsing, SyntaxFailure}
 import it.evadid.vm.parsing.source.SourceParsing.SourceLanguage
 import it.evadid.workbook.elements.interactionElements.programming.state.snap.SnapScalaModel
 import it.evadid.vm.conversion.expressionsnap.SnapProjectXml
@@ -142,7 +142,7 @@ final case class ProgrammingStateBeExpression(expression: BeExpression) extends 
 
 /** Transport and in-progress source. Prefer the structured language states for saved answers. */
 final case class ProgrammingStateRaw(language: ProgrammingLanguage, code: String) extends ProgrammingState derives ReadWriter {
-  def toSnapScalaModel: Either[String, ProgrammingStateSnapScalaModel] = derivations.snapModel
+  def toSnapScalaModel: Either[SyntaxFailure, ProgrammingStateSnapScalaModel] = derivations.snapModel
 
   def removeBloatFromXml: ProgrammingStateRaw = {
     val cleaned = if language == SnapLanguage then SnapGeneratedImages.remove(code) else code
@@ -180,7 +180,7 @@ object ProgrammingStateSnapScalaModel {
   lazy val mini: ProgrammingStateSnapScalaModel = fromXml(SnapProjectXml.mini)
   private def fromXml(xml: String): ProgrammingStateSnapScalaModel =
     SourceParsing.parse(xml, SourceLanguage.Snap).syntax
-      .fold(message => throw IllegalArgumentException(message), ProgrammingStateSnapScalaModel(_))
+      .fold(failure => throw failure.unparsable(), ProgrammingStateSnapScalaModel(_))
 
   private case class Saved(model: snap.SnapScalaModel.Document) derives ReadWriter
   given ReadWriter[ProgrammingStateSnapScalaModel] = upickle.default.readwriter[Saved].bimap(

@@ -23,13 +23,11 @@ case class CompressionActivitiesEditor(answer: Var[CompressionExperiment], initi
     })
   }
   private def fileView(v: FileSimulation, editable: Boolean): Element = {
-    var left = 0.0
-    val blocks = v.files.zipWithIndex.map { (f,i) =>
-      val width = f.bytes.toDouble / v.bytes * 1000
-      val node = svg.g(svg.titleTag(s"${f.name}: ${size(f.bytes)}; ${f.metadata.mkString("; ")}"),
-        svg.rect(svg.x := left.toString, svg.y := "0", svg.width := width.toString, svg.height := "120", svg.cls := s"compression-area compression-area-${i % 4}"),
+    val widths = v.files.map(_.bytes.toDouble / v.bytes * 1000)
+    val blocks = v.files.zip(widths.scanLeft(0.0)(_ + _)).zipWithIndex.map { case ((f, left), i) =>
+      svg.g(svg.titleTag(s"${f.name}: ${size(f.bytes)}; ${f.metadata.mkString("; ")}"),
+        svg.rect(svg.x := left.toString, svg.y := "0", svg.width := widths(i).toString, svg.height := "120", svg.cls := s"compression-area compression-area-${i % 4}"),
         onClick --> (_ => if editable && !lockedValue.now() then answer.update(a => a.asInstanceOf[FileSimulation].click(i))))
-      left += width; node
     }
     div(
       p(cls := "compression-summary", span(text <-- format("fileSummary", "size" -> size(v.bytes), "count" -> v.fileCount.toString, "steps" -> v.steps.toString)),

@@ -19,7 +19,7 @@ class SnapDetachedRoundTripSpec extends FunSuite {
     for converted <- Seq(original.toPython.toBeExpression, original.toJava.toBeExpression) do {
       val snap = converted.toSnapXml
       assert(!snap.code.contains("block-definition s=\"unused"), snap.code)
-      val layout = TurtleStitchToBeExpressionParser.parseProjectWithLayout(SourceParsing.parse(snap.code, SourceLanguage.Snap).project).canvasLayout
+      val layout = TurtleStitchToBeExpressionParser.parseProjectWithLayout(SourceParsing.parse(snap.code, SourceLanguage.Snap).project.toTry.get).canvasLayout
       assertEquals(layout.scripts.count(_.hasReceiveGo), 1)
       assertEquals(layout.scripts.count(!_.hasReceiveGo), 1)
       assertEquals(snap.toBeExpression.turtleCommandExecutionInfo.completedCommands.map(_.args.head), List(10.0))
@@ -29,7 +29,7 @@ class SnapDetachedRoundTripSpec extends FunSuite {
 
   test("a project containing only loose blocks does not gain startup commands") {
     val loose = ProgrammingStateRaw(SnapLanguage, source.replace("<block s=\"receiveGo\"/>", "")).toBeExpression.toSnapXml
-    val layout = TurtleStitchToBeExpressionParser.parseProjectWithLayout(SourceParsing.parse(loose.code, SourceLanguage.Snap).project).canvasLayout
+    val layout = TurtleStitchToBeExpressionParser.parseProjectWithLayout(SourceParsing.parse(loose.code, SourceLanguage.Snap).project.toTry.get).canvasLayout
     assert(layout.scripts.forall(!_.hasReceiveGo), loose.code)
     assertEquals(loose.toBeExpression.turtleCommandExecutionInfo.completedCommands, Nil)
   }

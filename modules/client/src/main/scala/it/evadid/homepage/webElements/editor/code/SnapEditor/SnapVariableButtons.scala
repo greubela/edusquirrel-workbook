@@ -9,30 +9,26 @@ import scala.scalajs.js.JSConverters.*
 private[SnapEditor] object SnapVariableButtons:
   def paletteItems(ide: IDEMorph): List[js.Any] = {
     val sprite = ide.currentSprite.asInstanceOf[js.Dynamic]
-    val items = scala.collection.mutable.ListBuffer.empty[js.Any]
-    // No sprite corral in this editor — always create globals (skip Snap's local/global dialog).
-    items += makeGlobalVariableButton(sprite)
-
     val deletable = sprite.applyDynamic("deletableVariableNames")()
     val deletableCount =
       if js.isUndefined(deletable) || deletable == null then 0
       else deletable.asInstanceOf[js.Array[js.Any]].length
-    if deletableCount > 0 then
-      items += makeDeleteVariableButton(sprite)
 
     val namesDyn = sprite.applyDynamic("allGlobalVariableNames")(true)
     val names =
       if js.isUndefined(namesDyn) || namesDyn == null then js.Array[String]()
       else namesDyn.asInstanceOf[js.Array[String]]
-    names.foreach { name =>
+    val blocks = names.toList.flatMap { name =>
       val blockDyn = sprite.applyDynamic("variableBlock")(name)
-      if !js.isUndefined(blockDyn) && blockDyn != null then
+      Option.when(!js.isUndefined(blockDyn) && blockDyn != null) {
         val block = blockDyn.asInstanceOf[BlockMorph]
         block.isDraggable = false
         block.isTemplate = true
-        items += block
+        block: js.Any
+      }
     }
-    items.toList
+    // No sprite corral in this editor — always create globals (skip Snap's local/global dialog).
+    (makeGlobalVariableButton(sprite) :: Option.when(deletableCount > 0)(makeDeleteVariableButton(sprite)).toList) ++ blocks
   }
 
   /** "Make a variable" that always adds a global (no "for this sprite only" choice). */

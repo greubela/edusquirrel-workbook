@@ -17,7 +17,7 @@ object WorkerCommandHandler {
     parseSnapXml.toLocalExecutionClient((request, _) => Future {
       require(request.tag.matches("[A-Za-z_][A-Za-z0-9_.:-]*"), "Invalid Snap XML tag")
       // Every element with the tag, nested ones included, in document order.
-      val document = SourceParsing.parse(request.xml, SourceLanguage.Snap).syntax.fold(message => throw IllegalArgumentException(message), identity)
+      val document = SourceParsing.parse(request.xml, SourceLanguage.Snap).syntax.fold(failure => throw IllegalArgumentException(failure.message), identity)
       (document.root +: document.root.descendants).map(_.element).filter(_.tag == request.tag)
     }),
     flowchart.toLocalExecutionClient((request, _) => Future(FlowchartGutter.of(request.language, request.source))),

@@ -48,15 +48,17 @@ object StructuredProgramConversions {
   def javaParts(source: String, warn: String => Unit = logger.logWarn): Parts = {
     val structured = SourceParsing.parse(source, SourceLanguage.Java).structured
     val parts = hoist(source, structured.classes.map(owner => owner.name -> owner.span), python = false, warn)
-    val remaining = SourceParsing.parse(parts.remaining, SourceLanguage.Java).structured
-    val imports = remaining.preamble.map(declaration => declaration.span.start -> declaration.span.end)
-    val rest = SourceText.remove(parts.remaining, imports)
-    val onlyTrivia = SourceParsing.parse(rest, SourceLanguage.Java).structured.trivia
-    val preamble = (remaining.preamble.map(_.text) ++ Option.when(onlyTrivia)(rest.trim)).filter(_.nonEmpty).mkString("\n")
+    val declarations = (structured.topLevelClasses.map(_.span) ++ structured.preamble.map(_.span))
+      .map(span => span.start -> span.end).sorted
+    val gaps = (declarations.flatMap((start, end) => Vector(start, end)).prepended(0) :+ source.length).grouped(2)
+      .collect { case Vector(start, end) if start < end => start -> end }.toVector
+    val onlyTrivia = gaps.forall((start, end) => structured.onlyTrivia(start, end))
+    val rest = SourceText.remove(source, declarations).trim
+    val preamble = (structured.preamble.map(_.text) ++ Option.when(onlyTrivia)(rest)).filter(_.nonEmpty).mkString("\n")
     if preamble.isEmpty then parts
     else {
       val (name, body) = parts.definedClasses.headOption.getOrElse(mainName -> "class Main {}")
-      Parts(parts.definedClasses.updated(name, preamble + "\n" + body), if onlyTrivia then "" else rest.trim)
+      Parts(parts.definedClasses.updated(name, preamble + "\n" + body), if onlyTrivia then "" else rest)
     }
   }
 
@@ -72,7 +74,7 @@ object StructuredProgramConversions {
       .map(owner => source.take(owner.span.start) -> owner))
     val preamble = existingMain.fold("")(_._1)
     val existing = existingMain.toVector.flatMap(_._2.members)
-    val looseMembers = SourceParsing.parse(s"class Main { $loose }", SourceLanguage.Java).structured.topLevelClasses.headOption.toVector.flatMap(_.members)
+    val looseMembers = SourceParsing.parse(loose, SourceLanguage.Java).structured.looseMembers
     val definitions = looseMembers.collect { case function: JavaFunctionStructured => function }
     val staticDefinitions = definitions.map(function => if function.isStatic then function.code else "static " + function.code)
     val executable = looseMembers.filterNot(_.isInstanceOf[JavaFunctionStructured])

@@ -6,12 +6,15 @@ import upickle.default.ReadWriter
   *
   * `classes` lists every class declaration (nested ones too) in source order. Verbatim library definitions such
   * as the generated `Turtle` are `library` classes; `masked` is the source with them blanked, keeping offsets and
-  * lines, and is what later steps read. `codeMasked` also blanks comments and string literals.
+  * lines, and is what later steps read. `codeMasked` also blanks comments and string literals. `looseMembers` are the
+  * declarations and statements outside classes and the preamble, split like class members (`className` is empty).
   */
 final case class JavaSourceStructured(
     source: String,
     classes: Vector[JavaClassStructured],
     preamble: Vector[JavaPreambleStructured],
+    looseMembers: Vector[JavaMemberStructured],
+    comments: Vector[SourceSpan],
     balanced: Boolean,
     trivia: Boolean,
     masked: String,
@@ -24,6 +27,13 @@ final case class JavaSourceStructured(
   def topLevelClasses: Vector[JavaClassStructured] = classes.filter(_.outer.isEmpty)
 
   def functions: Vector[JavaFunctionStructured] = classes.flatMap(_.functions)
+
+  /** Whether `[start, end)` holds only whitespace and closed comments. */
+  def onlyTrivia(start: Int, end: Int): Boolean = {
+    val inside = comments.filter(comment => comment.start < end && comment.end > start)
+    inside.forall(comment => start <= comment.start && comment.end <= end) &&
+      (start until end).forall(offset => source.charAt(offset).isWhitespace || inside.exists(_.contains(offset)))
+  }
 }
 
 /** A `package` or `import` declaration outside classes; `text` runs to its `;`. */

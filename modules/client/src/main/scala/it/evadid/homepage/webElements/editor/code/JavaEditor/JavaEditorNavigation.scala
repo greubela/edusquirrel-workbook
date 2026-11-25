@@ -1,8 +1,8 @@
-package it.evadid.homepage.webElements.code
+package it.evadid.homepage.webElements.editor.code.JavaEditor
 
 import com.raquo.laminar.api.L.*
 import it.evadid.core.datastructures.uml.{UmlClassDiagram, UmlEntityKey, UmlEntityKind}
-import it.evadid.homepage.webElements.code.JavaEditorLabels.Key
+import it.evadid.homepage.webElements.editor.code.JavaEditor.JavaEditorLabels.Key
 import it.evadid.vm.naming.BeEntityName
 import it.evadid.vm.structure.JavaUmlDiagram
 import it.evadid.workbook.elements.interactionElements.programming.state.ProgrammingStateJavaStructured

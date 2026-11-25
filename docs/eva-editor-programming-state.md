@@ -50,8 +50,9 @@ Diagnostics and worker-generated flowcharts arrive through signals. The gutter r
 
 ## Java component editor
 
-`JavaComponentEditor` offers Class, Function and Full modes. `JavaEditorNavigation`
-owns mode/selection; `JavaFragmentEditor` splices partial drafts into source ranges.
+`JavaComponentEditor` (`editor/code/JavaEditor`) offers Class, Function and Full modes. `JavaEditorNavigation`
+owns mode/selection; `JavaFragmentEditor` splices partial drafts into source ranges, and
+core `JavaMethodEditing` locates, replaces and inserts methods on step-1 declarations.
 Adding a declaration in Function Mode selects only the new function.
 
 Shared UML data lives in `core.datastructures.uml`; `JavaUmlDiagram` derives it from

@@ -119,4 +119,30 @@ class JavaStructuredSpec extends FunSuite {
     assertEquals(structured("class A { void f(").classes.flatMap(_.members).collect { case function: JavaFunctionStructured => function.closed },
       Vector(false))
   }
+
+  test("loose members are the declarations and statements outside classes and the preamble") {
+    val source = "import a.B;\nint count = 2;\nvoid draw(int size) { forward(size); }\nclass Kept { void inside() {} }\ndraw(count);\n// note\n"
+    val loose = structured(source).looseMembers
+    assertEquals(loose.map(_.code), Vector("int count = 2;", "void draw(int size) { forward(size); }", "draw(count);"))
+    loose(0) match {
+      case field: JavaFieldStructured => assertEquals((field.className, field.javaType, field.name, field.initializer), ("", "int", "count", Some("2")))
+      case other => fail(s"expected a field, got $other")
+    }
+    loose(1) match {
+      case function: JavaFunctionStructured => assertEquals((function.name, function.parameterList, function.span.startLine), ("draw", "int size", 3))
+      case other => fail(s"expected a function, got $other")
+    }
+    assertEquals(structured("forward(10").looseMembers.map(_.code), Vector("forward(10"), "unfinished loose code is still a member")
+  }
+
+  test("trivia ranges hold only whitespace and closed comments") {
+    val source = "  // one\n/* two */ x /* open"
+    val value = structured(source)
+    assertEquals(value.comments.map(_.text(source)), Vector("// one", "/* two */"))
+    assert(value.onlyTrivia(0, 18))
+    assert(!value.onlyTrivia(0, 20), "code is not trivia")
+    assert(!value.onlyTrivia(5, 18), "a range must contain whole comments")
+    assert(!value.onlyTrivia(21, source.length), "an unclosed comment is not trivia")
+    assert(!structured("\"//\"").onlyTrivia(0, 4), "comment markers inside strings are code")
+  }
 }

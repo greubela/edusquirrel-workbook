@@ -51,7 +51,7 @@ two</options></input></inputs>
 """
 
   private def converted(xml: String): ProgrammingStateSnapScalaModel =
-    ProgrammingStateRaw(SnapLanguage, xml).toSnapScalaModel.fold(message => fail(message), identity)
+    ProgrammingStateRaw(SnapLanguage, xml).toSnapScalaModel.fold(failure => fail(failure.message), identity)
 
   private def assertRoundTrip(xml: String): Unit = {
     val source = ProgrammingStateRaw(SnapLanguage, xml)

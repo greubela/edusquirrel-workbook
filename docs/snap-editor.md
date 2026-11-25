@@ -9,7 +9,7 @@ and scheduling state belong to one `Var[SnapSessionResources]` per session.
 
 ## State and conversion
 
-- Snap uses a `Var[ProgrammingStateSnapScalaModel]` view of Eva's central answer Var; only meaningful model changes are published.
+- Snap uses a `Var[Option[ProgrammingStateSnapScalaModel]]` view of Eva's central answer Var (`None` while the answer is not shown as Snap); only meaningful model changes are published.
 - Model comparison ignores generated media and XML spelling; selectors, inputs, authored assets and script layout remain meaningful.
 - [ProgrammingStateSnapScalaModel](snap-scala-model.md) supports lossless typed editing, including native Snap blocks.
 - Python/Java conversion supports a subset of Snap. Preserve unsupported blocks in the saved project; never replace it with a lossy conversion.
@@ -19,7 +19,7 @@ and scheduling state belong to one `Var[SnapSessionResources]` per session.
 
 - The Snap facade shares runtime readiness; preloading creates no IDE or Morphic world. See [startup loading](browser-startup-loading.md).
 - Each mounted editor owns its canvas, IDE and world. Unmount flushes pending edits and destroys native handles; late callbacks are ignored.
-- External state changes use `loadProgramIfChanged`; consumers observe the central Var.
+- `SnapProjectBinding` connects the native project and the view: polled Snap edits are written into it, other values are opened in Snap. It remembers which answer Snap shows and Snap's serialization of it, so normalization and regenerated images are not edits.
 - Static previews use temporary IDEs and preserve Morphic's shared keyboard state.
 
 ## Human language
@@ -116,6 +116,6 @@ Palette availability and usage grading remain separate concerns.
 ```sh
 sbt 'coreJVM/testOnly *ProgrammingState*Spec *SnapTurtlePythonBridgeSpec *SnapTurtleCatalogSpec'
 sbt 'coreJS/testOnly *ProgrammingState*Spec *SnapTurtlePythonBridgeSpec *SnapTurtleCatalogSpec'
-sbt 'client/testOnly *SnapCodeEditor*Spec *SnapProjectXmlSyncSpec *SnapLanguageSpec *EvaEditorSpec'
+sbt 'client/testOnly *SnapCodeEditor*Spec *SnapProjectBindingSpec *SnapLanguageSpec *EvaEditorSpec'
 npm run test:workbooks -- snap-preview snap-language editor-layout
 ```

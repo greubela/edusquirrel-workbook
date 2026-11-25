@@ -81,8 +81,7 @@ object SnapExpressionSupport {
    * and a call without a matching definition is already an `Undefined!` block in Snap.
    */
   def unsupportedSnapSelectors(xml: String): List[String] =
-    SourceParsing.parse(xml,
-      SourceLanguage.Snap).unsupportedSelectors
+    SourceParsing.parse(xml, SourceLanguage.Snap).unsupportedSelectors.toTry.get
 
   /** Primitive blocks outside the supported set, and custom blocks Python cannot express. */
   def unsupportedSnapSelectors(document: it.evadid.workbook.elements.interactionElements.programming.state.snap.SnapScalaModel.Document,

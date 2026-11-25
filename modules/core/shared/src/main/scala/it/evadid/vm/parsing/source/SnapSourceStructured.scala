@@ -2,13 +2,14 @@ package it.evadid.vm.parsing.source
 
 import fastparse.*
 import fastparse.NoWhitespace.*
+import upickle.default.ReadWriter
 
 /** Lossless lexical inspection, available even when XML cannot form a document. */
-final case class SnapSourceStructured(source: String, tokens: Seq[SnapSourceStructured.Token])
+final case class SnapSourceStructured(source: String, tokens: Seq[SnapSourceStructured.Token]) derives ReadWriter
 
 object SnapSourceStructured {
-  enum Kind { case Text, Tag, Comment, CData, Instruction, Declaration }
-  final case class Token(kind: Kind, start: Int, end: Int, closed: Boolean)
+  enum Kind derives ReadWriter { case Text, Tag, Comment, CData, Instruction, Declaration }
+  final case class Token(kind: Kind, start: Int, end: Int, closed: Boolean) derives ReadWriter
 
   private def quoted[$: P]: P[Unit] =
     P("\"" ~ (!"\"" ~ AnyChar).rep ~ ("\"" | End) | "'" ~ (!"'" ~ AnyChar).rep ~ ("'" | End))

@@ -30,7 +30,7 @@ private[source] object JavaStructureStep {
             val classCode = text(start, end)
             Some(JavaClassStructured(name, modifiers.collect { case Word(_, _, word) => word }.toVector, span(start, end), classCode,
               text(start, body.fold(end)(_.start)), body.map(group => span(group.start + 1, if group.closed then group.end - 1 else group.end)),
-              body.exists(_.closed), body.toVector.flatMap(members(name, _)),
+              body.exists(_.closed), body.toVector.flatMap(group => members(name, group.children)),
               library = KnownDependencies.isJavaDefinition(classCode), outer) -> body)
           case _ => None
         }
@@ -42,12 +42,12 @@ private[source] object JavaStructureStep {
     }
 
     /** Direct members: a member ends with `;` or with a `{…}` body that is not part of an initializer. */
-    def members(className: String, body: Group): Vector[JavaMemberStructured] = {
+    def members(className: String, tokens: Seq[Token]): Vector[JavaMemberStructured] = {
       final case class State(done: Vector[Vector[Token]] = Vector.empty, current: Vector[Token] = Vector.empty, assigned: Boolean = false) {
         def add(token: Token): State = copy(current = current :+ token)
         def finish: State = State(done :+ current)
       }
-      val state = body.children.foldLeft(State()) { (state, token) => token match {
+      val state = tokens.foldLeft(State()) { (state, token) => token match {
         case Opaque(_, _, true, _) => state
         case symbol: Symbol if symbol.isSpace => state
         case Symbol(_, _, ";") => state.add(token).finish
@@ -169,9 +169,12 @@ private[source] object JavaStructureStep {
         val end = topLevel.drop(index).collectFirst { case Symbol(_, semicolonEnd, ";") => semicolonEnd }.getOrElse(source.length)
         JavaPreambleStructured(keyword.text, text(keyword.start, end), span(keyword.start, end))
     }.toVector
+    val declarations = classSpans ++ preamble.map(declaration => declaration.span.start -> declaration.span.end)
+    val loose = members("", tokens.filterNot(token => declarations.exists((start, end) => start <= token.start && token.start < end)))
     val libraries = classes.filter(_.library).map(owner => owner.span.start -> owner.span.end)
     val masked = blank(source, libraries)
-    JavaSourceStructured(source, classes, preamble, balanced(tokens), significant(tokens).isEmpty && balanced(tokens), masked,
-      blank(masked, flatten(tokens).collect { case Opaque(start, end, _, _) => start -> end }))
+    val opaque = flatten(tokens).collect { case token: Opaque => token }
+    JavaSourceStructured(source, classes, preamble, loose, opaque.collect { case Opaque(start, end, true, true) => span(start, end) }.toVector,
+      balanced(tokens), significant(tokens).isEmpty && balanced(tokens), masked, blank(masked, opaque.map(token => token.start -> token.end)))
   }
 }

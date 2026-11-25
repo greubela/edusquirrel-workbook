@@ -1,4 +1,4 @@
-package it.evadid.homepage.webElements.code
+package it.evadid.homepage.webElements.editor.code.JavaEditor
 
 import com.raquo.airstream.ownership.ManualOwner
 import com.raquo.laminar.api.L.*

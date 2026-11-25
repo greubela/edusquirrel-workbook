@@ -1,4 +1,4 @@
-package it.evadid.homepage.webElements.code
+package it.evadid.homepage.webElements.editor.code.JavaEditor
 
 import com.raquo.airstream.core.AirstreamError
 import com.raquo.laminar.api.L.*

@@ -16,20 +16,22 @@ case class CompressionEditor(answer: Var[CompressionExperiment], initial: Compre
     def show(value: Double): String = if integer then value.toLong.toString else value.toString
     val draft = Var(show(get(answer.now())))
     val invalid = Var(false)
-    var committed = get(answer.now())
+    def parsed(text: String): Option[Double] =
+      text.toDoubleOption.filter(v => v.isFinite && v >= min && v <= max && (!integer || v == math.floor(v)))
     label(cls := "compression-control", span(text <-- localized(key)),
       input(typ := "number", minAttr := min.toString, maxAttr := max.toString, stepAttr := (if integer then "1" else "any"),
         disabled <-- locked, aria.invalid <-- invalid.signal.map(_.toString),
+        // A draft that already reads as the saved value is kept (e.g. "0.50"); other values replace it.
         onMountCallback(ctx => answer.signal.changes.foreach(value => {
           val next = get(value)
-          if next != committed then { committed = next; draft.set(show(next)); invalid.set(false) }
+          if !parsed(draft.now()).contains(next) then { draft.set(show(next)); invalid.set(false) }
         })(using ctx.owner)),
         onMountCallback(ctx => resetDrafts.events.foreach(_ => {
-          committed = get(answer.now()); draft.set(show(committed)); invalid.set(false)
+          draft.set(show(get(answer.now()))); invalid.set(false)
         })(using ctx.owner)),
         value <-- draft.signal, onInput.mapToValue --> (value => {
           draft.set(value)
-          val valid = value.toDoubleOption.filter(v => v.isFinite && v >= min && v <= max && (!integer || v == math.floor(v)))
+          val valid = parsed(value)
           invalid.set(valid.isEmpty)
           valid.foreach(v => answer.update(a => set(a, v)))
         })),
@@ -64,9 +66,9 @@ case class CompressionEditor(answer: Var[CompressionExperiment], initial: Compre
       dictionaryPlayback,
       child <-- answer.signal.map { a =>
         val v = a.asInstanceOf[DictionaryText]
-        var word = 0
-        div(cls := "compression-dictionary-source", CompressionAlgorithms.tokens(v.text).map { token =>
-          if !token.forall(_.isWhitespace) then word += 1
+        val tokens = CompressionAlgorithms.tokens(v.text)
+        val words = tokens.scanLeft(0)((count, token) => if token.forall(_.isWhitespace) then count else count + 1).tail
+        div(cls := "compression-dictionary-source", tokens.zip(words).map { (token, word) =>
           span(cls := (if !token.forall(_.isWhitespace) && word == v.step then "compression-active-word" else ""), token)
         })
       },
@@ -135,13 +137,10 @@ case class CompressionEditor(answer: Var[CompressionExperiment], initial: Compre
       child <-- answer.signal.map { a =>
         val v = a.asInstanceOf[StorageStudy]
         val total = v.current.megabytes.toDouble
-        var left = 0.0
-        val blocks = v.current.files.zipWithIndex.map { (f, i) =>
-          val width = f.megabytes / total * 1000
-          val block = svg.g(svg.titleTag(s"${f.name}: ${f.megabytes} MB"),
-            svg.rect(svg.x := left.toString, svg.y := "0", svg.width := width.toString, svg.height := "120", svg.cls := s"compression-area compression-area-${i % 4}"))
-          left += width
-          block
+        val widths = v.current.files.map(_.megabytes / total * 1000)
+        val blocks = v.current.files.zip(widths.scanLeft(0.0)(_ + _)).zipWithIndex.map { case ((f, left), i) =>
+          svg.g(svg.titleTag(s"${f.name}: ${f.megabytes} MB"),
+            svg.rect(svg.x := left.toString, svg.y := "0", svg.width := widths(i).toString, svg.height := "120", svg.cls := s"compression-area compression-area-${i % 4}"))
         }
         div(div(role := "img", aria.label <-- localized("storageMap"), svg.svg(svg.viewBox := "0 0 1000 120", svg.cls := "compression-treemap", blocks)),
           div(cls := "compression-table-wrap", table(thead(tr(List("storageName", "storageSize", "storageInformation").map(k => th(text <-- localized(k))))),
@@ -155,10 +154,11 @@ case class CompressionEditor(answer: Var[CompressionExperiment], initial: Compre
   private def dictionaryPlayback: Element = div(
     button(typ := "button", disabled <-- locked, text <-- LabelSelection(playing.signal, Seq("pause", "play"), localized)(p => Some(if p then "pause" else "play")), onClick --> (_ => playing.update(!_))),
     label(span(text <-- localized("speed")), input(typ := "range", minAttr := "200", maxAttr := "1400", stepAttr := "100", value <-- speed.signal.map(_.toString), disabled <-- locked, onInput.mapToValue --> (v => speed.set(v.toInt)))),
-    onMountCallback(ctx => { var elapsed = 0
+    onMountCallback(ctx => {
+      val elapsed = Var(0)
       EventStream.periodic(100).withCurrentValueOf(locked).foreach { (_,isLocked) => if playing.now() && !isLocked then {
-        elapsed += 100
-        if elapsed >= speed.now() then { elapsed = 0; answer.update(a => { val v=a.asInstanceOf[DictionaryText]; val total=CompressionAlgorithms.wordCount(v.text); if v.step >= total then {playing.set(false); v} else v.copy(step=v.step+1) }) }
+        elapsed.update(_ + 100)
+        if elapsed.now() >= speed.now() then { elapsed.set(0); answer.update(a => { val v=a.asInstanceOf[DictionaryText]; val total=CompressionAlgorithms.wordCount(v.text); if v.step >= total then {playing.set(false); v} else v.copy(step=v.step+1) }) }
       }}(using ctx.owner)
     }))
   override def getDomElement(): Element = div(onUnmountCallback(_ => unmount()),cls := "compression-editor",

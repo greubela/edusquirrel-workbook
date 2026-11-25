@@ -4,19 +4,21 @@ import it.evadid.core.datastructures.language.AppLanguage.ProgrammingLanguage
 import it.evadid.vm.conversion.dependencies.ProgrammingEnvironment
 import java.util.concurrent.atomic.AtomicReference
 
-/** One source and the pipeline's steps for it ([[SourceParsing]]). */
-trait ParsedSource[Result] {
+/** One source and the pipeline's steps for it ([[SourceParsing]]); each step is a lazy value. */
+trait ParsedSource {
   def source: String
   def language: ProgrammingLanguage
+}
 
-  private val byEnvironment = AtomicReference(Map.empty[ProgrammingEnvironment, Result])
+/** Step 3 depends on the exercise's environment: one result per environment, computed once. */
+private[source] final class PerEnvironment[Result](create: ProgrammingEnvironment => Result) {
+  private val results = AtomicReference(Map.empty[ProgrammingEnvironment, Result])
 
-  /** A step-3 result per environment, computed once. */
-  protected def inEnvironment(environment: ProgrammingEnvironment)(create: => Result): Result =
-    byEnvironment.get().get(environment).getOrElse(byEnvironment.synchronized {
-      byEnvironment.get().getOrElse(environment, {
-        val created = create
-        byEnvironment.set(byEnvironment.get().updated(environment, created))
+  def apply(environment: ProgrammingEnvironment): Result =
+    results.get().get(environment).getOrElse(results.synchronized {
+      results.get().getOrElse(environment, {
+        val created = create(environment)
+        results.set(results.get().updated(environment, created))
         created
       })
     })

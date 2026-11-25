@@ -1,8 +1,9 @@
-package it.evadid.homepage.webElements.code
+package it.evadid.homepage.webElements.editor.code.JavaEditor
 
+import it.evadid.vm.editing.JavaMethodEditing
 import com.raquo.laminar.api.L.{label as labelTag, *}
 import it.evadid.homepage.webElements.basic.PageScrollLock
-import it.evadid.homepage.webElements.code.JavaEditorLabels.Key
+import it.evadid.homepage.webElements.editor.code.JavaEditor.JavaEditorLabels.Key
 import it.evadid.vm.naming.BeEntityName
 import it.evadid.workbook.elements.interactionElements.programming.state.ProgrammingStateJavaStructured
 import org.scalajs.dom
@@ -19,7 +20,7 @@ final class JavaStructureDialog(
     labels: JavaEditorLabels,
     reveal: (BeEntityName, Option[String]) => Unit
 ) {
-  import JavaMethodSource.*
+  import JavaMethodEditing.*
   import JavaStructureDialog.*
 
   private val request = Var(Option.empty[Request])

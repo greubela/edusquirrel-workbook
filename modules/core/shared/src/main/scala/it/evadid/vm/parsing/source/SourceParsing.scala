@@ -5,12 +5,14 @@ import it.evadid.core.datastructures.language.AppLanguage.ProgrammingLanguage
 import java.util.concurrent.atomic.AtomicReference
 import scala.collection.immutable.VectorMap
 
-/** One textual parsing boundary for Java, Python and Snap. Each returned source owns lazy lexical, syntax
-  * and conversion stages; typed models enter converters directly. Recent sources are reused.
+/** The single parsing entry for Java, Python and Snap text. The returned source exposes the pipeline's steps as
+  * lazy values: `structured` (tolerant fastparse lexing and declarations, accepts unfinished and invalid code),
+  * `syntax` (the language grammar, or a located [[SyntaxFailure]]) and `parsed` (the shared expression tree).
+  * Typed models (e.g. a Snap document) enter the converters directly. Recent sources are reused.
   */
 object SourceParsing {
   /** A language this pipeline reads, typed by the source it produces. */
-  sealed abstract class SourceLanguage[S <: ParsedSource[?]](val language: ProgrammingLanguage, private[source] val create: String => S)
+  sealed abstract class SourceLanguage[S <: ParsedSource](val language: ProgrammingLanguage, private[source] val create: String => S)
   object SourceLanguage {
     case object Java extends SourceLanguage[JavaSource](AppLanguage.Java, JavaSource(_))
     case object Python extends SourceLanguage[PythonSource](AppLanguage.Python, PythonSource(_))
@@ -20,12 +22,12 @@ object SourceParsing {
   private val capacity = 32
   // Snap projects can embed large assets. Their owner keeps the stages; the global cache must not retain them.
   private val maxCachedCharacters = 256 * 1024
-  private val recent = AtomicReference(VectorMap.empty[(SourceLanguage[?], String), ParsedSource[?]])
+  private val recent = AtomicReference(VectorMap.empty[(SourceLanguage[?], String), ParsedSource])
 
-  def parse[S <: ParsedSource[?]](source: String, language: SourceLanguage[S]): S = {
-    if source != null && source.length > maxCachedCharacters then return language.create(source)
+  def parse[S <: ParsedSource](source: String, language: SourceLanguage[S]): S = {
     val key = (language, source)
-    recent.get().get(key).getOrElse(recent.synchronized {
+    if source.length > maxCachedCharacters then language.create(source)
+    else recent.get().get(key).getOrElse(recent.synchronized {
       recent.get().getOrElse(key, {
         val created = language.create(source)
         recent.set((recent.get() + (key -> created)).takeRight(capacity))

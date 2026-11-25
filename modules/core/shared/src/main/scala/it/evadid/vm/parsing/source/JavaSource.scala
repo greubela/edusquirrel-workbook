@@ -9,7 +9,7 @@ import it.evadid.vm.conversion.dependencies.ProgrammingEnvironment
 import it.evadid.vm.conversion.parsed.ParsedProgram
 import it.evadid.vm.conversion.javaexpression.JavaToExpression
 
-final class JavaSource private[source] (val source: String) extends ParsedSource[Either[ProgrammingConversionException, JavaProgramParsed]] {
+final class JavaSource private[source] (val source: String) extends ParsedSource {
   override def language: ProgrammingLanguage = AppLanguage.Java
 
   lazy val structured: JavaSourceStructured = JavaStructureStep(source, SourceTokens.lex(source, python = false))
@@ -28,19 +28,27 @@ final class JavaSource private[source] (val source: String) extends ParsedSource
 
   lazy val neutral: Either[SyntaxFailure, ParsedProgram] = syntax.map(JavaToExpression.neutral)
 
-  /** The expression tree in `environment`; an unreadable source is a conversion failure at its position. */
+  /** The syntax as a conversion result: an unreadable source fails at its position. */
+  lazy val readable: Either[ProgrammingConversionException, JavaSyntax] =
+    syntax.left.map(_.unparsable(JavaSource.unreadable)).flatMap(_.readable)
+
+  /** The expression tree in `environment`. */
   def parsed(environment: ProgrammingEnvironment = ProgrammingEnvironment.all): Either[ProgrammingConversionException, JavaProgramParsed] =
-    inEnvironment(environment) {
-      syntax.left.map(failure => ProgrammingConversionException.unparsable(
-        "This Java source cannot be read as a complete program or fragment.", Some(failure.line), Some(failure.column)))
-        .flatMap(tree => scala.util.Try {
-          val program = neutral.toOption.get
-          program -> JavaToExpression.convert(tree, program, environment)
-        }.toEither.left.map {
-          case conversion: ProgrammingConversionException => conversion
-          case other => ProgrammingConversionException.unparsable(Option(other.getMessage).getOrElse(other.toString))
-        }.map((neutral, expression) => JavaProgramParsed(tree, neutral, expression, tree.functions.map(function =>
-          JavaFunctionParsed(function.structured, function.node, ParsedFunctions.find(expression.expression,
-            Some(function.structured.className), function.structured.name, function.structured.parameters.size))))))
-    }
+    byEnvironment(environment)
+
+  private val byEnvironment = PerEnvironment[Either[ProgrammingConversionException, JavaProgramParsed]](environment =>
+    for {
+      tree <- syntax.left.map(_.unparsable(JavaSource.unreadable))
+      program <- neutral.left.map(_.unparsable(JavaSource.unreadable))
+      expression <- scala.util.Try(JavaToExpression.convert(tree, program, environment)).toEither.left.map {
+        case conversion: ProgrammingConversionException => conversion
+        case other => ProgrammingConversionException.unparsable(Option(other.getMessage).getOrElse(other.toString))
+      }
+    } yield JavaProgramParsed(tree, program, expression, tree.functions.map(function =>
+      JavaFunctionParsed(function.structured, function.node, ParsedFunctions.find(expression.expression,
+        Some(function.structured.className), function.structured.name, function.structured.parameters.size)))))
+}
+
+object JavaSource {
+  private val unreadable = "This Java source cannot be read as a complete program or fragment."
 }

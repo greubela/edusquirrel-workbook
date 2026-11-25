@@ -1,4 +1,4 @@
-package it.evadid.homepage.webElements.code
+package it.evadid.vm.editing
 
 import it.evadid.vm.parsing.source.SourceParsing
 import it.evadid.vm.parsing.source.SourceParsing.SourceLanguage
@@ -6,8 +6,8 @@ import it.evadid.vm.parsing.source.SourceParsing.SourceLanguage
 import munit.FunSuite
 import it.evadid.vm.parsing.java.clean.model.JavaAST.{JavaClassDef, JavaMethodDef}
 
-class JavaMethodSourceSpec extends FunSuite {
-  import JavaMethodSource.*
+class JavaMethodEditingSpec extends FunSuite {
+  import JavaMethodEditing.*
 
   test("discovers classes and direct member functions without matching comments or strings") {
     val source =
@@ -24,7 +24,7 @@ class JavaMethodSourceSpec extends FunSuite {
         |}
         |""".stripMargin
 
-    val classes = JavaMethodSource.discover(source)
+    val classes = JavaMethodEditing.discover(source)
 
     assertEquals(classes.map(_.name), Vector("First", "Second"))
     assertEquals(classes.head.functions.map(_.name), Vector("add"))
@@ -37,41 +37,41 @@ class JavaMethodSourceSpec extends FunSuite {
     val source = it.evadid.workbook.elements.interactionElements.programming.state.ProgrammingStateRaw(
       it.evadid.core.datastructures.language.AppLanguage.Python, "forward(10)").toJava.code
     assert(source.contains("class Turtle {"), source)
-    assertEquals(JavaMethodSource.discover(source).map(_.name), Vector("Main"))
+    assertEquals(JavaMethodEditing.discover(source).map(_.name), Vector("Main"))
     val edited = source.replace("move(distance);", "move(2 * distance);")
-    assertEquals(JavaMethodSource.discover(edited).map(_.name), Vector("Main", "Turtle"))
+    assertEquals(JavaMethodEditing.discover(edited).map(_.name), Vector("Main", "Turtle"))
   }
 
   test("replacing and adding a function preserves a parseable full Java program") {
     val source = "class Example {\n  public int add(int left, int right) {\n    return left + right;\n  }\n  public void keep() {}\n}\n"
-    val clazz = JavaMethodSource.discover(source).head
+    val clazz = JavaMethodEditing.discover(source).head
     val original = clazz.functions.head
     val editedDraft = "\n  public int sum(int left, int right) {\n    return left + right;\n  }"
-    val edited = JavaMethodSource.replaceMethod(
+    val edited = JavaMethodEditing.replaceMethod(
       source,
       original,
       editedDraft
     )
-    val afterEditClasses = JavaMethodSource.discover(edited)
+    val afterEditClasses = JavaMethodEditing.discover(edited)
     val afterEdit = afterEditClasses.head
-    val selection = JavaMethodSource.findEditedMethod(
+    val selection = JavaMethodEditing.findEditedMethod(
       edited,
       afterEditClasses,
       original,
       MethodRange(original.span.start, original.span.start + editedDraft.length)
     )
     assertEquals(selection.map(_.name), Some("sum"))
-    val withNewFunction = JavaMethodSource.insertMethod(
+    val withNewFunction = JavaMethodEditing.insertMethod(
       edited,
       afterEdit,
       "public void reset() {\n    \n  }"
     )
 
-    assert(JavaMethodSource.parses(edited))
-    assert(JavaMethodSource.parses(withNewFunction))
-    assert(!JavaMethodSource.parses("class Example {"))
+    assert(JavaMethodEditing.parses(edited))
+    assert(JavaMethodEditing.parses(withNewFunction))
+    assert(!JavaMethodEditing.parses("class Example {"))
     assertEquals(
-      JavaMethodSource.discover(withNewFunction).head.functions.map(_.name),
+      JavaMethodEditing.discover(withNewFunction).head.functions.map(_.name),
       Vector("sum", "keep", "reset")
     )
   }

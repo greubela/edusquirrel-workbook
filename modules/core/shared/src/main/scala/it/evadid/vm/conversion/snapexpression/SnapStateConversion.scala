@@ -11,7 +11,7 @@ import it.evadid.workbook.elements.interactionElements.programming.state.snap.{S
 object SnapStateConversion {
 
   def expressionForExecution(xml: String): Either[String, BeExpression] = for {
-    document <- SourceParsing.parse(xml, SourceLanguage.Snap).syntax
+    document <- SourceParsing.parse(xml, SourceLanguage.Snap).syntax.left.map(_.message)
     project <- document.project.filter(_ == document.root).toRight("Unit tests need a complete Snap project.")
     _ <- Either.cond(project.scenes.size <= 1 && project.element.named("scenes").size <= 1, (),
       "Unit tests currently support one Snap scene.")

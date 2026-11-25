@@ -9,9 +9,9 @@ Editors and analyses read these stages instead of invoking grammars themselves.
 
 | Stage | Java / Python | Snap |
 | --- | --- | --- |
-| `structured` | Tolerant FastParse tokens and declarations with source spans | Tolerant FastParse XML tokens with spans and completion flags |
-| `syntax` | Located syntax tree or a parsing failure | Validated, lossless `SnapScalaModel.Document` or an error |
-| Conversion | `neutral` produces `ParsedProgram`; `parsed(environment)` binds it to `BeExpression` | `project` reads Snap structure; `parsed` binds blocks and startup scripts to `BeExpression` |
+| `structured` | Tolerant FastParse tokens and declarations with source spans (classes, members, loose code, comments) | Tolerant FastParse XML tokens with spans and completion flags |
+| `syntax` | Located syntax tree, or a located `SyntaxFailure` | FastParse XML grammar: a lossless `SnapScalaModel.Document`, or a located `SyntaxFailure` |
+| Conversion | `neutral` produces `ParsedProgram`; `parsed(environment)` binds it to `BeExpression` | `project`, `unsupportedSelectors` and `parsed` (blocks and startup scripts as `BeExpression`), each an `Either` with a located conversion error |
 
 Unfinished or invalid text remains inspectable in `structured`. Later stages may fail
 or preserve unreadable statements as explicit source placeholders; they must not
@@ -33,6 +33,12 @@ Java/Python adapters produce the shared `ParsedProgram`; its builder reserves
 class/function signatures before binding bodies. User declarations and local names
 shadow built-in aliases. `TurtleCommand` and `KnownBeEntityNames` own canonical
 library names; printers choose language-specific spellings independently of identity.
+
+Step-1 values answer editor questions without parsing derived text again: for example
+`onlyTrivia(start, end)` checks a range against the source's comments, and
+`looseMembers` splits code outside classes like class members.
+[`JavaMethodEditing`](../modules/core/shared/src/main/scala/it/evadid/vm/editing/JavaMethodEditing.scala)
+edits one Java method at a time on these declarations for the Java editors.
 
 Tests: `JavaStructuredSpec`, `PythonStructuredSpec`, `SnapSourceSpec` and
 `SourceParsingSpec`. See [programming conversions](programming-conversions.md)

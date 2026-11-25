@@ -1,5 +1,6 @@
-package it.evadid.homepage.webElements.code
+package it.evadid.homepage.webElements.editor.code.JavaEditor
 
+import it.evadid.vm.editing.JavaMethodEditing
 import com.raquo.laminar.api.L.*
 import it.evadid.homepage.webElements.editor.code.codemirror.CodeMirrorEditor
 import it.evadid.homepage.webElements.editor.config.CodeMirrorEditorConfig
@@ -17,7 +18,7 @@ final class JavaFunctionEditor(
     diagnostics: Signal[Seq[CodeMirrorEditor.Diagnostic]] = Val(Nil)
 ) extends JavaFragmentEditor[JavaFunctionEditor.Function](logger, state, editorConfig, loadingLabel, diagnostics) {
   import JavaFunctionEditor.Function
-  import JavaMethodSource.*
+  import JavaMethodEditing.*
 
   override protected def locate(source: ProgrammingStateJavaStructured, function: Function): Option[JavaFragmentRange] =
     source.definedClasses.get(function.className)
@@ -36,6 +37,6 @@ object JavaFunctionEditor {
 
   /** The method of class `className` whose declaration is `code`, ignoring surrounding whitespace. */
   def find(source: ProgrammingStateJavaStructured, className: BeEntityName, code: String): Option[Function] =
-    source.definedClasses.get(className).flatMap(text => JavaMethodSource.discover(text).flatMap(_.functions)
+    source.definedClasses.get(className).flatMap(text => JavaMethodEditing.discover(text).flatMap(_.functions)
       .find(method => method.code.trim == code.trim)).map(Function(className, _))
 }

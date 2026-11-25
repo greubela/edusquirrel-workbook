@@ -8,7 +8,7 @@ import it.evadid.vm.conversion.dependencies.ProgrammingEnvironment
 import it.evadid.vm.conversion.parsed.ParsedProgram
 import it.evadid.vm.conversion.pythonexpression.PythonToExpression
 
-final class PythonSource private[source] (val source: String) extends ParsedSource[PythonProgramParsed] {
+final class PythonSource private[source] (val source: String) extends ParsedSource {
   override def language: ProgrammingLanguage = AppLanguage.Python
 
   lazy val structured: PythonSourceStructured = PythonStructureStep(source, SourceTokens.lex(source, python = true))
@@ -26,11 +26,12 @@ final class PythonSource private[source] (val source: String) extends ParsedSour
   lazy val neutral: ParsedProgram = PythonToExpression.neutral(structured, syntax)
 
   /** The program in `environment`. */
-  def parsed(environment: ProgrammingEnvironment = ProgrammingEnvironment.all): PythonProgramParsed =
-    inEnvironment(environment) {
-      val (program, details) = PythonToExpression.convert(neutral, environment)
-      PythonProgramParsed(structured, syntax, neutral, program, details, structured.functions.map(function =>
-        PythonFunctionParsed(function, ParsedFunctions.find(program.fullProgram, function.owner, function.name,
-          function.parameters.count(parameter => parameter.name != "self")))))
-    }
+  def parsed(environment: ProgrammingEnvironment = ProgrammingEnvironment.all): PythonProgramParsed = byEnvironment(environment)
+
+  private val byEnvironment = PerEnvironment[PythonProgramParsed] { environment =>
+    val (program, details) = PythonToExpression.convert(neutral, environment)
+    PythonProgramParsed(structured, syntax, neutral, program, details, structured.functions.map(function =>
+      PythonFunctionParsed(function, ParsedFunctions.find(program.fullProgram, function.owner, function.name,
+        function.parameters.count(parameter => parameter.name != "self")))))
+  }
 }

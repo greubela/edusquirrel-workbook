@@ -1,138 +1,89 @@
 package it.evadid.vm.parsing.source
 
-import it.evadid.vm.conversion.snapxml.SnapXmlText.*
-import scala.util.control.NonFatal
+import fastparse.*
+import fastparse.NoWhitespace.*
 import it.evadid.workbook.elements.interactionElements.programming.state.snap.SnapScalaModel.*
 
-/** Stage 2: validates XML and retains its lexical spelling. Never resolves or fetches DTDs. */
+/** Step 2: a fastparse XML grammar that keeps every node's lexical spelling (attribute spacing, quotes, closing
+  * tags). DTDs are retained as text and never resolved or fetched.
+  */
 private[source] object SnapDocumentStep {
-  def apply(structured: SnapSourceStructured): Either[String, Vector[Node]] = {
+  private val maxDepth = 256
+  private val maxNodes = 1000000
+
+  def apply(structured: SnapSourceStructured): Either[SyntaxFailure, Vector[Node]] = {
     val xml = structured.source
-    try {
-      structured.tokens.find(!_.closed).foreach(token =>
-        throw IllegalArgumentException(s"Unterminated ${token.kind} (offset ${token.start})"))
-      Right(Reader(xml).nodes())
-    } catch {
-      case NonFatal(error) => Left(Option(error.getMessage).getOrElse("Invalid Snap XML."))
+    def failure(message: String, offset: Int) = {
+      val lines = SourceLines(xml)
+      Left(SyntaxFailure(message, offset, lines.line(offset), lines.column(offset)))
+    }
+    structured.tokens.find(!_.closed) match {
+      case Some(token) => failure(s"Unterminated ${token.kind}", token.start)
+      case None => fastparse.parse(xml, document(using _)) match {
+        case Parsed.Success(nodes, _) if count(nodes) > maxNodes => failure("Too many XML nodes", 0)
+        case Parsed.Success(nodes, _) => Right(nodes)
+        case stopped: Parsed.Failure => failure(s"Expected ${stopped.trace().label}", stopped.index)
+      }
     }
   }
 
-  private final class Reader(xml: String) {
-    private var cursor = 0
-    private var count = 0
-    private def starts(value: String): Boolean = xml.startsWith(value, cursor)
-    private def check(ok: Boolean, message: String): Unit =
-      if !ok then throw IllegalArgumentException(s"$message (offset $cursor)")
-    private def space(): String = {
-      val start = cursor
-      while cursor < xml.length && xml.charAt(cursor).isWhitespace do cursor += 1
-      xml.substring(start, cursor)
-    }
-    private def name(): String = {
-      val start = cursor
-      check(cursor < xml.length && (xml.charAt(cursor).isLetter || "_:".contains(xml.charAt(cursor))), "Expected XML name")
-      cursor += 1
-      while cursor < xml.length && (xml.charAt(cursor).isLetterOrDigit || "_:-.".contains(xml.charAt(cursor))) do cursor += 1
-      xml.substring(start, cursor)
-    }
-    private def delimited(open: String, close: String): String = {
-      cursor += open.length
-      val start = cursor
-      val end = xml.indexOf(close, cursor)
-      check(end >= 0, s"Unterminated $open")
-      cursor = end + close.length
-      xml.substring(start, end)
-    }
-    def nodes(): Vector[Node] = {
-      val nodes = Vector.newBuilder[Node]
-      while cursor < xml.length do nodes += node(0)
-      nodes.result()
-    }
-    private def node(depth: Int): Node = {
-      count += 1
-      check(count <= 1000000, "Too many XML nodes")
-      check(depth <= 256, "Snap XML nesting exceeds 256 levels")
-      if starts("<!--") then XmlComment(delimited("<!--", "-->"))
-      else if starts("<![CDATA[") then CData(delimited("<![CDATA[", "]]>"))
-      else if starts("<?") then ProcessingInstruction(delimited("<?", "?>"))
-      else if starts("<!DOCTYPE") then declaration()
-      else if starts("<") then element(depth)
-      else {
-        val start = cursor
-        val end = xml.indexOf('<', cursor)
-        cursor = if end < 0 then xml.length else end
-        val raw = xml.substring(start, cursor)
-        decode(raw) // validate numeric entities without normalizing their spelling
-        Text(raw)
-      }
-    }
-    private def declaration(): Declaration = {
-      val start = cursor
-      cursor += "<!DOCTYPE".length
-      var brackets = 0
-      var quote = ' '
-      var done = false
-      while cursor < xml.length && !done do {
-        val ch = xml.charAt(cursor)
-        if quote != ' ' then { if ch == quote then quote = ' ' }
-        else if ch == '\'' || ch == '"' then quote = ch
-        else if ch == '[' then brackets += 1
-        else if ch == ']' then brackets -= 1
-        else if ch == '>' && brackets == 0 then done = true
-        cursor += 1
-      }
-      check(done, "Unterminated DOCTYPE")
-      Declaration(xml.substring(start, cursor))
-    }
-    private def element(depth: Int): SnapElement = {
-      cursor += 1
-      val tag = name()
-      val attrs = Vector.newBuilder[Attribute]
-      var names = Set.empty[String]
-      var trailing = ""
-      var headerDone = false
-      while !headerDone do {
-        val leading = space()
-        check(cursor < xml.length, "Unterminated element header")
-        if starts(">") || starts("/>") then { trailing = leading; headerDone = true }
-        else {
-          check(leading.nonEmpty, "Expected whitespace before attribute")
-          val attrName = name()
-          check(!names.contains(attrName), s"Duplicate attribute $attrName")
-          names += attrName
-          val before = space()
-          check(starts("="), "Expected attribute equals sign")
-          cursor += 1
-          val after = space()
-          check(cursor < xml.length && (xml.charAt(cursor) == '\'' || xml.charAt(cursor) == '"'), "Expected quoted attribute")
-          val quote = xml.charAt(cursor)
-          cursor += 1
-          val start = cursor
-          val end = xml.indexOf(quote, cursor)
-          check(end >= 0, "Unterminated attribute")
-          val raw = xml.substring(start, end)
-          check(!raw.contains('<'), "Unescaped less-than sign in attribute")
-          decode(raw)
-          cursor = end + 1
-          attrs += Attribute(attrName, raw, leading, before, after, quote.toString)
-        }
-      }
-      val selfClosing = starts("/>")
-      cursor += (if selfClosing then 2 else 1)
-      if selfClosing then classify(Element(tag, attrs.result(), trailing = trailing, selfClosing = true))
-      else {
-        val children = Vector.newBuilder[Node]
-        while cursor < xml.length && !starts("</") do children += node(depth + 1)
-        check(starts("</"), s"Missing closing tag for $tag")
-        val closeStart = cursor
-        cursor += 2
-        val closeName = name()
-        check(closeName == tag, s"Mismatched closing tag $closeName, expected $tag")
-        space()
-        check(starts(">"), "Unterminated closing tag")
-        cursor += 1
-        classify(Element(tag, attrs.result(), children.result(), trailing, false, xml.substring(closeStart, cursor)))
-      }
-    }
+  private def count(nodes: Vector[Node]): Int = nodes.foldLeft(nodes.size) {
+    case (total, element: SnapElement) => total + count(element.element.children)
+    case (total, _) => total
   }
+
+  /** Numeric character references must name an XML character; other `&` text stays opaque (DTD entities). */
+  private def allowed(code: Long): Boolean = code > 0 && code <= 0x10ffff && !(code >= 0xd800 && code <= 0xdfff)
+  private def numeral[$: P]: P[Long] = P(
+    "x" ~ CharsWhileIn("0-9a-fA-F").!.map(hex => if hex.length > 8 then Long.MaxValue else java.lang.Long.parseLong(hex, 16)) |
+      CharsWhileIn("0-9").!.map(digits => if digits.length > 10 then Long.MaxValue else digits.toLong))
+  private def invalidReference[$: P]: P[Unit] = P(("&#" ~ numeral ~ ";").filter(!allowed(_))).map(_ => ())
+  private def reference[$: P]: P[Unit] = P(&(invalidReference) ~/ Fail.opaque("a valid character reference"))
+  /** Characters up to one that `stops`, with character references checked where they start. */
+  private def characters[$: P](stops: Char => Boolean): P[Unit] =
+    P((reference | CharsWhile(c => !stops(c) && c != '&', 1) | "&").rep(1))
+
+  private def space[$: P]: P[String] = P(CharsWhile(_.isWhitespace, 0).!)
+  private def name[$: P]: P[String] =
+    P((CharPred(c => c.isLetter || c == '_' || c == ':') ~ CharsWhile(c => c.isLetterOrDigit || "_:-.".contains(c), 0)).!)
+      .opaque("an XML name")
+
+  /** Text up to `close`, scanning runs without its first character at once. */
+  private def until[$: P](close: String): P[String] =
+    P((CharsWhile(_ != close.head, 1) | !close ~ AnyChar).rep.!)
+
+  private def comment[$: P]: P[Node] = P("<!--" ~/ until("-->") ~ "-->").map(XmlComment(_))
+  private def cdata[$: P]: P[Node] = P("<![CDATA[" ~/ until("]]>") ~ "]]>").map(CData(_))
+  private def instruction[$: P]: P[Node] = P("<?" ~/ until("?>") ~ "?>").map(ProcessingInstruction(_))
+  private def quoted[$: P]: P[Unit] = P("\"" ~ CharsWhile(_ != '"', 0) ~ "\"" | "'" ~ CharsWhile(_ != '\'', 0) ~ "'")
+  private def subset[$: P]: P[Unit] = P("[" ~ (quoted | subset | CharsWhile(c => !"[]'\"".contains(c), 1)).rep ~ "]")
+  private def declaration[$: P]: P[Node] =
+    P(("<!DOCTYPE" ~/ (quoted | subset | CharsWhile(c => !"[>'\"".contains(c), 1)).rep ~ ">").!).map(Declaration(_))
+  private def text[$: P]: P[Node] = P(characters(_ == '<').!).map(Text(_))
+
+  private def quotedValue[$: P](quote: String): P[(String, String)] =
+    P(quote.! ~/ characters(c => c == quote.head || c == '<').?.! ~
+      P(quote).opaque(s"the closing $quote of the attribute value (values cannot contain '<')"))
+  private def value[$: P]: P[(String, String)] = P(quotedValue("\"") | quotedValue("'"))
+  private def attribute[$: P]: P[Attribute] =
+    P(CharsWhile(_.isWhitespace, 1).! ~ name ~ space ~ "=" ~ space ~ value)
+      .map { case (leading, attributeName, before, after, (quote, raw)) => Attribute(attributeName, raw, leading, before, after, quote) }
+  private def unique[$: P](attributes: Seq[Attribute]): P[Vector[Attribute]] =
+    attributes.map(_.name).diff(attributes.map(_.name).distinct).headOption
+      .fold(Pass(attributes.toVector))(duplicate => Fail.opaque(s"one attribute named $duplicate"))
+
+  private def element[$: P](depth: Int): P[Node] =
+    if depth > maxDepth then Fail.opaque(s"nesting within $maxDepth levels")
+    else P("<" ~ name ~/ attribute.rep.flatMap(unique(_)) ~ space ~ ("/>".!.map(_ => true) | ">".!.map(_ => false))).flatMap {
+      case (tag, attributes, trailing, true) => Pass(classify(Element(tag, attributes, trailing = trailing, selfClosing = true)))
+      case (tag, attributes, trailing, false) =>
+        P(node(depth + 1).rep ~ closing(tag)).map((children, close) =>
+          classify(Element(tag, attributes, children.toVector, trailing, selfClosing = false, close)))
+    }
+
+  private def closing[$: P](tag: String): P[String] =
+    P(("</" ~ name.filter(_ == tag) ~ space ~ ">").!).opaque(s"closing tag </$tag>")
+
+  private def node[$: P](depth: Int): P[Node] = P(comment | cdata | instruction | declaration | element(depth) | text)
+  private def document[$: P]: P[Vector[Node]] = P(node(0).rep ~ End).map(_.toVector)
 }

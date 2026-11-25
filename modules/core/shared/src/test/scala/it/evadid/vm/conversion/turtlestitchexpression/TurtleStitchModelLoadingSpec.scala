@@ -26,7 +26,7 @@ class TurtleStitchModelLoadingSpec extends FunSuite {
       """<block s="reportNewList"><list><l>a</l><l>b</l></list></block></script>"""
 
   test("a project without blocks keeps its metadata, scene settings, stage media and sprite variables") {
-    val project = SourceParsing.parse(projectXml("", "", withDefinitions = false), SourceLanguage.Snap).project
+    val project = SourceParsing.parse(projectXml("", "", withDefinitions = false), SourceLanguage.Snap).project.toTry.get
     assertEquals((project.name, project.app, project.notes), ("stitch", "TurtleStitch 2.11", "hello"))
     assertEquals((project.thumbnail, project.creator, project.origCreator, project.origName), (Some("data:png"), Some("alice"), Some("bob"), Some("first")))
     val scene = project.scenes.head
@@ -43,7 +43,7 @@ class TurtleStitchModelLoadingSpec extends FunSuite {
   }
 
   test("projects with blocks keep scripts, custom calls, colours, booleans, nested scripts and lists") {
-    val project = SourceParsing.parse(projectXml("""<script><block s="forward"><block var="n"/></block></script>""", script), SourceLanguage.Snap).project
+    val project = SourceParsing.parse(projectXml("""<script><block s="forward"><block var="n"/></block></script>""", script), SourceLanguage.Snap).project.toTry.get
     val scene = project.scenes.head
     val definition = scene.customBlocks.head
     assertEquals((definition.spec, definition.blockType.xml, definition.category.xml), ("jump %'n'", "command", "motion"))
@@ -64,6 +64,6 @@ class TurtleStitchModelLoadingSpec extends FunSuite {
   }
 
   test("unreadable XML is rejected as unparsable") {
-    intercept[it.evadid.vm.code.errors.ProgrammingConversionException](SourceParsing.parse("not xml at all", SourceLanguage.Snap).project)
+    intercept[it.evadid.vm.code.errors.ProgrammingConversionException](SourceParsing.parse("not xml at all", SourceLanguage.Snap).project.toTry.get)
   }
 }

@@ -40,8 +40,8 @@ object SnapProgramDerivation {
 
   def fromXml(xml: String): DerivedView = {
     val source = SourceParsing.parse(xml, SourceLanguage.Snap)
-    val unsupported = source.unsupportedSelectors
-    val parsed = if unsupported.isEmpty then source.parsed else
+    val unsupported = source.unsupportedSelectors.toTry.get
+    val parsed = if unsupported.isEmpty then source.parsed.toTry.get else
       TurtleStitchToBeExpressionParser.ParseWithLayout(
         it.evadid.vm.code.errors.BeExpressionUnsupported(xml, parsedFromLanguage = Some(it.evadid.core.datastructures.language.AppLanguage.SnapLanguage)),
         SnapCanvasLayout.empty)

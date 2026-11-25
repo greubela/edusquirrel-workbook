@@ -1,5 +1,6 @@
-package it.evadid.homepage.webElements.code
+package it.evadid.homepage.webElements.editor.code.JavaEditor
 
+import it.evadid.vm.editing.JavaMethodEditing
 import it.evadid.vm.conversion.dependencies.ProgrammingEnvironment
 import it.evadid.vm.structure.JavaUmlDiagram
 import com.raquo.laminar.api.L.*
@@ -10,7 +11,7 @@ import com.raquo.laminar.nodes.ReactiveSvgElement
 import it.evadid.core.datastructures.language.AppLanguage.Java
 import it.evadid.homepage.webElements.HtmlAppElement
 import it.evadid.homepage.webElements.basic.MediaQuery
-import it.evadid.homepage.webElements.code.JavaEditorLabels.Key
+import it.evadid.homepage.webElements.editor.code.JavaEditor.JavaEditorLabels.Key
 import it.evadid.homepage.webElements.editor.code.EditorAppearance
 import it.evadid.homepage.webElements.editor.code.EvaEditor.{EvaEditorContext, EvaEditorTab}
 import it.evadid.homepage.webElements.editor.code.EvaEditor.uml.UmlStructureSelector
@@ -50,7 +51,7 @@ final class JavaComponentEditor(
   /** What the program uses without defining it, from the worker's analysis; the last result stays while the next is pending. */
   private val externalClasses = analysis.scanLeft(external(UmlClassDiagram(Nil), _))(external)
   /** Located warnings (unknown dependencies, unreadable statements), only while the analysis describes the current source. */
-  private[code] val warnings = analysis.combineWith(labels.all).map {
+  private[JavaEditor] val warnings = analysis.combineWith(labels.all).map {
     case (ProgramAnalyzer.Status.Ready(result), texts) => result.warnings.map(warning =>
       CodeMirrorEditor.mark(warning, texts(warningText(warning.kind)).replace("{name}", warning.subject)))
     case _ => Nil
@@ -208,10 +209,10 @@ object JavaComponentEditor {
   }
 
   /** `static void main(String[] args)`, if it is the only entry point (of class `Main`, if present). */
-  private[code] def entryFunction(state: ProgrammingStateJavaStructured): Option[JavaFunctionEditor.Function] = {
+  private[JavaEditor] def entryFunction(state: ProgrammingStateJavaStructured): Option[JavaFunctionEditor.Function] = {
     val main = state.definedClasses.filter((name, _) => JavaFragmentRange.sameName(name, BeEntityName.fromCodeString("Main")))
     (if main.nonEmpty then main else state.definedClasses).toSeq.flatMap((name, text) =>
-      JavaMethodSource.initialMethod(text, requirePublicMain = false).map(JavaFunctionEditor.Function(name, _))) match {
+      JavaMethodEditing.initialMethod(text, requirePublicMain = false).map(JavaFunctionEditor.Function(name, _))) match {
       case Seq(function) => Some(function)
       case _ => None
     }

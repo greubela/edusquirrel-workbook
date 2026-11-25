@@ -8,7 +8,7 @@ import it.evadid.vm.conversion.expressionpython.ExpressionToPython
 import it.evadid.vm.conversion.expressionsnap.ExpressionToSnap
 import it.evadid.vm.conversion.printing.ModuleLayout
 import it.evadid.vm.conversion.structured.PreparedProgramSource
-import it.evadid.vm.parsing.source.{JavaSource, PythonSource, SourceParsing}
+import it.evadid.vm.parsing.source.{JavaSource, PythonSource, SourceParsing, SyntaxFailure}
 import it.evadid.vm.parsing.source.SourceParsing.SourceLanguage
 import it.evadid.vm.conversion.snapexpression.SnapToExpression
 import it.evadid.vm.conversion.snapmodelxml.SnapModelToXml.*
@@ -46,8 +46,8 @@ final class ProgrammingStateDerivations private[evadid](source: ProgrammingState
     case ProgrammingStateRaw(Java, _) | _: ProgrammingStateJavaStructured => javaSource.parsed(environment).fold(error => throw error, _.expression)
     case ProgrammingStateRaw(Python, _) | _: ProgrammingStatePythonStructured => ProgrammingStateBeExpression(pythonSource.parsed(environment).program.fullProgram)
     case ProgrammingStateRaw(SnapLanguage, xml) =>
-      if xml.trim.nonEmpty then snapSource.syntax.left.foreach(message => throw ProgrammingConversionException.unparsable(message))
-      ProgrammingStateBeExpression(snapSource.parsed.expression)
+      if xml.trim.nonEmpty then snapSource.syntax.left.foreach(failure => throw failure.unparsable())
+      ProgrammingStateBeExpression(snapSource.parsed.toTry.get.expression)
     case ProgrammingStateSnapScalaModel(model) => ProgrammingStateBeExpression(SnapToExpression.convert(model).expression)
     case ProgrammingStateRaw(language, _) => throw UnsupportedOperationException(s"Parsing $language source into expressions is not supported.")
   }
@@ -76,17 +76,14 @@ final class ProgrammingStateDerivations private[evadid](source: ProgrammingState
     case ProgrammingStateRaw(Python, _) => ProgrammingStatePythonStructured(preparedSource.code)
     case _ => ProgrammingStatePythonStructured(python.code)
   }
-  lazy val snapModel: Either[String, ProgrammingStateSnapScalaModel] = source match {
+  lazy val snapModel: Either[SyntaxFailure, ProgrammingStateSnapScalaModel] = source match {
     case value: ProgrammingStateSnapScalaModel => Right(value)
     case ProgrammingStateRaw(SnapLanguage, code) if code.trim.isEmpty =>
       SourceParsing.parse(snap.code, SourceLanguage.Snap).syntax.map(ProgrammingStateSnapScalaModel(_))
     case _ => snapSource.syntax.map(ProgrammingStateSnapScalaModel(_))
   }
   /** Whether the source declares classes; unreadable source has no answer and fails like its conversion. */
-  lazy val isJavaClass: Boolean = javaSource.syntax
-    .left.map(failure => ProgrammingConversionException.unparsable("This Java source cannot be read as a complete program or fragment.",
-      Some(failure.line), Some(failure.column)))
-    .flatMap(_.readable).fold(error => throw error,
+  lazy val isJavaClass: Boolean = javaSource.readable.fold(error => throw error,
       _.program.statements.exists(_.statement.isInstanceOf[it.evadid.vm.parsing.java.clean.model.JavaAST.JavaClassDef]))
   lazy val javaExecutionProgram = it.evadid.vm.compilation.java.turtle.JavaTurtleCompiler.compile(javaSource.source)
 
@@ -143,7 +140,7 @@ final class ProgrammingStateDerivations private[evadid](source: ProgrammingState
   private def inLanguage(language: ProgrammingLanguage): ProgrammingState = language match {
     case Python => pythonStructured
     case Java => javaStructured
-    case SnapLanguage => snapModel.fold(message => throw ProgrammingConversionException.unparsable(message), _.persistent)
+    case SnapLanguage => snapModel.fold(failure => throw failure.unparsable(), _.persistent)
     case BlockDisplay => expression
     case _ => throw UnsupportedOperationException(s"Programming language '$language' cannot be converted.")
   }

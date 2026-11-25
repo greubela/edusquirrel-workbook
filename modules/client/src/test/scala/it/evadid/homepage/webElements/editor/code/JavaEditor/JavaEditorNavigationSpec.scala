@@ -1,6 +1,6 @@
-package it.evadid.homepage.webElements.code
+package it.evadid.homepage.webElements.editor.code.JavaEditor
 
-import it.evadid.homepage.webElements.code.JavaEditorNavigation.{Mode, Position}
+import it.evadid.homepage.webElements.editor.code.JavaEditor.JavaEditorNavigation.{Mode, Position}
 import it.evadid.vm.naming.BeEntityName
 import it.evadid.vm.structure.JavaUmlDiagram
 import it.evadid.workbook.elements.interactionElements.programming.state.ProgrammingStateJavaStructured

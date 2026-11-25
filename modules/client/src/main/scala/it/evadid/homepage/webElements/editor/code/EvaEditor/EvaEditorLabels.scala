@@ -2,7 +2,7 @@ package it.evadid.homepage.webElements.editor.code.EvaEditor
 
 import com.raquo.laminar.api.L.*
 import it.evadid.core.datastructures.language.LanguageMapContentId
-import it.evadid.homepage.webElements.code.JavaEditorLabels
+import it.evadid.homepage.webElements.editor.code.JavaEditor.JavaEditorLabels
 import it.evadid.homepage.webElements.editor.code.program.ProgrammingExecutionLabels
 import it.evadid.homepage.webElements.editor.blocks.BlockEditorLabels
 

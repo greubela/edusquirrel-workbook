@@ -34,12 +34,28 @@ class SnapSourceSpec extends FunSuite {
     }
   }
 
-  test("later validation rejects duplicate attributes, invalid entities and mismatched tags") {
-    Seq("<project a='1' a='2'/>", "<project>&#x110000;</project>", "<project></other>").foreach { text =>
+  test("later validation rejects duplicate attributes, invalid entities and mismatched tags at their position") {
+    Seq(
+      "<project a='1' a='2'/>" -> ("one attribute named a", 20),
+      "<project>\n&#x110000;</project>" -> ("a valid character reference", 10),
+      "<project>\n</other>" -> ("closing tag </project>", 10),
+      "<project>\n  <a b='<'/></project>" -> ("closing ' of the attribute value", 18)
+    ).foreach { case (text, (expected, offset)) =>
       val source = SourceParsing.parse(text, SourceLanguage.Snap)
       assert(source.structured.tokens.nonEmpty)
-      assert(source.syntax.isLeft)
+      val failure = source.syntax.swap.toOption.get
+      assert(failure.message.contains(expected), clue = (text, failure))
+      assertEquals(failure.offset, offset, clue = (text, failure))
+      assertEquals(failure.line, SourceLines(text).line(offset))
     }
+  }
+
+  test("unreadable XML fails every later step with a located conversion error, empty text is an empty project") {
+    val source = SourceParsing.parse("<project>\n<scenes>", SourceLanguage.Snap)
+    assertEquals(source.syntax.swap.toOption.map(_.line), Some(2))
+    assert(source.project.isLeft && source.unsupportedSelectors.isLeft && source.parsed.isLeft)
+    assertEquals(source.project.swap.toOption.flatMap(_.error.line), Some(2))
+    assertEquals(SourceParsing.parse("", SourceLanguage.Snap).unsupportedSelectors, Right(Nil))
   }
 
   test("all consumers reuse the same source and completed stages") {
@@ -54,7 +70,7 @@ class SnapSourceSpec extends FunSuite {
     val text = """<block s="forward"><l>10</l></block><block s="turn"><l>90</l></block>"""
     val source = SourceParsing.parse(text, SourceLanguage.Snap)
     assert(source.syntax.isLeft, "a document still requires one root")
-    assertEquals(source.project.allBlocks.size, 2)
+    assertEquals(source.project.map(_.allBlocks.size), Right(2))
     assertEquals(source.structured.source, text)
   }
 

@@ -1,5 +1,6 @@
-package it.evadid.homepage.webElements.code
+package it.evadid.homepage.webElements.editor.code.JavaEditor
 
+import it.evadid.vm.editing.JavaMethodEditing
 import it.evadid.homepage.webElements.editor.code.codemirror.CodeMirrorEditor
 import it.evadid.vm.parsing.source.SourceParsing
 import it.evadid.vm.parsing.source.SourceParsing.SourceLanguage
@@ -34,7 +35,7 @@ final case class JavaFragmentRange(className: BeEntityName, start: Int, end: Int
 
   /** The line of the printed program (`state.toString`) on which this fragment starts. */
   def firstLineNumber(state: ProgrammingStateJavaStructured): Int =
-    JavaMethodSource.firstLineNumber(state.toString, Some(JavaMethodSource.MethodRange(preceding(state) + start, preceding(state) + end)))
+    JavaMethodEditing.firstLineNumber(state.toString, Some(JavaMethodEditing.MethodRange(preceding(state) + start, preceding(state) + end)))
 
   /** A diagnostic of the printed program in this fragment's own lines and columns, if it lies within the fragment.
     * A diagnostic without columns marks whole lines.
