@@ -3,10 +3,13 @@ package it.evadid.vm.conversion.pythonexpression
 import it.evadid.vm.conversion.parsed.{ParsedFunctionKind, ParsedParameter, ParsedStatement, ParsedType}
 import it.evadid.vm.conversion.parsed.ParsedExpression as E
 import it.evadid.vm.conversion.parsed.ParsedStatement as S
+import it.evadid.vm.parsing.source.SourceParsing
+import it.evadid.vm.parsing.source.SourceParsing.SourceLanguage
 import munit.FunSuite
 
 class PythonToParsedSpec extends FunSuite {
-  private def parse(source: String): Seq[ParsedStatement] = PythonToExpression.parse(source).statements
+  private def parse(source: String): Seq[ParsedStatement] =
+    SourceParsing.parse(source, SourceLanguage.Python).neutral.statements
 
   test("simple statements, comments and declarations map to neutral statements") {
     assertEquals(parse("pass\n# note\nx: float\ny: bool = True\nz = None\nx += 2\nself_less.value = 3\n"), Seq(

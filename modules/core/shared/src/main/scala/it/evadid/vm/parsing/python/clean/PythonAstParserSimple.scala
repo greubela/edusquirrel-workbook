@@ -4,12 +4,12 @@ import fastparse.*
 import fastparse.NoWhitespace.*
 import it.evadid.vm.code.errors.{ProgrammingConversionException, ProgrammingConversionLocation}
 import it.evadid.vm.parsing.generic.CodeLexer.*
-import it.evadid.vm.parsing.generic.abstractions.pipeline.GenericAstScanner
 import it.evadid.vm.parsing.python.clean.model.PyAST.*
 import it.evadid.vm.parsing.python.clean.model.PythonType.*
 import it.evadid.vm.parsing.python.clean.model.*
 
-object PythonAstParserSimple extends GenericAstScanner[PyAST] {
+/** The Python grammar; only step 2 of [[it.evadid.vm.parsing.source.SourceParsing]] parses with it. */
+object PythonAstParserSimple {
 
   // ==========================================
   // 1. HELPER
@@ -46,8 +46,6 @@ object PythonAstParserSimple extends GenericAstScanner[PyAST] {
   // 2. PROGRAM
   // ==========================================
 
-  override def parseASTFromProgramString(programString: String): Either[Throwable, PyAST] = parse(programString)
-
   /** Unix line endings and four spaces per tab, as Python's tokenizer expands them for indentation. */
   def normalizeLineEndingsAndDetab(source: String): String =
     source.replace("\r\n", "\n").replace('\r', '\n').replace("\t", "    ")
@@ -59,7 +57,7 @@ object PythonAstParserSimple extends GenericAstScanner[PyAST] {
     lines.map(_.drop(shared)).mkString("\n")
   }
 
-  def parse(pythonCode: String): Either[Throwable, PyProgram] = {
+  private[parsing] def parse(pythonCode: String): Either[Throwable, PyProgram] = {
     val trimmed = dedent(pythonCode).trim
     fastparse.parse(trimmed + "\n", c => py_program(using c)) match {
       case Parsed.Success(astModule, _) => Right(astModule)

@@ -5,14 +5,13 @@ import it.evadid.vm.code.abstractions.BeExpression
 import it.evadid.vm.code.defining.{BeDependency, BeIntrinsic}
 import it.evadid.vm.code.usage.BeFunctionCall
 import it.evadid.vm.conversion.printing.ModuleLayout
-import it.evadid.vm.conversion.structured.SourceStructure
 import it.evadid.vm.naming.BeEntityName
 
 /** The libraries printed programs may need, and how printers and parsers treat their definitions.
   *
   * A dependency is required when the program calls a function with its intrinsic. Printers add the
-  * required definitions; parsers remove a definition only when it matches exactly (ignoring layout),
-  * so an edited copy stays an ordinary user definition.
+  * required definitions; the parsing pipeline's first step masks a definition only when it matches exactly
+  * (ignoring layout), so an edited copy stays an ordinary user definition.
   */
 object KnownDependencies {
   /** Python's `turtle` module; Java gets a generated class with the same static methods. */
@@ -76,41 +75,11 @@ object KnownDependencies {
   def definitionsFor(expression: BeExpression, language: ProgrammingLanguage): Seq[String] =
     requiredBy(expression).flatMap(_.definition(language))
 
-  private def compact(text: String): String = text.filterNot(_.isWhitespace)
 
   def named(name: BeEntityName): Option[BeDependency] = all.find(_.structureName == name)
 
   /** Whether `classSource` is a dependency's Java definition verbatim, ignoring layout. */
-  def isJavaDefinition(classSource: String): Boolean = javaDefinitions(compact(classSource))
+  def isJavaDefinition(classSource: String): Boolean = javaDefinitions(it.evadid.vm.parsing.source.SourceText.compact(classSource))
 
-  private lazy val javaDefinitions: Set[String] = all.flatMap(_.definition(Java)).map(compact).toSet
-
-  /** Where `source` contains a dependency definition verbatim, ignoring layout, as `(start, end)` offsets. */
-  def definitionRanges(source: String, language: ProgrammingLanguage): Seq[(Int, Int)] = language match {
-    case Java =>
-      SourceStructure.javaClasses(source).filter(block => isJavaDefinition(block.source)).map(block => block.start -> block.end)
-    case Python => all.flatMap(_.definition(Python)).flatMap(lineRun(source, _))
-    case _ => Nil
-  }
-
-  /** Source with its dependency definitions blanked out, keeping line breaks, so that offsets in the
-    * remaining code stay valid for diagnostics and tracing. Parsers and the checked Java runner read
-    * this instead of the definitions.
-    */
-  def maskDefinitions(source: String, language: ProgrammingLanguage): String =
-    definitionRanges(source, language).foldLeft(source) { case (text, (start, end)) =>
-      text.take(start) + text.slice(start, end).map(char => if char == '\n' || char == '\r' then char else ' ') + text.drop(end)
-    }
-
-  /** The first run of whole lines equal to `definition`, ignoring indentation and blank lines. */
-  private def lineRun(source: String, definition: String): Option[(Int, Int)] = {
-    val wanted = definition.linesIterator.map(_.trim).filter(_.nonEmpty).toVector
-    val lines = (0 +: source.indices.filter(source(_) == '\n').map(_ + 1)).map { start =>
-      val end = source.indexOf('\n', start)
-      start -> (if end < 0 then source.length else end)
-    }
-    val code = lines.filter((start, end) => source.substring(start, end).trim.nonEmpty)
-    code.indices.find(first => code.slice(first, first + wanted.size).map((start, end) => source.substring(start, end).trim) == wanted)
-      .map(first => code(first)._1 -> math.min(source.length, code(first + wanted.size - 1)._2 + 1))
-  }
+  private lazy val javaDefinitions: Set[String] = all.flatMap(_.definition(Java)).map(it.evadid.vm.parsing.source.SourceText.compact).toSet
 }

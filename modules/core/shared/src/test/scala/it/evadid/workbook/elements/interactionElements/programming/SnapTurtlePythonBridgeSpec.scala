@@ -1,9 +1,11 @@
 package it.evadid.workbook.elements.interactionElements.programming
 
+import it.evadid.vm.parsing.source.SourceParsing
+import it.evadid.vm.parsing.source.SourceParsing.SourceLanguage
+
 import it.evadid.core.datastructures.language.AppLanguage.{Java, Python, SnapLanguage}
 import it.evadid.vm.conversion.expressionpython.ExpressionToPython
 import it.evadid.vm.conversion.expressionsnap.SnapProjectXml
-import it.evadid.vm.conversion.pythonexpression.PythonToExpression
 import it.evadid.vm.conversion.pythonsnap.PythonToSnap
 import it.evadid.vm.conversion.snapexpression.SnapControlFlow
 import it.evadid.vm.conversion.snapexpression.SnapCustomBlockRules
@@ -26,7 +28,7 @@ class SnapExpressionSupportSpec extends FunSuite {
       SnapTurtleCatalog.AllowedPythonNames.contains("forward"),
       clue = SnapTurtleCatalog.AllowedPythonNames.toList.sorted.mkString(",")
     )
-    val program = PythonToExpression.program("forward(10)")
+    val program = SourceParsing.parse("forward(10)", SourceLanguage.Python).parsed().program
     val statements = SnapExpressionSupport.topLevelStatements(program.fullProgram)
     val call = statements.collectFirst { case c: it.evadid.vm.code.usage.BeFunctionCall => c }.get
     assertEquals(SnapExpressionSupport.pythonName(call), "forward")
@@ -83,7 +85,7 @@ class SnapExpressionSupportSpec extends FunSuite {
   }
 
   test("snapSelectorOf maps python snake_case to Snap ids") {
-    val program = PythonToExpression.program("goto_x_y(1, 2)\nset_heading(90)\nreceive_go()")
+    val program = SourceParsing.parse("goto_x_y(1, 2)\nset_heading(90)\nreceive_go()", SourceLanguage.Python).parsed().program
     val selectors =
       SnapExpressionSupport
         .topLevelStatements(program.fullProgram)
@@ -116,7 +118,7 @@ class SnapExpressionSupportSpec extends FunSuite {
         |""".stripMargin
     val result = PythonToSnap.applyPython(source)
     assert(result.isRight, clue = result)
-    val python = ExpressionToPython.printedPython(PythonToExpression.program(source).fullProgram)
+    val python = ExpressionToPython.printedPython(SourceParsing.parse(source, SourceLanguage.Python).parsed().program.fullProgram)
     assert(python.contains("i: float = 1"), clue = python)
     assert(python.contains("while i < 3:"), clue = python)
     assert(python.contains("i = i + 1"), clue = python)
@@ -139,7 +141,7 @@ class SnapExpressionSupportSpec extends FunSuite {
         |""".stripMargin
     val result = PythonToSnap.applyPython(source)
     assert(result.isRight, clue = result)
-    val python = ExpressionToPython.printedPython(PythonToExpression.program(source).fullProgram)
+    val python = ExpressionToPython.printedPython(SourceParsing.parse(source, SourceLanguage.Python).parsed().program.fullProgram)
     assert(python.contains("steps: float = 1"), clue = python)
     assert(python.contains("steps = steps + 2"), clue = python)
     assert(result.toOption.get.code.contains("""s="doChangeVar""""), clue = result.toOption.get.code)
@@ -174,7 +176,7 @@ class SnapExpressionSupportSpec extends FunSuite {
         |""".stripMargin
     val result = PythonToSnap.applyPython(source)
     assert(result.isRight, clue = result)
-    val python = ExpressionToPython.printedPython(PythonToExpression.program(source).fullProgram)
+    val python = ExpressionToPython.printedPython(SourceParsing.parse(source, SourceLanguage.Python).parsed().program.fullProgram)
     assert(python.contains("if 1 < 2:"), clue = python)
     assert(python.contains("while 3 > 1:"), clue = python)
     assert(!python.contains("<("), clue = python)
@@ -254,7 +256,7 @@ class SnapExpressionSupportSpec extends FunSuite {
         |""".stripMargin
     val result = PythonToSnap.applyPython(source)
     assert(result.isRight, clue = result)
-    val python = ExpressionToPython.printedPython(PythonToExpression.program(source).fullProgram)
+    val python = ExpressionToPython.printedPython(SourceParsing.parse(source, SourceLanguage.Python).parsed().program.fullProgram)
     assert(python.contains("receive_go()"), clue = python)
     assert(python.contains("do_wait(1)"), clue = python)
     assert(python.contains("pen_down()"), clue = python)
@@ -307,7 +309,7 @@ class SnapExpressionSupportSpec extends FunSuite {
   }
 
   test("snapSelectorOf maps python aliases to Snap ids") {
-    val program = PythonToExpression.program("right(90)\nleft(15)\ngoto(1, 2)\npenup()\npendown()\ncolor(\"red\")")
+    val program = SourceParsing.parse("right(90)\nleft(15)\ngoto(1, 2)\npenup()\npendown()\ncolor(\"red\")", SourceLanguage.Python).parsed().program
     val selectors =
       SnapExpressionSupport
         .topLevelStatements(program.fullProgram)
@@ -329,7 +331,7 @@ class SnapExpressionSupportSpec extends FunSuite {
     val xml = result.toOption.get.code
     // An unused counter is a repeat; its count may be computed, here a variable.
     assert(xml.contains("""<block s="doRepeat"><block var="edges"/>"""), clue = xml)
-    val python = ExpressionToPython.printedPython(PythonToExpression.program(source).fullProgram)
+    val python = ExpressionToPython.printedPython(SourceParsing.parse(source, SourceLanguage.Python).parsed().program.fullProgram)
     assert(python.contains("for _ in range(edges):"), clue = python)
     assert(!python.contains("for 0 in range"), clue = python)
   }
@@ -353,7 +355,7 @@ class SnapExpressionSupportSpec extends FunSuite {
     assert(xml.contains("""s="runningStitch""""), clue = xml)
     assert(xml.contains("""s="setColor""""), clue = xml)
     assert(xml.contains("""s="home""""), clue = xml)
-    val python = ExpressionToPython.printedPython(PythonToExpression.program(source).fullProgram)
+    val python = ExpressionToPython.printedPython(SourceParsing.parse(source, SourceLanguage.Python).parsed().program.fullProgram)
     assert(python.contains("for i in range(1, 5):"), clue = python)
     assert(python.contains("forward(i * 10)"), clue = python)
   }
@@ -407,7 +409,7 @@ class SnapExpressionSupportSpec extends FunSuite {
     val definition = """(?s)<block-definition[^>]*>.*?</block-definition>""".r.findFirstIn(xml).getOrElse("")
     assert(!definition.contains("<script>"), clue = definition)
     val python = ExpressionToPython.printedPython(
-      it.evadid.vm.conversion.pythonexpression.PythonToExpression.program("def square(n):\n    pass\n").fullProgram
+      SourceParsing.parse("def square(n):\n    pass\n", SourceLanguage.Python).parsed().program.fullProgram
     )
     assert(python.contains("def square(n: Any) -> None:"), clue = python)
     assert(python.contains("pass"), clue = python)

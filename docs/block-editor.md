@@ -22,7 +22,7 @@ value draft are the editor's transient `Var`s. Other tabs convert from the same
 | Type | Responsibility |
 | --- | --- |
 | `BeProgramEditing` | Pure edits addressed by `BeNodePath` (child roles from the root): slots, `insert`, `move`, `remove`, `replace`. Slots enforce sequence capacity and required types; a statement cannot move into itself. |
-| `BeValueInput` | Parameter, repeat-count and assigned values. Typed positions accept literals (`true`, `2024-05-01`); otherwise the text is parsed with `PythonToExpression`, calls are bound to the program's own functions, and `BeProgramInterpreter.foldConstants` computes operators on literals (`3+5` → `8`, `add(3+5, 3)` → `add(8, 3)`). The result must fit the expected type; unknown variables are rejected. |
+| `BeValueInput` | Parameter, repeat-count and assigned values. Typed positions accept literals (`true`, `2024-05-01`); otherwise the text is parsed with `SourceParsing`, calls are bound to the program's own functions, and `BeProgramInterpreter.foldConstants` computes operators on literals (`3+5` → `8`, `add(3+5, 3)` → `add(8, 3)`). The result must fit the expected type; unknown variables are rejected. |
 | `BeBlockLibrary` | Templates parsed from Python, so inserted blocks convert and execute like typed code. |
 
 ## Drawing (core, `vectorShapes.blocks`)

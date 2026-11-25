@@ -7,12 +7,12 @@ import it.evadid.vm.code.defining.{BeDefineClass, BeDefineFunction, BeDefineVari
 import it.evadid.vm.code.others.BeStartProgram
 import it.evadid.vm.conversion.parsed.SymbolTable
 import it.evadid.vm.conversion.dependencies.{KnownDependencies, ProgrammingEnvironment}
+import it.evadid.vm.parsing.source.{PythonSourceStructured, PythonSyntax, SyntaxFailure}
 import it.evadid.vm.conversion.expressionpython.PythonEntryPoint
 import it.evadid.vm.conversion.parsed.{ParsedExpression, ParsedFunctionKind, ParsedParameter, ParsedProgram, ParsedProgramBuilder, ParsedStatement, ParsedType}
 import it.evadid.vm.conversion.parsed.ParsedExpression as E
 import it.evadid.vm.conversion.parsed.ParsedStatement as S
 import it.evadid.vm.parsing.generic.abstractions.GenericAST
-import it.evadid.vm.parsing.python.clean.PythonAstParserSimple
 import it.evadid.vm.parsing.python.clean.model.PyAST.*
 import it.evadid.vm.parsing.python.clean.model.PythonType
 import it.evadid.vm.parsing.python.clean.model.PythonType.*
@@ -22,33 +22,29 @@ import it.evadid.vm.parsing.python.clean.model.PythonType.*
   * A `def main(): …` entry point called at the end is the main sequence, see [[PythonEntryPoint]].
   */
 object PythonToExpression {
-  /** The program, binding library calls to the libraries `environment` provides. */
-  def program(source: String, environment: ProgrammingEnvironment = ProgrammingEnvironment.all): BeProgram =
-    BeProgram(PythonEntryPoint.inline(BeStartProgram(ParsedProgramBuilder(Python, environment).build(parse(source)).expression)))
-
-  /** The program with the definitions the builder bound, for analyses that need them. */
+  /** The definitions the builder bound, for analyses that need them. */
   final case class Details(definedClasses: List[BeDefineClass], definedFunctions: List[BeDefineFunction],
       definedVariables: List[BeDefineVariable], currentlyKnownStructures: SymbolTable.CurrentlyKnownStructures, codeExpression: BeSequence)
 
-  def parseWithDetails(source: String): Details = {
-    val built = ParsedProgramBuilder(Python).build(parse(source))
-    val expression = PythonEntryPoint.inline(BeStartProgram(built.expression)).startSequence.getOrElse(built.expression)
-    Details(built.context.definedClasses, built.context.definedFunctions, built.context.definedVariables,
-      built.context.currentStructures, expression)
-  }
-
-  /** Unreadable source is retained as one unparsable statement rather than discarded. */
-  /** Known dependency definitions are libraries, not user code, and are removed before parsing. */
-  def parse(rawSource: String): ParsedProgram = {
-    // Library definitions are masked rather than removed, so positions match the original text.
-    val source = KnownDependencies.maskDefinitions(rawSource, Python)
-    PythonAstParserSimple.parse(source).fold(
-      error => ParsedProgram(if source.trim.isEmpty then Nil else Seq(S.Unsupported(source.trim, error.getMessage, unparsable = true))),
-      program => {
-        val parsed = program.statements.map(_.statement).flatMap(withoutMainGuard)
-        given ProgramNames = ProgramNames(parsed.flatMap(usedNames).toSet, assignedNames(parsed))
-        ParsedProgram(statements(parsed))
+  /** The language-neutral program of the step-2 syntax tree; an unreadable source stays one unparsable statement. */
+  def neutral(structured: PythonSourceStructured, syntax: Either[SyntaxFailure, PythonSyntax]): ParsedProgram =
+    syntax.fold(
+      failure => ParsedProgram(if structured.masked.trim.isEmpty then Nil
+        else Seq(S.Unsupported(structured.masked.trim, failure.message, unparsable = true))),
+      tree => {
+        val statements = tree.program.statements.map(_.statement).flatMap(withoutMainGuard)
+        given ProgramNames = ProgramNames(statements.flatMap(usedNames).toSet, assignedNames(statements))
+        ParsedProgram(this.statements(statements))
       })
+
+  /** Step 3 for Python ([[it.evadid.vm.parsing.source.SourceParsing]]): the program of the step-2 syntax tree, binding
+    * library calls to the libraries `environment` provides. An unreadable source stays one unparsable statement.
+    */
+  def convert(neutral: ParsedProgram, environment: ProgrammingEnvironment): (BeProgram, Details) = {
+    val built = ParsedProgramBuilder(Python, environment).build(neutral)
+    val start = PythonEntryPoint.inline(BeStartProgram(built.expression))
+    (BeProgram(start), Details(built.context.definedClasses, built.context.definedFunctions, built.context.definedVariables,
+      built.context.currentStructures, start.startSequence.getOrElse(built.expression)))
   }
 
   /** `if __name__ == "__main__":` holds whenever the program runs, so its body runs as module

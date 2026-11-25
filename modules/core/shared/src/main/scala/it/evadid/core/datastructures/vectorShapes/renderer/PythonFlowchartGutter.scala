@@ -2,16 +2,17 @@ package it.evadid.core.datastructures.vectorShapes.renderer
 
 import it.evadid.vm.code.errors.{BeExpressionUnparsable, BeExpressionUnsupported}
 import it.evadid.vm.code.tree.BeExpressionReference
-import it.evadid.vm.conversion.pythonexpression.PythonToExpression
-import it.evadid.vm.conversion.structured.SourceStructure
+import it.evadid.vm.parsing.source.{PythonLineStructured, SourceParsing}
+import it.evadid.vm.parsing.source.SourceParsing.SourceLanguage
 import it.evadid.vm.parsing.python.clean.PythonAstParserSimple
 import it.evadid.vm.parsing.python.clean.model.PyAST.*
 import it.evadid.vm.types.{BeChildInfo, BeChildRole, BeScope}
 
 import scala.util.control.NonFatal
 
-/** Places Python statements on source lines for a [[FlowchartGutter]] chart. The Python conversion decides
-  * support; the fastparse syntax tree supplies statements and [[SourceStructure.pythonCodeLines]] their physical rows.
+/** Places Python statements on source lines for a [[FlowchartGutter]] chart, from one [[SourceParsing]] result: the
+  * conversion (step 3) decides support, the syntax tree (step 2) supplies statements and the logical lines (step 1)
+  * their physical rows.
   */
 object PythonFlowchartGutter {
   import FlowchartGutter.{Chart, Positioned, build, empty}
@@ -20,17 +21,18 @@ object PythonFlowchartGutter {
 
   /** Parses exactly `source`. `None` means the program is incomplete or unsupported. */
   private def parseChart(source: String): Option[Chart] = try {
-    val expression = PythonToExpression.program(source).fullProgram
-    val expressions = expression.subtree
+    val parsed = SourceParsing.parse(source, SourceLanguage.Python)
+    val expressions = parsed.parsed().program.fullProgram.subtree
     if (expressions.exists {
       case _: BeExpressionUnparsable | _: BeExpressionUnsupported => true
       case _ => false
     }) None
     else {
-      val program = PythonAstParserSimple.parse(source).fold(error => throw error, identity)
-      // Statements consume code rows in order; comment-only and blank rows stay without nodes.
-      val rows = SourceStructure.pythonCodeLines(normalized(source))
-      def row(cursor: Int): SourceStructure.CodeLine = rows.lift(cursor).getOrElse(throw IllegalArgumentException("Cannot align statement to source"))
+      val program = parsed.syntax.fold(failure => throw IllegalArgumentException(failure.message), _.program)
+      // Statements consume code rows in order; comment-only and blank rows stay without nodes. Rows come from the
+      // same masked text the syntax tree was read from, so library definitions have neither.
+      val rows = SourceParsing.parse(normalized(parsed.structured.masked), SourceLanguage.Python).structured.codeLines
+      def row(cursor: Int): PythonLineStructured = rows.lift(cursor).getOrElse(throw IllegalArgumentException("Cannot align statement to source"))
       def startsWith(cursor: Int, keyword: String): Boolean = rows.lift(cursor).exists(next => keywordOf(next.code) == keyword)
       def body(statements: Seq[PyStatement], depth: Int, cursor: Int): (List[Positioned], Int) =
         statements.foldLeft((List.empty[Positioned], cursor)) { case ((done, current), statement) =>

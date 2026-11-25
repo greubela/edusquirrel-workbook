@@ -63,8 +63,8 @@ object JavaEditorNavigation {
     def follow(function: JavaFunctionEditor.Function, program: ProgrammingStateJavaStructured): Position =
       if mode != Mode.Function then this
       else {
-        val code = program.definedClasses.get(function.className).filter(_.length >= function.method.end)
-          .map(_.substring(function.method.start, function.method.end))
+        val code = program.definedClasses.get(function.className).filter(_.length >= function.method.span.end)
+          .map(function.method.span.text)
         JavaUmlDiagram(program).key(function.className, code).fold(this)(key => copy(selection = Some(key)))
       }
   }
@@ -74,7 +74,7 @@ object JavaEditorNavigation {
     def initial(state: ProgrammingStateJavaStructured): Position =
       JavaComponentEditor.entryFunction(state).flatMap { function =>
         JavaUmlDiagram(state).key(function.className,
-          Some(state.definedClasses(function.className).substring(function.method.start, function.method.end)))
+          Some(state.definedClasses(function.className).substring(function.method.span.start, function.method.span.end)))
       }.fold(Position(Mode.Full, None))(key => Position(Mode.Function, Some(key)))
   }
 }

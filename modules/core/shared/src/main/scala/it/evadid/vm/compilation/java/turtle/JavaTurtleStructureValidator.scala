@@ -14,7 +14,8 @@ object JavaTurtleStructureValidator {
   )
 
   def check(parsed: ParsedSource): Either[Diagnostic, StructuredSource] =
-    parsed.program.statements.map(_.statement) match {
+    // `//` comments are part of the syntax tree but not of the program's structure.
+    parsed.program.statements.map(_.statement).filterNot(_.isInstanceOf[JavaCommentStatement]) match {
       case Seq(clazz: JavaClassDef) =>
         for {
           _ <- checkClass(clazz).toLeft(())
@@ -59,7 +60,7 @@ object JavaTurtleStructureValidator {
         Some(problem(Problem.UnsupportedStructure, "Use a class without modifiers, or a public class."))
       else if clazz.extendsType.nonEmpty || clazz.implementsTypes.nonEmpty then
         Some(problem(Problem.UnsupportedStructure, "Inheritance and interfaces are not supported yet."))
-      else if !clazz.body.statements.forall(_.isInstanceOf[JavaMethodDef]) then
+      else if !clazz.body.statements.forall(member => member.isInstanceOf[JavaMethodDef] || member.isInstanceOf[JavaCommentStatement]) then
         Some(problem(Problem.UnsupportedStructure, "Put only methods in the class; fields and nested classes are not supported yet."))
       else None
     }

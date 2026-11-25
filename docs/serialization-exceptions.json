@@ -219,5 +219,21 @@
   "modules/client/src/main/scala/it/evadid/homepage/webElements/editor/blocks/BlockDragging.scala#Press:1": "Transient pointer press of a drag gesture; never persisted",
   "modules/client/src/main/scala/it/evadid/homepage/webElements/editor/blocks/BlockEditorLabels.scala#BlockEditorLabels:1": "Localized label signals; never serialized",
   "modules/client/src/main/scala/it/evadid/homepage/webElements/editor/blocks/BlockProgramEditor.scala#BlockProgramEditor:1": "Laminar editor component bound to the answer Var; never serialized",
-  "modules/client/src/main/scala/it/evadid/homepage/webElements/editor/blocks/BlockProgramEditor.scala#ValueEdit:1": "Transient value popup draft; never persisted"
+  "modules/client/src/main/scala/it/evadid/homepage/webElements/editor/blocks/BlockProgramEditor.scala#ValueEdit:1": "Transient value popup draft; never persisted",
+  "modules/core/shared/src/main/scala/it/evadid/vm/conversion/structured/StructuredProgramConversions.scala#Parts:1": "Transient parsing-pipeline step derived from source text; never persisted or transported",
+  "modules/core/shared/src/main/scala/it/evadid/vm/parsing/source/JavaStructureStep.scala#State:1": "Transient parsing-pipeline step derived from source text; never persisted or transported",
+  "modules/core/shared/src/main/scala/it/evadid/vm/parsing/source/JavaSyntax.scala#JavaSyntax:1": "Transient parsing-pipeline step derived from source text; never persisted or transported",
+  "modules/core/shared/src/main/scala/it/evadid/vm/parsing/source/JavaSyntax.scala#JavaFunctionSyntax:1": "Transient parsing-pipeline step derived from source text; never persisted or transported",
+  "modules/core/shared/src/main/scala/it/evadid/vm/parsing/source/ParsedPrograms.scala#JavaProgramParsed:1": "Transient parsing-pipeline step derived from source text; never persisted or transported",
+  "modules/core/shared/src/main/scala/it/evadid/vm/parsing/source/ParsedPrograms.scala#JavaFunctionParsed:1": "Transient parsing-pipeline step derived from source text; never persisted or transported",
+  "modules/core/shared/src/main/scala/it/evadid/vm/parsing/source/ParsedPrograms.scala#PythonProgramParsed:1": "Transient parsing-pipeline step derived from source text; never persisted or transported",
+  "modules/core/shared/src/main/scala/it/evadid/vm/parsing/source/ParsedPrograms.scala#PythonFunctionParsed:1": "Transient parsing-pipeline step derived from source text; never persisted or transported",
+  "modules/core/shared/src/main/scala/it/evadid/vm/parsing/source/PythonStructureStep.scala#Line:1": "Transient parsing-pipeline step derived from source text; never persisted or transported",
+  "modules/core/shared/src/main/scala/it/evadid/vm/parsing/source/PythonSyntax.scala#PythonSyntax:1": "Transient parsing-pipeline step derived from source text; never persisted or transported",
+  "modules/core/shared/src/main/scala/it/evadid/vm/parsing/source/SourceParsing.scala#ParsedSource:1": "Transient parsing-pipeline step derived from source text; never persisted or transported",
+  "modules/core/shared/src/main/scala/it/evadid/vm/parsing/source/SourceTokens.scala#Token:1": "Transient parsing-pipeline step derived from source text; never persisted or transported",
+  "modules/core/shared/src/main/scala/it/evadid/vm/parsing/source/SourceTokens.scala#Word:1": "Transient parsing-pipeline step derived from source text; never persisted or transported",
+  "modules/core/shared/src/main/scala/it/evadid/vm/parsing/source/SourceTokens.scala#Opaque:1": "Transient parsing-pipeline step derived from source text; never persisted or transported",
+  "modules/core/shared/src/main/scala/it/evadid/vm/parsing/source/SourceTokens.scala#Symbol:1": "Transient parsing-pipeline step derived from source text; never persisted or transported",
+  "modules/core/shared/src/main/scala/it/evadid/vm/parsing/source/SourceTokens.scala#Group:1": "Transient parsing-pipeline step derived from source text; never persisted or transported"
 }

@@ -1,7 +1,9 @@
 package it.evadid.homepage.webElements.code
 
+import it.evadid.vm.parsing.source.SourceParsing
+import it.evadid.vm.parsing.source.SourceParsing.SourceLanguage
+
 import munit.FunSuite
-import it.evadid.vm.parsing.java.clean.JavaParser
 import it.evadid.vm.parsing.java.clean.model.JavaAST.{JavaClassDef, JavaMethodDef}
 
 class JavaMethodSourceSpec extends FunSuite {
@@ -24,26 +26,26 @@ class JavaMethodSourceSpec extends FunSuite {
 
     val classes = JavaMethodSource.discover(source)
 
-    assertEquals(classes.map(_.name), List("First", "Second"))
-    assertEquals(classes.head.methods.map(_.name), List("add"))
-    assertEquals(classes.head.methods.head.returnType, "int")
-    assertEquals(classes.head.methods.head.parameters, "int left, int right")
-    assertEquals(classes(1).methods.map(_.name), List("run"))
+    assertEquals(classes.map(_.name), Vector("First", "Second"))
+    assertEquals(classes.head.functions.map(_.name), Vector("add"))
+    assertEquals(classes.head.functions.head.returnType, Some("int"))
+    assertEquals(classes.head.functions.head.parameterList, "int left, int right")
+    assertEquals(classes(1).functions.map(_.name), Vector("run"))
   }
 
   test("the generated Turtle library is not listed as a student class, while an edited copy is") {
     val source = it.evadid.workbook.elements.interactionElements.programming.state.ProgrammingStateRaw(
       it.evadid.core.datastructures.language.AppLanguage.Python, "forward(10)").toJava.code
     assert(source.contains("class Turtle {"), source)
-    assertEquals(JavaMethodSource.discover(source).map(_.name), List("Main"))
+    assertEquals(JavaMethodSource.discover(source).map(_.name), Vector("Main"))
     val edited = source.replace("move(distance);", "move(2 * distance);")
-    assertEquals(JavaMethodSource.discover(edited).map(_.name), List("Main", "Turtle"))
+    assertEquals(JavaMethodSource.discover(edited).map(_.name), Vector("Main", "Turtle"))
   }
 
   test("replacing and adding a function preserves a parseable full Java program") {
     val source = "class Example {\n  public int add(int left, int right) {\n    return left + right;\n  }\n  public void keep() {}\n}\n"
     val clazz = JavaMethodSource.discover(source).head
-    val original = clazz.methods.head
+    val original = clazz.functions.head
     val editedDraft = "\n  public int sum(int left, int right) {\n    return left + right;\n  }"
     val edited = JavaMethodSource.replaceMethod(
       source,
@@ -56,7 +58,7 @@ class JavaMethodSourceSpec extends FunSuite {
       edited,
       afterEditClasses,
       original,
-      MethodRange(original.start, original.start + editedDraft.length)
+      MethodRange(original.span.start, original.span.start + editedDraft.length)
     )
     assertEquals(selection.map(_.name), Some("sum"))
     val withNewFunction = JavaMethodSource.insertMethod(
@@ -69,8 +71,8 @@ class JavaMethodSourceSpec extends FunSuite {
     assert(JavaMethodSource.parses(withNewFunction))
     assert(!JavaMethodSource.parses("class Example {"))
     assertEquals(
-      JavaMethodSource.discover(withNewFunction).head.methods.map(_.name),
-      List("sum", "keep", "reset")
+      JavaMethodSource.discover(withNewFunction).head.functions.map(_.name),
+      Vector("sum", "keep", "reset")
     )
   }
 
@@ -80,8 +82,8 @@ class JavaMethodSourceSpec extends FunSuite {
         parameters = "int distance", isStatic = isStatic)
       val modifiers = if isStatic then "public static" else "public"
       assertEquals(declaration, s"$modifiers void draw(int distance) {\n    \n  }")
-      val program = JavaParser.parse(s"class Drawing { $declaration }")
-        .fold(error => fail(error.getMessage), identity)
+      val program = SourceParsing.parse(s"class Drawing { $declaration }", SourceLanguage.Java).syntax.map(_.program)
+        .fold(error => fail(error.message), identity)
       assertEquals(program.statements.size, 1)
       val clazz = program.statements.head.statement match {
         case value: JavaClassDef => value
@@ -110,20 +112,20 @@ class JavaMethodSourceSpec extends FunSuite {
         parameters = "double distance", isStatic = isStatic)
       val inserted = insertMethod(source, clazz, declaration)
       val normalized = declaration.replace("\n", separator)
-      assertEquals(inserted, source.substring(0, clazz.bodyEnd) + separator + "  " + normalized + separator + source.substring(clazz.bodyEnd))
+      assertEquals(inserted, source.substring(0, closingBrace(clazz)) + separator + "  " + normalized + separator + source.substring(closingBrace(clazz)))
       assert(parses(inserted))
-      assertEquals(discover(inserted).head.methods.map(_.name), List("main", "keep", "draw"))
-      assertEquals(discover(inserted).map(_.name), List("Drawing", "Other"))
+      assertEquals(discover(inserted).head.functions.map(_.name), Vector("main", "keep", "draw"))
+      assertEquals(discover(inserted).map(_.name), Vector("Drawing", "Other"))
     }
   }
 
   test("owned ranges preserve surrounding source across invalid edits and recovery") {
     val source = "class Example {\r\n  public void edit() {}\r\n  public void keep() { int value = 9; }\r\n}\r\n\t  "
-    val original = discover(source).head.methods.head
-    val prefix = source.substring(0, original.start)
-    val suffix = source.substring(original.end)
+    val original = discover(source).head.functions.head
+    val prefix = source.substring(0, original.span.start)
+    val suffix = source.substring(original.span.end)
     var currentSource = source
-    var range = MethodRange(original.start, original.end)
+    var range = MethodRange(original.span.start, original.span.end)
     val drafts = List(
       "public void edit(",
       "\n  public void edit() {\n    int value = ",
@@ -134,13 +136,13 @@ class JavaMethodSourceSpec extends FunSuite {
       val (replaced, nextRange) = range.replace(currentSource, draft).get
       assertEquals(replaced, prefix + draft + suffix)
       assertEquals(replaced.substring(nextRange.start, nextRange.end), draft)
-      assertEquals(nextRange, MethodRange(original.start, original.start + draft.length))
+      assertEquals(nextRange, MethodRange(original.span.start, original.span.start + draft.length))
       currentSource = replaced
       range = nextRange
     }
 
     assertEquals(findEditedMethod(currentSource, discover(currentSource), original, range).map(_.name), Some("repaired"))
-    assertEquals(discover(currentSource).head.methods.map(_.name), List("repaired", "keep"))
+    assertEquals(discover(currentSource).head.functions.map(_.name), Vector("repaired", "keep"))
   }
 
   test("owned ranges validate UTF-16 bounds and support empty insertions") {
@@ -167,7 +169,7 @@ class JavaMethodSourceSpec extends FunSuite {
     List("\n", "\r\n", "\r").foreach { separator =>
       val source = original.replace("\n", separator)
       val selected = initialMethod(source).get
-      val range = MethodRange(selected.start, selected.end)
+      val range = MethodRange(selected.span.start, selected.span.end)
       assertEquals(firstLineNumber(source, Some(range)), 5)
       val draft = separator + "/* retained */" + separator + source.substring(range.start, range.end)
       val (edited, nextRange) = range.replace(source, draft).get
@@ -175,7 +177,7 @@ class JavaMethodSourceSpec extends FunSuite {
       assertEquals(edited.substring(nextRange.start, nextRange.end), draft)
       val moved = "// inserted" + separator + source
       val movedMain = initialMethod(moved).get
-      assertEquals(firstLineNumber(moved, Some(MethodRange(movedMain.start, movedMain.end))), 6)
+      assertEquals(firstLineNumber(moved, Some(MethodRange(movedMain.span.start, movedMain.span.end))), 6)
       assertEquals(firstLineNumber(source, None), 1)
       assertEquals(firstLineNumber(source, Some(MethodRange(0, source.length + 1))), 1)
     }
@@ -200,17 +202,17 @@ class JavaMethodSourceSpec extends FunSuite {
 
   private val singleMethodSource = "class Example {\n  public void edit() {}\n  public void keep() {}\n}\n"
 
-  private def candidateFor(draft: String): Option[JavaMethod] = {
-    val original = discover(singleMethodSource).head.methods.head
-    val (source, range) = MethodRange(original.start, original.end).replace(singleMethodSource, draft).get
+  private def candidateFor(draft: String): Option[it.evadid.vm.parsing.source.JavaFunctionStructured] = {
+    val original = discover(singleMethodSource).head.functions.head
+    val (source, range) = MethodRange(original.span.start, original.span.end).replace(singleMethodSource, draft).get
     findEditedMethod(source, discover(source), original, range)
   }
 
   test("method projection accepts surrounding whitespace and comments without trimming the range") {
     val draft = "\r\n /* \ud83d\ude42 void fake() {} */\r\n public void renamed() {} // retained tail\r\n\t "
     assertEquals(candidateFor(draft).map(_.name), Some("renamed"))
-    val original = discover(singleMethodSource).head.methods.head
-    val (source, range) = MethodRange(original.start, original.end).replace(singleMethodSource, draft).get
+    val original = discover(singleMethodSource).head.functions.head
+    val (source, range) = MethodRange(original.span.start, original.span.end).replace(singleMethodSource, draft).get
     assertEquals(source.substring(range.start, range.end), draft)
     assertEquals(candidateFor("/* incomplete"), None)
   }
@@ -231,50 +233,50 @@ class JavaMethodSourceSpec extends FunSuite {
 
   test("method projection requires full containment and an unambiguous class") {
     val classes = discover(singleMethodSource)
-    val original = classes.head.methods.head
+    val original = classes.head.functions.head
     assertEquals(findEditedMethod(singleMethodSource, classes, original,
-      MethodRange(original.start, original.end - 1)), None)
+      MethodRange(original.span.start, original.span.end - 1)), None)
     assertEquals(findEditedMethod(singleMethodSource, classes, original,
-      MethodRange(original.start + 1, original.end)), None)
+      MethodRange(original.span.start + 1, original.span.end)), None)
     assertEquals(findEditedMethod(singleMethodSource, classes :+ classes.head, original,
-      MethodRange(original.start, original.end)), None)
+      MethodRange(original.span.start, original.span.end)), None)
     assertEquals(findEditedMethod(singleMethodSource, classes, original.copy(className = "Missing"),
-      MethodRange(original.start, original.end)), None)
+      MethodRange(original.span.start, original.span.end)), None)
 
     val multipleClasses = singleMethodSource + "class Other { public void untouched() {} }"
     val draft = "public void renamed() {}"
-    val (changed, range) = MethodRange(original.start, original.end).replace(multipleClasses, draft).get
+    val (changed, range) = MethodRange(original.span.start, original.span.end).replace(multipleClasses, draft).get
     assertEquals(findEditedMethod(changed, discover(changed), original, range).map(_.name), Some("renamed"))
   }
 
   test("selection follows the complete signature across source reordering") {
     val source = "class Example { public int value(int n) { return n; } public int value(boolean flag) { return 1; } }"
     val classes = discover(source)
-    val previous = classes.head.methods.head
+    val previous = classes.head.functions.head
     val reordered = discover("class Example { public int value(boolean flag) { return 1; } public int value(int n) { return n; } }")
-    assertEquals(findSelection(reordered, previous).map(_.parameters), Some("int n"))
-    assertEquals(findSelection(reordered, previous.copy(parameters = "String value")), None)
-    assertEquals(findSelection(reordered, previous.copy(returnType = "void")), None)
+    assertEquals(findSelection(reordered, previous).map(_.parameterList), Some("int n"))
+    assertEquals(findSelection(reordered, previous.copy(parameterList = "String value")), None)
+    assertEquals(findSelection(reordered, previous.copy(returnType = Some("void"))), None)
     assertEquals(findSelection(reordered, previous.copy(className = "Other")), None)
   }
 
   test("selection rejects duplicate methods and duplicate class names") {
     val classes = discover("class Example { public void edit() {} }")
-    val previous = classes.head.methods.head
-    val duplicateMethod = classes.head.copy(methods = List(previous, previous.copy(start = previous.start + 1)))
-    assertEquals(findSelection(List(duplicateMethod), previous), None)
+    val previous = classes.head.functions.head
+    val duplicateMethod = classes.head.copy(members = Vector(previous, previous.copy(span = previous.span.copy(start = previous.span.start + 1))))
+    assertEquals(findSelection(Vector(duplicateMethod), previous), None)
     assertEquals(findSelection(classes :+ classes.head, previous), None)
-    assertEquals(findSelection(Nil, previous), None)
+    assertEquals(findSelection(Vector.empty, previous), None)
   }
 
   test("method identity ignores offsets but distinguishes signatures") {
-    val original = discover(singleMethodSource).head.methods.head
-    assert(sameMethod(original, original.copy(start = 300, end = 400)))
+    val original = discover(singleMethodSource).head.functions.head
+    assert(sameMethod(original, original.copy(span = original.span.copy(start = 300, end = 400))))
     List(
       original.copy(className = "Other"),
       original.copy(name = "other"),
-      original.copy(returnType = "int"),
-      original.copy(parameters = "int value")
+      original.copy(returnType = Some("int")),
+      original.copy(parameterList = "int value")
     ).foreach(other => assert(!sameMethod(original, other)))
   }
 
@@ -283,10 +285,10 @@ class JavaMethodSourceSpec extends FunSuite {
     List("\n", "\r\n", "\r").foreach { separator =>
       val code = source.replace("\n", separator)
       val classes = discover(code)
-      assertEquals(classes.map(_.name), List("Example"), clue = separator)
-      assertEquals(classes.head.methods.map(_.name), List("edit"), clue = separator)
-      val method = classes.head.methods.head
-      assertEquals(code.substring(method.start, method.end), "public void edit() { String value = \"}\"; }")
+      assertEquals(classes.map(_.name), Vector("Example"), clue = separator)
+      assertEquals(classes.head.functions.map(_.name), Vector("edit"), clue = separator)
+      val method = classes.head.functions.head
+      assertEquals(code.substring(method.span.start, method.span.end), "public void edit() { String value = \"}\"; }")
       assert(parses(code), clue = separator)
     }
   }
@@ -296,9 +298,9 @@ class JavaMethodSourceSpec extends FunSuite {
     val clazz = discover(source).head
     val declaration = "public void reset() {}"
     val inserted = insertMethod(source, clazz, declaration)
-    assert(inserted.startsWith(source.substring(0, clazz.bodyEnd)))
-    assert(inserted.endsWith(source.substring(clazz.bodyEnd)))
-    assertEquals(discover(inserted).head.methods.map(_.name), List("keep", "reset"))
+    assert(inserted.startsWith(source.substring(0, closingBrace(clazz))))
+    assert(inserted.endsWith(source.substring(closingBrace(clazz))))
+    assertEquals(discover(inserted).head.functions.map(_.name), Vector("keep", "reset"))
   }
 
   test("initial function selects the unique main and preserves its exact source range") {
@@ -313,11 +315,11 @@ class JavaMethodSourceSpec extends FunSuite {
     val selected = initialMethod(source)
 
     assertEquals(
-      selected.map(function => (function.className, function.name, function.returnType, function.parameters)),
-      Some(("Program", "main", "void", "String[] args"))
+      selected.map(function => (function.className, function.name, function.returnType, function.parameterList)),
+      Some(("Program", "main", Some("void"), "String[] args"))
     )
-    assert(selected.exists(function => MethodRange(function.start, function.end).isWithin(source)))
-    assertEquals(selected.map(function => source.substring(function.start, function.end)), Some(expectedMain))
+    assert(selected.exists(function => MethodRange(function.span.start, function.span.end).isWithin(source)))
+    assertEquals(selected.map(function => source.substring(function.span.start, function.span.end)), Some(expectedMain))
     assertEquals(selected.map(function => replaceMethod(source, function, expectedMain)), Some(source))
   }
 
@@ -359,12 +361,12 @@ class JavaMethodSourceSpec extends FunSuite {
         "    helper();\r\n" +
         "  }\r\n" +
         "}\r\n"
-    val discoveredMain = discover(source).flatMap(_.methods).filter(_.name == "main")
+    val discoveredMain = discover(source).flatMap(_.functions).filter(_.name == "main")
 
     assertEquals(discoveredMain.length, 1)
     assertEquals(initialMethod(source), discoveredMain.headOption)
     assertEquals(
-      initialMethod(source).map(function => source.substring(function.start, function.end)),
+      initialMethod(source).map(function => source.substring(function.span.start, function.span.end)),
       Some("public static void main(String[] args) {\r\n    helper();\r\n  }")
     )
   }
@@ -402,11 +404,11 @@ class JavaMethodSourceSpec extends FunSuite {
     ).foreach { case (source, expectedMain, expectedParameters) =>
       val selected = initialMethod(source)
       assertEquals(
-        selected.map(function => (function.className, function.name, function.returnType, function.parameters)),
-        Some(("Program", "main", "void", expectedParameters))
+        selected.map(function => (function.className, function.name, function.returnType, function.parameterList)),
+        Some(("Program", "main", Some("void"), expectedParameters))
       )
-      assert(selected.exists(function => MethodRange(function.start, function.end).isWithin(source)))
-      assertEquals(selected.map(function => source.substring(function.start, function.end)), Some(expectedMain))
+      assert(selected.exists(function => MethodRange(function.span.start, function.span.end).isWithin(source)))
+      assertEquals(selected.map(function => source.substring(function.span.start, function.span.end)), Some(expectedMain))
     }
   }
 }

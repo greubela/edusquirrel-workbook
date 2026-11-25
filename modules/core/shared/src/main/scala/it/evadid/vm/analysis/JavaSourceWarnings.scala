@@ -1,21 +1,18 @@
 package it.evadid.vm.analysis
 
-import it.evadid.core.datastructures.language.AppLanguage.Java
-import it.evadid.vm.conversion.dependencies.KnownDependencies
-import it.evadid.vm.parsing.java.clean.{JavaParser, JavaSourceMap}
+import it.evadid.vm.parsing.java.clean.JavaSourceMap
+import it.evadid.vm.parsing.source.JavaSource
 import it.evadid.vm.parsing.java.clean.model.JavaAST
 import it.evadid.vm.parsing.java.clean.model.JavaAST.*
 
-/** Locates uses of unknown dependencies and unreadable statements in Java source with the ranges of the located
-  * Java parser; Python's parser does not locate expressions yet. Verbatim library definitions are masked first, as
-  * for conversion.
+/** Locates uses of unknown dependencies and unreadable statements with the ranges of the Java syntax tree (step 2 of
+  * [[it.evadid.vm.parsing.source.SourceParsing]]); Python's syntax tree does not locate expressions yet.
   */
 object JavaSourceWarnings {
-  private val parser = new JavaParser(retainParentheses = false, retainComments = true)
-
-  /** The uses of the dotted `paths` (unknown calls and attributes) and the unreadable statements in `source`. */
-  def of(source: String, paths: Set[Seq[String]]): Seq[SourceWarning] =
-    parser.parseWithLocations(KnownDependencies.maskDefinitions(source, Java)).toOption.toSeq.flatMap { located =>
+  /** The uses of the dotted `paths` (unknown calls and attributes) and the unreadable statements of `source`. */
+  def of(source: JavaSource, paths: Set[Seq[String]]): Seq[SourceWarning] =
+    source.syntax.toOption.toSeq.flatMap { syntax =>
+      val located = syntax.sourceMap
       def warning(kind: SourceWarning.Kind, subject: String, range: JavaSourceMap.SourceRange) = for {
         start <- located.position(range.start)
         end <- located.position(range.end)

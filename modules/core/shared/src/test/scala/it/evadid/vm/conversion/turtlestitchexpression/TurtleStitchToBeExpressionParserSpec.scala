@@ -1,10 +1,12 @@
 package it.evadid.vm.conversion.turtlestitchexpression
 
+import it.evadid.vm.parsing.source.SourceParsing
+import it.evadid.vm.parsing.source.SourceParsing.SourceLanguage
+
 import it.evadid.core.datastructures.language.AppLanguage.{Java, Python, SnapLanguage}
 import it.evadid.vm.conversion.turtlestitchexpression.*
 
 import it.evadid.vm.conversion.expressionpython.ExpressionToPython
-import it.evadid.vm.conversion.pythonexpression.PythonToExpression
 import it.evadid.vm.conversion.pythonsnap.PythonToSnap
 import it.evadid.vm.conversion.snapexpression.SnapCustomBlockRules
 import it.evadid.vm.conversion.snapexpression.SnapExpressionSupport
@@ -152,7 +154,7 @@ class TurtleStitchToBeExpressionParserSpec extends FunSuite {
   }
 
   test("valued test = 0 roundtrip does not append a bare test line") {
-    val program = PythonToExpression.program("test = 0\n")
+    val program = SourceParsing.parse("test = 0\n", SourceLanguage.Python).parsed().program
     val xml = SnapProjectXml.toXml(program.fullProgram)
     val derived = SnapProgramDerivation.fromXml(xml)
     val lines = derived.python.linesIterator.map(_.trim).filter(_.nonEmpty).toList

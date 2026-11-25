@@ -11,7 +11,8 @@ import it.evadid.vm.conversion.expressionjava.JavaSpelling
 import it.evadid.vm.conversion.parsed.{ParsedExpression, ParsedFunctionKind, ParsedParameter, ParsedProgram, ParsedProgramBuilder, ParsedStatement, ParsedType}
 import it.evadid.vm.conversion.parsed.ParsedExpression as E
 import it.evadid.vm.conversion.parsed.ParsedStatement as S
-import it.evadid.vm.parsing.java.clean.JavaParser
+import it.evadid.vm.parsing.java.clean.JavaSourceMap
+import it.evadid.vm.parsing.source.JavaSyntax
 import it.evadid.vm.parsing.java.clean.model.JavaAST.*
 import it.evadid.vm.parsing.java.clean.model.JavaType
 import it.evadid.vm.parsing.java.clean.model.JavaType.*
@@ -24,52 +25,20 @@ import it.evadid.workbook.elements.interactionElements.programming.state.Program
   * variables and functions, and `main`'s body is the main sequence. Classes without an entry point are
   * object classes. Loose statements and methods outside any class are module code as well.
   */
-final class JavaToExpression(code: String, environment: ProgrammingEnvironment = ProgrammingEnvironment.all) {
-  // Library definitions are masked rather than removed, so reported positions match `code`.
-  private lazy val parsed: JavaProgram = {
-    JavaTurtleInputLimits.checkParserInput(code).fold(
-      diagnostic => throw ProgrammingConversionException.at(ProgrammingConversionKind.Unparsable, diagnostic.message, code, diagnostic.range.map(_.start)),
-      identity)
-    JavaToExpression.parser.parse(KnownDependencies.maskDefinitions(code, Java)).fold(
-      {
-        case conversion: ProgrammingConversionException =>
-          throw ProgrammingConversionException.unparsable(
-            "This Java source cannot be read as a complete program or fragment.", conversion.error.line, conversion.error.column)
-        case error => throw IllegalArgumentException("This Java source cannot be read as a complete program or fragment.", error)
-      },
-      program => { rejectUnparsable(program); program })
-  }
-
-  private def rejectUnparsable(program: JavaProgram): Unit = {
-    def visit(node: it.evadid.vm.parsing.generic.abstractions.GenericAST): Unit = node match {
-      case statement: JavaUnparsableStatement =>
-        throw ProgrammingConversionException.at(ProgrammingConversionKind.Unparsable,
-          "This Java source contains unsupported or unfinished syntax.", code, Option(code.indexOf(statement.source)).filter(_ >= 0))
-      case other => other.getChildren().foreach(visit)
-    }
-    visit(program)
-  }
-
-  def isClassProgram: Boolean = parsed.statements.exists(_.statement.isInstanceOf[JavaClassDef])
-
-  def toLegacyTurtleCommands: List[TurtleCommand[Double]] = {
-    if isClassProgram then throw IllegalArgumentException("Full Java classes require the checked Java runner.")
-    convert.turtleCommandExecutionInfo.completedCommands
-  }
-
-  def compileForExecution: Either[JavaTurtleSourceParser.Diagnostic, JavaTurtleProgram] = JavaTurtleCompiler.compile(code)
-
-  lazy val preparedSource = it.evadid.vm.conversion.structured.PreparedProgramSource(code, Java)
-
-  /** Constructs without a shared form stay placeholders, as in Python; conversion to another language
-    * reports them with their position ([[it.evadid.vm.conversion.ProgrammingStateDerivations]]).
-    */
-  def convert: ProgrammingStateBeExpression =
-    ProgrammingStateBeExpression(BeStartProgram(ParsedProgramBuilder(Java, environment).build(JavaAstToParsed(parsed)).expression))
-}
-
 object JavaToExpression {
-  private val parser = new JavaParser(retainParentheses = false, retainComments = true)
+  /** Step 3 for Java ([[it.evadid.vm.parsing.source.SourceParsing]]): the expression tree of the step-2 syntax tree,
+    * binding library calls to the libraries `environment` provides. Constructs without a shared form stay
+    * placeholders, as in Python; conversion to another language reports them with their position
+    * ([[it.evadid.vm.conversion.ProgrammingStateDerivations]]). A statement the grammar kept unreadable is refused.
+    */
+  def convert(syntax: JavaSyntax, neutral: ParsedProgram, environment: ProgrammingEnvironment): ProgrammingStateBeExpression = {
+    syntax.readable.left.foreach(error => throw error)
+    ProgrammingStateBeExpression(BeStartProgram(ParsedProgramBuilder(Java, environment).build(neutral).expression))
+  }
+
+  /** The language-neutral program of the step-2 syntax tree. */
+  def neutral(syntax: JavaSyntax): ParsedProgram = JavaAstToParsed(syntax.program)
+
 }
 
 /** Translates Java syntax into the language-neutral [[ParsedProgram]]. */

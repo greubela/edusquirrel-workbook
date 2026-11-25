@@ -1,5 +1,8 @@
 package it.evadid.workbook.vm.parsing.python
 
+import it.evadid.vm.parsing.source.SourceParsing
+import it.evadid.vm.parsing.source.SourceParsing.SourceLanguage
+
 import it.evadid.core.datastructures.language.AppLanguage.{English, German, HumanLanguage, JavaScript, Python}
 import it.evadid.vm.conversion.parsed.SymbolTable
 import it.evadid.vm.conversion.parsed.SymbolTable.KnownStructure
@@ -26,7 +29,7 @@ class PythonParserSpec extends FunSuite {
   /** Canonical Python text: the program as the converter reads and prints it. */
   private object normalizer {
     def normalizePython(source: String): String =
-      ExpressionToPython.printedPython(PythonToExpression.program(source).fullProgram)
+      ExpressionToPython.printedPython(SourceParsing.parse(source, SourceLanguage.Python).parsed().program.fullProgram)
     def normalizeLineEndings(source: String): String = PythonAstParserSimple.normalizeLineEndingsAndDetab(source)
   }
 
@@ -588,7 +591,7 @@ class PythonParserSpec extends FunSuite {
   roundTripCases.foreach { testCase =>
     test(s"round trip - ${testCase.name}") {
       val normalizedInput = normalizer.normalizePython(testCase.python)
-      val parsingResult = PythonToExpression.parseWithDetails(testCase.python)
+      val parsingResult = SourceParsing.parse(testCase.python, SourceLanguage.Python).parsed().details
       val expression = parsingResult.codeExpression
       assert(
         expression.body.forall(!_.isInstanceOf[BeExpressionUnparsable]),
@@ -599,7 +602,7 @@ class PythonParserSpec extends FunSuite {
       assertPythonEquivalentAllowingAdditionalTypeHints(testCase.python, generated)
 
       val normalizedGenerated = normalizer.normalizePython(generated)
-      val reparsed = PythonToExpression.parseWithDetails(normalizedGenerated)
+      val reparsed = SourceParsing.parse(normalizedGenerated, SourceLanguage.Python).parsed().details
       val regenerated = reparsed.codeExpression.structureInfo.toStringInLanguage(Python, English)
       assertPythonEquivalentAllowingAdditionalTypeHints(normalizedGenerated, regenerated)
 
@@ -621,7 +624,7 @@ class PythonParserSpec extends FunSuite {
         |result = flag1 and not flag2 or flag3
         |""".stripMargin
 
-    val result = PythonToExpression.parseWithDetails(python)
+    val result = SourceParsing.parse(python, SourceLanguage.Python).parsed().details
     val sequence = result.codeExpression.asInstanceOf[BeSequence]
     val assignments = sequence.body.collect { case assign: BeAssignVariable => assign }
     assertEquals(assignments.length, 4)
@@ -644,7 +647,7 @@ class PythonParserSpec extends FunSuite {
         |flag = not False
         |""".stripMargin
 
-    val result = PythonToExpression.parseWithDetails(python)
+    val result = SourceParsing.parse(python, SourceLanguage.Python).parsed().details
     val sequence = result.codeExpression.asInstanceOf[BeSequence]
     val assignments = sequence.body.collect { case assign: BeAssignVariable => assign }
     assertEquals(assignments.length, 5)
@@ -668,7 +671,7 @@ class PythonParserSpec extends FunSuite {
         |result = circle_area(testWithNr)
         |""".stripMargin
 
-    val parsingResult = PythonToExpression.parseWithDetails(python)
+    val parsingResult = SourceParsing.parse(python, SourceLanguage.Python).parsed().details
     val regenerated = parsingResult.codeExpression.structureInfo.toStringInLanguage(Python, English)
     assertPythonEquivalentAllowingAdditionalTypeHints(python, regenerated)
 
@@ -714,17 +717,17 @@ class PythonParserSpec extends FunSuite {
     val sourceExpression = miniProgramExpression()
     val generated = sourceExpression.structureInfo.toStringInLanguage(Python, English)
 
-    val parsed = PythonToExpression.parseWithDetails(generated)
+    val parsed = SourceParsing.parse(generated, SourceLanguage.Python).parsed().details
     assertEquals(parsed.codeExpression.body.length, 2)
 
     val regenerated = parsed.codeExpression.structureInfo.toStringInLanguage(Python, English)
-    val canonical = PythonToExpression.parseWithDetails(regenerated).codeExpression.structureInfo.toStringInLanguage(Python, English)
+    val canonical = SourceParsing.parse(regenerated, SourceLanguage.Python).parsed().details.codeExpression.structureInfo.toStringInLanguage(Python, English)
     assertEquals(normalizer.normalizePython(canonical), normalizer.normalizePython(regenerated))
   }
 
   test("distinguish unsupported and unparsable inputs") {
     val unsupportedSource = "foo[0]"
-    val unsupportedResult = PythonToExpression.parseWithDetails(unsupportedSource)
+    val unsupportedResult = SourceParsing.parse(unsupportedSource, SourceLanguage.Python).parsed().details
     val unsupportedExpressions = unsupportedResult.codeExpression.asInstanceOf[BeSequence].body
     assert(unsupportedExpressions.exists(_.isInstanceOf[BeExpressionUnsupported]))
 
@@ -732,7 +735,7 @@ class PythonParserSpec extends FunSuite {
       """for i in range(3):
         |    forward(i)
         |""".stripMargin
-    val namedForResult = PythonToExpression.parseWithDetails(namedForSource)
+    val namedForResult = SourceParsing.parse(namedForSource, SourceLanguage.Python).parsed().details
     val namedForExpressions = namedForResult.codeExpression.asInstanceOf[BeSequence].body
     assert(namedForExpressions.exists(_.isInstanceOf[it.evadid.vm.code.controlStructures.BeFor]))
 
@@ -740,7 +743,7 @@ class PythonParserSpec extends FunSuite {
       """if True:
         |    pass
         |""".stripMargin
-    val supportedIfResult = PythonToExpression.parseWithDetails(supportedIfSource)
+    val supportedIfResult = SourceParsing.parse(supportedIfSource, SourceLanguage.Python).parsed().details
     val supportedIfExpressions = supportedIfResult.codeExpression.asInstanceOf[BeSequence].body
     val parsedIf = supportedIfExpressions.collect { case branch: BeIfElse => branch }
     assertEquals(parsedIf.length, 1)
@@ -750,7 +753,7 @@ class PythonParserSpec extends FunSuite {
       """while True
         |    pass
         |""".stripMargin
-    val unparsableResult = PythonToExpression.parseWithDetails(unparsableSource)
+    val unparsableResult = SourceParsing.parse(unparsableSource, SourceLanguage.Python).parsed().details
     val unparsableExpressions = unparsableResult.codeExpression.asInstanceOf[BeSequence].body
     assert(unparsableExpressions.exists(_.isInstanceOf[BeExpressionUnparsable]))
   }
@@ -761,7 +764,7 @@ class PythonParserSpec extends FunSuite {
         |        remaining = remaining - 1
         |    return remaining
         |""".stripMargin
-    val parsingResult = PythonToExpression.parseWithDetails(segment)
+    val parsingResult = SourceParsing.parse(segment, SourceLanguage.Python).parsed().details
     val sequence = parsingResult.codeExpression.asInstanceOf[BeSequence]
     val body = sequence.body
     val whileExpressions = body.collect { case loop: BeWhile => loop }
@@ -789,7 +792,7 @@ class PythonParserSpec extends FunSuite {
         |        limit = limit - 1
         |    return total
         |""".stripMargin
-    val parsingResult = PythonToExpression.parseWithDetails(pythonSource)
+    val parsingResult = SourceParsing.parse(pythonSource, SourceLanguage.Python).parsed().details
     val maybeFunction = parsingResult.definedFunctions.find { function =>
       function.functionTypeInfo.displayName.getNameIn(English, NamingStyle.SnakeCase) == "sum_until"
     }
@@ -819,7 +822,7 @@ class PythonParserSpec extends FunSuite {
         |    return inner()
         |""".stripMargin
 
-    val parsingResult = PythonToExpression.parseWithDetails(pythonSource)
+    val parsingResult = SourceParsing.parse(pythonSource, SourceLanguage.Python).parsed().details
     val outerFunction = parsingResult.definedFunctions.find { function =>
       function.functionTypeInfo.displayName.getNameIn(English, NamingStyle.SnakeCase) == "outer"
     }.getOrElse(fail("expected to find outer function definition"))
@@ -837,7 +840,7 @@ class PythonParserSpec extends FunSuite {
   }
 
   test("merge the environment's known structures with parsed definitions") {
-    val parsingResult = PythonToExpression.parseWithDetails("""value = left > right""")
+    val parsingResult = SourceParsing.parse("""value = left > right""", SourceLanguage.Python).parsed().details
     val known = parsingResult.currentlyKnownStructures
     val greater = SymbolTable.defaultKnownStructures.collect { case KnownStructure.Operator(">", function) => function }
     assertEquals(known.operators.get(">" -> 2).map(_.toSet), Some(greater.toSet))
@@ -846,7 +849,7 @@ class PythonParserSpec extends FunSuite {
   }
 
   test("parser initializes with default builtin function definitions") {
-    val result = PythonToExpression.parseWithDetails("")
+    val result = SourceParsing.parse("", SourceLanguage.Python).parsed().details
     val maybeStr = result.currentlyKnownStructures.functions.get("str")
     val defaultStr = DefaultDefinitions.builtinFunctionsByName("str")
     assert(maybeStr.isDefined, "expected str builtin to be available")
@@ -858,7 +861,7 @@ class PythonParserSpec extends FunSuite {
       """first = 5 > 3
         |second = 10 > 2
         |""".stripMargin
-    val result = PythonToExpression.parseWithDetails(source)
+    val result = SourceParsing.parse(source, SourceLanguage.Python).parsed().details
     val defaultGreaterOverloads =
       DefaultDefinitions.operatorDefinitionsWithSymbols.collect {
         case (symbol, function) if symbol == ">" && function.inputs.length == 2 => function
@@ -895,7 +898,7 @@ class PythonParserSpec extends FunSuite {
         |        return "Welcome " + self.name
         |""".stripMargin
 
-    val result = PythonToExpression.parseWithDetails(python)
+    val result = SourceParsing.parse(python, SourceLanguage.Python).parsed().details
     val maybeClass = result.definedClasses.collectFirst { case clazz if clazz.name.getNameIn(English, NamingStyle.SnakeCase).equalsIgnoreCase("player") => clazz }
     assert(maybeClass.nonEmpty, "expected Player class to be parsed")
     val clazz = maybeClass.get
@@ -931,7 +934,7 @@ class PythonParserSpec extends FunSuite {
         |        self.hidden = 10
         |""".stripMargin
 
-    val result = PythonToExpression.parseWithDetails(python)
+    val result = SourceParsing.parse(python, SourceLanguage.Python).parsed().details
     val clazz = result.definedClasses match {
       case List(single: BeDefineClass) => single
       case other => fail(s"expected a single class definition, found ${other.length}")

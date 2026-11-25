@@ -20,7 +20,7 @@ import it.evadid.util.logging.BasicLogger
 import scala.concurrent.{ExecutionContext, Future}
 import upickle.default.*
 import it.evadid.vm.naming.BeEntityName
-import it.evadid.vm.conversion.structured.{SourceStructure, StructuredProgramConversions}
+import it.evadid.vm.conversion.structured.StructuredProgramConversions
 import it.evadid.vm.conversion.dependencies.ProgrammingEnvironment
 
 /** The source representation currently edited by a programming exercise. */
@@ -195,7 +195,7 @@ final case class ProgrammingStateJavaStructured(definedClasses: Map[BeEntityName
 object ProgrammingStateJavaStructured {
   /** Loose code, including none at all, becomes `Main.main`: an empty program is a `Main` class with an empty entry point. */
   def apply(source: String): ProgrammingStateJavaStructured = {
-    val parts = SourceStructure.java(source)
+    val parts = StructuredProgramConversions.javaParts(source)
     if parts.remaining.isEmpty && parts.definedClasses.nonEmpty then new ProgrammingStateJavaStructured(parts.definedClasses)
     else StructuredProgramConversions.javaWithLooseCode(parts.definedClasses, parts.remaining)
   }
@@ -232,7 +232,7 @@ object ProgrammingStatePythonStructured {
   lazy val emptyMainScript: String =
     it.evadid.vm.conversion.expressionpython.ExpressionToPython.convert(it.evadid.vm.BeProgram.empty.fullProgram).code.trim
   def apply(source: String): ProgrammingStatePythonStructured = {
-    val parts = SourceStructure.python(source)
+    val parts = StructuredProgramConversions.pythonParts(source)
     new ProgrammingStatePythonStructured(parts.definedClasses,
       if parts.remaining.isEmpty && parts.definedClasses.isEmpty then emptyMainScript else parts.remaining)
   }

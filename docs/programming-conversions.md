@@ -14,14 +14,16 @@ source state → source frontend → BeExpression → target printer → target 
 
 `BeExpression` stores language-neutral definitions, calls, values and control flow. It contains no checked-Java runtime nodes, original Java source, target-language names, metadata-selected semantic modes or implicit Python receiver parameters. Printers supply target syntax, including Python's `self`. Explicit `BeExpressionUnsupported` and `BeExpressionUnparsable` nodes can retain unsupported source for diagnostics.
 
+Source text is read only through `vm.parsing.source.SourceParsing.parse` ([source parsing](source-parsing.md)); the packages below consume its steps.
+
 | Responsibility | Package below `vm.conversion` |
 | --- | --- |
-| Shared parsed model and binding for Python and Java ([source parsing](python-parsing-architecture.md)) | `parsed` |
+| Shared parsed model and binding for Python and Java ([source parsing](source-parsing.md)) | `parsed` |
 | Python frontend (fastparse syntax tree → parsed model) | `pythonexpression` |
 | Java frontend (fastparse syntax tree → parsed model) | `javaexpression` |
 | Snap frontend, startup and detached scripts | `snapexpression.SnapToExpression`, using `turtlestitchexpression` |
 | Shared-tree printers and the shared module layout | `printing`, `expressionpython`, `expressionjava`, `expressionsnap`, `expressionlisp` |
-| Source grouping for structured editors | `structured` |
+| Structured-state grouping and class hoisting over step-1 declarations | `structured` |
 | Lossless Snap project representation | `snapxmlmodel`, `snapmodelxml` |
 | Python-to-Snap application retaining project layout | `pythonsnap`, using the same frontend and expression exporter |
 | SQL clause blocks | `sqlblocks` |

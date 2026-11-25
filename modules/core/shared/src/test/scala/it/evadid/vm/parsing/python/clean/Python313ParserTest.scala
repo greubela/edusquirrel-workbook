@@ -1,5 +1,8 @@
 package it.evadid.vm.parsing.python.clean
 
+import it.evadid.vm.parsing.source.SourceParsing
+import it.evadid.vm.parsing.source.SourceParsing.SourceLanguage
+
 import it.evadid.vm.parsing.python.clean.model.PyAST.*
 import it.evadid.vm.parsing.python.clean.model.PythonType
 import munit.FunSuite
@@ -7,7 +10,7 @@ import munit.FunSuite
 class Python313ParserTest extends FunSuite {
 
   private def parseOne(code: String): PyStatement = {
-    val parsed = PythonAstParserSimple.parse(code)
+    val parsed = SourceParsing.parse(code, SourceLanguage.Python).syntax.map(_.program)
     assert(parsed.isRight, parsed.left.getOrElse("parser returned Left"))
     val statements = parsed.toOption.get.statements.map(_.statement).filterNot(_ == PyEmptyStatement)
     assert(statements.nonEmpty, "expected at least one parsed statement")
@@ -130,12 +133,12 @@ class Python313ParserTest extends FunSuite {
     val loop = parseOne(code)
     assert(loop.isInstanceOf[PyWhileStatement], "expected a structured while loop")
     assertEquals(loop.asInstanceOf[PyWhileStatement].bodyBlock.statements, Seq(PyContinueStatement, PyBreakStatement))
-    val followed = PythonAstParserSimple.parse(code + "after = 1\n").toOption.get
+    val followed = SourceParsing.parse(code + "after = 1\n", SourceLanguage.Python).syntax.map(_.program).toOption.get
     assertEquals(followed.statements.map(_.statement).filterNot(_ == PyEmptyStatement).size, 2)
     assert(followed.statements.last.statement.isInstanceOf[PySimpleAssignment])
   }
 
   test("parses simple import statements") {
-    assert(parseOne("import turtle").isInstanceOf[PyPlainImportStatement])
+    assert(parseOne("import math").isInstanceOf[PyPlainImportStatement])
   }
 }

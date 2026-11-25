@@ -1,7 +1,8 @@
 package it.evadid.homepage.webElements.code
 
 import it.evadid.homepage.webElements.editor.code.codemirror.CodeMirrorEditor
-import it.evadid.vm.conversion.structured.SourceStructure
+import it.evadid.vm.parsing.source.SourceParsing
+import it.evadid.vm.parsing.source.SourceParsing.SourceLanguage
 import it.evadid.vm.naming.BeEntityName
 import it.evadid.workbook.elements.interactionElements.programming.state.ProgrammingStateJavaStructured
 
@@ -64,7 +65,7 @@ final case class JavaFragmentRange(className: BeEntityName, start: Int, end: Int
 object JavaFragmentRange {
   /** The name of the first class declared in `source`. */
   def declaredName(source: String): Option[BeEntityName] =
-    SourceStructure.javaClasses(source).headOption.map(block => BeEntityName.fromCodeString(block.name))
+    SourceParsing.parse(source, SourceLanguage.Java).structured.classes.headOption.map(owner => BeEntityName.fromCodeString(owner.name))
 
   def sameName(left: BeEntityName, right: BeEntityName): Boolean =
     left.universalInterpretation() == right.universalInterpretation()

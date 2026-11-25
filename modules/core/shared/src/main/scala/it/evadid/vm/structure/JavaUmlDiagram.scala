@@ -4,13 +4,13 @@ import it.evadid.core.datastructures.language.AppLanguage.Java
 import it.evadid.core.datastructures.uml.*
 import it.evadid.vm.code.defining.{BeDefineClass, BeDependency, BeUnknownDependency}
 import it.evadid.vm.conversion.dependencies.KnownDependencies
-import it.evadid.vm.conversion.structured.SourceStructure
-import it.evadid.vm.conversion.structured.SourceStructure.{Group, Symbol, Token, Word}
+import it.evadid.vm.parsing.source.{JavaClassStructured, SourceParsing}
+import it.evadid.vm.parsing.source.SourceParsing.SourceLanguage
 import it.evadid.vm.naming.BeEntityName
 import it.evadid.vm.types.BeDataType
 import it.evadid.workbook.elements.interactionElements.programming.state.ProgrammingStateJavaStructured
 
-/** Parses Java declarations into the language-independent UML model. */
+/** Java classes in the language-independent UML model, from the declarations of [[SourceParsing]]'s first step. */
 object JavaUmlDiagram {
   /** The classes of `state`. A verbatim library definition (the generated `Turtle`) is a read-only library box;
     * an edited copy is the program's own class.
@@ -46,7 +46,7 @@ object JavaUmlDiagram {
       |}""".stripMargin)
 
   private def classesOf(source: String, origin: UmlClassOrigin): Seq[UmlClass] =
-    SourceStructure.javaClasses(source).map(block => umlClass(BeEntityName.fromCodeString(block.name), block.source, Some(origin)))
+    SourceParsing.parse(source, SourceLanguage.Java).structured.classes.map(owner => umlClass(BeEntityName.fromCodeString(owner.name), owner, Some(origin)))
 
   /** Unknown members have no known types: attributes show the class they lead to, methods their arguments. */
   private def unknownClass(definition: BeDefineClass, static: Boolean): UmlClass = {
@@ -71,49 +71,31 @@ object JavaUmlDiagram {
   /** The box of one class source; its `fullCode` is the declaration without the preamble of imports. Without an
     * `origin`, a verbatim library definition is a library class and any other source the program's own.
     */
-  private def umlClass(sourceKey: BeEntityName, source: String, origin: Option[UmlClassOrigin]): UmlClass = {
-    val block = SourceStructure.javaClasses(source).headOption
-    val code = block.fold(source)(_.source).trim
-    val name = block.fold(sourceKey.universalInterpretation())(_.name)
-    val parsed = SourceStructure.javaMembers(code).flatMap(parseMember)
-    def keyed(kind: UmlEntityKind): Seq[UmlMember] = parsed.collect { case (`kind`, member) => member }
-      .foldLeft(Vector.empty[UmlMember]) { (done, member) =>
-        val occurrence = done.count(_.name == member.name)
-        done :+ member.copy(key = UmlEntityKey(name, Some(UmlMemberKey(kind, member.name, occurrence))))
-      }
-    UmlClass(sourceKey, name, code, words(SourceStructure.header(code)).contains("abstract"), keyed(UmlEntityKind.Attribute),
-      keyed(UmlEntityKind.Function), origin.getOrElse(if KnownDependencies.isJavaDefinition(code) then UmlClassOrigin.Library else UmlClassOrigin.Program))
-  }
+  private def umlClass(sourceKey: BeEntityName, source: String, origin: Option[UmlClassOrigin]): UmlClass =
+    SourceParsing.parse(source, SourceLanguage.Java).structured.classes.headOption.fold(
+      UmlClass(sourceKey, sourceKey.universalInterpretation(), source.trim, isAbstract = false, Nil, Nil, origin.getOrElse(UmlClassOrigin.Program)))(
+      owner => umlClass(sourceKey, owner, origin))
 
-  /** A member with a provisional key holding only its name; initializer blocks and nested types yield nothing. */
-  private def parseMember(code: String): Option[(UmlEntityKind, UmlMember)] = {
-    val declaration = withoutAnnotations(code)
-    val header = SourceStructure.header(declaration).toVector
-    val modifiers = words(header)
-    def member(kind: UmlEntityKind, name: String, label: String) = kind -> UmlMember(
-      UmlEntityKey("", Some(UmlMemberKey(kind, name, 0))), s"${visibility(modifiers).symbol}$label",
-      visibility(modifiers), modifiers.contains("static"), modifiers.contains("abstract"), code)
-    header.indexWhere { case group: Group => group.open == '('; case _ => false } match {
-      case parameters if parameters >= 1 => (header(parameters - 1), header(parameters)) match {
-        case (Word(nameStart, _, name), group: Group) =>
-          val typeStart = header.find {
-            case Word(_, _, word) => !modifierWords(word)
-            case _ => true
-          }.map(_.start).getOrElse(nameStart)
-          val returnType = declaration.substring(typeStart, nameStart).trim
-          val parameterList = umlParameters(declaration.substring(group.start + 1, if group.closed then group.end - 1 else group.end))
-          Some(member(UmlEntityKind.Function, name, s"$name($parameterList)${typeSuffix(returnType)}"))
-        case _ => None
-      }
-      case _ => SourceStructure.declaration(declaration).map(field =>
-        member(UmlEntityKind.Attribute, field.name, s"${field.name}${typeSuffix(field.javaType.trim)}"))
+  /** The box of a step-1 class ([[SourceParsing]]): its members in source order, overloads numbered by occurrence. */
+  private def umlClass(sourceKey: BeEntityName, owner: JavaClassStructured, origin: Option[UmlClassOrigin]): UmlClass = {
+    val name = owner.name
+    def member(kind: UmlEntityKind, memberName: String, label: String, modifiers: Seq[String], code: String) = UmlMember(
+      UmlEntityKey(name, Some(UmlMemberKey(kind, memberName, 0))), s"${visibility(modifiers).symbol}$label", visibility(modifiers),
+      modifiers.contains("static"), modifiers.contains("abstract"), code)
+    def keyed(kind: UmlEntityKind, members: Seq[UmlMember]): Seq[UmlMember] = members.foldLeft(Vector.empty[UmlMember]) { (done, member) =>
+      val occurrence = done.count(_.name == member.name)
+      done :+ member.copy(key = UmlEntityKey(name, Some(UmlMemberKey(kind, member.name, occurrence))))
     }
+    val attributes = owner.fields.map(field =>
+      member(UmlEntityKind.Attribute, field.name, s"${field.name}${typeSuffix(field.javaType)}", field.modifiers, field.code))
+    val functions = owner.functions.map { function =>
+      val parameters = function.parameters.map(parameter => s"${parameter.name}: ${parameter.javaType}").mkString(", ")
+      member(UmlEntityKind.Function, function.name, s"${function.name}($parameters)${typeSuffix(function.returnType.getOrElse(""))}",
+        function.modifiers, function.code)
+    }
+    UmlClass(sourceKey, name, owner.code.trim, owner.isAbstract, keyed(UmlEntityKind.Attribute, attributes),
+      keyed(UmlEntityKind.Function, functions), origin.getOrElse(if owner.library then UmlClassOrigin.Library else UmlClassOrigin.Program))
   }
-
-  private val modifierWords =
-    Set("public", "private", "protected", "static", "final", "abstract", "strictfp", "synchronized", "native", "default", "transient", "volatile")
-
-  private def words(tokens: Seq[Token]): Seq[String] = tokens.collect { case Word(_, _, text) => text }
 
   private def visibility(modifiers: Seq[String]): UmlVisibility =
     if modifiers.contains("public") then UmlVisibility.Public
@@ -122,44 +104,4 @@ object JavaUmlDiagram {
     else UmlVisibility.Package
 
   private def typeSuffix(javaType: String): String = if javaType.isEmpty then "" else s": $javaType"
-
-  /** `int x, final List<String> names` becomes `x: int, names: List<String>`. */
-  private def umlParameters(parameters: String): String =
-    splitTopLevel(withoutAnnotations(parameters).trim).map { parameter =>
-      val declared = parameter.trim.stripPrefix("final ").trim
-      declared.lastIndexWhere(_.isWhitespace) match {
-        case split if split > 0 => s"${declared.substring(split + 1)}: ${declared.substring(0, split).trim}"
-        case _ => declared
-      }
-    }.mkString(", ")
-
-  /** Splits at commas outside generic, array and parenthesised groups. */
-  private def splitTopLevel(text: String): Seq[String] =
-    if text.isEmpty then Seq.empty
-    else {
-      val (parts, current, _) = text.foldLeft((Vector.empty[String], "", 0)) { case ((parts, current, depth), char) =>
-        char match {
-          case ',' if depth == 0 => (parts :+ current, "", depth)
-          case '<' | '(' | '[' | '{' => (parts, current + char, depth + 1)
-          case '>' | ')' | ']' | '}' => (parts, current + char, (depth - 1).max(0))
-          case _ => (parts, current + char, depth)
-        }
-      }
-      parts :+ current
-    }
-
-  /** Removes `@Name`, `@a.b.Name` and `@Name(…)` annotations from the top level of a declaration. */
-  private def withoutAnnotations(code: String): String = {
-    val tokens = SourceStructure.significant(SourceStructure.tokens(code, python = false)).toVector
-    val ranges = tokens.indices.collect {
-      case index if (tokens(index) match { case Symbol(_, _, "@") => true; case _ => false }) &&
-          tokens.lift(index + 1).exists { case Word(_, _, "interface") => false; case _: Word => true; case _ => false } =>
-        val name = tokens.drop(index + 1).zipWithIndex.takeWhile { (token, offset) =>
-          if offset % 2 == 0 then token.isInstanceOf[Word] else token match { case Symbol(_, _, ".") => true; case _ => false }
-        }.map(_._1)
-        val arguments = tokens.lift(index + 1 + name.size).collect { case group: Group if group.open == '(' => group }
-        tokens(index).start -> arguments.fold(name.last.end)(_.end)
-    }
-    SourceStructure.remove(code, ranges)
-  }
 }

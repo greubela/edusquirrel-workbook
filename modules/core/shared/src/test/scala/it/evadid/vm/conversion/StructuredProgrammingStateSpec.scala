@@ -1,7 +1,9 @@
 package it.evadid.vm.conversion
 
 import it.evadid.core.datastructures.language.AppLanguage.{Java, ProgrammingLanguage, Python, SnapLanguage}
-import it.evadid.vm.conversion.structured.SourceStructure
+import it.evadid.vm.conversion.structured.StructuredProgramConversions
+import it.evadid.vm.parsing.source.SourceParsing
+import it.evadid.vm.parsing.source.SourceParsing.SourceLanguage
 import it.evadid.vm.naming.BeEntityName
 import it.evadid.core.datastructures.language.AppLanguage.{Java, Python}
 import it.evadid.workbook.elements.interactionElements.programming.state.*
@@ -43,7 +45,7 @@ class StructuredProgrammingStateSpec extends FunSuite {
     case Java =>
       val classes = state.toJavaStructured.definedClasses
       assertEquals(classes.keySet, Set(name("Main")), clue)
-      assertEquals(SourceStructure.javaMembers(classes(name("Main"))).map(_.replaceAll("\\s+", " ")),
+      assertEquals(SourceParsing.parse(classes(name("Main")), SourceLanguage.Java).structured.classes.head.members.map(_.code.replaceAll("\\s+", " ")),
         Vector("public static void main(String[] unusableArgs) { }"), clue)
     case other => fail(s"unexpected language $other")
   }
@@ -109,11 +111,11 @@ class StructuredProgrammingStateSpec extends FunSuite {
 
   test("duplicate classes retain only the first declaration and produce a warning") {
     val warnings = scala.collection.mutable.ListBuffer.empty[String]
-    val result = SourceStructure.python("class A:\n    x = 1\nclass A:\n    x = 2", warnings += _)
+    val result = StructuredProgramConversions.pythonParts("class A:\n    x = 1\nclass A:\n    x = 2", warnings += _)
     assert(result.definedClasses(name("A")).contains("x = 1"))
     assert(!result.remaining.contains("x = 2"))
     assertEquals(warnings.size, 1)
-    val javaResult = SourceStructure.java("class A { int x = 1; } class A { int x = 2; }", warnings += _)
+    val javaResult = StructuredProgramConversions.javaParts("class A { int x = 1; } class A { int x = 2; }", warnings += _)
     assert(javaResult.definedClasses(name("A")).contains("x = 1"))
     assertEquals(warnings.size, 2)
   }
@@ -125,21 +127,10 @@ class StructuredProgrammingStateSpec extends FunSuite {
     assertEquals(j.definedClasses.keySet, Set(name("Real")))
   }
 
-  test("the fastparse source lexer tolerates unfinished code and classifies members by their tokens") {
+  test("structured states read unfinished code through the pipeline's first step") {
     // Unclosed strings, comments and blocks run to the end instead of failing.
-    assertEquals(SourceStructure.javaClasses("class Open { void draw() { forward(\"x").map(_.name), Vector("Open"))
-    assertEquals(SourceStructure.mask("x = 1 # c", python = true), "x = 1    ")
-    assertEquals(SourceStructure.methodName("static int[] values(int n) { return null; }"), Some("values"))
-    assertEquals(SourceStructure.methodName("List<String> names() { return null; }"), Some("names"))
-    assertEquals(SourceStructure.methodName("forward(10);"), None)
-    assertEquals(SourceStructure.declaration("static double side = 40;"),
-      Some(SourceStructure.Declaration("double", "side", Some("40"))))
-    assertEquals(SourceStructure.declaration("int[] values;").map(_.name), Some("values"))
-    assertEquals(SourceStructure.declaration("return side;"), None)
-    assertEquals(SourceStructure.declaration("side = 40;"), None)
-    assertEquals(SourceStructure.javaMembers("class A { int[] v = {1, 2}; void f() { } int x; }"),
-      Vector("int[] v = {1, 2};", "void f() { }", "int x;"))
-    assertEquals(SourceStructure.pythonBlocks("def f(a,\n      b):\n    return (a +\n  b)\nx = 1", "def").map(_.name), Vector("f"))
+    assertEquals(ProgrammingStateJavaStructured("class Open { void draw() { forward(\"x").definedClasses.keySet, Set(name("Open")))
+    assertEquals(ProgrammingStatePythonStructured("def f(a,\n      b):\n    return (a +\n  b)\nx = 1").mainScript.linesIterator.next(), "def f(a,")
   }
 
   test("loose Java variables, methods and statements become static Main members and startup") {

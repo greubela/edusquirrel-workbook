@@ -1,5 +1,8 @@
 package it.evadid.vm.conversion.pythonexpression
 
+import it.evadid.vm.parsing.source.SourceParsing
+import it.evadid.vm.parsing.source.SourceParsing.SourceLanguage
+
 import it.evadid.vm.conversion.parsed.SymbolTable
 import it.evadid.core.datastructures.language.AppLanguage.Python
 import it.evadid.core.datastructures.language.AppLanguage.{English, German}
@@ -14,7 +17,7 @@ import munit.FunSuite
 
 class CanonicalFunctionResolutionSpec extends FunSuite {
   private def calls(source: String): List[BeFunctionCall] = {
-    val tree = PythonToExpression.program(source).fullProgram
+    val tree = SourceParsing.parse(source, SourceLanguage.Python).parsed().program.fullProgram
       .recToTree(false, BeChildInfo(BeChildRole.NoRole, BeScope.GlobalScope()))
     tree.values.collect { case BeExpressionReference(_, call: BeFunctionCall) => call }.toList
   }

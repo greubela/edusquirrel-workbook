@@ -1,5 +1,8 @@
 package it.evadid.homepage.webElements.editor.blocks
 
+import it.evadid.vm.parsing.source.SourceParsing
+import it.evadid.vm.parsing.source.SourceParsing.SourceLanguage
+
 import it.evadid.core.datastructures.language.AppLanguage.HumanLanguage
 import it.evadid.core.datastructures.language.LanguageMap
 import it.evadid.core.datastructures.vectorShapes.abstractions.AppShapeElement
@@ -12,7 +15,6 @@ import it.evadid.core.datastructures.vectorShapes.renderer.PythonFlowchartGutter
 import it.evadid.util.logging.Logger
 import it.evadid.vm.BeProgram
 import it.evadid.vm.code.usage.BeFunctionCall
-import it.evadid.vm.conversion.pythonexpression.PythonToExpression
 import it.evadid.vm.editing.{BeNodePath, BeProgramEditing}
 import it.evadid.vm.types.BeChildRole.{BodySequence, ExpressionInSequence}
 import org.scalajs.dom
@@ -63,10 +65,10 @@ class BlockShapeFixtureSpec extends EditorDomSuite {
   private def drawing(element: AppShapeElement[Double]): List[String] =
     drawn(SvgLaminarRenderer.renderElementAsSvg(logger, BlockElements.layout(element)).ref)
 
-  private val nested = PythonToExpression.program("forward(100)\nwhile True:\n    right(90)\nif True:\n    left(45)\nelse:\n    backward(10)\n")
+  private val nested = SourceParsing.parse("forward(100)\nwhile True:\n    right(90)\nif True:\n    left(45)\nelse:\n    backward(10)\n", SourceLanguage.Python).parsed().program
 
   test("commands and library labels draw the legacy outlines, text and colours") {
-    val forward = PythonToExpression.program("forward(100)\n")
+    val forward = SourceParsing.parse("forward(100)\n", SourceLanguage.Python).parsed().program
     val call = BeProgramEditing.find(forward, BeNodePath.root / BodySequence(0) / ExpressionInSequence(0)).get.asInstanceOf[BeFunctionCall]
     assertEquals(drawing(BeExpressionBlocks.program(BeProgram(call), BlockView.library)), legacy("forward-command"))
     assertEquals(drawing(BeExpressionBlocks.template(call, Some(LanguageMap.universalMap[HumanLanguage]("REPEAT-WHILE")))), legacy("library-label"))

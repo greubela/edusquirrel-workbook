@@ -6,9 +6,10 @@ import it.evadid.vm.code.errors.{BeExpressionUnparsable, BeExpressionUnsupported
 import it.evadid.vm.conversion.expressionjava.ExpressionToJava
 import it.evadid.vm.conversion.expressionpython.ExpressionToPython
 import it.evadid.vm.conversion.expressionsnap.ExpressionToSnap
-import it.evadid.vm.conversion.javaexpression.JavaToExpression
 import it.evadid.vm.conversion.printing.ModuleLayout
-import it.evadid.vm.conversion.pythonexpression.PythonToExpression
+import it.evadid.vm.conversion.structured.PreparedProgramSource
+import it.evadid.vm.parsing.source.{JavaSource, PythonSource, SourceParsing}
+import it.evadid.vm.parsing.source.SourceParsing.SourceLanguage
 import it.evadid.vm.conversion.snapexpression.SnapToExpression
 import it.evadid.vm.conversion.snapmodelxml.SnapModelToXml.*
 import it.evadid.vm.conversion.snapxmlmodel.SnapScalaXmlCodec
@@ -19,23 +20,27 @@ import it.evadid.workbook.elements.interactionElements.programming.state.*
   */
 final class ProgrammingStateDerivations private[evadid](source: ProgrammingState, environment: dependencies.ProgrammingEnvironment) {
   private lazy val preparedSource = source match {
-    case ProgrammingStateRaw(Java, code) => javaFrontend.preparedSource
-    case value: ProgrammingStateJavaStructured => javaFrontend.preparedSource
-    case ProgrammingStateRaw(Python, code) => it.evadid.vm.conversion.structured.PreparedProgramSource(code, Python)
-    case value: ProgrammingStatePythonStructured => it.evadid.vm.conversion.structured.PreparedProgramSource(value.toString, Python)
-    case _ => it.evadid.vm.conversion.structured.PreparedProgramSource("", Seq.empty)
+    case ProgrammingStateRaw(Java, code) => PreparedProgramSource(code, Java)
+    case value: ProgrammingStateJavaStructured => PreparedProgramSource(value.toString, Java)
+    case ProgrammingStateRaw(Python, code) => PreparedProgramSource(code, Python)
+    case value: ProgrammingStatePythonStructured => PreparedProgramSource(value.toString, Python)
+    case _ => PreparedProgramSource("", Seq.empty)
   }
-  private lazy val javaFrontend = JavaToExpression(source match {
+
+  /** The Java text of this state, read by the parsing pipeline ([[SourceParsing]]). */
+  lazy val javaSource: JavaSource = SourceParsing.parse(source match {
     case ProgrammingStateRaw(Java, code) => code
     case value: ProgrammingStateJavaStructured => value.toString
     case _ => java.code
-  }, environment)
+  }, SourceLanguage.Java)
+
+  /** The Python text this state converts from: classes hoisted before module code. */
+  private lazy val pythonSource: PythonSource = SourceParsing.parse(preparedSource.code, SourceLanguage.Python)
 
   lazy val expression: ProgrammingStateBeExpression = source match {
     case value: ProgrammingStateBeExpression => value
-    case ProgrammingStateRaw(Java, _) | _: ProgrammingStateJavaStructured => javaFrontend.convert
-    case ProgrammingStateRaw(Python, code) => ProgrammingStateBeExpression(PythonToExpression.program(preparedSource.code, environment).fullProgram)
-    case value: ProgrammingStatePythonStructured => ProgrammingStateBeExpression(PythonToExpression.program(preparedSource.code, environment).fullProgram)
+    case ProgrammingStateRaw(Java, _) | _: ProgrammingStateJavaStructured => javaSource.parsed(environment).fold(error => throw error, _.expression)
+    case ProgrammingStateRaw(Python, _) | _: ProgrammingStatePythonStructured => ProgrammingStateBeExpression(pythonSource.parsed(environment).program.fullProgram)
     case ProgrammingStateRaw(SnapLanguage, xml) =>
       // Malformed XML has no blocks to read; the lossless Snap codec reports why.
       if xml.trim.nonEmpty then snapModel.left.foreach(message => throw ProgrammingConversionException.unparsable(message))
@@ -72,8 +77,13 @@ final class ProgrammingStateDerivations private[evadid](source: ProgrammingState
     case value: ProgrammingStateSnapScalaModel => Right(value)
     case _ => SnapScalaXmlCodec.parse(snap.code).map(ProgrammingStateSnapScalaModel(_))
   }
-  lazy val isJavaClass: Boolean = javaFrontend.isClassProgram
-  lazy val javaExecutionProgram = javaFrontend.compileForExecution
+  /** Whether the source declares classes; unreadable source has no answer and fails like its conversion. */
+  lazy val isJavaClass: Boolean = javaSource.syntax
+    .left.map(failure => ProgrammingConversionException.unparsable("This Java source cannot be read as a complete program or fragment.",
+      Some(failure.line), Some(failure.column)))
+    .flatMap(_.readable).fold(error => throw error,
+      _.program.statements.exists(_.statement.isInstanceOf[it.evadid.vm.parsing.java.clean.model.JavaAST.JavaClassDef]))
+  lazy val javaExecutionProgram = it.evadid.vm.compilation.java.turtle.JavaTurtleCompiler.compile(javaSource.source)
 
   def convertToLanguage(language: ProgrammingLanguage): ConversionResult = {
     try {
@@ -84,8 +94,7 @@ final class ProgrammingStateDerivations private[evadid](source: ProgrammingState
       // repeat counters, and the letter range is explicit.
       val integerDeclaration = "(for\\s*\\(\\s*)?\\b(?:byte|short|int|long)\\s+[A-Za-z_$\\u00C0-\\uFFFF]".r
       val numericWarnings = Option.when(source.associatedLanguage == Java && language != Java &&
-          integerDeclaration.findAllMatchIn(it.evadid.vm.conversion.structured.SourceStructure.mask(
-            it.evadid.vm.conversion.dependencies.KnownDependencies.maskDefinitions(java.code, Java), false)).exists(_.group(1) == null)) {
+          integerDeclaration.findAllMatchIn(javaSource.structured.codeMasked).exists(_.group(1) == null)) {
         ConversionInfo("Java integer types were widened to shared numeric values; integer overflow and truncating division are not preserved.",
           it.evadid.util.logging.LoggingLevel.WARN, true)
       }.toSeq

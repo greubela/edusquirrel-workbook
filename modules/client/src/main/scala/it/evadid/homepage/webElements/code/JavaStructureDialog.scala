@@ -68,9 +68,9 @@ final class JavaStructureDialog(
       if parses(next.toString) then {
         state.set(next)
         close()
-        reveal(className, discover(edited).flatMap(_.methods)
-          .find(method => method.start >= target.bodyEnd && method.name == name)
-          .map(method => edited.substring(method.start, method.end)))
+        reveal(className, discover(edited).flatMap(_.functions)
+          .find(method => method.span.start >= closingBrace(target) && method.name == name)
+          .map(_.code))
       } else error.set(Some(Key.javaFunctionNotAdded))
     }
   }

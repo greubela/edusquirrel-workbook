@@ -1,11 +1,13 @@
 package it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.feedback.service
 
+import it.evadid.vm.parsing.source.SourceParsing
+import it.evadid.vm.parsing.source.SourceParsing.SourceLanguage
+
 import it.evadid.core.datastructures.language.LanguageMap
 import it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.feedback.ai.LlmClient
 import it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.feedback.config.BlockFeedbackConfig
 import it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.feedback.model.BlockFeedbackRequest
 import it.evadid.vm.code.others.BeStartProgram
-import it.evadid.vm.conversion.pythonexpression.PythonToExpression
 import munit.FunSuite
 
 import scala.concurrent.Future
@@ -32,7 +34,7 @@ final class PythonSourceFeedbackSpec extends FunSuite:
     test(s"text Python does not run VM checks on its partial import: $name") {
       val request = BlockFeedbackRequest(
         exerciseText = LanguageMap.universalMap("Return the requested value."),
-        studentCodePython = BeStartProgram(PythonToExpression.parseWithDetails(source).codeExpression),
+        studentCodePython = BeStartProgram(SourceParsing.parse(source, SourceLanguage.Python).parsed().details.codeExpression),
         pythonSourceOverride = Some(source),
         submissionNr = 1,
         config = config

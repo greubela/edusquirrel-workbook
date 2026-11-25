@@ -18,7 +18,8 @@ import it.evadid.core.datastructures.uml.*
 import it.evadid.homepage.webElements.editor.code.codemirror.CodeMirrorEditor
 import it.evadid.homepage.webElements.editor.config.CodeMirrorEditorConfig
 import it.evadid.util.logging.Logger
-import it.evadid.vm.conversion.structured.SourceStructure
+import it.evadid.vm.parsing.source.SourceParsing
+import it.evadid.vm.parsing.source.SourceParsing.SourceLanguage
 import it.evadid.vm.naming.BeEntityName
 import it.evadid.workbook.elements.interactionElements.programming.state.*
 import org.scalajs.dom.SVGSVGElement
@@ -61,7 +62,8 @@ final class JavaComponentEditor(
     case ProgramAnalyzer.Status.Pending => last
     case ProgramAnalyzer.Status.Failed(_) => UmlClassDiagram(Nil)
   }
-  private val structureReady = state.signal.map(_.definedClasses.values.forall(SourceStructure.balanced(_))).distinct
+  private val structureReady = state.signal.map(_.definedClasses.values.forall(source =>
+    SourceParsing.parse(source, SourceLanguage.Java).structured.balanced)).distinct
 
   private val navigation = JavaEditorNavigation(state)
   private val diagram = UmlStructureSelector(classDiagram.combineWith(externalClasses).map(_.including(_)), navigation.selection, navigation.choose,

@@ -1,25 +1,13 @@
 package it.evadid.homepage.webElements.code
 
-import it.evadid.core.datastructures.language.AppLanguage.Java
-import it.evadid.vm.parsing.java.clean.JavaParser
-import it.evadid.vm.conversion.dependencies.KnownDependencies
-import it.evadid.vm.conversion.structured.SourceStructure
+import it.evadid.vm.parsing.source.{JavaClassStructured, JavaFunctionStructured, SourceParsing}
+import it.evadid.vm.parsing.source.SourceParsing.SourceLanguage
 
-/** Methods of Java class sources, for selecting and editing one method at a time. */
+/** Editing one method of a Java class source at a time, on the declarations of the parsing pipeline's first step
+  * ([[SourceParsing]]). Offsets are relative to the class source; library classes such as the generated `Turtle`
+  * belong to the runtime and are not listed.
+  */
 object JavaMethodSource {
-
-  /** A method of a class source: its signature and the offsets from its first token to its `}`. */
-  final case class JavaMethod(
-                                               className: String,
-                                               name: String,
-                                               returnType: String,
-                                               parameters: String,
-                                               start: Int,
-                                               end: Int
-                                             ) derives upickle.default.ReadWriter
-
-  final case class JavaClass(name: String, bodyStart: Int, bodyEnd: Int, methods: List[JavaMethod]) derives upickle.default.ReadWriter
-
   private[code] final case class MethodRange(start: Int, end: Int) {
     def isWithin(source: String): Boolean = start >= 0 && end >= start && end <= source.length
 
@@ -37,81 +25,73 @@ object JavaMethodSource {
       }
     }
 
-  private[code] def parses(code: String): Boolean =
-    JavaParser.parse(code).isRight && structurallyBalanced(code)
+  /** Whether `code` is a complete program: the grammar reads it and every bracket, string and comment is closed. */
+  private[code] def parses(code: String): Boolean = {
+    val parsed = SourceParsing.parse(code, SourceLanguage.Java)
+    parsed.syntax.isRight && parsed.structured.balanced
+  }
 
   /** The `static void main(String[] args)` entry point, if it is the only `main` (of class `Main`, if present). */
-  private[code] def initialMethod(source: String, requirePublicMain: Boolean = true): Option[JavaMethod] =
-    entryMethod(source, discover(source), SourceStructure.balanced(source), requirePublicMain)
-
-  private def entryMethod(source: String, currentClasses: List[JavaClass], balanced: Boolean,
-      requirePublicMain: Boolean): Option[JavaMethod] = {
-    if !balanced then None
+  private[code] def initialMethod(source: String, requirePublicMain: Boolean = true): Option[JavaFunctionStructured] = {
+    val structured = SourceParsing.parse(source, SourceLanguage.Java).structured
+    if !structured.balanced then None
     else {
-      val entryClasses = if !requirePublicMain && currentClasses.exists(_.name == "Main") then
-        currentClasses.filter(_.name == "Main") else currentClasses
-      entryClasses.flatMap(_.methods).filter(_.name == "main") match
-        case List(function) if function.returnType == "void" &&
-          SourceStructure.declaration(function.parameters).exists(parameter =>
-            Set("String[]", "java.lang.String[]")(parameter.javaType.filterNot(_.isWhitespace))) &&
-          findSelection(currentClasses, function).isDefined =>
-          val modifiers = SourceStructure.header(source.substring(function.start, function.end)).collect {
-            case SourceStructure.Word(_, _, word) => word
-          }.toSet
-          Option.when((!requirePublicMain || modifiers.contains("public")) && modifiers.contains("static"))(function)
+      val classes = discover(source)
+      val entryClasses = if !requirePublicMain && classes.exists(_.name == "Main") then classes.filter(_.name == "Main") else classes
+      entryClasses.flatMap(_.functions).filter(_.name == "main") match
+        case Vector(function) if function.returnType.contains("void") &&
+          function.parameters.map(_.javaType.filterNot(_.isWhitespace)).exists(Set("String[]", "java.lang.String[]")) &&
+          findSelection(classes, function).isDefined =>
+          Option.when((!requirePublicMain || function.modifiers.contains("public")) && function.isStatic)(function)
         case _ => None
     }
   }
 
-  private[code] def structurallyBalanced(source: String): Boolean = SourceStructure.balanced(source)
+  /** The program's classes with closed bodies, each with its methods whose bodies are closed. */
+  private[code] def discover(source: String): Vector[JavaClassStructured] =
+    SourceParsing.parse(source, SourceLanguage.Java).structured.programClasses.filter(_.closed)
+      .map(owner => owner.copy(members = owner.members.filter {
+        case function: JavaFunctionStructured => function.closed
+        case _ => true
+      }))
 
-  /** Classes with closed bodies and their methods, from the shared fastparse source lexer. Known
-    * library classes, such as the generated `Turtle`, belong to the runtime and are not listed.
-    */
-  private[code] def discover(source: String): List[JavaClass] = {
-    val libraries = KnownDependencies.definitionRanges(source, Java)
-    SourceStructure.javaClassSpans(source).toList.filterNot(clazz =>
-      libraries.exists((start, end) => start <= clazz.bodyOpen && clazz.bodyClose < end)).map { clazz =>
-      JavaClass(clazz.name, clazz.bodyOpen, clazz.bodyClose, clazz.methods.toList.map(method =>
-        JavaMethod(clazz.name, method.name, method.returnType, method.parameters, method.start, method.end)))
-    }
-  }
+  /** The offset of a closed class body's `}`. */
+  private[code] def closingBrace(owner: JavaClassStructured): Int = owner.bodySpan.fold(owner.span.end)(_.end)
 
-  private[code] def replaceMethod(source: String, function: JavaMethod, draft: String): String =
-    source.substring(0, function.start) + draft + source.substring(function.end)
+  private[code] def replaceMethod(source: String, function: JavaFunctionStructured, draft: String): String =
+    source.substring(0, function.span.start) + draft + source.substring(function.span.end)
 
   private[code] def findEditedMethod(
-                                        source: String,
-                                        currentClasses: List[JavaClass],
-                                        previous: JavaMethod,
-                                        range: MethodRange
-                                      ): Option[JavaMethod] = {
+      source: String,
+      currentClasses: Vector[JavaClassStructured],
+      previous: JavaFunctionStructured,
+      range: MethodRange
+  ): Option[JavaFunctionStructured] =
     if !range.isWithin(source) then None
     else currentClasses.filter(_.name == previous.className) match
-      case List(clazz) if range.start > clazz.bodyStart && range.end <= clazz.bodyEnd =>
-        clazz.methods.filter(function => function.start >= range.start && function.end <= range.end) match
-          case List(function) if onlyTrivia(source.substring(range.start, function.start)) &&
-            onlyTrivia(source.substring(function.end, range.end)) => Some(function)
-          case functions if functions.size > 1 && onlyTrivia(source.substring(range.start, functions.head.start)) &&
-            onlyTrivia(source.substring(functions.last.end, range.end)) => Some(functions.last)
+      case Vector(owner) if owner.bodySpan.exists(body => range.start >= body.start && range.end <= body.end) =>
+        owner.functions.filter(function => function.span.start >= range.start && function.span.end <= range.end) match
+          case Vector(function) if onlyTrivia(source.substring(range.start, function.span.start)) &&
+            onlyTrivia(source.substring(function.span.end, range.end)) => Some(function)
+          case functions if functions.size > 1 && onlyTrivia(source.substring(range.start, functions.head.span.start)) &&
+            onlyTrivia(source.substring(functions.last.span.end, range.end)) => Some(functions.last)
           case _ => None
       case _ => None
-  }
 
-  private[code] def sameMethod(first: JavaMethod, second: JavaMethod): Boolean =
+  /** Same class, name and signature; offsets and bodies may differ. */
+  private[code] def sameMethod(first: JavaFunctionStructured, second: JavaFunctionStructured): Boolean =
     first.className == second.className && first.name == second.name &&
-      first.returnType == second.returnType && first.parameters == second.parameters
+      first.returnType == second.returnType && first.parameterList == second.parameterList
 
-  private[code] def findSelection(classes: List[JavaClass], previous: JavaMethod): Option[JavaMethod] =
+  private[code] def findSelection(classes: Vector[JavaClassStructured], previous: JavaFunctionStructured): Option[JavaFunctionStructured] =
     classes.filter(_.name == previous.className) match
-      case List(clazz) => clazz.methods.filter(sameMethod(_, previous)) match
-        case List(function) => Some(function)
+      case Vector(owner) => owner.functions.filter(sameMethod(_, previous)) match
+        case Vector(function) => Some(function)
         case _ => None
       case _ => None
 
   /** Only whitespace and closed comments. */
-  private def onlyTrivia(source: String): Boolean =
-    SourceStructure.significant(SourceStructure.tokens(source, python = false)).isEmpty && SourceStructure.balanced(source)
+  private def onlyTrivia(source: String): Boolean = SourceParsing.parse(source, SourceLanguage.Java).structured.trivia
 
   private[code] def lineSeparator(source: String): String =
     "\r\n|\r|\n".r.findFirstIn(source).getOrElse("\n")
@@ -121,11 +101,10 @@ object JavaMethodSource {
     s"$modifiers $returnType $name($parameters) {\n    \n  }"
   }
 
-  private[code] def insertMethod(source: String, clazz: JavaClass, declaration: String): String = {
-    val beforeClosingBrace = source.substring(0, clazz.bodyEnd)
-    val afterClosingBrace = source.substring(clazz.bodyEnd)
+  private[code] def insertMethod(source: String, owner: JavaClassStructured, declaration: String): String = {
+    val brace = closingBrace(owner)
     val newline = lineSeparator(source)
     val inserted = declaration.replaceAll("\r\n|\r|\n", newline)
-    beforeClosingBrace + s"$newline  $inserted$newline" + afterClosingBrace
+    source.substring(0, brace) + s"$newline  $inserted$newline" + source.substring(brace)
   }
 }
