@@ -13,7 +13,7 @@ final class TurtleTaskEditorExtension(
   // Java runs on the shared BeExpression interpreter, as converted programs do.
   private val execution = new TurtleProgramExecution(sharedInterpreter = sharedExecution)
   private lazy val panel = new TurtleExecutionPanel(state, () => execution.commandsFor(state.now()), () => execution.cancel(), target, comparisonPolicy)
-  private lazy val preview = target.map(CompareShapePreview(state, _, comparisonPolicy))
+  private lazy val preview = target.map(CompareShapePreview(state.signal, _, comparisonPolicy))
   override def getDomElement(): Element =
     // With a target every language previews live; without one the program is run on request.
     div(cls := "eva-editor__sidebar turtle-sidebar",

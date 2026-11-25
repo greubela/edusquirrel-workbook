@@ -86,6 +86,10 @@ final class ProgrammingStateDerivations private[evadid](source: ProgrammingState
             it.evadid.vm.conversion.dependencies.KnownDependencies.maskDefinitions(java.code, Java), false)).exists(_.group(1) == null)) {
         ConversionInfo("Java integer types were widened to shared numeric values; integer overflow and truncating division are not preserved.",
           it.evadid.util.logging.LoggingLevel.WARN, true)
+      }.toSeq ++ Option.when(source.associatedLanguage == Python && language != Python &&
+          "(?::|->)\\s*int\\b".r.findFirstIn(it.evadid.vm.conversion.structured.SourceStructure.mask(pythonStructured.toString, true)).nonEmpty) {
+        ConversionInfo("Python int hints were widened to shared numeric values; whole numbers may become decimal numbers.",
+          it.evadid.util.logging.LoggingLevel.WARN, true)
       }.toSeq
       val remainderWarnings = Option.when((source.associatedLanguage == Java) != (language == Java) &&
           expression.expression.subtree.exists {

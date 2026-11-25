@@ -78,6 +78,7 @@ class SnapCodeEditorSyncSpec extends FunSuite {
       pendingXml = None
       pending.foreach(listener)
     }
+    override def publishProjectChanges(): Unit = flushPendingProjectChanges()
     override def currentProjectXml(): Option[String] = current.map(_.code)
     override def startWorldCycles(): Unit = ()
     override def pauseWorldCycles(): Unit = ()

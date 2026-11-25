@@ -17,6 +17,7 @@ import it.evadid.workbook.elements.interactionElements.gpt.GptInteractionElement
 import it.evadid.workbook.elements.interactionElements.gpt.TextInputWithScaffoldingAndGrading
 import it.evadid.workbook.elements.interactionElements.sql.SqlCommandExercise
 import it.evadid.workbook.elements.interactionElements.reorderExercise.ReorderInteraction
+import it.evadid.workbook.elements.interactionElements.matching.{LikertScaleInteraction, MatchingInteraction}
 import it.evadid.workbook.elements.interactionElements.slideshow.*
 import it.evadid.workbook.elements.structureElements.{ExerciseContainer, ExerciseGroup, Workbook, WorkbookSection}
 import it.evadid.workbook.elements.interactionElements.emailSimulator.{MailEditor, MailInteraction}
@@ -175,6 +176,8 @@ object WorkbookElementFactory {
     classOf[CodeTaskToggleInteraction].getSimpleName -> CodeTaskToggleInteraction.factory,
     classOf[ReorderInteraction.ReorderCodeInteraction].getSimpleName -> ReorderInteraction.ReorderCodeInteraction.factory,
     classOf[ReorderInteraction.ReorderMapIdInteraction].getSimpleName -> ReorderInteraction.ReorderMapIdInteraction.factory,
+    classOf[MatchingInteraction].getSimpleName -> MatchingInteraction.factory,
+    classOf[LikertScaleInteraction].getSimpleName -> LikertScaleInteraction.factory,
     classOf[SortingInteraction].getSimpleName -> SortingInteraction.factory,
     classOf[SortingReasonInteraction].getSimpleName -> SortingReasonInteraction.factory,
     classOf[GptInteractionElement].getSimpleName -> GptInteractionElement.factory,

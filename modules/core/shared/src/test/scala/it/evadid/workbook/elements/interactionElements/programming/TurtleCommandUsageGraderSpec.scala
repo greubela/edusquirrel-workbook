@@ -35,7 +35,7 @@ class TurtleCommandUsageGraderSpec extends FunSuite {
     assertEquals(constraints.size, 3)
     assertEquals(constraints.map(_.key).distinct.size, 3)
     assert(constraints.forall(_.importance == GradingImportance.REQUIRED_TEST))
-    Future.traverse(interaction.gradingElements)(_.gradeStateSafe(loop, false, UpdateImportance.MAJOR, TestExecutionContext())).map { results =>
+    Future.traverse(interaction.gradingElements)(_.gradeStateSafe(loop, true, UpdateImportance.MAJOR, TestExecutionContext())).map { results =>
       assertEquals(results.head.gradingStatus, GradingStatus.Correct())
       assertEquals(results.tail.map(_.gradingStatus), List(GradingStatus.Correct(), GradingStatus.Correct(), GradingStatus.Incorrect()))
     }

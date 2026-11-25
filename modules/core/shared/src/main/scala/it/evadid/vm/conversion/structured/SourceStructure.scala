@@ -306,6 +306,171 @@ object SourceStructure {
     find(tokens(source, python = false)).sortBy(_.bodyOpen)
   }
 
+  // Class outlines: the structure a UML class diagram shows, derived from the source text alone.
+
+  enum Visibility {
+    case Public, Protected, Package, Private
+
+    /** The UML visibility marker. */
+    def symbol: String = this match {
+      case Public => "+"
+      case Protected => "#"
+      case Package => "~"
+      case Private => "-"
+    }
+  }
+
+  /** A declared parameter; `javaType` keeps generics, arrays and varargs as written. */
+  final case class Param(javaType: String, name: String)
+
+  /** A direct member of a class body. Offsets span from its first code token to its end, like [[MethodSpan]]. */
+  sealed trait MemberOutline {
+    def visibility: Visibility
+    def start: Int
+    def end: Int
+  }
+
+  object MemberOutline {
+    final case class Field(visibility: Visibility, isStatic: Boolean, isFinal: Boolean, javaType: String, name: String,
+                           initializer: Option[String], start: Int, end: Int) extends MemberOutline
+
+    final case class Constructor(className: String, visibility: Visibility, params: Vector[Param], parameters: String,
+                                 start: Int, end: Int, hasBody: Boolean) extends MemberOutline
+
+    final case class Method(visibility: Visibility, isStatic: Boolean, isAbstract: Boolean, returnType: String, name: String,
+                            params: Vector[Param], parameters: String, start: Int, end: Int, hasBody: Boolean) extends MemberOutline
+  }
+
+  /** A class or interface whose body is closed, with its supertypes and members in source order. */
+  final case class ClassOutline(name: String, isInterface: Boolean, isAbstract: Boolean, extendsNames: Vector[String],
+                                implementsNames: Vector[String], bodyOpen: Int, bodyClose: Int, members: Vector[MemberOutline]) {
+    def fields: Vector[MemberOutline.Field] = members.collect { case field: MemberOutline.Field => field }
+    def constructors: Vector[MemberOutline.Constructor] = members.collect { case constructor: MemberOutline.Constructor => constructor }
+    def methods: Vector[MemberOutline.Method] = members.collect { case method: MemberOutline.Method => method }
+  }
+
+  def javaClassOutlines(source: String): Vector[ClassOutline] = {
+    def find(values: Seq[Token]): Vector[ClassOutline] = {
+      val code = significant(values).toVector
+      val here = code.indices.flatMap { index =>
+        (code(index), code.lift(index + 1)) match {
+          case (Word(_, _, keyword @ ("class" | "interface")), Some(Word(_, _, name))) if !precededByDot(code, index) =>
+            val modifiers = code.take(index).reverse.takeWhile {
+              case Word(_, _, modifier) => classModifiers(modifier)
+              case _ => false
+            }.collect { case Word(_, _, modifier) => modifier }.toSet
+            val header = code.drop(index + 2).takeWhile {
+              case Symbol(_, _, ";") => false
+              case group: Group => group.open != '{'
+              case _ => true
+            }
+            code.drop(index + 2 + header.size).headOption.collect { case body: Group if body.open == '{' && body.closed => body }.map { body =>
+              val isInterface = keyword == "interface"
+              ClassOutline(name, isInterface, isInterface || modifiers("abstract"),
+                supertypes(header, "extends"), supertypes(header, "implements"), body.start, body.end - 1,
+                memberSpans(source, body).flatMap((start, end) => memberOutlines(source, start, end, name, isInterface)))
+            }
+          case _ => None
+        }
+      }.toVector
+      here ++ values.collect { case group: Group => find(group.children) }.flatten
+    }
+    find(tokens(source, python = false)).sortBy(_.bodyOpen)
+  }
+
+  private def precededByDot(code: Vector[Token], index: Int): Boolean =
+    code.lift(index - 1).exists { case Symbol(_, _, ".") => true; case _ => false }
+
+  /** Type names after `keyword` in a class header, without their type arguments. */
+  private def supertypes(header: Seq[Token], keyword: String): Vector[String] = {
+    val clauses = Set("extends", "implements", "permits")
+    val afterKeyword = header.dropWhile { case Word(_, _, `keyword`) => false; case _ => true }.drop(1)
+      .takeWhile { case Word(_, _, word) => !clauses(word); case _ => true }
+    afterKeyword.foldLeft((Vector.empty[String], 0, true)) { case ((names, depth, expectName), token) => token match {
+      case Symbol(_, _, "<") => (names, depth + 1, false)
+      case Symbol(_, _, ">") => (names, depth - 1, false)
+      case Symbol(_, _, ",") if depth == 0 => (names, depth, true)
+      case Symbol(_, _, ".") if depth == 0 => (names.dropRight(1), depth, true)
+      case Word(_, _, word) if depth == 0 && expectName => (names :+ word, depth, false)
+      case _ => (names, depth, expectName)
+    } }._1
+  }
+
+  /** Drops leading annotations such as `@Override` or `@SuppressWarnings("x")`. */
+  private def withoutAnnotations(code: Seq[Token]): Seq[Token] = code match {
+    case Symbol(_, _, "@") +: Word(_, _, "interface") +: _ => code
+    case Symbol(_, _, "@") +: (_: Word) +: rest =>
+      // A qualified name such as `@java.lang.Override` continues with `.` and a word.
+      def afterQualifiedName(tokens: Seq[Token]): Seq[Token] = tokens match {
+        case Symbol(_, _, ".") +: (_: Word) +: next => afterQualifiedName(next)
+        case other => other
+      }
+      withoutAnnotations(afterQualifiedName(rest) match {
+        case (group: Group) +: next if group.open == '(' => next
+        case other => other
+      })
+    case other => other
+  }
+
+  /** Splits text at commas outside `<…>` and brackets. */
+  private def splitTopLevel(text: String): Vector[String] = {
+    val masked = mask(text, python = false)
+    val (parts, last, _) = masked.indices.foldLeft((Vector.empty[String], 0, 0)) { case ((parts, from, depth), index) =>
+      masked.charAt(index) match {
+        case '<' | '(' | '[' | '{' => (parts, from, depth + 1)
+        case '>' | ')' | ']' | '}' => (parts, from, depth - 1)
+        case ',' if depth == 0 => (parts :+ text.substring(from, index), index + 1, depth)
+        case _ => (parts, from, depth)
+      }
+    }
+    (parts :+ text.substring(last)).map(_.trim).filter(_.nonEmpty)
+  }
+
+  private def params(parameters: String): Vector[Param] =
+    splitTopLevel(parameters).map { parameter =>
+      declaration(parameter).fold(Param(parameter, ""))(value => Param(value.javaType, value.name))
+    }
+
+  private def memberOutlines(source: String, start: Int, end: Int, className: String, inInterface: Boolean): Vector[MemberOutline] = {
+    val member = source.substring(start, end)
+    val code = withoutAnnotations(header(member)).toVector
+    val modifiers = code.takeWhile { case Word(_, _, word) => memberModifiers(word); case _ => false }
+      .collect { case Word(_, _, word) => word }.toSet
+    val rest = code.drop(modifiers.size)
+    val visibility =
+      if modifiers("public") then Visibility.Public
+      else if modifiers("private") then Visibility.Private
+      else if modifiers("protected") then Visibility.Protected
+      else if inInterface then Visibility.Public
+      else Visibility.Package
+    val body = significant(tokens(member, python = false)).collectFirst { case group: Group if group.open == '{' => group }
+    val hasBody = body.exists(_.closed) && !member.trim.endsWith(";")
+    val parameterGroup = rest.indexWhere { case group: Group => group.open == '('; case _ => false }
+    if rest.isEmpty || rest.exists { case Word(_, _, "class" | "interface" | "enum" | "record") => true; case _ => false } then Vector.empty
+    else if parameterGroup >= 0 then {
+      val group = rest(parameterGroup).asInstanceOf[Group]
+      val parameters = member.substring(group.start + 1, if group.closed then group.end - 1 else group.end).trim
+      (parameterGroup, rest.lift(parameterGroup - 1)) match {
+        case (1, Some(Word(_, _, `className`))) =>
+          Vector(MemberOutline.Constructor(className, visibility, params(parameters), parameters, start, end, hasBody))
+        case (index, Some(Word(nameStart, _, name))) if index >= 2 =>
+          Vector(MemberOutline.Method(visibility, modifiers("static"), modifiers("abstract") || inInterface && !hasBody,
+            member.substring(rest.head.start, nameStart).trim, name, params(parameters), parameters, start, end, hasBody))
+        case _ => Vector.empty
+      }
+    } else {
+      // Fields: one declaration, or several sharing a type such as `int a, b = 2;`.
+      val declarations = splitTopLevel(member.substring(rest.head.start).trim.stripSuffix(";"))
+      declarations.headOption.flatMap(declaration).toVector.flatMap { first =>
+        val others = declarations.drop(1).map(text => declaration(s"${first.javaType} $text"))
+        Option.when(others.forall(_.isDefined))((first +: others.flatten).map(value =>
+          MemberOutline.Field(visibility, modifiers("static") || inInterface, modifiers("final") || inInterface,
+            value.javaType, value.name, value.initializer, start, end)
+        )).getOrElse(Vector.empty)
+      }
+    }
+  }
+
   def scope(member: String): MemberScope =
     if header(member).exists { case Word(_, _, "static") => true; case _ => false } then MemberScope.Static else MemberScope.Instance
 

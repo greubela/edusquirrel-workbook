@@ -10,6 +10,7 @@ import com.raquo.laminar.api.L.{label as labelTag, *}
 import it.evadid.homepage.webElements.HtmlAppElement
 import it.evadid.homepage.webElements.editor.code.EditorAppearance
 import it.evadid.vm.code.errors.ProgrammingConversionError
+import it.evadid.vm.conversion.structured.SourceStructure.{Param, Visibility}
 import it.evadid.homepage.webElements.editor.code.codemirror.CodeMirrorEditor
 import it.evadid.homepage.webElements.editor.config.CodeMirrorEditorConfig
 import it.evadid.util.logging.Logger
@@ -21,6 +22,10 @@ import scala.scalajs.js
 import scala.util.Try
 import java.util.UUID
 
+/** The Java editor: a UML class diagram shows the program's structure, the code editor its behaviour.
+  * Selecting an operation in the diagram opens that method or constructor; the full source stays one
+  * toggle away. The diagram is derived from the source, so typing in either view updates it.
+  */
 final class JavaMethodEditor
 (
   logger: Logger,
@@ -31,14 +36,27 @@ final class JavaMethodEditor
   conversionMarker: Signal[Option[ProgrammingConversionError]] = Val(None),
   loadingLabel: Signal[String] = Val("Loading editor…"),
   requirePublicMain: Boolean = true,
-  sameSource: (String, String) => Boolean = _ == _
+  sameSource: (String, String) => Boolean = _ == _,
+  labels: JavaEditorLabels = JavaEditorLabels.keys,
+  features: JavaStructureFeatures = JavaStructureFeatures.Full
 ) extends HtmlAppElement {
 
   import JavaMethodSource.*
 
   private enum DialogMode {
-    case AddClass, AddMethod
+    case AddClass
+    case AddField(className: String)
+    case EditField(field: JavaField)
+    case AddConstructor(className: String)
+    case AddMethod(className: String)
+    case ConfirmDelete(className: String, member: String, start: Int, end: Int, operation: Boolean)
   }
+
+  private enum DialogError {
+    case ClassName, Name, Type, Duplicate, Invalid
+  }
+
+  private final case class ParameterRow(id: String, javaType: String, name: String)
 
   private val sourceDraft = state.bimap {
     case ProgrammingStateRaw(Java, code) => code
@@ -61,22 +79,26 @@ final class JavaMethodEditor
   }
   private val sourceAvailable = state.signal.map(isJavaSource).distinct
   private val classes = sourceAnalysis.signal.map(_.classes)
+  /** The diagram keeps the last complete source while brackets or comments are unfinished. */
+  private val diagramSource = sourceAnalysis.signal.scanLeft(identity)((last, next) => if next.balanced then next else last)
   private val initialSelection = sourceAnalysis.now().initialMethod(requirePublicMain)
   private val selectedMethod = Var(initialSelection)
   private val editingRange = Var(initialSelection.map(fn => MethodRange(fn.start, fn.end)))
   private val methodDraft = Var(initialSelection.fold("")(fn => sourceCode.substring(fn.start, fn.end)))
   private val structureReady = sourceAnalysis.signal.map(_.balanced)
+  private val structureLocked = structureReady.combineWith(sourceAvailable).map { (ready, available) => !ready || !available }
   private val sourceView = Var(initialSelection.isEmpty)
   private val structureOpen = Var(true)
   private val compactLayout = Var(false)
   private val dialogMode = Var(Option.empty[DialogMode])
-  private val dialogClassName = Var(Option.empty[String])
-  private val classNameDraft = Var("")
-  private val methodNameDraft = Var("newFunction")
-  private val returnTypeDraft = Var("void")
-  private val parametersDraft = Var("")
-  private val staticMethodDraft = Var(true)
-  private val dialogError = Var("")
+  private val nameDraft = Var("")
+  private val typeDraft = Var("")
+  private val initializerDraft = Var("")
+  private val visibilityDraft = Var(Visibility.Public)
+  private val staticDraft = Var(false)
+  private val assignDraft = Var(true)
+  private val parameterRows = Var(Vector.empty[ParameterRow])
+  private val dialogError = Var(Option.empty[DialogError])
   private val presentation = appearance.getOrElse(new EditorAppearance)
 
   override def dismissOnOutsideClick: Boolean = false
@@ -177,90 +199,317 @@ final class JavaMethodEditor
     }
   }
 
-  private def openClassDialog(): Unit =
-    if currentSourceAvailable() && analysis().balanced then
-      classNameDraft.set("")
-      dialogError.set("")
-      dialogMode.set(Some(DialogMode.AddClass))
+  // Structure dialogs: each edit is a new source text, accepted when the analysis finds the change.
 
-  private def openMethodDialog(className: String): Unit =
-    if currentSourceAvailable() && analysis().balanced then
-      dialogClassName.set(Some(className))
-      methodNameDraft.set("newFunction")
-      returnTypeDraft.set("void")
-      parametersDraft.set("")
-      staticMethodDraft.set(true)
-      dialogError.set("")
-      dialogMode.set(Some(DialogMode.AddMethod))
+  private def structureEditable: Boolean = currentSourceAvailable() && analysis().balanced
+
+  private def openDialog(mode: DialogMode): Unit =
+    if structureEditable then {
+      def reset(name: String, javaType: String, visibility: Visibility, isStatic: Boolean, initializer: String = ""): Unit = {
+        nameDraft.set(name)
+        typeDraft.set(javaType)
+        visibilityDraft.set(visibility)
+        staticDraft.set(isStatic)
+        initializerDraft.set(initializer)
+      }
+      parameterRows.set(Vector.empty)
+      assignDraft.set(true)
+      dialogError.set(None)
+      mode match {
+        case DialogMode.AddClass => reset("", "", Visibility.Public, isStatic = false)
+        case DialogMode.AddField(_) => reset("", "int", Visibility.Private, isStatic = false)
+        case DialogMode.EditField(field) =>
+          reset(field.name, field.javaType, field.visibility, field.isStatic, field.initializer.getOrElse(""))
+        case DialogMode.AddConstructor(_) => reset("", "", Visibility.Public, isStatic = false)
+        case DialogMode.AddMethod(className) =>
+          // Classes without object state or constructors keep to static methods, as in procedural programs.
+          val procedural = analysis().classes.find(_.name == className).forall(clazz =>
+            clazz.fields.forall(_.isStatic) && clazz.methods.forall(_.isStatic))
+          reset("", "void", Visibility.Public, isStatic = procedural)
+        case _: DialogMode.ConfirmDelete => ()
+      }
+      dialogMode.set(Some(mode))
+    }
+
+  private def targetClass(className: String): Option[JavaClass] = analysis().classes.find(_.name == className)
+
+  private def accept(candidate: String, accepted: JavaMethodSource => Boolean, selection: JavaMethodSource => Option[JavaMethod],
+      keepDiagramView: Boolean = false): Unit = {
+    val next = JavaMethodSource(candidate)
+    if next.balanced && accepted(next) then {
+      commit(candidate, selection(next), keepDiagramView)
+      dialogMode.set(None)
+    } else dialogError.set(Some(DialogError.Invalid))
+  }
+
+  /** The parameter rows as parameters, or the first error among them. */
+  private def parameters(): Either[DialogError, List[Param]] = {
+    val rows = parameterRows.now().toList.map(row => Param(row.javaType.trim, row.name.trim))
+    rows.collectFirst {
+      case param if !validType(param.javaType) => DialogError.Type
+      case param if !validName(param.name) => DialogError.Name
+    }.orElse(Option.when(rows.map(_.name).distinct.size != rows.size)(DialogError.Duplicate)).toLeft(rows)
+  }
 
   private def addClass(): Unit = {
-    if !currentSourceAvailable() then return
-    val name = classNameDraft.now().trim
-    if !name.matches("[A-Za-z_$][A-Za-z0-9_$]*") then
-      dialogError.set("Enter a valid Java class name.")
+    val name = nameDraft.now().trim
+    if !validName(name) then dialogError.set(Some(DialogError.ClassName))
+    else if analysis().classes.exists(_.name == name) then dialogError.set(Some(DialogError.Duplicate))
     else {
       val newline = lineSeparator(sourceCode)
       val separator = if sourceCode.isEmpty then "" else newline + newline
-      val candidate = sourceCode + separator + s"class $name {$newline}$newline"
-      if parses(candidate) then {
-        commit(candidate, None)
-        dialogMode.set(None)
-      } else dialogError.set("The class could not be added to the current Java source.")
+      accept(sourceCode + separator + s"class $name {$newline}$newline", _.classes.exists(_.name == name),
+        _ => selectedMethod.now(), keepDiagramView = true)
     }
   }
 
-  private def addMethod(): Unit = {
-    if !currentSourceAvailable() then return
-    val name = methodNameDraft.now().trim
-    val returnType = returnTypeDraft.now().trim
-    val parameters = parametersDraft.now().trim
-    if !name.matches("[A-Za-z_$][A-Za-z0-9_$]*") then
-      dialogError.set("Enter a valid Java function name.")
-    else if returnType.isEmpty then
-      dialogError.set("Enter a return type.")
-    else
-      dialogClassName.now()
-        .flatMap(className => analysis().classes.find(_.name == className))
-        .foreach { targetClass =>
-          val declaration = methodDeclaration(returnType = returnType, name = name,
-            parameters = parameters, isStatic = staticMethodDraft.now())
-          val candidate = insertMethod(sourceCode, targetClass, declaration)
-          if parses(candidate) then {
-            val refreshedClasses = discover(candidate)
-            val addedFunction = refreshedClasses
-              .find(_.name == targetClass.name)
-              .flatMap(clazz => clazz.methods.find(fn => fn.start >= targetClass.bodyEnd && fn.name == name))
-            commit(candidate, addedFunction)
-            dialogMode.set(None)
-          } else dialogError.set("The function signature or current Java source is invalid.")
-        }
+  private def saveField(className: String, edited: Option[JavaField]): Unit = targetClass(className).foreach { clazz =>
+    val name = nameDraft.now().trim
+    val javaType = typeDraft.now().trim
+    if !validName(name) then dialogError.set(Some(DialogError.Name))
+    else if !validType(javaType) then dialogError.set(Some(DialogError.Type))
+    else if clazz.fields.exists(field => field.name == name && !edited.exists(_.name == name)) then dialogError.set(Some(DialogError.Duplicate))
+    else {
+      val declaration = fieldDeclaration(visibilityDraft.now(), staticDraft.now(), javaType, name, initializerDraft.now())
+      val candidate = edited.fold(insertField(sourceCode, clazz, declaration))(field => replaceRange(sourceCode, field.start, field.end, declaration))
+      accept(candidate, _.classes.find(_.name == className).exists(_.fields.exists(_.name == name)), _ => selectedMethod.now(),
+        keepDiagramView = true)
+    }
   }
 
-  private def commit(code: String, selection: Option[JavaMethod]): Unit = {
+  private def addConstructor(className: String): Unit = targetClass(className).foreach { clazz =>
+    parameters() match {
+      case Left(error) => dialogError.set(Some(error))
+      case Right(params) if clazz.methods.exists(method => method.isConstructor && method.params.map(_.javaType) == params.map(_.javaType)) =>
+        dialogError.set(Some(DialogError.Duplicate))
+      case Right(params) =>
+        val fieldNames = clazz.fields.filterNot(_.isStatic).map(_.name).toSet
+        val assigned = if assignDraft.now() then params.map(_.name).filter(fieldNames) else Nil
+        val candidate = insertConstructor(sourceCode, clazz, constructorDeclaration(className, visibilityDraft.now(), params, assigned))
+        accept(candidate, _.classes.find(_.name == className).exists(_.methods.count(_.isConstructor) > clazz.methods.count(_.isConstructor)),
+          added(className, className, clazz))
+    }
+  }
+
+  private def addMethod(className: String): Unit = targetClass(className).foreach { clazz =>
+    val name = nameDraft.now().trim
+    val returnType = typeDraft.now().trim
+    if !validName(name) then dialogError.set(Some(DialogError.Name))
+    else if returnType != "void" && !validType(returnType) then dialogError.set(Some(DialogError.Type))
+    else parameters() match {
+      case Left(error) => dialogError.set(Some(error))
+      case Right(params) if clazz.methods.exists(method => method.name == name && method.params.map(_.javaType) == params.map(_.javaType)) =>
+        dialogError.set(Some(DialogError.Duplicate))
+      case Right(params) =>
+        val declaration = methodDeclaration(returnType, name, javaParameters(params), staticDraft.now(), visibilityDraft.now())
+        accept(insertMethod(sourceCode, clazz, declaration), _.classes.find(_.name == className).exists(_.methods.exists(_.name == name)),
+          added(className, name, clazz))
+    }
+  }
+
+  /** The operation a structure edit added, so the editor opens it. */
+  private def added(className: String, name: String, before: JavaClass)(next: JavaMethodSource): Option[JavaMethod] =
+    next.classes.find(_.name == className).flatMap(_.methods.find(method => method.name == name && !before.methods.exists(sameMethod(_, method))))
+
+  private def deleteMember(className: String, start: Int, end: Int, operation: Boolean): Unit = {
+    val deletedSelection = operation && selectedMethod.now().exists(method => method.start == start && method.className == className)
+    val candidate = removeMember(sourceCode, start, end)
+    accept(candidate, _.classes.exists(_.name == className), _ => if deletedSelection then None else selectedMethod.now(),
+      keepDiagramView = true)
+  }
+
+  private def submit(mode: DialogMode): Unit = mode match {
+    case DialogMode.AddClass => addClass()
+    case DialogMode.AddField(className) => saveField(className, None)
+    case DialogMode.EditField(field) => saveField(field.className, Some(field))
+    case DialogMode.AddConstructor(className) => addConstructor(className)
+    case DialogMode.AddMethod(className) => addMethod(className)
+    case DialogMode.ConfirmDelete(className, _, start, end, operation) => deleteMember(className, start, end, operation)
+  }
+
+  /** Writes a structure edit and opens `selection`; without one the diagram view shows its placeholder. */
+  private def commit(code: String, selection: Option[JavaMethod], keepDiagramView: Boolean = false): Unit = {
+    // Writing the source lets `observeProgram` fall back to the full source; the view chosen before the edit wins.
+    val wasSourceView = sourceView.now()
     val refreshedClasses = refreshSource(code)
     val refreshedSelection = selection.flatMap(findSelection(refreshedClasses, _))
     selectedMethod.set(refreshedSelection)
     refreshedSelection match
-      case Some(function) => showMethodSelection(function, code)
-      case None => showSource()
+      case Some(function) if !keepDiagramView || !wasSourceView => showMethodSelection(function, code)
+      case None if keepDiagramView && !wasSourceView =>
+        editingRange.set(None)
+        sourceView.set(false)
+      case _ => showSource()
   }
 
-  private def modalField(fieldLabel: String, fieldValue: Var[String]): Element =
+  // Dialog rendering.
+
+  private val typeListId = s"java-types-${UUID.randomUUID()}"
+  private val returnTypeListId = s"java-return-types-${UUID.randomUUID()}"
+
+  private def typeSuggestions(listId: String, withVoid: Boolean): Element =
+    dataList(
+      idAttr := listId,
+      children <-- classes.map { current =>
+        ((if withVoid then List("void") else Nil) ++ List("int", "double", "boolean", "char", "long", "String") ++
+          current.map(_.name) ++ List("int[]", "String[]", "List<String>", "List<Integer>")).distinct.map(suggestion => option(value := suggestion))
+      }
+    )
+
+  private def textField(caption: Signal[String], fieldValue: Var[String], listId: Option[String] = None,
+      placeholderText: String = ""): Element =
     labelTag(
       cls := "java-function-editor__field",
-      span(fieldLabel),
+      span(child.text <-- caption),
       input(
         typ := "text",
+        spellCheck := false,
+        listId.fold[Modifier[Input]](emptyMod)(id => htmlAttr("list", com.raquo.laminar.codecs.StringAsIsCodec) := id),
+        placeholder := placeholderText,
         value <-- fieldValue.signal,
         onInput.mapToValue --> fieldValue.writer
       )
     )
 
+  private def visibilityField(): Element =
+    labelTag(
+      cls := "java-function-editor__field",
+      span(child.text <-- labels.visibility),
+      select(
+        value <-- visibilityDraft.signal.map(_.toString),
+        Visibility.values.toList.map { visibility =>
+          option(value := visibility.toString, s"${visibility.symbol} ${javaModifier(visibility).getOrElse("package")}")
+        },
+        onChange.mapToValue --> (value => visibilityDraft.set(Visibility.valueOf(value)))
+      )
+    )
+
+  private def checkboxField(caption: Signal[String], checkedValue: Var[Boolean]): Element =
+    labelTag(
+      cls := "java-function-editor__method-option",
+      input(typ := "checkbox", checked <-- checkedValue.signal, onChange.mapToChecked --> checkedValue.writer),
+      span(child.text <-- caption)
+    )
+
+  private def parameterFields(): Element =
+    fieldSet(
+      cls := "java-function-editor__parameters",
+      legend(child.text <-- labels.parameters),
+      children <-- parameterRows.signal.split(_.id) { (id, _, row) =>
+        def update(change: ParameterRow => ParameterRow): Unit = parameterRows.update(_.map(current => if current.id == id then change(current) else current))
+        div(
+          cls := "java-function-editor__parameter",
+          input(typ := "text", spellCheck := false, cls := "java-function-editor__parameter-type",
+            aria.label <-- labels.javaType, htmlAttr("list", com.raquo.laminar.codecs.StringAsIsCodec) := typeListId,
+            value <-- row.map(_.javaType), onInput.mapToValue --> (value => update(_.copy(javaType = value)))),
+          input(typ := "text", spellCheck := false, cls := "java-function-editor__parameter-name",
+            aria.label <-- labels.name, value <-- row.map(_.name), onInput.mapToValue --> (value => update(_.copy(name = value)))),
+          button(typ := "button", cls := "java-function-editor__button java-function-editor__button--small",
+            aria.label <-- labels.removeParameter, title <-- labels.removeParameter, "×",
+            onClick --> (_ => parameterRows.update(_.filterNot(_.id == id))))
+        )
+      },
+      button(
+        typ := "button",
+        cls := "java-function-editor__button java-function-editor__button--small",
+        span(aria.hidden := true, "+ "),
+        child.text <-- labels.addParameter,
+        onClick --> (_ => parameterRows.update(_ :+ ParameterRow(UUID.randomUUID().toString, "int", "")))
+      )
+    )
+
+  /** The member as it will appear in the diagram and in Java, updated while typing. */
+  private def preview(mode: DialogMode): Element = {
+    val texts: Signal[(String, String)] = mode match {
+      case DialogMode.AddField(_) | DialogMode.EditField(_) =>
+        nameDraft.signal.combineWith(typeDraft.signal, visibilityDraft.signal, staticDraft.signal, initializerDraft.signal).map {
+          (name, javaType, visibility, isStatic, initializer) =>
+            (s"${visibility.symbol} ${name.trim}: ${javaType.trim}", fieldDeclaration(visibility, isStatic, javaType.trim, name.trim, initializer))
+        }
+      case DialogMode.AddConstructor(className) =>
+        parameterRows.signal.combineWith(visibilityDraft.signal).map { (rows, visibility) =>
+          val params = rows.toList.map(row => Param(row.javaType.trim, row.name.trim))
+          val method = JavaMethod(className, className, "", javaParameters(params), 0, 0, visibility, isConstructor = true, params = params)
+          (umlOperation(method), constructorDeclaration(className, visibility, params, Nil).takeWhile(_ != '{').trim)
+        }
+      case DialogMode.AddMethod(className) =>
+        nameDraft.signal.combineWith(typeDraft.signal, visibilityDraft.signal, staticDraft.signal, parameterRows.signal).map {
+          (name, returnType, visibility, isStatic, rows) =>
+            val params = rows.toList.map(row => Param(row.javaType.trim, row.name.trim))
+            val method = JavaMethod(className, name.trim, returnType.trim, javaParameters(params), 0, 0, visibility, isStatic, params = params)
+            (umlOperation(method), methodDeclaration(returnType.trim, name.trim, javaParameters(params), isStatic, visibility).takeWhile(_ != '{').trim)
+        }
+      case _ => Val(("", ""))
+    }
+    val isStatic = mode match {
+      case DialogMode.AddConstructor(_) => Val(false)
+      case _ => staticDraft.signal
+    }
+    div(
+      cls := "java-function-editor__preview",
+      span(cls := "java-function-editor__preview-caption", child.text <-- labels.preview),
+      code(cls <-- isStatic.map(if _ then "java-uml-line java-uml__member--static" else "java-uml-line"), child.text <-- texts.map(_._1)),
+      code(cls := "java-function-editor__preview-java", child.text <-- texts.map(_._2))
+    )
+  }
+
+  private def errorText(error: DialogError): Signal[String] = error match {
+    case DialogError.ClassName => labels.errorClassName
+    case DialogError.Name => labels.errorName
+    case DialogError.Type => labels.errorType
+    case DialogError.Duplicate => labels.errorDuplicate
+    case DialogError.Invalid => labels.errorInvalid
+  }
+
+  private def dialogTitle(mode: DialogMode): Signal[String] = mode match {
+    case DialogMode.AddClass => labels.addClass
+    case DialogMode.AddField(_) => labels.addField
+    case DialogMode.EditField(_) => labels.editField
+    case DialogMode.AddConstructor(_) => labels.addConstructor
+    case DialogMode.AddMethod(_) => labels.addMethod
+    case _: DialogMode.ConfirmDelete => labels.delete
+  }
+
   private def renderDialog(mode: DialogMode): Element = {
-    val isClassDialog = mode == DialogMode.AddClass
+    val fields: Modifier[HtmlElement] = mode match {
+      case DialogMode.AddClass => textField(labels.className, nameDraft)
+      case DialogMode.AddField(_) | DialogMode.EditField(_) => div(
+        cls := "java-function-editor__dialog-fields",
+        visibilityField(),
+        textField(labels.javaType, typeDraft, Some(typeListId)),
+        textField(labels.name, nameDraft),
+        textField(labels.initialValue, initializerDraft),
+        checkboxField(labels.isStatic, staticDraft),
+        preview(mode)
+      )
+      case DialogMode.AddConstructor(_) => div(
+        cls := "java-function-editor__dialog-fields",
+        visibilityField(),
+        parameterFields(),
+        if features.addField then checkboxField(labels.assignFields, assignDraft) else emptyMod,
+        preview(mode)
+      )
+      case DialogMode.AddMethod(_) => div(
+        cls := "java-function-editor__dialog-fields",
+        visibilityField(),
+        textField(labels.name, nameDraft),
+        parameterFields(),
+        textField(labels.returnType, typeDraft, Some(returnTypeListId)),
+        checkboxField(labels.isStatic, staticDraft),
+        preview(mode)
+      )
+      case DialogMode.ConfirmDelete(_, member, _, _, _) => div(
+        p(child.text <-- labels.deleteConfirm),
+        code(cls := "java-uml-line", member)
+      )
+    }
+    val deletable = mode match {
+      case DialogMode.EditField(field) if features.deleteMember && !field.shared => Some(field)
+      case _ => None
+    }
     dialogTag(
       role := "dialog",
-      aria.label := (if isClassDialog then "Add class" else "Add function"),
+      aria.label <-- dialogTitle(mode),
       cls := "java-function-editor__dialog",
       new EventProp[dom.Event]("cancel") --> { event =>
         event.preventDefault()
@@ -270,148 +519,114 @@ final class JavaMethodEditor
       onMountCallback(ctx => ctx.thisNode.ref.asInstanceOf[dom.html.Dialog].showModal()),
       onUnmountCallback(node => node.ref.asInstanceOf[dom.html.Dialog].close()),
       PageScrollLock.whileMounted,
-      h2(cls := "java-function-editor__dialog-title", if isClassDialog then "Add class" else "Add function"),
-      if isClassDialog then modalField("Class name", classNameDraft)
-      else div(cls := "java-function-editor__dialog-fields",
-        modalField("Function name", methodNameDraft),
-        modalField("Return type", returnTypeDraft),
-        modalField("Parameters (for example: int count, String label)", parametersDraft),
-        labelTag(
-          cls := "java-function-editor__method-option",
-          input(typ := "checkbox", checked <-- staticMethodDraft.signal,
-            onChange.mapToChecked --> staticMethodDraft.writer),
-          span("Static method")
-        )
-      ),
+      h2(cls := "java-function-editor__dialog-title", child.text <-- dialogTitle(mode)),
+      typeSuggestions(typeListId, withVoid = false),
+      typeSuggestions(returnTypeListId, withVoid = true),
+      fields,
       p(
         cls := "java-function-editor__dialog-error",
         role := "alert",
-        child.text <-- dialogError.signal
+        child.text <-- dialogError.signal.flatMapSwitch(_.fold(Val(""))(errorText))
       ),
       div(
         cls := "java-function-editor__dialog-actions",
+        deletable.fold[Modifier[HtmlElement]](emptyMod) { field =>
+          button(
+            typ := "button",
+            cls := "java-function-editor__button java-function-editor__button--danger",
+            child.text <-- labels.delete,
+            onClick --> (_ => dialogMode.set(Some(DialogMode.ConfirmDelete(field.className, umlAttribute(field), field.start, field.end, operation = false))))
+          )
+        },
         button(
           typ := "button",
           cls := "java-function-editor__button java-function-editor__button--secondary",
-          "Cancel",
+          child.text <-- labels.cancel,
           onClick --> (_ => dialogMode.set(None))
         ),
         button(
           typ := "button",
-          cls := "java-function-editor__button java-function-editor__button--primary",
-          if isClassDialog then "Add class" else "Add function",
-          onClick --> (_ => Future { if isClassDialog then addClass() else addMethod() })
+          cls := (mode match {
+            case _: DialogMode.ConfirmDelete => "java-function-editor__button java-function-editor__button--danger"
+            case _ => "java-function-editor__button java-function-editor__button--primary"
+          }),
+          dataAttr("action") := "submit",
+          child.text <-- (mode match {
+            case DialogMode.EditField(_) => labels.save
+            case other => dialogTitle(other)
+          }),
+          onClick --> (_ => Future(submit(mode)))
         )
       )
     )
   }
 
+  // Page layout.
+
   private def renderToolbar(navigationId: String): Element =
     div(
       cls := "java-function-editor__topbar",
       div(
-        h2(cls := "java-function-editor__title", "Java editor"),
-        p(cls := "java-function-editor__subtitle", "Explore classes and edit one method at a time.")
+        h2(cls := "java-function-editor__title", child.text <-- labels.title),
+        p(cls := "java-function-editor__subtitle", child.text <-- labels.subtitle)
       ),
       div(
         cls := "java-function-editor__topbar-actions",
         button(
           typ := "button",
           cls := "java-function-editor__button java-function-editor__button--secondary",
+          dataAttr("action") := "toggle-diagram",
           aria.controls := navigationId,
           aria.expanded <-- structureOpen.signal,
-          child.text <-- structureOpen.signal.map(if _ then "Hide classes" else "Show classes"),
+          child.text <-- structureOpen.signal.flatMapSwitch(if _ then labels.hideDiagram else labels.showDiagram),
           onClick --> (_ => structureOpen.update(!_))
         ),
         span(
           cls := "java-function-editor__sync",
           role := "status",
           aria.live := "polite",
-          child.text <-- sourceView.signal.map(if _ then "Full source" else "Method view")
+          child.text <-- sourceView.signal.flatMapSwitch(if _ then labels.sourceView else labels.diagramView)
         )
       )
     )
 
-  private def renderClassNavigation(navigationId: String): Element =
-    navTag(
-      idAttr := navigationId,
-      aria.label := "Java classes and methods",
-      cls := "java-function-editor__diagram-section",
-      div(
-        cls := "java-function-editor__section-heading",
-        div(
-          h3(cls := "java-function-editor__section-title", "Classes"),
-          p(cls := "java-function-editor__section-hint", "Select a method to open it in the editor.")
-        ),
-        button(
-          typ := "button",
-          cls := "java-function-editor__button java-function-editor__button--primary",
-          "Add class",
-          disabled <-- structureReady.combineWith(sourceAvailable).map { (ready, available) => !ready || !available },
-          onClick --> (_ => openClassDialog())
-        )
+  private def renderDiagram(navigationId: String): Element =
+    JavaClassDiagram.render(
+      analysis = diagramSource,
+      draft = structureReady.map(!_),
+      locked = structureLocked,
+      selected = selectedMethod.signal,
+      features = features,
+      labels = labels,
+      actions = JavaClassDiagram.Actions(
+        select = selectMethod,
+        editField = field => openDialog(DialogMode.EditField(field)),
+        addClass = () => openDialog(DialogMode.AddClass),
+        addField = className => openDialog(DialogMode.AddField(className)),
+        addConstructor = className => openDialog(DialogMode.AddConstructor(className)),
+        addMethod = className => openDialog(DialogMode.AddMethod(className))
       ),
-      div(
-        cls := "java-function-editor__class-row",
-        children <-- classes.combineWith(structureReady).map {
-          case (currentClasses, isSynced) =>
-            if currentClasses.isEmpty then List(
-              div(
-                cls := "java-function-editor__empty-diagram",
-                strong("No classes yet"),
-                span("Add a class to start building your program.")
-              )
-            )
-            else currentClasses.map { clazz =>
-              div(
-                cls := "java-function-editor__class-card",
-                div(
-                  cls := "java-function-editor__class-header",
-                  strong(cls := "java-function-editor__class-name", clazz.name),
-                  button(
-                    typ := "button",
-                    cls := "java-function-editor__button java-function-editor__button--small",
-                    "Add function",
-                    disabled := !isSynced,
-                    onClick --> (_ => openMethodDialog(clazz.name))
-                  )
-                ),
-                div(
-                  cls := "java-function-editor__function-list",
-                  if clazz.methods.isEmpty then span(cls := "java-function-editor__empty-class", "No functions yet")
-                  else clazz.methods.map { function =>
-                    button(
-                      typ := "button",
-                      cls <-- selectedMethod.signal.map { current =>
-                        if current.exists(current => sameMethod(current, function) && current.start == function.start) then
-                          "java-function-editor__function java-function-editor__function--selected"
-                        else "java-function-editor__function"
-                      },
-                      disabled := !isSynced,
-                      aria.pressed <-- selectedMethod.signal.map(_.exists(current =>
-                        sameMethod(current, function) && current.start == function.start).toString),
-                      title := s"${function.returnType} ${function.name}(${function.parameters})",
-                      span(cls := "java-function-editor__function-name", s"${function.name}()"),
-                      span(cls := "java-function-editor__function-signature", s"${function.returnType} · ${function.parameters}"),
-                      onClick --> (_ => selectMethod(function))
-                    )
-                  }
-                )
-              )
-            }
-        }
-      )
+      navigationId = navigationId
+    )
+
+  private def renderSelectionHeading(): Element =
+    div(
+      child <-- sourceView.signal.combineWith(selectedMethod.signal).map {
+        case (false, Some(method)) => div(
+          h3(cls := "java-function-editor__section-title", s"${method.className}.${method.name}"),
+          code(cls := (if method.isStatic then "java-uml-line java-uml__member--static" else "java-uml-line"), umlOperation(method))
+        )
+        case (fullSource, _) => div(
+          h3(cls := "java-function-editor__section-title", child.text <-- (if fullSource then labels.sourceTitle else labels.chooseMethod)),
+          p(cls := "java-function-editor__section-hint", child.text <-- labels.sourceHint)
+        )
+      }
     )
 
   private def renderWorkspaceHeader(): Element =
     div(
       cls := "java-function-editor__workspace-heading",
-      div(
-        h3(cls := "java-function-editor__section-title", child.text <-- sourceView.signal.combineWith(selectedMethod.signal).map { (fullSource, selection) =>
-          if fullSource then "Java source" else selection.fold("Function editor")(fn => s"${fn.className}.${fn.name}")
-        }),
-        p(cls := "java-function-editor__section-hint", "Your edits are kept, including unfinished code.")
-      ),
+      renderSelectionHeading(),
       div(
         cls := "java-function-editor__view-toggle",
         button(
@@ -419,11 +634,10 @@ final class JavaMethodEditor
           cls <-- sourceView.signal.map(fullSource =>
             "java-function-editor__button " + (if fullSource then "java-function-editor__button--secondary" else "java-function-editor__button--primary")
           ),
+          dataAttr("view") := "diagram",
           aria.pressed <-- sourceView.signal.map(!_).map(_.toString),
-          disabled <-- structureReady.combineWith(sourceAvailable).map { (ready, available) => !ready || !available },
-          "Method",
-          aria.label := "Method",
-          title := "Method view",
+          disabled <-- structureLocked,
+          child.text <-- labels.diagramView,
           onClick --> (_ => showMethod())
         ),
         button(
@@ -431,22 +645,32 @@ final class JavaMethodEditor
           cls <-- sourceView.signal.map(fullSource =>
             "java-function-editor__button " + (if fullSource then "java-function-editor__button--primary" else "java-function-editor__button--secondary")
           ),
+          dataAttr("view") := "source",
           aria.pressed <-- sourceView.signal.map(_.toString),
           disabled <-- sourceAvailable.map(!_),
-          "Full source",
-          aria.label := "Full source",
-          title := "Full Java source",
+          child.text <-- labels.sourceView,
           onClick --> (_ => if currentSourceAvailable() then showSource())
-        )
+        ),
+        if features.deleteMember then child <-- sourceView.signal.combineWith(selectedMethod.signal).map {
+          case (false, Some(method)) => button(
+            typ := "button",
+            cls := "java-function-editor__button java-function-editor__button--danger",
+            dataAttr("action") := "delete-member",
+            disabled <-- structureLocked,
+            child.text <-- labels.delete,
+            onClick --> (_ => openDialog(DialogMode.ConfirmDelete(method.className, umlOperation(method), method.start, method.end, operation = true)))
+          )
+          case _ => emptyNode
+        } else emptyMod
       ),
       labelTag(
         cls := "java-function-editor__compact-navigation",
-        span("Method"),
+        span(child.text <-- labels.diagramView),
         select(
-          aria.label := "Java method",
-          disabled <-- structureReady.combineWith(sourceAvailable).map { (ready, available) => !ready || !available },
-          children <-- classes.map { current =>
-            option(value := "", "Choose a method") :: current.flatMap(_.methods).map { fn =>
+          aria.label <-- labels.methodMenu,
+          disabled <-- structureLocked,
+          children <-- classes.combineWith(labels.chooseMethod).map { (current, choose) =>
+            option(value := "", choose) :: current.flatMap(_.methods).map { fn =>
               option(value := methodKey(fn), s"${fn.className}.${fn.name}(${fn.parameters})")
             }
           },
@@ -468,13 +692,13 @@ final class JavaMethodEditor
           else "java-function-editor__editor-panel java-function-editor__editor-panel--hidden"
         },
         child <-- sourceView.signal.combineWith(sourceAvailable).distinct.map { (fullSource, available) =>
-          if !available then div(role := "alert", "This state cannot be shown as Java. Your source is unchanged.")
+          if !available then div(role := "alert", child.text <-- labels.notJava)
           else if fullSource then div(cls := "java-function-editor__source", sourceEditor.getDomElement())
           else div(cls := "java-function-editor__method", methodEditor.getDomElement())
         },
         span(
           cls <-- structureReady.map(if _ then "java-function-editor__draft-warning java-function-editor__draft-warning--hidden" else "java-function-editor__draft-warning"),
-          "Your draft is kept. Finish the brackets or comments here, or open the full source to continue."
+          child.text <-- labels.draftWarning
         )
       ),
       div(
@@ -482,8 +706,8 @@ final class JavaMethodEditor
           if fullSource || selection.isDefined then "java-function-editor__editor-placeholder java-function-editor__editor-placeholder--hidden"
           else "java-function-editor__editor-placeholder"
         },
-        strong("Choose a function to get started"),
-        span("Select a method in the class list. Its complete signature and body will appear here.")
+        strong(child.text <-- labels.chooseMethod),
+        span(child.text <-- labels.chooseMethodHint)
       )
     )
 
@@ -522,10 +746,10 @@ final class JavaMethodEditor
       bindEditor(releaseLayout),
       onUnmountCallback(_ => releaseLayout.now()()),
       renderToolbar(navigationId),
-      renderClassNavigation(navigationId),
+      renderDiagram(navigationId),
       renderWorkspace(),
       reference.fold[Modifier[HtmlElement]](emptyMod) { renderReference =>
-        asideTag(cls := "java-function-editor__reference", aria.label := "Task reference", renderReference())
+        asideTag(cls := "java-function-editor__reference", aria.label <-- labels.reference, renderReference())
       },
       child <-- dialogMode.signal.map(_.fold(emptyNode)(renderDialog))
     )

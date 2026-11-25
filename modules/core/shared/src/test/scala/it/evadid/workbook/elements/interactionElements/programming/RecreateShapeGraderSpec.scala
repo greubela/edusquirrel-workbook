@@ -49,14 +49,31 @@ class RecreateShapeGraderSpec extends FunSuite {
     val corrected = ProgrammingStateRaw(Python, "forward(100)\nturn_right(90)\nforward(100)\nturn_right(270)\nforward(100)")
     val interaction = TurtleRecreateShapeInteraction("edited-staircase", first, target)
     val variable = interaction.interactionVariable
+    // Each edit's automatic grading skips the shape grader; the requested one after it runs it.
+    def requested() = variable.control.getOrCalculateGrading(TestExecutionContext())
+      .flatMap(_ => variable.control.getOrCalculateGrading(TestExecutionContext(), forceGrading = true))
     variable.setStateFromUserInteraction(first, MAJOR, context = TestExecutionContext())
-    variable.control.getOrCalculateGrading(TestExecutionContext()).flatMap { old =>
+    requested().flatMap { old =>
       assertEquals(old.testsWithResults.head.gradingStatus, GradingStatus.PartiallyCorrect())
       variable.setStateFromUserInteraction(corrected, MAJOR, context = TestExecutionContext())
-      variable.control.getOrCalculateGrading(TestExecutionContext()).map { current =>
+      requested().map { current =>
         assertEquals(current.state, corrected)
         assertEquals(current.testsWithResults.head.gradingStatus, GradingStatus.Correct())
         assertEquals(variable.currentHistory.historyGrading.gradingsMap(first), old)
+      }
+    }
+  }
+
+  test("edits do not run the shape comparison; only a requested grading does and records it") {
+    val target = TurtleGraphic.TurtleGraphicSvgString("M0 0 L10 0")
+    val interaction = TurtleRecreateShapeInteraction("manual-shape", ProgrammingStateRaw(Python, "forward(5)"), target)
+    val variable = interaction.interactionVariable
+    variable.setStateFromUserInteraction(ProgrammingStateRaw(Python, "forward(10)"), MAJOR, context = TestExecutionContext())
+    variable.control.getOrCalculateGrading(TestExecutionContext()).flatMap { automatic =>
+      assertEquals(automatic.testsWithResults.head.gradingStatus, GradingStatus.NotRequested())
+      assert(variable.currentHistory.gradingEvents.isEmpty, "an edit records no grading events")
+      variable.control.getOrCalculateGrading(TestExecutionContext(), forceGrading = true).map { requested =>
+        assertEquals(requested.testsWithResults.head.gradingStatus, GradingStatus.Correct())
       }
     }
   }

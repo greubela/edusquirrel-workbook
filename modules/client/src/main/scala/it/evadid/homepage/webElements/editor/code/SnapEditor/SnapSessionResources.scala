@@ -19,7 +19,6 @@ private[SnapEditor] final case class SnapSessionResources(
     stageMirrorIdleFrames: Int = 0,
     cyclesRunning: Boolean = false,
     projectXmlChangedCallback: String => Unit = _ => (),
-    lastProjectXmlCheckAt: Double = 0.0,
     greenFlagStepMs: Double = 20.0,
     lastStageMirrorAt: Double = 0.0,
     savedFlashTime: Option[Double] = None,

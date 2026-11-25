@@ -52,6 +52,9 @@ final class PyodideTurtleCommandRunner(
     case None => discardExecutor()
   }
 
+  /** Stops an active run, whose busy worker is discarded; an idle worker stays loaded for the next run. */
+  def cancel(): Unit = active.foreach(run => finish(run, Failure(CancellationException("Execution cancelled.")), discard = true))
+
   private def discardExecutor(): Unit = {
     val previous = executor
     executor = None

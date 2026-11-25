@@ -42,7 +42,6 @@ final class SnapMorphicSession() extends SnapCodeEditorImpl:
 
   private val projectXmlSync = new SnapProjectXmlSync
 
-  private val ProjectXmlCheckIntervalMs = 500.0
   private val FitDebounceMs = 32.0
   /** Extra mirror frames after processes go idle so pen trails settle. */
   private val StageMirrorIdleSettleFrames = 8
@@ -152,7 +151,6 @@ final class SnapMorphicSession() extends SnapCodeEditorImpl:
             ide.fixLayout()
             ide.fullChanged()
         projectXmlSync.resetSnapshot(snapshotProjectXml(ide))
-        resources.update(value => value.copy(lastProjectXmlCheckAt = dom.window.performance.now()))
         refreshLanguage()
       case None => ()
 
@@ -162,6 +160,10 @@ final class SnapMorphicSession() extends SnapCodeEditorImpl:
   override def flushPendingProjectChanges(): Unit =
     // Force: flush on close / popup must capture in-progress slot text.
     resources.now().editor.foreach(checkWhetherProgramXmlChanged(_, allowDuringEdit = true))
+
+  override def publishProjectChanges(): Unit =
+    // Serializing competes with Morphic and the stage blit for main-thread time while Execute mirrors.
+    if resources.now().stageMirrorRafHandle == 0 then resources.now().editor.foreach(checkWhetherProgramXmlChanged(_))
 
   override def currentProjectXml(): Option[String] =
     resources.now().editor.map(snapshotProjectXml)
@@ -303,8 +305,7 @@ final class SnapMorphicSession() extends SnapCodeEditorImpl:
       tickEditor()
 
   override def pauseWorldCycles(): Unit =
-    // Always flush before stopping the poll loop so close/unmount cannot drop
-    // edits that happened since the last 500ms check.
+    // Always flush before stopping so close/unmount cannot drop edits whose input pause has not ended yet.
     flushPendingProjectChanges()
     stopGreenFlagOnStage()
     resources.update(value => value.copy(cyclesRunning = false))
@@ -439,27 +440,19 @@ final class SnapMorphicSession() extends SnapCodeEditorImpl:
     if resources.now().cyclesRunning then
       resources.now().editorWorld.foreach(_.doOneCycle())
       resources.update(value => value.copy(frameHandle = dom.window.requestAnimationFrame(_ => tickEditor())))
-      // Skip XML serialization while Execute is mirroring — getProjectXML is heavy
-      // and competes with Morphic + stage blit for main-thread time.
-      if resources.now().stageMirrorRafHandle != 0 then return
-      val now = dom.window.performance.now()
-      if now - resources.now().lastProjectXmlCheckAt >= ProjectXmlCheckIntervalMs then
-        resources.update(value => value.copy(lastProjectXmlCheckAt = now))
-        resources.now().editor.foreach(checkWhetherProgramXmlChanged(_))
 
   private def initializeProjectChangeTracking(ide: IDEMorph): Unit =
     projectXmlSync.resetSnapshot(snapshotProjectXml(ide))
-    resources.update(value => value.copy(lastProjectXmlCheckAt = dom.window.performance.now()))
 
   /**
    * Compare the persisted project itself rather than IDE_Morph.version. That
    * value is only updated on Snap edit paths which call recordUnsavedChanges,
-   * and therefore is not a reliable content revision. Polling is throttled so
-   * serialization does not happen on every animation frame.
+   * and therefore is not a reliable content revision. Serializing is heavy, so
+   * it runs after the user's input pauses, never per animation frame.
    *
    * While a text cursor is active, skip publish so mid-digit slot edits do not
    * rebuild preview / clear Morphic's shared keyboard. After blur, the next
-   * poll (or an explicit flush) publishes the committed value.
+   * input pause (or an explicit flush) publishes the committed value.
    */
   private def checkWhetherProgramXmlChanged(ide: IDEMorph, allowDuringEdit: Boolean = false): Unit =
     if !allowDuringEdit && languageRefresh.now().nonEmpty then return
@@ -489,7 +482,6 @@ final class SnapMorphicSession() extends SnapCodeEditorImpl:
     resources.update(value => value.copy(mountedCanvas = None))
     resources.update(value => value.copy(mountedConfig = None))
     projectXmlSync.clear()
-    resources.update(value => value.copy(lastProjectXmlCheckAt = 0.0))
 
   override def destroy(): Unit =
     stopEditorSession()
@@ -519,7 +511,6 @@ final class SnapMorphicSession() extends SnapCodeEditorImpl:
               for world <- resources.now().editorWorld; canvas <- resources.now().mountedCanvas do layoutEditor(world, ide, canvas)
               renderedLanguage.set(language)
               projectXmlSync.resetSnapshot(snapshotProjectXml(ide))
-              resources.update(value => value.copy(lastProjectXmlCheckAt = dom.window.performance.now()))
             finally languageRefresh.set(None)
             refreshLanguage()
         })

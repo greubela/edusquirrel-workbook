@@ -37,9 +37,24 @@ case class CodeMirrorEditor(
 
   private val handle = Var(Option.empty[CodeMirrorHandle])
   private val loadFailed = Var(false)
+  /** Typed text not yet in `underlyingVar`: the answer (history, sync, grading) follows after a typing pause,
+    * on blur or on unmount, so these reactions never delay a keystroke.
+    */
+  private val unwrittenText = Var(Option.empty[UnwrittenText])
+
+  /** Writes typed text only onto the answer it was typed over: a restoration, synchronization or language
+    * conversion that arrived meanwhile is newer and stays.
+    */
+  private def writeTypedText(): Unit = unwrittenText.now().foreach { pending =>
+    unwrittenText.set(None)
+    val current = underlyingVar.now()
+    if current == pending.base && !sameSource(current, pending.text) then underlyingVar.set(pending.text)
+  }
 
   override def getDomElement(): L.Element = div(
     cls := "code-mirror-editor-host",
+    // blur does not bubble, so it is captured from CodeMirror's content: clicking a button or tab writes the typed text first.
+    onBlur.useCapture --> (_ => writeTypedText()),
     child <-- config.signal.map(_.showFlowchartGutter).distinct.map { showFlowchart =>
       div(
         cls := ("code-editor code-mirror-editor" + (if showFlowchart && language == Python then " code-mirror-editor-flowchart" else "")),
@@ -49,7 +64,8 @@ case class CodeMirrorEditor(
           hidden <-- handle.signal.combineWith(loadFailed.signal).map((ready, failed) => ready.nonEmpty || failed),
           child.text <-- loadingLabel),
         textArea(cls := "code-mirror-editor__fallback", hidden <-- handle.signal.map(_.nonEmpty),
-          value <-- underlyingVar.signal, onInput.mapToValue --> underlyingVar.writer),
+          inContext(fallback => underlyingVar.signal --> (answer => if !sameSource(fallback.ref.value, answer) then fallback.ref.value = answer)),
+          onInput.mapToValue --> (typed => if !sameSource(underlyingVar.now(), typed) then underlyingVar.set(typed))),
         onMountCallback { ctx =>
           loadFailed.set(false)
           val lifetime = new Subscription(ctx.owner, () => ())
@@ -60,7 +76,8 @@ case class CodeMirrorEditor(
                 new CodeMirrorFlowchartGutter.Analysis(new CodeMirrorFlowchartGutter.Cache))
               // The callback is required by the native CodeMirror API; Scala consumers observe the Var.
               val created = createEditor(EditorConfig(ctx.thisNode.ref, underlyingVar.now(),
-                value => if !lifetime.isKilled && !sameSource(underlyingVar.now(), value) then underlyingVar.set(value),
+                value => if !lifetime.isKilled then
+                  unwrittenText.update(pending => Some(UnwrittenText(pending.fold(underlyingVar.now())(_.base), value))),
                 languageToJs(language), analysis.map(current => source => current.chartForDoc(source).map(CodeMirrorFlowchartGutter.render)),
                 firstLineNumber = lineNumbers.now()))
               created.foreach { native =>
@@ -68,13 +85,19 @@ case class CodeMirrorEditor(
                   native.destroy()
                   analysis.foreach(_.close())
                 } else {
+                  unwrittenText.signal.changes.collect { case Some(_) => () }.debounce(typingWriteDelayMillis)
+                    .foreach(_ => writeTypedText())(using ctx.owner)
                   new Subscription(ctx.owner, () => {
+                    writeTypedText()
                     native.destroy()
                     analysis.foreach(_.close())
                     handle.update(_.filterNot(_ == native))
                   })
                   handle.set(Some(native))
-                  underlyingVar.signal.foreach(value => if !sameSource(native.getDoc(), value) then native.setDoc(value))(using ctx.owner)
+                  underlyingVar.signal.foreach(value => if !sameSource(native.getDoc(), value) then {
+                    unwrittenText.set(None)
+                    native.setDoc(value)
+                  })(using ctx.owner)
                   diagnostics.foreach(values => native.setDiagnostics(js.Array(values.map(_.toJs)*)))(using ctx.owner)
                   lineNumbers.foreach(native.setFirstLineNumber)(using ctx.owner)
                 }
@@ -91,6 +114,12 @@ case class CodeMirrorEditor(
   )
 }
 object CodeMirrorEditor {
+  /** Typing pause after which the typed text becomes the bound answer. */
+  val typingWriteDelayMillis: Int = 400
+
+  /** Typed `text` and the answer `base` it was typed over. */
+  private final case class UnwrittenText(base: String, text: String)
+
   def languageToJs(language: ProgrammingLanguage): String = language.asJsLanguage.getOrElse("python")
 
   def apply(logger: Logger, state: Var[String], language: ProgrammingLanguage): CodeMirrorEditor =
@@ -105,8 +134,10 @@ object CodeMirrorEditor {
         case ProgrammingStateRaw(Python, code) => code
         case value: ProgrammingStatePythonStructured => value.toString
         case _ => ""
-      }(ProgrammingStateRaw(Python, _))
-      CodeMirrorEditor(logger, text, Python, Var(config), diagnostics = CodeMirrorEditor.marks(marker), loadingLabel = loading)
+      }(ProgrammingStatePythonStructured(_))
+      // The structured state orders classes first and completes empty blocks; typed text it represents stays as typed.
+      CodeMirrorEditor(logger, text, Python, Var(config), diagnostics = CodeMirrorEditor.marks(marker), loadingLabel = loading,
+        sameSource = (left, right) => left == right || ProgrammingStatePythonStructured(left) == ProgrammingStatePythonStructured(right))
     }
   }
 

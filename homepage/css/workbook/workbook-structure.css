@@ -563,6 +563,7 @@ h3 {
 .instruction-callout--warning {
     border-left-color: var(--color-accent-error);
     background: var(--color-surface-subtle);
+    color: var(--color-text-primary);
 }
 
 .programming-exercise-action-button {
@@ -585,7 +586,7 @@ h3 {
 /* --- Slide deck styling --- */
 .slide-deck-navigation {
     position: sticky;
-    top: var(--space-sm);
+    bottom: var(--space-sm);
     z-index: 10;
     width: fit-content;
     margin: 0 auto;
@@ -1329,3 +1330,269 @@ textarea.workbook-interaction {
 .session-credentials label > span { display: block; }
 .session-credentials input[type="text"], .session-credentials input[type="password"] { width: 100%; box-sizing: border-box; }
 .session-credentials button { margin-right: .5rem; }
+
+/* ---- Matching: connect left items with right items by lines (HtmlMatchingInteractionRenderer) ---- */
+.matching-interaction {
+    padding: var(--space-md);
+}
+
+.matching-hint {
+    margin: 0 0 var(--space-md);
+    color: var(--color-text-secondary);
+    font-size: 0.9em;
+}
+
+.matching-board {
+    position: relative;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) clamp(40px, 12%, 120px) minmax(0, 1fr);
+    user-select: none;
+}
+
+.matching-column {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-sm);
+    min-width: 0;
+}
+
+.matching-column--right {
+    justify-content: center;
+}
+
+.matching-row {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    min-width: 0;
+}
+
+.matching-item {
+    position: relative;
+    flex: 1 1 auto;
+    min-width: 0;
+    text-align: left;
+    font: inherit;
+    color: inherit;
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-sm);
+    background: var(--color-surface-muted);
+    padding: var(--space-sm) var(--space-md);
+    box-shadow: var(--shadow-soft);
+    cursor: pointer;
+    overflow-wrap: anywhere;
+}
+
+.matching-item--left {
+    cursor: grab;
+    padding-right: calc(var(--space-md) + 6px);
+}
+
+.matching-item--right {
+    padding-left: calc(var(--space-md) + 6px);
+}
+
+.matching-item:focus-visible,
+.matching-remove:focus-visible {
+    outline: 2px solid var(--color-accent-active);
+    outline-offset: 2px;
+}
+
+.matching-item--selected,
+.matching-item--target {
+    border-color: var(--color-accent-active);
+    box-shadow: 0 0 0 2px var(--color-accent-active);
+}
+
+.matching-item--awaiting:hover {
+    border-color: var(--color-accent-active);
+}
+
+.matching-item:disabled {
+    cursor: default;
+    opacity: 0.7;
+}
+
+/* Connection point on the inner edge of every item. */
+.matching-dot {
+    position: absolute;
+    top: 50%;
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    border: 2px solid var(--color-accent-active);
+    background: var(--color-surface-base);
+    transform: translateY(-50%);
+    box-sizing: border-box;
+}
+
+.matching-item--left .matching-dot {
+    right: -6px;
+    touch-action: none;
+}
+
+.matching-item--right .matching-dot {
+    left: -6px;
+}
+
+.matching-item--connected .matching-dot {
+    background: var(--color-accent-active);
+}
+
+.matching-remove {
+    flex: 0 0 auto;
+    width: 24px;
+    height: 24px;
+    padding: 0;
+    border: none;
+    border-radius: 50%;
+    background: transparent;
+    color: var(--color-text-secondary);
+    font: inherit;
+    line-height: 1;
+    cursor: pointer;
+}
+
+.matching-remove:hover:not(:disabled) {
+    background: var(--color-surface-muted);
+}
+
+.matching-lines {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    overflow: visible;
+    pointer-events: none;
+}
+
+.matching-line__stroke {
+    fill: none;
+    stroke: var(--color-accent-active);
+    stroke-width: 2.5;
+    stroke-linecap: round;
+}
+
+.matching-line__stroke--pending {
+    stroke-dasharray: 6 5;
+}
+
+.matching-line__hit {
+    fill: none;
+    stroke: transparent;
+    stroke-width: 14;
+    pointer-events: stroke;
+    cursor: pointer;
+}
+
+.matching-line:hover .matching-line__stroke {
+    stroke-width: 4;
+}
+
+.matching-board--dragging .matching-line__hit {
+    pointer-events: none;
+}
+
+.matching-sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
+}
+
+/* ---- Likert scale survey matrix (HtmlLikertScaleRenderer) ---- */
+.likert-interaction {
+    --likert-columns: minmax(0, 2.2fr) repeat(var(--likert-points), minmax(0, 1fr)) 7em;
+    padding: var(--space-md);
+}
+
+.likert-header,
+.likert-row {
+    display: grid;
+    grid-template-columns: var(--likert-columns);
+    align-items: center;
+    gap: var(--space-sm);
+}
+
+.likert-header {
+    padding-bottom: var(--space-sm);
+    border-bottom: 1px solid var(--color-border-soft);
+    font-size: 0.85em;
+    color: var(--color-text-secondary);
+    text-align: center;
+}
+
+.likert-row {
+    padding-block: var(--space-sm);
+    border-bottom: 1px solid var(--color-border-soft);
+}
+
+.likert-option {
+    display: flex;
+    justify-content: center;
+    cursor: pointer;
+}
+
+.likert-option input {
+    accent-color: var(--color-accent-active);
+    width: 18px;
+    height: 18px;
+    cursor: pointer;
+}
+
+/* The shared header names the scale points on wide screens. */
+.likert-option__label {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
+}
+
+.likert-row__clear {
+    justify-self: end;
+    border: none;
+    background: transparent;
+    padding: 0;
+    font: inherit;
+    font-size: 0.8em;
+    color: var(--color-text-secondary);
+    text-decoration: underline;
+    cursor: pointer;
+}
+
+@media (max-width: 720px) {
+    .likert-header {
+        display: none;
+    }
+
+    .likert-row {
+        display: flex;
+        flex-wrap: wrap;
+        gap: var(--space-sm) var(--space-md);
+    }
+
+    .likert-row__statement {
+        flex: 1 0 100%;
+        font-weight: 600;
+    }
+
+    .likert-option {
+        align-items: center;
+        gap: 6px;
+        justify-content: flex-start;
+    }
+
+    .likert-option__label {
+        position: static;
+        width: auto;
+        height: auto;
+        overflow: visible;
+        clip: auto;
+        white-space: normal;
+        font-size: 0.9em;
+    }
+}

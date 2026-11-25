@@ -15,17 +15,18 @@ import scala.concurrent.ExecutionContext
 import scala.concurrent.duration.FiniteDuration
 
 /**
- * Replays how the turtle drawing of the central answer state is created, one command per step, on the
+ * Replays how the turtle drawing of the source program is created, one command per step, on the
  * same JSXGraph board as the comparison panel: earlier strokes are drawn, the current step's strokes are
  * highlighted, later strokes stay faint (so the view keeps its bounds), and a marker shows the turtle.
+ * `frame` points (e.g. the target drawing) always stay in view.
  */
-final class TurtleStepPanel(state: Var[ProgrammingState], text: String => Signal[String],
-    delay: FiniteDuration = DeferredRendering.defaultDelay) extends HtmlAppElement {
+final class TurtleStepPanel(source: Signal[ProgrammingState], text: String => Signal[String],
+    delay: FiniteDuration = DeferredRendering.defaultDelay, frame: Seq[Point[Double]] = Nil) extends HtmlAppElement {
   private given ExecutionContext = ExecutionContext.global
 
-  // Runs the program only once the answer has rested; step navigation itself stays immediate.
+  // Runs the program only once the source has rested; step navigation itself stays immediate.
   private val rendering = new DeferredRendering[ProgrammingState, TurtleCommandExecutionInfo[Double]](
-    state.signal, _.toBeExpression.turtleCommandExecutionInfo, delay)
+    source, _.toBeExpression.turtleCommandExecutionInfo, delay)
 
   private val executions: Signal[Option[Either[String, TurtleCommandExecutionInfo[Double]]]] =
     rendering.result.map(_.map(_.toEither.left.map(error => Option(error.getMessage).getOrElse(error.getClass.getSimpleName))))
@@ -38,7 +39,7 @@ final class TurtleStepPanel(state: Var[ProgrammingState], text: String => Signal
   override def getDomElement(): Element = div(cls := "step-panel turtle-step-panel",
     rendering.status(id => text(id.entryKey)),
     // Each program and step gets a fresh board in its default view.
-    TurtleJsxGraphRenderer.render(commands.combineWith(navigator.step).map((all, step) => TurtleStepPanel.scene(all, step)), "Turtle steps"),
+    TurtleJsxGraphRenderer.render(commands.combineWith(navigator.step).map((all, step) => TurtleStepPanel.scene(all, step).copy(frame = frame)), "Turtle steps"),
     navigator.element,
     p(cls := "step-panel__caption", aria.live := "polite", child.text <-- commands.combineWith(navigator.step).flatMapSwitch { (all, step) =>
       if step == 0 then text("turtleStepStart")

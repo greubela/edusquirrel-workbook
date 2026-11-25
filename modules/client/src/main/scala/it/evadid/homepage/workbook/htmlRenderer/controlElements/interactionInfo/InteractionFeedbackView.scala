@@ -11,6 +11,7 @@ import it.evadid.workbook.elements.interactionElements.programming.ProgrammingTe
 import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseRegular.{ProgramDataTestGrader, ProgrammingUnitTestGrader}
 import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseTurtle.{CommandUsageMeasure, RecreateShapeGrader, TurtleCommandUsageGrader}
 import it.evadid.homepage.control.info.interaction.GradingReporter
+import it.evadid.workbook.elements.interactionElements.matching.MatchingGrader
 import it.evadid.workbook.abstractions.FeedbackEntity
 import it.evadid.workbook.meta.{GradingSummary, ScaffoldingReport}
 import FeedbackPresentation.*
@@ -39,6 +40,7 @@ private[interactionInfo] final class InteractionFeedbackView[F <: InteractionFor
     case grader: ProgrammingUnitTestGrader => grader.publicDescription
       .map(helper.plaintextStringSignal).getOrElse(Val(grader.testId))
     case _: RecreateShapeGrader => label("gradingShapeDescription")
+    case _: MatchingGrader => label("gradingMatchingDescription")
     case grader: TurtleCommandUsageGrader =>
       val measure = if grader.measure == CommandUsageMeasure.OccurrencesInCode then "gradingUsageCode" else "gradingUsageExecution"
       label(measure).map(template => template.replace("{command}", grader.command.universalInterpretation())
@@ -59,7 +61,12 @@ private[interactionInfo] final class InteractionFeedbackView[F <: InteractionFor
 
   def feedback(entry: GradingSummary.Entry): Option[Signal[String]] =
     if entry.hidden then None
-    else entry.result.flatMap(_.feedbackInformation).map(helper.workbookContentSignal)
+    else (entry.grader, entry.result.flatMap(_.additionalData)) match {
+      // Only the number of correct connections is shown, not which ones are wrong.
+      case (grader: MatchingGrader, Some(correct: Int)) => Some(label("gradingMatchingCount")
+        .map(_.replace("{correct}", correct.toString).replace("{total}", grader.expected.size.toString)))
+      case _ => entry.result.flatMap(_.feedbackInformation).map(helper.workbookContentSignal)
+    }
 
   def scaffoldingLabel(result: ScaffoldingReport): String = result.status.labelKey
 

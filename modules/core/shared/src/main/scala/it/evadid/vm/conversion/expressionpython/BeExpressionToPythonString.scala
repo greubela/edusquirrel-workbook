@@ -19,8 +19,10 @@ case class BeExpressionToPythonString
   override protected def currentInstanceName: String = "self"
   override protected def constructorCallPrefix: String = ""
   override protected def callName(call: BeFunctionCall): String =
-    if it.evadid.core.datastructures.vectorShapes.svg.TurtleCommand.isTurtleMethod(call.funcDef) then
-      "turtle." + entityName(call.funcDef.functionTypeInfo.displayName)
+    if it.evadid.core.datastructures.vectorShapes.svg.TurtleCommand.isTurtleMethod(call.funcDef) then {
+      val name = entityName(call.funcDef.functionTypeInfo.displayName)
+      "turtle." + BeExpressionToPythonString.standardTurtleNames.getOrElse(name, name)
+    }
     else if it.evadid.vm.modules.BeModules.qualifiedName(call.funcDef).nonEmpty then
       it.evadid.vm.modules.BeModules.qualifiedName(call.funcDef).get + "." + entityName(call.funcDef.functionTypeInfo.displayName)
     else super.callName(call)
@@ -161,4 +163,9 @@ case class BeExpressionToPythonString
 
   override protected def emptyFunctionBody: String = "pass"
 
+}
+
+object BeExpressionToPythonString {
+  /** Canonical turtle names that Python's standard `turtle` module spells differently. */
+  private[expressionpython] val standardTurtleNames: Map[String, String] = Map("pen_up" -> "penup", "pen_down" -> "pendown")
 }

@@ -62,11 +62,11 @@ object HtmlSlideshowEditor extends LineBasedRenderingFactory[Slideshow] {
         if totalSlides > 0 && stateVar.now().events.isEmpty then
           stateVar.update(_.recordTransitionByIndex(0, 0))
       },
-      navigation(),
       div(
         cls := "slide-deck-content slide-deck-image" ,
         child <-- currentIndex.map(curIndex => createSlideshowPanelDom(workbookElement, curIndex))
-      )
+      ),
+      navigation()
     )
 
     AtomarLineRendering.basicLine(workbookElement, dom, "slide-deck")

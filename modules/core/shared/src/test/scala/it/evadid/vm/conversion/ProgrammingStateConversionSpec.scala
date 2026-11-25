@@ -636,6 +636,17 @@ class ProgrammingStateConversionSpec extends FunSuite {
     assertEquals(normalized(converted.toBeExpression), converted.code.trim)
   }
 
+  test("Python int hints convert with a widening warning, which hints in comments and strings do not cause") {
+    val hinted = ProgrammingStateRaw(Python, "def side(length: int) -> int:\n    forward(length)\n    return length\n\nside(10)\n")
+    Seq(Java, SnapLanguage).foreach { target =>
+      val result = hinted.convertToLanguage(target)
+      assert(result.finalState.nonEmpty, result.conversionInfo.toString)
+      assert(result.conversionInfo.exists(_.warningMsg.startsWith("Python int hints were widened")), s"$target: ${result.conversionInfo}")
+    }
+    val plain = ProgrammingStateRaw(Python, "# length: int\nprint(\"x: int\")\nforward(10)\n").convertToLanguage(Java)
+    assert(!plain.conversionInfo.exists(_.warningMsg.startsWith("Python int hints")), plain.conversionInfo.toString)
+  }
+
   test("uninitialized Java variables retain their annotations") {
     val converted = ProgrammingStateRaw(Java, "double distance;").toPython
     assert(converted.code.contains("distance: float"), clue = converted.code)

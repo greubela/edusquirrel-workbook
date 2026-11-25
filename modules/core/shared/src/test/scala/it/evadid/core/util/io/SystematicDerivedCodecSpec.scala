@@ -205,6 +205,7 @@ class SystematicDerivedCodecSpec extends FunSuite {
 
   test("previously private interaction-state codecs are public and retain legacy JSON") {
     import it.evadid.workbook.elements.interactionElements.todo.*
+    import it.evadid.workbook.elements.interactionElements.matching.MatchingInteractionState
     import it.evadid.workbook.elements.interactionElements.codeTaskToggle.CodeTaskToggleState
     import it.evadid.workbook.elements.interactionElements.sorting.sortingReasonExercise.SortingReasonInteractionState
     def compatible[T: ReadWriter](value: T, serializer: it.evadid.core.util.io.Serializer[T]): Unit = {

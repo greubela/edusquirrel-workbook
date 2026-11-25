@@ -9,6 +9,7 @@ import it.evadid.core.datastructures.language.{AppLanguage, LanguageMapContentId
 import it.evadid.core.datastructures.state.StateHelper.StateBasedVar
 import it.evadid.homepage.webElements.basic.HtmlButtonElement
 import it.evadid.homepage.webElements.editor.code.EvaEditor.extensions.turtle.TurtleTaskEditorExtension
+import it.evadid.homepage.webElements.code.JavaStructureFeatures
 import it.evadid.homepage.webElements.editor.code.EvaEditor.{EvaEditor, EvaEditorConfig, EvaEditorLabels}
 import it.evadid.homepage.workbook.htmlRenderer.DomElementCollection.DomElementSingle
 import it.evadid.homepage.workbook.htmlRenderer.HtmlRenderFactory.LineBasedRenderingFactory
@@ -49,7 +50,8 @@ case object HtmlProgrammingExerciseFullJavaRenderer extends LineBasedRenderingFa
       fullInfo.loggerSystemInfo.uiAndDomLogger,
       boundVar,
       draw.toList,
-      Var(EvaEditorConfig(enabledLanguages = List(AppLanguage.Java))),
+      // The first programming course writes static helper methods; classes come later.
+      Var(EvaEditorConfig(enabledLanguages = List(AppLanguage.Java), javaStructure = JavaStructureFeatures.Procedural)),
       humanLanguage = fullInfo.signals.currentLanguage,
       labels = EvaEditorLabels.fromContent(laminarHelper.plaintextStringSignal))
     EditorWithWorkbookPanel(element, instruction, gradingReporter, List(previewCard), evaEditor)

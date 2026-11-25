@@ -4,10 +4,18 @@ import it.evadid.core.datastructures.language.AppLanguage.Java
 import it.evadid.vm.parsing.java.clean.JavaParser
 import it.evadid.vm.conversion.dependencies.KnownDependencies
 import it.evadid.vm.conversion.structured.SourceStructure
+import it.evadid.vm.conversion.structured.SourceStructure.{ClassOutline, MemberOutline, Param, Visibility}
 
-/** One immutable source analysis shared by method selection and class navigation. */
+/** One immutable source analysis shared by method selection and the class diagram. */
 private[code] final case class JavaMethodSource(code: String) {
-  lazy val classes: List[JavaMethodSource.JavaClass] = JavaMethodSource.discover(code)
+  private lazy val outlines: List[ClassOutline] = SourceStructure.javaClassOutlines(code).toList
+  private lazy val libraryRanges: Seq[(Int, Int)] = KnownDependencies.definitionRanges(code, Java)
+  lazy val classes: List[JavaMethodSource.JavaClass] =
+    outlines.filterNot(JavaMethodSource.insideAny(libraryRanges, _)).map(JavaMethodSource.javaClass(_, library = false))
+  /** Runtime classes such as the generated `Turtle`, with their public members only. */
+  lazy val libraries: List[JavaMethodSource.JavaClass] =
+    outlines.filter(JavaMethodSource.insideAny(libraryRanges, _)).map(JavaMethodSource.javaClass(_, library = true))
+  lazy val relations: List[JavaMethodSource.Relation] = JavaMethodSource.relations(code, classes, libraries)
   lazy val balanced: Boolean = SourceStructure.balanced(code)
   def initialMethod(requirePublicMain: Boolean): Option[JavaMethodSource.JavaMethod] =
     JavaMethodSource.entryMethod(code, classes, balanced, requirePublicMain)
@@ -15,17 +23,54 @@ private[code] final case class JavaMethodSource(code: String) {
 
 object JavaMethodSource {
 
-
+  /** An operation: a method or a constructor. Its range spans the whole declaration including the body. */
   private[code] final case class JavaMethod(
                                                className: String,
                                                name: String,
                                                returnType: String,
                                                parameters: String,
                                                start: Int,
-                                               end: Int
-                                             ) derives upickle.default.ReadWriter
+                                               end: Int,
+                                               visibility: Visibility = Visibility.Public,
+                                               isStatic: Boolean = false,
+                                               isConstructor: Boolean = false,
+                                               isAbstract: Boolean = false,
+                                               params: List[Param] = Nil
+                                             )
 
-  private[code] final case class JavaClass(name: String, bodyStart: Int, bodyEnd: Int, methods: List[JavaMethod]) derives upickle.default.ReadWriter
+  /** An attribute. `shared` marks declarations such as `int a, b;` whose range declares several fields. */
+  private[code] final case class JavaField(
+                                              className: String,
+                                              visibility: Visibility,
+                                              isStatic: Boolean,
+                                              isFinal: Boolean,
+                                              javaType: String,
+                                              name: String,
+                                              initializer: Option[String],
+                                              start: Int,
+                                              end: Int,
+                                              shared: Boolean
+                                            )
+
+  private[code] final case class JavaClass(
+                                              name: String,
+                                              bodyStart: Int,
+                                              bodyEnd: Int,
+                                              methods: List[JavaMethod],
+                                              fields: List[JavaField] = Nil,
+                                              isInterface: Boolean = false,
+                                              isAbstract: Boolean = false,
+                                              superclasses: List[String] = Nil,
+                                              interfaces: List[String] = Nil,
+                                              library: Boolean = false
+                                            )
+
+  private[code] enum RelationKind {
+    case Inheritance, Realization, Association, Dependency
+  }
+
+  /** A UML relationship between two diagram classes; associations carry the attribute as role. */
+  private[code] final case class Relation(from: String, to: String, kind: RelationKind, role: Option[String] = None, many: Boolean = false)
 
   private[code] def methodKey(function: JavaMethod): String =
     s"${function.className}:${function.start}:${function.end}"
@@ -60,7 +105,7 @@ object JavaMethodSource {
     else {
       val entryClasses = if !requirePublicMain && currentClasses.exists(_.name == "Main") then
         currentClasses.filter(_.name == "Main") else currentClasses
-      entryClasses.flatMap(_.methods).filter(_.name == "main") match
+      entryClasses.flatMap(_.methods).filter(method => method.name == "main" && !method.isConstructor) match
         case List(function) if function.returnType == "void" &&
           SourceStructure.declaration(function.parameters).exists(parameter =>
             Set("String[]", "java.lang.String[]")(parameter.javaType.filterNot(_.isWhitespace))) &&
@@ -75,17 +120,193 @@ object JavaMethodSource {
 
   private[code] def structurallyBalanced(source: String): Boolean = SourceStructure.balanced(source)
 
-  /** Classes with closed bodies and their methods, from the shared fastparse source lexer. Known
+  private def insideAny(ranges: Seq[(Int, Int)], outline: ClassOutline): Boolean =
+    ranges.exists((start, end) => start <= outline.bodyOpen && outline.bodyClose < end)
+
+  private def javaClass(outline: ClassOutline, library: Boolean): JavaClass = {
+    def shown(visibility: Visibility) = !library || visibility == Visibility.Public
+    val declarations = outline.fields.groupBy(field => (field.start, field.end))
+    JavaClass(
+      name = outline.name,
+      bodyStart = outline.bodyOpen,
+      bodyEnd = outline.bodyClose,
+      methods = outline.members.toList.collect {
+        case constructor: MemberOutline.Constructor if shown(constructor.visibility) =>
+          JavaMethod(outline.name, constructor.className, "", constructor.parameters, constructor.start, constructor.end,
+            constructor.visibility, isConstructor = true, params = constructor.params.toList)
+        case method: MemberOutline.Method if shown(method.visibility) =>
+          JavaMethod(outline.name, method.name, method.returnType, method.parameters, method.start, method.end,
+            method.visibility, method.isStatic, isAbstract = method.isAbstract, params = method.params.toList)
+      },
+      fields = outline.fields.toList.filter(field => shown(field.visibility)).map { field =>
+        JavaField(outline.name, field.visibility, field.isStatic, field.isFinal, field.javaType, field.name, field.initializer,
+          field.start, field.end, shared = declarations((field.start, field.end)).size > 1)
+      },
+      isInterface = outline.isInterface,
+      isAbstract = outline.isAbstract,
+      superclasses = outline.extendsNames.toList,
+      interfaces = outline.implementsNames.toList,
+      library = library
+    )
+  }
+
+  /** Classes with closed bodies and their operations, from the shared fastparse source lexer. Known
     * library classes, such as the generated `Turtle`, belong to the runtime and are not listed.
     */
-  private[code] def discover(source: String): List[JavaClass] = {
-    val libraries = KnownDependencies.definitionRanges(source, Java)
-    SourceStructure.javaClassSpans(source).toList.filterNot(clazz =>
-      libraries.exists((start, end) => start <= clazz.bodyOpen && clazz.bodyClose < end)).map { clazz =>
-      JavaClass(clazz.name, clazz.bodyOpen, clazz.bodyClose, clazz.methods.toList.map(method =>
-        JavaMethod(clazz.name, method.name, method.returnType, method.parameters, method.start, method.end)))
+  private[code] def discover(source: String): List[JavaClass] = JavaMethodSource(source).classes
+
+  /** Identifiers in code, without comments and string literals. */
+  private def words(text: String): Set[String] = {
+    def walk(tokens: Seq[SourceStructure.Token]): Seq[String] = tokens.flatMap {
+      case SourceStructure.Word(_, _, word) => Seq(word)
+      case group: SourceStructure.Group => walk(group.children)
+      case _ => Nil
     }
+    walk(SourceStructure.tokens(text, python = false)).toSet
   }
+
+  private val collections = Set("List", "ArrayList", "LinkedList", "Set", "HashSet", "TreeSet", "Collection", "Queue", "Deque", "ArrayDeque")
+
+  private def relations(source: String, classes: List[JavaClass], libraries: List[JavaClass]): List[Relation] = {
+    val names = (classes ++ libraries).map(_.name).toSet
+    classes.flatMap { clazz =>
+      val generalizations = clazz.superclasses.filter(names).map(Relation(clazz.name, _, RelationKind.Inheritance)) ++
+        clazz.interfaces.filter(names).map(Relation(clazz.name, _, RelationKind.Realization))
+      val associations = clazz.fields.flatMap { field =>
+        val typeWords = words(field.javaType)
+        typeWords.filter(name => names(name) && name != clazz.name).toList.sorted.map { target =>
+          Relation(clazz.name, target, RelationKind.Association, Some(field.name),
+            many = field.javaType.contains("[") || typeWords.exists(collections))
+        }
+      }
+      val related = (generalizations ++ associations).map(_.to).toSet + clazz.name
+      val dependencies = words(source.substring(clazz.bodyStart, clazz.bodyEnd + 1)).filter(name => names(name) && !related(name))
+        .toList.sorted.map(Relation(clazz.name, _, RelationKind.Dependency))
+      generalizations ++ associations ++ dependencies
+    }.distinct
+  }
+
+  // UML notation, shown in the class diagram and above the method editor.
+
+  private[code] def umlParameters(params: List[Param]): String =
+    params.map(param => if param.name.isEmpty then param.javaType else s"${param.name}: ${param.javaType}").mkString(", ")
+
+  /** `+ name(p: T): R`; constructors and `void` methods have no result type, as usual in school UML. */
+  private[code] def umlOperation(method: JavaMethod): String = {
+    val result = if method.isConstructor || method.returnType == "void" || method.returnType.isEmpty then "" else s": ${method.returnType}"
+    s"${method.visibility.symbol} ${method.name}(${umlParameters(method.params)})$result"
+  }
+
+  private[code] def umlAttribute(field: JavaField): String = s"${field.visibility.symbol} ${field.name}: ${field.javaType}"
+
+  // Declarations and edits. Every edit returns new source text; callers validate it before committing.
+
+  private[code] def javaModifier(visibility: Visibility): Option[String] = visibility match {
+    case Visibility.Public => Some("public")
+    case Visibility.Private => Some("private")
+    case Visibility.Protected => Some("protected")
+    case Visibility.Package => None
+  }
+
+  private def withModifiers(visibility: Visibility, isStatic: Boolean, rest: String): String =
+    (javaModifier(visibility).toList ++ Option.when(isStatic)("static") :+ rest).mkString(" ")
+
+  private[code] def javaParameters(params: List[Param]): String = params.map(param => s"${param.javaType} ${param.name}").mkString(", ")
+
+  private[code] def methodDeclaration(returnType: String, name: String, parameters: String, isStatic: Boolean,
+      visibility: Visibility = Visibility.Public): String =
+    withModifiers(visibility, isStatic, s"$returnType $name($parameters)") + " {\n    \n  }"
+
+  private[code] def fieldDeclaration(visibility: Visibility, isStatic: Boolean, javaType: String, name: String, initializer: String): String =
+    withModifiers(visibility, isStatic, s"$javaType $name") + (if initializer.trim.isEmpty then "" else s" = ${initializer.trim}") + ";"
+
+  /** A constructor; `assigned` parameters are stored in attributes of the same name. */
+  private[code] def constructorDeclaration(className: String, visibility: Visibility, params: List[Param], assigned: List[String]): String = {
+    val body = if assigned.isEmpty then "    \n" else assigned.map(name => s"    this.$name = $name;\n").mkString
+    withModifiers(visibility, isStatic = false, s"$className(${javaParameters(params)})") + s" {\n$body  }"
+  }
+
+  private[code] def lineSeparator(source: String): String =
+    "\r\n|\r|\n".r.findFirstIn(source).getOrElse("\n")
+
+  private def withSeparator(declaration: String, newline: String): String = declaration.replaceAll("\r\n|\r|\n", newline)
+
+  private def lineStart(source: String, position: Int): Int =
+    source.lastIndexWhere(c => c == '\n' || c == '\r', position - 1) + 1
+
+  /** The indentation of the line a member starts on, or two spaces when code precedes it. */
+  private def indentation(source: String, position: Int): String = {
+    val prefix = source.substring(lineStart(source, position), position)
+    if prefix.forall(c => c == ' ' || c == '\t') then prefix else "  "
+  }
+
+  private def insertAfter(source: String, member: (Int, Int), declaration: String, blankLine: Boolean): String = {
+    val newline = lineSeparator(source)
+    source.substring(0, member._2) + newline + (if blankLine then newline else "") + indentation(source, member._1) +
+      withSeparator(declaration, newline) + source.substring(member._2)
+  }
+
+  private def insertBefore(source: String, start: Int, declaration: String): String = {
+    val newline = lineSeparator(source)
+    source.substring(0, start) + withSeparator(declaration, newline) + newline + newline + indentation(source, start) + source.substring(start)
+  }
+
+  private[code] def insertMethod(source: String, clazz: JavaClass, declaration: String): String = {
+    val beforeClosingBrace = source.substring(0, clazz.bodyEnd)
+    val afterClosingBrace = source.substring(clazz.bodyEnd)
+    val newline = lineSeparator(source)
+    beforeClosingBrace + s"$newline  ${withSeparator(declaration, newline)}$newline" + afterClosingBrace
+  }
+
+  /** After the last attribute, else before the first operation, else at the end of the class. */
+  private[code] def insertField(source: String, clazz: JavaClass, declaration: String): String =
+    clazz.fields.lastOption match {
+      case Some(field) => insertAfter(source, field.start -> field.end, declaration, blankLine = false)
+      case None => clazz.methods.headOption.fold(insertMethod(source, clazz, declaration))(first => insertBefore(source, first.start, declaration))
+    }
+
+  /** After the last constructor, else before the first method, else at the end of the class. */
+  private[code] def insertConstructor(source: String, clazz: JavaClass, declaration: String): String =
+    clazz.methods.filter(_.isConstructor).lastOption match {
+      case Some(constructor) => insertAfter(source, constructor.start -> constructor.end, declaration, blankLine = true)
+      case None => clazz.methods.headOption.fold(insertMethod(source, clazz, declaration))(first => insertBefore(source, first.start, declaration))
+    }
+
+  private[code] def replaceRange(source: String, start: Int, end: Int, replacement: String): String =
+    source.substring(0, start) + replacement + source.substring(end)
+
+  /** Removes a member; a member on its own line takes its line with it. */
+  private[code] def removeMember(source: String, start: Int, end: Int): String = {
+    val from = lineStart(source, start)
+    val ownLine = source.substring(from, start).forall(c => c == ' ' || c == '\t')
+    val afterSpaces = source.indexWhere(c => c != ' ' && c != '\t', end) match {
+      case -1 => source.length
+      case index => index
+    }
+    val to = if source.startsWith("\r\n", afterSpaces) then afterSpaces + 2
+      else if afterSpaces < source.length && (source.charAt(afterSpaces) == '\n' || source.charAt(afterSpaces) == '\r') then afterSpaces + 1
+      else afterSpaces
+    source.substring(0, if ownLine then from else start) + source.substring(if ownLine then to else afterSpaces)
+  }
+
+  private val reserved = Set("abstract", "assert", "boolean", "break", "byte", "case", "catch", "char", "class", "const",
+    "continue", "default", "do", "double", "else", "enum", "extends", "final", "finally", "float", "for", "goto", "if",
+    "implements", "import", "instanceof", "int", "interface", "long", "native", "new", "package", "private", "protected",
+    "public", "return", "short", "static", "strictfp", "super", "switch", "synchronized", "this", "throw", "throws",
+    "transient", "try", "void", "volatile", "while", "true", "false", "null")
+
+  private[code] def validName(name: String): Boolean =
+    name.matches("[A-Za-z_$][A-Za-z0-9_$]*") && !reserved(name)
+
+  /** A type as written in a declaration: a name with optional type arguments, arrays or varargs. */
+  private[code] def validType(javaType: String): Boolean = {
+    val value = javaType.trim
+    value.matches("[A-Za-z_$][A-Za-z0-9_$<>,.?\\[\\] ]*") &&
+      value.count(_ == '<') == value.count(_ == '>') && value.count(_ == '[') == value.count(_ == ']') &&
+      !Set("void", "class", "new", "return", "static", "public", "private", "protected")(value)
+  }
+
+  // Selection follows the source: a method is found again by its class and signature.
 
   private[code] def replaceMethod(source: String, function: JavaMethod, draft: String): String =
     source.substring(0, function.start) + draft + source.substring(function.end)
@@ -120,20 +341,4 @@ object JavaMethodSource {
   /** Only whitespace and closed comments. */
   private def onlyTrivia(source: String): Boolean =
     SourceStructure.significant(SourceStructure.tokens(source, python = false)).isEmpty && SourceStructure.balanced(source)
-
-  private[code] def lineSeparator(source: String): String =
-    "\r\n|\r|\n".r.findFirstIn(source).getOrElse("\n")
-
-  private[code] def methodDeclaration(returnType: String, name: String, parameters: String, isStatic: Boolean): String = {
-    val modifiers = if isStatic then "public static" else "public"
-    s"$modifiers $returnType $name($parameters) {\n    \n  }"
-  }
-
-  private[code] def insertMethod(source: String, clazz: JavaClass, declaration: String): String = {
-    val beforeClosingBrace = source.substring(0, clazz.bodyEnd)
-    val afterClosingBrace = source.substring(clazz.bodyEnd)
-    val newline = lineSeparator(source)
-    val inserted = declaration.replaceAll("\r\n|\r|\n", newline)
-    beforeClosingBrace + s"$newline  $inserted$newline" + afterClosingBrace
-  }
 }

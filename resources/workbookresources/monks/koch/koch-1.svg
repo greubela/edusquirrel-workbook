@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="-20 -100 310 130" width="465" height="195" role="img" aria-label="Koch-Kurve der Rekursionstiefe 1 / Koch curve of recursion depth 1">
+  <rect x="-20" y="-100" width="310" height="130" rx="8" fill="#ffffff"/>
+  <!-- original segment of depth 0 -->
+  <line x1="0" y1="0" x2="270" y2="0" stroke="#b5b5b5" stroke-width="1.5" stroke-dasharray="4 4"/>
+  <!-- the removed middle third -->
+  <line x1="90" y1="0" x2="180" y2="0" stroke="#c0392b" stroke-width="2" stroke-dasharray="6 4"/>
+  <!-- marks at the thirds -->
+  <g stroke="#7a7a7a" stroke-width="1.5">
+    <line x1="0" y1="-5" x2="0" y2="5"/>
+    <line x1="90" y1="-5" x2="90" y2="5"/>
+    <line x1="180" y1="-5" x2="180" y2="5"/>
+    <line x1="270" y1="-5" x2="270" y2="5"/>
+  </g>
+  <!-- the four segments of depth 1 -->
+  <polyline points="0,0 90,0 135,-77.94 180,0 270,0" fill="none" stroke="#1f5fbf" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>
+  <g font-family="sans-serif" font-size="12" fill="#444444" text-anchor="middle" dominant-baseline="middle">
+    <text x="45" y="16">90</text>
+    <text x="100.4" y="-46">90</text>
+    <text x="169.6" y="-46">90</text>
+    <text x="225" y="16">90</text>
+  </g>
+</svg>

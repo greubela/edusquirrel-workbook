@@ -32,7 +32,7 @@ class TurtleJsxGraphRendererSpec extends FunSuite {
       Future.traverse(TurtleDrawingPolicy.values.toList) { policy =>
         val visual = TurtleDrawingGrading.assess(source.toBeExpression.turtleCommandExecutionInfo.completedCommands, target, policy)
         RecreateShapeGrader(target, GradingImportance.REQUIRED_TEST, comparisonPolicy = policy)
-          .gradeStateSafe(source, false, UpdateImportance.MAJOR, ExecutionContextInformation.default).map { saved =>
+          .gradeStateSafe(source, true, UpdateImportance.MAJOR, ExecutionContextInformation.default).map { saved =>
             assertEquals(visual.matches, saved.gradingStatus.isCorrect, clues(code, policy))
             assertEquals(visual.scene.lines.forall(_.result == LineResult.Correct), saved.gradingStatus.isCorrect)
           }
@@ -41,7 +41,7 @@ class TurtleJsxGraphRendererSpec extends FunSuite {
   }
 
   private def previewAssessment(state: ProgrammingState): Try[TurtleDrawingGrading.Assessment] =
-    CompareShapePreview(Var(state), TurtleGraphic.TurtleGraphicSvgString("M0,0 L12,0"), TurtleDrawingPolicy.Strokes).assessment(state)
+    CompareShapePreview(Var(state).signal,TurtleGraphic.TurtleGraphicSvgString("M0,0 L12,0"), TurtleDrawingPolicy.Strokes).assessment(state)
 
   test("previews and graders of one state share a single comparison per target and policy") {
     val state = ProgrammingStateRaw(Python, "forward(12)")
@@ -458,5 +458,12 @@ class TurtleJsxGraphRendererSpec extends FunSuite {
     val commands = List(TurtleCommand.Forward(10.0), TurtleCommand.Left(90.0), TurtleCommand.Forward(5.0))
     val scene = TurtleJsxGraphRenderer.buildScene(commands, TurtleGraphic.TurtleGraphicProgram(commands))
     assertEquals(read[TurtleJsxGraphRenderer.Scene](write(scene)), scene)
+  }
+
+  test("display bounds take the board's aspect ratio and still contain the whole drawing") {
+    // A wide drawing (left, top, right, bottom) on a square board grows in height around its centre.
+    assertEquals(TurtleJsxGraphRenderer.fitToRatio(Array(0.0, 40.0, 300.0, 0.0), 1.0).toList, List(0.0, 170.0, 300.0, -130.0))
+    // A tall drawing on a board twice as wide as high grows in width.
+    assertEquals(TurtleJsxGraphRenderer.fitToRatio(Array(0.0, 100.0, 50.0, 0.0), 2.0).toList, List(-75.0, 100.0, 125.0, 0.0))
   }
 }
