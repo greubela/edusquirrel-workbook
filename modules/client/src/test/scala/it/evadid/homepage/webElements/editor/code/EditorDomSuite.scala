@@ -9,7 +9,7 @@ import scala.scalajs.js
 trait EditorDomSuite extends FunSuite {
   private val globals = js.Dynamic.global.globalThis
   /** jsdom window properties installed as globals for the suite; a suite may add the ones its components use. */
-  protected def jsdomGlobals: List[String] = List("window", "document", "Element", "HTMLElement", "Node", "HTMLInputElement", "HTMLTextAreaElement", "HTMLSelectElement", "HTMLButtonElement")
+  protected def jsdomGlobals: List[String] = List("window", "document", "Element", "HTMLElement", "Node", "HTMLInputElement", "HTMLTextAreaElement", "HTMLSelectElement", "HTMLButtonElement", "ResizeObserver")
   private lazy val names = jsdomGlobals.distinct
   private val previous = Var(List.empty[(String, js.Dynamic)])
   private def window = EditorDomSuite.window
@@ -48,7 +48,36 @@ object EditorDomSuite {
     */
   lazy val window: js.Dynamic = {
     val req = js.Dynamic.global.selectDynamic("require")
-    js.Dynamic.newInstance(req(js.Dynamic.global.process.cwd().asInstanceOf[String] + "/node_modules/jsdom").JSDOM)(
+    val created = js.Dynamic.newInstance(req(js.Dynamic.global.process.cwd().asInstanceOf[String] + "/node_modules/jsdom").JSDOM)(
       "<html><body></body></html>", js.Dynamic.literal(url = "http://localhost/")).window
+    installBrowserApis(created)
+    created
+  }
+
+  /** Browser APIs jsdom lacks, so components use them as in a browser. jsdom has no layout: a ResizeObserver
+    * never reports, no element lies at a point, an animation frame is the next task, and a modal dialog only
+    * toggles its `open` attribute.
+    */
+  private def installBrowserApis(window: js.Dynamic): Unit = {
+    if js.isUndefined(window.ResizeObserver) then window.updateDynamic("ResizeObserver")(js.constructorOf[NoLayoutResizeObserver])
+    if js.isUndefined(window.document.elementFromPoint) then
+      window.document.updateDynamic("elementFromPoint")(((_: Double, _: Double) => null): js.Function2[Double, Double, js.Any])
+    if js.isUndefined(window.requestAnimationFrame) then {
+      window.updateDynamic("requestAnimationFrame")(((callback: js.Function1[Double, Any]) =>
+        window.setTimeout((() => callback(window.performance.now().asInstanceOf[Double])): js.Function0[Any], 0)
+      ): js.Function1[js.Function1[Double, Any], js.Dynamic])
+      window.updateDynamic("cancelAnimationFrame")(((handle: js.Any) => window.clearTimeout(handle)): js.Function1[js.Any, js.Dynamic])
+    }
+    val dialogs = window.HTMLDialogElement.prototype
+    if js.isUndefined(dialogs.showModal) then {
+      dialogs.updateDynamic("showModal")(((self: js.Dynamic) => self.setAttribute("open", "")): js.ThisFunction0[js.Dynamic, Unit])
+      dialogs.updateDynamic("close")(((self: js.Dynamic) => self.removeAttribute("open")): js.ThisFunction0[js.Dynamic, Unit])
+    }
+  }
+
+  private final class NoLayoutResizeObserver(callback: js.Any) extends js.Object {
+    def observe(target: js.Any): Unit = ()
+    def unobserve(target: js.Any): Unit = ()
+    def disconnect(): Unit = ()
   }
 }

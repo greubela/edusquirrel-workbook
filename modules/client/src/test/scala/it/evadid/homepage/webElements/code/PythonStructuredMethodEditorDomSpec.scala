@@ -2,13 +2,11 @@ package it.evadid.homepage.webElements.code
 
 import com.raquo.laminar.api.L.*
 import it.evadid.homepage.webElements.UiDomSuite
-import it.evadid.homepage.webElements.editor.code.EditorDomSuite
 import it.evadid.util.logging.Logger
 import it.evadid.util.logging.derived.PrintToStdLogger
 import it.evadid.workbook.elements.interactionElements.programming.state.ProgrammingStatePythonStructured
 import org.scalajs.dom
 import scala.concurrent.ExecutionContext
-import scala.scalajs.js
 
 /** The Python structure editor: the module box, class boxes and the dialogs writing Python. */
 class PythonStructuredMethodEditorDomSpec extends UiDomSuite {
@@ -17,16 +15,6 @@ class PythonStructuredMethodEditorDomSpec extends UiDomSuite {
   private val logger = Logger.withNameAndPrefixes(Some("python-editor-test"), PrintToStdLogger.printNothing)
   private val source = "import turtle\n\nclass Pen:\n    def __init__(self, width: float):\n        self.width = width\n\n" +
     "def main():\n    turtle.forward(10)\n\nmain()"
-  private val dialogs = EditorDomSuite.window.HTMLDialogElement.prototype
-  override def beforeAll(): Unit = {
-    super.beforeAll()
-    dialogs.updateDynamic("showModal")(((self: js.Dynamic) => self.setAttribute("open", "")): js.ThisFunction0[js.Dynamic, Unit])
-    dialogs.updateDynamic("close")(((self: js.Dynamic) => self.removeAttribute("open")): js.ThisFunction0[js.Dynamic, Unit])
-  }
-  override def afterAll(): Unit = {
-    js.special.delete(dialogs, "showModal"); js.special.delete(dialogs, "close")
-    super.afterAll()
-  }
 
   private def heading(root: dom.Element) = one(root, ".java-function-editor__workspace-heading h3").textContent
   private def dialog(root: dom.Element) = one(root, "dialog")

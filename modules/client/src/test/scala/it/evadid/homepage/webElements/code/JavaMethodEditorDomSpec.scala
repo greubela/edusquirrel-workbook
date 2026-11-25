@@ -20,17 +20,6 @@ class JavaMethodEditorDomSpec extends UiDomSuite {
   private val logger = Logger.withNameAndPrefixes(Some("java-editor-test"), PrintToStdLogger.printNothing)
   private val source = "public class Main {\n  public static void main(String[] args) {\n    forward(10);\n  }\n\n" +
     "  static int twice(int x) {\n    return x * 2;\n  }\n}\n"
-  private val dialogs = EditorDomSuite.window.HTMLDialogElement.prototype
-  /** jsdom has no modal dialogs; opening and closing toggle the `open` attribute as browsers do. */
-  override def beforeAll(): Unit = {
-    super.beforeAll()
-    dialogs.updateDynamic("showModal")(((self: js.Dynamic) => self.setAttribute("open", "")): js.ThisFunction0[js.Dynamic, Unit])
-    dialogs.updateDynamic("close")(((self: js.Dynamic) => self.removeAttribute("open")): js.ThisFunction0[js.Dynamic, Unit])
-  }
-  override def afterAll(): Unit = {
-    js.special.delete(dialogs, "showModal"); js.special.delete(dialogs, "close")
-    super.afterAll()
-  }
 
   private def code(state: Var[ProgrammingState]): String = state.now() match {
     case ProgrammingStateRaw(Java, value) => value

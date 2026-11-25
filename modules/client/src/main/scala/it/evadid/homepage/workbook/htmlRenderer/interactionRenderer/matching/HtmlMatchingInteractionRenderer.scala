@@ -1,5 +1,6 @@
 package it.evadid.homepage.workbook.htmlRenderer.interactionRenderer.matching
 
+import com.raquo.airstream.ownership.Subscription
 import com.raquo.laminar.api.L.*
 import it.evadid.core.datastructures.language.LanguageMapContentId
 import it.evadid.core.datastructures.state.StateHelper.StateBasedVar
@@ -9,8 +10,6 @@ import it.evadid.homepage.workbook.htmlRenderer.atomarLineRenderings.AtomarLineR
 import it.evadid.workbook.elements.interactionElements.matching.MatchingInteraction
 import it.evadid.workbook.interaction.sync.UpdateImportance
 import org.scalajs.dom
-
-import scala.scalajs.js
 
 /** Two columns of items; a connection line joins a left item with its chosen right item.
  *
@@ -23,7 +22,13 @@ object HtmlMatchingInteractionRenderer extends LineBasedRenderingFactory[Matchin
 
   private case class Point(x: Double, y: Double)
 
-  private case class Drag(left: Int, start: Point, pointer: Point, moved: Boolean)
+  /** A pointer press on a left item; once it has moved beyond the threshold it draws a pending line.
+    * A `dropped` drag has ended: its pointerup also produces a click when it ends on its own item, and that
+    * click must not select the item. The next pointer press or key press replaces it.
+    */
+  private case class Drag(left: Int, start: Point, pointer: Point, moved: Boolean, dropped: Boolean = false) {
+    def drawing: Boolean = moved && !dropped
+  }
 
   private case class Connection(left: Int, right: Int, from: Point, to: Point)
 
@@ -58,9 +63,6 @@ object HtmlMatchingInteractionRenderer extends LineBasedRenderingFactory[Matchin
     val dropTarget = Var(Option.empty[Int])
     val board = Var(Option.empty[dom.html.Element])
     val layoutTick = Var(0)
-    var observer: Option[dom.ResizeObserver] = None
-    // A drag that ends on its own left item would otherwise also count as a click on it.
-    var suppressClick = false
 
     def connectionOf(leftIndex: Int): Signal[Option[Int]] =
       state.signal.map(_.selectedRightIndex(leftIndex, e.left.size, e.right.size)).distinct
@@ -91,7 +93,7 @@ object HtmlMatchingInteractionRenderer extends LineBasedRenderingFactory[Matchin
     val pendingLine: Signal[Option[(Point, Point)]] = drag.signal.combineWith(board.signal).map { (current, root) =>
       for {
         active <- current
-        if active.moved
+        if active.drawing
         node <- root
         from <- anchor(node, "left", active.left)
       } yield from -> active.pointer
@@ -120,7 +122,8 @@ object HtmlMatchingInteractionRenderer extends LineBasedRenderingFactory[Matchin
             }
           },
           onClick --> { _ =>
-            if !locked.now() && !suppressClick then selected.update(current => if current.contains(index) then None else Some(index))
+            if drag.now().exists(_.dropped) then drag.set(None)
+            else if !locked.now() then selected.update(current => if current.contains(index) then None else Some(index))
           },
           InlineMarkdown.element(laminarHelper.plaintextStringSignal(content)),
           // Screen readers hear the current connection; sighted users see the line.
@@ -165,32 +168,23 @@ object HtmlMatchingInteractionRenderer extends LineBasedRenderingFactory[Matchin
       e.instruction.map(id => div(cls := "matching-instruction", InlineMarkdown.element(laminarHelper.plaintextStringSignal(id)))),
       p(cls := "matching-hint", text <-- laminarHelper.plaintextStringSignal(basicLabel("matchingHint"))),
       div(cls := "matching-board",
-        cls("matching-board--dragging") <-- drag.signal.map(_.exists(_.moved)),
-        onMountUnmountCallback(
-          context => {
-            val node = context.thisNode.ref
-            board.set(Some(node))
-            val remeasure: js.Function0[Unit] = () => layoutTick.update(_ + 1)
-            // Without ResizeObserver (older browsers, jsdom) the lines are measured once after layout.
-            if js.typeOf(js.Dynamic.global.ResizeObserver) == "function" then {
-              val created = js.Dynamic.newInstance(js.Dynamic.global.ResizeObserver)(remeasure).asInstanceOf[dom.ResizeObserver]
-              created.observe(node)
-              val items = node.querySelectorAll(".matching-item")
-              (0 until items.length).foreach(i => created.observe(items(i)))
-              observer = Some(created)
-            }
-            if js.typeOf(dom.window.asInstanceOf[js.Dynamic].requestAnimationFrame) == "function" then
-              dom.window.requestAnimationFrame(_ => layoutTick.update(_ + 1))
-            else js.timers.setTimeout(0)(layoutTick.update(_ + 1))
-          },
-          _ => {
-            observer.foreach(_.disconnect())
-            observer = None
+        cls("matching-board--dragging") <-- drag.signal.map(_.exists(_.drawing)),
+        onMountCallback { context =>
+          val node = context.thisNode.ref
+          board.set(Some(node))
+          // Reports once the board is laid out and whenever the board or an item changes size.
+          val observer = new dom.ResizeObserver((_, _) => layoutTick.update(_ + 1))
+          observer.observe(node)
+          node.querySelectorAll(".matching-item").foreach(item => observer.observe(item))
+          new Subscription(context.owner, () => {
+            observer.disconnect()
             board.set(None)
-          }),
+          })
+        },
         documentEvents(_.onPointerMove) --> { event =>
           for {
             active <- drag.now()
+            if !active.dropped
             root <- board.now()
           } {
             val point = relative(root, event)
@@ -200,23 +194,25 @@ object HtmlMatchingInteractionRenderer extends LineBasedRenderingFactory[Matchin
           }
         },
         documentEvents(_.onPointerUp) --> { event =>
-          drag.now().filter(_.moved).foreach { active =>
+          drag.set(drag.now().filter(_.drawing).map { active =>
             rightIndexAt(event).foreach(rightIndex => connect(active.left, Some(rightIndex)))
             selected.set(None)
-            suppressClick = true
-            dom.window.setTimeout(() => suppressClick = false, 0)
-          }
-          drag.set(None)
+            active.copy(dropped = true)
+          })
           dropTarget.set(None)
         },
         documentEvents(_.onPointerCancel) --> { _ =>
           drag.set(None)
           dropTarget.set(None)
         },
-        documentEvents(_.onKeyDown).filter(_.key == "Escape") --> { _ =>
-          selected.set(None)
-          drag.set(None)
-          dropTarget.set(None)
+        documentEvents(_.onKeyDown) --> { event =>
+          if event.key == "Escape" then {
+            selected.set(None)
+            drag.set(None)
+            dropTarget.set(None)
+          }
+          // A key press may start a keyboard click, which an ended drag must not swallow.
+          else if drag.now().exists(_.dropped) then drag.set(None)
         },
         div(cls := "matching-column matching-column--left", leftItems),
         div(cls := "matching-gap", aria.hidden := true),

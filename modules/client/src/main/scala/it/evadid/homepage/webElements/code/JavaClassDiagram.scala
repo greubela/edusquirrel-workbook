@@ -6,8 +6,6 @@ import it.evadid.homepage.webElements.code.JavaMethodSource.*
 import org.scalajs.dom
 
 import java.util.UUID
-import scala.scalajs.js
-import scala.util.Try
 
 /** A UML class diagram of the current Java source: class boxes with name, attribute and operation
   * compartments, and relationship arrows. It is derived from the source analysis alone; selecting an
@@ -72,12 +70,6 @@ private[code] object JavaClassDiagram {
       to <- box(relation.to)
       arrow <- route(from, to, relation)
     } yield arrow)
-  }
-
-  private def afterLayout(action: () => Unit): Unit = {
-    val window = dom.window.asInstanceOf[js.Dynamic]
-    if js.typeOf(window.requestAnimationFrame) == "function" then dom.window.requestAnimationFrame(_ => action())
-    else js.timers.setTimeout(0)(action())
   }
 
   private def kindLabel(kind: RelationKind, labels: JavaEditorLabels): Signal[String] = kind match {
@@ -282,7 +274,8 @@ private[code] object JavaClassDiagram {
         },
         onMountCallback { ctx =>
           val canvas = ctx.thisNode.ref
-          def layout(relations: List[Relation]): Unit = afterLayout { () =>
+          // Measured in the next frame: the class boxes of a new analysis are rendered after this observer runs.
+          def layout(relations: List[Relation]): Unit = dom.window.requestAnimationFrame { _ =>
             if canvas.isConnected then {
               canvasSize.set((canvas.scrollWidth.toDouble, canvas.scrollHeight.toDouble))
               arrows.set(measure(canvas, relations))
@@ -293,10 +286,9 @@ private[code] object JavaClassDiagram {
             latest.set(current.relations)
             layout(current.relations)
           }(using ctx.owner)
-          Try(new dom.ResizeObserver((_, _) => layout(latest.now()))).toOption.foreach { observer =>
-            observer.observe(canvas)
-            new Subscription(ctx.owner, () => observer.disconnect())
-          }
+          val observer = new dom.ResizeObserver((_, _) => layout(latest.now()))
+          observer.observe(canvas)
+          new Subscription(ctx.owner, () => observer.disconnect())
         }
       ),
       ul(
