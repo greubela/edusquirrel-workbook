@@ -14,8 +14,10 @@ import it.evadid.vm.conversion.snapmodelxml.SnapModelToXml.*
 import it.evadid.vm.conversion.snapxmlmodel.SnapScalaXmlCodec
 import it.evadid.workbook.elements.interactionElements.programming.state.*
 
-/** Owned by one immutable state. Views and graders share its parsing and projections. */
-final class ProgrammingStateDerivations private[evadid](source: ProgrammingState) {
+/** Owned by one immutable state and the environment it is read in. Views and graders share its parsing and
+  * projections. Library calls bind only to the libraries `environment` provides ([[dependencies.ProgrammingEnvironment]]).
+  */
+final class ProgrammingStateDerivations private[evadid](source: ProgrammingState, environment: dependencies.ProgrammingEnvironment) {
   private lazy val preparedSource = source match {
     case ProgrammingStateRaw(Java, code) => javaFrontend.preparedSource
     case value: ProgrammingStateJavaStructured => javaFrontend.preparedSource
@@ -27,13 +29,13 @@ final class ProgrammingStateDerivations private[evadid](source: ProgrammingState
     case ProgrammingStateRaw(Java, code) => code
     case value: ProgrammingStateJavaStructured => value.toString
     case _ => java.code
-  })
+  }, environment)
 
   lazy val expression: ProgrammingStateBeExpression = source match {
     case value: ProgrammingStateBeExpression => value
     case ProgrammingStateRaw(Java, _) | _: ProgrammingStateJavaStructured => javaFrontend.convert
-    case ProgrammingStateRaw(Python, code) => ProgrammingStateBeExpression(PythonToExpression.program(preparedSource.code).fullProgram)
-    case value: ProgrammingStatePythonStructured => ProgrammingStateBeExpression(PythonToExpression.program(preparedSource.code).fullProgram)
+    case ProgrammingStateRaw(Python, code) => ProgrammingStateBeExpression(PythonToExpression.program(preparedSource.code, environment).fullProgram)
+    case value: ProgrammingStatePythonStructured => ProgrammingStateBeExpression(PythonToExpression.program(preparedSource.code, environment).fullProgram)
     case ProgrammingStateRaw(SnapLanguage, xml) =>
       // Malformed XML has no blocks to read; the lossless Snap codec reports why.
       if xml.trim.nonEmpty then snapModel.left.foreach(message => throw ProgrammingConversionException.unparsable(message))

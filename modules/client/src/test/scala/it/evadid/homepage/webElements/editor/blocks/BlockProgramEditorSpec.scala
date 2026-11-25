@@ -65,7 +65,7 @@ class BlockProgramEditorSpec extends EditorDomSuite {
   test("the Eva tab edits the central answer's expression representation") {
     val tab = BlockProgramEditor.forEvaTab()
     assertEquals(tab.language, BlockDisplay)
-    val converted = tab.convert(ProgrammingStateRaw(Python, "forward(100)\n")).finalState.get
+    val converted = tab.convert(ProgrammingStateRaw(Python, "forward(100)\n"), it.evadid.vm.conversion.dependencies.ProgrammingEnvironment.all).finalState.get
     assertEquals(converted.associatedLanguage, BlockDisplay)
     val state = Var[ProgrammingState](converted)
     val unmount = mount(tab.create(state, it.evadid.homepage.webElements.editor.code.EvaTestContext(

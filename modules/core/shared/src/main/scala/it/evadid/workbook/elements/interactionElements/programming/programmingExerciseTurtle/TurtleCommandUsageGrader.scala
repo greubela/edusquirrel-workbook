@@ -1,5 +1,6 @@
 package it.evadid.workbook.elements.interactionElements.programming.programmingExerciseTurtle
 
+import it.evadid.vm.conversion.dependencies.ProgrammingEnvironment
 import it.evadid.core.datastructures.language.{AppLanguage, LanguageMap, WorkbookContent}
 import it.evadid.core.datastructures.language.AppLanguage.*
 import it.evadid.core.datastructures.vectorShapes.svg.TurtleCommand
@@ -29,9 +30,12 @@ case class TurtleCommandUsageGrader(
     maximum: Int,
     measure: CommandUsageMeasure,
     testId: String,
-    importance: GradingImportance = GradingImportance.REQUIRED_TEST
+    importance: GradingImportance = GradingImportance.REQUIRED_TEST,
+    /** The libraries the exercise provides; its exercise sets it ([[ProgrammingTestGrader.inEnvironment]]). */
+    environment: ProgrammingEnvironment = ProgrammingEnvironment.all
 ) extends ProgrammingTestGrader derives ReadWriter {
   require(maximum >= 0, "A command usage maximum must not be negative.")
+  override def inEnvironment(environment: ProgrammingEnvironment): TurtleCommandUsageGrader = copy(environment = environment)
   require(testId != null && testId.nonEmpty && testId == testId.trim, "A programming test needs a nonempty ID.")
   private val canonicalCommand = TurtleCommand.resolveCanonicalNames(command)
     .getOrElse(throw IllegalArgumentException(s"Unknown turtle command: ${command.universalInterpretation()}"))
@@ -41,7 +45,8 @@ case class TurtleCommandUsageGrader(
 
   override protected def handleGrading(state: ProgrammingState, contextInformation: ExecutionContextInformation)
       : Future[GradingResult[ProgrammingState, AdditionalProgrammingTestInfo]] = Future {
-    val expression = state.toBeExpression.expression
+    val program = state.inEnvironment(environment).expression
+    val expression = program.expression
     val malformed = expression.subtree.exists {
       case _: BeExpressionUnparsable | _: BeExpressionUnsupported => true
       case _ => false
@@ -49,9 +54,9 @@ case class TurtleCommandUsageGrader(
     require(!malformed, "Command usage cannot be determined for an unsupported or unfinished program.")
     val count = measure match {
       case CommandUsageMeasure.OccurrencesInCode =>
-        state.toBeExpression.turtleCommandSites.count(_.name == canonicalCommand)
+        program.turtleCommandSites.count(_.name == canonicalCommand)
       case CommandUsageMeasure.CallsDuringExecution =>
-        val info = state.toBeExpression.turtleCommandExecutionInfo
+        val info = program.turtleCommandExecutionInfo
         val _ = info.completedCommands // A partial trace must never satisfy an execution limit.
         info.nrOfCommandExecutedIgnoreParameter(canonicalCommand)
     }

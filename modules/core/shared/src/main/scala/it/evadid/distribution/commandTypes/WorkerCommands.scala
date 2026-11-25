@@ -12,6 +12,9 @@ object WorkerCommands {
   case class HealthRequest() derives ReadWriter
   case class HealthResult(service: String, commands: Seq[String]) derives ReadWriter
   case class ParseSnapXmlRequest(xml: String, tag: String) derives ReadWriter
+  /** A program and the libraries its exercise provides. */
+  case class ProgramAnalysisRequest(state: it.evadid.workbook.elements.interactionElements.programming.state.ProgrammingState,
+      environment: it.evadid.vm.conversion.dependencies.ProgrammingEnvironment) derives ReadWriter
   case class FlowchartRequest(language: it.evadid.core.datastructures.language.AppLanguage.ProgrammingLanguage, source: String) derives ReadWriter
   case class CalculateQrCodeRequest(text: String, errorCorrection: QrErrorCorrection = QrErrorCorrection.M,
                                     version: Option[Int] = None, mask: Option[Int] = None) derives ReadWriter
@@ -59,8 +62,7 @@ object WorkerCommands {
   lazy val health = ExecutionCommandFactory[HealthRequest, HealthResult]("worker.health")
   lazy val parseSnapXml = ExecutionCommandFactory[ParseSnapXmlRequest, Seq[SnapScalaModel.Element]]("worker.parseSnapXml")
   /** Static analysis of a program through the shared BeExpression, off the page thread. */
-  lazy val programAnalysis = ExecutionCommandFactory[it.evadid.workbook.elements.interactionElements.programming.state.ProgrammingState,
-    it.evadid.vm.analysis.ProgramAnalysis]("worker.programAnalysis")
+  lazy val programAnalysis = ExecutionCommandFactory[ProgramAnalysisRequest, it.evadid.vm.analysis.ProgramAnalysis]("worker.programAnalysis")
   /** The flowchart gutter of a source in a language ([[FlowchartGutter.of]]). */
   lazy val flowchart = ExecutionCommandFactory[FlowchartRequest, FlowchartGutter.Chart]("worker.flowchart")
   lazy val calculateQrCode = ExecutionCommandFactory[CalculateQrCodeRequest, CalculateQrCodeResult]("worker.calculateQrCode")

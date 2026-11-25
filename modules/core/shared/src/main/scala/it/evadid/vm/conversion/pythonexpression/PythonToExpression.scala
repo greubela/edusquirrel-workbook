@@ -6,8 +6,7 @@ import it.evadid.vm.code.controlStructures.BeSequence
 import it.evadid.vm.code.defining.{BeDefineClass, BeDefineFunction, BeDefineVariable}
 import it.evadid.vm.code.others.BeStartProgram
 import it.evadid.vm.conversion.parsed.SymbolTable
-import it.evadid.vm.conversion.parsed.SymbolTable.KnownStructure
-import it.evadid.vm.conversion.dependencies.KnownDependencies
+import it.evadid.vm.conversion.dependencies.{KnownDependencies, ProgrammingEnvironment}
 import it.evadid.vm.conversion.expressionpython.PythonEntryPoint
 import it.evadid.vm.conversion.parsed.{ParsedExpression, ParsedFunctionKind, ParsedParameter, ParsedProgram, ParsedProgramBuilder, ParsedStatement, ParsedType}
 import it.evadid.vm.conversion.parsed.ParsedExpression as E
@@ -23,16 +22,16 @@ import it.evadid.vm.parsing.python.clean.model.PythonType.*
   * A `def main(): …` entry point called at the end is the main sequence, see [[PythonEntryPoint]].
   */
 object PythonToExpression {
-  private val builder = new ParsedProgramBuilder(Python)
-
-  def program(source: String): BeProgram = BeProgram(PythonEntryPoint.inline(BeStartProgram(builder.build(parse(source)).expression)))
+  /** The program, binding library calls to the libraries `environment` provides. */
+  def program(source: String, environment: ProgrammingEnvironment = ProgrammingEnvironment.all): BeProgram =
+    BeProgram(PythonEntryPoint.inline(BeStartProgram(ParsedProgramBuilder(Python, environment).build(parse(source)).expression)))
 
   /** The program with the definitions the builder bound, for analyses that need them. */
   final case class Details(definedClasses: List[BeDefineClass], definedFunctions: List[BeDefineFunction],
       definedVariables: List[BeDefineVariable], currentlyKnownStructures: SymbolTable.CurrentlyKnownStructures, codeExpression: BeSequence)
 
-  def parseWithDetails(source: String, knownStructures: Seq[KnownStructure] = SymbolTable.defaultKnownStructures): Details = {
-    val built = new ParsedProgramBuilder(Python, knownStructures).build(parse(source))
+  def parseWithDetails(source: String): Details = {
+    val built = ParsedProgramBuilder(Python).build(parse(source))
     val expression = PythonEntryPoint.inline(BeStartProgram(built.expression)).startSequence.getOrElse(built.expression)
     Details(built.context.definedClasses, built.context.definedFunctions, built.context.definedVariables,
       built.context.currentStructures, expression)

@@ -3,7 +3,7 @@ package it.evadid.vm.analysis
 import it.evadid.core.datastructures.language.AppLanguage.{Java, Python}
 import it.evadid.core.datastructures.vectorShapes.svg.TurtleCommand
 import it.evadid.vm.code.defining.{BeDependency, BeUnknownDependency}
-import it.evadid.vm.conversion.dependencies.{KnownDependencies, UnknownDependencies}
+import it.evadid.vm.conversion.dependencies.{KnownDependencies, ProgrammingEnvironment, UnknownDependencies}
 import it.evadid.vm.naming.BeEntityName
 import it.evadid.vm.code.errors.BeSourcePlaceholder
 import it.evadid.vm.simulation.turtle.TurtleExecutionStatus
@@ -47,14 +47,16 @@ object ProgramAnalysis {
 
   private def reason(error: Throwable): String = Option(error.getMessage).filter(_.nonEmpty).getOrElse(error.getClass.getSimpleName)
 
-  def of(state: ProgrammingState): ProgramAnalysis = {
-    val expression = Try(state.toBeExpression)
+  /** The analysis of `state` in an exercise providing `environment`'s libraries. */
+  def of(state: ProgrammingState, environment: ProgrammingEnvironment = ProgrammingEnvironment.all): ProgramAnalysis = {
+    val derivations = state.inEnvironment(environment)
+    val expression = Try(derivations.expression)
     val placeholders = expression.toOption.toSeq.flatMap(_.expression.subtree.collect { case value: BeSourcePlaceholder => value })
     val unsupported = placeholders.map(_.originalSource)
     val python = state match {
       case ProgrammingStateRaw(Python, code) => Right(code)
       case value: ProgrammingStatePythonStructured => Right(value.toString)
-      case other => Try(other.toPython.code).toEither.left.map(reason)
+      case _ => Try(derivations.python.code).toEither.left.map(reason)
     }
     val turtle = expression.flatMap(value => Try(value.turtleCommandExecutionInfo)).toEither.left.map(reason)
       .map(info => TurtleRun(info.executedTurtleCommandsInOrder, info.executionStatus))

@@ -1,5 +1,6 @@
 package it.evadid.homepage.workbook.htmlRenderer.interactionRenderer.steps
 
+import it.evadid.vm.conversion.dependencies.ProgrammingEnvironment
 import com.raquo.laminar.api.L.*
 import it.evadid.homepage.webElements.basic.LabelSelection
 import it.evadid.core.datastructures.geometry.Point
@@ -22,13 +23,13 @@ import scala.concurrent.duration.FiniteDuration
  * same JSXGraph board as the comparison panel: earlier strokes are drawn, the current step's strokes are
  * highlighted, later strokes stay faint (so the view keeps its bounds), and a marker shows the turtle.
  */
-final class TurtleStepPanel(state: Var[ProgrammingState], text: String => Signal[String],
+final class TurtleStepPanel(state: Var[ProgrammingState], text: String => Signal[String], environment: ProgrammingEnvironment,
     delay: FiniteDuration = DeferredRendering.defaultDelay, analyzer: ProgramAnalyzer = ProgramAnalyzer.shared) extends HtmlAppElement {
   private given ExecutionContext = ExecutionContext.global
 
   // The shared analysis worker runs the program once the answer has rested; step navigation stays immediate.
   private val rendering = new DeferredRendering[ProgrammingState, Either[String, ProgramAnalysis.TurtleRun]](
-    state.signal, value => analyzer.analyse(value).map(_.turtle), delay)
+    state.signal, value => analyzer.analyse(value, environment).map(_.turtle), delay)
 
   private val executions: Signal[Option[Either[String, ProgramAnalysis.TurtleRun]]] =
     rendering.result.map(_.map(_.toEither.left.map(error => Option(error.getMessage).getOrElse(error.getClass.getSimpleName)).flatten))

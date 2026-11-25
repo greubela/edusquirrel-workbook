@@ -1,5 +1,6 @@
 package it.evadid.homepage.webElements.code
 
+import it.evadid.vm.conversion.dependencies.ProgrammingEnvironment
 import it.evadid.vm.structure.JavaUmlDiagram
 import com.raquo.laminar.api.L.*
 import it.evadid.homepage.webElements.editor.code.ProgrammingStateView
@@ -37,13 +38,14 @@ final class JavaComponentEditor(
     appearance: Option[EditorAppearance] = None,
     editorConfig: CodeMirrorEditorConfig = CodeMirrorEditorConfig.Default,
     diagnostics: Signal[Seq[CodeMirrorEditor.Diagnostic]] = Val(Nil),
+    environment: ProgrammingEnvironment = ProgrammingEnvironment.all,
     analyzer: ProgramAnalyzer = ProgramAnalyzer.shared
 ) extends HtmlAppElement {
   import JavaComponentEditor.*
   import JavaEditorNavigation.{Mode, isFunction}
 
   private val classDiagram = state.signal.map(JavaUmlDiagram(_))
-  private val analysis = analyzer.statusOf(state.signal)
+  private val analysis = analyzer.statusOf(state.signal, environment)
   /** What the program uses without defining it, from the worker's analysis; the last result stays while the next is pending. */
   private val externalClasses = analysis.scanLeft(external(UmlClassDiagram(Nil), _))(external)
   /** Located warnings (unknown dependencies, unreadable statements), only while the analysis describes the current source. */
@@ -226,7 +228,8 @@ object JavaComponentEditor {
         case value @ ProgrammingStateRaw(Java, _) => value.toJavaStructured
       }(identity)
       new JavaComponentEditor(context.logger, structured, context.labels.java, context.loading,
-        appearance = Some(context.appearance), editorConfig = config, diagnostics = context.conversionDiagnostics)
+        appearance = Some(context.appearance), editorConfig = config, diagnostics = context.conversionDiagnostics,
+        environment = context.environment.programming)
     }
   }
 }

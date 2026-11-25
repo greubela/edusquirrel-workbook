@@ -1,5 +1,6 @@
 package it.evadid.homepage.workbook.htmlRenderer.interactionRenderer.turtleStitch
 
+import it.evadid.vm.conversion.dependencies.ProgrammingEnvironment
 import com.raquo.airstream.state.Var
 import com.raquo.laminar.api.L
 import com.raquo.laminar.api.L.*
@@ -22,7 +23,7 @@ import scala.util.{Failure, Try}
   * mounted view owns and reuses one JSXGraph board.
   */
 final case class CompareShapePreview(boundVar: Var[ProgrammingState], expected: TurtleGraphic, policy: TurtleDrawingPolicy,
-    delay: FiniteDuration = DeferredRendering.defaultDelay, analyzer: ProgramAnalyzer = ProgramAnalyzer.shared) extends HtmlAppElement {
+    environment: ProgrammingEnvironment, delay: FiniteDuration = DeferredRendering.defaultDelay, analyzer: ProgramAnalyzer = ProgramAnalyzer.shared) extends HtmlAppElement {
 
   private given ExecutionContext = ExecutionContext.global
 
@@ -31,7 +32,7 @@ final case class CompareShapePreview(boundVar: Var[ProgrammingState], expected: 
       commands => Try(TurtleDrawingGrading.assess(commands, expected, policy)))
 
   private lazy val rendering = new DeferredRendering[ProgrammingState, TurtleDrawingGrading.Assessment](boundVar.signal,
-    state => analyzer.analyse(state).flatMap(analysis => Future.fromTry(assessment(analysis))), delay)
+    state => analyzer.analyse(state, environment).flatMap(analysis => Future.fromTry(assessment(analysis))), delay)
 
   /** The last successful assessment stays drawn, each new one on a fresh board; a failure hides it behind its
     * message until the next success. */

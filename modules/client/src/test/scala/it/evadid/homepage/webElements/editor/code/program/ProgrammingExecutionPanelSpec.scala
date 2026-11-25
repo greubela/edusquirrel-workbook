@@ -23,12 +23,12 @@ class ProgrammingExecutionPanelSpec extends EditorDomSuite {
   private final class Fixture(python: RunPythonRequest => Future[RunPythonResult]) {
     val requests = ListBuffer.empty[RunPythonRequest]
     private val executor = ExecutionClient(Seq(
-      WorkerCommands.programAnalysis.toLocalExecutionClient((state, _) => Future(ProgramAnalysis.of(state))),
+      WorkerCommands.programAnalysis.toLocalExecutionClient((request, _) => Future(ProgramAnalysis.of(request.state, request.environment))),
       WorkerCommands.runPython.toLocalExecutionClient((request, _) => { requests += request; python(request) })))
     val analysisWorkers = LocalWorker.Factory(executor)
     val runWorkers = LocalWorker.Factory(executor)
     def panel(source: Signal[ProgrammingState]): Element =
-      ProgrammingExecutionPanel(source, labels, ProgramAnalyzer(SharedWorker(() => analysisWorkers())), () => ProgramRunner(() => runWorkers())).getDomElement()
+      ProgrammingExecutionPanel(source, it.evadid.vm.conversion.dependencies.ProgrammingEnvironment.all, labels, ProgramAnalyzer(SharedWorker(() => analysisWorkers())), () => ProgramRunner(() => runWorkers())).getDomElement()
   }
 
   /** Runs the converted Python on the shared interpreter, standing in for Pyodide's console. */

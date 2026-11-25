@@ -7,17 +7,21 @@ import it.evadid.homepage.webElements.editor.code.EvaEditor.{EvaEditor, EvaEdito
 import it.evadid.homepage.workbook.htmlRenderer.LaminarRenderHelper
 import it.evadid.workbook.abstractions.{LangMapContentIdType, RoleInWorkbook, TypeOfTextDisplay}
 import it.evadid.workbook.elements.displayElements.DisplayLangMapContent
+import it.evadid.workbook.elements.interactionElements.programming.ProgrammingExerciseEnvironment
 import it.evadid.workbook.elements.interactionElements.programming.state.ProgrammingState
 
-/** The single way workbook renderers create Eva: page logging, localized labels and the display language. */
+/** The single way workbook renderers create Eva: page logging, localized labels, the display language and the
+  * exercise's programming environment.
+  */
 object WorkbookEvaEditor {
-  def environment(fullInfo: FullInfo): EvaEditorEnvironment = EvaEditorEnvironment(
+  def environment(fullInfo: FullInfo, exercise: ProgrammingExerciseEnvironment): EvaEditorEnvironment = EvaEditorEnvironment(
     fullInfo.loggerSystemInfo.uiAndDomLogger,
     EvaEditorLabels.fromContent(LaminarRenderHelper.singleton.plaintextStringSignal),
-    fullInfo.signals.currentLanguage)
+    fullInfo.signals.currentLanguage,
+    exercise.environment)
 
-  def apply(fullInfo: FullInfo, answer: Var[ProgrammingState], config: EvaEditorConfig): EvaEditor =
-    EvaEditor(answer, Var(config), environment(fullInfo))
+  def apply(fullInfo: FullInfo, exercise: ProgrammingExerciseEnvironment, answer: Var[ProgrammingState], config: EvaEditorConfig): EvaEditor =
+    EvaEditor(answer, Var(config), environment(fullInfo, exercise))
 
   /** The exercise text shown in the editor's side panel. */
   def instruction(elementId: String, text: LanguageMapContentId): DisplayLangMapContent =

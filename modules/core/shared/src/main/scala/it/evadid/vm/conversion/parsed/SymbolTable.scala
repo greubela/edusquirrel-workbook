@@ -81,7 +81,12 @@ object SymbolTable {
       structures.foldLeft(empty)(_ + _)
   }
 
-  final class ParseContext(initialKnownStructures: CurrentlyKnownStructures, initialDeclaredNames: Set[String] = Set.empty, val currentClass: Option[BeDefineClass] = None) {
+  /** Binding scope of one block. Library calls bind only to the libraries `environment` provides; any other
+    * call binds like undefined code.
+    */
+  final class ParseContext(initialKnownStructures: CurrentlyKnownStructures, initialDeclaredNames: Set[String] = Set.empty,
+      val currentClass: Option[BeDefineClass] = None,
+      val environment: it.evadid.vm.conversion.dependencies.ProgrammingEnvironment = it.evadid.vm.conversion.dependencies.ProgrammingEnvironment.all) {
     private var currentlyKnownStructures: CurrentlyKnownStructures = initialKnownStructures
     private var scopes: List[mutable.LinkedHashMap[String, BeDefineVariable]] = {
       val baseScope = mutable.LinkedHashMap[String, BeDefineVariable]()
@@ -196,18 +201,24 @@ object SymbolTable {
     def resolveFunction(name: String, arity: Int): BeDefineFunction = {
       def definition(): BeDefineFunction = {
         val sourceBinding = hasSourceBinding(name)
-        val turtleMethod = if sourceBinding then None
-          else TurtleCommand.resolveTurtleMethod(name).orElse(it.evadid.vm.simulation.data.DataLibraries.resolveMethod(name))
+        def libraryMethod(written: String) =
+          TurtleCommand.resolveTurtleMethod(written).orElse(it.evadid.vm.simulation.data.DataLibraries.resolveMethod(written))
+        val turtleMethod = if sourceBinding then None else libraryMethod(name).filter(environment.provides)
         turtleMethod.map { method =>
           // Preserve the class signature while binding only the arguments supplied by this call.
           if arity < method.inputs.size then method.copy(inputs = method.inputs.take(arity)) else method
         }.getOrElse {
-          val canonical = if sourceBinding then None else KnownBeEntityNames.resolveCanonicalNames(name)
+          def intrinsicOf(canonical: BeEntityName) =
+            if canonical == KnownBeEntityNames.resolveSystemMethods("print").get then Some(it.evadid.vm.code.defining.BeIntrinsic.Print)
+            else if canonical == KnownBeEntityNames.resolveSystemMethods("print_to_err").get then Some(it.evadid.vm.code.defining.BeIntrinsic.PrintErr)
+            else None
+          // A canonical name of a library the environment does not provide stays the written, undefined name.
+          val canonical = (if sourceBinding then None else KnownBeEntityNames.resolveCanonicalNames(name))
+            .filter(canonical => intrinsicOf(canonical).forall(environment.provides) &&
+              libraryMethod(canonical.universalInterpretation()).forall(environment.provides))
           val params = (0 until arity).map(index => BeDefineVariable(BeEntityName.fromUniversalNameInParts(s"arg$index"), AnyType)).toList
           BeDefineFunction(params, None, BeSequence.optionalBody(Nil),
-            BeDefineFunction.functionInfo(canonical.getOrElse(BeEntityName.fromUniversalNameInParts(name))),
-            canonical.flatMap(name => if name == KnownBeEntityNames.resolveSystemMethods("print").get then Some(it.evadid.vm.code.defining.BeIntrinsic.Print)
-              else if name == KnownBeEntityNames.resolveSystemMethods("print_to_err").get then Some(it.evadid.vm.code.defining.BeIntrinsic.PrintErr) else None))
+            BeDefineFunction.functionInfo(canonical.getOrElse(BeEntityName.fromUniversalNameInParts(name))), canonical.flatMap(intrinsicOf))
         }
       }
       // A callable parameter/local shadows a cached builtin or turtle alias in this scope.

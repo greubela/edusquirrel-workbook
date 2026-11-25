@@ -4,6 +4,7 @@ import com.raquo.laminar.api.L.*
 import it.evadid.distribution.commandTypes.WorkerCommands
 import it.evadid.homepage.webElements.editor.code.worker.{SharedWorker, SharedWorkerCache}
 import it.evadid.vm.analysis.ProgramAnalysis
+import it.evadid.vm.conversion.dependencies.ProgrammingEnvironment
 import it.evadid.workbook.elements.interactionElements.programming.state.ProgrammingState
 
 import scala.concurrent.Future
@@ -17,14 +18,16 @@ import scala.util.{Failure, Success}
 final class ProgramAnalyzer(worker: SharedWorker) {
   import ProgramAnalyzer.Status
 
-  private val results = SharedWorkerCache(WorkerCommands.programAnalysis, identity[ProgrammingState], worker)
+  private val results = SharedWorkerCache(WorkerCommands.programAnalysis, identity[WorkerCommands.ProgramAnalysisRequest], worker)
 
-  def analyse(state: ProgrammingState): Future[ProgramAnalysis] = results(state)
+  /** The analysis of `state` in an exercise providing `environment`'s libraries. */
+  def analyse(state: ProgrammingState, environment: ProgrammingEnvironment): Future[ProgramAnalysis] =
+    results(WorkerCommands.ProgramAnalysisRequest(state, environment))
 
   /** The analysis of `source`'s current state; a result for an earlier state is never shown. */
-  def statusOf(source: Signal[ProgrammingState]): Signal[Status] =
+  def statusOf(source: Signal[ProgrammingState], environment: ProgrammingEnvironment): Signal[Status] =
     source.flatMapSwitch { state =>
-      val completed = analyse(state).transform(outcome => Success(outcome match {
+      val completed = analyse(state, environment).transform(outcome => Success(outcome match {
         case Success(analysis) => Status.Ready(analysis)
         case Failure(error) => Status.Failed(Option(error.getMessage).getOrElse(error.toString))
       }))

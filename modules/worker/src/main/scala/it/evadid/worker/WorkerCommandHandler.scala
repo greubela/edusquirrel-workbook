@@ -20,7 +20,7 @@ object WorkerCommandHandler {
       (document.root +: document.root.descendants).map(_.element).filter(_.tag == request.tag)
     }),
     flowchart.toLocalExecutionClient((request, _) => Future(FlowchartGutter.of(request.language, request.source))),
-    programAnalysis.toLocalExecutionClient((state, _) => Future(it.evadid.vm.analysis.ProgramAnalysis.of(state))),
+    programAnalysis.toLocalExecutionClient((request, _) => Future(it.evadid.vm.analysis.ProgramAnalysis.of(request.state, request.environment))),
     runPython.toLocalExecutionClient((request, logger) => PyodideCommandRuntime.run(request, logger)),
     javaExecutionEvidence.toLocalExecutionClient((request, _) =>
       JavaTurtleEvidenceJob.run(request, python => PyodideCommandRuntime.run(python, BasicLogger()))),

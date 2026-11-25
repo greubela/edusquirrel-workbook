@@ -1,5 +1,6 @@
 package it.evadid.homepage.webElements.editor.code.program
 
+import it.evadid.vm.conversion.dependencies.ProgrammingEnvironment
 import com.raquo.laminar.api.L.*
 import it.evadid.homepage.webElements.HtmlAppElement
 import it.evadid.homepage.webElements.editor.code.program.ProgramAnalyzer.Status
@@ -14,6 +15,7 @@ import scala.util.{Failure, Success}
   */
 final class ProgrammingExecutionPanel(
     source: Signal[ProgrammingState],
+    environment: ProgrammingEnvironment,
     labels: ProgrammingExecutionLabels,
     analyzer: ProgramAnalyzer = ProgramAnalyzer.shared,
     createRunner: () => ProgramRunner = () => ProgramRunner()
@@ -24,7 +26,7 @@ final class ProgrammingExecutionPanel(
     val runner = createRunner()
     val console = Var[Console](Console.Idle)
     val runs = Var(0)
-    val status = analyzer.statusOf(source)
+    val status = analyzer.statusOf(source, environment)
     /** The Python source to run, or why there is none. */
     val python: Signal[Option[Either[String, String]]] = status.map {
       case Status.Ready(analysis) => Some(analysis.python)

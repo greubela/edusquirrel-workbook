@@ -1,6 +1,7 @@
 package it.evadid.workbook.vm.parsing.python
 
 import it.evadid.core.datastructures.language.AppLanguage.{English, German, HumanLanguage, JavaScript, Python}
+import it.evadid.vm.conversion.parsed.SymbolTable
 import it.evadid.vm.conversion.parsed.SymbolTable.KnownStructure
 import it.evadid.core.datastructures.language.LanguageMap
 import it.evadid.core.datastructures.language.AppLanguage.*
@@ -835,28 +836,13 @@ class PythonParserSpec extends FunSuite {
     assertPythonEquivalentAllowingAdditionalTypeHints(expectedInner, renderedInner)
   }
 
-  test("merge initial known structures with parsed definitions") {
-    val leftParam = BeDefineVariable(BeEntityName.fromUniversalNameInParts("left"), BeDataType.AnyType)
-    val rightParam = BeDefineVariable(BeEntityName.fromUniversalNameInParts("right"), BeDataType.AnyType)
-    val resultParam = BeDefineVariable(BeEntityName.fromUniversalNameInParts("result"), BeDataType.AnyType)
-    val greaterOperator =
-      BeDefineFunction(
-        inputs = List(leftParam, rightParam),
-        outputs = Some(resultParam),
-        body = BeExpression.pass,
-        functionTypeInfo = BeDefineFunction.operatorInfo(">", 1)
-      )
-
-    val parsingResult = PythonToExpression.parseWithDetails(
-      """value = left > right""".stripMargin,
-      knownStructures = Seq(KnownStructure.Operator(">", greaterOperator))
-    )
-
+  test("merge the environment's known structures with parsed definitions") {
+    val parsingResult = PythonToExpression.parseWithDetails("""value = left > right""")
     val known = parsingResult.currentlyKnownStructures
-    assertEquals(known.operators.get(">" -> 2), Some(List(greaterOperator)))
-    assertEquals(known.functions.get(">"), Some(greaterOperator))
+    val greater = SymbolTable.defaultKnownStructures.collect { case KnownStructure.Operator(">", function) => function }
+    assertEquals(known.operators.get(">" -> 2).map(_.toSet), Some(greater.toSet))
     assert(known.variables.contains("value"))
-    assert(parsingResult.definedFunctions.contains(greaterOperator))
+    assert(greater.forall(function => parsingResult.definedFunctions.contains(function)))
   }
 
   test("parser initializes with default builtin function definitions") {

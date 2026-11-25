@@ -41,7 +41,7 @@ class TurtleJsxGraphRendererSpec extends FunSuite {
   }
 
   private def previewAssessment(state: ProgrammingState): Try[TurtleDrawingGrading.Assessment] =
-    CompareShapePreview(Var(state), TurtleGraphic.TurtleGraphicSvgString("M0,0 L12,0"), TurtleDrawingPolicy.Strokes)
+    CompareShapePreview(Var(state), TurtleGraphic.TurtleGraphicSvgString("M0,0 L12,0"), TurtleDrawingPolicy.Strokes, it.evadid.vm.conversion.dependencies.ProgrammingEnvironment.all)
       .assessment(it.evadid.vm.analysis.ProgramAnalysis.of(state))
 
   test("previews compare the analysed commands as graders compare the state") {

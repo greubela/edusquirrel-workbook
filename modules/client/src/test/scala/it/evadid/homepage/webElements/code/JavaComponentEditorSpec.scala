@@ -195,6 +195,18 @@ class JavaComponentEditorSpec extends UiDomSuite {
     }
   }
 
+  test("the exercise environment decides which libraries exist: an excluded turtle is an unknown class") {
+    import it.evadid.vm.conversion.dependencies.{ProgrammingEnvironment, ProgrammingLibrary}
+    val state = answer("public class Main {\n  public static void main(String[] args) {\n    Turtle.forward(10);\n  }\n}")
+    val component = new JavaComponentEditor(logger, state, labels, Val("Loading"),
+      environment = ProgrammingEnvironment.of(ProgrammingLibrary.System), analyzer = LocalWorker.analyzer())
+    mountedAsync(component.getDomElement()) { root =>
+      eventually(all(root, ".uml-class--unknown").nonEmpty, "the analysis marks the turtle unknown").map { _ =>
+        assertEquals(all(root, ".uml-class--unknown").map(_.querySelector(".uml-class__header").textContent), List("«unknown»Turtle"))
+      }
+    }
+  }
+
   test("a program without a single entry point starts in the full source") {
     val state = answer("class Main {\n  void draw() {}\n}")
     mounted(editor(state).getDomElement()) { root =>

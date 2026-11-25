@@ -11,7 +11,8 @@ import it.evadid.vm.code.others.BeReturn
 import it.evadid.vm.code.usage.{BeAssignMember, BeAssignVariable, BeCallTarget, BeCurrentInstance, BeFunctionCall, BeMemberAccess, BeUseValue}
 import it.evadid.vm.conversion.parsed.ParsedExpression as E
 import it.evadid.vm.conversion.parsed.ParsedStatement as S
-import it.evadid.vm.conversion.parsed.SymbolTable.{CurrentlyKnownStructures, KnownStructure, ParseContext}
+import it.evadid.vm.conversion.dependencies.ProgrammingEnvironment
+import it.evadid.vm.conversion.parsed.SymbolTable.{CurrentlyKnownStructures, ParseContext}
 import it.evadid.vm.conversion.parsed.SymbolTable
 import it.evadid.vm.naming.BeEntityName
 import it.evadid.vm.types.{BeDataType, BeDataValueLiteral, BeDataValueUnit, BeUseValueReference}
@@ -23,14 +24,13 @@ import it.evadid.vm.types.BeDataType.BeUnionAllowedTypes
   * names of the functions and classes it declares, so calls bind to user definitions before falling
   * back to known names such as turtle commands or `print`.
   */
-final class ParsedProgramBuilder(language: ProgrammingLanguage,
-    knownStructures: Seq[KnownStructure] = SymbolTable.defaultKnownStructures) {
+final class ParsedProgramBuilder(language: ProgrammingLanguage, environment: ProgrammingEnvironment = ProgrammingEnvironment.all) {
 
   final case class Result(expression: BeSequence, context: ParseContext)
 
   def build(source: ParsedProgram): Result = {
     val program = ParsedTypeInference.infer(source)
-    val context = new ParseContext(CurrentlyKnownStructures.fromKnown(knownStructures))
+    val context = new ParseContext(CurrentlyKnownStructures.fromKnown(environment.knownStructures), environment = environment)
     program.statements.collect { case definition: S.ClassDef => definition }.foreach { definition =>
       context.registerClass(definition.name, BeDefineClass(BeEntityName.fromCodeString(definition.name), Nil, Nil))
     }
@@ -126,7 +126,7 @@ final class ParsedProgramBuilder(language: ProgrammingLanguage,
 
   private def fields(definition: S.ClassDef, context: ParseContext): List[BeDefineVariable] =
     definition.fields.map { field =>
-      val fieldContext = new ParseContext(context.snapshotStructures, context.sourceCallableNames)
+      val fieldContext = new ParseContext(context.snapshotStructures, context.sourceCallableNames, environment = environment)
       field.assigned.toSeq.flatMap(_._2).foreach(parameter => fieldContext.defineVariable(parameter.name, dataType(parameter.typeHint)))
       val source = field.initial.orElse(field.assigned.map(_._1))
       lazy val value = source.map(expression(_, fieldContext))
@@ -146,11 +146,11 @@ final class ParsedProgramBuilder(language: ProgrammingLanguage,
   private def buildClass(definition: S.ClassDef, context: ParseContext): BeDefineClass = {
     val signatures = classSignatures(definition, context)
     val owner = signatures.copy(methods = Nil)
-    val classContext = new ParseContext(context.snapshotStructures, context.sourceCallableNames)
+    val classContext = new ParseContext(context.snapshotStructures, context.sourceCallableNames, environment = environment)
     classContext.registerClass(definition.name, signatures)
     val methods = definition.methods.map { method =>
       val methodContext = new ParseContext(classContext.snapshotStructures, context.sourceCallableNames,
-        Option.when(kind(method) != StaticMethod())(owner))
+        Option.when(kind(method) != StaticMethod())(owner), environment)
       method.parameters.foreach(parameter => methodContext.defineVariable(parameter.name, dataType(parameter.typeHint)))
       methodSignature(owner, method).copy(body = body(method.body, methodContext))
     }.toList

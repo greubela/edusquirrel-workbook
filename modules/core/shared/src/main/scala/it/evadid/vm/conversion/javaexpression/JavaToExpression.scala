@@ -6,7 +6,7 @@ import it.evadid.vm.code.errors.{BeExpressionUnparsable, BeExpressionUnsupported
 import it.evadid.vm.code.others.BeStartProgram
 import it.evadid.vm.code.tree.BeExpressionReference
 import it.evadid.vm.compilation.java.turtle.{JavaTurtleCompiler, JavaTurtleInputLimits, JavaTurtleProgram, JavaTurtleSourceParser}
-import it.evadid.vm.conversion.dependencies.KnownDependencies
+import it.evadid.vm.conversion.dependencies.{KnownDependencies, ProgrammingEnvironment}
 import it.evadid.vm.conversion.expressionjava.JavaSpelling
 import it.evadid.vm.conversion.parsed.{ParsedExpression, ParsedFunctionKind, ParsedParameter, ParsedProgram, ParsedProgramBuilder, ParsedStatement, ParsedType}
 import it.evadid.vm.conversion.parsed.ParsedExpression as E
@@ -24,7 +24,7 @@ import it.evadid.workbook.elements.interactionElements.programming.state.Program
   * variables and functions, and `main`'s body is the main sequence. Classes without an entry point are
   * object classes. Loose statements and methods outside any class are module code as well.
   */
-final class JavaToExpression(code: String) {
+final class JavaToExpression(code: String, environment: ProgrammingEnvironment = ProgrammingEnvironment.all) {
   // Library definitions are masked rather than removed, so reported positions match `code`.
   private lazy val parsed: JavaProgram = {
     JavaTurtleInputLimits.checkParserInput(code).fold(
@@ -65,12 +65,11 @@ final class JavaToExpression(code: String) {
     * reports them with their position ([[it.evadid.vm.conversion.ProgrammingStateDerivations]]).
     */
   def convert: ProgrammingStateBeExpression =
-    ProgrammingStateBeExpression(BeStartProgram(JavaToExpression.builder.build(JavaAstToParsed(parsed)).expression))
+    ProgrammingStateBeExpression(BeStartProgram(ParsedProgramBuilder(Java, environment).build(JavaAstToParsed(parsed)).expression))
 }
 
 object JavaToExpression {
   private val parser = new JavaParser(retainParentheses = false, retainComments = true)
-  private val builder = new ParsedProgramBuilder(Java)
 }
 
 /** Translates Java syntax into the language-neutral [[ParsedProgram]]. */

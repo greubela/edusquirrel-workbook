@@ -41,7 +41,7 @@ case object HtmlSortListExerciseRenderer extends LineBasedRenderingFactory[SortL
 
     def openEditor(): Unit = {
       val instruction = element.instructionText.map(WorkbookEvaEditor.instruction(element.elementId, _))
-      val editor = WorkbookEvaEditor(fullInfo, boundVar, EvaEditorConfig(enabledLanguages = element.allowedLanguages.toList,
+      val editor = WorkbookEvaEditor(fullInfo, element, boundVar, EvaEditorConfig(enabledLanguages = element.allowedLanguages.toList,
         snapConfig = SnapCodeEditorConfig.forPalette(ProgrammingEditorPalette.NumberList)))
       fullInfo.displayControl.setFullscreen(EditorWithWorkbookPanel(element, instruction, gradingReporter, List(stepsCard), editor))
     }

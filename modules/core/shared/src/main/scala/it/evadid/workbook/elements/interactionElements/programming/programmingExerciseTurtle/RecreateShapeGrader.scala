@@ -1,6 +1,7 @@
 package it.evadid.workbook.elements.interactionElements.programming.programmingExerciseTurtle
 
 
+import it.evadid.vm.conversion.dependencies.ProgrammingEnvironment
 import it.evadid.workbook.abstractions.FeedbackEntity
 import it.evadid.workbook.abstractions.FeedbackEntity.TestEntity
 import it.evadid.workbook.abstractions.grading.{GradingResult, *}
@@ -17,8 +18,11 @@ import upickle.default.*
 import scala.concurrent.Future
 
 case class RecreateShapeGrader(desiredResult: TurtleGraphic, override val importance: GradingImportance, testId: String = "shape",
-    comparisonPolicy: TurtleDrawingPolicy = TurtleDrawingPolicy.Strokes)
+    comparisonPolicy: TurtleDrawingPolicy = TurtleDrawingPolicy.Strokes,
+    /** The libraries the exercise provides; its exercise sets it ([[ProgrammingTestGrader.inEnvironment]]). */
+    environment: ProgrammingEnvironment = ProgrammingEnvironment.all)
   extends ProgrammingTestGrader derives ReadWriter {
+  override def inEnvironment(environment: ProgrammingEnvironment): RecreateShapeGrader = copy(environment = environment)
 
   require(testId != null && testId.nonEmpty && testId == testId.trim, "A programming test needs a nonempty ID.")
 
@@ -27,7 +31,7 @@ case class RecreateShapeGrader(desiredResult: TurtleGraphic, override val import
                                         contextInformation: ExecutionContextInformation
                                       ): Future[GradingResult[ProgrammingState, AdditionalProgrammingTestInfo]] = Future {
 
-    val comparison = state.toBeExpression.turtleComparison(desiredResult, comparisonPolicy)
+    val comparison = state.inEnvironment(environment).expression.turtleComparison(desiredResult, comparisonPolicy)
     GradingResult[ProgrammingState, AdditionalProgrammingTestInfo](this, state, comparison.gradingStatus)
   }(using contextInformation.futureExecutionContext)
 

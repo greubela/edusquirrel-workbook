@@ -35,7 +35,7 @@ object LocalWorker {
   /** A page analyzer whose worker runs the core [[it.evadid.vm.analysis.ProgramAnalysis]] locally. */
   def analyzer(): it.evadid.homepage.webElements.editor.code.program.ProgramAnalyzer = {
     val executor = ExecutionClient(Seq(it.evadid.distribution.commandTypes.WorkerCommands.programAnalysis
-      .toLocalExecutionClient((state, _) => scala.concurrent.Future(it.evadid.vm.analysis.ProgramAnalysis.of(state)))))
+      .toLocalExecutionClient((request, _) => scala.concurrent.Future(it.evadid.vm.analysis.ProgramAnalysis.of(request.state, request.environment)))))
     val workers = Factory(executor)
     it.evadid.homepage.webElements.editor.code.program.ProgramAnalyzer(SharedWorker(() => workers()))
   }

@@ -21,11 +21,27 @@ import scala.concurrent.{ExecutionContext, Future}
 import upickle.default.*
 import it.evadid.vm.naming.BeEntityName
 import it.evadid.vm.conversion.structured.{SourceStructure, StructuredProgramConversions}
+import it.evadid.vm.conversion.dependencies.ProgrammingEnvironment
 
 /** The source representation currently edited by a programming exercise. */
 sealed trait ProgrammingState {
+  /** Derivations where every library exists; see [[inEnvironment]]. */
   lazy val derivations: it.evadid.vm.conversion.ProgrammingStateDerivations =
-    new it.evadid.vm.conversion.ProgrammingStateDerivations(this)
+    new it.evadid.vm.conversion.ProgrammingStateDerivations(this, ProgrammingEnvironment.all)
+  private val environmentDerivations = AtomicReference(Map.empty[ProgrammingEnvironment, it.evadid.vm.conversion.ProgrammingStateDerivations])
+
+  /** Parsing, conversions and analyses of this state in an exercise providing `environment`'s libraries; calls into
+    * other libraries become its unknown dependency. Each environment's derivations are computed once per state.
+    */
+  def inEnvironment(environment: ProgrammingEnvironment): it.evadid.vm.conversion.ProgrammingStateDerivations =
+    if environment == ProgrammingEnvironment.all then derivations
+    else environmentDerivations.get().getOrElse(environment, environmentDerivations.synchronized {
+      environmentDerivations.get().getOrElse(environment, {
+        val created = new it.evadid.vm.conversion.ProgrammingStateDerivations(this, environment)
+        environmentDerivations.set(environmentDerivations.get().updated(environment, created))
+        created
+      })
+    })
   def convertToLanguage(language: it.evadid.core.datastructures.language.AppLanguage.ProgrammingLanguage): it.evadid.vm.conversion.ConversionResult = derivations.convertToLanguage(language)
   def toBeExpression: ProgrammingStateBeExpression = derivations.expression
   def toJava: ProgrammingStateRaw = derivations.java

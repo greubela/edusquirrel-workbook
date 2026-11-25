@@ -25,7 +25,7 @@ final case class EvaEditor(
   val appearance: EditorAppearance = EditorAppearance()
   private val typing = TypingDraftBinding(underlyingVar)
   private val draft = typing.draft
-  private val conversion = EvaConversionController(draft, typing.commit)
+  private val conversion = EvaConversionController(draft, typing.commit, environment.programming)
   private val context = EvaEditorContext(environment, appearance, conversion.marker)
 
   private def tabsFor(current: EvaEditorConfig): Seq[EvaEditorTab] =
@@ -70,7 +70,7 @@ final case class EvaEditor(
         case None => div(child.text <-- environment.labels.unavailable)
       }),
       // The console runs what was committed, never the keystrokes of an unfinished token.
-      ProgrammingExecutionPanel(underlyingVar.signal, environment.labels.execution).getDomElement()))
+      ProgrammingExecutionPanel(underlyingVar.signal, environment.programming, environment.labels.execution).getDomElement()))
 
   override def dismissOnOutsideClick: Boolean = false
 }

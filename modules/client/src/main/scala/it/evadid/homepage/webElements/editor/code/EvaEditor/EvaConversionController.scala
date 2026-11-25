@@ -1,5 +1,6 @@
 package it.evadid.homepage.webElements.editor.code.EvaEditor
 
+import it.evadid.vm.conversion.dependencies.ProgrammingEnvironment
 import com.raquo.laminar.api.L.*
 import it.evadid.core.datastructures.language.AppLanguage.ProgrammingLanguage
 import it.evadid.vm.conversion.ConversionResult
@@ -15,7 +16,7 @@ import scala.util.Try
   * focusing a tab prepares the switch a click then completes. A result is dropped when the draft changed, a newer
   * switch was requested or the editor was unmounted; a successful switch is passed to `commit`.
   */
-final class EvaConversionController(draft: Var[ProgrammingState], commit: ProgrammingState => Unit) {
+final class EvaConversionController(draft: Var[ProgrammingState], commit: ProgrammingState => Unit, environment: ProgrammingEnvironment) {
   import EvaConversionController.*
 
   private val checks = Var(Map.empty[ProgrammingLanguage, EvaConversionCheck])
@@ -69,7 +70,7 @@ final class EvaConversionController(draft: Var[ProgrammingState], commit: Progra
       case Some(PendingEditorConversion(`source`, result)) => result
       case Some(CompletedEditorConversion(`source`, result)) => Future.successful(result)
       case _ =>
-        val result = Future(Try(tab.convert(source)).fold(error => ConversionResult.failed(source, error), identity))
+        val result = Future(Try(tab.convert(source, environment)).fold(error => ConversionResult.failed(source, error), identity))
         val pending = PendingEditorConversion(source, result)
         checks.update(_.updated(tab.language, pending))
         result.foreach { outcome =>

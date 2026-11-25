@@ -12,7 +12,7 @@ object EvaTestContext {
   private val logger = Logger.withNameAndPrefixes(Some("eva-spec"), PrintToStdLogger.printNothing)
 
   def environment(labels: EvaEditorLabels = EvaEditorLabels.fromContent(_ => Val("_"))): EvaEditorEnvironment =
-    EvaEditorEnvironment(logger, labels, Val(English))
+    EvaEditorEnvironment(logger, labels, Val(English), it.evadid.vm.conversion.dependencies.ProgrammingEnvironment.all)
 
   def apply(labels: EvaEditorLabels = EvaEditorLabels.fromContent(_ => Val("_")),
       marker: Signal[Option[EvaConversionFailure]] = Val(None)): EvaEditorContext =

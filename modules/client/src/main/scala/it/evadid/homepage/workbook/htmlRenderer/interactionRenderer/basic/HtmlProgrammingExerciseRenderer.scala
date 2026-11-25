@@ -31,7 +31,7 @@ case object HtmlProgrammingExerciseRenderer extends LineBasedRenderingFactory[Pr
 
     val gradingReporter = fullInfo.signals.reportersFor(workbookElement).grading
 
-    def editor = WorkbookEvaEditor(fullInfo, boundVar, EvaEditorConfig(snapConfig = editorConfig))
+    def editor = WorkbookEvaEditor(fullInfo, workbookElement, boundVar, EvaEditorConfig(snapConfig = editorConfig))
 
     def buttonPressed(): Unit = {
       val wrappedEditor = EditorWithWorkbookPanel(workbookElement, None, gradingReporter, List(), editor)
@@ -51,13 +51,13 @@ case object HtmlProgrammingExerciseRenderer extends LineBasedRenderingFactory[Pr
     )
     val staticRendering = ElementCard(
       LanguageMapContentId("basic/staticPreviewProgram"),
-      Try(SvgLaminarRenderer.render(shapeLogger, VmToSvg.renderBeExpression(shapeLogger, boundVar.now().toBeExpression.expression)))
+      Try(SvgLaminarRenderer.render(shapeLogger, VmToSvg.renderBeExpression(shapeLogger, boundVar.now().inEnvironment(workbookElement.environment).expression.expression)))
         .getOrElse(div(child.text <-- laminarHelper.plaintextStringSignal(LanguageMapContentId("basic/gradingError"))))
     )
 
     // Drawings are static: the worker derives them from the shared BeExpression for every language.
     val runCard = ElementCard(LanguageMapContentId("basic/turtleOutput"),
-      StaticTurtleDrawing(boundVar.signal).getDomElement())
+      StaticTurtleDrawing(boundVar.signal, workbookElement.environment).getDomElement())
 
     AtomarLineRendering.cardLine(workbookElement,
       List(buttonCard, canvasCard, staticRendering, runCard))
