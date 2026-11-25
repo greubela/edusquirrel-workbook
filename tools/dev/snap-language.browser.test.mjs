@@ -20,10 +20,28 @@ test('test workbook preserves edits across human languages, programming language
       window.snapHistoryWrites = [];
       const put = IDBObjectStore.prototype.put;
       IDBObjectStore.prototype.put = function(value,...args) {
-        if (this.name === 'variableHistoryStore') {
-          snapHistoryWrites.push(value.value);
+        const request = put.call(this,value,...args);
+        if (this.name === 'variableHistoryStore' &&
+            JSON.parse(value.id).keyForSerialisation === 'turtle-recreate-1_history') {
+          const saved = value.value;
+          this.transaction.addEventListener('complete', () => snapHistoryWrites.push(saved));
         }
-        return put.call(this,value,...args);
+        return request;
+      };
+      window.snapAnswerEvents = () => {
+        const saved = snapHistoryWrites.at(-1);
+        return saved ? JSON.parse(JSON.parse(saved).historyJson).events.values
+          .filter(event => event.$type === 'AnswerChangedEvent') : [];
+      };
+      window.snapSavedForward = value => {
+        function containsForward(node) {
+          if (!node || typeof node !== 'object') return false;
+          if (node.tag === 'block' && node.attributes?.some(a => a.name === 's' && a.rawValue === 'forward') &&
+              node.children?.some(child => child.element?.tag === 'l' &&
+                child.element.children?.some(text => text.raw === String(value)))) return true;
+          return Object.values(node).some(containsForward);
+        }
+        return snapAnswerEvents().some(event => event.newState?.$type === 'SnapModel' && containsForward(event.newState));
       };
     });
     const localeRequests = [];
@@ -109,8 +127,9 @@ test('test workbook preserves edits across human languages, programming language
     await page.locator('dialog[open] .grading-info-line').getByRole('button', {name: 'Prüfen', exact: true}).click();
     await page.waitForFunction(() => [...document.querySelectorAll('dialog[open] .feedback-date')]
       .some(time => /\d{4}-\d{2}-\d{2}/.test(time.getAttribute('title') ?? '')));
-    await page.waitForTimeout(750); // include the periodic native snapshot in the baseline
+    await page.waitForFunction(() => snapAnswerEvents().some(event => event.newState?.$type === 'SnapModel'));
     const historyBeforeLanguage = await page.evaluate(() => snapHistoryWrites.length);
+    const answersBeforeLanguage = await page.evaluate(() => snapAnswerEvents().map(event => event.eventId).sort());
     const source = await page.evaluate(() => {
       window.germanIde = snapLanguageEditor;
       window.germanWorld = snapLanguageWorld;
@@ -134,7 +153,8 @@ test('test workbook preserves edits across human languages, programming language
     assert(await page.evaluate(() => snapExportLanguages.length > 0 && snapExportLanguages.every(language => language === 'en')), 'all project exports use English, including native language refresh');
     assert.equal(await page.evaluate(() => SnapTranslator.language), 'de', 'exports restore the display language');
     await page.waitForTimeout(750);
-    assert.equal(await page.evaluate(() => snapHistoryWrites.length), historyBeforeLanguage, 'language-only refresh creates no answer history');
+    assert.deepEqual(await page.evaluate(() => snapAnswerEvents().map(event => event.eventId).sort()),
+      answersBeforeLanguage, 'language-only refresh creates no answer history');
     async function editForward(value, commit = true) {
       const point = await page.evaluate(() => {
         const slot = snapLanguageEditor.currentSprite.scripts.allChildren().find(m => m.selector === 'forward').inputs()[0];
@@ -150,16 +170,33 @@ test('test workbook preserves edits across human languages, programming language
       await page.waitForFunction(value => snapLanguageEditor.currentSprite.scripts.allChildren()
         .some(m => m.selector === 'forward' && Number(m.inputs()[0].evaluate()) === value), value);
     }
-    await editForward(42);
-    // The store records every interaction; other exercises on the page may write too.
-    const snapWrite = count => snapHistoryWrites.slice(count)
-      .findLast(value => /"format":"(ProgrammingExercise|TurtleRecreateShapeInteraction|SortListExercise)/.test(String(value)));
-    await page.waitForFunction(snapWrite, historyBeforeLanguage).catch(async error => {
+    await editForward(42, false);
+    // CI can save another exercise while the Snap input is still pending.
+    await page.evaluate(() => new Promise((resolve, reject) => {
+      const open = indexedDB.open('EvaDidInteractionDB');
+      open.onerror = () => reject(open.error);
+      open.onsuccess = () => {
+        const db = open.result;
+        const transaction = db.transaction('variableHistoryStore', 'readwrite');
+        transaction.objectStore('variableHistoryStore').put({
+          id: JSON.stringify({programId:'edusquirrel', scenarioId:'workbookTest', userId:'probe',
+            keyForSerialisation:'unrelated-exercise_history'}),
+          value: JSON.stringify({format:'TextInputWithLlmGradingAndScaffoldingFormat',
+            historyJson:JSON.stringify({events:{values:[]}})})
+        });
+        transaction.oncomplete = () => { db.close(); resolve(); };
+        transaction.onabort = () => { db.close(); reject(transaction.error); };
+      };
+    }));
+    assert.equal(await page.evaluate(() => snapSavedForward(42)), false,
+      'an unrelated committed write does not satisfy the pending Snap save');
+    await page.keyboard.press('Enter');
+    await page.waitForFunction(() => snapSavedForward(42)).catch(async error => {
       const written = await page.evaluate(count => snapHistoryWrites.slice(count)
         .map(value => String(value).replace(/data:image[^"]*/g, 'data:image…').slice(0, 400)), historyBeforeLanguage);
-      throw new Error(`the Snap edit was not persisted; writes since the language checks: ${JSON.stringify(written)}`, {cause: error});
+      throw new Error(`the Snap edit was not persisted; target writes: ${JSON.stringify(written)}`, {cause: error});
     });
-    const persisted = await page.evaluate(snapWrite, historyBeforeLanguage);
+    const persisted = await page.evaluate(() => snapHistoryWrites.at(-1));
     assert(persisted.includes('SnapModel'), 'native edits persist a typed model');
     assert(!persisted.includes('data:image/png;base64,'), 'generated previews are absent from database history');
     // A language switch must also flush a numeric field still being edited.
