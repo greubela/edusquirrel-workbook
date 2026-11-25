@@ -156,6 +156,39 @@ class JavaComponentEditorSpec extends UiDomSuite {
     }
   }
 
+  test("attributes and constructors are added to the chosen class; deletions preserve the other members") {
+    val state = answer()
+    mountedAsync(editor(state).getDomElement()) { root =>
+      def box = all(root, ".uml-class").find(_.querySelector(".uml-class__header").textContent == "Helper").get
+      def dialog = one(root, "dialog")
+      def input(caption: String) = withText(dialog, "label", caption).map(one(_, "input")).head
+      click(buttonNamed(box, "New attribute"))
+      typeInto(input("Attribute name"), "count")
+      typeInto(input("Initial value"), "5")
+      click(buttonNamed(dialog, "New attribute"))
+      assert(classCode(state, "Helper").contains("private int count = 5;"))
+      assertEquals(classCode(state, "Main"), mainClass)
+      click(buttonNamed(box, "New constructor"))
+      typeInto(input("Parameters"), "int count")
+      click(buttonNamed(dialog, "New constructor"))
+      assert(classCode(state, "Helper").contains("this.count = count;"))
+      assertEquals(heading(root), "Helper.Helper")
+      click(buttonNamed(box, "Delete"))
+      assert(!classCode(state, "Helper").contains("this.count = count;"))
+      assert(classCode(state, "Helper").contains("void other()"))
+      click(entry(root, "-count: int"))
+      assertEquals(valueOf(input("Initial value")), "5")
+      typeInto(input("Initial value"), "7")
+      click(buttonNamed(dialog, "Edit attribute"))
+      assert(classCode(state, "Helper").contains("private int count = 7;"))
+      click(entry(root, "-count: int"))
+      click(buttonNamed(dialog, "Delete"))
+      assert(!classCode(state, "Helper").contains("int count"))
+      assert(classCode(state, "Helper").contains("int size = 3;"))
+      Future.unit
+    }
+  }
+
   test("outside changes refresh the open method; a removed selection shows the placeholder") {
     val state = answer()
     mounted(editor(state).getDomElement()) { root =>
@@ -188,7 +221,7 @@ class JavaComponentEditorSpec extends UiDomSuite {
         val warnings = component.warnings.observe(using owner)
         eventually(warnings.now().nonEmpty, "the analysis locates the unknown use").map { _ =>
           assertEquals(warnings.now().map(mark => (mark.line, mark.fromCh, mark.toCh, mark.severity, mark.message)),
-            Seq((4, Some(4), Some(20), "warning", english("javaunknownuse").replace("{name}", "Score.board.show"))))
+            Seq((4, Some(4), Some(20), "warning", english("sourceunknownuse").replace("{name}", "Score.board.show"))))
           owner.killSubscriptions()
         }
       }

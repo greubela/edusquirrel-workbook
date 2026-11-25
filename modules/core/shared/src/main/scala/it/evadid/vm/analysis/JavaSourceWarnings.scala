@@ -5,13 +5,13 @@ import it.evadid.vm.parsing.source.JavaSource
 import it.evadid.vm.parsing.java.clean.model.JavaAST
 import it.evadid.vm.parsing.java.clean.model.JavaAST.*
 
-/** Locates uses of unknown dependencies and unreadable statements with the ranges of the Java syntax tree (step 2 of
-  * [[it.evadid.vm.parsing.source.SourceParsing]]); Python's syntax tree does not locate expressions yet.
+/** Locates uses of unknown dependencies and unreadable statements with the ranges of the syntax tree and adapter (steps 2–3 of
+  * [[it.evadid.vm.parsing.source.SourceParsing]]).
   */
 object JavaSourceWarnings {
   /** The uses of the dotted `paths` (unknown calls and attributes) and the unreadable statements of `source`. */
-  def of(source: JavaSource, paths: Set[Seq[String]]): Seq[SourceWarning] =
-    source.syntax.toOption.toSeq.flatMap { syntax =>
+  def of(source: JavaSource, paths: Set[Seq[String]]): Seq[SourceWarning] = {
+    val syntaxWarnings = source.syntax.toOption.toSeq.flatMap { syntax =>
       val located = syntax.sourceMap
       def warning(kind: SourceWarning.Kind, subject: String, range: JavaSourceMap.SourceRange) = for {
         start <- located.position(range.start)
@@ -27,6 +27,15 @@ object JavaSourceWarnings {
       }
       visit(located.root)
     }
+    val adapterWarnings = source.neutral.fold(error => error.error.span.toSeq.map(span =>
+      ParsedSourceWarnings.at(source.source, SourceWarning.Kind.Unsupported,
+        span.text(source.source).trim.linesIterator.nextOption().getOrElse(""), span)), ParsedSourceWarnings.of(source.source, _))
+    val failures = source.syntax.swap.toOption.toSeq.map { failure =>
+      ParsedSourceWarnings.at(source.source, SourceWarning.Kind.Unreadable, failure.message,
+        it.evadid.vm.parsing.source.SourceLines(source.source).span(failure.offset, (failure.offset + 1).min(source.source.length)))
+    }
+    (syntaxWarnings ++ adapterWarnings ++ failures).distinct
+  }
 
   /** The used path of a call (its callee), an assignment (its target) or an attribute read, with the rest to visit. */
   private def useOf(node: JavaSourceMap.Node[JavaAST]): Option[(Seq[String], JavaSourceMap.SourceRange, Seq[JavaSourceMap.Node[JavaAST]])] = {

@@ -24,18 +24,14 @@ import it.evadid.vm.parsing.python.clean.model.PythonType.*
 object PythonToExpression {
   /** The definitions the builder bound, for analyses that need them. */
   final case class Details(definedClasses: List[BeDefineClass], definedFunctions: List[BeDefineFunction],
-      definedVariables: List[BeDefineVariable], currentlyKnownStructures: SymbolTable.CurrentlyKnownStructures, codeExpression: BeSequence)
+      definedVariables: List[BeDefineVariable], currentlyKnownStructures: SymbolTable.CurrentlyKnownStructures, codeExpression: BeSequence,
+      sourceFunctions: Map[it.evadid.vm.parsing.source.SourceSpan, BeDefineFunction])
 
   /** The language-neutral program of the step-2 syntax tree; an unreadable source stays one unparsable statement. */
   def neutral(structured: PythonSourceStructured, syntax: Either[SyntaxFailure, PythonSyntax]): ParsedProgram =
-    syntax.fold(
-      failure => ParsedProgram(if structured.masked.trim.isEmpty then Nil
-        else Seq(S.Unsupported(structured.masked.trim, failure.message, unparsable = true))),
-      tree => {
-        val statements = tree.program.statements.map(_.statement).flatMap(withoutMainGuard)
-        given ProgramNames = ProgramNames(statements.flatMap(usedNames).toSet, assignedNames(statements))
-        ParsedProgram(this.statements(statements))
-      })
+    syntax.fold(failure => ParsedProgram(Seq(S.Unsupported(structured.source.trim, failure.message, true,
+      Some(it.evadid.vm.parsing.source.SourceLines(structured.source).span(failure.offset,
+        (failure.offset + 1).min(structured.source.length)))))), tree => new PythonAstToParsed(tree).apply())
 
   /** Step 3 for Python ([[it.evadid.vm.parsing.source.SourceParsing]]): the program of the step-2 syntax tree, binding
     * library calls to the libraries `environment` provides. An unreadable source stays one unparsable statement.
@@ -43,8 +39,23 @@ object PythonToExpression {
   def convert(neutral: ParsedProgram, environment: ProgrammingEnvironment): (BeProgram, Details) = {
     val built = ParsedProgramBuilder(Python, environment).build(neutral)
     val start = PythonEntryPoint.inline(BeStartProgram(built.expression))
+    val live = start.subtree.collect { case function: BeDefineFunction =>
+      it.evadid.vm.parsing.source.SourceIdentity(function) }.toSet
     (BeProgram(start), Details(built.context.definedClasses, built.context.definedFunctions, built.context.definedVariables,
-      built.context.currentStructures, start.startSequence.getOrElse(built.expression)))
+      built.context.currentStructures, start.startSequence.getOrElse(built.expression),
+      built.sourceFunctions.filter((_, definition) => live(it.evadid.vm.parsing.source.SourceIdentity(definition)))))
+  }
+
+ }
+
+private final class PythonAstToParsed(syntax: PythonSyntax) {
+  private def origin(node: it.evadid.vm.parsing.python.clean.model.PyAST) = syntax.sourceMap.rangeOf(node)
+
+  def apply(): ParsedProgram = {
+    val statements = syntax.program.statements.map(_.statement).flatMap(withoutMainGuard)
+    given ProgramNames = ProgramNames(statements.flatMap(usedNames).toSet, assignedNames(statements),
+      statements.collect { case definition: PyClassDef => definition.name }.toSet)
+    ParsedProgram(this.statements(statements))
   }
 
   /** `if __name__ == "__main__":` holds whenever the program runs, so its body runs as module
@@ -65,7 +76,14 @@ object PythonToExpression {
 
   private def statements(values: Seq[PyStatement])(using ProgramNames): Seq[ParsedStatement] = values.flatMap(statement)
 
-  private def statement(value: PyStatement)(using ProgramNames): Seq[ParsedStatement] = value match {
+  private def statement(value: PyStatement)(using ProgramNames): Seq[ParsedStatement] =
+    statementValue(value).map {
+      case function: S.FunctionDef => function.copy(origin = origin(value))
+      case unsupported: S.Unsupported => unsupported.copy(origin = unsupported.origin.orElse(origin(value)))
+      case other => other
+    }
+
+  private def statementValue(value: PyStatement)(using ProgramNames): Seq[ParsedStatement] = value match {
     case PyEmptyStatement => Nil
     case PyPassStatement => Seq(S.Pass)
     case PyCommentStatement(text) => Seq(S.Comment(text))
@@ -82,6 +100,7 @@ object PythonToExpression {
     case loop: PyForStatement => forLoop(loop)
     case definition: PyFunctionDef =>
       if definition.decorators.nonEmpty || definition.isAsync then Seq(S.Unsupported(definition.source, "Decorators are not supported outside classes", unparsable = false))
+      else if hasDefaultValues(definition) then Seq(defaultValuesUnsupported(definition))
       else {
         val parsedParameters = parameters(definition.parameters)
         Seq(S.FunctionDef(definition.name, parsedParameters, definition.returnType.map(parsedType),
@@ -89,6 +108,8 @@ object PythonToExpression {
       }
     case definition: PyClassDef => Seq(classDef(definition))
     case statement: PyTryStatement => Seq(S.Unsupported(statement.source, "try/except statements are currently unsupported", unparsable = false))
+    case PySimpleAssignment(_, Some(value)) if turtleObject(value).nonEmpty => Seq(turtleObjectUnsupported(value))
+    case value: PyExpression if turtleObject(value).nonEmpty => Seq(turtleObjectUnsupported(value))
     case PySimpleAssignment(target, Some(value)) => Seq(assign(target, expression(value)))
     case PySimpleAssignment(target, None) if target.locationString.isEmpty =>
       Seq(S.Declare(target.identifier, target.typeHint.map(parsedType).getOrElse(ParsedType.AnyValue)))
@@ -122,13 +143,51 @@ object PythonToExpression {
     case PySimpleAssignment(target, _) => ParsedParameter(target.identifier, target.typeHint.map(parsedType))
   }
 
-  /** Names the program uses anywhere except as `for` targets. A loop counter outside this set is
-    * never read, so its loop can be a fixed repetition even though Python keeps the counter after it.
+  /** Java and Snap have no default parameter values, so dropping them would change calls that omit them. */
+  private def hasDefaultValues(definition: PyFunctionDef): Boolean =
+    definition.parameters.exists { case PySimpleAssignment(_, Some(_)) => true; case _ => false }
+
+  private def defaultValuesUnsupported(definition: PyFunctionDef): ParsedStatement =
+    S.Unsupported(s"def ${definition.name}(", s"Default parameter values in ${definition.name} are not supported; pass every value in the call", unparsable = false)
+
+  /** `turtle.Turtle()` and `turtle.Screen()` create objects the shared turtle commands cannot address. */
+  private def turtleObject(value: PyExpression)(using program: ProgramNames): Option[String] = {
+    val callee = value match {
+      case PyFunctionCall(target, _) => Some(target.locationString :+ target.identifier)
+      case PyCallExpression(target, _) => names(target)
+      case _ => None
+    }
+    callee.filter {
+      case Seq("turtle", "Turtle" | "Screen") => true
+      case Seq(name @ ("Turtle" | "Screen")) => !program.classes(name)
+      case _ => false
+    }.map(_.mkString("."))
+  }
+
+  private def turtleObjectUnsupported(value: PyExpression)(using ProgramNames): ParsedStatement = {
+    val callee = value match {
+      case PyFunctionCall(target, _) => target
+      case PyCallExpression(target, _) => target
+      case _ => value
+    }
+    S.Unsupported(s"${turtleObject(value).get}(",
+      "Turtle objects are not supported; use import turtle and call turtle.forward(...) and the other commands directly",
+      unparsable = false, origin = origin(callee))
+  }
+
+  /** Names the program reads outside the `for` loops that count with them. A loop counter outside this
+    * set is read at most inside its own loops, so a loop whose body does not read it can be a fixed
+    * repetition even though Python keeps the counter after it.
     */
-  private final case class ProgramNames(names: Set[String], moduleAssigned: Set[String] = Set.empty)
+  private final case class ProgramNames(names: Set[String], moduleAssigned: Set[String] = Set.empty, classes: Set[String] = Set.empty)
+
+  private def counterName(loop: PyForStatement): Option[String] = loop.elementExpression match {
+    case PyTarget(name, Nil, None, _) => Some(name)
+    case _ => None
+  }
 
   private def usedNames(node: GenericAST): Set[String] = node match {
-    case loop: PyForStatement => loop.getChildren().filterNot(_ eq loop.elementExpression).flatMap(usedNames).toSet
+    case loop: PyForStatement => loop.getChildren().filterNot(_ eq loop.elementExpression).flatMap(usedNames).toSet -- counterName(loop)
     case target: PyTarget => target.getChildren().flatMap(usedNames).toSet + target.locationString.headOption.getOrElse(target.identifier)
     case other => other.getChildren().flatMap(usedNames).toSet
   }
@@ -162,7 +221,7 @@ object PythonToExpression {
     val hidden = (assignedNames(statements) -- declaredGlobals(statements) -- parameters.map(_.name)).intersect(names.moduleAssigned)
     hidden.toSeq.sorted.headOption.map(name => S.Unsupported(s"def ${definition.name}(",
       s"In ${definition.name}, assigning $name makes it a local variable that hides the module variable $name. " +
-        s"Declare global $name to change the module variable, or rename the local variable", unparsable = false))
+        s"Declare global $name to change the module variable, or rename the local variable", unparsable = false, origin = origin(definition)))
   }
 
   /** `for counter in range(…)` with whole-number steps, see [[ParsedStatement.countingLoop]]. */
@@ -171,10 +230,16 @@ object PythonToExpression {
     case (PyTarget(name, Nil, None, _), PyFunctionCall(PyTarget("range", Nil, None, _), arguments)) if arguments.size >= 1 && arguments.size <= 3 =>
       val (start, stop) = if arguments.size == 1 then (E.Literal("0"), expression(arguments.head)) else (expression(arguments.head), expression(arguments(1)))
       val body = block(loop.bodyBlock)
+      // range(...) is evaluated once in Python, while the counting loops of Java compare against the bound on each pass.
+      val changedBound = arguments.flatMap(usedNames).distinct.sorted.find(assigns(loop.bodyBlock, _))
       arguments.lift(2).fold(Some(1))(step => E.wholeNumber(expression(step))) match {
         case _ if assigns(loop.bodyBlock, name) =>
           Seq(S.Unsupported(s"for $name in range(...)", s"Assigning the loop counter $name inside its loop is not supported", unparsable = false))
-        case Some(step) if step != 0 => S.countingLoop(name, start, stop, step, body, counterObserved = used.names(name))
+        case _ if changedBound.nonEmpty =>
+          Seq(S.Unsupported(s"for $name in range(", s"Assigning ${changedBound.get} inside the loop that uses it in range(...) is not supported; " +
+            "store the bound in another variable before the loop", unparsable = false))
+        case Some(step) if step != 0 =>
+          S.countingLoop(name, start, stop, step, body, counterObserved = used.names(name) || usedNames(loop.bodyBlock)(name))
         case _ => Seq(S.Unsupported("for ... in range(...)", "The step of range(...) must be a nonzero whole number", unparsable = false))
       }
     case _ => Seq(S.Unsupported("for ...", "For statements must use range(...)", unparsable = true))
@@ -200,6 +265,7 @@ object PythonToExpression {
     if definition.parameters.nonEmpty then unsupported("Inheritance")
     else if members.size != methods.size + classFields.size || methods.exists(method => method.decorators.exists(_ != "staticmethod") || method.isAsync) then
       unsupported("Class-body statements or decorators")
+    else if methods.exists(hasDefaultValues) then defaultValuesUnsupported(methods.find(hasDefaultValues).get)
     else {
       val parsedMethods = methods.map { method =>
         val kind = if method.decorators.contains("staticmethod") then ParsedFunctionKind.StaticMethod
@@ -208,7 +274,7 @@ object PythonToExpression {
         if kind != ParsedFunctionKind.StaticMethod then
           require(all.headOption.exists(_.name == "self"), s"Method '${definition.name}.${method.name}' requires an explicit self parameter.")
         val explicit = if kind == ParsedFunctionKind.StaticMethod then all else all.tail
-        S.FunctionDef(method.name, explicit, method.returnType.map(parsedType), block(method.block), kind)
+        S.FunctionDef(method.name, explicit, method.returnType.map(parsedType), block(method.block), kind, origin(method))
       }
       val instanceFields = methods.zip(parsedMethods).flatMap { (method, parsed) => selfAssignments(method.block.statements).map { assignment =>
         S.Field(assignment.target.identifier, assignment.target.typeHint.map(parsedType), None,
@@ -229,7 +295,12 @@ object PythonToExpression {
 
   // Expressions
 
-  private def expression(value: PyExpression): ParsedExpression = value match {
+  private def expression(value: PyExpression): ParsedExpression = expressionValue(value) match {
+    case unsupported: E.Unsupported => unsupported.copy(origin = unsupported.origin.orElse(origin(value)))
+    case other => other
+  }
+
+  private def expressionValue(value: PyExpression): ParsedExpression = value match {
     case PythonLiteral(_, _: PYTHON_NONE) => E.NoneValue
     case PythonLiteral(raw, _: (PYTHON_LIST[?] | PYTHON_SET[?] | PYTHON_DICT[?, ?] | PYTHON_ARRAY[?])) => E.Unsupported(raw)
     case PythonLiteral(raw, _) => E.Literal(raw)

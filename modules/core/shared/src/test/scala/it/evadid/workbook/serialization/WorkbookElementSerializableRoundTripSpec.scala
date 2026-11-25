@@ -12,6 +12,7 @@ import it.evadid.workbook.elements.interactionElements.basic.LabeledNumberIntera
 import it.evadid.workbook.elements.interactionElements.codeTaskToggle.{AdvancedCodeRequirement, CodeTaskToggleInteraction, SketchDownloadInteraction}
 import it.evadid.workbook.elements.interactionElements.gpt.{GptInteractionElement, TextInputWithScaffoldingAndGrading}
 import it.evadid.workbook.elements.interactionElements.reorderExercise.ReorderInteraction
+import it.evadid.workbook.elements.interactionElements.matching.{LikertScaleInteraction, MatchingInteraction}
 import it.evadid.workbook.elements.interactionElements.sorting.sortingExercise.{SortingInteraction, SortingItem}
 import it.evadid.workbook.elements.interactionElements.sorting.sortingReasonExercise.{SortingReasonInteraction, SortingReasonItem}
 import it.evadid.workbook.jsonFactory.{WorkbookElementFactory, WorkbookElementSerializable}
@@ -118,6 +119,11 @@ class WorkbookElementSerializableRoundTripSpec extends FunSuite {
       CollapsibleInstructionElement("collapsible-1", content("hint/title"), content("hint/body"), initiallyCollapsed = false),
       reorder,
       ReorderInteraction.ReorderMapIdInteraction("reorder-map-1", List(content("line/one"), content("line/two")), 9),
+      MatchingInteraction("matching-1", Some(content("matching/task")), List(content("left/one"), content("left/two")),
+        List(content("right/one"), content("right/two"), content("right/three")), Some(List(2, 0))),
+      MatchingInteraction("matching-ungraded", None, List(content("left/one")), List(content("right/one")), None),
+      LikertScaleInteraction("likert-1", Some(content("survey/intro")), List(content("survey/one"), content("survey/two")),
+        List(content("scale/no"), content("scale/neutral"), content("scale/yes"))),
       CodeTaskToggleInteraction("toggle-1", reorder, content("title/editor"), "print('hello')", List(AdvancedCodeRequirement("print", content("hint/print"))), content("success/message")),
       SortingInteraction("sorting-1", List(content("field/one")), List(SortingItem(content("item/one"), 0, content("feedback/wrong"))), content("button/open")),
       SortingReasonInteraction("sorting-reason-1", List(content("field/one")), List(SortingReasonItem(content("item/one"), 0, content("feedback/wrong"), content("reason/prompt"))), content("button/open"))

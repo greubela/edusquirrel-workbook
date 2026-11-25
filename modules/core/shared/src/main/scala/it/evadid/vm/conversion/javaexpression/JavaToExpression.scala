@@ -11,6 +11,7 @@ import it.evadid.vm.conversion.expressionjava.JavaSpelling
 import it.evadid.vm.conversion.parsed.{ParsedExpression, ParsedFunctionKind, ParsedParameter, ParsedProgram, ParsedProgramBuilder, ParsedStatement, ParsedType}
 import it.evadid.vm.conversion.parsed.ParsedExpression as E
 import it.evadid.vm.conversion.parsed.ParsedStatement as S
+import it.evadid.vm.parsing.java.clean.model.JavaAST
 import it.evadid.vm.parsing.java.clean.JavaSourceMap
 import it.evadid.vm.parsing.source.JavaSyntax
 import it.evadid.vm.parsing.java.clean.model.JavaAST.*
@@ -31,18 +32,28 @@ object JavaToExpression {
     * placeholders, as in Python; conversion to another language reports them with their position
     * ([[it.evadid.vm.conversion.ProgrammingStateDerivations]]). A statement the grammar kept unreadable is refused.
     */
-  def convert(syntax: JavaSyntax, neutral: ParsedProgram, environment: ProgrammingEnvironment): ProgrammingStateBeExpression = {
+  def convert(syntax: JavaSyntax, neutral: ParsedProgram, environment: ProgrammingEnvironment): (ProgrammingStateBeExpression, Map[it.evadid.vm.parsing.source.SourceSpan, it.evadid.vm.code.defining.BeDefineFunction]) = {
     syntax.readable.left.foreach(error => throw error)
-    ProgrammingStateBeExpression(BeStartProgram(ParsedProgramBuilder(Java, environment).build(neutral).expression))
+    val built = ParsedProgramBuilder(Java, environment).build(neutral)
+    ProgrammingStateBeExpression(BeStartProgram(built.expression)) -> built.sourceFunctions
   }
 
   /** The language-neutral program of the step-2 syntax tree. */
-  def neutral(syntax: JavaSyntax): ParsedProgram = JavaAstToParsed(syntax.program)
+  def neutral(syntax: JavaSyntax): ParsedProgram = new JavaAstToParsed(syntax).apply(syntax.program)
 
 }
 
 /** Translates Java syntax into the language-neutral [[ParsedProgram]]. */
-private object JavaAstToParsed {
+private final class JavaAstToParsed(syntax: JavaSyntax) {
+  private val lines = it.evadid.vm.parsing.source.SourceLines(syntax.structured.source)
+  private def origin(node: JavaAST) = syntax.sourceMap.rangeOf(node).map(range => lines.span(range.start, range.end))
+  private def located[A](node: JavaAST)(result: => A): A = try result catch {
+    case error: ProgrammingConversionException if error.error.span.isEmpty =>
+      val span = origin(node)
+      throw new ProgrammingConversionException(error.getMessage, error.error.copy(span = span,
+        line = span.map(_.startLine), column = span.map(value => lines.column(value.start))))
+  }
+
   private final case class Owner(name: String, fields: Set[String], methods: Map[String, Boolean], isStatic: Boolean)
   /** `module` names the entry class, whose qualifier is dropped from calls and field accesses. */
   private final case class Scope(owner: Option[Owner], locals: Set[String], module: Option[String]) {
@@ -68,7 +79,7 @@ private object JavaAstToParsed {
     method.name == "main" && method.modifiers.contains("static") && method.parameters.size <= 1 &&
       method.parameters.forall(_.javaType.isInstanceOf[JAVA_ARRAY[?]])
 
-  private def module(definition: JavaClassDef, scope: Scope): Seq[ParsedStatement] = {
+  private def module(definition: JavaClassDef, scope: Scope): Seq[ParsedStatement] = located(definition) {
     val members = definition.body.statements.filterNot(member => member.isInstanceOf[JavaCommentStatement] || member.isInstanceOf[JavaClassDef] || member == JavaEmptyStatement)
     val isStaticMember: JavaStatement => Boolean = {
       case field: JavaVariableDeclaration => field.modifiers.contains("static")
@@ -77,7 +88,7 @@ private object JavaAstToParsed {
     }
     if members.exists(isStaticMember) && !members.forall(isStaticMember) then
       throw ProgrammingConversionException.unsupported("Mixed static and instance members are not supported by the shared expression tree.")
-    val main = members.collectFirst { case method: JavaMethodDef if isEntryPoint(method) => method }.get
+    val main = members.collect { case method: JavaMethodDef if isEntryPoint(method) => method }.sortBy(_.parameters.isEmpty).head
     main.parameters.headOption.foreach { arguments =>
       if mentions(main.body, arguments.name) then
         throw ProgrammingConversionException.unsupported("Program arguments cannot be represented by the shared startup expression.")
@@ -97,7 +108,14 @@ private object JavaAstToParsed {
     case other => other.getChildren().exists(mentions(_, name))
   }
 
-  private def classDef(definition: JavaClassDef): ParsedStatement = {
+  private def classDef(definition: JavaClassDef): ParsedStatement = located(definition) {
+    classDefinition(definition) match {
+      case value: S.Unsupported => value.copy(origin = origin(definition))
+      case other => other
+    }
+  }
+
+  private def classDefinition(definition: JavaClassDef): ParsedStatement = {
     val source = s"class ${definition.name}"
     if definition.extendsType.nonEmpty || definition.implementsTypes.nonEmpty then S.Unsupported(source, "Inheritance", unparsable = false)
     else {
@@ -125,7 +143,7 @@ private object JavaAstToParsed {
   private def function(method: JavaMethodDef, kind: ParsedFunctionKind, scope: Scope): S.FunctionDef = {
     val parameters = method.parameters.map(parameter => ParsedParameter(parameter.name, Some(parsedType(parameter.javaType))))
     val inner = parameters.foldLeft(scope)((current, parameter) => current.withLocal(parameter.name))
-    S.FunctionDef(method.name, parameters, method.returnType.map(parsedType), block(method.body, inner), kind)
+    S.FunctionDef(method.name, parameters, method.returnType.map(parsedType), block(method.body, inner), kind, origin(method))
   }
 
   private def block(value: JavaExecutionBlock, scope: Scope): Seq[ParsedStatement] = statements(value.statements, scope)
@@ -140,7 +158,14 @@ private object JavaAstToParsed {
       (done ++ statement(value, current), next)
     }._1
 
-  private def statement(value: JavaStatement, scope: Scope): Seq[ParsedStatement] = value match {
+  private def statement(value: JavaStatement, scope: Scope): Seq[ParsedStatement] = located(value) {
+    statementValue(value, scope).map {
+      case unsupported: S.Unsupported => unsupported.copy(origin = unsupported.origin.orElse(origin(value)))
+      case other => other
+    }
+  }
+
+  private def statementValue(value: JavaStatement, scope: Scope): Seq[ParsedStatement] = value match {
     case JavaCommentStatement(text) => Seq(S.Comment(text))
     case JavaEmptyStatement | _: JavaImportStatement | _: JavaPackageStatement => Nil
     case definition: JavaClassDef => Seq(classDef(definition))
@@ -236,7 +261,14 @@ private object JavaAstToParsed {
   // Expressions
 
 
-  private def expression(value: JavaExpression, scope: Scope): ParsedExpression = value match {
+  private def expression(value: JavaExpression, scope: Scope): ParsedExpression = located(value) {
+    expressionValue(value, scope) match {
+      case unsupported: E.Unsupported => unsupported.copy(origin = unsupported.origin.orElse(origin(value)))
+      case other => other
+    }
+  }
+
+  private def expressionValue(value: JavaExpression, scope: Scope): ParsedExpression = value match {
     case JavaLiteral("null", _) => E.NoneValue
     case JavaLiteral(raw, _: JAVA_BOOL) => E.Literal(raw.capitalize)
     case JavaLiteral(raw, _) => E.Literal(raw)

@@ -18,7 +18,7 @@ private[source] object JavaStructureStep {
       val code = significant(values).toVector
       val declared = code.indices.flatMap { index =>
         (code(index), code.lift(index + 1)) match {
-          case (Word(classStart, _, "class"), Some(Word(_, _, name))) =>
+          case (Word(classStart, _, keyword @ ("class" | "interface")), Some(Word(_, _, name))) =>
             val modifiers = code.take(index).reverse.takeWhile {
               case Word(_, _, modifier) => classModifiers(modifier)
               case _ => false
@@ -30,8 +30,14 @@ private[source] object JavaStructureStep {
             val classCode = text(start, end)
             Some(JavaClassStructured(name, modifiers.collect { case Word(_, _, word) => word }.toVector, span(start, end), classCode,
               text(start, body.fold(end)(_.start)), body.map(group => span(group.start + 1, if group.closed then group.end - 1 else group.end)),
-              body.exists(_.closed), body.toVector.flatMap(group => members(name, group.children)),
-              library = KnownDependencies.isJavaDefinition(classCode), outer) -> body)
+              body.exists(_.closed), body.toVector.flatMap(group => members(name, group.children)).map {
+                case field: JavaFieldStructured if keyword == "interface" => field.copy(modifiers = (field.modifiers ++ Vector("public", "static", "final")).distinct)
+                case method: JavaFunctionStructured if keyword == "interface" => method.copy(modifiers =
+                  (method.modifiers ++ Vector("public") ++ Option.when(method.bodySpan.isEmpty)("abstract")).distinct)
+                case other => other
+              }, library = KnownDependencies.isJavaDefinition(classCode), outer, isInterface = keyword == "interface",
+              extendsNames = superTypes(code.drop(index + 2), "extends"), implementsNames = superTypes(code.drop(index + 2), "implements"),
+              referencedNames = body.toVector.flatMap(group => flatten(group.children).collect { case Word(_, _, word) => word }).distinct) -> body)
           case _ => None
         }
       }.toVector
@@ -55,7 +61,40 @@ private[source] object JavaStructureStep {
         case Symbol(_, _, "=") => state.add(token).copy(assigned = true)
         case other => state.add(other)
       } }
-      (state.done ++ Option.when(state.current.nonEmpty)(state.current)).map(member(className, _))
+      (state.done ++ Option.when(state.current.nonEmpty)(state.current)).flatMap { chunk =>
+        val groups = splitCommas(chunk)
+        if groups.size <= 1 then Vector(member(className, chunk))
+        else member(className, groups.head) match {
+          case first: JavaFieldStructured =>
+            val nameIndex = groups.head.takeWhile { case Symbol(_, _, "=") => false; case _ => true }.lastIndexWhere { case Word(_, _, word) => word == first.name; case _ => false }
+            val prefix = groups.head.take(nameIndex)
+            (Vector(first) ++ groups.tail.map(group => member(className, prefix ++ group))).map {
+              case field: JavaFieldStructured => field.copy(span = span(chunk.head.start, chunk.last.end), code = text(chunk.head.start, chunk.last.end))
+              case other => other
+            }
+          case _ => Vector(member(className, chunk))
+        }
+      }
+    }
+
+    def splitCommas(tokens: Seq[Token]): Vector[Vector[Token]] = {
+      val (done, last, _) = tokens.foldLeft((Vector.empty[Vector[Token]], Vector.empty[Token], 0)) {
+        case ((done, current, depth), token @ Symbol(_, _, "<")) => (done, current :+ token, depth + 1)
+        case ((done, current, depth), token @ Symbol(_, _, ">")) => (done, current :+ token, (depth - 1).max(0))
+        case ((done, current, 0), Symbol(_, _, ",")) => (done :+ current, Vector.empty, 0)
+        case ((done, current, depth), token) => (done, current :+ token, depth)
+      }
+      done :+ last
+    }
+
+    def superTypes(tokens: Seq[Token], keyword: String): Vector[String] = {
+      val header = tokens.takeWhile { case group: Group => group.open != '{'; case _ => true }
+      val start = header.indexWhere { case Word(_, _, word) => word == keyword; case _ => false }
+      if start < 0 then Vector.empty else splitCommas(header.drop(start + 1).takeWhile {
+        case Word(_, _, "extends" | "implements") => false
+        case _ => true
+      }).flatMap { part => part.takeWhile { case Symbol(_, _, "<") => false; case _ => true }
+        .collect { case Word(_, _, word) => word }.lastOption }
     }
 
     def member(className: String, tokens: Vector[Token]): JavaMemberStructured = {
@@ -108,7 +147,7 @@ private[source] object JavaStructureStep {
                   target.init.forall { case Word(_, _, _) | Symbol(_, _, "<" | ">" | "," | ".") => true; case group: Group => group.open == '['; case _ => false } =>
                 val initializer = Option.when(equals >= 0)(text(afterModifiers(equals).end, end).trim.stripSuffix(";").trim)
                 Some(JavaFieldStructured(className, name, modifiers, annotations, text(typeStart, target(target.size - 2).end), initializer,
-                  memberSpan, code))
+                  memberSpan, code, target.init.collect { case Word(_, _, word) => word }))
               case _ => None
             }
           case _ => None

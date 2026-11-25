@@ -3,7 +3,7 @@ package it.evadid.homepage.webElements.editor.code.EvaEditor
 import com.raquo.laminar.api.L.*
 import it.evadid.core.datastructures.language.LanguageMapContentId
 import it.evadid.homepage.webElements.editor.code.JavaEditor.JavaEditorLabels
-import it.evadid.homepage.webElements.editor.code.program.ProgrammingExecutionLabels
+import it.evadid.homepage.webElements.editor.code.program.{ProgrammingExecutionLabels, SourceWarningLabels}
 import it.evadid.homepage.webElements.editor.blocks.BlockEditorLabels
 
 /** UI strings for Eva; supply via [[fromContent]] from a workbook renderer. */
@@ -14,6 +14,7 @@ final case class EvaEditorLabels(
     loading: Signal[String],
     conversion: Signal[EvaConversionTexts],
     execution: ProgrammingExecutionLabels,
+    sourceWarnings: SourceWarningLabels,
     blocks: BlockEditorLabels,
     java: JavaEditorLabels
 )
@@ -28,6 +29,7 @@ object EvaEditorLabels {
       text(LanguageMapContentId("blockeditor/conversionUnsupported")), text(LanguageMapContentId("blockeditor/conversionLine")),
       text(LanguageMapContentId("blockeditor/conversionWarnings"))).map(EvaConversionTexts.apply),
     execution = ProgrammingExecutionLabels.fromContent(text),
+    sourceWarnings = SourceWarningLabels(key => text(LanguageMapContentId("blockeditor", key))),
     blocks = BlockEditorLabels.fromContent(text),
     java = JavaEditorLabels.fromContent(text)
   )

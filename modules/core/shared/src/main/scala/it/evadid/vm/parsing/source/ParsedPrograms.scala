@@ -27,13 +27,3 @@ final case class PythonProgramParsed(structured: PythonSourceStructured, syntax:
     program: BeProgram, details: PythonToExpression.Details, functions: Vector[PythonFunctionParsed])
 
 final case class PythonFunctionParsed(structured: PythonFunctionStructured, definition: Option[BeDefineFunction])
-
-private[source] object ParsedFunctions {
-  /** The function `name` with `arity` parameters of class `owner` (or of the module) in `expression`. */
-  def find(expression: BeExpression, owner: Option[String], name: String, arity: Int): Option[BeDefineFunction] = {
-    val candidates = expression.subtree.collect { case definition: BeDefineFunction => definition }
-      .filter(definition => definition.functionTypeInfo.isNamed.exists(_.spelling() == name) && definition.inputs.size == arity)
-    def ownerOf(definition: BeDefineFunction) = definition.functionTypeInfo.isMethodInClass.map(_.name.spelling())
-    candidates.find(ownerOf(_) == owner).orElse(candidates.find(ownerOf(_).isEmpty))
-  }
-}

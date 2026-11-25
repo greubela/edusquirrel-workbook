@@ -52,9 +52,13 @@ final case class JavaClassStructured(
     closed: Boolean,
     members: Vector[JavaMemberStructured],
     library: Boolean,
-    outer: Option[String]
+    outer: Option[String],
+    isInterface: Boolean = false,
+    extendsNames: Vector[String] = Vector.empty,
+    implementsNames: Vector[String] = Vector.empty,
+    referencedNames: Vector[String] = Vector.empty
 ) derives ReadWriter {
-  def isAbstract: Boolean = modifiers.contains("abstract")
+  def isAbstract: Boolean = isInterface || modifiers.contains("abstract")
   def functions: Vector[JavaFunctionStructured] = members.collect { case function: JavaFunctionStructured => function }
   def fields: Vector[JavaFieldStructured] = members.collect { case field: JavaFieldStructured => field }
 }
@@ -97,7 +101,8 @@ final case class JavaFieldStructured(
     javaType: String,
     initializer: Option[String],
     span: SourceSpan,
-    code: String
+    code: String,
+    typeNames: Vector[String] = Vector.empty
 ) extends JavaMemberStructured derives ReadWriter {
   def isStatic: Boolean = modifiers.contains("static")
 }

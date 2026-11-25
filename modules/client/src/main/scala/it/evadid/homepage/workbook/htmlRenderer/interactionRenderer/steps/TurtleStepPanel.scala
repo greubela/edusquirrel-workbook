@@ -23,13 +23,13 @@ import scala.concurrent.duration.FiniteDuration
  * same JSXGraph board as the comparison panel: earlier strokes are drawn, the current step's strokes are
  * highlighted, later strokes stay faint (so the view keeps its bounds), and a marker shows the turtle.
  */
-final class TurtleStepPanel(state: Var[ProgrammingState], text: String => Signal[String], environment: ProgrammingEnvironment,
-    delay: FiniteDuration = DeferredRendering.defaultDelay, analyzer: ProgramAnalyzer = ProgramAnalyzer.shared) extends HtmlAppElement {
+final class TurtleStepPanel(source: Signal[ProgrammingState], text: String => Signal[String], environment: ProgrammingEnvironment,
+    delay: FiniteDuration = DeferredRendering.defaultDelay, analyzer: ProgramAnalyzer = ProgramAnalyzer.shared, frame: Seq[Point[Double]] = Nil) extends HtmlAppElement {
   private given ExecutionContext = ExecutionContext.global
 
   // The shared analysis worker runs the program once the answer has rested; step navigation stays immediate.
   private val rendering = new DeferredRendering[ProgrammingState, Either[String, ProgramAnalysis.TurtleRun]](
-    state.signal, value => analyzer.analyse(value, environment).map(_.turtle), delay)
+    source, value => analyzer.analyse(value, environment).map(_.turtle), delay)
 
   private val executions: Signal[Option[Either[String, ProgramAnalysis.TurtleRun]]] =
     rendering.result.map(_.map(_.toEither.left.map(error => Option(error.getMessage).getOrElse(error.getClass.getSimpleName)).flatten))
@@ -42,7 +42,7 @@ final class TurtleStepPanel(state: Var[ProgrammingState], text: String => Signal
   override def getDomElement(): Element = div(cls := "step-panel turtle-step-panel",
     rendering.status(id => text(id.entryKey)),
     // Each program and step gets a fresh board in its default view.
-    TurtleJsxGraphRenderer.render(commands.combineWith(navigator.step).map((all, step) => TurtleStepPanel.scene(all, step)), "Turtle steps"),
+    TurtleJsxGraphRenderer.render(commands.combineWith(navigator.step).map((all, step) => TurtleStepPanel.scene(all, step).copy(frame = frame)), "Turtle steps"),
     navigator.element,
     p(cls := "step-panel__caption", aria.live := "polite", child.text <-- LabelSelection.formatted(commands.combineWith(navigator.step), Seq("turtleStepStart", "stepCommand"), text) { (all, step) =>
       Some(if step == 0 then "turtleStepStart" -> Nil

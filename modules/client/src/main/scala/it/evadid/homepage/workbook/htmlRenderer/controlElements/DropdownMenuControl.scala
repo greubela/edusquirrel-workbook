@@ -97,7 +97,7 @@ case class DropdownMenuControl(curWorkbook: Option[AllWorkbookInfo], curUser: Op
       HtmlDropdownMenu.menuLabel(userNameOrNobodySignal),
       HtmlDropdownMenu.menuItem("basic/downloadEverything", _ => downloadAll())
     ) ++ Option.when(curUser.nonEmpty)(HtmlDropdownMenu.menuItem(resetLabel, _ => resetAllData())).toSeq ++ List(
-      HtmlDropdownMenu.menuItem("basic/buttonLocalUpload", _ => uploadInput.ref.click()),
+      HtmlDropdownMenu.menuItem("login/buttonLocalUpload", _ => uploadInput.ref.click()),
       HtmlDropdownMenu.menuItem(Val("Session connections"), _ => { closeMenu(); credentialsOpen.set(true) }),
       HtmlDropdownMenu.menuItem("basic/logout", _ => logout())
     )

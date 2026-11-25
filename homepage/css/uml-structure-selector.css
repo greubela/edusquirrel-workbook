@@ -144,3 +144,12 @@
 .uml-structure-selector .uml-entry--readonly:hover {
     background: transparent;
 }
+
+/* Relationship geometry follows measured boxes; presentation stays in CSS. */
+.uml-structure-selector { position: relative; gap: var(--space-2xl); }
+.uml-structure-selector > .uml-class { position: relative; z-index: 1; }
+.uml-relationships { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; pointer-events: none; color: var(--uml-ink); }
+.uml-relation path, .uml-relation-head { fill: none; stroke: currentColor; stroke-width: var(--plot-stroke-width); }
+.uml-relation--realization path, .uml-relation--dependency path { stroke-dasharray: 6 4; }
+.uml-relation-head--hollow { fill: var(--uml-surface); }
+.uml-relation text { fill: currentColor; font: var(--code-font-size, 12px) var(--code-font-family, monospace); }

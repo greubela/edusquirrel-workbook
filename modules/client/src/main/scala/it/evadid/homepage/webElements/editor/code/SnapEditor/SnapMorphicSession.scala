@@ -174,14 +174,9 @@ final class SnapMorphicSession() extends SnapCodeEditorImpl:
     if resources.now().cyclesRunning then
       resources.now().editorWorld.foreach(_.doOneCycle())
       resources.update(value => value.copy(frameHandle = dom.window.requestAnimationFrame(_ => tickEditor())))
-      // Skip XML serialization while Execute is mirroring — getProjectXML is heavy
-      // and competes with Morphic + stage blit for main-thread time.
-      // The persisted project is compared rather than IDE_Morph.version, which only Snap edit paths calling
-      // recordUnsavedChanges update. Skipped while Execute mirrors the stage (serializing competes with it), during a
-      // language change, and while a slot is edited, so mid-digit edits neither rebuild previews nor clear Morphic's
-      // shared keyboard; blur or an explicit flush publishes the committed value.
-      if !stageMirror.isMirroring && languageRefresh.now().isEmpty && !isTextEditing then
-        binding.now().foreach(_.publishIfDue(dom.window.performance.now()))
+  override def publishProjectChanges(): Unit =
+    if !stageMirror.isMirroring && languageRefresh.now().isEmpty && !isTextEditing then
+      binding.now().foreach(_.publish())
 
   /** True while Morphic has an active CursorMorph for an input slot. */
   private def isTextEditing: Boolean =

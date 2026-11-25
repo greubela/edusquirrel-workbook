@@ -161,5 +161,14 @@
   "sortShowReads": "Vis læsninger som trin",
   "sortStepStats": "{swaps} ombytninger · {sets} tildelinger · {reads} læsninger",
   "sortTestList": "Sorterer {list}",
-  "DrawTitle": "Tegning"
+  "DrawTitle": "Tegning",
+  "messengerEditorInputPlaceholder": "Skriv dit spørgsmål her",
+  "turtleRun": "Kør program",
+  "turtleRunOutdated": "Dit program er ændret. Kør det for at se den nye tegning.",
+  "matchingHint": "Træk et element fra venstre til det matchende element til højre. Eller klik først på elementet til venstre og derefter på elementet til højre.",
+  "matchingRemove": "Fjern forbindelse",
+  "matchingConnectedTo": "forbundet med",
+  "gradingMatchingDescription": "Kontrollér forbindelserne",
+  "gradingMatchingCount": "{correct} af {total} forbindelser er korrekte.",
+  "likertClear": "Ryd valg"
 }

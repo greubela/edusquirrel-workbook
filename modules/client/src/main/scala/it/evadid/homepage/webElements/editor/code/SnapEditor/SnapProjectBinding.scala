@@ -20,7 +20,6 @@ private[SnapEditor] final class SnapProjectBinding(
   import SnapProjectBinding.*
 
   private val shown = Var(Option.empty[Shown])
-  private val lastCheckAt = Var(Double.NegativeInfinity)
 
   /** Records `answer` as open in Snap, after Snap opened it. */
   def opened(answer: ProgrammingStateSnapScalaModel): Unit =
@@ -48,17 +47,10 @@ private[SnapEditor] final class SnapProjectBinding(
       if !project.now().exists(_.meaningfullyEquals(live)) then project.set(Some(live))
     }
 
-  /** [[publish]], at most every [[checkIntervalMs]]: serializing a project is too heavy for every frame. */
-  def publishIfDue(now: Double): Unit =
-    if now - lastCheckAt.now() >= checkIntervalMs then {
-      lastCheckAt.set(now)
-      publish()
-    }
+
 }
 
 private[SnapEditor] object SnapProjectBinding {
-  val checkIntervalMs = 500.0
-
   /** The native editor's project operations. */
   trait Native {
     /** The open project's XML, once an editor exists. */

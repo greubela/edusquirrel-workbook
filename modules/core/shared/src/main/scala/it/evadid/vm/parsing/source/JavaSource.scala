@@ -26,7 +26,11 @@ final class JavaSource private[source] (val source: String) extends ParsedSource
     }
   }
 
-  lazy val neutral: Either[SyntaxFailure, ParsedProgram] = syntax.map(JavaToExpression.neutral)
+  lazy val neutral: Either[ProgrammingConversionException, ParsedProgram] = syntax.left.map(_.unparsable(JavaSource.unreadable))
+    .flatMap(tree => scala.util.Try(JavaToExpression.neutral(tree)).toEither.left.map {
+      case error: ProgrammingConversionException => error
+      case other => ProgrammingConversionException.unparsable(Option(other.getMessage).getOrElse(other.toString))
+    })
 
   /** The syntax as a conversion result: an unreadable source fails at its position. */
   lazy val readable: Either[ProgrammingConversionException, JavaSyntax] =
@@ -39,14 +43,13 @@ final class JavaSource private[source] (val source: String) extends ParsedSource
   private val byEnvironment = PerEnvironment[Either[ProgrammingConversionException, JavaProgramParsed]](environment =>
     for {
       tree <- syntax.left.map(_.unparsable(JavaSource.unreadable))
-      program <- neutral.left.map(_.unparsable(JavaSource.unreadable))
-      expression <- scala.util.Try(JavaToExpression.convert(tree, program, environment)).toEither.left.map {
+      program <- neutral
+      bound <- scala.util.Try(JavaToExpression.convert(tree, program, environment)).toEither.left.map {
         case conversion: ProgrammingConversionException => conversion
         case other => ProgrammingConversionException.unparsable(Option(other.getMessage).getOrElse(other.toString))
       }
-    } yield JavaProgramParsed(tree, program, expression, tree.functions.map(function =>
-      JavaFunctionParsed(function.structured, function.node, ParsedFunctions.find(expression.expression,
-        Some(function.structured.className), function.structured.name, function.structured.parameters.size)))))
+    } yield JavaProgramParsed(tree, program, bound._1, tree.functions.map(function =>
+      JavaFunctionParsed(function.structured, function.node, bound._2.get(SourceLines(source).span(function.node.range.start, function.node.range.end))))))
 }
 
 object JavaSource {

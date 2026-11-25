@@ -1,7 +1,5 @@
 package it.evadid.vm.conversion.snapexpression
 
-import it.evadid.vm.parsing.source.SourceParsing.SourceLanguage
-import it.evadid.vm.parsing.source.SourceParsing
 import it.evadid.vm.code.abstractions.BeExpression
 import it.evadid.workbook.elements.interactionElements.programming.state.snap.{SnapScalaModel, SnapTurtleCatalog}
 
@@ -10,8 +8,7 @@ import it.evadid.workbook.elements.interactionElements.programming.state.snap.{S
 /** Shared primitive decoding and the verified subset for Python unit-test execution. */
 object SnapStateConversion {
 
-  def expressionForExecution(xml: String): Either[String, BeExpression] = for {
-    document <- SourceParsing.parse(xml, SourceLanguage.Snap).syntax.left.map(_.message)
+  def expressionForExecution(document: SnapScalaModel.Document): Either[String, BeExpression] = for {
     project <- document.project.filter(_ == document.root).toRight("Unit tests need a complete Snap project.")
     _ <- Either.cond(project.scenes.size <= 1 && project.element.named("scenes").size <= 1, (),
       "Unit tests currently support one Snap scene.")
@@ -32,7 +29,8 @@ object SnapStateConversion {
     _ <- Either.cond(project.definitions.isEmpty && project.scenes.forall(_.definitions.isEmpty) &&
       stage.definitions.isEmpty && stage.sprites.forall(_.definitions.isEmpty), (),
       "Custom Snap blocks are not yet supported by unit-test execution.")
-    unsupported = SnapExpressionSupport.unsupportedSnapSelectors(xml)
+    mapped = it.evadid.vm.conversion.turtlestitchexpression.TurtleStitchModelMapper.toProject(document)
+    unsupported = SnapExpressionSupport.unsupportedSnapSelectors(document, mapped)
     _ <- Either.cond(unsupported.isEmpty, (), s"Unsupported Snap blocks: ${unsupported.mkString(", ")}")
     scripts = owners.flatMap(_.scripts)
     started = scripts.filter(_.blocks.headOption.exists(_.selector.contains("receiveGo")))
@@ -45,7 +43,7 @@ object SnapStateConversion {
     }), (), "Unsupported content in a Snap script.")
     _ <- Either.cond(started.forall(_.blocks.forall(supportedExecutionBlock)), (),
       "These Snap blocks do not yet have a verified unit-test translation.")
-  } yield SnapToExpression.convert(document).expression
+  } yield SnapToExpression.convert(mapped, unsupported).expression
 
   private def supportedExecutionBlock(block: SnapScalaModel.BlockLike): Boolean = block match {
     case value: SnapScalaModel.Block => value.variable.isEmpty &&

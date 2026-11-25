@@ -94,20 +94,6 @@ class SnapProjectBindingSpec extends FunSuite {
     assertEquals(project.now(), Some(model("<project>start</project>")))
   }
 
-  test("publishing is throttled") {
-    val project = Var(Option(model("<project>start</project>")))
-    val native = FakeNative()
-    val binding = SnapProjectBinding(project, native)
-    binding.opened(project.now().get)
-    native.xml = Some("<project>one</project>")
-    binding.publishIfDue(1000)
-    native.xml = Some("<project>two</project>")
-    binding.publishIfDue(1000 + SnapProjectBinding.checkIntervalMs / 2)
-    assertEquals(project.now(), Some(model("<project>one</project>")))
-    binding.publishIfDue(1000 + SnapProjectBinding.checkIntervalMs)
-    assertEquals(project.now(), Some(model("<project>two</project>")))
-  }
-
   test("a new serialization that already equals the answer is not written again") {
     val (project, native, binding) = opened("<project>start</project>", "<project app=\"Snap\">start</project>")
     val owner = new ManualOwner

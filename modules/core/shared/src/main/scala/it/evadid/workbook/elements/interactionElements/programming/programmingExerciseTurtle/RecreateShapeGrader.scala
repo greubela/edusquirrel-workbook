@@ -5,7 +5,7 @@ import it.evadid.vm.conversion.dependencies.ProgrammingEnvironment
 import it.evadid.workbook.abstractions.FeedbackEntity
 import it.evadid.workbook.abstractions.FeedbackEntity.TestEntity
 import it.evadid.workbook.abstractions.grading.{GradingResult, *}
-import it.evadid.workbook.abstractions.grading.GraderRunningBehavior.RUN_ON_AT_LEAST_MINOR
+import it.evadid.workbook.abstractions.grading.GraderRunningBehavior.RUN_ONLY_MANUALLY
 import it.evadid.workbook.abstractions.grading.GradingImportance.{OPTIONAL_TEST, REQUIRED_TEST}
 import it.evadid.workbook.abstractions.grading.GradingStatus.{Correct, Incorrect, PartiallyCorrect}
 import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseTurtle.TurtleGradingLogic.TurtleGraphicComparison
@@ -35,7 +35,8 @@ case class RecreateShapeGrader(desiredResult: TurtleGraphic, override val import
     GradingResult[ProgrammingState, AdditionalProgrammingTestInfo](this, state, comparison.gradingStatus)
   }(using contextInformation.futureExecutionContext)
 
-  override def runningBehavior: GraderRunningBehavior = RUN_ON_AT_LEAST_MINOR
+  /** Runs the program and records the target with each result, so it grades on request, not on every edit. */
+  override def runningBehavior: GraderRunningBehavior = RUN_ONLY_MANUALLY
 
   override def gradingEntity: FeedbackEntity = TestEntity()
 

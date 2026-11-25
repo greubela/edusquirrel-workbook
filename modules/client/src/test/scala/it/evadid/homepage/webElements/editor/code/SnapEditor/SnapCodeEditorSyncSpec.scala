@@ -46,6 +46,7 @@ class SnapCodeEditorSyncSpec extends FunSuite {
   }
 
   private class RecordingImpl extends SnapCodeEditorImpl {
+    override def publishProjectChanges(): Unit = flushPendingProjectChanges()
     val languages = Var(List.empty[HumanLanguage])
     override def changeLanguage(language: HumanLanguage): Unit = languages.update(_ :+ language)
     var project: Option[Var[Option[ProgrammingStateSnapScalaModel]]] = None

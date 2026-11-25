@@ -43,6 +43,35 @@ class UmlStructureSelectorSpec extends EditorDomSuite {
     assertEquals(playerBox.attributes.map(_.isStatic), Seq(true, false, false))
   }
 
+  test("interfaces, inheritance and attribute associations use the shared UML model") {
+    val diagram = JavaUmlDiagram(ProgrammingStateJavaStructured(
+      "interface Named { String name(); } class Base {} " +
+        "class Team extends Base implements Named { java.util.List<Player> players; void act() { Coach.train(); } } " +
+        "class Player {} class Coach {}"))
+    val named = diagram.classes.find(_.name == "Named").get
+    assert(named.isInterface)
+    assert(named.functions.head.isAbstract)
+    assert(diagram.relations.contains(UmlRelation("Team", "Base", UmlRelation.Kind.Inheritance)))
+    assert(diagram.relations.contains(UmlRelation("Team", "Named", UmlRelation.Kind.Realization)))
+    assert(diagram.relations.contains(UmlRelation("Team", "Player", UmlRelation.Kind.Association, Some("players"), many = true)))
+    assert(diagram.relations.contains(UmlRelation("Team", "Coach", UmlRelation.Kind.Dependency)))
+    val selection = Var(Option.empty[UmlEntityKey])
+    val unmount = mount(UmlStructureSelector(Val(diagram), selection.signal, selection.writer.contramap(Some(_))).getDomElement())
+    try assertEquals(dom.document.querySelector(".uml-class__stereotype").textContent, "«interface»")
+    finally unmount()
+  }
+
+  test("relationship routes meet the boxes and do not draw self or overlapping arrows") {
+    import UmlRelationLayout.*
+    val relation = UmlRelation("Child", "Parent", UmlRelation.Kind.Inheritance)
+    val upper = Box(0, 0, 100, 50)
+    val lower = Box(150, 100, 100, 50)
+    assertEquals(route(relation, lower, upper).map(_.path), Some("M 200 100 V 75 H 50 V 50"))
+    assertEquals(route(relation, upper, Box(150, 0, 100, 50)).map(_.path), Some("M 100 25 H 125 V 25 H 150"))
+    assertEquals(route(relation.copy(to = "Child"), lower, upper), None)
+    assertEquals(route(relation, upper, upper), None)
+  }
+
   test("entities carry the full declarations; overloads are told apart") {
     val diagram = JavaUmlDiagram(state)
     val playerBox = diagram.classes(1)

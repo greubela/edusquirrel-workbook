@@ -150,6 +150,8 @@
   "stepPosition": "Step {step} of {total}",
   "stepCommand": "Step {step}: {command}",
   "turtleStepsTitle": "Step by step",
+  "turtleRun": "Run program",
+  "turtleRunOutdated": "Your program has changed. Run it to see the new drawing.",
   "turtleStepStart": "Start: the turtle is at the origin and has not drawn anything yet.",
   "renderingWaiting": "Waiting for rendering …",
   "renderingInProgress": "Rendering …",
@@ -162,5 +164,11 @@
   "sortShowReads": "Show reads as steps",
   "sortStepStats": "{swaps} swaps · {sets} assignments · {reads} reads",
   "sortTestList": "Sorts {list}",
-  "DrawTitle": "Drawing"
+  "DrawTitle": "Drawing",
+  "matchingHint": "Drag from an item on the left to the matching item on the right. Or click the left item first and then the right one.",
+  "matchingRemove": "Remove connection",
+  "matchingConnectedTo": "connected to",
+  "gradingMatchingDescription": "Check the connections",
+  "gradingMatchingCount": "{correct} of {total} connections are correct.",
+  "likertClear": "Clear selection"
 }

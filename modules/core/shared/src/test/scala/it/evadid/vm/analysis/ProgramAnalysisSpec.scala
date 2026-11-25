@@ -39,7 +39,7 @@ class ProgramAnalysisSpec extends FunSuite {
       ("Config.screen.limit", 5, 5, 5, 24), ("helper", 6, 5, 6, 11))
     assertEquals(located(ProgrammingStateRaw(Java, source)), expected)
     assertEquals(located(ProgrammingStateJavaStructured(source)), expected)
-    assert(ProgramAnalysis.of(ProgrammingStateRaw(Python, "helper(3)\n")).warnings.isEmpty, "Python expressions are not located yet")
+    assertEquals(ProgramAnalysis.of(ProgrammingStateRaw(Python, "helper(3)\n")).warnings.map(w => (w.subject, w.startLine, w.startColumn, w.endColumn)), Seq(("helper", 1, 1, 7)))
     val unreadable = ProgramAnalysis.of(ProgrammingStateRaw(Java, "class Main {\n  static void main(String[] a) {\n    int x = 1;\n" +
       "    assert x > 0;\n  }\n}")).warnings
     assertEquals(unreadable.map(warning => (warning.kind, warning.startLine)), Seq((SourceWarning.Kind.Unreadable, 4)))

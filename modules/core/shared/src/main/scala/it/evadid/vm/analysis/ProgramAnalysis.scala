@@ -65,6 +65,9 @@ object ProgramAnalysis {
       UnknownDependencies.calls(value.expression).map(_.path) ++ UnknownDependencies.attributes(value.expression).map(_.path)).toSet
     val warnings = state match {
       case ProgrammingStateRaw(Java, _) | _: ProgrammingStateJavaStructured => JavaSourceWarnings.of(derivations.javaSource, unknownPaths)
+      case ProgrammingStateRaw(Python, code) => PythonSourceWarnings.of(
+        it.evadid.vm.parsing.source.SourceParsing.parse(code, it.evadid.vm.parsing.source.SourceParsing.SourceLanguage.Python), unknownPaths)
+      case _: ProgrammingStatePythonStructured => PythonSourceWarnings.of(derivations.pythonSource, unknownPaths)
       case _ => Nil
     }
     ProgramAnalysis(python, turtle, expression.toOption.flatMap(_.unknownDependency), unsupported, libraries, warnings)

@@ -87,7 +87,8 @@ class SessionFileJourneySpec extends EditorDomSuite {
         val restored = interaction(second, "square").asInstanceOf[TurtleRecreateShapeInteraction]
         assertEquals(restored.interactionVariable.currentValue, answer)
         assertEquals(interaction(second, "note").asInstanceOf[TextInteraction].interactionVariable.currentValue, "my reasoning")
-        restored.interactionVariable.control.getOrCalculateGrading(ExecutionContextInformation.default, forceGrading = true).map { graded =>
+        restored.interactionVariable.control.getOrCalculateGrading(ExecutionContextInformation.default)
+          .flatMap(_ => restored.interactionVariable.control.getOrCalculateGrading(ExecutionContextInformation.default, forceGrading = true)).map { graded =>
           assertEquals(graded.testsWithResults.head.gradingStatus, GradingStatus.Correct(), "the restored reporter answer still draws the square")
           List(Python, Java).foreach { language =>
             val converted = restored.interactionVariable.currentValue.convertToLanguage(language).finalState.get

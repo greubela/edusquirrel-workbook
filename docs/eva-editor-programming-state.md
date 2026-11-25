@@ -39,7 +39,7 @@ Expensive work runs in workers: a Scala.js `Future` alone does not create a CPU 
 | `ProgrammingExecutionPanel` | Console below Eva, observing the committed answer |
 
 Panels receive the central answer and task configuration directly. They do not read
-state back from editors or use an activation protocol. Drawings use shared
+state back from editors or use an activation protocol. Drawings follow the explicitly run answer and use shared
 BeExpression turtle commands; the console runs the Python form in Pyodide.
 See [program analysis and execution](program-analysis-and-execution.md).
 
@@ -54,6 +54,7 @@ Diagnostics and worker-generated flowcharts arrive through signals. The gutter r
 owns mode/selection; `JavaFragmentEditor` splices partial drafts into source ranges, and
 core `JavaMethodEditing` locates, replaces and inserts methods on step-1 declarations.
 Adding a declaration in Function Mode selects only the new function.
+Attribute and constructor dialogs, deletion and relationship arrows use the same shared UML model.
 
 Shared UML data lives in `core.datastructures.uml`; `JavaUmlDiagram` derives it from
 the parsing stages and `UmlStructureSelector` renders it. Program classes are editable.

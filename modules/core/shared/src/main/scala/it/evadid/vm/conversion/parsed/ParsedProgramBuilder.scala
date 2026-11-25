@@ -26,9 +26,13 @@ import it.evadid.vm.types.BeDataType.BeUnionAllowedTypes
   */
 final class ParsedProgramBuilder(language: ProgrammingLanguage, environment: ProgrammingEnvironment = ProgrammingEnvironment.all) {
 
-  final case class Result(expression: BeSequence, context: ParseContext)
+  final case class Result(expression: BeSequence, context: ParseContext,
+      sourceFunctions: Map[it.evadid.vm.parsing.source.SourceSpan, BeDefineFunction])
+
+  private val sourceFunctions = scala.collection.mutable.Map.empty[it.evadid.vm.parsing.source.SourceSpan, BeDefineFunction]
 
   def build(source: ParsedProgram): Result = {
+    sourceFunctions.clear()
     val program = ParsedTypeInference.infer(source)
     val context = new ParseContext(CurrentlyKnownStructures.fromKnown(environment.knownStructures), environment = environment)
     program.statements.collect { case definition: S.ClassDef => definition }.foreach { definition =>
@@ -37,7 +41,8 @@ final class ParsedProgramBuilder(language: ProgrammingLanguage, environment: Pro
     program.statements.collect { case definition: S.ClassDef => definition }.foreach { definition =>
       context.registerClass(definition.name, classSignatures(definition, context))
     }
-    Result(BeSequence.optionalBody(block(program.statements, context)), context)
+    val expression = BeSequence.optionalBody(block(program.statements, context))
+    Result(expression, context, sourceFunctions.toMap)
   }
 
   private def keep(expression: BeExpression): Boolean = expression match {
@@ -88,8 +93,8 @@ final class ParsedProgramBuilder(language: ProgrammingLanguage, environment: Pro
     case S.Evaluate(value) => expression(value, context)
     case S.Comment(text) => BeSingleLineComment(LanguageMap.universalMap(text))
     case S.Pass => BeExpression.pass
-    case S.Unsupported(source, reason, true) => BeExpressionUnparsable(source, reason, Some(language))
-    case S.Unsupported(source, reason, false) => BeExpressionUnsupported(source, Some(language), reason)
+    case value: S.Unsupported if value.unparsable => BeExpressionUnparsable(value.source, value.reason, Some(language))
+    case value: S.Unsupported => BeExpressionUnsupported(value.source, Some(language), value.reason)
   }
 
   private def buildFunction(definition: S.FunctionDef, context: ParseContext): BeDefineFunction = {
@@ -102,6 +107,7 @@ final class ParsedProgramBuilder(language: ProgrammingLanguage, environment: Pro
       signature.copy(body = body(definition.body, context))
     } finally context.popScope()
     context.registerFunction(definition.name, built)
+    definition.origin.foreach(sourceFunctions.update(_, built))
     built
   }
 
@@ -152,7 +158,9 @@ final class ParsedProgramBuilder(language: ProgrammingLanguage, environment: Pro
       val methodContext = new ParseContext(classContext.snapshotStructures, context.sourceCallableNames,
         Option.when(kind(method) != StaticMethod())(owner), environment)
       method.parameters.foreach(parameter => methodContext.defineVariable(parameter.name, dataType(parameter.typeHint)))
-      methodSignature(owner, method).copy(body = body(method.body, methodContext))
+      val built = methodSignature(owner, method).copy(body = body(method.body, methodContext))
+      method.origin.foreach(sourceFunctions.update(_, built))
+      built
     }.toList
     val built = owner.copy(methods = methods)
     context.registerClass(definition.name, built)
@@ -190,7 +198,7 @@ final class ParsedProgramBuilder(language: ProgrammingLanguage, environment: Pro
       val owner = context.lookupClass(className)
         .getOrElse(throw IllegalArgumentException(s"Cannot convert construction of unknown class '$className'."))
       bind(className, BeCallTarget.Constructor(constructor(owner)), arguments.map(expression(_, context)).toList)
-    case E.Unsupported(source) => BeExpressionUnsupported(source, Some(language))
+    case value: E.Unsupported => BeExpressionUnsupported(value.source, Some(language))
   }
 
   /** An assignment to an attribute nothing defines (`Config.limit = 3`) keeps its source, like a read of one;

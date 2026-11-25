@@ -33,6 +33,8 @@ trait SnapCodeEditorImpl {
   def renderPreviewInto(state: ProgrammingStateRaw, canvas: Canvas, config: SnapCodeEditorConfig): Unit
 
   /** Write pending Snap edits, including an unfinished slot text, into the bound project now. */
+  def publishProjectChanges(): Unit
+
   def flushPendingProjectChanges(): Unit
 
   /** Start driving the Morphic world. Snap controls only become responsive while cycles run. */

@@ -40,6 +40,11 @@ Step-1 values answer editor questions without parsing derived text again: for ex
 [`JavaMethodEditing`](../modules/core/shared/src/main/scala/it/evadid/vm/editing/JavaMethodEditing.scala)
 edits one Java method at a time on these declarations for the Java editors.
 
-Tests: `JavaStructuredSpec`, `PythonStructuredSpec`, `SnapSourceSpec` and
+Function definitions carry source spans into binding; the binder returns their exact
+source-to-definition associations. Diagnostics retain those same occurrences. Python's
+normalization maps tabs, dedenting and line endings back to original UTF-16 offsets;
+positions are never recovered by searching for source fragments.
+
+Tests: `SourceBindingSpec`, `LocatedSourceWarningsSpec`, `JavaStructuredSpec`, `PythonStructuredSpec`, `SnapSourceSpec` and
 `SourceParsingSpec`. See [programming conversions](programming-conversions.md)
 for state formats, environments and conversion semantics.

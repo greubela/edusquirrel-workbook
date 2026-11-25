@@ -43,6 +43,13 @@ final class TypingDraftBinding[T](answer: Var[T]) {
       (edit => transition(_.settle(edit, LocalDateTime.now()))),
     state.signal.map(_.committed).changes --> (value => write(value)),
     answer.signal.changes --> (value => transition(_.received(value, LocalDateTime.now()))),
-    onBlur.useCapture --> (_ => flush()),
-    onUnmountCallback(_ => flush()))
+    // focusout bubbles after the blur that nested editors capture to hand over their typed text.
+    TypingDraftBinding.onFocusOut --> (_ => flush()),
+    // Nested editors hand over their typed text in their own unmount callbacks; the flush follows them.
+    onUnmountCallback(_ => scala.concurrent.Future.unit.foreach(_ => flush())(using TypingDraftBinding.afterCurrentTask)))
+}
+
+object TypingDraftBinding {
+  private val onFocusOut = new com.raquo.laminar.keys.EventProp[org.scalajs.dom.FocusEvent]("focusout")
+  private val afterCurrentTask: scala.concurrent.ExecutionContext = scala.scalajs.concurrent.JSExecutionContext.queue
 }

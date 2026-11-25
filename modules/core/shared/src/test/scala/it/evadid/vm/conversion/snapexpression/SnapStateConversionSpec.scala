@@ -8,10 +8,14 @@ class SnapStateConversionSpec extends FunSuite {
   private def project(sprites: String, sceneExtra: String = "", stageExtra: String = "") =
     s"""<project name="p"><scenes select="1"><scene name="s">$sceneExtra<stage name="Stage">$stageExtra<sprites select="1">$sprites</sprites></stage></scene></scenes></project>"""
   private val drawing = """<script><block s="receiveGo"/><block s="forward"><l>10</l></block><block s="turn"><l>-90.5</l></block></script>"""
-  private def error(xml: String): String = SnapStateConversion.expressionForExecution(xml).swap.getOrElse(fail(s"Accepted $xml"))
+  private def readExpression(xml: String) = it.evadid.vm.parsing.source.SourceParsing.parse(xml,
+    it.evadid.vm.parsing.source.SourceParsing.SourceLanguage.Snap).syntax.left.map(_.message)
+      .flatMap(SnapStateConversion.expressionForExecution)
+
+  private def error(xml: String): String = readExpression(xml).swap.getOrElse(fail(s"Accepted $xml"))
 
   test("a single green-flag script of numeric turtle blocks is accepted for execution") {
-    val expression = SnapStateConversion.expressionForExecution(project(sprite(drawing + """<comment>note</comment>""")))
+    val expression = readExpression(project(sprite(drawing + """<comment>note</comment>""")))
     val python = expression.map(ExpressionToPython.printedPython).getOrElse(fail(expression.toString))
     assert(python.contains("forward(10)"), python)
   }

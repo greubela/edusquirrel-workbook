@@ -30,6 +30,59 @@ final class JavaStructureDialog(
 
   def addFunction(className: BeEntityName): Unit = open(Request.AddFunction(className, Var(MethodFields())))
 
+  def addField(className: BeEntityName): Unit = open(Request.Field(className, None, Var(FieldFields())))
+
+  def editField(className: BeEntityName, field: it.evadid.vm.parsing.source.JavaFieldStructured): Unit =
+    open(Request.Field(className, Some(field), Var(FieldFields(field.name, field.javaType,
+      field.initializer.getOrElse(""), field.modifiers.find(Set("public", "private", "protected")).getOrElse(""), field.isStatic))))
+
+  def addConstructor(className: BeEntityName): Unit = open(Request.Constructor(className, Var(""), Var(true)))
+
+  private def sourceOf(className: BeEntityName) = state.now().definedClasses.get(className)
+  private def ownerOf(text: String) = discover(text).headOption
+
+  private def commitMember(className: BeEntityName, edited: String, function: Boolean, before: String): Unit = {
+    val parsed = it.evadid.vm.parsing.source.SourceParsing.parse(edited,
+      it.evadid.vm.parsing.source.SourceParsing.SourceLanguage.Java)
+    if parsed.structured.balanced && parsed.syntax.isRight && ownerOf(edited).nonEmpty then {
+      state.update(current => ProgrammingStateJavaStructured(current.definedClasses.updated(className, edited)))
+      close()
+      val added = if function then ownerOf(edited).toSeq.flatMap(_.functions).find(method => !before.contains(method.code)).map(_.code) else None
+      reveal(className, added)
+    } else error.set(Some(Key.javaFunctionNotAdded))
+  }
+
+  private def saveField(className: BeEntityName, previous: Option[it.evadid.vm.parsing.source.JavaFieldStructured], fields: FieldFields): Unit =
+    for text <- sourceOf(className); owner <- ownerOf(text) do {
+      val currentField = previous.flatMap(old => owner.fields.find(field => field.name == old.name && field.code == old.code))
+      if previous.nonEmpty && (currentField.isEmpty || owner.fields.count(_.span == currentField.get.span) != 1) then error.set(Some(Key.javaFunctionNotAdded))
+      else if !validName(fields.name.trim) || fields.javaType.trim.isEmpty then error.set(Some(Key.javaInvalidFunctionName))
+      else if owner.fields.exists(field => field.name == fields.name.trim && !previous.exists(_.name == field.name)) then
+        error.set(Some(Key.javaFieldExists))
+      else {
+        val declaration = s"${fields.visibility} ${if fields.isStatic then "static " else ""}${fields.javaType.trim} ${fields.name.trim}" +
+          Option.when(fields.initializer.trim.nonEmpty)(s" = ${fields.initializer.trim}").getOrElse("") + ";"
+        val edited = currentField.fold(insertMethod(text, owner, declaration))(field =>
+          text.substring(0, field.span.start) + declaration + text.substring(field.span.end))
+        commitMember(className, edited, false, text)
+      }
+    }
+
+  private def submitConstructor(className: BeEntityName, parameters: String, assign: Boolean): Unit =
+    for text <- sourceOf(className); owner <- ownerOf(text) do {
+      val declaration = s"public ${owner.name}($parameters) {\n  }"
+      val candidate = insertMethod(text, owner, declaration)
+      val constructor = ownerOf(candidate).toSeq.flatMap(_.functions).find(method => method.isConstructor && method.span.start >= closingBrace(owner))
+      constructor match {
+        case Some(method) if !owner.functions.exists(existing => existing.isConstructor && existing.parameters.map(_.javaType) == method.parameters.map(_.javaType)) =>
+          val assignments = if assign then method.parameters.filter(parameter => owner.fields.exists(field => field.name == parameter.name && !field.isStatic))
+            .map(parameter => s"    this.${parameter.name} = ${parameter.name};").mkString("\n") else ""
+          val complete = s"public ${owner.name}($parameters) {\n$assignments\n  }"
+          commitMember(className, insertMethod(text, owner, complete), true, text)
+        case _ => error.set(Some(Key.javaFunctionNotAdded))
+      }
+    }
+
   /** The open dialog, if any. */
   val node: Modifier[HtmlElement] = child <-- request.signal.map(_.fold(emptyNode)(render))
 
@@ -80,6 +133,21 @@ final class JavaStructureDialog(
     val (caption, fields, submit) = current match {
       case Request.AddClass(name) =>
         (Key.javaAddClass, field(Key.javaClassName, name), () => submitClass(name.now().trim))
+      case Request.Field(className, previous, draft) => (if previous.isEmpty then Key.javaAddAttribute else Key.javaEditAttribute,
+        div(cls := "java-function-editor__dialog-fields",
+          field(Key.javaAttributeName, draft.zoomLazy(_.name)((v, n) => v.copy(name = n))),
+          field(Key.javaAttributeType, draft.zoomLazy(_.javaType)((v, n) => v.copy(javaType = n))),
+          field(Key.javaInitializer, draft.zoomLazy(_.initializer)((v, n) => v.copy(initializer = n))),
+          labelTag(cls := "java-function-editor__field", span(child.text <-- labels(Key.javaVisibility)),
+            select(value <-- draft.signal.map(_.visibility), onChange.mapToValue --> (next => draft.update(_.copy(visibility = next))),
+              Seq("public", "protected", "private", "").map(v => option(value := v, if v.isEmpty then "~" else v)))),
+          labelTag(input(typ := "checkbox", checked <-- draft.signal.map(_.isStatic),
+            onChange.mapToChecked --> (next => draft.update(_.copy(isStatic = next)))), span(child.text <-- labels(Key.javaStaticMethod)))),
+        () => saveField(className, previous, draft.now()))
+      case Request.Constructor(className, parameters, assign) => (Key.javaAddConstructor,
+        div(cls := "java-function-editor__dialog-fields", field(Key.javaParameters, parameters),
+          labelTag(input(typ := "checkbox", checked <-- assign.signal, onChange.mapToChecked --> assign.writer),
+            span(child.text <-- labels(Key.javaAssignFields)))), () => submitConstructor(className, parameters.now(), assign.now()))
       case Request.AddFunction(className, method) => (Key.javaAddFunction, div(cls := "java-function-editor__dialog-fields",
         field(Key.javaFunctionName, method.zoomLazy(_.name)((value, next) => value.copy(name = next))),
         field(Key.javaReturnType, method.zoomLazy(_.returnType)((value, next) => value.copy(returnType = next))),
@@ -88,6 +156,15 @@ final class JavaStructureDialog(
           input(typ := "checkbox", checked <-- method.signal.map(_.isStatic),
             onChange.mapToChecked --> (checked => method.update(_.copy(isStatic = checked)))),
           span(child.text <-- labels(Key.javaStaticMethod)))), () => submitFunction(className, method.now()))
+    }
+    val deleteButton: Option[Element] = current match {
+          case Request.Field(className, Some(old), _) => Some(button(typ := "button", cls := "java-function-editor__button",
+            child.text <-- labels(Key.javaDelete), onClick --> { _ =>
+              for text <- sourceOf(className); owner <- ownerOf(text); field <- owner.fields.find(field => field.name == old.name && field.code == old.code)
+                if owner.fields.count(_.span == field.span) == 1 do
+                commitMember(className, text.substring(0, field.span.start) + text.substring(field.span.end), false, text)
+            }))
+          case _ => None
     }
     dialogTag(role := "dialog", aria.label <-- labels(caption), cls := "java-function-editor__dialog",
       new EventProp[dom.Event]("cancel") --> { event =>
@@ -103,6 +180,7 @@ final class JavaStructureDialog(
       p(cls := "java-function-editor__dialog-error", role := "alert",
         child.text <-- error.signal.combineWith(labels.all).map((key, texts) => key.fold("")(texts))),
       div(cls := "java-function-editor__dialog-actions",
+        deleteButton,
         button(typ := "button", cls := "java-function-editor__button java-function-editor__button--secondary",
           child.text <-- labels(Key.cancel), onClick --> (_ => close())),
         button(typ := "button", cls := "java-function-editor__button java-function-editor__button--primary",
@@ -118,7 +196,11 @@ object JavaStructureDialog {
   private final case class MethodFields(name: String = "newFunction", returnType: String = "void",
       parameters: String = "", isStatic: Boolean = true)
 
+  private final case class FieldFields(name: String = "value", javaType: String = "int", initializer: String = "", visibility: String = "private", isStatic: Boolean = false) derives upickle.default.ReadWriter
+
   private enum Request {
+    case Field(className: BeEntityName, previous: Option[it.evadid.vm.parsing.source.JavaFieldStructured], fields: Var[FieldFields])
+    case Constructor(className: BeEntityName, parameters: Var[String], assign: Var[Boolean])
     case AddClass(name: Var[String])
     case AddFunction(className: BeEntityName, fields: Var[MethodFields])
   }

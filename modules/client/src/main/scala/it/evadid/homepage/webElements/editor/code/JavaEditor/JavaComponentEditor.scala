@@ -51,9 +51,9 @@ final class JavaComponentEditor(
   /** What the program uses without defining it, from the worker's analysis; the last result stays while the next is pending. */
   private val externalClasses = analysis.scanLeft(external(UmlClassDiagram(Nil), _))(external)
   /** Located warnings (unknown dependencies, unreadable statements), only while the analysis describes the current source. */
-  private[JavaEditor] val warnings = analysis.combineWith(labels.all).map {
+  private[JavaEditor] val warnings = analysis.combineWith(labels.warnings.all).map {
     case (ProgramAnalyzer.Status.Ready(result), texts) => result.warnings.map(warning =>
-      CodeMirrorEditor.mark(warning, texts(warningText(warning.kind)).replace("{name}", warning.subject)))
+      CodeMirrorEditor.mark(warning, texts(warning.kind).replace("{name}", warning.subject)))
     case _ => Nil
   }
   /** Marks of the printed program; the fragment editors show those within their fragment. */
@@ -68,8 +68,25 @@ final class JavaComponentEditor(
 
   private val navigation = JavaEditorNavigation(state)
   private val diagram = UmlStructureSelector(classDiagram.combineWith(externalClasses).map(_.including(_)), navigation.selection, navigation.choose,
-    classFooter = clazz => button(typ := "button", cls := "java-function-editor__button", child.text <-- labels(Key.javaAddFunction),
-      disabled <-- structureReady.map(!_), onClick --> (_ => dialog.addFunction(clazz.sourceKey))),
+    classFooter = clazz => div(
+      child.maybe <-- navigation.selection.map(_.filter(key => key.className == clazz.name && isFunction(key))).map(_.map { key =>
+        button(typ := "button", cls := "java-function-editor__button", child.text <-- labels(Key.javaDelete),
+          onClick --> { _ =>
+            for code <- state.now().definedClasses.get(clazz.sourceKey); entity <- JavaUmlDiagram(state.now()).entity(key);
+              owner <- SourceParsing.parse(code, SourceLanguage.Java).structured.programClasses.headOption;
+              method <- owner.functions.find(_.code.trim == entity.fullCode.trim) do {
+              state.update(current => ProgrammingStateJavaStructured(current.definedClasses.updated(clazz.sourceKey,
+                code.substring(0, method.span.start) + code.substring(method.span.end))))
+              navigation.reveal(clazz.sourceKey, None)
+            }
+          })
+      }),
+      button(typ := "button", cls := "java-function-editor__button", child.text <-- labels(Key.javaAddAttribute),
+        disabled <-- structureReady.map(!_), onClick --> (_ => dialog.addField(clazz.sourceKey))),
+      Option.when(!clazz.isInterface)(button(typ := "button", cls := "java-function-editor__button", child.text <-- labels(Key.javaAddConstructor),
+        disabled <-- structureReady.map(!_), onClick --> (_ => dialog.addConstructor(clazz.sourceKey)))),
+      button(typ := "button", cls := "java-function-editor__button", child.text <-- labels(Key.javaAddFunction),
+      disabled <-- structureReady.map(!_), onClick --> (_ => dialog.addFunction(clazz.sourceKey)))),
     trailing = button(typ := "button", cls := "java-function-editor__button uml-add-class", child.text <-- labels(Key.javaAddClass),
       disabled <-- structureReady.map(!_), onClick --> (_ => dialog.addClass())),
     originLabels = {
@@ -106,6 +123,13 @@ final class JavaComponentEditor(
     val classes = JavaUmlDiagram(current)
     classes.sourceKey(key).foreach { className =>
       classEditor.select(className)
+      key.member.filter(_.kind == UmlEntityKind.Attribute).foreach { member =>
+        current.definedClasses.get(className).foreach { code =>
+          val owner = SourceParsing.parse(code, SourceLanguage.Java).structured.classes.headOption
+          owner.flatMap(_.fields.find(_.name == member.name)).filter(field => owner.get.fields.count(_.span == field.span) == 1)
+            .foreach(dialog.editField(className, _))
+        }
+      }
       if isFunction(key) then
         classes.entity(key).flatMap(entity => JavaFunctionEditor.find(current, className, entity.fullCode))
           .fold(functionEditor.clear())(functionEditor.select)
@@ -196,10 +220,7 @@ final class JavaComponentEditor(
 }
 
 object JavaComponentEditor {
-  private def warningText(kind: SourceWarning.Kind): Key = kind match {
-    case SourceWarning.Kind.UnknownDependency => Key.javaUnknownUse
-    case SourceWarning.Kind.Unreadable => Key.javaUnreadable
-  }
+
 
   private enum Panel(val status: Key) {
     case Function extends Panel(Key.javaViewFunction)

@@ -39,8 +39,6 @@
   "javaLibraryClassHint": "Von einer Bibliothek bereitgestellt; nur zur Ansicht.",
   "javaUnknownClass": "unbekannt",
   "javaUnknownClassHint": "Dein Programm verwendet diese Klasse, aber nichts definiert sie. Sie muss erst definiert oder eingebunden werden.",
-  "javaUnknownUse": "„{name}“ wird verwendet, aber nirgends definiert.",
-  "javaUnreadable": "„{name}“ kann nicht gelesen werden; diese Anweisung lässt sich weder ausführen noch übertragen.",
   "javaAddClass": "Klasse hinzufügen",
   "javaAddFunction": "Funktion hinzufügen",
   "javaModes": "Java-Bearbeitungsmodus",
@@ -75,5 +73,18 @@
   "conversionUnparsable": "Ein Teil dieses Programms kann nicht gelesen werden",
   "conversionUnsupported": "Dieses Konstrukt kann nicht in die andere Sprache übertragen werden",
   "conversionLine": "Zeile {line}",
-  "conversionWarnings": "Mit Änderungen übertragen:"
+  "conversionWarnings": "Mit Änderungen übertragen:",
+  "sourceUnknownUse": "„{name}“ wird verwendet, aber nirgends definiert.",
+  "sourceUnreadable": "„{name}“ kann nicht gelesen werden; diese Anweisung lässt sich weder ausführen noch übertragen.",
+  "sourceUnsupported": "„{name}“ verwendet Syntax, deren Verhalten das gemeinsame Programmmodell nicht darstellen kann.",
+  "javaAddAttribute": "Neues Attribut",
+  "javaEditAttribute": "Attribut bearbeiten",
+  "javaAddConstructor": "Neuer Konstruktor",
+  "javaVisibility": "Sichtbarkeit",
+  "javaAttributeName": "Attributname",
+  "javaAttributeType": "Attributtyp",
+  "javaInitializer": "Anfangswert",
+  "javaAssignFields": "Vorhandene Attribute aus Parametern zuweisen",
+  "javaFieldExists": "Ein Attribut mit diesem Namen existiert bereits.",
+  "javaDelete": "Löschen"
 }

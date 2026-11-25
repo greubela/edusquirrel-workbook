@@ -31,7 +31,6 @@ final class PythonSource private[source] (val source: String) extends ParsedSour
   private val byEnvironment = PerEnvironment[PythonProgramParsed] { environment =>
     val (program, details) = PythonToExpression.convert(neutral, environment)
     PythonProgramParsed(structured, syntax, neutral, program, details, structured.functions.map(function =>
-      PythonFunctionParsed(function, ParsedFunctions.find(program.fullProgram, function.owner, function.name,
-        function.parameters.count(parameter => parameter.name != "self")))))
+      PythonFunctionParsed(function, syntax.toOption.flatMap(_.functionOrigins.get(function.span)).flatMap(details.sourceFunctions.get))))
   }
 }

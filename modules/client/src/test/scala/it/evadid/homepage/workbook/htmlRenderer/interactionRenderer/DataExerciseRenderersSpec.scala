@@ -120,7 +120,7 @@ class DataExerciseRenderersSpec extends EditorDomSuite {
   test("the editor side modules replay sorting and turtle drawings") {
     load(sortExercise)
     val sortCard = HtmlSortListExerciseRenderer.sortStepsCard(sortExercise, Var(sortExercise.initProgram)).getDomElement()
-    val turtleCard = HtmlTurtleRecreateShapeRenderer.turtleStepsCard(Var(ProgrammingStateRaw(Python, "forward(10)\nright(90)\n")),
+    val turtleCard = HtmlTurtleRecreateShapeRenderer.turtleStepsCard(Var(ProgrammingStateRaw(Python, "forward(10)\nright(90)\n")).signal,
       it.evadid.workbook.elements.interactionElements.programming.programmingExerciseTurtle.TurtleRecreateShapeInteraction.defaultEnvironment,
       it.evadid.homepage.webElements.editor.code.worker.LocalWorker.analyzer()).getDomElement()
     val close = mount(div(sortCard, turtleCard))

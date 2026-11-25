@@ -57,6 +57,7 @@ class PythonEditorSpec extends EditorDomSuite {
     def failNative(): Unit = ready.now().get.tryFailure(IllegalStateException("CodeMirror unavailable"))
   }
 
+  private def pause(millis: Int): Future[Unit] = { val done = Promise[Unit](); setTimeout(millis.toDouble)(done.success(())); done.future }
   private def tick(): Future[Unit] = { val done = Promise[Unit](); setTimeout(5)(done.success(())); done.future }
   private def until(condition: => Boolean, attempts: Int = 400): Future[Unit] =
     if condition then Future.unit
@@ -91,16 +92,37 @@ class PythonEditorSpec extends EditorDomSuite {
   test("native typing writes the answer and answer changes reach the native document exactly once") {
     val fixture = Fixture("x = 1")
     finish(fixture.close) {
-      until(fixture.created.now().nonEmpty).map(_ => fixture.loadNative()).flatMap(_ => until(hidden(fallback))).map { _ =>
+      until(fixture.created.now().nonEmpty).map(_ => fixture.loadNative()).flatMap(_ => until(hidden(fallback))).flatMap { _ =>
         val native = fixture.native
         native.type_("x = 2")
-        assertEquals(fixture.text.now(), "x = 2")
-        assertEquals(native.writes.now(), Vector.empty[String], "the user's own edit is not written back")
-        fixture.text.set("x = 3")
-        assertEquals(native.doc.now(), "x = 3")
-        fixture.text.set("x = 3")
-        assertEquals(native.writes.now(), Vector("x = 3"))
-        assertEquals(fixture.created.now().size, 1, "answer changes never rebuild the editor")
+        assertEquals(fixture.text.now(), "x = 1", "the answer follows once typing pauses")
+        until(fixture.text.now() == "x = 2").map { _ =>
+          assertEquals(native.writes.now(), Vector.empty[String], "the user's own edit is not written back")
+          fixture.text.set("x = 3")
+          assertEquals(native.doc.now(), "x = 3")
+          fixture.text.set("x = 3")
+          assertEquals(native.writes.now(), Vector("x = 3"))
+          assertEquals(fixture.created.now().size, 1, "answer changes never rebuild the editor")
+        }
+      }
+    }
+  }
+
+  test("typing writes the answer once per pause, and at once when the editor loses focus or is unmounted") {
+    val fixture = Fixture("x = 1")
+    until(fixture.created.now().nonEmpty).map(_ => fixture.loadNative()).flatMap(_ => until(hidden(fallback))).flatMap { _ =>
+      val native = fixture.native
+      native.type_("x = 2")
+      native.type_("x = 23")
+      assertEquals(fixture.text.now(), "x = 1", "keystrokes stay in the editor while typing")
+      until(fixture.text.now() == "x = 23").map { _ =>
+        native.type_("x = 4")
+        dom.document.querySelector(".code-mirror-editor").dispatchEvent(js.Dynamic.newInstance(
+          js.Dynamic.global.window.Event)("blur").asInstanceOf[dom.Event])
+        assertEquals(fixture.text.now(), "x = 4", "leaving the editor writes the typed text")
+        native.type_("x = 5")
+        fixture.close()
+        assertEquals(fixture.text.now(), "x = 5", "unmounting writes the typed text")
       }
     }
   }
@@ -116,6 +138,23 @@ class PythonEditorSpec extends EditorDomSuite {
         assertEquals(fixture.native.doc.now(), "y = 1\n\n", "an equivalent answer does not overwrite the typed text")
       }
     }
+  }
+
+  test("typed text never overwrites an answer change that arrived while it was pending") {
+    val fixture = Fixture("x = 1")
+    until(fixture.created.now().nonEmpty).map(_ => fixture.loadNative()).flatMap(_ => until(hidden(fallback))).flatMap { _ =>
+      val native = fixture.native
+      native.type_("x = 2")
+      fixture.text.set("restored = 1")
+      assertEquals(native.doc.now(), "restored = 1", "the outside change replaces the typed text")
+      pause(CodeMirrorEditor.typingWriteDelayMillis + 100).map { _ =>
+        assertEquals(fixture.text.now(), "restored = 1", "the typing pause does not write the replaced text back")
+        native.type_("x = 3")
+        fixture.text.set("converted")
+        fixture.close()
+        assertEquals(fixture.text.now(), "converted", "unmounting does not undo a conversion")
+      }
+    }.transform { outcome => scala.util.Try(fixture.close()); outcome }
   }
 
   test("a failed native load leaves the fallback editable and hides the loading notice") {
@@ -166,7 +205,7 @@ class PythonEditorSpec extends EditorDomSuite {
     }
   }
 
-  test("the Eva Python tab shows Python answers as text and stores edits as raw Python") {
+  test("the Eva Python tab shows Python answers as text and stores edits as structured Python") {
     val tab = CodeMirrorEditor.pythonEditorForEva(CodeMirrorEditorConfig.Default)
     assertEquals(tab.language, Python)
     val answer = Var[ProgrammingState](ProgrammingStateRaw(Python, "print('raw')"))
@@ -174,7 +213,7 @@ class PythonEditorSpec extends EditorDomSuite {
     finish(close) {
       assertEquals(fallback.value, "print('raw')")
       typeInFallback("print('edited')")
-      assertEquals(answer.now(), ProgrammingStateRaw(Python, "print('edited')"): ProgrammingState)
+      assertEquals(answer.now(), ProgrammingStatePythonStructured("print('edited')"): ProgrammingState)
       val structured = ProgrammingStatePythonStructured("class A:\n    pass\n\nprint(1)")
       answer.set(structured)
       assertEquals(fallback.value, structured.toString)

@@ -9,7 +9,11 @@ import munit.FunSuite
 
 class PythonToParsedSpec extends FunSuite {
   private def parse(source: String): Seq[ParsedStatement] =
-    SourceParsing.parse(source, SourceLanguage.Python).neutral.statements
+    SourceParsing.parse(source, SourceLanguage.Python).neutral.statements.map {
+      case function: S.FunctionDef => function.copy(origin = None)
+      case unsupported: S.Unsupported => unsupported.copy(origin = None)
+      case other => other
+    }
 
   test("simple statements, comments and declarations map to neutral statements") {
     assertEquals(parse("pass\n# note\nx: float\ny: bool = True\nz = None\nx += 2\nself_less.value = 3\n"), Seq(
@@ -40,11 +44,11 @@ class PythonToParsedSpec extends FunSuite {
     assertEquals(drawn("for i in range(5, 1):\n    forward(i)\n"), Nil)
     assertEquals(parse("for item in items:\n    pass\n"), Seq(S.Unsupported("for ...", "For statements must use range(...)", unparsable = true)))
     parse("for i in range(0, 4, 0):\n    pass\n") match {
-      case Seq(S.Unsupported(_, reason, false)) => assert(reason.contains("nonzero whole number"), reason)
+      case Seq(S.Unsupported(_, reason, false, _)) => assert(reason.contains("nonzero whole number"), reason)
       case other => fail(s"Unexpected $other")
     }
     parse("for i in range(3):\n    i = 1\n") match {
-      case Seq(S.Unsupported(_, reason, false)) => assert(reason.contains("Assigning the loop counter"), reason)
+      case Seq(S.Unsupported(_, reason, false, _)) => assert(reason.contains("Assigning the loop counter"), reason)
       case other => fail(s"Unexpected $other")
     }
   }
@@ -60,7 +64,7 @@ class PythonToParsedSpec extends FunSuite {
       Seq(ParsedParameter("w", Some(ParsedType.Numeric)), ParsedParameter("h", Some(ParsedType.Numeric))), Some(ParsedType.Numeric),
       Seq(S.Return(Some(E.Binary("*", E.Name("w"), E.Name("h"))))), ParsedFunctionKind.Function)))
     parse("@cache\ndef area():\n    return 1\n") match {
-      case Seq(S.Unsupported(_, reason, false)) => assertEquals(reason, "Decorators are not supported outside classes")
+      case Seq(S.Unsupported(_, reason, false, _)) => assertEquals(reason, "Decorators are not supported outside classes")
       case other => fail(s"Unexpected $other")
     }
   }
@@ -82,23 +86,23 @@ class PythonToParsedSpec extends FunSuite {
     assert(evaluated.contains(E.Unary("not", E.Name("ready"))), evaluated)
     assert(evaluated.contains(E.Member(E.Name("point"), "x")) || evaluated.contains(E.Name("point.x")) ||
       evaluated.exists { case E.Member(_, "x") => true; case _ => false }, evaluated)
-    assert(evaluated.exists { case E.Unsupported(_) => true; case _ => false }, evaluated)
+    assert(evaluated.exists { case E.Unsupported(_, _) => true; case _ => false }, evaluated)
   }
 
   test("subscript assignments and try statements are unsupported") {
     parse("items[0] = 1\n") match {
-      case Seq(S.Unsupported(_, reason, false)) => assertEquals(reason, "Subscript assignment is not supported")
+      case Seq(S.Unsupported(_, reason, false, _)) => assertEquals(reason, "Subscript assignment is not supported")
       case other => fail(s"Unexpected $other")
     }
     parse("try:\n    x = 1\nexcept ValueError:\n    pass\n") match {
-      case Seq(S.Unsupported(_, reason, _)) => assertEquals(reason, "try/except statements are currently unsupported")
+      case Seq(S.Unsupported(_, reason, _, _)) => assertEquals(reason, "try/except statements are currently unsupported")
       case other => fail(s"Unexpected $other")
     }
   }
 
   test("unreadable source keeps the statement and explains common mistakes") {
     val reasons = Seq("if x\n    pass\n", "while x\n    pass\n").map(source => parse(source).collectFirst {
-      case S.Unsupported(_, reason, _) => reason
+      case S.Unsupported(_, reason, _, _) => reason
     })
     assertEquals(reasons.head, Some("If statements must end with ':'"))
     assertEquals(reasons(1), Some("While statements must end with ':'"))
@@ -127,11 +131,11 @@ class PythonToParsedSpec extends FunSuite {
       "grow" -> ParsedFunctionKind.Method, "unit" -> ParsedFunctionKind.StaticMethod))
     assertEquals(methods(1).parameters, Seq.empty)
     parse("class Child(Base):\n    pass\n") match {
-      case Seq(S.Unsupported(_, "Inheritance", false)) => ()
+      case Seq(S.Unsupported(_, "Inheritance", false, _)) => ()
       case other => fail(s"Unexpected $other")
     }
     parse("class Box:\n    print(1)\n") match {
-      case Seq(S.Unsupported(_, "Class-body statements or decorators", false)) => ()
+      case Seq(S.Unsupported(_, "Class-body statements or decorators", false, _)) => ()
       case other => fail(s"Unexpected $other")
     }
     intercept[IllegalArgumentException](parse("class Box:\n    def grow(size):\n        pass\n"))
@@ -139,7 +143,10 @@ class PythonToParsedSpec extends FunSuite {
 
   test("subscripts, chained calls and walrus expressions stay explicit unsupported expressions") {
     val evaluated = parse("forward(items[0])\nmake().draw(1)\nprint((n := 3))\nwalker.legs[0].move()\n").collect { case S.Evaluate(e) => e }
-    assertEquals(evaluated.head, E.Call(Seq("forward"), Seq(E.Unsupported("[...]"))))
+    evaluated.head match {
+      case E.Call(Seq("forward"), Seq(unsupported: E.Unsupported)) => assertEquals(unsupported.source, "[...]")
+      case other => fail(s"Unexpected $other")
+    }
     assert(evaluated.exists {
       case E.MethodCall(E.Call(Seq("make"), Nil), "draw", Seq(E.Literal("1"))) => true
       case E.MethodCall(_, "draw", _) => true

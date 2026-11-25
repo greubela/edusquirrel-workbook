@@ -32,7 +32,7 @@ class TurtleJsxGraphRendererSpec extends FunSuite {
       Future.traverse(TurtleDrawingPolicy.values.toList) { policy =>
         val visual = TurtleDrawingGrading.assess(source.toBeExpression.turtleCommandExecutionInfo.completedCommands, target, policy)
         RecreateShapeGrader(target, GradingImportance.REQUIRED_TEST, comparisonPolicy = policy)
-          .gradeStateSafe(source, false, UpdateImportance.MAJOR, ExecutionContextInformation.default).map { saved =>
+          .gradeStateSafe(source, true, UpdateImportance.MAJOR, ExecutionContextInformation.default).map { saved =>
             assertEquals(visual.matches, saved.gradingStatus.isCorrect, clues(code, policy))
             assertEquals(visual.scene.lines.forall(_.result == LineResult.Correct), saved.gradingStatus.isCorrect)
           }
@@ -41,7 +41,7 @@ class TurtleJsxGraphRendererSpec extends FunSuite {
   }
 
   private def previewAssessment(state: ProgrammingState): Try[TurtleDrawingGrading.Assessment] =
-    CompareShapePreview(Var(state), TurtleGraphic.TurtleGraphicSvgString("M0,0 L12,0"), TurtleDrawingPolicy.Strokes, it.evadid.vm.conversion.dependencies.ProgrammingEnvironment.all)
+    CompareShapePreview(Var(state).signal, TurtleGraphic.TurtleGraphicSvgString("M0,0 L12,0"), TurtleDrawingPolicy.Strokes, it.evadid.vm.conversion.dependencies.ProgrammingEnvironment.all)
       .assessment(it.evadid.vm.analysis.ProgramAnalysis.of(state))
 
   test("previews compare the analysed commands as graders compare the state") {

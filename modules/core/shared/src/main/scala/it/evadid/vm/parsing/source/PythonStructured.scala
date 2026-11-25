@@ -12,7 +12,8 @@ final case class PythonSourceStructured(
     classes: Vector[PythonClassStructured],
     functions: Vector[PythonFunctionStructured],
     balanced: Boolean,
-    masked: String
+    masked: String,
+    codeMasked: String
 ) derives ReadWriter {
   /** Logical lines that hold code. */
   def codeLines: Vector[PythonLineStructured] = lines.filter(_.code.nonEmpty)

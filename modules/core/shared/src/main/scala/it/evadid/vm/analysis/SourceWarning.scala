@@ -14,5 +14,7 @@ object SourceWarning {
     case UnknownDependency
     /** A statement the parser keeps as text because it cannot read it; `subject` is its first line. */
     case Unreadable
+    /** Syntax was understood, but the adapter cannot represent its behavior in the shared model. */
+    case Unsupported
   }
 }

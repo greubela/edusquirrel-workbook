@@ -41,7 +41,7 @@ case object HtmlProgrammingExerciseFullJavaRenderer extends LineBasedRenderingFa
       case grader: it.evadid.workbook.elements.interactionElements.programming.programmingExerciseTurtle.RecreateShapeGrader =>
         ElementCard(LanguageMapContentId("basic/turtleGradingPanel"),
           it.evadid.homepage.workbook.htmlRenderer.interactionRenderer.turtleStitch.CompareShapePreview(
-            boundVar, grader.desiredResult, grader.comparisonPolicy, element.environment).getDomElement())
+            boundVar.signal, grader.desiredResult, grader.comparisonPolicy, element.environment).getDomElement())
     }
     val instruction = element.instructionText.map(WorkbookEvaEditor.instruction(element.elementId, _))
     val evaEditor = WorkbookEvaEditor(fullInfo, element, boundVar, EvaEditorConfig(enabledLanguages = List(AppLanguage.Java)))

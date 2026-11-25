@@ -71,6 +71,25 @@ test('monk stories and revised tasks work with the current editor and interactio
     await reorder.locator('button.feedback-action--primary').click();
     await reorder.locator('.feedback-entry.feedback-status--incorrect').waitFor();
     assert(await page.locator('.choice-interaction code').count() > 0, 'code options render as inline code');
+    // Task 1.4 as a matching: four connections by clicking both items, one by dragging.
+    const matching = page.locator('.interaction-element:has(.matching-interaction)').first();
+    const left = matching.locator('.matching-item--left');
+    const right = matching.locator('.matching-item--right');
+    for (const [row, category] of [1, 2, 0, 3].entries()) {
+      await left.nth(row).click();
+      await right.nth(category).click();
+    }
+    await left.nth(4).dragTo(right.nth(4));
+    assert.equal(await matching.locator('.matching-line').count(), 5);
+    await expand(matching);
+    await matching.locator('button.feedback-action--primary').click();
+    await matching.locator('.feedback-score-chip').getByText('1/1', {exact:true}).waitFor();
+    await matching.locator('.matching-remove').first().click();
+    assert.equal(await matching.locator('.matching-line').count(), 4);
+    // The call stack figure of task 1.9 is an SVG data URL that the browser can decode.
+    const figure = page.locator('img[src^="data:image/svg+xml"]').first();
+    await figure.waitFor();
+    assert(await figure.evaluate(img => img.complete && img.naturalWidth > 0), 'call stack figure renders');
     await section('partc').click();
     await counter.getByText('1/4', {exact:true}).waitFor();
     await page.locator('.answer-table thead th').getByText('Zeitpunkt', {exact:true}).waitFor();
@@ -103,7 +122,16 @@ test('monk stories and revised tasks work with the current editor and interactio
     assert.match(await code.innerText(), /Turtle\.forward\(60/);
     await page.locator('.fullscreen-close-button').click();
     await section('kochtitle').click();
-    assert.equal(await page.locator('.workbook-body').getByRole('button', {name:/Editor.*öffnen|Open editor/i}).count(), 3);
+    assert.equal(await page.locator('.workbook-body').getByRole('button', {name:/Editor.*öffnen|Open editor/i}).count(), 2);
+    // Survey: eight statements on a five point scale; consent is opt-in.
+    await section('finishTitle').click();
+    const rows = page.locator('.likert-interaction .likert-row');
+    assert.equal(await rows.count(), 8);
+    const agree = rows.first().locator('input[type=radio]').nth(4);
+    await agree.check();
+    assert(await agree.isChecked());
+    const consent = page.locator('.interaction-element').filter({hasText: labels['survey-consent']}).locator('input[type=checkbox]');
+    assert.equal(await consent.isChecked(), false);
     assert.deepEqual(errors, []);
   } finally { await browser.close(); }
 });

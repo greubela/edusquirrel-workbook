@@ -34,7 +34,7 @@ final class ProgrammingStateDerivations private[evadid](source: ProgrammingState
   }, SourceLanguage.Java)
 
   /** The Python text this state converts from: classes hoisted before module code. */
-  private lazy val pythonSource: PythonSource = SourceParsing.parse(preparedSource.code, SourceLanguage.Python)
+  lazy val pythonSource: PythonSource = SourceParsing.parse(preparedSource.code, SourceLanguage.Python)
 
   private lazy val snapSource = SourceParsing.parse(source match {
     case ProgrammingStateRaw(SnapLanguage, code) => code
@@ -99,6 +99,10 @@ final class ProgrammingStateDerivations private[evadid](source: ProgrammingState
           integerDeclaration.findAllMatchIn(javaSource.structured.codeMasked).exists(_.group(1) == null)) {
         ConversionInfo("Java integer types were widened to shared numeric values; integer overflow and truncating division are not preserved.",
           it.evadid.util.logging.LoggingLevel.WARN, true)
+      }.toSeq ++ Option.when(source.associatedLanguage == Python && language != Python &&
+          "(?::|->)\\s*int\\b".r.findFirstIn(pythonSource.structured.codeMasked).nonEmpty) {
+        ConversionInfo("Python int hints were widened to shared numeric values; whole numbers may become decimal numbers.",
+          it.evadid.util.logging.LoggingLevel.WARN, true)
       }.toSeq
       val remainderWarnings = Option.when((source.associatedLanguage == Java) != (language == Java) &&
           expression.expression.subtree.exists {
@@ -122,7 +126,9 @@ final class ProgrammingStateDerivations private[evadid](source: ProgrammingState
     */
   private def requireSharedForm(target: ProgrammingLanguage): Unit = {
     val text = source match {
-      case ProgrammingStateRaw(Python | Java, _) | _: ProgrammingStateJavaStructured | _: ProgrammingStatePythonStructured => preparedSource.code
+      case ProgrammingStateRaw(Python | Java, code) => code
+      case value: ProgrammingStateJavaStructured => value.toString
+      case value: ProgrammingStatePythonStructured => value.toString
       case _ => ""
     }
     def firstLine(fragment: String) = fragment.trim.linesIterator.nextOption().getOrElse("").trim
@@ -133,7 +139,17 @@ final class ProgrammingStateDerivations private[evadid](source: ProgrammingState
         (ProgrammingConversionKind.UnsupportedConstruct, fragment,
           if reason.nonEmpty then s"$reason: ${firstLine(fragment)}" else s"${firstLine(fragment)} has no form in $target.")
     }.foreach { (kind, fragment, message) =>
-      throw ProgrammingConversionException.at(kind, message, text, Option(text.indexOf(fragment.trim)).filter(index => index >= 0 && fragment.trim.nonEmpty))
+      val warnings = source.associatedLanguage match {
+        case Java => it.evadid.vm.analysis.JavaSourceWarnings.of(javaSource, Set.empty)
+        case Python => it.evadid.vm.analysis.PythonSourceWarnings.of(SourceParsing.parse(text, SourceLanguage.Python), Set.empty)
+        case _ => Nil
+      }
+      val warning = warnings.find(value => value.kind != it.evadid.vm.analysis.SourceWarning.Kind.UnknownDependency &&
+        value.subject == firstLine(fragment))
+      val lines = it.evadid.vm.parsing.source.SourceLines(text)
+      val span = warning.map(value => lines.span(lines.offset(value.startLine, value.startColumn), lines.offset(value.endLine, value.endColumn)))
+      throw new ProgrammingConversionException(message, it.evadid.vm.code.errors.ProgrammingConversionError(kind,
+        warning.map(_.startLine), warning.map(_.startColumn), span))
     }
   }
 

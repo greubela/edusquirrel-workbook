@@ -19,6 +19,8 @@ import it.evadid.homepage.workbook.htmlRenderer.displayRenderer.*
 import it.evadid.homepage.workbook.htmlRenderer.interactionRenderer.basic.*
 import it.evadid.homepage.workbook.htmlRenderer.interactionRenderer.codeTaskToggle.{HtmlCodeTaskToggleRenderer, HtmlSketchDownloadRenderer}
 import it.evadid.homepage.workbook.htmlRenderer.interactionRenderer.reorderExercise.HtmlReorderInteractionRenderer
+import it.evadid.homepage.workbook.htmlRenderer.interactionRenderer.matching.{HtmlLikertScaleRenderer, HtmlMatchingInteractionRenderer}
+import it.evadid.workbook.elements.interactionElements.matching.{LikertScaleInteraction, MatchingInteraction}
 import it.evadid.homepage.workbook.htmlRenderer.interactionRenderer.sortingExercise.HtmlSortingInteractionRenderer
 import it.evadid.homepage.workbook.htmlRenderer.interactionRenderer.sortingReasonExercise.HtmlSortingReasonInteractionRenderer
 import it.evadid.homepage.workbook.htmlRenderer.interactionRenderer.turtleStitch.{HtmlTurtleRecreateShapeRenderer, HtmlTurtleStitchExploreProjectRenderer, HtmlTurtleStitchRecreateShapeRendererLegacy}
@@ -157,8 +159,9 @@ object HtmlRenderFactory {
       case r: ReorderInteraction.ReorderMapIdInteraction => HtmlReorderInteractionRenderer.renderWorkbookElement(r)
       case c: CodeTaskToggleInteraction => HtmlCodeTaskToggleRenderer.renderWorkbookElement(c)
       case d: SketchDownloadInteraction => HtmlSketchDownloadRenderer.renderWorkbookElement(d)
-      /*case i: ChoiceSelectionInteraction => HtmlChoiceSelectionRenderer.renderWorkbookElement(i)
       case i: MatchingInteraction => HtmlMatchingInteractionRenderer.renderWorkbookElement(i)
+      case i: LikertScaleInteraction => HtmlLikertScaleRenderer.renderWorkbookElement(i)
+      /*case i: ChoiceSelectionInteraction => HtmlChoiceSelectionRenderer.renderWorkbookElement(i)
       case i: CategorizationInteraction => HtmlCategorizationInteractionRenderer.renderWorkbookElement(i)
       case i: FillInBlanksInteraction => HtmlFillInBlanksRenderer.renderWorkbookElement(i)
       case i: DropdownBlanksInteraction => HtmlDropdownBlanksRenderer.renderWorkbookElement(i)

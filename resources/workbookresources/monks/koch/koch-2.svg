@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="-20 -100 310 130" width="465" height="195" role="img" aria-label="Koch-Kurve der Rekursionstiefe 2 / Koch curve of recursion depth 2">
+  <rect x="-20" y="-100" width="310" height="130" rx="8" fill="#ffffff"/>
+  <!-- curve of depth 1 behind, each of its segments is replaced -->
+  <polyline points="0,0 90,0 135,-77.94 180,0 270,0" fill="none" stroke="#b5b5b5" stroke-width="1.5" stroke-dasharray="4 4" stroke-linejoin="round"/>
+  <!-- curve of depth 2 -->
+  <polyline points="0,0 30,0 45,-25.98 60,0 90,0 105,-25.98 90,-51.96 120,-51.96 135,-77.94 150,-51.96 180,-51.96 165,-25.98 180,0 210,0 225,-25.98 240,0 270,0" fill="none" stroke="#1f5fbf" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>
+</svg>

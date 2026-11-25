@@ -16,7 +16,19 @@ object JavaUmlDiagram {
     * an edited copy is the program's own class.
     */
   def apply(state: ProgrammingStateJavaStructured): UmlClassDiagram =
-    UmlClassDiagram(state.definedClasses.toSeq.map((sourceKey, source) => umlClass(sourceKey, source, origin = None)))
+    UmlClassDiagram(state.definedClasses.toSeq.map((sourceKey, source) => umlClass(sourceKey, source, origin = None)),
+      state.definedClasses.toSeq.flatMap { (_, code) =>
+        SourceParsing.parse(code, SourceLanguage.Java).structured.programClasses.flatMap { owner =>
+          val parents = owner.extendsNames.map(UmlRelation(owner.name, _, UmlRelation.Kind.Inheritance)) ++
+            owner.implementsNames.map(UmlRelation(owner.name, _, UmlRelation.Kind.Realization))
+          val associations = owner.fields.flatMap(field => field.typeNames.distinct.filterNot(_ == owner.name).map(target =>
+            UmlRelation(owner.name, target, UmlRelation.Kind.Association, Some(field.name),
+              field.javaType.contains("[") || field.typeNames.exists(Set("List", "Set", "Map", "Collection", "Queue", "Deque")))))
+          val covered = (parents ++ associations).map(_.to).toSet + owner.name
+          val dependencies = owner.referencedNames.filterNot(covered).map(UmlRelation(owner.name, _, UmlRelation.Kind.Dependency))
+          parents ++ associations ++ dependencies
+        }
+      }.distinct)
 
   /** Read-only boxes of what a program uses without defining it: the classes of the libraries it calls (in their
     * Java form) and of its unknown dependency. An unknown class named like a library class (`System` with an
@@ -94,7 +106,7 @@ object JavaUmlDiagram {
         function.modifiers, function.code)
     }
     UmlClass(sourceKey, name, owner.code.trim, owner.isAbstract, keyed(UmlEntityKind.Attribute, attributes),
-      keyed(UmlEntityKind.Function, functions), origin.getOrElse(if owner.library then UmlClassOrigin.Library else UmlClassOrigin.Program))
+      keyed(UmlEntityKind.Function, functions), origin.getOrElse(if owner.library then UmlClassOrigin.Library else UmlClassOrigin.Program), owner.isInterface)
   }
 
   private def visibility(modifiers: Seq[String]): UmlVisibility =

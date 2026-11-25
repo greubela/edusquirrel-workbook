@@ -6,6 +6,7 @@ import it.evadid.core.datastructures.language.LanguageMapContentId
 /** UI strings of [[JavaComponentEditor]], resolved from the `blockeditor` language map. */
 final class JavaEditorLabels(text: String => Signal[String]) {
   import JavaEditorLabels.Key
+  val warnings = it.evadid.homepage.webElements.editor.code.program.SourceWarningLabels(text)
 
   def apply(key: Key): Signal[String] = text(key.entry)
 
@@ -20,8 +21,9 @@ object JavaEditorLabels {
   /** Entries of the `blockeditor` language map; each name is its map key. */
   enum Key {
     case javaTitle, javaSubtitle, javaShowClasses, javaHideClasses, javaNavigation, javaTaskReference
+    case javaDelete, javaAddAttribute, javaEditAttribute, javaAttributeName, javaAttributeType, javaInitializer, javaVisibility, javaAddConstructor, javaAssignFields, javaFieldExists
     case javaNoClasses, javaNoClassesHint, javaAddClass, javaAddFunction
-    case javaLibraryClass, javaLibraryClassHint, javaUnknownClass, javaUnknownClassHint, javaUnknownUse, javaUnreadable
+    case javaLibraryClass, javaLibraryClassHint, javaUnknownClass, javaUnknownClassHint
     case javaModes, javaModeClass, javaModeFunction, javaModeFull
     case javaViewFunction, javaViewClass, javaViewSource, javaViewEmpty
     case javaSourceHeading, javaSelectionHeading, javaEditsKept, javaChooseEntry, javaChooseEntryHint, javaDraftWarning

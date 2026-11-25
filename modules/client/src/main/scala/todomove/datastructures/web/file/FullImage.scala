@@ -67,7 +67,13 @@ object FullImage {
 
     override lazy val imageSourceString: String = {
       val b64str = JsHelpers.byteArrayToBase64String(loadedFile.data)
-      "data:image/" + loadedFile.description.structure.extensionOrEmpty + ";base64, " + b64str
+      // Browsers only render SVG data URLs with the registered media type image/svg+xml.
+      val subtype = loadedFile.description.structure.extensionOrEmpty.toLowerCase match {
+        case "svg" => "svg+xml"
+        case "jpg" => "jpeg"
+        case other => other
+      }
+      "data:image/" + subtype + ";base64, " + b64str
     }
 
     override def newDomImage: Element = img(

@@ -1,11 +1,12 @@
-package it.evadid.workbook.elements.interactionElements.todo
+package it.evadid.workbook.elements.interactionElements.matching
 
 import it.evadid.core.util.io.Serializer
-import upickle.default.{ReadWriter, macroRW}
+import upickle.default.ReadWriter
 
-/** One selected right-side item for every left-side item; None means unanswered. */
+/** One selected right-side item for every left-side item; None means unanswered.
+ * Used by [[MatchingInteraction]] (statement to category) and [[LikertScaleInteraction]] (statement to scale point).
+ */
 case class MatchingInteractionState(selectedRightIndicesByLeftIndex: Seq[Option[Int]]) derives upickle.default.ReadWriter {
-
 
   def sanitized(leftCount: Int, rightCount: Int): MatchingInteractionState = {
     val padded = selectedRightIndicesByLeftIndex.take(leftCount).padTo(leftCount, None)

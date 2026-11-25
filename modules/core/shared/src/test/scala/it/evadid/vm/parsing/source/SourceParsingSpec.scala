@@ -50,7 +50,7 @@ class SourceParsingSpec extends FunSuite {
     assertEquals(parsed.functions.map(function => (function.structured.name, function.definition.map(_.inputs.size))), Vector(("twice", Some(1))))
     assert(SourceParsing.parse("def twice(x):\n    return 2 * x\n", SourceLanguage.Python).neutral.statements.exists(_.isInstanceOf[ParsedStatement.FunctionDef]))
     val unreadable = SourceParsing.parse("def (:\n", SourceLanguage.Python).parsed()
-    assert(unreadable.neutral.statements.exists { case ParsedStatement.Unsupported(_, _, true) => true; case _ => false })
+    assert(unreadable.neutral.statements.exists { case ParsedStatement.Unsupported(_, _, true, _) => true; case _ => false })
   }
 
   test("text utilities and line positions") {

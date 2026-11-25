@@ -69,7 +69,8 @@ private[source] object PythonStructureStep {
       }
     }.toVector
 
-    PythonSourceStructured(source, lines, classes, functions, balanced(tokens), blank(source, libraryRanges(source)))
+    PythonSourceStructured(source, lines, classes, functions, balanced(tokens), blank(source, libraryRanges(source)),
+      blank(source, flatten(tokens).collect { case opaque: Opaque => opaque.start -> opaque.end }))
   }
 
   /** Parameters split at top-level commas: `name`, `name: annotation`, `name = default`, `*args`, `**kwargs`. */

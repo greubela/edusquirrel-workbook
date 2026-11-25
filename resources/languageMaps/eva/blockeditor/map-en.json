@@ -39,8 +39,6 @@
   "javaLibraryClassHint": "Provided by a library; view only.",
   "javaUnknownClass": "unknown",
   "javaUnknownClassHint": "Your program uses this class, but nothing defines it. Define or import it first.",
-  "javaUnknownUse": "“{name}” is used, but nothing defines it.",
-  "javaUnreadable": "“{name}” cannot be read; this statement can neither run nor be converted.",
   "javaAddClass": "Add class",
   "javaAddFunction": "Add function",
   "javaModes": "Java editing mode",
@@ -75,5 +73,18 @@
   "conversionUnparsable": "The editor cannot read part of this program",
   "conversionUnsupported": "This construct cannot be converted to the other language",
   "conversionLine": "line {line}",
-  "conversionWarnings": "Converted with changes:"
+  "conversionWarnings": "Converted with changes:",
+  "sourceUnknownUse": "“{name}” is used, but nothing defines it.",
+  "sourceUnreadable": "“{name}” cannot be read; this statement can neither run nor be converted.",
+  "sourceUnsupported": "“{name}” uses syntax whose behavior cannot be represented by the shared program model.",
+  "javaAddAttribute": "New attribute",
+  "javaEditAttribute": "Edit attribute",
+  "javaAddConstructor": "New constructor",
+  "javaVisibility": "Visibility",
+  "javaAttributeName": "Attribute name",
+  "javaAttributeType": "Attribute type",
+  "javaInitializer": "Initial value",
+  "javaAssignFields": "Assign existing attributes from parameters",
+  "javaFieldExists": "An attribute with this name already exists.",
+  "javaDelete": "Delete"
 }

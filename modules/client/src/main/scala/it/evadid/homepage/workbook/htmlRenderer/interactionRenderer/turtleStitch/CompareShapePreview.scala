@@ -22,7 +22,7 @@ import scala.util.{Failure, Try}
   * comparison with the target runs here. All views of one preview share its prepared assessment, while each
   * mounted view owns and reuses one JSXGraph board.
   */
-final case class CompareShapePreview(boundVar: Var[ProgrammingState], expected: TurtleGraphic, policy: TurtleDrawingPolicy,
+final case class CompareShapePreview(source: Signal[ProgrammingState], expected: TurtleGraphic, policy: TurtleDrawingPolicy,
     environment: ProgrammingEnvironment, delay: FiniteDuration = DeferredRendering.defaultDelay, analyzer: ProgramAnalyzer = ProgramAnalyzer.shared) extends HtmlAppElement {
 
   private given ExecutionContext = ExecutionContext.global
@@ -31,7 +31,7 @@ final case class CompareShapePreview(boundVar: Var[ProgrammingState], expected: 
     analysis.completedCommands.fold(reason => Failure(IllegalArgumentException(reason)),
       commands => Try(TurtleDrawingGrading.assess(commands, expected, policy)))
 
-  private lazy val rendering = new DeferredRendering[ProgrammingState, TurtleDrawingGrading.Assessment](boundVar.signal,
+  private lazy val rendering = new DeferredRendering[ProgrammingState, TurtleDrawingGrading.Assessment](source,
     state => analyzer.analyse(state, environment).flatMap(analysis => Future.fromTry(assessment(analysis))), delay)
 
   /** The last successful assessment stays drawn, each new one on a fresh board; a failure hides it behind its

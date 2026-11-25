@@ -12,6 +12,12 @@
     overflow: visible;
 }
 
+/* Figures (e.g. the call stack) never grow wider than the content column. */
+.monks-workbook img {
+    max-width: 100%;
+    height: auto;
+}
+
 .monks-workbook .slide-deck-content img {
     display: block;
     width: auto;
