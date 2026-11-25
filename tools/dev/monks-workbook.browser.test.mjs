@@ -65,7 +65,7 @@ test('monk stories and revised tasks work with the current editor and interactio
     const table = page.locator('.interaction-element:has(.answer-table)').first();
     await expand(table);
     await table.locator('input[type=text]').first().fill('3');
-    await table.locator('.feedback-score-chip').getByText('1/5', {exact:true}).waitFor();
+    await table.locator('.feedback-score-chip').getByText('1/4', {exact:true}).waitFor();
     const reorder = page.locator('.interaction-element:has(.reorder-list)').first();
     await expand(reorder);
     await reorder.locator('button.feedback-action--primary').click();

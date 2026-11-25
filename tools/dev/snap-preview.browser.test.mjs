@@ -111,7 +111,7 @@ test('Snap finishes startup preheating without creating a Morphic world or openi
   } finally {await browser.close();}
 });
 
-test('unchanged Java block previews retain their canvas and changed or unfinished drafts replace it', async () => {
+test('running Java updates block previews, retaining equivalent sources and replacing changed or unfinished drafts', async () => {
   const browser = await chromium.launch({executablePath:process.env.CHROMIUM_PATH || chromium.executablePath(),chromiumSandbox:true});
   try {
     const page = await browser.newPage();
@@ -170,6 +170,7 @@ test('unchanged Java block previews retain their canvas and changed or unfinishe
         view.dispatch({changes:{from:0,to:view.state.doc.length,insert:code}});
       }, code);
       await editor.getByRole('tab', {name:'Full Mode',exact:true}).focus();
+      await page.locator('dialog[open] .turtle-run button').click();
       await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))));
       assert.equal(await page.evaluate(() => EduSquirrelCodeMirrorLibraries.EditorView
         .findFromDOM(document.querySelector('dialog[open] .cm-editor')).state.doc.toString()), code);

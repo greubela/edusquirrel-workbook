@@ -270,7 +270,9 @@ test('Java method editing and theme changes preserve source and undo history', a
     assert.match(edited, /public static void staticAgain\(\)/);
     assert.match(edited, /public void instanceMethod\(\)\s*\{\s*Turtle\.forward\(7\);/,
       'method edits update the central full program and preserve other methods');
-    await editor.locator('.cm-content').fill('class Main { static void main(String[] args) { System.out.println("first\\nsecond"); System.out.println(); Turtle.forward(20); } }');
+    await editor.locator('.cm-content').click();
+    await page.keyboard.press('ControlOrMeta+a');
+    await page.keyboard.insertText('class Main { static void main(String[] args) { System.out.println("first\\nsecond"); System.out.println(); Turtle.forward(20); } }');
     await editor.locator('.programming-execution').getByRole('button', {name:'Run',exact:true}).click();
     await page.waitForFunction(() => document.querySelector('dialog[open] [role=log]')?.textContent === 'first\nsecond\n\n');
     assert(!await editor.innerText().then(text => text.includes('This drawing uses commands that cannot be compared yet.')));
@@ -320,14 +322,17 @@ test('language tabs follow the current draft and commit converted representation
         const current = document.querySelector('dialog[open] .cm-editor');
         if (current) {
           const view = EduSquirrelCodeMirrorLibraries.EditorView.findFromDOM(current);
+          view.focus();
           view.dispatch({changes: {from: 0, to: view.state.doc.length, insert: code}});
         } else {
           const fallback = document.querySelector('dialog[open] .code-mirror-editor__fallback:not([hidden])');
           if (!fallback) throw new Error('The current draft must remain editable.');
+          fallback.focus();
           fallback.value = code;
           fallback.dispatchEvent(new Event('input', {bubbles: true}));
         }
       }, code);
+      await java.focus(); // Leaving the input commits its buffered text before preparing other languages.
       assert.equal(await readSource(), code);
     }
     async function checkTabs(convertible, snapConvertible = convertible) {
