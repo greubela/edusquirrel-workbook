@@ -68,6 +68,24 @@ class JavaFragmentEditorSpec extends EditorDomSuite {
     }
   }
 
+  test("child cleanup commits the final fragment, but cannot overwrite a newer restored answer") {
+    def closing(restored: Boolean): Future[Unit] = {
+      val answer = state()
+      val editor = JavaFunctionEditor(logger, answer, Val("loading"))
+      val finalDraft = "static void main(String[] args) { forward(55); }"
+      val close = mount(div(editor.getDomElement(), span(onUnmountCallback(_ => editor.local.set(finalDraft)))))
+      editor.select(mainFunction(answer))
+      close()
+      val replacement = ProgrammingStateJavaStructured("class NewAnswer {}")
+      if restored then answer.set(replacement)
+      Future.unit.map { _ =>
+        if restored then assertEquals(answer.now(), replacement)
+        else assertEquals(classes(answer)(main), mainClass.replace("forward(10)", "forward(55)"))
+      }
+    }
+    closing(false).flatMap(_ => closing(true))
+  }
+
   test("outside changes refresh the local text, follow a moved method and report a removed one") {
     val answer = state()
     withMounted(JavaFunctionEditor(logger, answer, Val("loading"))) { editor =>

@@ -96,6 +96,11 @@ abstract class JavaFragmentEditor[I](
       // Write after the transaction settles, so a newly selected fragment cannot receive the previous draft.
       local.signal.changes.distinct.foreach(draft => Future { if !lifetime.isKilled then write(draft) })(using ctx.owner)
     },
+    // Child CodeMirror commits buffered text during unmount, after these subscriptions may be gone.
+    onUnmountCallback { _ =>
+      val closingAnswer = state.now()
+      Future { if state.now() == closingAnswer then write(local.now()) }
+    },
     editor.getDomElement())
 }
 

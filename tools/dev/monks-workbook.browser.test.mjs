@@ -58,14 +58,14 @@ test('monk stories and revised tasks work with the current editor and interactio
     await choice.locator('.feedback-score-chip').getByText('1/1', {exact:true}).waitFor();
     const multiple = page.locator('.interaction-element:has(.choice-interaction input[type=checkbox])').first();
     await expand(multiple);
-    for (const index of [1, 3, 5]) await multiple.locator('input[type=checkbox]').nth(index).check();
+    for (const index of [0, 2]) await multiple.locator('input[type=checkbox]').nth(index).check();
     await multiple.locator('.feedback-score-chip').getByText('1/1', {exact:true}).waitFor();
-    await multiple.locator('input[type=checkbox]').nth(3).uncheck();
+    await multiple.locator('input[type=checkbox]').nth(2).uncheck();
     await multiple.locator('.feedback-entry.feedback-status--partial').waitFor();
     const table = page.locator('.interaction-element:has(.answer-table)').first();
     await expand(table);
     await table.locator('input[type=text]').first().fill('3');
-    await table.locator('.feedback-score-chip').getByText('1/4', {exact:true}).waitFor();
+    await table.locator('.feedback-score-chip').getByText('1/5', {exact:true}).waitFor();
     const reorder = page.locator('.interaction-element:has(.reorder-list)').first();
     await expand(reorder);
     await reorder.locator('button.feedback-action--primary').click();
@@ -86,7 +86,7 @@ test('monk stories and revised tasks work with the current editor and interactio
     await matching.locator('.feedback-score-chip').getByText('1/1', {exact:true}).waitFor();
     await matching.locator('.matching-remove').first().click();
     assert.equal(await matching.locator('.matching-line').count(), 4);
-    // The call stack figure of task 1.9 is an SVG data URL that the browser can decode.
+    // The call stack figure of task 1.5 is an SVG data URL that the browser can decode.
     const figure = page.locator('img[src^="data:image/svg+xml"]').first();
     await figure.waitFor();
     assert(await figure.evaluate(img => img.complete && img.naturalWidth > 0), 'call stack figure renders');
