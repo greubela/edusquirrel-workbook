@@ -83,7 +83,8 @@ trait WorkbookFactory {
     ExerciseContainer(nextId("container"), LanguageMapContentId(langIdContainerLabel), elements)
   }
 
-  /** Text-choice authoring convenience; definitions and saved answers use WorkbookContent. */
+  /** Text-choice authoring convenience; definitions and saved answers use WorkbookContent. Choices are graded when
+   * the learner checks them, not on every selection. */
   protected def contentChoice(elementId: String, instruction: LanguageMapContentId, options: Seq[LanguageMapContentId],
       allowMultiple: Boolean = false, expected: Option[Seq[Int]] = None): it.evadid.workbook.elements.interactionElements.choice.WorkbookContentChoiceInteraction = {
     import it.evadid.core.datastructures.language.WorkbookContent
@@ -92,7 +93,7 @@ trait WorkbookFactory {
     import it.evadid.workbook.abstractions.grading.*
     require(expected.forall(indices => indices.distinct == indices && indices.forall(options.indices.contains) && (allowMultiple || indices.size <= 1)),
       "Expected choices must belong to the exercise")
-    WorkbookContentChoiceInteraction(elementId, ChoiceConfig(instruction, Some(allowMultiple), GraderRunningBehavior.RUN_ON_AT_LEAST_MINOR),
+    WorkbookContentChoiceInteraction(elementId, ChoiceConfig(instruction, Some(allowMultiple), GraderRunningBehavior.RUN_ONLY_MANUALLY),
       options.zipWithIndex.map { (id, index) =>
         ChoiceOptionWorkbookContent(WorkbookContent(id), expected.map { indices =>
           val correct = indices.contains(index)

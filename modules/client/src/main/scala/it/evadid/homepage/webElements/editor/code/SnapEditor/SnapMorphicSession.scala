@@ -304,6 +304,7 @@ final class SnapMorphicSession() extends SnapCodeEditorImpl:
     // mouse events still reach the canvas but the textarea cannot receive keys.
     // Moving the shared handler below the mounted canvas keeps it in the same
     // focus scope without changing Morphic's keyboard/IME event pipeline.
+    SnapKeyboardHandlerPosition.install()
     Option(canvas.parentElement).foreach(_.appendChild(world.keyboardHandler))
     world.keyboardHandler.setAttribute("aria-hidden", "true")
     world.keyboardHandler.tabIndex = -1

@@ -162,7 +162,7 @@ case class BeExpressionToPythonString
     }
   }
 
-  override protected def emptyFunctionBody: String = "pass"
+  override protected def emptyBody: String = "pass"
 
 }
 

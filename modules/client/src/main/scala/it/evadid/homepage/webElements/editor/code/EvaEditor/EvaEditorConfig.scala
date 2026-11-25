@@ -15,7 +15,8 @@ import upickle.default.*
 case class EvaEditorConfig(
                             enabledLanguages: Seq[ProgrammingLanguage] = List(SnapLanguage, Python, Java, BlockDisplay),
                             snapConfig: SnapCodeEditorConfig = SnapCodeEditorConfig.PythonCompatibleTesting,
-                            codeMirrorConfig: CodeMirrorEditorConfig = CodeMirrorEditorConfig.Flowchart,
+                            // Python edits like Java: foldable blocks, no flowchart gutter (opt in with CodeMirrorEditorConfig.Flowchart).
+                            codeMirrorConfig: CodeMirrorEditorConfig = CodeMirrorEditorConfig.Default,
                             javaStructure: JavaStructureFeatures = JavaStructureFeatures.Full
                           ) extends WebEditorConfig derives ReadWriter {
 

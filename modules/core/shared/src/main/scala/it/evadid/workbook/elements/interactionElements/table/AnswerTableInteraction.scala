@@ -70,6 +70,11 @@ case class AnswerTableInteraction(elementId: String, caption: LanguageMapContent
     TableAnswer(answer.values.updated(index, value))
   }
 
+  /** Indices of the filled editable cells whose value is not accepted. */
+  override def wrongParts(answer: TableAnswer): Set[Int] =
+    editableCells.zip(answer.values).zipWithIndex.collect { case ((cell, value), index)
+      if value.trim.nonEmpty && cell.expected.exists(expected => !TableCellGrader.accepts(expected, value)) => index }.toSet
+
   def isAnswered(answer: TableAnswer): Boolean = {
     checked(answer)
     editableCells.zip(answer.values).forall((cell, value) => cell.accepts(value))

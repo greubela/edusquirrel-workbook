@@ -6,15 +6,30 @@ import it.evadid.core.datastructures.language.LanguageMapContentId
 import it.evadid.homepage.webElements.HtmlAppElement
 import it.evadid.homepage.workbook.htmlRenderer.DomElementCollection
 
-case class ElementCard(headline: LanguageMapContentId, content: DomElementCollection) extends HtmlAppElement {
+/** Titled card. A `collapsible` card starts expanded; its headline toggles the content. */
+case class ElementCard(headline: LanguageMapContentId, content: DomElementCollection, collapsible: Boolean = false) extends HtmlAppElement {
 
-  lazy val labelElement: Element = h3(
-    cls := "element-card-label",
-    text <-- laminarHelper.plaintextStringSignal(headline)
-  )
+  private lazy val collapsed: Var[Boolean] = Var(false)
+
+  private def headlineText: Modifier[HtmlElement] = text <-- laminarHelper.plaintextStringSignal(headline)
+
+  lazy val labelElement: Element =
+    if collapsible then h3(
+      cls := "element-card-label",
+      button(
+        typ := "button",
+        cls := "element-card-toggle",
+        aria.expanded <-- collapsed.signal.map(!_),
+        onClick --> { _ => collapsed.update(!_) },
+        span(cls := "element-card-toggle-icon", aria.hidden := true, child.text <-- collapsed.signal.map(if _ then "+" else "−")),
+        span(headlineText)
+      )
+    )
+    else h3(cls := "element-card-label", headlineText)
 
   lazy val contentElement: Element = div(
     cls := "element-card-content",
+    Option.when(collapsible)(hidden <-- collapsed.signal),
     children <-- content.allElementsSignal
   )
 

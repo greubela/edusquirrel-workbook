@@ -21,6 +21,8 @@ case class HtmlWorkbookDomElement() extends HtmlAppElement {
   private lazy val workbookDomElement: ReactiveHtmlElement[HTMLDivElement] = {
     div(
       EventStream.periodic(10000).map(_ => fullInfo.syncControl.ensureSynced()) --> Observer.empty,
+      // A newly selected section is read from its top, however far the previous one was scrolled.
+      fullInfo.signals.activeSection.distinct.changes --> { _ => dom.window.scrollTo(0, 0) },
       cls := "workbook-app-shell",
       dialogElement,
       mainTag(

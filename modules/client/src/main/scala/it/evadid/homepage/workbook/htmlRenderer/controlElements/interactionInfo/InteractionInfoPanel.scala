@@ -33,8 +33,20 @@ case class InteractionInfoPanel[F <: InteractionFormat](
         div(cls := "grading-report-icon", child <-- gradingReporter.summary.map(iconGradingScaffolding.deriveGradingSymbol)),
         div(cls := "scaffolding-report-icon", child <-- gradingReporter.scaffolding.map(iconGradingScaffolding.deriveScaffoldingSymbol)),
         div(cls := "sync-report-icon", child <-- iconSync.syncReport.map(iconSync.deriveSyncSymbol)),
+        child.maybe <-- gradingReporter.report.map(report =>
+          Option.when(report.checks.tracked && report.grading.status.isCorrect)(attemptsTracker(report.checks.failedChecks + 1))),
       )
     )
+  }
+
+  /** Shown on the green strip of a solved exercise: the checked answers up to the correct one. */
+  private def attemptsTracker(count: Int): Element = {
+    def label(key: String) = laminarHelper.plaintextStringSignal(LanguageMapContentId("basic/" + key))
+    val unit = label(if count == 1 then "gradingAttempt" else "gradingAttempts")
+    div(cls := "interaction-info__attempts", role := "status",
+      title <-- label("gradingAttemptsTooltip").map(_.replace("{count}", count.toString)),
+      span(cls := "interaction-info__attempts-count", count.toString),
+      span(cls := "interaction-info__attempts-label", child.text <-- unit))
   }
 
   override def getDomElement(): Element = domElement

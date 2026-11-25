@@ -73,6 +73,7 @@ object CodeMirror {
     @js.native trait SelectionRange extends js.Object {
       val from: Int = js.native
       val to: Int = js.native
+      val head: Int = js.native
       val empty: Boolean = js.native
     }
 
@@ -98,6 +99,8 @@ object CodeMirror {
       val effects: js.Array[Effect[js.Any]] = js.native
       val docChanged: Boolean = js.native
       val reconfigured: Boolean = js.native
+
+      def isUserEvent(event: String): Boolean = js.native
     }
 
     @js.native trait ViewUpdate extends js.Object {
@@ -106,6 +109,8 @@ object CodeMirror {
       val view: View = js.native
       val docChanged: Boolean = js.native
       val viewportChanged: Boolean = js.native
+      val selectionSet: Boolean = js.native
+      val focusChanged: Boolean = js.native
       val transactions: js.Array[Transaction] = js.native
     }
 
@@ -118,6 +123,7 @@ object CodeMirror {
       val state: State = js.native
       val dom: org.scalajs.dom.html.Div = js.native
       val visibleRanges: js.Array[VisibleRange] = js.native
+      val hasFocus: Boolean = js.native
 
       def dispatch(spec: js.Object): Unit = js.native
 

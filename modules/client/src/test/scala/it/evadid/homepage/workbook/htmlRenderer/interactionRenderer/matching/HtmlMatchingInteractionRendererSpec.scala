@@ -71,6 +71,22 @@ class HtmlMatchingInteractionRendererSpec extends UiDomSuite {
     }
   }
 
+  test("clicking a right item and then a left item connects them, as the other way round") {
+    val interaction = task
+    inOpenWorkbook(interaction)(mounted(HtmlRenderFactory.render(interaction).getDomElement()) { root =>
+      val right = one(root, ".matching-item--right[data-index='1']")
+      click(right)
+      assert(isSelected(right))
+      assert(left(root, 0).classList.contains("matching-item--awaiting"))
+      click(left(root, 0))
+      assert(!isSelected(right))
+      assertEquals(interaction.interactionVariable.currentValue.selectedRightIndicesByLeftIndex, Seq(Some(1), None))
+      click(left(root, 1))
+      click(one(root, ".matching-item--right[data-index='0']"))
+      assertEquals(interaction.interactionVariable.currentValue.selectedRightIndicesByLeftIndex, Seq(Some(1), Some(0)))
+    })
+  }
+
   test("a press without movement is an ordinary click") {
     rendered { root =>
       val first = left(root, 0)

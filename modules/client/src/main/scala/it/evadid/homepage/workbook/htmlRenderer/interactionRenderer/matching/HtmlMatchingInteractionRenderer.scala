@@ -13,8 +13,9 @@ import org.scalajs.dom
 
 /** Two columns of items; a connection line joins a left item with its chosen right item.
  *
- * Connections are made by dragging from a left item to a right item, or by clicking (or pressing Enter on)
- * a left item and then a right item, which also works with touch and keyboard. Clicking a line or the
+ * Connections are made in either direction: by dragging from an item to an item of the other column, or by
+ * clicking (or pressing Enter on) an item and then an item of the other column, which also works with touch and
+ * keyboard. Connecting a left item replaces its previous connection. Clicking a line or the
  * remove button of a left item deletes its connection. Lines are drawn in an SVG overlay whose coordinates
  * are measured from the item buttons and re-measured whenever the board or an item changes size.
  */
@@ -22,11 +23,20 @@ object HtmlMatchingInteractionRenderer extends LineBasedRenderingFactory[Matchin
 
   private case class Point(x: Double, y: Double)
 
-  /** A pointer press on a left item; once it has moved beyond the threshold it draws a pending line.
+  private enum Side(val css: String) {
+    case Left extends Side("left")
+    case Right extends Side("right")
+    def opposite: Side = if this == Left then Right else Left
+  }
+
+  /** An item of either column. */
+  private case class End(side: Side, index: Int)
+
+  /** A pointer press on an item; once it has moved beyond the threshold it draws a pending line.
     * A `dropped` drag has ended: its pointerup also produces a click when it ends on its own item, and that
     * click must not select the item. The next pointer press or key press replaces it.
     */
-  private case class Drag(left: Int, start: Point, pointer: Point, moved: Boolean, dropped: Boolean = false) {
+  private case class Drag(from: End, start: Point, pointer: Point, moved: Boolean, dropped: Boolean = false) {
     def drawing: Boolean = moved && !dropped
   }
 
@@ -42,11 +52,11 @@ object HtmlMatchingInteractionRenderer extends LineBasedRenderingFactory[Matchin
   }
 
   /** Connection point of an item relative to the board: right edge for left items, left edge for right items. */
-  private def anchor(board: dom.html.Element, side: String, index: Int): Option[Point] =
-    Option(board.querySelector(s".matching-item--$side[data-index='$index']")).map { node =>
+  private def anchor(board: dom.html.Element, end: End): Option[Point] =
+    Option(board.querySelector(s".matching-item--${end.side.css}[data-index='${end.index}']")).map { node =>
       val item = node.getBoundingClientRect()
       val origin = board.getBoundingClientRect()
-      val x = if side == "left" then item.right - origin.left else item.left - origin.left
+      val x = if end.side == Side.Left then item.right - origin.left else item.left - origin.left
       Point(x, item.top - origin.top + item.height / 2)
     }
 
@@ -58,11 +68,13 @@ object HtmlMatchingInteractionRenderer extends LineBasedRenderingFactory[Matchin
   override protected def createRendering(e: MatchingInteraction): AtomarLineRendering = {
     val state = e.interactionVariable.createBoundStateWithUpdateImportance(UpdateImportance.MAJOR, fullInfo.workbookContextInformation).toAirstreamVar
     val locked = e.isDisabledState.toAirstreamVar
-    val selected = Var(Option.empty[Int])
+    val selected = Var(Option.empty[End])
     val drag = Var(Option.empty[Drag])
-    val dropTarget = Var(Option.empty[Int])
+    val dropTarget = Var(Option.empty[End])
     val board = Var(Option.empty[dom.html.Element])
     val layoutTick = Var(0)
+    // Statements that a failed check found wrongly connected are marked until the answer changes.
+    val wrong = fullInfo.signals.reportersFor(e).grading.checks.map(_.wrongParts).distinct
 
     def connectionOf(leftIndex: Int): Signal[Option[Int]] =
       state.signal.map(_.selectedRightIndex(leftIndex, e.left.size, e.right.size)).distinct
@@ -70,21 +82,28 @@ object HtmlMatchingInteractionRenderer extends LineBasedRenderingFactory[Matchin
     def connect(leftIndex: Int, rightIndex: Option[Int]): Unit =
       if !locked.now() then state.update(e.connect(_, leftIndex, rightIndex))
 
-    def rightIndexAt(event: dom.PointerEvent): Option[Int] = for {
+    /** Connects two items of different columns, given in either order. */
+    def connectEnds(a: End, b: End): Unit = (a.side, b.side) match {
+      case (Side.Left, Side.Right) => connect(a.index, Some(b.index))
+      case (Side.Right, Side.Left) => connect(b.index, Some(a.index))
+      case _ => ()
+    }
+
+    def itemAt(event: dom.PointerEvent, side: Side): Option[End] = for {
       root <- board.now()
       hit <- Option(dom.document.elementFromPoint(event.clientX, event.clientY))
-      item <- Option(hit.closest(".matching-item--right"))
+      item <- Option(hit.closest(s".matching-item--${side.css}"))
       if root.contains(item)
       index <- item.getAttribute("data-index").toIntOption
-    } yield index
+    } yield End(side, index)
 
     val connections: Signal[Seq[Connection]] = state.signal.combineWith(board.signal, layoutTick.signal).map { (answer, root, _) =>
       root.toSeq.flatMap { node =>
         answer.sanitized(e.left.size, e.right.size).selectedRightIndicesByLeftIndex.zipWithIndex.flatMap { (target, leftIndex) =>
           for {
             rightIndex <- target
-            from <- anchor(node, "left", leftIndex)
-            to <- anchor(node, "right", rightIndex)
+            from <- anchor(node, End(Side.Left, leftIndex))
+            to <- anchor(node, End(Side.Right, rightIndex))
           } yield Connection(leftIndex, rightIndex, from, to)
         }
       }
@@ -95,9 +114,34 @@ object HtmlMatchingInteractionRenderer extends LineBasedRenderingFactory[Matchin
         active <- current
         if active.drawing
         node <- root
-        from <- anchor(node, "left", active.left)
-      } yield from -> active.pointer
+        from <- anchor(node, active.from)
+        // Curves run from left to right, also while dragging from a right item.
+      } yield if active.from.side == Side.Left then from -> active.pointer else active.pointer -> from
     }
+
+    /** Selection, dragging and connecting, shared by the items of both columns. */
+    def itemControls(end: End): Seq[Modifier[HtmlElement]] = Seq(
+      dataAttr("index") := end.index.toString,
+      cls("matching-item--selected") <-- selected.signal.map(_.contains(end)),
+      cls("matching-item--target") <-- dropTarget.signal.map(_.contains(end)),
+      cls("matching-item--awaiting") <-- selected.signal.map(_.exists(_.side != end.side)),
+      aria.pressed <-- selected.signal.map(_.contains(end).toString),
+      disabled <-- locked.signal,
+      onPointerDown.filter(_.button == 0) --> { event =>
+        if !locked.now() then board.now().foreach { root =>
+          val point = relative(root, event)
+          drag.set(Some(Drag(end, point, point, moved = false)))
+        }
+      },
+      onClick --> { _ =>
+        if drag.now().exists(_.dropped) then drag.set(None)
+        else if !locked.now() then selected.now() match {
+          case Some(other) if other.side != end.side =>
+            connectEnds(other, end)
+            selected.set(None)
+          case current => selected.set(if current.contains(end) then None else Some(end))
+        }
+      })
 
     val leftItems = e.left.zipWithIndex.map { (content, index) =>
       div(cls := "matching-row",
@@ -110,21 +154,10 @@ object HtmlMatchingInteractionRenderer extends LineBasedRenderingFactory[Matchin
           title <-- laminarHelper.plaintextStringSignal(basicLabel("matchingRemove")),
           onClick --> (_ => connect(index, None)),
           "×"),
-        button(typ := "button", cls := "matching-item matching-item--left", dataAttr("index") := index.toString,
-          cls("matching-item--selected") <-- selected.signal.map(_.contains(index)),
+        button(typ := "button", cls := "matching-item matching-item--left",
+          itemControls(End(Side.Left, index)),
           cls("matching-item--connected") <-- connectionOf(index).map(_.nonEmpty),
-          aria.pressed <-- selected.signal.map(_.contains(index).toString),
-          disabled <-- locked.signal,
-          onPointerDown.filter(_.button == 0) --> { event =>
-            if !locked.now() then board.now().foreach { root =>
-              val point = relative(root, event)
-              drag.set(Some(Drag(index, point, point, moved = false)))
-            }
-          },
-          onClick --> { _ =>
-            if drag.now().exists(_.dropped) then drag.set(None)
-            else if !locked.now() then selected.update(current => if current.contains(index) then None else Some(index))
-          },
+          cls("answer-part--wrong") <-- wrong.map(_.contains(index)),
           InlineMarkdown.element(laminarHelper.plaintextStringSignal(content)),
           // Screen readers hear the current connection; sighted users see the line.
           child.maybe <-- connectionOf(index).map(_.map { rightIndex =>
@@ -137,16 +170,8 @@ object HtmlMatchingInteractionRenderer extends LineBasedRenderingFactory[Matchin
     }
 
     val rightItems = e.right.zipWithIndex.map { (content, index) =>
-      button(typ := "button", cls := "matching-item matching-item--right", dataAttr("index") := index.toString,
-        cls("matching-item--target") <-- dropTarget.signal.map(_.contains(index)),
-        cls("matching-item--awaiting") <-- selected.signal.map(_.nonEmpty),
-        disabled <-- locked.signal,
-        onClick --> { _ =>
-          selected.now().foreach { leftIndex =>
-            connect(leftIndex, Some(index))
-            selected.set(None)
-          }
-        },
+      button(typ := "button", cls := "matching-item matching-item--right",
+        itemControls(End(Side.Right, index)),
         span(cls := "matching-dot", aria.hidden := true),
         InlineMarkdown.element(laminarHelper.plaintextStringSignal(content)))
     }
@@ -190,12 +215,12 @@ object HtmlMatchingInteractionRenderer extends LineBasedRenderingFactory[Matchin
             val point = relative(root, event)
             val moved = active.moved || math.hypot(point.x - active.start.x, point.y - active.start.y) > DragThreshold
             drag.set(Some(active.copy(pointer = point, moved = moved)))
-            dropTarget.set(if moved then rightIndexAt(event) else None)
+            dropTarget.set(if moved then itemAt(event, active.from.side.opposite) else None)
           }
         },
         documentEvents(_.onPointerUp) --> { event =>
           drag.set(drag.now().filter(_.drawing).map { active =>
-            rightIndexAt(event).foreach(rightIndex => connect(active.left, Some(rightIndex)))
+            itemAt(event, active.from.side.opposite).foreach(connectEnds(active.from, _))
             selected.set(None)
             active.copy(dropped = true)
           })

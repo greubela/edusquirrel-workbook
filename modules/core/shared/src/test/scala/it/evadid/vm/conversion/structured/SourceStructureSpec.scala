@@ -54,6 +54,18 @@ class SourceStructureSpec extends FunSuite {
     assertEquals(warnings.result().size, 1)
   }
 
+  test("Python blocks without a body stay as typed; only blocks emptied by hoisting receive pass") {
+    assertEquals(python("def main():\n    if x > 1:\n        \n").remaining, "def main():\n    if x > 1:")
+    assertEquals(python("if x:\nclass A:\n    pass\n").remaining, "if x:")
+    assertEquals(python("def f():\n    y = 1\n    class B:\n        pass\n").remaining, "def f():\n    y = 1")
+  }
+
+  test("the parser reads Python headers without a body as empty blocks, keeping line numbers where possible") {
+    assertEquals(withEmptyBodies("def main():\n    if x:  # check\n        \nmain()"), "def main():\n    if x:  # check\n        pass\nmain()")
+    assertEquals(withEmptyBodies("def draw(size):"), "def draw(size):\n    pass")
+    assertEquals(withEmptyBodies("if x:\n    y = 1"), "if x:\n    y = 1")
+  }
+
   test("Java classes are found with their modifiers, nested classes and unfinished bodies") {
     val source = "public final class Outer { static class Inner { } }\nclass Open { void f() {"
     val blocks = javaClasses(source)

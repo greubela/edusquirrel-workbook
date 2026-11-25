@@ -202,23 +202,56 @@ object SourceStructure {
       if saved.keys.exists(_.universalInterpretation() == name.universalInterpretation()) then { warn(s"Duplicate class '${block.name}' ignored; keeping the first definition."); saved }
       else {
         val children = blocks.filter(child => child.start > block.start && child.end <= block.end)
-        val text = remove(source.substring(block.start, block.end), children.map(c => (c.start - block.start, c.end - block.start)))
-        saved.updated(name, if python then repairEmptyBlocks(dedent(text)) else text)
+        val inner = source.substring(block.start, block.end)
+        val ranges = children.map(c => (c.start - block.start, c.end - block.start))
+        saved.updated(name, if python then dedent(hoist(inner, ranges)) else remove(inner, ranges))
       }
     }
-    val remaining = remove(source, blocks.map(b => b.start -> b.end))
-    Parts(classes, if python then repairEmptyBlocks(remaining).trim else remaining.trim)
+    val ranges = blocks.map(b => b.start -> b.end)
+    Parts(classes, if python then hoist(source, ranges).trim else remove(source, ranges).trim)
   }
 
-  /** A block header left without a body after hoisting receives `pass`. */
-  private def repairEmptyBlocks(source: String): String = {
-    val lines = pythonLines(source)
-    lines.zipWithIndex.flatMap { (line, index) =>
-      val text = source.substring(line.start, line.end)
+  /** Python source as the parser reads it: a block header without a body, such as the `if x:` being typed, gets a
+    * `pass`, so the rest of the program stays readable. The `pass` fills the blank line below the header, which keeps
+    * the line numbers; only without such a line it is inserted. The learner's text itself is never changed.
+    */
+  def withEmptyBodies(source: String): String = {
+    val code = pythonLines(source).filter(line => significant(line.tokens).nonEmpty)
+    val headers = code.zipWithIndex.collect {
+      case (line, index) if code.lift(index + 1).forall(_.indent <= line.indent) &&
+        significant(line.tokens).lastOption.exists { case Symbol(_, _, ":") => true; case _ => false } => line
+    }
+    headers.sortBy(_.start).reverse.foldLeft(source) { (text, header) =>
+      val body = " " * (header.indent + 4) + "pass"
+      val nextStart = header.end + 1
+      val nextEnd = text.indexOf('\n', nextStart) match { case -1 => text.length; case at => at }
+      if nextStart <= text.length && header.end < text.length && text.substring(nextStart, nextEnd).trim.isEmpty then
+        text.take(nextStart) + body + text.drop(nextEnd)
+      else text.take(header.end) + "\n" + body + text.drop(header.end)
+    }
+  }
+
+  /** Removes the hoisted Python blocks `ranges` (whole lines). A block header whose entire body is removed keeps a
+    * body: the first removed block becomes `pass` at its indentation. Headers that had no body before, such as the
+    * `if x:` being typed, stay as they are.
+    */
+  private def hoist(source: String, ranges: Seq[(Int, Int)]): String = {
+    val outer = ranges.sortBy(_._1).foldLeft(Vector.empty[(Int, Int)]) { (kept, next) =>
+      if kept.lastOption.exists(_._2 >= next._2) then kept else kept :+ next
+    }
+    val code = pythonLines(source).filter(line => significant(line.tokens).nonEmpty)
+    def rangeOf(line: Line): Option[(Int, Int)] =
+      significant(line.tokens).headOption.flatMap(token => outer.find((start, end) => token.start >= start && token.start < end))
+    val emptied = code.zipWithIndex.flatMap { (line, index) =>
       val opensBlock = significant(line.tokens).lastOption.exists { case Symbol(_, _, ":") => true; case _ => false }
-      val next = lines.drop(index + 1).find(candidate => significant(candidate.tokens).nonEmpty)
-      if opensBlock && next.forall(_.indent <= line.indent) then Vector(text, " " * (line.indent + 4) + "pass") else Vector(text)
-    }.mkString("\n")
+      val body = code.drop(index + 1).takeWhile(_.indent > line.indent)
+      Option.when(opensBlock && rangeOf(line).isEmpty && body.nonEmpty && body.forall(rangeOf(_).nonEmpty))(body.head).flatMap(rangeOf)
+    }.toSet
+    outer.reverse.foldLeft(source) { case (text, range @ (start, end)) =>
+      val removed = text.substring(start, end)
+      val replacement = if emptied(range) then removed.takeWhile(c => c == ' ' || c == '\t') + "pass" + (if removed.endsWith("\n") then "\n" else "") else ""
+      text.take(start) + replacement + text.drop(end)
+    }
   }
 
   def java(source: String, warn: String => Unit = logger.logWarn): Parts = {

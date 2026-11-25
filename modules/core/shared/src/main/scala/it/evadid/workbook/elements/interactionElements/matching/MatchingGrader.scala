@@ -7,8 +7,8 @@ import java.time.LocalDateTime
 import scala.concurrent.Future
 import upickle.default.ReadWriter
 
-/** Grades a whole matching task on request. The additional data is the number of correct connections, so the
- * feedback can say how many are right without revealing which ones are wrong.
+/** Grades a whole matching task on request. The additional data is the number of correct connections for the
+ * feedback text; the wrong connections are marked by the renderer (see [[MatchingInteraction.wrongParts]]).
  */
 case class MatchingGrader(expected: Seq[Int], rightCount: Int)
   extends WorkbookInteractionGrader[MatchingInteractionState, Int] derives ReadWriter {
@@ -23,9 +23,18 @@ case class MatchingGrader(expected: Seq[Int], rightCount: Int)
 }
 
 object MatchingGrader {
-  def correctCount(expected: Seq[Int], rightCount: Int, state: MatchingInteractionState): Int =
+  /** Per left item: `None` while unconnected, else whether its connection is the expected one. The grade and the
+    * marks of wrong connections ([[MatchingInteraction.wrongParts]]) are both derived from it. */
+  def verdicts(expected: Seq[Int], rightCount: Int, state: MatchingInteractionState): Seq[Option[Boolean]] =
     state.sanitized(expected.size, rightCount).selectedRightIndicesByLeftIndex.zip(expected)
-      .count((selected, answer) => selected.contains(answer))
+      .map((selected, answer) => selected.map(_ == answer))
+
+  def correctCount(expected: Seq[Int], rightCount: Int, state: MatchingInteractionState): Int =
+    verdicts(expected, rightCount, state).count(_.contains(true))
+
+  /** Left items connected with a wrong category; unconnected items are no mistakes. */
+  def wrongConnections(expected: Seq[Int], rightCount: Int, state: MatchingInteractionState): Set[Int] =
+    verdicts(expected, rightCount, state).zipWithIndex.collect { case (Some(false), index) => index }.toSet
 
   def status(correct: Int, total: Int): GradingStatus =
     if correct == total then GradingStatus.Correct()
