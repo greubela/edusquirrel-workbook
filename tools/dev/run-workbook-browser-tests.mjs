@@ -21,6 +21,7 @@ await mkdir(scratch, {recursive: true});
 const bundle = path.join(scratch, 'codemirror-native.mjs');
 const packages = JSON.parse(await readFile(path.join(root, 'package.json'), 'utf8')).devDependencies;
 const exports = {
+  '@codemirror/autocomplete': 'closeBrackets closeBracketsKeymap',
   '@codemirror/state': 'Compartment EditorState MapMode StateEffect StateField Text Transaction',
   '@codemirror/view': 'EditorView Decoration keymap drawSelection highlightActiveLine lineNumbers highlightActiveLineGutter ViewPlugin GutterMarker gutter',
   '@codemirror/commands': 'defaultKeymap history historyKeymap indentLess indentMore invertedEffects',
