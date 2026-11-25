@@ -153,7 +153,9 @@ test('test workbook preserves edits across human languages, programming language
     await editForward(42);
     await page.waitForFunction(count => snapHistoryWrites.length > count, historyBeforeLanguage);
     const persisted = await page.evaluate(() => snapHistoryWrites.at(-1));
-    assert(persisted.includes('SnapModel'), 'native edits persist a typed model');
+    const written = await page.evaluate(count => snapHistoryWrites.slice(count)
+      .map(value => String(value).replace(/data:image[^"]*/g, 'data:image…').slice(0, 400)), historyBeforeLanguage);
+    assert(persisted.includes('SnapModel'), `native edits persist a typed model; writes since the language checks: ${JSON.stringify(written)}`);
     assert(!persisted.includes('data:image/png;base64,'), 'generated previews are absent from database history');
     // A language switch must also flush a numeric field still being edited.
     await editForward(91, false);
