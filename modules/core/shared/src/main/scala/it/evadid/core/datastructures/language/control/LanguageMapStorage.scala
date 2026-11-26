@@ -46,7 +46,7 @@ case class LanguageMapStorage
 
 object LanguageMapStorage {
 
-  case class LanguageMapStorageSerializable(parsedTriples: ParsedTriples) extends AutoSerializableSubType[LanguageMapStorage, LanguageMapStorageSerializable] derives upickle.default.ReadWriter {
+  case class LanguageMapStorageSerializable(parsedTriples: ParsedTriples) extends AutoSerializableSubType[LanguageMapStorage, LanguageMapStorageSerializable] {
     override lazy val toTypedMainType: LanguageMapStorage = LanguageMapStorage(parsedTriples, Set())
   }
 

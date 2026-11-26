@@ -7,9 +7,8 @@ object SvgPathParser {
   private val commandLetters = "AaCcHhLlMmQqVvZz"
   private val numberPattern = "[+-]?(?:[0-9]+(?:\\.[0-9]*)?|\\.[0-9]+)(?:[eE][+-]?[0-9]+)?".r
 
-  private case class Command(letter: Char, arguments: List[Double]) derives upickle.default.ReadWriter
+  private case class Command(letter: Char, arguments: List[Double])
   private case class BuildState(path: SvgPathBuilder[Double], current: Point[Double], subpathStart: Point[Double])
-    derives upickle.default.ReadWriter
 
   def parseString(pathDString: String): Option[SvgPathBuilder[Double]] =
     tokenize(pathDString.trim).flatMap(readCommands).flatMap(build)

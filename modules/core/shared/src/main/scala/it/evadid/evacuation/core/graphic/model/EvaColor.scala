@@ -1,9 +1,6 @@
 package it.evadid.evacuation.core.graphic.model
 
-import upickle.default.ReadWriter
-
-case class EvaColor(red: Int, green: Int, blue: Int, alpha: Int = 255) derives ReadWriter {
-
+case class EvaColor(red: Int, green: Int, blue: Int, alpha: Int = 255) {
 
   def toHSB: HSBColor = {
     // SOURCE: https://developer.classpath.org/doc/java/awt/Color-source.html
@@ -42,9 +39,7 @@ case class EvaColor(red: Int, green: Int, blue: Int, alpha: Int = 255) derives R
     HSBColor(h, s, b)
   }
 
-
 }
-
 
 object EvaColor {
 

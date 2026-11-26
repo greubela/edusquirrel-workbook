@@ -16,7 +16,7 @@ final case class BeDependency(
     override val definedClasses: List[BeDefineClass] = Nil,
     override val definedFunctions: List[BeDefineFunction] = Nil,
     override val definedVariables: List[BeDefineVariable] = Nil
-) extends BeDefineStructure derives upickle.default.ReadWriter {
+) extends BeDefineStructure {
   def definition(language: ProgrammingLanguage): Option[String] = addDefinitions.get(language)
   override lazy val staticInformationExpression: BeExpressionStaticInformation = new BeExpressionStaticInformation() {}
   override lazy val structureInfo: BeExpressionStructureInfo[?] = new BeExpressionStructureInfo[BeDependency](this) {
@@ -27,7 +27,7 @@ final case class BeDependency(
         definedFunctions = updated.collect { case value: BeDefineFunction => value },
         definedVariables = updated.collect { case value: BeDefineVariable => value })
     }
-    override def toJavaStyleLines(info: BeChildInfo): Seq[BeSegmentedCodeElement] = asExpressionLine(ControlFlowDown(), info)
+    override def toJavaStyleLines(info: BeChildInfo): Seq[BeSegmentedCodeElement] = asExpressionLine(ControlFlowDown, info)
     override def getChildrenAndExtension(scope: BeScope): Seq[BeExpressionNode] =
       allDefinedStructures.zipWithIndex.map((value, index) => BeExpressionReference(BeChildInfo(BeChildRole.ExpressionInSequence(index), scope), value))
   }

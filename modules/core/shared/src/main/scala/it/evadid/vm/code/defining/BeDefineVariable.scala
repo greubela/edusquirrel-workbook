@@ -35,7 +35,7 @@ case class BeDefineVariable(
         .getOrElse(BeDefineVariable.this)
 
     override def toJavaStyleLines(myInfo: BeChildInfo): Seq[BeSegmentedCodeElement] =
-      asExpressionLine(ControlFlowDown(), myInfo)
+      asExpressionLine(ControlFlowDown, myInfo)
 
     override def getChildrenAndExtension(myScope: BeScope): Seq[BeExpressionNode] =
       initValue.map(value => BeExpressionReference(BeChildInfo(BeChildRole.ValueForVariable(BeDefineVariable.this), myScope), value)).toSeq

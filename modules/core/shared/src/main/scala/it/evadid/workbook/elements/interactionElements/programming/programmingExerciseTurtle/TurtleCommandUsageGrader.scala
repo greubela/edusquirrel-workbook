@@ -41,7 +41,7 @@ case class TurtleCommandUsageGrader(
     .getOrElse(throw IllegalArgumentException(s"Unknown turtle command: ${command.universalInterpretation()}"))
 
   override val runningBehavior: GraderRunningBehavior = GraderRunningBehavior.RUN_ON_AT_LEAST_MINOR
-  override val gradingEntity: FeedbackEntity = FeedbackEntity.TestEntity()
+  override val gradingEntity: FeedbackEntity = FeedbackEntity.TestEntity
 
   override protected def handleGrading(state: ProgrammingState, contextInformation: ExecutionContextInformation)
       : Future[GradingResult[ProgrammingState, AdditionalProgrammingTestInfo]] = Future {
@@ -60,7 +60,7 @@ case class TurtleCommandUsageGrader(
         val _ = info.completedCommands // A partial trace must never satisfy an execution limit.
         info.nrOfCommandExecutedIgnoreParameter(canonicalCommand)
     }
-    val status = if count <= maximum then GradingStatus.Correct() else GradingStatus.Incorrect()
+    val status = if count <= maximum then GradingStatus.Correct else GradingStatus.Incorrect
     val res: GradingResult[ProgrammingState, AdditionalProgrammingTestInfo] =
      GradingResult[ProgrammingState, AdditionalProgrammingTestInfo](this, state, status, Some(WorkbookContent(description(count))), None, LocalDateTime.now())
     res

@@ -13,7 +13,6 @@ class TypeConverterSpec extends FunSuite {
     val result = converter.tryConvertAllToO(Iterator("1", "invalid", "serialized", "2"))
     assertEquals(result.inputAfterOperation, Set("invalid", "serialized"))
     assertEquals(result.outputAfterOpteration, Set(1, 2))
-    assertEquals(read[TypeConverter.ConverterResult[String, Int]](write(result)), result)
   }
   test("reverse conversion partitions failures and empty inputs") {
     val result = converter.tryConvertAllToI(List(1, -1, 2))

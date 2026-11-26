@@ -10,7 +10,7 @@ private sealed trait ExecutionMethod {
 
 object ExecutionMethod {
 
-  case class ExecuteLocalSync() extends ExecutionMethod derives upickle.default.ReadWriter {
+  case class ExecuteLocalSync() extends ExecutionMethod {
     override def handleExecution[I, O](func: I => O, input: I, callback: Try[O] => Any): Unit =
       callback(Try(func(input)))
   }

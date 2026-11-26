@@ -1,8 +1,7 @@
 package it.evadid.evacuation.core.graphic.spritemap
 
-import upickle.default.ReadWriter
 
-case class SpriteMapResourceIdentifier(id: String, layout: String, size: Int, description: String, folderName: Option[String] = None) derives ReadWriter {
+case class SpriteMapResourceIdentifier(id: String, layout: String, size: Int, description: String, folderName: Option[String] = None) {
   val desiredColsInSelection: Int = if (layout == "default") 9 else 7
 }
 
@@ -38,6 +37,5 @@ object SpriteMapResourceIdentifier {
       None
     }
   }
-
 
 }

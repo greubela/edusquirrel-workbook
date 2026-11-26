@@ -75,19 +75,19 @@ class InteractionReportersSpec extends EditorDomSuite {
     reporter.report.foreach(value => first.set(Some(value)))(using firstOwner)
     reporter.report.foreach(value => second.set(Some(value)))(using secondOwner)
     assert(first.now().get eq second.now().get)
-    complete(element, GradingStatus.Correct(), 1)
+    complete(element, GradingStatus.Correct, 1)
     assert(first.now().get eq second.now().get)
     assertEquals(first.now().get.grading.correct, 1)
     assert(first.now().get.grading.status.isCorrect)
     firstOwner.killSubscriptions()
     secondOwner.killSubscriptions()
-    complete(element, GradingStatus.Incorrect(), 2)
+    complete(element, GradingStatus.Incorrect, 2)
     assert(first.now().get.grading.status.isCorrect)
     val remounted = new ManualOwner
     try {
       val latest = reporter.report.observe(using remounted)
       assertEquals(latest.now().grading.correct, 0)
-      assertEquals(latest.now().grading.status, GradingStatus.Incorrect())
+      assertEquals(latest.now().grading.status, GradingStatus.Incorrect)
     } finally remounted.killSubscriptions()
   }
 
@@ -105,14 +105,14 @@ class InteractionReportersSpec extends EditorDomSuite {
       full.homepageInfoState.update(_.copy(workbookInfo = Some(newWorkbook)))
       assert(!(full.signals.reportersFor(newElement) eq oldReporter))
       intercept[IllegalArgumentException](full.signals.reportersFor(oldElement))
-      complete(oldElement, GradingStatus.Correct(), 1)
+      complete(oldElement, GradingStatus.Correct, 1)
       assertEquals(active.now().get.grading.correct, 0)
-      complete(newElement, GradingStatus.Incorrect(), 2)
-      assertEquals(active.now().get.grading.status, GradingStatus.Incorrect())
+      complete(newElement, GradingStatus.Incorrect, 2)
+      assertEquals(active.now().get.grading.status, GradingStatus.Incorrect)
       full.homepageInfoState.update(_.copy(workbookInfo = Some(oldWorkbook)))
       assertEquals(active.now().get.grading.correct, 1)
       assert(!(full.signals.reportersFor(oldElement) eq oldReporter))
-      complete(newElement, GradingStatus.Correct(), 3)
+      complete(newElement, GradingStatus.Correct, 3)
       assertEquals(active.now().get.grading.correct, 1)
       full.homepageInfoState.update(_.copy(workbookInfo = None))
       assert(full.signals.interactionReporters.now().isEmpty)
@@ -146,7 +146,7 @@ class InteractionReportersSpec extends EditorDomSuite {
     try {
       val report = reporter.report.observe(using owner)
       def hint(status: ScaffoldingStatus, offset: Long): Unit = element.interactionVariable.updateHistory(
-        _.addScaffolding(ScaffoldingResult[String, MessengerModel]("", status, FeedbackEntity.TestEntity(), None, at.plusSeconds(offset))),
+        _.addScaffolding(ScaffoldingResult[String, MessengerModel]("", status, FeedbackEntity.TestEntity, None, at.plusSeconds(offset))),
         ExecutionContextInformation.default)
       hint(ScaffoldingStatus.ScaffoldingRequestedButNotFinished(), 1)
       assertEquals(report.now().scaffolding.status, ScaffoldingReport.Status.Pending)

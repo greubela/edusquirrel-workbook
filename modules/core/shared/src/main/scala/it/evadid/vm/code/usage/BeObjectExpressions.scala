@@ -9,7 +9,6 @@ import it.evadid.vm.naming.BeEntityName
 import it.evadid.vm.simulation.*
 import it.evadid.vm.static.BeExpressionStaticInformation
 import it.evadid.vm.types.*
-import upickle.default.*
 
 /** Object expressions have no language-specific receiver spelling or source payload. */
 trait BeObjectExpression extends BeExpression {
@@ -17,7 +16,7 @@ trait BeObjectExpression extends BeExpression {
   protected def replace(children: Map[BeChildRole, BeExpression]): BeObjectExpression
   override lazy val structureInfo: BeExpressionStructureInfo[?] = new BeExpressionStructureInfo[BeObjectExpression](this) {
     override def withReplacedChildren(newChildren: Map[BeChildRole, BeExpression]): BeObjectExpression = replace(newChildren)
-    override def toJavaStyleLines(info: BeChildInfo): Seq[BeSegmentedCodeElement] = asExpressionLine(ControlFlowDown(), info)
+    override def toJavaStyleLines(info: BeChildInfo): Seq[BeSegmentedCodeElement] = asExpressionLine(ControlFlowDown, info)
     override def getChildrenAndExtension(scope: BeScope): Seq[BeExpressionNode] = children.map { (role, expression) =>
       BeExpressionReference(BeChildInfo(role, scope), expression)
     }
@@ -26,7 +25,7 @@ trait BeObjectExpression extends BeExpression {
     throw UnsupportedOperationException(s"Object execution is not supported by this simulator: ${getClass.getSimpleName}")
 }
 
-case class BeCurrentInstance(className: BeEntityName) extends BeObjectExpression derives ReadWriter {
+case class BeCurrentInstance(className: BeEntityName) extends BeObjectExpression {
   protected def children = Seq.empty
   protected def replace(children: Map[BeChildRole, BeExpression]) = this
   override lazy val staticInformationExpression: BeExpressionStaticInformation = new BeExpressionStaticInformation {
@@ -35,7 +34,7 @@ case class BeCurrentInstance(className: BeEntityName) extends BeObjectExpression
   }
 }
 
-case class BeMemberAccess(receiver: BeExpression, member: BeDefineVariable) extends BeObjectExpression derives ReadWriter {
+case class BeMemberAccess(receiver: BeExpression, member: BeDefineVariable) extends BeObjectExpression {
   protected def children = Seq(BeChildRole.Receiver -> receiver)
   protected def replace(children: Map[BeChildRole, BeExpression]) = copy(receiver = children.getOrElse(BeChildRole.Receiver, receiver))
   override lazy val staticInformationExpression: BeExpressionStaticInformation = new BeExpressionStaticInformation {
@@ -44,7 +43,7 @@ case class BeMemberAccess(receiver: BeExpression, member: BeDefineVariable) exte
   }
 }
 
-case class BeAssignMember(receiver: BeExpression, member: BeDefineVariable, value: BeExpression) extends BeObjectExpression derives ReadWriter {
+case class BeAssignMember(receiver: BeExpression, member: BeDefineVariable, value: BeExpression) extends BeObjectExpression {
   protected def children = Seq(BeChildRole.Receiver -> receiver, BeChildRole.ValueInAssignment -> value)
   protected def replace(children: Map[BeChildRole, BeExpression]) = copy(
     receiver = children.getOrElse(BeChildRole.Receiver, receiver), value = children.getOrElse(BeChildRole.ValueInAssignment, value))

@@ -108,19 +108,19 @@ class Python313ParserTest extends FunSuite {
     val mixedAssignment = parseOne("mixed = [1, 'two']").asInstanceOf[PySimpleAssignment]
     assertEquals(mixedAssignment.value.get.asInstanceOf[PythonLiteral[?]].literalType.typenameInCode, "list[Any]")
 
-    val intListType: PythonType[List[BigInt]] = PythonType.PYTHON_LIST(PythonType.PYTHON_INTEGER())
+    val intListType: PythonType[List[BigInt]] = PythonType.PYTHON_LIST(PythonType.PYTHON_INTEGER)
     assert(intListType.isInstanceOf[PythonType[?]], "expected list type to be a PythonType")
     assertEquals(intListType.serializerPythonValue.deserialize("[1, 2, 3]"), List(BigInt(1), BigInt(2), BigInt(3)))
     assertEquals(intListType.serializerPythonValue.serialize(List(BigInt(1), BigInt(2))), "[1, 2]")
 
-    val dictType: PythonType[Map[String, BigInt]] = PythonType.PYTHON_DICT(PythonType.PYTHON_STRING(), PythonType.PYTHON_INTEGER())
+    val dictType: PythonType[Map[String, BigInt]] = PythonType.PYTHON_DICT(PythonType.PYTHON_STRING, PythonType.PYTHON_INTEGER)
     assert(dictType.isInstanceOf[PythonType[?]], "expected dict type to be a PythonType")
     assertEquals(dictType.serializerPythonValue.deserialize("{'ada': 36}"), Map("ada" -> BigInt(36)))
 
-    val arrayType: PythonType[List[BigInt]] = PythonType.PYTHON_ARRAY(PythonType.PYTHON_INTEGER())
+    val arrayType: PythonType[List[BigInt]] = PythonType.PYTHON_ARRAY(PythonType.PYTHON_INTEGER)
     assertEquals(arrayType.typenameInCode, "array[int]")
 
-    val setType: PythonType[Set[BigInt]] = PythonType.PYTHON_SET(PythonType.PYTHON_INTEGER())
+    val setType: PythonType[Set[BigInt]] = PythonType.PYTHON_SET(PythonType.PYTHON_INTEGER)
     assertEquals(setType.serializerPythonValue.deserialize("{1, 2}"), Set(BigInt(1), BigInt(2)))
   }
 

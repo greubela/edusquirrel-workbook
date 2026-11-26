@@ -5,7 +5,7 @@ import it.evadid.vm.naming.BeEntityName
 /** Language-independent class diagram. Source fragments keep selections useful even when a language's
   * executable VM subset cannot represent a member yet; parsing belongs to language-specific builders.
   */
-final case class UmlClassDiagram(classes: Seq[UmlClass], relations: Seq[UmlRelation] = Nil) derives upickle.default.ReadWriter {
+final case class UmlClassDiagram(classes: Seq[UmlClass], relations: Seq[UmlRelation] = Nil) {
   def entity(key: UmlEntityKey): Option[UmlSelectedEntity] =
     classes.find(_.name == key.className).flatMap(umlClass =>
       key.member.fold(Some(umlClass.entity))(member => umlClass.members.find(_.key.member.contains(member)).map(_.entity)))

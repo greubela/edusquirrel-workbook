@@ -41,22 +41,6 @@ class EvaGraphJsonSpec extends FunSuite {
     assertEquals(decoded.nodesList, List(Router(Position(0, 0), 1, 10, false)))
     assertEquals(ujson.read(EvaGraphFlowJsonConverter.encode(decoded)), ujson.read(json))
   }
-  test("image path descriptions round trip through both the sealed root and concrete codec") {
-    val path = EvaImage.fromPath("images/学校.svg")
-    roundTrip(path)
-    roundTrip[EvaImage](path)
-  }
-  test("embedded image descriptions preserve filename, type and signed file bytes") {
-    val embedded = EvaImage.fromData(EvaFileInformation("floor.png", Array[Byte](0, -1, 127, -128)))
-    val decoded = List(read[EvaImage](write[EvaImage](embedded)), readBinary[EvaImage](writeBinary[EvaImage](embedded)),
-      read[EvaImage.DataBasedEvaImage](write(embedded)), readBinary[EvaImage.DataBasedEvaImage](writeBinary(embedded)))
-    decoded.foreach { image =>
-      val data = image.asInstanceOf[EvaImage.DataBasedEvaImage]
-      assertEquals(data.fullFileName, "floor.png")
-      assertEquals(data.fileType, "png")
-      assertEquals(data.data.toList, embedded.data.toList)
-    }
-  }
   test("positionable edges and graph models have default codecs with restored graph behavior") {
     val positioned = new PositionableEdge(a, b, edge.content)
     roundTrip(positioned)

@@ -40,7 +40,7 @@ trait WorkbookInteractionGrader[T, GA] {
       if (shouldRunGrader(forceGrading, importance)) handleGrading(state, contextInformation).recoverWith {
         case err: Throwable => failWith(state, Right(err))
       }
-      else Future.successful(GradingResult[T, GA](this, state, NotRequested()))
+      else Future.successful(GradingResult[T, GA](this, state, NotRequested))
     } catch {
       case (err: Throwable) => failWith(state, Right(err))
       case any: Any => failWith(state, Left(s"Unknown grading error (${any.toString})"))

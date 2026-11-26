@@ -54,7 +54,7 @@ case class InteractionVariableHistory[F <: InteractionFormat](
   def addStates(states: Iterable[InteractionVariableState[InteractionFormat.State[F]]]): InteractionVariableHistory[F] =
     states.foldLeft(this)(_.addState(_))
   def addGrading(result: GradingResult[InteractionFormat.State[F], InteractionFormat.Grading[F]]): InteractionVariableHistory[F] = result.gradingStatus match {
-    case _: GradingStatus.NotRequested | _: GradingStatus.NotFinished => this
+    case GradingStatus.NotRequested | GradingStatus.NotFinished => this
     case _ if gradingEvents.exists {
       case event: GradingCompletedEvent[F] => event.result == result
       case _ => false
@@ -103,7 +103,7 @@ case class InteractionVariableHistory[F <: InteractionFormat](
       }
       val result = completed.reduceOption(_.merge(_)).getOrElse(GradingResult(
         grader, state,
-        if latest.nonEmpty then GradingStatus.NotFinished() else GradingStatus.NotRequested(),
+        if latest.nonEmpty then GradingStatus.NotFinished else GradingStatus.NotRequested,
         None, None, latestTime.getOrElse(LocalDateTime.MIN)))
       grader -> result
     }.toMap

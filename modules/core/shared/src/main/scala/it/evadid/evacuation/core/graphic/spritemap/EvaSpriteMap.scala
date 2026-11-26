@@ -4,7 +4,7 @@ import it.evadid.core.datastructures.matrix.MatrixDimension
 import it.evadid.evacuation.core.graphic.sprites.traits.{FloorSprite, OverlaySprite, PersonSprite, Sprite}
 import it.evadid.evacuation.core.io.instances.eva.config.SpriteMapMetaConfig
 
-case class EvaSpriteMap(id: SpriteMapResourceIdentifier, sprites: List[Sprite], defaultEmpty: FloorSprite, config: SpriteMapMetaConfig, selectionDim: MatrixDimension) extends SpriteMap derives upickle.default.ReadWriter {
+case class EvaSpriteMap(id: SpriteMapResourceIdentifier, sprites: List[Sprite], defaultEmpty: FloorSprite, config: SpriteMapMetaConfig, selectionDim: MatrixDimension) extends SpriteMap {
 
   val tiles: List[FloorSprite] = sprites.filter(_.isInstanceOf[FloorSprite]).map(_.asInstanceOf[FloorSprite])
 

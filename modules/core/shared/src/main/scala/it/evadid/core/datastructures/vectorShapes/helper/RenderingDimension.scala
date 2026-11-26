@@ -13,10 +13,6 @@ case class RenderingDimension[T: Fractional](rawDimension: Dimension[T], fullDim
 }
 
 object RenderingDimension {
-  given [T: Fractional: ReadWriter]: ReadWriter[RenderingDimension[T]] =
-    readwriter[(Dimension[T], Dimension[T])].bimap(
-      value => (value.rawDimension, value.fullDimension),
-      value => RenderingDimension(value._1, value._2))
 
   def validateDimension[T: Fractional](dimension: Dimension[T], label: String): Unit = {
     val N = summon[Fractional[T]]

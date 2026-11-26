@@ -7,13 +7,13 @@ import PythonUnitTestResult.*
 final case class PythonUnitTestResult(
                                        userCode: PythonExecutionRequest,
                                        tests: Set[PythonUnitTestGradingResult],
-                                     ) derives upickle.default.ReadWriter {
+                                     ) {
 
 }
 
 object PythonUnitTestResult {
 
-  enum GradingStatus derives upickle.default.ReadWriter {
+  enum GradingStatus {
     case UNFINISHED, SUCCESS, FAILED
   }
   
@@ -21,7 +21,7 @@ object PythonUnitTestResult {
                                           test: PythonUnitTest,
                                           result: PythonExecutionResult,
                                           gradingStatus: GradingStatus
-                                        ) derives upickle.default.ReadWriter{
+                                        ){
     
   }
 

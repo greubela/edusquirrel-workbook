@@ -71,8 +71,8 @@ class UnknownDependencySpec extends FunSuite {
       List("out2" -> BeDataType.ClassType(it.evadid.vm.naming.BeEntityName.fromLiteral("SystemOut2"))))
     val println = unknown.memberClasses.head.methods
     assertEquals(println.map(method => method.functionTypeInfo.displayName.spelling() -> method.inputs.size), List("println" -> 1, "println" -> 2))
-    assert(println.forall(_.functionTypeInfo.funcType == BeDefineFunction.Method()))
-    assertEquals(unknown.rootClasses(1).methods.map(_.functionTypeInfo.funcType), List(BeDefineFunction.StaticMethod()))
+    assert(println.forall(_.functionTypeInfo.funcType == BeDefineFunction.Method))
+    assertEquals(unknown.rootClasses(1).methods.map(_.functionTypeInfo.funcType), List(BeDefineFunction.StaticMethod))
     assertEquals(unknown.definedFunctions.map(_.functionTypeInfo.displayName.spelling()), List("log"))
     val serialized: BeExpression = unknown
     assertEquals(upickle.default.read[BeExpression](upickle.default.write(serialized)), serialized)

@@ -10,13 +10,12 @@ import it.evadid.homepage.webElements.editor.code.SnapEditor.SnapCodeEditorConfi
 import it.evadid.homepage.webElements.editor.code.codemirror.CodeMirrorEditor
 import it.evadid.homepage.webElements.editor.config.CodeMirrorEditorConfig
 import it.evadid.util.logging.Logger
-import upickle.default.*
 
 case class EvaEditorConfig(
                             enabledLanguages: Seq[ProgrammingLanguage] = List(SnapLanguage, Python, Java, BlockDisplay),
                             snapConfig: SnapCodeEditorConfig = SnapCodeEditorConfig.PythonCompatibleTesting,
                             codeMirrorConfig: CodeMirrorEditorConfig = CodeMirrorEditorConfig.Default
-                          ) extends WebEditorConfig derives ReadWriter {
+                          ) extends WebEditorConfig {
 
   override protected def additionalCssClasses: List[String] = List()
 }

@@ -14,20 +14,6 @@ class SystematicClientCodecSpec extends FunSuite {
     assertEquals(readBinary[T](writeBinary(value)), value)
   }
 
-  test("feedback retains its original timestamp rather than recreating it during decode") {
-    val value = BlockFeedbackResult.empty("print('学校')").copy(
-      tests = Seq(PythonTestResult("test", false, "1", "2", Some("mismatch"))),
-      displayHints = Seq("hint"), status = FeedbackStatus.FINISHED, timestampEpochMillis = 123456789L)
-    roundTrip(value)
-    assertEquals(read[BlockFeedbackResult](write(value)).timestampEpochMillis, 123456789L)
-  }
-
-  test("Snap project models retain nested scenes and constructor defaults") {
-    val project = Project(name = "学校", scenes = Vector(Scene(name = "one"), Scene(name = "two")))
-    roundTrip(project)
-    assertEquals(read[Project]("{}"), Project())
-  }
-
   test("line geometry supplies its numeric context on decode") {
     roundTrip(LineToRender(Point(1.0, 2.0), Point(3.0, 4.0), jump = true))
   }

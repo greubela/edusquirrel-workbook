@@ -28,14 +28,14 @@ class InteractionFeedbackViewsSpec extends EditorDomSuite {
   test("summary counts public and hidden outcomes, groups partial results, and counts missing authored tests") {
     val graders = List(grader("ok"), grader("hidden-ok", true), grader("partial"), grader("hidden-bad", true),
       grader("pending"), grader("error", true), grader("unrequested"), grader("missing"))
-    val statuses = List(GradingStatus.Correct(), GradingStatus.Correct(), GradingStatus.PartiallyCorrect(),
-      GradingStatus.Incorrect(), GradingStatus.NotFinished(),
-      GradingStatus.TestError(it.evadid.distribution.command.SerializedException("private execution error")), GradingStatus.NotRequested())
+    val statuses = List(GradingStatus.Correct, GradingStatus.Correct, GradingStatus.PartiallyCorrect,
+      GradingStatus.Incorrect, GradingStatus.NotFinished,
+      GradingStatus.TestError(it.evadid.distribution.command.SerializedException("private execution error")), GradingStatus.NotRequested)
     val state: ProgrammingState = it.evadid.workbook.elements.interactionElements.programming.state.ProgrammingStateRaw(Python, "forward(10)")
     val results = graders.zip(statuses).map((g, status) => GradingResult(g, state, status))
-    val obsolete = GradingResult(grader("removed-grader"), state, GradingStatus.Correct())
+    val obsolete = GradingResult(grader("removed-grader"), state, GradingStatus.Correct)
     val stale = GradingResult(graders.last,
-      it.evadid.workbook.elements.interactionElements.programming.state.ProgrammingStateRaw(Python, "forward(999)"), GradingStatus.Correct())
+      it.evadid.workbook.elements.interactionElements.programming.state.ProgrammingStateRaw(Python, "forward(999)"), GradingStatus.Correct)
     val summary = GradingSummary(graders, GradedState(state, (results ++ List(obsolete, stale)).map(result => result.grader -> result).toMap))
     assertEquals(summary.correct, 2)
     assertEquals(summary.total, 8)
@@ -52,8 +52,8 @@ class InteractionFeedbackViewsSpec extends EditorDomSuite {
     val exercise = ProgrammingExercise("feedback-sidebar", Some(ProgrammingTestSuite(List(public, hidden))))
     val variable = exercise.interactionVariable
     val source = variable.currentValue
-    val publicResult = GradingResult(public, source, GradingStatus.Correct(), Some(WorkbookContent(feedback)), None, date)
-    val hiddenResult = GradingResult(hidden, source, GradingStatus.Correct(), Some(WorkbookContent(LanguageMap.universalMap[HumanLanguage]("SECRET-HIDDEN-FEEDBACK"))), None, LocalDateTime.parse("1999-01-01T01:02:03"))
+    val publicResult = GradingResult(public, source, GradingStatus.Correct, Some(WorkbookContent(feedback)), None, date)
+    val hiddenResult = GradingResult(hidden, source, GradingStatus.Correct, Some(WorkbookContent(LanguageMap.universalMap[HumanLanguage]("SECRET-HIDDEN-FEEDBACK"))), None, LocalDateTime.parse("1999-01-01T01:02:03"))
     variable.updateHistory(_.addGradings(List(publicResult, hiddenResult)), ExecutionContextInformation.default)
     val sidebar = InteractionInfoSidebar(exercise,GradingReporter(exercise)).getDomElement()
     val previous = fullInfo.signals.currentLanguage.now()
@@ -75,7 +75,7 @@ class InteractionFeedbackViewsSpec extends EditorDomSuite {
       fullInfo.displayControl.changeLanguage(English)
       assert(sidebar.ref.textContent.contains("Public feedback"))
       details.removeAttribute("open")
-      val changed = publicResult.copy(gradingStatus = GradingStatus.Incorrect(), gradingTime = date.plusMinutes(1))
+      val changed = publicResult.copy(gradingStatus = GradingStatus.Incorrect, gradingTime = date.plusMinutes(1))
       variable.updateHistory(_.addGrading(changed), ExecutionContextInformation.default)
       assert(sidebar.ref.querySelector("details.feedback-grading") eq details)
       assert(!details.hasAttribute("open"), "a result update keeps the reader's disclosure choice")
@@ -102,7 +102,7 @@ class InteractionFeedbackViewsSpec extends EditorDomSuite {
       val toggle = overview.ref.querySelector("button.feedback-details-toggle").asInstanceOf[org.scalajs.dom.HTMLButtonElement]
       assert(details.hasAttribute("hidden"), "unchecked results start collapsed")
       assertEquals(toggle.getAttribute("aria-expanded"), "false")
-      val statuses = List(GradingStatus.Correct(), GradingStatus.PartiallyCorrect(), GradingStatus.Incorrect())
+      val statuses = List(GradingStatus.Correct, GradingStatus.PartiallyCorrect, GradingStatus.Incorrect)
       variable.updateHistory(_.addGradings(tests.zip(statuses).map((test, status) =>
         GradingResult(test, variable.currentValue, status, Some(WorkbookContent(feedback)), None, date))), ExecutionContextInformation.default)
       assertEquals(rows(overview.ref), rows(sidebar.ref))
@@ -123,7 +123,7 @@ class InteractionFeedbackViewsSpec extends EditorDomSuite {
     val test = grader("visible")
     val exercise = ProgrammingExercise("feedback-current-answer", Some(ProgrammingTestSuite(List(test))))
     val variable = exercise.interactionVariable
-    variable.updateHistory(_.addGrading(GradingResult(test, variable.currentValue, GradingStatus.Correct(), Some(WorkbookContent(LanguageMap.universalMap[HumanLanguage]("FEEDBACK-FOR-OLD-ANSWER"))), None, java.time.LocalDateTime.now())), ExecutionContextInformation.default)
+    variable.updateHistory(_.addGrading(GradingResult(test, variable.currentValue, GradingStatus.Correct, Some(WorkbookContent(LanguageMap.universalMap[HumanLanguage]("FEEDBACK-FOR-OLD-ANSWER"))), None, java.time.LocalDateTime.now())), ExecutionContextInformation.default)
     val sidebar = InteractionInfoSidebar(exercise,GradingReporter(exercise)).getDomElement()
     val close = mount(sidebar)
     try {
@@ -145,7 +145,7 @@ class InteractionFeedbackViewsSpec extends EditorDomSuite {
     val exercise = TextInputWithScaffoldingAndGrading("hint-sidebar", LanguageMapContentId("test/task"),
       contentGrading = Nil, contentScaffolding = Some(ContentForLlmInteraction(LanguageMapContentId("test/hint"), Map.empty)))
     val saved = ScaffoldingResult[String, MessengerModel]("", ScaffoldingStatus.ScaffoldingFeedback(
-      LanguageMap.universalMap[HumanLanguage]("PUBLIC-HINT")), FeedbackEntity.TestEntity(), None, date)
+      LanguageMap.universalMap[HumanLanguage]("PUBLIC-HINT")), FeedbackEntity.TestEntity, None, date)
     exercise.interactionVariable.updateHistory(_.addScaffolding(saved), ExecutionContextInformation.default)
     val sidebar = InteractionInfoSidebar(exercise,GradingReporter(exercise)).getDomElement()
     val close = mount(sidebar)

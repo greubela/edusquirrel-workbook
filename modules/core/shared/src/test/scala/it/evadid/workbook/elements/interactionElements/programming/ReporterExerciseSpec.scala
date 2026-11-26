@@ -32,14 +32,14 @@ class ReporterExerciseSpec extends FunSuite {
     val sources = List[ProgrammingState](answer, answer.toJava, answer.toSnapXml, answer.toSnapScalaModel.toOption.get,
       answer.toSnapXml.convertToLanguage(Python).finalState.get)
     Future.traverse(sources)(source => grade(source).map(source.associatedLanguage -> _)).map { results =>
-      assertEquals(results.map(_._2), List.fill(sources.size)(GradingStatus.Correct()), results.toString)
+      assertEquals(results.map(_._2), List.fill(sources.size)(GradingStatus.Correct), results.toString)
     }
   }
 
   test("a reporter returning the wrong value grades incorrect, also after the Snap round trip") {
     val wrong = ProgrammingStateRaw(Python, reporters.replace("n * 4", "n * 3"))
     Future.traverse(List[ProgrammingState](wrong, wrong.toSnapXml, wrong.toJava))(grade).map { results =>
-      assert(results.forall(_ != GradingStatus.Correct()), results.toString)
+      assert(results.forall(_ != GradingStatus.Correct), results.toString)
     }
   }
 
@@ -49,7 +49,7 @@ class ReporterExerciseSpec extends FunSuite {
     // The edit's automatic grading skips the shape grader; the requested one after it runs it.
     interaction.interactionVariable.control.getOrCalculateGrading(TestExecutionContext()).flatMap(_ =>
       interaction.interactionVariable.control.getOrCalculateGrading(TestExecutionContext(), forceGrading = true)).map { graded =>
-      assertEquals(graded.testsWithResults.head.gradingStatus, GradingStatus.Correct())
+      assertEquals(graded.testsWithResults.head.gradingStatus, GradingStatus.Correct)
     }
   }
 

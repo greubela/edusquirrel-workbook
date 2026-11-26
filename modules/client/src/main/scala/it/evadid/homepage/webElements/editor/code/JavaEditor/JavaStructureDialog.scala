@@ -196,7 +196,7 @@ object JavaStructureDialog {
   private final case class MethodFields(name: String = "newFunction", returnType: String = "void",
       parameters: String = "", isStatic: Boolean = true)
 
-  private final case class FieldFields(name: String = "value", javaType: String = "int", initializer: String = "", visibility: String = "private", isStatic: Boolean = false) derives upickle.default.ReadWriter
+  private final case class FieldFields(name: String = "value", javaType: String = "int", initializer: String = "", visibility: String = "private", isStatic: Boolean = false)
 
   private enum Request {
     case Field(className: BeEntityName, previous: Option[it.evadid.vm.parsing.source.JavaFieldStructured], fields: Var[FieldFields])

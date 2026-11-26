@@ -22,118 +22,6 @@ class SystematicDerivedCodecSpec extends FunSuite {
   private def copies[T: ReadWriter](value: T): List[T] =
     List(read[T](write(value)), readBinary[T](writeBinary(value)))
   private def roundTrip[T: ReadWriter](value: T): Unit = copies(value).foreach(assertEquals(_, value))
-
-  test("nested immutable tree nodes and positions have default codecs") {
-    roundTrip(NodeBasedTreeNode("学校", List(NodeBasedTreeNode("leaf", Nil))))
-    val position = NodeBasedTreePosition(List(2, 0, 4))
-    copies(position).foreach { decoded =>
-      assertEquals(decoded.forParent(), position.forParent())
-      assertEquals(decoded.forChild(3), position.forChild(3))
-    }
-  }
-  test("every SVG command kind preserves its payload and drawing operation") {
-    val p = Point(1.25, -2.5)
-    val d = Dimension(3.75, 4.5)
-    val values: List[SvgPathBuilderCommand[Double]] = List(
-      AddControlLinesCommand(p, List(p)), MoveAbs(p), MoveRel(d), ClosePath(), LineAbs(p), LineRel(d),
-      HorizontalRel(1.25), VerticalRel(-2.5), CubicAbs(p, p, p), CubicRel(d, d, d),
-      QuadAbs(p, p), QuadRel(d, d), ArcAbs(2.0, 3.0, 45.0, true, false, p),
-      ArcRel(2.0, 3.0, 45.0, false, true, d), CenteredCircleControl(4.0), RawAppend(" L 9 10"))
-    values.foreach { value =>
-      roundTrip(value)
-      copies(value).foreach(decoded => assertEquals(decoded.getPathDString(), value.getPathDString()))
-    }
-    roundTrip(StartPathCommand(p))
-    roundTrip(CubicAbs(p, p, p))
-  }
-  test("numeric SVG codecs also preserve decimal coordinates without Double conversion") {
-    roundTrip(MoveAbs(Point(BigDecimal("0.1234567890123456789"), BigDecimal("4.75"))))
-  }
-  test("unknown SVG command tags fail explicitly") {
-    intercept[Exception](read[SvgPathBuilderCommand[Double]]("""{"kind":"unknown","payload":null}"""))
-  }
-  test("immutable builders retain command order, current position and bounds") {
-    val builder = SvgPathBuilderImmutable(Point(0.0, 0.0)).lineToRel(Dimension(10.0, 3.0))
-      .moveToAbs(Point(20.0, 5.0)).closePath()
-    copies[SvgPathBuilder[Double]](builder).foreach { decoded =>
-      assert(decoded.isInstanceOf[SvgPathBuilderImmutable[?]])
-      assertEquals(decoded.toSvgPathD, builder.toSvgPathD)
-      assertEquals(decoded.pathPoints, builder.pathPoints)
-      assertEquals(decoded.bounds, builder.bounds)
-    }
-  }
-  test("mutable builder snapshots preserve state for subsequent relative movement and close") {
-    val builder = SvgPathBuilderMutable(Point(0.0, 0.0))
-      .moveToAbs(Point(10.0, 20.0)).lineToRel(Dimension(5.0, 2.0))
-    val decoded = copies(builder).head
-    assertEquals(decoded.toSvgPathD, builder.toSvgPathD)
-    assertEquals(decoded.pathPoints, builder.pathPoints)
-    decoded.lineToRel(Dimension(1.0, 3.0)).closePath()
-    builder.lineToRel(Dimension(1.0, 3.0)).closePath()
-    assertEquals(decoded.current, Point(10.0, 20.0))
-    assertEquals(decoded.toSvgPathD, builder.toSvgPathD)
-    copies[SvgPathBuilder[Double]](builder).foreach(value => assert(value.isInstanceOf[SvgPathBuilderMutable[?]]))
-  }
-  test("turtle builder snapshots retain pen state, geometry and subsequent commands") {
-    val builder = TurtlePathBuilder(Point(0.0, 0.0), List(TurtleCommand.Forward(10.0), TurtleCommand.Right(90.0)))
-    copies(builder).foreach { decoded =>
-      assertEquals(decoded.turtleState, builder.turtleState)
-      assertEquals(decoded.svgPathBuilder.toSvgPathD, builder.svgPathBuilder.toSvgPathD)
-      val next = TurtleCommand.Forward(5.0)
-      assertEquals(decoded.handleCommand(next), builder.handleCommand(next))
-    }
-  }
-  test("typed SVG paths retain builders while the root retains rendered path data") {
-    val builder = SvgPathBuilderImmutable(Point(0.0, 0.0)).lineToAbs(Point(3.0, 4.0))
-    val path = SvgPath.BuilderBasedSvgPath(builder.bounds, builder)
-    copies(path).foreach(decoded => assertEquals(decoded.svgPathDString, path.svgPathDString))
-    copies[SvgPath](path).foreach(decoded => assertEquals(decoded.svgPathDString, path.svgPathDString))
-  }
-  test("Python ASTs preserve nested control flow through the open expression branch") {
-    import PyAST.*
-    val tree: PyAST = PyProgram(List(StatementWithLineNumber(
-      PyIfStatement(PyOperationBinary(PyTarget("x"), ">", PythonLiteral("0", new PythonType.PYTHON_INTEGER)),
-        PyExecutionBlock(List(PyReturnStatement(Some(PyTarget("x"))))), PyExecutionBlock(List(PyPassStatement))), 4)))
-    copies(tree).foreach { decoded =>
-      assertEquals(write(decoded), write(tree))
-      assertEquals(decoded.allNamedElements().keySet, tree.allNamedElements().keySet)
-    }
-  }
-  test("Python literals restore their hexadecimal literal serializer") {
-    val literal: PyAST = PyAST.PythonLiteral("0xff", new PythonType.PYTHON_INTEGER_HEX)
-    copies(literal).foreach { value =>
-      val restored = value.asInstanceOf[PyAST.PythonLiteral[BigInt]]
-      assertEquals(restored.literalValue, "0xff")
-      assertEquals(restored.literalType.serializerPythonValue.deserialize("0xff"), BigInt(255))
-    }
-  }
-  test("nested Python type descriptions restore collection and optional types") {
-    val dataType: PythonType[List[BigInt]] = new PythonType.PYTHON_LIST(new PythonType.PYTHON_INTEGER_HEX)
-    copies(dataType).foreach { value =>
-      assertEquals(value.typeStringInPython, dataType.typeStringInPython)
-      assertEquals(value.serializerPythonValue.deserialize("[0xff, 0x1]"), List(BigInt(255), BigInt(1)))
-    }
-    val optional: PythonType[Option[String]] = new PythonType.PYTHON_OPTIONAL(new PythonType.PYTHON_STRING)
-    copies(optional).foreach(value => assertEquals(value.serializerPythonValue.deserialize("None"), None))
-  }
-  test("malformed language type descriptions reject unknown tags and invalid arity") {
-    intercept[Exception](read[PythonType[Any]]("""{"kind":"unknown","arguments":[],"label":""}"""))
-    intercept[Exception](read[PythonType[Any]]("""{"kind":"list","arguments":[],"label":""}"""))
-  }
-  test("Java AST literals retain types and language-specific literal behavior") {
-    val literal: JavaAST = JavaAST.JavaLiteral("0xff", new JavaType.JAVA_INTEGER_HEX)
-    copies(literal).foreach { decoded =>
-      val value = decoded.asInstanceOf[JavaAST.JavaLiteral[BigInt]]
-      assertEquals(value.literalValue, "0xff")
-      assertEquals(value.literalType.serializerJavaValue.deserialize("0xff"), BigInt(255))
-    }
-    val collection: JavaType[List[BigInt]] = new JavaType.JAVA_LIST(new JavaType.JAVA_INTEGER)
-    copies(collection).foreach(value => assertEquals(value.typenameInCode, collection.typenameInCode))
-  }
-  test("VM simulation state has a default codec independent of serializer imports") {
-    val state = BeSimulatorState.startState(BeProgram.empty.fullProgram, NodeBasedTreePosition.root)
-    roundTrip(state)
-  }
   test("protocol request records expose their own derived codec") {
     roundTrip(SendMailRequest("a@example.com", "学校", "body\nline two", Nil))
   }
@@ -181,28 +69,6 @@ class SystematicDerivedCodecSpec extends FunSuite {
     intercept[Exception](read[ExtraBlockSpec]("""{"spec":"invalid","category":"motion","defaults":[{}]}"""))
   }
 
-  test("constant observables and observer policies retain their value semantics") {
-    import it.evadid.core.datastructures.state.observable.*
-    import ObserverDerivationLogic.*
-    roundTrip(ConstantValueObservable("学校"))
-    roundTrip(ConstantEmptyObservable[String]())
-    roundTrip[ObserverDerivationLogic](DeriveAllValues)
-    roundTrip[ObserverDerivationLogic](DeriveOnlyLastValues)
-    assertEquals(read[ConstantValueObservable[String]](write(ConstantValueObservable("value"))).now(), Some("value"))
-  }
-
-  test("async loading states preserve their loading timestamp through the sealed root") {
-    import it.evadid.core.datastructures.state.async.AsyncDataState
-    import AsyncDataState.AsyncDataLoading
-    val timestamp = java.time.LocalDateTime.parse("2025-01-02T03:04:05")
-    val value: AsyncDataState[String, Int] = AsyncDataLoading(timestamp)
-    roundTrip(value)
-    copies(value).foreach(decoded => assertEquals(decoded.loadingSince, Some(timestamp)))
-    val legacy = writeJs(AsyncDataLoading[String, Int](timestamp))
-    legacy.obj.remove("startedAt")
-    assert(read[AsyncDataLoading[String, Int]](legacy).loadingSince.nonEmpty)
-  }
-
   test("previously private interaction-state codecs are public and retain legacy JSON") {
     import it.evadid.workbook.elements.interactionElements.todo.*
     import it.evadid.workbook.elements.interactionElements.matching.MatchingInteractionState
@@ -222,14 +88,6 @@ class SystematicDerivedCodecSpec extends FunSuite {
     roundTrip(SortingReasonInteractionState.initial(3))
   }
 
-  test("factory and language-storage transfer records have default codecs") {
-    import it.evadid.core.util.io.SerializableWithCompanion.GenericSerializableFactory
-    import it.evadid.core.datastructures.language.control.LanguageMapStorage.LanguageMapStorageSerializable
-    import it.evadid.core.datastructures.language.serialization.abstractions.ParsedTriples
-    roundTrip(GenericSerializableFactory("fixture", Map("text" -> "学校")))
-    roundTrip(LanguageMapStorageSerializable(ParsedTriples(Set.empty, Set.empty)))
-  }
-
   test("atomic type codecs restore registered executable literal policies") {
     import it.evadid.vm.types.BeDataType
     for (value <- List(BeDataType.String, BeDataType.Int, BeDataType.Numeric, BeDataType.Boolean)) {
@@ -239,15 +97,5 @@ class SystematicDerivedCodecSpec extends FunSuite {
       }
     }
     roundTrip(BeDataType.BeSerializableAtomicType("Int"))
-  }
-
-  test("typed execution successes retain command JSON, results and history") {
-    import it.evadid.distribution.command.{ExecutionCommand, ExecutionHistory, ExecutionInfo}
-    import ExecutionInfo.ExecutionSuccess
-    val timestamp = java.time.LocalDateTime.parse("2025-01-02T03:04:05")
-    val value = ExecutionSuccess(ExecutionCommand("fixture", ujson.Obj("argument" -> "学校")),
-      ExecutionHistory(timestamp, timestamp, timestamp, timestamp), "result")
-    roundTrip(value)
-    copies[ExecutionInfo[String]](value).foreach(decoded => assertEquals(decoded.successOrThrow(), value))
   }
 }

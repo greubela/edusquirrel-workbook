@@ -25,7 +25,7 @@ case class GradedState[T, GA]
   lazy val shouldRetry: Seq[WorkbookInteractionGrader[T, GA]] = graderResultMap.toList.filter(_._2.gradingStatus.shouldRetryExecution).map(_._1)
 
   def doesEvaluationRelyOnLlm(): Boolean = {
-    graderResultMap.values.exists(_.grader.gradingEntity == LlmEntity())
+    graderResultMap.values.exists(_.grader.gradingEntity == LlmEntity)
   }
 
   def totalEvaluation(): GradingStatus =

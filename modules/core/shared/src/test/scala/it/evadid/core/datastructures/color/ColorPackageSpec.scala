@@ -30,10 +30,4 @@ class ColorPackageSpec extends FunSuite {
     assertEquals(RGBColor.getColorGradientHSB(start, end, 2).toRGB, end.toRGB)
     assertEquals(RGBColor.getColorGradientHSB(start, end, 0.5).toRGB, HSBColor(0.25, 1, 1).toRGB)
   }
-  test("RGB and HSB values have default codecs") {
-    val rgb = RGBColor(1, 15, 254, 123)
-    val hsb = HSBColor(0.25, 0.8, 0.6)
-    assertEquals(read[RGBColor](write(rgb)), rgb)
-    assertEquals(read[HSBColor](write(hsb)), hsb)
-  }
 }

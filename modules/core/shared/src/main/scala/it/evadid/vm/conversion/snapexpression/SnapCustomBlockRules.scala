@@ -4,7 +4,6 @@ import it.evadid.vm.parsing.source.SourceParsing.SourceLanguage
 import it.evadid.workbook.elements.interactionElements.programming.state.snap.SnapTurtleCatalog
 import it.evadid.vm.parsing.source.SourceParsing
 import it.evadid.workbook.elements.interactionElements.programming.state.snap.SnapScalaModel
-import upickle.default.ReadWriter
 
 /**
  * Port of the rules Snap applies when it loads a custom block, so generated XML
@@ -34,7 +33,7 @@ object SnapCustomBlockRules {
   val NonScalarSlotTypePrefixes: List[String] = List("%mult", "%group")
 
   /** One declared input of a custom block definition. */
-  final case class SnapSlot(name: String, slotType: String, element: SnapScalaModel.InputDefinition) derives ReadWriter
+  final case class SnapSlot(name: String, slotType: String, element: SnapScalaModel.InputDefinition)
 
   /** One `<block-definition>` as Snap would load it. */
   final case class SnapCustomBlock(
@@ -47,7 +46,7 @@ object SnapCustomBlockRules {
       element: SnapScalaModel.BlockDefinition,
       /** Document order among all definitions; identifies the definition within its document. */
       position: Int
-  ) derives ReadWriter {
+  ) {
     def slotNames: List[String] = SnapCustomBlockRules.slotNames(spec)
 
     def arity: Int = slotNames.size
@@ -80,7 +79,7 @@ object SnapCustomBlockRules {
   }
 
   /** A call Snap would replace with `Undefined!`. */
-  final case class ObsoleteCall(spec: String, reason: String) derives ReadWriter
+  final case class ObsoleteCall(spec: String, reason: String)
 
   def isNonScalarSlotType(slotType: String): Boolean =
     NonScalarSlotTypes.contains(slotType) || NonScalarSlotTypePrefixes.exists(slotType.startsWith)

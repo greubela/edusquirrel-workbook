@@ -17,12 +17,4 @@ trait SpriteMap {
 
 object SpriteMap{
 
-  given upickle.default.ReadWriter[SpriteMap] = upickle.default.readwriter[EvaSpriteMap].bimap(
-    spriteMap => spriteMap match {
-      case value: EvaSpriteMap => value
-      case other => throw new IllegalArgumentException(s"Unsupported sprite map: ${other.getClass.getName}")
-    }, value => value)
-
-
-
 }

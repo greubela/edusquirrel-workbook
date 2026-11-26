@@ -30,10 +30,10 @@ class CheckReportSpec extends FunSuite {
 
   test("failed checks are counted until the first passed one; only the current answer is marked") {
     val checks = Seq(
-      (answer(Some(1), Some(1), None), GradingStatus.PartiallyCorrect(), 1),
-      (answer(Some(0), Some(0), Some(1)), GradingStatus.Incorrect(), 2),
-      (answer(Some(0), Some(1), Some(0)), GradingStatus.Correct(), 3),
-      (answer(Some(0), Some(1), Some(1)), GradingStatus.PartiallyCorrect(), 4))
+      (answer(Some(1), Some(1), None), GradingStatus.PartiallyCorrect, 1),
+      (answer(Some(0), Some(0), Some(1)), GradingStatus.Incorrect, 2),
+      (answer(Some(0), Some(1), Some(0)), GradingStatus.Correct, 3),
+      (answer(Some(0), Some(1), Some(1)), GradingStatus.PartiallyCorrect, 4))
     val report = CheckReport(matching, history(checks*))
     assert(report.tracked)
     assertEquals(report.failedChecks, 2)
@@ -48,14 +48,14 @@ class CheckReportSpec extends FunSuite {
     val errored = CheckReport(matching, history((answer(Some(1), None, None), GradingStatus.TestError(SerializedException("crash")), 1)))
     assertEquals(errored, CheckReport(tracked = true, 0, Set.empty))
     val options = Seq(true, false).map(correct => ChoiceOptionWorkbookContent(WorkbookContent(id(correct.toString)),
-      Some(GradingForChoice(if correct then GradingStatus.Correct() else GradingStatus.Incorrect(), id("feedback")))))
+      Some(GradingForChoice(if correct then GradingStatus.Correct else GradingStatus.Incorrect, id("feedback")))))
     val automatic = WorkbookContentChoiceInteraction("auto-choice", ChoiceConfig(id("q"), Some(false), GraderRunningBehavior.RUN_ALWAYS), options)
     assertEquals(CheckReport(automatic, InteractionVariableHistory.empty), CheckReport.untracked)
   }
 
   test("wrong parts name wrong options, filled wrong cells and misplaced items only") {
     val options = Seq(true, false, false).zipWithIndex.map((correct, index) => ChoiceOptionWorkbookContent(WorkbookContent(id(s"o$index")),
-      Some(GradingForChoice(if correct then GradingStatus.Correct() else GradingStatus.Incorrect(), id("feedback")))))
+      Some(GradingForChoice(if correct then GradingStatus.Correct else GradingStatus.Incorrect, id("feedback")))))
     val choice = WorkbookContentChoiceInteraction("choice", ChoiceConfig(id("q"), Some(true), GraderRunningBehavior.RUN_ONLY_MANUALLY), options)
     val selected = (0 until 3).foldLeft(choice.defaultValue)((state, index) => choice.select(state, index, index != 1))
     assertEquals(choice.wrongParts(selected), Set(2))

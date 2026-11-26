@@ -124,8 +124,8 @@ class MonksWorkbookSpec extends FunSuite {
     val snap = source.convertToLanguage(SnapLanguage).finalState.getOrElse(fail("No Snap form for the pyramid"))
     val fromSnap = snap.toBeExpression.turtleCommandExecutionInfo.completedCommands
     assertEquals(fromSnap.toSeq, expected)
-    assert(fromSnap.contains(TurtleCommand.PenUp[Double]()))
-    assert(fromSnap.contains(TurtleCommand.PenDown[Double]()))
+    assert(fromSnap.contains(TurtleCommand.PenUp))
+    assert(fromSnap.contains(TurtleCommand.PenDown))
     val viaPython = python(source)
     assertEquals(viaPython.toBeExpression.turtleCommandExecutionInfo.completedCommands.toSeq, expected, "Python draws the pyramid")
     Seq(Java, SnapLanguage).foreach { target =>

@@ -18,7 +18,7 @@ import scala.util.{Failure, Success}
 
 object LanguageMapStorageControl {
 
-  enum STARTUP_STRATEGY derives ReadWriter {
+  enum STARTUP_STRATEGY {
     case CONTINUE_IMMEDIATELY
     case CONTINUE_AFTER_LOCAL_CACHE_SUCCESS
     case CONTINUE_AFTER_FULL_LOAD

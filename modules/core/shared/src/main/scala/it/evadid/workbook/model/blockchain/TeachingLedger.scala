@@ -1,11 +1,9 @@
 package it.evadid.workbook.model.blockchain
 
-import upickle.default.ReadWriter
-
 /** Integer-point bookkeeping for the cabin exercise, not Bitcoin transactions or signatures. */
-case class LedgerTransfer(sender: String, recipient: String, amount: BigInt) derives ReadWriter
+case class LedgerTransfer(sender: String, recipient: String, amount: BigInt)
 
-enum LedgerError derives ReadWriter {
+enum LedgerError {
   case InvalidInitialBalances, UnknownAccount, InvalidAmount, SelfTransfer, InsufficientFunds
 }
 

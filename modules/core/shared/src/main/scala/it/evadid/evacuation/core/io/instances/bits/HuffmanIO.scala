@@ -6,9 +6,8 @@ import it.evadid.evacuation.core.utility.DataStructureHelper
 
 import scala.collection.mutable
 import scala.collection.mutable.ListBuffer
-import upickle.default.ReadWriter
 
-case class HuffmanIO[T](prefixMap: Map[T, BitSequence]) extends IO[Seq[T], BitSequence] derives ReadWriter {
+case class HuffmanIO[T](prefixMap: Map[T, BitSequence]) extends IO[Seq[T], BitSequence] {
 
   prefixMap.values.foreach(sequence =>
     require(sequence.size > 0 && prefixMap.values.count(_.hasPrefix(sequence)) == 1,
@@ -40,19 +39,19 @@ case class HuffmanIO[T](prefixMap: Map[T, BitSequence]) extends IO[Seq[T], BitSe
 
 object HuffmanIO {
 
-  private sealed trait HuffmanNode[T] derives upickle.default.ReadWriter {
+  private sealed trait HuffmanNode[T] {
     def handleEncodeRequest(mySequence: BitSequence, intoMap: mutable.Map[T, BitSequence]): Unit
 
     def weight: Long
   }
 
-  private case class HuffmanNodeOuter[T](element: T, weight: Long) extends HuffmanNode[T] derives upickle.default.ReadWriter {
+  private case class HuffmanNodeOuter[T](element: T, weight: Long) extends HuffmanNode[T] {
     override def handleEncodeRequest(mySequence: BitSequence, intoMap: mutable.Map[T, BitSequence]): Unit = {
       intoMap.put(element, mySequence)
     }
   }
 
-  private case class HuffmanNodeInner[T](children: Seq[HuffmanNode[T]], weight: Long) extends HuffmanNode[T] derives upickle.default.ReadWriter {
+  private case class HuffmanNodeInner[T](children: Seq[HuffmanNode[T]], weight: Long) extends HuffmanNode[T] {
     assert(children.length == 2, "Huffman inner node must have 2 children!")
 
     override def handleEncodeRequest(mySequence: BitSequence, intoMap: mutable.Map[T, BitSequence]): Unit = {

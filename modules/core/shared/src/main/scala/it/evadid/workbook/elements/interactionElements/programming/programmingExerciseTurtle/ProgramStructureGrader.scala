@@ -38,12 +38,12 @@ case class ProgramStructureGrader(
   require(testId.nonEmpty && testId == testId.trim, "A structure test needs a nonempty ID.")
   override def inEnvironment(environment: ProgrammingEnvironment): ProgramStructureGrader = copy(environment = environment)
   override val runningBehavior = GraderRunningBehavior.RUN_ON_AT_LEAST_MINOR
-  override val gradingEntity = FeedbackEntity.TestEntity()
+  override val gradingEntity = FeedbackEntity.TestEntity
 
   override protected def handleGrading(state: ProgrammingState, context: ExecutionContextInformation)
       : Future[GradingResult[ProgrammingState, AdditionalProgrammingTestInfo]] = Future {
     val passed = satisfies(state.inEnvironment(environment).expression.expression)
-    GradingResult(this, state, if passed then GradingStatus.Correct() else GradingStatus.Incorrect())
+    GradingResult(this, state, if passed then GradingStatus.Correct else GradingStatus.Incorrect)
   }(using context.futureExecutionContext)
 
   private def nodesOf(expression: BeExpression): Seq[BeExpression] = {

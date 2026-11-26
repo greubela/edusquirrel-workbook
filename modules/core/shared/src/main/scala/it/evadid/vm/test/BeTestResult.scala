@@ -1,8 +1,6 @@
 package it.evadid.vm.test
 
-import upickle.default.ReadWriter
-
-enum BeTestResult derives ReadWriter {
+enum BeTestResult {
   case Passed, Failed
   case Error(message: String)
 

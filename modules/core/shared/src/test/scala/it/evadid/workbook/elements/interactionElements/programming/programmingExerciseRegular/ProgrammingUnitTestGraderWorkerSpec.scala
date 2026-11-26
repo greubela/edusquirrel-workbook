@@ -49,9 +49,9 @@ class ProgrammingUnitTestGraderWorkerSpec extends FunSuite {
       error <- grader.gradeState(answer, Seq(new Worker(report("error", "invalid-tests"))))
       unsupported <- grader.gradeState(ProgrammingStateRaw(Lisp, "(forward 1)"), Nil)
     } yield {
-      assertEquals(passed.gradingStatus, GradingStatus.Correct())
+      assertEquals(passed.gradingStatus, GradingStatus.Correct)
       assertEquals(passed.additionalData, None)
-      assertEquals(failed.gradingStatus, GradingStatus.Incorrect())
+      assertEquals(failed.gradingStatus, GradingStatus.Incorrect)
       error.gradingStatus match {
         case GradingStatus.TestError(cause) => assert(cause.getMessage.contains("definition is invalid"), cause.getMessage)
         case other => fail(s"Unexpected $other")
@@ -80,7 +80,7 @@ class ProgrammingUnitTestGraderWorkerSpec extends FunSuite {
       assertEquals(info.programObservation.map(_.commandCount), Some(1))
       assert(info.testInvocation.nonEmpty)
       assertEquals(worker.requests.now().head.context("_eva_observe_program"), ujson.Bool(true))
-      assertEquals(secret.gradingStatus, GradingStatus.Incorrect())
+      assertEquals(secret.gradingStatus, GradingStatus.Incorrect)
       assertEquals(secret.additionalData, None)
     }
   }

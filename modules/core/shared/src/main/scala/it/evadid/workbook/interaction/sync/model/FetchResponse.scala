@@ -3,7 +3,6 @@ package it.evadid.workbook.interaction.sync.model
 import it.evadid.core.util.io.serializer.DefaultSerializer
 import it.evadid.core.util.io.serializer.DefaultSerializer.given
 import it.evadid.workbook.interaction.sync.model.SyncDirection.SERVER_TO_CLIENT
-import upickle.default.*
 
 import java.time.LocalDateTime
 
@@ -11,7 +10,7 @@ case class FetchResponse[K, D]
 (
   timestampFetchResponse: LocalDateTime,
   fetchedValues: Set[DataEntryToSync[K, D]]
-) derives ReadWriter {
+) {
 
   protected def fetchedValuesFromMap(resMap: Map[K, D]): Set[DataEntryToSync[K, D]] = fetchedValuesFromIterator(resMap.iterator)
 

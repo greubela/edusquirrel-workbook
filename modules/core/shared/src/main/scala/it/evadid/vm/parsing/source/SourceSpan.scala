@@ -1,9 +1,7 @@
 package it.evadid.vm.parsing.source
 
-import upickle.default.ReadWriter
-
 /** Characters `[start, end)` of a source with the 1-based lines of its first and last character. */
-final case class SourceSpan(start: Int, end: Int, startLine: Int, endLine: Int) derives ReadWriter {
+final case class SourceSpan(start: Int, end: Int, startLine: Int, endLine: Int) {
   require(start >= 0 && end >= start && startLine >= 1 && endLine >= startLine, s"Invalid source span $this.")
 
   def text(source: String): String = source.substring(start, end)

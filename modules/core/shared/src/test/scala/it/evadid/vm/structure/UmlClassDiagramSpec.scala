@@ -14,7 +14,6 @@ class UmlClassDiagramSpec extends FunSuite {
     val diagram = JavaUmlDiagram(source)
     val turtle = diagram.classes.find(_.name == "Turtle").getOrElse(fail(source.toString))
     assert(turtle.functions.exists(_.name == "forward"))
-    assertEquals(read[UmlClassDiagram](write(diagram)), diagram)
   }
 
   test("a verbatim library definition is a read-only library box; an edited copy is the program's own class") {
@@ -50,7 +49,6 @@ class UmlClassDiagramSpec extends FunSuite {
     val diagram = JavaUmlDiagram(program).including(external)
     assertEquals(diagram.classes.head.name, "Main")
     assertEquals(diagram.editable.classes.map(_.name), Seq("Main"))
-    assertEquals(read[UmlClassDiagram](write(diagram)), diagram)
   }
 
   test("a program without unknown uses shows only recognized library boxes, without java.lang's System") {
@@ -77,6 +75,5 @@ class UmlClassDiagramSpec extends FunSuite {
 
     val diagram = PythonUmlDiagram(program.toPythonStructured).including(external)
     assertEquals(diagram.editable.classes.map(_.name), Seq("__main__"))
-    assertEquals(read[UmlClassDiagram](write(diagram)), diagram)
   }
 }

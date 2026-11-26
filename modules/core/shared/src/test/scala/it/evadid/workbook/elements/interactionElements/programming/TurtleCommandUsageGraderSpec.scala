@@ -36,17 +36,17 @@ class TurtleCommandUsageGraderSpec extends FunSuite {
     assertEquals(constraints.map(_.key).distinct.size, 3)
     assert(constraints.forall(_.importance == GradingImportance.REQUIRED_TEST))
     Future.traverse(interaction.gradingElements)(_.gradeStateSafe(loop, true, UpdateImportance.MAJOR, TestExecutionContext())).map { results =>
-      assertEquals(results.head.gradingStatus, GradingStatus.Correct())
-      assertEquals(results.tail.map(_.gradingStatus), List(GradingStatus.Correct(), GradingStatus.Correct(), GradingStatus.Incorrect()))
+      assertEquals(results.head.gradingStatus, GradingStatus.Correct)
+      assertEquals(results.tail.map(_.gradingStatus), List(GradingStatus.Correct, GradingStatus.Correct, GradingStatus.Incorrect))
     }
   }
 
   test("source and execution limits include the boundary and work across Python, Snap and Java fragments") {
     val cases = List(
-      (CommandUsageMeasure.OccurrencesInCode, 1, GradingStatus.Correct()),
-      (CommandUsageMeasure.OccurrencesInCode, 0, GradingStatus.Incorrect()),
-      (CommandUsageMeasure.CallsDuringExecution, 4, GradingStatus.Correct()),
-      (CommandUsageMeasure.CallsDuringExecution, 3, GradingStatus.Incorrect()))
+      (CommandUsageMeasure.OccurrencesInCode, 1, GradingStatus.Correct),
+      (CommandUsageMeasure.OccurrencesInCode, 0, GradingStatus.Incorrect),
+      (CommandUsageMeasure.CallsDuringExecution, 4, GradingStatus.Correct),
+      (CommandUsageMeasure.CallsDuringExecution, 3, GradingStatus.Incorrect))
     Future.traverse(List(loop, loop.toSnapXml, loop.toJava)) { state =>
       Future.traverse(cases) { (measure, maximum, expected) =>
         grader("fd", maximum, measure).gradeStateSafe(state, false, UpdateImportance.MAJOR, TestExecutionContext()).map { result =>
@@ -70,8 +70,8 @@ class TurtleCommandUsageGraderSpec extends FunSuite {
       source <- grader("forward", 1, CommandUsageMeasure.OccurrencesInCode).gradeStateSafe(java, false, UpdateImportance.MAJOR, TestExecutionContext())
       runtime <- grader("forward", 3, CommandUsageMeasure.CallsDuringExecution).gradeStateSafe(java, false, UpdateImportance.MAJOR, TestExecutionContext())
     } yield {
-      assertEquals(source.gradingStatus, GradingStatus.Correct())
-      assertEquals(runtime.gradingStatus, GradingStatus.Incorrect())
+      assertEquals(source.gradingStatus, GradingStatus.Correct)
+      assertEquals(runtime.gradingStatus, GradingStatus.Incorrect)
     }
   }
 
@@ -84,8 +84,8 @@ class TurtleCommandUsageGraderSpec extends FunSuite {
       allowed <- constraints.head.gradeStateSafe(state, false, UpdateImportance.MAJOR, TestExecutionContext())
       rotation <- grader("turn", 2, CommandUsageMeasure.CallsDuringExecution).gradeStateSafe(state, false, UpdateImportance.MAJOR, TestExecutionContext())
     } yield {
-      assertEquals(allowed.gradingStatus, GradingStatus.Correct())
-      assertEquals(rotation.gradingStatus, GradingStatus.Incorrect())
+      assertEquals(allowed.gradingStatus, GradingStatus.Correct)
+      assertEquals(rotation.gradingStatus, GradingStatus.Incorrect)
       assertEquals(exercise(MaxCommandUsage()).gradingElements.size, 1)
     }
   }
@@ -96,8 +96,8 @@ class TurtleCommandUsageGraderSpec extends FunSuite {
       source <- grader("forward", 1, CommandUsageMeasure.OccurrencesInCode).gradeStateSafe(state, false, UpdateImportance.MAJOR, TestExecutionContext())
       runtime <- grader("forward", 0, CommandUsageMeasure.CallsDuringExecution).gradeStateSafe(state, false, UpdateImportance.MAJOR, TestExecutionContext())
     } yield {
-      assertEquals(source.gradingStatus, GradingStatus.Incorrect())
-      assertEquals(runtime.gradingStatus, GradingStatus.Correct())
+      assertEquals(source.gradingStatus, GradingStatus.Incorrect)
+      assertEquals(runtime.gradingStatus, GradingStatus.Correct)
     }
   }
 
@@ -109,7 +109,7 @@ class TurtleCommandUsageGraderSpec extends FunSuite {
       invalid <- grader("forward", 0, CommandUsageMeasure.OccurrencesInCode)
         .gradeStateSafe(ProgrammingStateRaw(Python, "forward("), false, UpdateImportance.MAJOR, TestExecutionContext())
     } yield {
-      assertEquals(source.gradingStatus, GradingStatus.Correct())
+      assertEquals(source.gradingStatus, GradingStatus.Correct)
       assert(runtime.gradingStatus.isError)
       assert(invalid.gradingStatus.isError)
     }
@@ -126,9 +126,9 @@ class TurtleCommandUsageGraderSpec extends FunSuite {
           forbidden <- grader("forward", 0, measure).gradeStateSafe(state, false, UpdateImportance.MAJOR, TestExecutionContext())
           one <- grader("forward", 1, measure).gradeStateSafe(state, false, UpdateImportance.MAJOR, TestExecutionContext())
         } yield {
-          assertEquals(user.gradingStatus, GradingStatus.Correct())
-          assertEquals(forbidden.gradingStatus, GradingStatus.Incorrect(), clues(measure))
-          assertEquals(one.gradingStatus, GradingStatus.Correct())
+          assertEquals(user.gradingStatus, GradingStatus.Correct)
+          assertEquals(forbidden.gradingStatus, GradingStatus.Incorrect, clues(measure))
+          assertEquals(one.gradingStatus, GradingStatus.Correct)
         }
       }
     }

@@ -4,7 +4,7 @@ import it.evadid.core.datastructures.language.LanguageMapContentId
 import it.evadid.homepage.webElements.editor.abstractions.WebEditorConfig;
 
 
-case class TextEditorConfig(monospace: Boolean, rowsCount: Int, colsCount: Int, placeholder: LanguageMapContentId, protected val configCssClasses: List[String]) extends WebEditorConfig derives upickle.default.ReadWriter {
+case class TextEditorConfig(monospace: Boolean, rowsCount: Int, colsCount: Int, placeholder: LanguageMapContentId, protected val configCssClasses: List[String]) extends WebEditorConfig {
 
   protected val cssMonoStr: String = if (monospace) " mono" else ""
 

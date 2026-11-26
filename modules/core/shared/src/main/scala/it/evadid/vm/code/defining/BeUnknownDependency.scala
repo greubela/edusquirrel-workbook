@@ -32,7 +32,7 @@ final case class BeUnknownDependency(
       BeUnknownDependency(replaced(rootClasses, 0), replaced(memberClasses, rootClasses.size),
         replaced(definedFunctions, rootClasses.size + memberClasses.size))
     }
-    override def toJavaStyleLines(info: BeChildInfo): Seq[BeSegmentedCodeElement] = asExpressionLine(ControlFlowDown(), info)
+    override def toJavaStyleLines(info: BeChildInfo): Seq[BeSegmentedCodeElement] = asExpressionLine(ControlFlowDown, info)
     override def getChildrenAndExtension(scope: BeScope): Seq[BeExpressionNode] =
       allDefinedStructures.zipWithIndex.map((value, index) => BeExpressionReference(BeChildInfo(BeChildRole.ExpressionInSequence(index), scope), value))
   }

@@ -15,7 +15,7 @@ import it.evadid.workbook.elements.interactionElements.programming.state.snap.*
 import scala.collection.mutable.ListBuffer
 
 object TurtleStitchToBeExpressionParser {
-  final case class ParseWithLayout(expression: BeExpression, canvasLayout: SnapCanvasLayout) derives upickle.default.ReadWriter
+  final case class ParseWithLayout(expression: BeExpression, canvasLayout: SnapCanvasLayout)
 
   def parseProject(project: Project): BeExpression = parseProjectWithLayout(project).expression
   def parseProjectWithLayout(project: Project): ParseWithLayout = Reader().parseProjectWithLayout(project)
@@ -39,13 +39,13 @@ object TurtleStitchToBeExpressionParser {
     "and", "or", "not", "is", "is not", "&", "|", "^", "<<", ">>", "~"
   )
 
-  private case class Signature(name: String, arity: Int, isOperator: Boolean, isCustom: Boolean = false) derives upickle.default.ReadWriter
+  private case class Signature(name: String, arity: Int, isOperator: Boolean, isCustom: Boolean = false)
   private case class PhaseOneResult(
       orderedDefinitions: List[BeDefineFunction],
       definitionBySignature: Map[Signature, BeDefineFunction],
       userDefinitions: List[BeDefineFunction]
-  ) derives upickle.default.ReadWriter
-  private case class ScriptParse(statements: List[BeExpression], layout: SnapCanvasScript) derives upickle.default.ReadWriter
+  )
+  private case class ScriptParse(statements: List[BeExpression], layout: SnapCanvasScript)
 
   private var currentVars = new SnapControlFlow.VariableInterner
 

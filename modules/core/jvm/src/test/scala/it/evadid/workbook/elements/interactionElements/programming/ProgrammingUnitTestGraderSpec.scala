@@ -39,7 +39,7 @@ class ProgrammingUnitTestGraderSpec extends FunSuite {
   test("the same answer passes its unit test in Python and Java, raw and structured") {
     val answers = every(square)
     Future.traverse(answers)(answer => status(squareTest, answer)).map { results =>
-      assertEquals(results, List.fill(answers.size)(GradingStatus.Correct()), answers.map(_.associatedLanguage).toString)
+      assertEquals(results, List.fill(answers.size)(GradingStatus.Correct), answers.map(_.associatedLanguage).toString)
     }
   }
 
@@ -48,20 +48,20 @@ class ProgrammingUnitTestGraderSpec extends FunSuite {
     val answers = imports.map(header => ProgrammingStateRaw(Python, header + square.code)) :+
       ProgrammingStateRaw(Python, "import turtle\n\nfor _ in range(4):\n    turtle.forward(20)\n    turtle.right(90)\n")
     Future.traverse(answers)(answer => status(squareTest, answer)).map { results =>
-      assertEquals(results, List.fill(answers.size)(GradingStatus.Correct()))
+      assertEquals(results, List.fill(answers.size)(GradingStatus.Correct))
     }
   }
 
   test("a wrong answer fails its unit test in every language") {
     val answers = every(ProgrammingStateRaw(Python, "for _ in range(3):\n    forward(20)\n    right(90)\n"))
     Future.traverse(answers)(answer => status(squareTest, answer)).map { results =>
-      assertEquals(results, List.fill(answers.size)(GradingStatus.Incorrect()))
+      assertEquals(results, List.fill(answers.size)(GradingStatus.Incorrect))
     }
   }
 
   test("a student's syntax or runtime error fails the test; a runaway program is a limit error") {
-    val cases = List("forward(" -> GradingStatus.Incorrect(), "forward(1)\nx = 1 / 0\n" -> GradingStatus.Incorrect(),
-      "forward(1)\nundefined_name()\n" -> GradingStatus.Incorrect())
+    val cases = List("forward(" -> GradingStatus.Incorrect, "forward(1)\nx = 1 / 0\n" -> GradingStatus.Incorrect,
+      "forward(1)\nundefined_name()\n" -> GradingStatus.Incorrect)
     Future.traverse(cases)((source, _) => status(squareTest, ProgrammingStateRaw(Python, source))).flatMap { results =>
       assertEquals(results, cases.map(_._2))
       status(squareTest, ProgrammingStateRaw(Python, "while True:\n    pass\n"))
@@ -86,7 +86,7 @@ class ProgrammingUnitTestGraderSpec extends FunSuite {
       wrongArgument <- status(sideTest.replace("[20]", "[10]"), java)
       unknown <- status("""assert run_java("missing", [])["commands"] == []""", java)
     } yield {
-      assertEquals((whole, side, wrongArgument), (GradingStatus.Correct(), GradingStatus.Correct(), GradingStatus.Incorrect()))
+      assertEquals((whole, side, wrongArgument), (GradingStatus.Correct, GradingStatus.Correct, GradingStatus.Incorrect))
       assertEquals(errorMessage(unknown), "The program invocation did not complete.")
     }
   }
@@ -98,7 +98,7 @@ class ProgrammingUnitTestGraderSpec extends FunSuite {
       passed <- Future.traverse(answers)(answer => status(squareTest, answer))
       loop <- status(squareTest, square.toSnapXml)
     } yield {
-      assertEquals(passed, List.fill(answers.size)(GradingStatus.Correct()))
+      assertEquals(passed, List.fill(answers.size)(GradingStatus.Correct))
       assertEquals(errorMessage(loop), "These Snap blocks do not yet have a verified unit-test translation.")
     }
   }
@@ -109,11 +109,11 @@ class ProgrammingUnitTestGraderSpec extends FunSuite {
       visible <- grader(squareTest, observe = true).gradeState(wrong, python)
       hidden <- grader(squareTest, GradingImportance.HIDDEN_TEST, observe = true).gradeState(wrong, python)
     } yield {
-      assertEquals(visible.gradingStatus, GradingStatus.Incorrect())
+      assertEquals(visible.gradingStatus, GradingStatus.Incorrect)
       val observation = visible.additionalData.flatMap(_.programObservation).getOrElse(fail("no observation"))
       assertEquals(observation.commandCount, 2)
       assertEquals(observation.commands.map(_.name.universalInterpretation()), Seq("forward", "right"))
-      assertEquals(hidden.gradingStatus, GradingStatus.Incorrect())
+      assertEquals(hidden.gradingStatus, GradingStatus.Incorrect)
       assertEquals(hidden.additionalData, None, "a hidden test reveals nothing about the program")
     }
   }

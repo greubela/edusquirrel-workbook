@@ -30,7 +30,6 @@ class SymbolTableSpec extends FunSuite {
     assertEquals(structures.functions.keySet, Set("draw", "+"))
     assertEquals(structures.operators(("+", 2)), List(plus))
     assertEquals(structures.classes.keySet, Set("Box"))
-    assertEquals(read[CurrentlyKnownStructures](write(structures)), structures)
     assertEquals(SymbolTable.defaultKnownStructures.collect { case KnownStructure.Operator(symbol, _) => symbol }.toSet.contains("+"), true)
   }
 

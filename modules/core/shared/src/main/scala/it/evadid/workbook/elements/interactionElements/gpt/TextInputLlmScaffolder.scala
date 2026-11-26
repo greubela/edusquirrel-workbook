@@ -26,7 +26,7 @@ case class TextInputLlmScaffolder(
   extends WorkbookInteractionScaffolder[String, MessengerModel] derives ReadWriter {
 
 
-  override def scaffoldingEntity: FeedbackEntity = LlmEntity()
+  override def scaffoldingEntity: FeedbackEntity = LlmEntity
 
   override def handleFeedbackGeneration(state: String, contextInformation: ExecutionContextInformation): Future[ScaffoldingResult[String, MessengerModel]] = {
     given ExecutionContext = contextInformation.futureExecutionContext

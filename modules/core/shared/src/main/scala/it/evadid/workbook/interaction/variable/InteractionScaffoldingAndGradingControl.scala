@@ -30,7 +30,7 @@ final class InteractionScaffoldingAndGradingControl[F <: InteractionFormat](val 
     val history = interactionVariable.currentHistory
     val graders = interactionVariable.underlyingInteraction.gradingElements
     if history.gradingEvents.exists(_.associatedState == forState) then history.gradingForState(graders, forState)
-    else gradingCache.getSyncIfInCache(forState, false).map(_.fillMapForUnavailable(graders, NotRequested()))
+    else gradingCache.getSyncIfInCache(forState, false).map(_.fillMapForUnavailable(graders, NotRequested))
       .getOrElse(history.gradingForState(graders, forState))
   }
 
@@ -46,8 +46,8 @@ final class InteractionScaffoldingAndGradingControl[F <: InteractionFormat](val 
       .orElse(scaffoldingCache.getSyncIfInCache(forState, false))
       .orElse(scaffoldingCache.getCurrentElementStatus(forState) match {
         case UNKNOWN() => None
-        case FAILED(error) => Some(ScaffoldingResult(forState, ScaffoldingError(error), SystemEntity(), None, LocalDateTime.now()))
-        case _ => Some(ScaffoldingResult(forState, ScaffoldingRequestedButNotFinished(), SystemEntity(), None, LocalDateTime.now()))
+        case FAILED(error) => Some(ScaffoldingResult(forState, ScaffoldingError(error), SystemEntity, None, LocalDateTime.now()))
+        case _ => Some(ScaffoldingResult(forState, ScaffoldingRequestedButNotFinished(), SystemEntity, None, LocalDateTime.now()))
       })
   }
 
@@ -72,7 +72,7 @@ final class InteractionScaffoldingAndGradingControl[F <: InteractionFormat](val 
         grader.shouldRunGrader(forceGrading, importanceOf(forState))) then
         startGrading(contextInformation, forceGrading, forState)
       else retryGradingIfNecessary(contextInformation, forceGrading,
-        saved.fillMapForUnavailable(interactionVariable.underlyingInteraction.gradingElements, NotRequested()))
+        saved.fillMapForUnavailable(interactionVariable.underlyingInteraction.gradingElements, NotRequested))
     } else {
       gradingCache.getSyncIfInCache(forState, false).match {
         case Some(gradedState) =>

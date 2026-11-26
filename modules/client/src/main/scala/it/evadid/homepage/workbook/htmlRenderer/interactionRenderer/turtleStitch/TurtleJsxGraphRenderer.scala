@@ -103,22 +103,22 @@ object TurtleJsxGraphRenderer:
   }
 
 
-  enum LineResult derives ReadWriter:
+  enum LineResult:
     case Correct, Unexpected, Missing, Neutral
     /** Step-by-step replay: the segment drawn by the current step, and segments of later steps. */
     case Current, Upcoming
 
-  final case class RenderedLine(start: Point[Double], end: Point[Double], result: LineResult, jump: Boolean) derives ReadWriter
+  final case class RenderedLine(start: Point[Double], end: Point[Double], result: LineResult, jump: Boolean)
 
-  final case class RenderedAngle(vertex: Point[Double], fromHeading: Double, degrees: Double, lineBefore: Int, lineAfter: Int) derives ReadWriter
+  final case class RenderedAngle(vertex: Point[Double], fromHeading: Double, degrees: Double, lineBefore: Int, lineAfter: Int)
 
   /** `marker` shows the turtle's position, e.g. after the current step of a replay. `frame` lists points that
     * stay visible whatever is drawn (e.g. the target drawing), so a partial or empty program does not zoom in.
     */
   final case class Scene(lines: Seq[RenderedLine], angles: Seq[RenderedAngle], marker: Option[Point[Double]] = None,
-      frame: Seq[Point[Double]] = Nil) derives ReadWriter
+      frame: Seq[Point[Double]] = Nil)
 
-  private[turtleStitch] final case class AngleSector(first: Point[Double], last: Point[Double], degrees: Double) derives upickle.default.ReadWriter
+  private[turtleStitch] final case class AngleSector(first: Point[Double], last: Point[Double], degrees: Double)
 
   /** Rays point away from the vertex along both adjacent segments. Coordinates
     * are converted to JSXGraph here, and ordered to select the smaller sector.

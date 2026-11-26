@@ -4,12 +4,10 @@ import it.evadid.evacuation.eva1.algorithm.events.traits.PersonEvent
 import it.evadid.evacuation.eva1.model.evagraph.EvaGraphTypes.EvaGraph
 import it.evadid.evacuation.eva1.model.evagraph.{ObservableEvaGraphModel, EvaPerson, Router}
 
-
-case class PersonFinishedEvent(person: EvaPerson, router: Router, graph: EvaGraph, eventStartTimestamp: Long, val simulationStartedTimestampInMs: Long) extends PersonEvent derives upickle.default.ReadWriter{
+case class PersonFinishedEvent(person: EvaPerson, router: Router, graph: EvaGraph, eventStartTimestamp: Long, val simulationStartedTimestampInMs: Long) extends PersonEvent{
 
   override def toString: String = {
     "PFE(person = " + person.seed + ", pos: " + router + ", time: " + eventStartTimestamp + ")"
   }
-
 
 }

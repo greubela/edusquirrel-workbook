@@ -1,6 +1,6 @@
 package it.evadid.evacuation.eva2.model
 
-case class TestTile(nr: Int) derives upickle.default.ReadWriter{
+case class TestTile(nr: Int){
 
   override val toString: String = "[" + nr + "]"
 

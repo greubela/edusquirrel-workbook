@@ -12,7 +12,7 @@ object SystemFunctionality {
       BeDefineClass.MethodSignature(BeEntityName.fromLiteral(name), List(value), None))
     val definition = BeDefineClass.withMethods(BeEntityName.fromLiteral("SystemFunctionality"), Nil, signatures)
     definition.copy(methods = definition.methods.map(method => method.copy(
-      functionTypeInfo = method.functionTypeInfo.copy(funcType = BeDefineFunction.StaticMethod()),
+      functionTypeInfo = method.functionTypeInfo.copy(funcType = BeDefineFunction.StaticMethod),
       intrinsic = Some(if method.functionTypeInfo.displayName.universalInterpretation() == "printToOut" then BeIntrinsic.Print else BeIntrinsic.PrintErr))))
   }
 

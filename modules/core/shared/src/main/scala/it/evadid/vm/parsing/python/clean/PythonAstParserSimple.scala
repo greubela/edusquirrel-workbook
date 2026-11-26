@@ -443,17 +443,17 @@ private final class PythonGrammar(original: String, input: PythonSourceText) {
     val expressionTypes = expressions.flatMap(expressionType)
     expressionTypes.headOption
       .filter(first => expressionTypes.size == expressions.size && expressionTypes.forall(_.typenameInCode == first.typenameInCode))
-      .getOrElse(PYTHON_ANY())
+      .getOrElse(PYTHON_ANY)
       .asInstanceOf[PythonType[Any]]
   }
 
-  def decinteger[ctx: P]: P[PythonLiteral[BigInt]] = P((nonzero_digit ~~ (P("_").? ~~ digit).rep | P("0").rep(1, sep = P("_").?)).!).map(raw => PythonLiteral(raw, PYTHON_INTEGER()))
+  def decinteger[ctx: P]: P[PythonLiteral[BigInt]] = P((nonzero_digit ~~ (P("_").? ~~ digit).rep | P("0").rep(1, sep = P("_").?)).!).map(raw => PythonLiteral(raw, PYTHON_INTEGER))
 
-  def bininteger[ctx: P]: P[PythonLiteral[BigInt]] = P("0" ~~ CharIn("bB") ~~ (P("_").? ~~ bindigit).rep(1)).!.map(raw => PythonLiteral(raw, PYTHON_INTEGER_BIN()))
+  def bininteger[ctx: P]: P[PythonLiteral[BigInt]] = P("0" ~~ CharIn("bB") ~~ (P("_").? ~~ bindigit).rep(1)).!.map(raw => PythonLiteral(raw, PYTHON_INTEGER_BIN))
 
-  def octinteger[ctx: P]: P[PythonLiteral[BigInt]] = P("0" ~~ CharIn("oO") ~~ (P("_").? ~~ octdigit).rep(1)).!.map(raw => PythonLiteral(raw, PYTHON_INTEGER_OCT()))
+  def octinteger[ctx: P]: P[PythonLiteral[BigInt]] = P("0" ~~ CharIn("oO") ~~ (P("_").? ~~ octdigit).rep(1)).!.map(raw => PythonLiteral(raw, PYTHON_INTEGER_OCT))
 
-  def hexinteger[ctx: P]: P[PythonLiteral[BigInt]] = P("0" ~~ CharIn("xX") ~~ (P("_").? ~~ hexdigit).rep(1)).!.map(raw => PythonLiteral(raw, PYTHON_INTEGER_HEX()))
+  def hexinteger[ctx: P]: P[PythonLiteral[BigInt]] = P("0" ~~ CharIn("xX") ~~ (P("_").? ~~ hexdigit).rep(1)).!.map(raw => PythonLiteral(raw, PYTHON_INTEGER_HEX))
 
   def INTEGER[ctx: P]: P[PythonLiteral[BigInt]] = P(hexinteger | octinteger | bininteger | decinteger)
 
@@ -461,19 +461,19 @@ private final class PythonGrammar(original: String, input: PythonSourceText) {
 
   def expfloat[ctx: P]: P[String] = P((pointfloat | digitpart) ~~ exponent).!
 
-  def FLOAT_NUMBER[ctx: P]: P[PythonLiteral[Double]] = P(expfloat | pointfloat).!.map(raw => PythonLiteral(raw, PYTHON_FLOAT()))
+  def FLOAT_NUMBER[ctx: P]: P[PythonLiteral[Double]] = P(expfloat | pointfloat).!.map(raw => PythonLiteral(raw, PYTHON_FLOAT))
 
   def NUMBER[ctx: P]: P[PythonLiteral[?]] = P(FLOAT_NUMBER | INTEGER)
 
-  def FALSE[ctx: P]: P[PythonLiteral[Boolean]] = P("False" ~~ !ID_CONTINUE).!.map(raw => PythonLiteral(raw, PYTHON_BOOL()))
+  def FALSE[ctx: P]: P[PythonLiteral[Boolean]] = P("False" ~~ !ID_CONTINUE).!.map(raw => PythonLiteral(raw, PYTHON_BOOL))
 
-  def TRUE[ctx: P]: P[PythonLiteral[Boolean]] = P("True" ~~ !ID_CONTINUE).!.map(raw => PythonLiteral(raw, PYTHON_BOOL()))
+  def TRUE[ctx: P]: P[PythonLiteral[Boolean]] = P("True" ~~ !ID_CONTINUE).!.map(raw => PythonLiteral(raw, PYTHON_BOOL))
 
-  def NONE_LITERAL[ctx: P]: P[PythonLiteral[?]] = P(NONE.!).map(raw => PythonLiteral(raw, PYTHON_NONE()))
+  def NONE_LITERAL[ctx: P]: P[PythonLiteral[?]] = P(NONE.!).map(raw => PythonLiteral(raw, PYTHON_NONE))
 
   def literal[ctx: P]: P[PythonLiteral[?]] = P(NUMBER | TRUE | FALSE | NONE_LITERAL | STRING_LITERAL)
 
-  def STRING_LITERAL[ctx: P]: P[PythonLiteral[?]] = P(STRING).!.map(raw => PythonLiteral(raw, PYTHON_STRING()))
+  def STRING_LITERAL[ctx: P]: P[PythonLiteral[?]] = P(STRING).!.map(raw => PythonLiteral(raw, PYTHON_STRING))
 
 
   // ==========================================
@@ -489,12 +489,12 @@ private final class PythonGrammar(original: String, input: PythonSourceText) {
 
   def atomic_type[ctx: P]: P[PythonType[?]] = {
     P(collection_type
-      | P(NONE).map(_ => PYTHON_NONE())
-      | P("bool" ~~ !ID_CONTINUE).map(_ => PYTHON_BOOL())
-      | P("Any" ~~ !ID_CONTINUE).map(_ => PYTHON_ANY())
-      | P("str" ~~ !ID_CONTINUE).map(_ => PYTHON_STRING())
-      | P("int" ~~ !ID_CONTINUE).map(_ => PYTHON_INTEGER())
-      | P("float" ~~ !ID_CONTINUE).map(_ => PYTHON_FLOAT())
+      | P(NONE).map(_ => PYTHON_NONE)
+      | P("bool" ~~ !ID_CONTINUE).map(_ => PYTHON_BOOL)
+      | P("Any" ~~ !ID_CONTINUE).map(_ => PYTHON_ANY)
+      | P("str" ~~ !ID_CONTINUE).map(_ => PYTHON_STRING)
+      | P("int" ~~ !ID_CONTINUE).map(_ => PYTHON_INTEGER)
+      | P("float" ~~ !ID_CONTINUE).map(_ => PYTHON_FLOAT)
       | NAME.map(str => PYTHON_UNPARSABLE_TYPE(str)))
   }
 

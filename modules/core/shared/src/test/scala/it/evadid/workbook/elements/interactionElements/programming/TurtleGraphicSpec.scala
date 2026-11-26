@@ -29,7 +29,7 @@ class TurtleGraphicSpec extends FunSuite {
   }
 
   test("TurtleGraphicProgram converts to turtle program") {
-    val program: List[TurtleCommand[Double]] = List(TurtleCommand.PenUp(), TurtleCommand.Forward(10.0))
+    val program: List[TurtleCommand[Double]] = List(TurtleCommand.PenUp, TurtleCommand.Forward(10.0))
     val graphic = TurtleGraphic.TurtleGraphicProgram(program)
     val commands = graphic.toTurtleProgram
     assertEquals(commands.size, 2)
@@ -39,9 +39,9 @@ class TurtleGraphicSpec extends FunSuite {
 
   test("TurtleGraphicProgram converts to SVG path") {
     val program: List[TurtleCommand[Double]] = List(
-      TurtleCommand.PenUp(),
+      TurtleCommand.PenUp,
       TurtleCommand.Forward(10.0),
-      TurtleCommand.PenDown(),
+      TurtleCommand.PenDown,
       TurtleCommand.Forward(10.0)
     )
     val graphic = TurtleGraphic.TurtleGraphicProgram(program)

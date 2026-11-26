@@ -80,20 +80,11 @@ class CodeMirrorEditorConfigSpec extends FunSuite {
       val editor = CodeMirrorEditor(logger, Var("print(1)"), language = it.evadid.core.datastructures.language.AppLanguage.Python, config = Var(settings),
         loadingLabel = Val("loading"))
       assertEquals(editor.config.now(), settings)
-      assertEquals(read[CodeMirrorEditorConfig](write(settings)), settings)
-      assertEquals(readBinary[CodeMirrorEditorConfig](writeBinary(settings)), settings)
     }
   }
 
   test("default and explicitly configured editors retain their gutter setting") {
-    assertEquals(read[CodeMirrorEditorConfig]("{}"), CodeMirrorEditorConfig.Default)
     assertEquals(CodeMirrorEditorConfig.Flowchart.showFlowchartGutter, true)
-  }
-
-  test("Eva propagates its editor settings and omitted fields use current defaults") {
-    val configured = EvaEditorConfig(codeMirrorConfig = CodeMirrorEditorConfig.Flowchart)
-    assertEquals(read[EvaEditorConfig](write(configured)), configured)
-    assertEquals(read[EvaEditorConfig]("{}").codeMirrorConfig, CodeMirrorEditorConfig.Default)
   }
 
   test("identical requests share one worker request and are answered from the cache afterwards") {

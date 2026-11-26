@@ -46,13 +46,13 @@ private[interactionInfo] final class InteractionFeedbackView[F <: InteractionFor
         .replace("{maximum}", grader.maximum.toString))
     case grader: ProgrammingTestGrader => Val(grader.testId)
     // Internal LLM instructions are not public descriptions; number criteria only when there are several.
-    case grader if grader.gradingEntity == FeedbackEntity.LlmEntity() =>
+    case grader if grader.gradingEntity == FeedbackEntity.LlmEntity =>
       if aiCriteria <= 1 then label("gradingAiAssessment")
       else label("gradingAiCriterion").map(_.replace("{number}", entry.index.toString))
     case _ => label("gradingTestNumber").map(_.replace("{number}", entry.index.toString))
   }
 
-  private lazy val aiCriteria = interaction.gradingElements.count(_.gradingEntity == FeedbackEntity.LlmEntity())
+  private lazy val aiCriteria = interaction.gradingElements.count(_.gradingEntity == FeedbackEntity.LlmEntity)
 
   /** Hidden tests reveal only their status; their description and feedback stay private. */
   def title(entry: GradingSummary.Entry): Signal[String] =

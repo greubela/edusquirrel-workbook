@@ -4,10 +4,9 @@ import it.evadid.core.datastructures.vectorShapes.svg.TurtleCommand
 import it.evadid.vm.code.defining.{BeDefineClass, BeDefineFunction, BeDependency, BeIntrinsic}
 import it.evadid.vm.conversion.dependencies.KnownDependencies
 import it.evadid.vm.simulation.data.{DataLibraries, ListCommand, SudokuCommand}
-import upickle.default.ReadWriter
 
 /** One call of a predefined module's function, recorded while a program runs, in program order. */
-enum ModuleCommand derives ReadWriter {
+enum ModuleCommand {
   case System(command: SystemCommand)
   case Turtle(command: TurtleCommand[Double])
   case NumberList(command: ListCommand)

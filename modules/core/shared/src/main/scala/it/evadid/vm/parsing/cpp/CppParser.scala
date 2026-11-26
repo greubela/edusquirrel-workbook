@@ -49,7 +49,7 @@ object CppParser {
     }
   }
 
-  final case class ParseResult(sequence: BeSequence, unsupportedStatements: List[String]) derives upickle.default.ReadWriter
+  final case class ParseResult(sequence: BeSequence, unsupportedStatements: List[String])
 
   def parseCppWithDiagnostics(source: String): ParseResult = {
     val stripped = stripWrappers(removeComments(source))

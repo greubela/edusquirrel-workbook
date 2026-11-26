@@ -130,9 +130,9 @@ final class ParsedProgramBuilder(language: ProgrammingLanguage, environment: Pro
   // Field values and method bodies are read in child contexts, so their names stay local to them.
 
   private def kind(definition: S.FunctionDef): BeDefineFunction.BeFunctionType = definition.kind match {
-    case ParsedFunctionKind.StaticMethod => StaticMethod()
-    case ParsedFunctionKind.Constructor => Constructor()
-    case _ => Method()
+    case ParsedFunctionKind.StaticMethod => StaticMethod
+    case ParsedFunctionKind.Constructor => Constructor
+    case _ => Method
   }
 
   private def methodSignature(owner: BeDefineClass, method: S.FunctionDef): BeDefineFunction =
@@ -140,7 +140,7 @@ final class ParsedProgramBuilder(language: ProgrammingLanguage, environment: Pro
       method.parameters.map(parameter => BeDefineVariable(BeEntityName.fromCodeString(parameter.name), dataType(parameter.typeHint))).toList,
       result(method.returnType),
       BeExpression.pass,
-      BeFunctionTypeInfo(Some(owner), Option.when(kind(method) != Constructor())(BeEntityName.fromCodeString(method.name)), kind(method)))
+      BeFunctionTypeInfo(Some(owner), Option.when(kind(method) != Constructor)(BeEntityName.fromCodeString(method.name)), kind(method)))
 
   private def withParameters(context: ParseContext, parameters: Seq[ParsedParameter]): ParseContext =
     ParseStep.traverse(parameters)(defineParameter).run(context)._2
@@ -174,7 +174,7 @@ final class ParsedProgramBuilder(language: ProgrammingLanguage, environment: Pro
     val owner = signatures.copy(methods = Nil)
     val classContext = context.child().registerClass(definition.name, signatures)
     val (methods, sources) = definition.methods.foldLeft((Vector.empty[BeDefineFunction], fieldSources)) { case ((done, sources), method) =>
-      val methodContext = withParameters(classContext.child(Option.when(kind(method) != StaticMethod())(owner)).withSources(_ => sources), method.parameters)
+      val methodContext = withParameters(classContext.child(Option.when(kind(method) != StaticMethod)(owner)).withSources(_ => sources), method.parameters)
       val (code, after) = body(method.body).run(methodContext)
       val built = methodSignature(owner, method).copy(body = code)
       (done :+ built, method.origin.fold(after.sources)(after.sources.function(_, built)))
@@ -247,8 +247,8 @@ final class ParsedProgramBuilder(language: ProgrammingLanguage, environment: Pro
   }
 
   private def constructor(owner: BeDefineClass): BeDefineFunction =
-    owner.methods.find(_.functionTypeInfo.funcType == Constructor()).getOrElse(
-      BeDefineFunction(Nil, None, BeExpression.pass, BeFunctionTypeInfo(Some(owner.copy(methods = Nil)), None, Constructor())))
+    owner.methods.find(_.functionTypeInfo.funcType == Constructor).getOrElse(
+      BeDefineFunction(Nil, None, BeExpression.pass, BeFunctionTypeInfo(Some(owner.copy(methods = Nil)), None, Constructor)))
 
   private def findMethod(owner: BeDefineClass, sourceName: String): BeDefineFunction =
     owner.methods.find(_.functionTypeInfo.displayName.universalInterpretation() == BeEntityName.fromCodeString(sourceName).universalInterpretation())
@@ -265,7 +265,7 @@ final class ParsedProgramBuilder(language: ProgrammingLanguage, environment: Pro
         context.lookupClass(receiverSource).filter(_ => !isVariable(receiverSource)) match {
           case Some(owner) =>
             val method = findMethod(owner, methodName)
-            require(method.functionTypeInfo.funcType == StaticMethod(), s"Instance method '$name' needs an object.")
+            require(method.functionTypeInfo.funcType == StaticMethod, s"Instance method '$name' needs an object.")
             ParseStep.pure(bind(name, BeCallTarget.StaticMethod(method), arguments))
           case None if path.head == "self" || path.head == "this" ||
               context.lookupVariable(path.head).exists(variable => context.classForType(variable.variableType).nonEmpty) =>
@@ -283,7 +283,7 @@ final class ParsedProgramBuilder(language: ProgrammingLanguage, environment: Pro
     val owner = context.classForType(instance.staticInformationExpression.staticType)
       .getOrElse(throw IllegalArgumentException(s"Cannot resolve the receiver of '$name'."))
     val method = findMethod(owner, methodName)
-    require(method.functionTypeInfo.funcType == Method(), s"Static method '$name' must be called on its class.")
+    require(method.functionTypeInfo.funcType == Method, s"Static method '$name' must be called on its class.")
     bind(name, BeCallTarget.InstanceMethod(instance, method), arguments)
   }
 

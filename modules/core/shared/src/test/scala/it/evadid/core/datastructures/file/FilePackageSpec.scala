@@ -35,9 +35,6 @@ class FilePackageSpec extends FunSuite {
     assertEquals(filename.extensionOrEmpty, "pdf")
     assertEquals(FilenameStructure("README", None).extensionWithPointOrEmpty, "")
     val path = PathStructure(LocationStructure(Some("https"), List("example", "org"), Some(443), List("a")), filename)
-    assertEquals(read[PathStructure](write(path)), path)
-    assertEquals(read[FilenameStructure](write(filename)), filename)
-    assertEquals(read[LocationStructure](write(path.locationStructure)), path.locationStructure)
   }
   test("copyright codecs preserve each licence and author variant") {
     for (licence <- List[LicenceInfo](UnknownLicence, CC_LICENCE); author <- List[AuthorInfo](UnknownAuthorInfo(), AuthorNameInfo("Ada"))) {

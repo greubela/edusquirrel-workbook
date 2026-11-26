@@ -1,12 +1,10 @@
 package it.evadid.core.datastructures.uml
 
-import upickle.default.ReadWriter
-
 final case class UmlRelation(from: String, to: String, kind: UmlRelation.Kind,
-    role: Option[String] = None, many: Boolean = false) derives ReadWriter
+    role: Option[String] = None, many: Boolean = false)
 
 object UmlRelation {
-  enum Kind derives ReadWriter {
+  enum Kind {
     case Inheritance, Realization, Association
   }
 }

@@ -9,6 +9,3 @@ trait PersonSprite extends Sprite {
 
 }
 
-object PersonSprite {
-  given upickle.default.ReadWriter[PersonSprite] = Sprite.subtypeCodec
-}

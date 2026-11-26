@@ -25,12 +25,12 @@ class BeObjectExpressionsSpec extends FunSuite {
   private val self = BeCurrentInstance(owner.name)
   private val constructor = BeDefineFunction(List(argument), None,
     BeSequence.optionalBody(List(BeAssignMember(self, field, ref(argument)))),
-    BeFunctionTypeInfo(Some(owner), Some(name("initialize")), Constructor()))
+    BeFunctionTypeInfo(Some(owner), Some(name("initialize")), Constructor))
   private val getter = BeDefineFunction(Nil, Some(variable("result")),
     BeSequence.optionalBody(List(BeReturn(Some(BeMemberAccess(self, field))))),
     methodFunctionInfo(owner, name("get value")))
   private val factory = BeDefineFunction(Nil, None, BeSequence.optionalBody(Nil),
-    BeFunctionTypeInfo(Some(owner), Some(name("reset all")), StaticMethod()))
+    BeFunctionTypeInfo(Some(owner), Some(name("reset all")), StaticMethod))
   private val instance = variable("counter instance", BeDataType.ClassType(owner.name))
   private val literal = BeUseValue(BeDataValueLiteral("3"), None)
   private val construct = BeFunctionCall(BeCallTarget.Constructor(constructor), Map(argument -> literal))

@@ -5,8 +5,6 @@ import it.evadid.core.datastructures.vectorShapes.svg.SvgPathBuilderCommand.*
 import it.evadid.core.datastructures.vectorShapes.svg.TurtlePathBuilder.{TurtlePenStyle, TurtleState, TurtleStyledSegment}
 import it.evadid.core.util.io.serializer.AutoSerializable.*
 
-import upickle.ReadWriter
-import upickle.default.*
 
 case class TurtlePathBuilder[T : Fractional](
                                              startPoint: Point[T],
@@ -189,13 +187,13 @@ case class TurtlePathBuilder[T : Fractional](
       case Circle(radius, extent, _) => circle(radius, extent.getOrElse(fromInt(360)))
       case Color(color) => setPenColor(color)
       case Stitch(mode, _, _) => setStitchMode(mode.name.universalInterpretation())
-      case PenUp() => penUp()
-      case PenDown() => penDown()
-      case ShowTurtle() => showTurtle()
-      case HideTurtle() => hideTurtle()
-      case Home() => home()
-      case Reset() => reset()
-      case Clear() => clear()
+      case PenUp => penUp()
+      case PenDown => penDown()
+      case ShowTurtle => showTurtle()
+      case HideTurtle => hideTurtle()
+      case Home => home()
+      case Reset => reset()
+      case Clear => clear()
       case Towards(_, _) | Speed(_) | Unsupported(_, _, _) => this
     }
     updated.copy(turtleCommands = updated.turtleCommands :+ command)
@@ -215,11 +213,7 @@ object TurtlePathBuilder {
     (steps, signedLength, if turnLeft then signedTurn else -signedTurn)
   }
 
-  given [T: Fractional: upickle.default.ReadWriter]: upickle.default.ReadWriter[TurtlePathBuilder[T]] =
-    upickle.default.readwriter[(Point[T], TurtleState[T], List[TurtleCommand[T]], SvgPathBuilderImmutable[T], List[TurtleStyledSegment[T]], SvgPathBuilderImmutable[T])].bimap(value => (value.startPoint, value.turtleState, value.turtleCommands, value.svgPathBuilder, value.styledSegments, value.currentSegmentPath), value => TurtlePathBuilder[T](value._1, value._2, value._3, value._4, value._5, value._6))
-
-
-  case class TurtlePenStyle[T](color: String, size: T) derives upickle.default.ReadWriter
+  case class TurtlePenStyle[T](color: String, size: T)
 
   case class TurtleStyledSegment[T: Fractional](pathBuilder: SvgPathBuilderImmutable[T], style: TurtlePenStyle[T])
 
@@ -235,10 +229,7 @@ object TurtlePathBuilder {
                                          homeHeadingDeg: T
                                        )
 
-
   object TurtleState {
-    given [T: Fractional: upickle.default.ReadWriter]: upickle.default.ReadWriter[TurtleState[T]] =
-      upickle.default.readwriter[(T, T, T, Boolean, Boolean, String, T, String, T)].bimap(value => (value.x, value.y, value.headingDeg, value.penDown, value.visible, value.penColor, value.penSize, value.stitchMode, value.homeHeadingDeg), value => TurtleState[T](value._1, value._2, value._3, value._4, value._5, value._6, value._7, value._8, value._9))
 
     def initial[T: Fractional](
                                 x: T,
@@ -289,9 +280,4 @@ object TurtlePathBuilder {
     TurtlePathBuilder[T](start, TurtleState.initial(zero, zero, zero), List(), initialPath, Nil, initialPath)
   }
 
-
-  object TurtleStyledSegment {
-  given [T: Fractional: upickle.default.ReadWriter]: upickle.default.ReadWriter[TurtleStyledSegment[T]] =
-    upickle.default.readwriter[(SvgPathBuilderImmutable[T], TurtlePenStyle[T])].bimap(value => (value.pathBuilder, value.style), value => TurtleStyledSegment[T](value._1, value._2))
-  }
 }

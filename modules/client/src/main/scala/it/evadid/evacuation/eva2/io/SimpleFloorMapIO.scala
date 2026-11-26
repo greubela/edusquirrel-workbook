@@ -6,7 +6,7 @@ import it.evadid.evacuation.core.io.traits.encoder.IO
 import it.evadid.evacuation.eva2.model
 import it.evadid.evacuation.eva2.model.{EvaFloorMap, Person}
 
-case class SimpleFloorMapIO(spriteMap: EvaSpriteMap) extends IO[EvaFloorMap, String] derives upickle.default.ReadWriter {
+case class SimpleFloorMapIO(spriteMap: EvaSpriteMap) extends IO[EvaFloorMap, String] {
 
 
   assert("default".equalsIgnoreCase(spriteMap.name), "FloorMapIO Can only handle default Sprite Map")

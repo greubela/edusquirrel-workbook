@@ -25,13 +25,13 @@ class InteractionVariableHistorySpec extends FunSuite {
   private val spelling = grader("spelling")
   private val content = grader("content")
   private val unused = grader("unused")
-  private val tutor = FeedbackEntity.LlmEntity()
+  private val tutor = FeedbackEntity.LlmEntity
 
   private def answer(value: String, second: Int, importance: UpdateImportance = MINOR): Event =
     AnswerChangedEvent[F](value, t(second), importance)
-  private def graded(value: String, second: Int, by: WorkbookInteractionGrader[String, MessengerModel] = spelling, status: GradingStatus = GradingStatus.Correct()) =
+  private def graded(value: String, second: Int, by: WorkbookInteractionGrader[String, MessengerModel] = spelling, status: GradingStatus = GradingStatus.Correct) =
     GradingResult[String, MessengerModel](by, value, status, None, None, t(second))
-  private def gradingDone(value: String, second: Int, by: WorkbookInteractionGrader[String, MessengerModel] = spelling, status: GradingStatus = GradingStatus.Correct()): Event =
+  private def gradingDone(value: String, second: Int, by: WorkbookInteractionGrader[String, MessengerModel] = spelling, status: GradingStatus = GradingStatus.Correct): Event =
     GradingCompletedEvent[F](graded(value, second, by, status))
   private def gradingStarted(value: String, second: Int, by: WorkbookInteractionGrader[String, MessengerModel] = spelling): Event =
     GradingStartedEvent[F](value, t(second), by)
@@ -80,14 +80,14 @@ class InteractionVariableHistorySpec extends FunSuite {
     val projected = restarted.gradingForState(Seq(spelling, content, unused, spelling), state)
     assertEquals(projected.state, state)
     assertEquals(projected.graderResultMap.keySet, Set(spelling, content, unused), "known graders appear once")
-    assertEquals(projected.graderResultMap(spelling).gradingStatus, GradingStatus.Correct())
-    assertEquals(projected.graderResultMap(content).gradingStatus, GradingStatus.NotFinished(), "a newer start supersedes an older result")
+    assertEquals(projected.graderResultMap(spelling).gradingStatus, GradingStatus.Correct)
+    assertEquals(projected.graderResultMap(content).gradingStatus, GradingStatus.NotFinished, "a newer start supersedes an older result")
     assertEquals(projected.graderResultMap(content).gradingTime, t(3))
-    assertEquals(projected.graderResultMap(unused).gradingStatus, GradingStatus.NotRequested())
-    val tie = history(gradingStarted(state, 4), gradingDone(state, 4, status = GradingStatus.Incorrect()))
-    assertEquals(tie.gradingForState(Seq(spelling), state).graderResultMap(spelling).gradingStatus, GradingStatus.Incorrect(),
+    assertEquals(projected.graderResultMap(unused).gradingStatus, GradingStatus.NotRequested)
+    val tie = history(gradingStarted(state, 4), gradingDone(state, 4, status = GradingStatus.Incorrect))
+    assertEquals(tie.gradingForState(Seq(spelling), state).graderResultMap(spelling).gradingStatus, GradingStatus.Incorrect,
       "completion wins a timestamp tie")
-    assertEquals(restarted.gradingForState(Seq(spelling), "never graded").graderResultMap(spelling).gradingStatus, GradingStatus.NotRequested())
+    assertEquals(restarted.gradingForState(Seq(spelling), "never graded").graderResultMap(spelling).gradingStatus, GradingStatus.NotRequested)
   }
 
   test("scaffolding projects the latest hint lifecycle for the state") {
@@ -103,8 +103,8 @@ class InteractionVariableHistorySpec extends FunSuite {
 
   test("adding results ignores unfinished gradings and never duplicates a published result") {
     val empty = InteractionVariableHistory.empty[F]
-    assertEquals(empty.addGrading(graded("a", 1, status = GradingStatus.NotFinished())), empty)
-    assertEquals(empty.addGrading(graded("a", 1, status = GradingStatus.NotRequested())), empty)
+    assertEquals(empty.addGrading(graded("a", 1, status = GradingStatus.NotFinished)), empty)
+    assertEquals(empty.addGrading(graded("a", 1, status = GradingStatus.NotRequested)), empty)
     val once = empty.addGrading(graded("a", 1))
     assertEquals(once.addGrading(graded("a", 1)), once)
     assertEquals(once.addGradings(Seq(graded("a", 1), graded("a", 2))).gradingEvents.size, 2)

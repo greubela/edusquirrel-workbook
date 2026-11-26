@@ -90,8 +90,8 @@ class SerializerPackageSpec extends FunSuite {
   test("Java and Python numeric type serializers emit language-appropriate octal syntax") {
     import it.evadid.vm.parsing.java.clean.model.JavaType
     import it.evadid.vm.parsing.python.clean.model.PythonType
-    val java = JavaType.JAVA_INTEGER_OCT().serializerJavaValue
-    val python = PythonType.PYTHON_INTEGER_OCT().serializerPythonValue
+    val java = JavaType.JAVA_INTEGER_OCT.serializerJavaValue
+    val python = PythonType.PYTHON_INTEGER_OCT.serializerPythonValue
     assertEquals(java.serialize(BigInt(15)), "017")
     assertEquals(java.serialize(BigInt(-15)), "-017")
     assertEquals(java.deserialize("0"), BigInt(0))

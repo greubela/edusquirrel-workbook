@@ -6,7 +6,7 @@ package it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.f
  */
 object DecisionLayer {
 
-  enum IssueType derives upickle.default.ReadWriter {
+  enum IssueType {
     case CORRECT
     case COMPILE_ERROR
     case API_SIGNATURE
@@ -20,13 +20,13 @@ object DecisionLayer {
     case LOGIC_EDGE_CASE
   }
 
-  enum Severity derives upickle.default.ReadWriter {
+  enum Severity {
     case LOW
     case MEDIUM
     case HIGH
   }
 
-  final case class Evidence(key: String, value: String) derives upickle.default.ReadWriter
+  final case class Evidence(key: String, value: String)
 
   final case class Decision(
     primaryIssue: IssueType,
@@ -44,7 +44,7 @@ object DecisionLayer {
      * It is never set by the heuristic router itself only by MlRouter.
      */
     mlCorrectSignal: Boolean = false
-  ) derives upickle.default.ReadWriter
+  )
 
   private def mkDecision(
     primaryIssue: IssueType,

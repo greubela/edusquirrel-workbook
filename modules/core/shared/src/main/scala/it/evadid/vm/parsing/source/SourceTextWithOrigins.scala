@@ -1,9 +1,7 @@
 package it.evadid.vm.parsing.source
 
-import upickle.default.ReadWriter
-
 /** Text preparation keeps an original UTF-16 offset for each character, including after class hoisting. */
-final case class SourceTextWithOrigins(text: String, offsets: Vector[Int]) derives ReadWriter {
+final case class SourceTextWithOrigins(text: String, offsets: Vector[Int]) {
   require(text.length == offsets.size)
 
   def slice(start: Int, end: Int): SourceTextWithOrigins =

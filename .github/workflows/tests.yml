@@ -61,7 +61,7 @@ jobs:
           distribution: temurin
           java-version: '21'
           cache: sbt
-          # Only scala-tests resolves every module, so only it saves the dependency cache.
+          # Only scala-js resolves every module, so only it saves the dependency cache.
           cache-read-only: true
           cache-dependency-path: |
             build.sbt
@@ -70,15 +70,21 @@ jobs:
             project/build.properties
             project/repositories
       - uses: sbt/setup-sbt@v1
-      - name: Restore incremental Scala build
+      - name: Restore incremental JVM build
         uses: actions/cache/restore@v5
         with:
           path: |
-            target
+            target/coreJVM
+            target/server
+            target/desktop
+            target/root
+            target/streams
             project/target
-          key: ${{ runner.os }}-scala-build-${{ hashFiles('build.sbt', 'project/*.scala', 'project/*.sbt', 'project/build.properties', 'project/repositories') }}-${{ github.sha }}
+          key: ${{ runner.os }}-scala-jvm-build-${{ hashFiles('build.sbt', 'project/*.scala', 'project/*.sbt', 'project/build.properties', 'project/repositories') }}-${{ github.sha }}
+          # The last fallback survives build-definition changes; Zinc recompiles what they invalidate.
           restore-keys: |
-            ${{ runner.os }}-scala-build-${{ hashFiles('build.sbt', 'project/*.scala', 'project/*.sbt', 'project/build.properties', 'project/repositories') }}-
+            ${{ runner.os }}-scala-jvm-build-${{ hashFiles('build.sbt', 'project/*.scala', 'project/*.sbt', 'project/build.properties', 'project/repositories') }}-
+            ${{ runner.os }}-scala-jvm-build-
       - name: Test accounts and both typed history layouts against MySQL
         env:
           SQL_PORT: ${{ job.services.mysql.ports['3306'] }}
@@ -94,7 +100,60 @@ jobs:
           sbt -batch -J-Xmx4G -Dsbt.supershell=false buildServerDev
           node tools/dev/check-server-assembly.mjs
 
-  scala-tests:
+  # Node checks need no Scala build, so they report within a minute.
+  static-tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '24'
+          cache: npm
+      - run: npm ci
+      - run: npm run test:static
+
+  # The JVM and Scala.js halves of the cross-built core compile on separate
+  # runners, so neither waits for the other or shares its heap.
+  scala-jvm:
+    runs-on: ubuntu-latest
+    # Allow a clean build cache.
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: '21'
+          cache: sbt
+          # Only scala-js resolves every module, so only it saves the dependency cache.
+          cache-read-only: true
+          cache-dependency-path: |
+            build.sbt
+            project/*.scala
+            project/*.sbt
+            project/build.properties
+            project/repositories
+      - uses: sbt/setup-sbt@v1
+      - name: Restore incremental JVM build
+        uses: actions/cache@v5
+        with:
+          path: |
+            target/coreJVM
+            target/server
+            target/desktop
+            target/root
+            target/streams
+            project/target
+          key: ${{ runner.os }}-scala-jvm-build-${{ hashFiles('build.sbt', 'project/*.scala', 'project/*.sbt', 'project/build.properties', 'project/repositories') }}-${{ github.sha }}
+          # The last fallback survives build-definition changes; Zinc recompiles what they invalidate.
+          restore-keys: |
+            ${{ runner.os }}-scala-jvm-build-${{ hashFiles('build.sbt', 'project/*.scala', 'project/*.sbt', 'project/build.properties', 'project/repositories') }}-
+            ${{ runner.os }}-scala-jvm-build-
+      - name: Test the JVM modules
+        run: sbt -batch -J-Xmx4G -Dsbt.supershell=false 'all coreJVM/test server/test desktop/compile'
+
+  scala-js:
     runs-on: ubuntu-latest
     # Allow a clean dependency/build cache.
     timeout-minutes: 30
@@ -116,24 +175,30 @@ jobs:
         with:
           node-version: '24'
           cache: npm
-      - name: Restore incremental Scala build
+      - name: Restore incremental Scala.js build
         uses: actions/cache@v5
         with:
           path: |
-            target
+            target/coreJS
+            target/client
+            target/worker
+            target/root
+            target/streams
             project/target
-          key: ${{ runner.os }}-scala-build-${{ hashFiles('build.sbt', 'project/*.scala', 'project/*.sbt', 'project/build.properties', 'project/repositories') }}-${{ github.sha }}
+          key: ${{ runner.os }}-scala-js-build-${{ hashFiles('build.sbt', 'project/*.scala', 'project/*.sbt', 'project/build.properties', 'project/repositories') }}-${{ github.sha }}
+          # The last fallback survives build-definition changes; Zinc recompiles what they invalidate.
           restore-keys: |
-            ${{ runner.os }}-scala-build-${{ hashFiles('build.sbt', 'project/*.scala', 'project/*.sbt', 'project/build.properties', 'project/repositories') }}-
+            ${{ runner.os }}-scala-js-build-${{ hashFiles('build.sbt', 'project/*.scala', 'project/*.sbt', 'project/build.properties', 'project/repositories') }}-
+            ${{ runner.os }}-scala-js-build-
       # Scala.js DOM suites require jsdom while constructing their fixtures.
       - name: Install Node test dependencies
         run: npm ci
-      - name: Test every Scala module
-        run: sbt -batch -J-Xmx4G -Dsbt.supershell=false coreJVM/test coreJS/test client/test server/test worker/test desktop/compile
-      - run: npm run test:static
+      # The JVM-only updates complete the dependency cache this job saves.
+      - name: Test the Scala.js modules
+        run: sbt -batch -J-Xmx4G -Dsbt.supershell=false 'all coreJS/test client/test worker/test' coreJVM/update server/update desktop/update
 
-  # Builds the bundles for the browser checks alongside scala-tests, so those checks
-  # need not wait for every Scala test. scala-tests alone saves the build cache.
+  # Builds the bundles for the browser checks alongside scala-js, so those checks
+  # need not wait for every Scala test. scala-js alone saves the Scala.js build cache.
   browser-bundles:
     runs-on: ubuntu-latest
     outputs:
@@ -154,15 +219,20 @@ jobs:
             project/build.properties
             project/repositories
       - uses: sbt/setup-sbt@v1
-      - name: Restore incremental Scala build
+      - name: Restore incremental Scala.js build
         uses: actions/cache/restore@v5
         with:
           path: |
-            target
+            target/coreJS
+            target/client
+            target/worker
+            target/root
+            target/streams
             project/target
-          key: ${{ runner.os }}-scala-build-${{ hashFiles('build.sbt', 'project/*.scala', 'project/*.sbt', 'project/build.properties', 'project/repositories') }}-${{ github.sha }}
+          key: ${{ runner.os }}-scala-js-build-${{ hashFiles('build.sbt', 'project/*.scala', 'project/*.sbt', 'project/build.properties', 'project/repositories') }}-${{ github.sha }}
           restore-keys: |
-            ${{ runner.os }}-scala-build-${{ hashFiles('build.sbt', 'project/*.scala', 'project/*.sbt', 'project/build.properties', 'project/repositories') }}-
+            ${{ runner.os }}-scala-js-build-${{ hashFiles('build.sbt', 'project/*.scala', 'project/*.sbt', 'project/build.properties', 'project/repositories') }}-
+            ${{ runner.os }}-scala-js-build-
       - name: Build browser artifacts
         run: sbt -batch -J-Xmx4G -Dsbt.supershell=false buildClientDev buildWorkerDev
       - name: Upload browser bundles
@@ -211,7 +281,7 @@ jobs:
 
   pages-build:
     if: ${{ inputs.build-pages }}
-    needs: scala-tests
+    needs: scala-js
     runs-on: ubuntu-latest
     # A deploy-only retry must retain the artifact name from its producing build.
     outputs:
@@ -245,17 +315,22 @@ jobs:
         with:
           node-version: '24'
 
-      # The Scala job already compiled this revision and saved its Zinc output.
+      # The Scala.js job already compiled this revision and saved its Zinc output.
       # Restore it before release linking instead of compiling all sources again.
-      - name: Restore tested Scala build
+      - name: Restore tested Scala.js build
         uses: actions/cache/restore@v5
         with:
           path: |
-            target
+            target/coreJS
+            target/client
+            target/worker
+            target/root
+            target/streams
             project/target
-          key: ${{ runner.os }}-scala-build-${{ hashFiles('build.sbt', 'project/*.scala', 'project/*.sbt', 'project/build.properties', 'project/repositories') }}-${{ github.sha }}
+          key: ${{ runner.os }}-scala-js-build-${{ hashFiles('build.sbt', 'project/*.scala', 'project/*.sbt', 'project/build.properties', 'project/repositories') }}-${{ github.sha }}
           restore-keys: |
-            ${{ runner.os }}-scala-build-${{ hashFiles('build.sbt', 'project/*.scala', 'project/*.sbt', 'project/build.properties', 'project/repositories') }}-
+            ${{ runner.os }}-scala-js-build-${{ hashFiles('build.sbt', 'project/*.scala', 'project/*.sbt', 'project/build.properties', 'project/repositories') }}-
+            ${{ runner.os }}-scala-js-build-
 
       - name: Test Pages export
         run: node --test tools/dev/assemble-pages.test.mjs
@@ -281,17 +356,21 @@ jobs:
   # Preserve the required "tests" status as the gate for the whole test suite.
   tests:
     if: ${{ always() }}
-    needs: [scala-tests, browser-bundles, browser-tests, mysql-integration]
+    needs: [static-tests, scala-jvm, scala-js, browser-bundles, browser-tests, mysql-integration]
     runs-on: ubuntu-latest
     steps:
       - name: Require every test job to pass
         env:
-          SCALA_RESULT: ${{ needs.scala-tests.result }}
+          STATIC_RESULT: ${{ needs.static-tests.result }}
+          SCALA_JVM_RESULT: ${{ needs.scala-jvm.result }}
+          SCALA_JS_RESULT: ${{ needs.scala-js.result }}
           BUNDLES_RESULT: ${{ needs.browser-bundles.result }}
           BROWSER_RESULT: ${{ needs.browser-tests.result }}
           MYSQL_RESULT: ${{ needs.mysql-integration.result }}
         run: |
-          test "$SCALA_RESULT" = success
+          test "$STATIC_RESULT" = success
+          test "$SCALA_JVM_RESULT" = success
+          test "$SCALA_JS_RESULT" = success
           test "$BUNDLES_RESULT" = success
           test "$BROWSER_RESULT" = success
           test "$MYSQL_RESULT" = success

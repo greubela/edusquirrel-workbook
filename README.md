@@ -160,8 +160,8 @@ Standard sbt launchers read [.sbtopts](.sbtopts), so local builds and CI resolve
 sbt, plugins and Scala dependencies through Google's Maven Central mirror,
 falling back to Maven Central, as listed in [project/repositories](project/repositories);
 Maven Central rate-limits bursts from shared runners. Dependency and compiler cache keys
-include that configuration. Only `scala-tests`, which resolves every module, saves the
-dependency cache, so a JVM-only job cannot publish an incomplete one.
+include that configuration. Only `scala-js`, which also resolves the JVM-only modules,
+saves the dependency cache, so a JVM-only job cannot publish an incomplete one.
 
 If an agent reports Maven Central HTTP 429/403 errors, check its launcher: a managed
 wrapper may override `.sbtopts`, `sbt.repository.config`, or `COURSIER_REPOSITORIES`.
@@ -207,7 +207,7 @@ avoid exhaustive class/method lists and historical test-run logs.
 - [Programming conversions](docs/programming-conversions.md): shared VM transformation packages and their state conversion API.
 - [Source parsing](docs/source-parsing.md): the stepwise parsing pipeline (structured → syntax → parsed) with its single entry point.
 - [Core test guide](docs/core-package-unit-tests.md): test locations, behavioral expectations and verification commands.
-- [Testing and serialization audit](docs/testing-and-serialization-audit.md): codec contracts, the serialization inventory and behavioral verification.
+- [Serialization boundaries](docs/serialization-boundaries.md): which types need codecs, codec contracts and behavioral verification.
 - [Workbook interaction roadmap](WORKBOOK_INTERACTIONS.md): reusable capabilities and edition priorities.
 
 Markdown under bundled third-party libraries documents those distributions. Imported teaching projects retain their conceptual and historical documents; their upstream setup/team instructions do not describe the EduSquirrel repository workflow. MathWorld's README and deployment guide explain its integration here.

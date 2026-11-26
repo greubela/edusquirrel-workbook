@@ -26,8 +26,8 @@ class FeedbackPresentationSpec extends EditorDomSuite {
 
   test("rows keep partial credit apart from failures, and every status has a student-facing word") {
     val exercise = criteria(6)
-    val result = summary(exercise, GradingStatus.Correct(), GradingStatus.PartiallyCorrect(), GradingStatus.Incorrect(),
-      GradingStatus.NotFinished(), GradingStatus.TestError(it.evadid.distribution.command.SerializedException("x")), GradingStatus.NotRequested())
+    val result = summary(exercise, GradingStatus.Correct, GradingStatus.PartiallyCorrect, GradingStatus.Incorrect,
+      GradingStatus.NotFinished, GradingStatus.TestError(it.evadid.distribution.command.SerializedException("x")), GradingStatus.NotRequested)
     assertEquals(result.entries.map(_.tone), Seq(Tone.Correct, Tone.Partial, Tone.Incorrect, Tone.Pending, Tone.Error, Tone.Neutral))
     assertEquals(result.entries.map(_.statusKey), Seq("gradingGroupCorrect", "gradingPartiallyCorrect", "gradingGroupIncorrect",
       "gradingLoading", "gradingError", "gradingNotRun"))
@@ -37,13 +37,13 @@ class FeedbackPresentationSpec extends EditorDomSuite {
 
   test("the overall tone shows partial credit instead of a plain failure") {
     val exercise = criteria(2)
-    assertEquals(summary(exercise, GradingStatus.Correct(), GradingStatus.Correct()).tone, Tone.Correct)
-    assertEquals(summary(exercise, GradingStatus.Correct(), GradingStatus.Incorrect()).tone, Tone.Partial)
-    assertEquals(summary(exercise, GradingStatus.PartiallyCorrect(), GradingStatus.Incorrect()).tone, Tone.Partial)
-    assertEquals(summary(exercise, GradingStatus.Incorrect(), GradingStatus.Incorrect()).tone, Tone.Incorrect)
-    assertEquals(summary(exercise, GradingStatus.NotFinished(), GradingStatus.Correct()).tone, Tone.Pending)
+    assertEquals(summary(exercise, GradingStatus.Correct, GradingStatus.Correct).tone, Tone.Correct)
+    assertEquals(summary(exercise, GradingStatus.Correct, GradingStatus.Incorrect).tone, Tone.Partial)
+    assertEquals(summary(exercise, GradingStatus.PartiallyCorrect, GradingStatus.Incorrect).tone, Tone.Partial)
+    assertEquals(summary(exercise, GradingStatus.Incorrect, GradingStatus.Incorrect).tone, Tone.Incorrect)
+    assertEquals(summary(exercise, GradingStatus.NotFinished, GradingStatus.Correct).tone, Tone.Pending)
     assertEquals(summary(exercise).tone, Tone.Neutral)
-    assertEquals(summary(exercise, GradingStatus.Incorrect(), GradingStatus.Incorrect()).toneCounts, Seq(Tone.Incorrect -> 2))
+    assertEquals(summary(exercise, GradingStatus.Incorrect, GradingStatus.Incorrect).toneCounts, Seq(Tone.Incorrect -> 2))
   }
 
   test("hint states map to labels, explanations and tones") {

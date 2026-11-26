@@ -7,19 +7,18 @@ import it.evadid.core.datastructures.language.LanguageMapContentId
 import it.evadid.homepage.webElements.editor.code.codemirror.CodeMirrorEditor
 import it.evadid.util.logging.Logger
 import it.evadid.workbook.elements.interactionElements.codeTaskToggle.{AdvancedCodeCheckResult, AdvancedCodeRequirement}
-import upickle.default.*
 
 /** Fill-in-the-blank style code editor with TODO legend and requirement checking. */
 object FillInCodeEditor {
 
-  private sealed trait FeedbackState derives ReadWriter
+  private sealed trait FeedbackState
 
   private object FeedbackState {
     case object Hidden extends FeedbackState
 
-    case class Success(messageId: LanguageMapContentId) extends FeedbackState derives ReadWriter
+    case class Success(messageId: LanguageMapContentId) extends FeedbackState
 
-    case class Incomplete(introId: LanguageMapContentId, hintIds: Seq[LanguageMapContentId]) extends FeedbackState derives ReadWriter
+    case class Incomplete(introId: LanguageMapContentId, hintIds: Seq[LanguageMapContentId]) extends FeedbackState
   }
 
   def apply(

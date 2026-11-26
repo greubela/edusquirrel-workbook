@@ -5,22 +5,21 @@ import it.evadid.core.datastructures.vectorShapes.svg.TurtleDrawingComparison
 import it.evadid.core.datastructures.vectorShapes.svg.TurtleDrawingComparison.{Segment, TurtleComparisonResult}
 import it.evadid.workbook.abstractions.grading.GradingStatus
 import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseTurtle.TurtleGraphic.{Angle, Movement}
-import upickle.default.*
 
 /** One-to-one, direction-independent segment grading; traversal order is irrelevant.
  * Stroke subdivision is deliberately significant (two halves are not one segment).
  */
 object TurtleGradingLogic {
-  enum TurtleLineStatus derives ReadWriter {
+  enum TurtleLineStatus {
     case CORRECT, EXPECTED_BUT_MISSING, EXISTING_BUT_UNEXPECTED
   }
 
   /** expectedIndex identifies the matched or missing target movement, including duplicates. */
   case class GradingLine(line: Line[Double], status: TurtleLineStatus, jump: Boolean = false,
-                         expectedIndex: Option[Int] = None) derives ReadWriter
+                         expectedIndex: Option[Int] = None)
 
   case class TurtleGraphicComparison(actual: TurtleGraphic, expected: TurtleGraphic,
-                                     tolerance: Double = 1e-7, gradeJumps: Boolean = true, coverage: Boolean = false) derives upickle.default.ReadWriter {
+                                     tolerance: Double = 1e-7, gradeJumps: Boolean = true, coverage: Boolean = false) {
     require(tolerance.isFinite && tolerance >= 0, "Turtle tolerance must be finite and nonnegative")
     lazy val linesOfActual: Seq[Movement] = actual.renderMovements
     lazy val linesOfExpected: Seq[Movement] = expected.renderMovements
@@ -39,9 +38,9 @@ object TurtleGradingLogic {
     }
     lazy val gradingStatus: GradingStatus = {
       val graded = difference.filter(line => gradeJumps || !line.jump)
-      if graded.forall(_.status == TurtleLineStatus.CORRECT) then GradingStatus.Correct()
-      else if graded.exists(_.status == TurtleLineStatus.CORRECT) then GradingStatus.PartiallyCorrect()
-      else GradingStatus.Incorrect()
+      if graded.forall(_.status == TurtleLineStatus.CORRECT) then GradingStatus.Correct
+      else if graded.exists(_.status == TurtleLineStatus.CORRECT) then GradingStatus.PartiallyCorrect
+      else GradingStatus.Incorrect
     }
 
     /** Target angles retain correct references even when lines are missing or duplicated. */

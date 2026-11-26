@@ -108,7 +108,6 @@ class PythonExecutionClientSpec extends FunSuite {
     val token = None: Option[SignedToken]
     val executor = RemoteExecutionConfig("backend.example.org", 8443).executor(token)
     assertEquals(executor, JsRemoteExecutionClient("backend.example.org", 8443, None))
-    assertEquals(read[RemoteExecutionConfig](write(RemoteExecutionConfig("b", 1))), RemoteExecutionConfig("b", 1))
     Future.unit
   }
 }

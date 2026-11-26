@@ -29,8 +29,6 @@ class StepPanelsDomSpec extends EditorDomSuite {
     assertEquals(TurtleJsxGraphRenderer.lineClasses(line(LineResult.Upcoming, jump = true)), "turtle-line turtle-line--upcoming turtle-line--jump")
     assertEquals(TurtleJsxGraphRenderer.lineClasses(line(LineResult.Correct)), "turtle-line turtle-line--correct")
     val scene = Scene(Seq(line(LineResult.Current)), Nil, Some(Point(1.0, 0.0)))
-    assertEquals(read[Scene](write(scene)), scene)
-    assertEquals(read[Scene](write(Scene(Nil, Nil))).marker, None)
   }
 
   test("the turtle panel replays the commands of the bound answer and follows changes") {

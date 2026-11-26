@@ -75,8 +75,8 @@ class ProgrammingEnvironmentSpec extends FunSuite {
     def grade(environment: ProgrammingEnvironment) = Await.result(grader.inEnvironment(environment)
       .gradeStateSafe(state, true, it.evadid.workbook.interaction.sync.UpdateImportance.MAJOR,
         it.evadid.workbook.meta.ExecutionContextInformation.default), 10.seconds).gradingStatus
-    assertEquals(grade(turtleOnly), GradingStatus.Correct())
+    assertEquals(grade(turtleOnly), GradingStatus.Correct)
     // Without the turtle library, `forward` is undefined code and draws nothing.
-    assertNotEquals(grade(ProgrammingEnvironment.of(ProgrammingLibrary.System)), GradingStatus.Correct())
+    assertNotEquals(grade(ProgrammingEnvironment.of(ProgrammingLibrary.System)), GradingStatus.Correct)
   }
 }

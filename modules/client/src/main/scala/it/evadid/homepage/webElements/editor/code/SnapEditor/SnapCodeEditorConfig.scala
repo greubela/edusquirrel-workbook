@@ -4,7 +4,6 @@ import it.evadid.core.datastructures.language.AppLanguage.{English, Java, Progra
 import it.evadid.vm.code.abstractions.BeExpression
 import it.evadid.vm.naming.CodeRepresentationConfig
 import it.evadid.workbook.elements.interactionElements.programming.state.snap.{PaletteLayout, ProgrammingEditorPalette, SnapPaletteCatalog, SnapTurtleCatalog}
-import upickle.default.*
 
 /** A primitive in the Snap palette.
  *
@@ -14,10 +13,10 @@ import upickle.default.*
  * to the corresponding native input type, so `go to x: _ y: _` keeps the two
  * numeric input morphs belonging to `gotoXY`.
  */
-case class LibraryBlock(id: String, snap_description_line: String, associatedExpression: BeExpression) derives ReadWriter
+case class LibraryBlock(id: String, snap_description_line: String, associatedExpression: BeExpression)
 
 /** Named Snap palette color role; resolves via `SpriteMorph.prototype.blockColor`. */
-enum SnapCategoryColor(val snapKey: String) derives ReadWriter:
+enum SnapCategoryColor(val snapKey: String):
   case Motion extends SnapCategoryColor("motion")
   case Looks extends SnapCategoryColor("looks")
   case Sound extends SnapCategoryColor("sound")
@@ -43,7 +42,7 @@ case class LibraryTab(
                        includeVariableControls: Boolean = false,
                        includeMakeBlockButton: Boolean = false,
                        useNativeCategory: Boolean = false
-                     ) derives ReadWriter
+                     )
 
 /** Visibility of the independently configurable parts of the embedded IDE.
  *
@@ -60,20 +59,20 @@ case class SnapEditorParts(
                             libraryCategories: Boolean = true, //
                             stage: Boolean = true, // executable area right
                             spriteControls: Boolean = true // scripts / costumes / sound headline
-                          ) derives ReadWriter
+                          )
 
 /** Canvas bitmap dimensions are runtime geometry; presentation lives in CSS. */
 case class SnapEditorVisuals(
                               CanvasWidth: Int = 900,
                               CanvasHeight: Int = 520
-                            ) derives ReadWriter
+                            )
 
 case class SnapCodeEditorConfig(
                                  parts: SnapEditorParts = SnapEditorParts(),
                                  libraryTabs: Seq[LibraryTab] = Nil,
                                  codeRepresentation: CodeRepresentationConfig = CodeRepresentationConfig(Python, English, skipUnparsable = false),
                                  visuals: SnapEditorVisuals = SnapEditorVisuals()
-                               ) derives ReadWriter
+                               )
 
 object SnapCodeEditorConfig:
   /** Snap's default palette buttons (lists/other live inside Variables). */

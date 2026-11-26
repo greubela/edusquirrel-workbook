@@ -14,7 +14,7 @@ class WorkbookContentChoiceInteractionSpec extends FunSuite {
   private given ExecutionContext = ExecutionContext.global
   private def id(s: String) = LanguageMapContentId(s"test/$s")
   private val options = (0 to 2).map(i => ChoiceOptionWorkbookContent(WorkbookContent(id(s"option$i")),
-    Some(GradingForChoice(if i < 2 then GradingStatus.Correct() else GradingStatus.Incorrect(), id(s"feedback$i")))))
+    Some(GradingForChoice(if i < 2 then GradingStatus.Correct else GradingStatus.Incorrect, id(s"feedback$i")))))
   private val single = WorkbookContentChoiceInteraction("single", ChoiceConfig(id("prompt"), Some(false), GraderRunningBehavior.RUN_ALWAYS), options)
   private val multiple = single.copy(elementId = "multi", config = single.config.copy(allowMultipleSelected = Some(true)))
   private def selected(e: WorkbookContentChoiceInteraction, indices: Int*) = indices.foldLeft(e.defaultValue)((s, i) => e.select(s, i, true))
@@ -41,13 +41,13 @@ class WorkbookContentChoiceInteractionSpec extends FunSuite {
       complete <- grade(multiple, selected(multiple, 1, 0))
       extra <- grade(multiple, selected(multiple, 1, 0, 2))
     } yield {
-      assertEquals(right.gradingStatus, GradingStatus.Correct())
+      assertEquals(right.gradingStatus, GradingStatus.Correct)
       assertEquals(right.feedbackInformation, Some(WorkbookContent(id("feedback0"))))
-      assertEquals(wrong.gradingStatus, GradingStatus.Incorrect())
-      assertEquals(empty.gradingStatus, GradingStatus.Incorrect())
-      assertEquals(partial.gradingStatus, GradingStatus.PartiallyCorrect())
-      assertEquals(complete.gradingStatus, GradingStatus.Correct())
-      assertEquals(extra.gradingStatus, GradingStatus.Incorrect())
+      assertEquals(wrong.gradingStatus, GradingStatus.Incorrect)
+      assertEquals(empty.gradingStatus, GradingStatus.Incorrect)
+      assertEquals(partial.gradingStatus, GradingStatus.PartiallyCorrect)
+      assertEquals(complete.gradingStatus, GradingStatus.Correct)
+      assertEquals(extra.gradingStatus, GradingStatus.Incorrect)
     }
   }
   test("reflection choices record answers without inventing a grader") {
@@ -76,7 +76,7 @@ class WorkbookContentChoiceInteractionSpec extends FunSuite {
       val history = multiple.interactionVariable.currentHistory
       val restored = format.historySerializer.deserialize(format.historySerializer.serialize(history))
       assertEquals(restored, history)
-      assertEquals(restored.gradingForState(multiple.gradingElements, state).testsWithResults.head.gradingStatus, GradingStatus.Correct())
+      assertEquals(restored.gradingForState(multiple.gradingElements, state).testsWithResults.head.gradingStatus, GradingStatus.Correct)
     }
   }
 }

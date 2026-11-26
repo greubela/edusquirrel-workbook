@@ -27,9 +27,9 @@ class InteractionInfoPanelSpec extends EditorDomSuite {
     val icons = IconGradingAndScaffolding(fullInfo, LaminarRenderHelper.singleton, interaction,
       it.evadid.homepage.control.info.interaction.GradingReporter(interaction))
     val cases = List(
-      (List(GradingStatus.Correct(), GradingStatus.Correct()), "grading-icon-thumbs-up-path"),
-      (List(GradingStatus.Correct(), GradingStatus.Incorrect()), "grading-icon-hand-path"),
-      (List(GradingStatus.Incorrect(), GradingStatus.Incorrect()), "grading-icon-thumbs-down-path"))
+      (List(GradingStatus.Correct, GradingStatus.Correct), "grading-icon-thumbs-up-path"),
+      (List(GradingStatus.Correct, GradingStatus.Incorrect), "grading-icon-hand-path"),
+      (List(GradingStatus.Incorrect, GradingStatus.Incorrect), "grading-icon-thumbs-down-path"))
     cases.foreach { (statuses, expected) =>
       val results: Map[WorkbookInteractionGrader[String, MessengerModel], GradingResult[String, MessengerModel]] = interaction.gradingElements.zip(statuses).map { (grader, status) =>
         grader -> GradingResult(grader, "", status, Some(WorkbookContent(LanguageMap.universalMap[HumanLanguage]("PRIVATE_FEEDBACK"))), None, java.time.LocalDateTime.now())
@@ -49,7 +49,7 @@ class InteractionInfoPanelSpec extends EditorDomSuite {
     val icons = IconGradingAndScaffolding(fullInfo, LaminarRenderHelper.singleton, interaction,
       it.evadid.homepage.control.info.interaction.GradingReporter(interaction))
     val current: Map[WorkbookInteractionGrader[String, MessengerModel], GradingResult[String, MessengerModel]] =
-      interaction.gradingElements.map(grader => grader -> GradingResult(grader, "", GradingStatus.Correct())).toMap
+      interaction.gradingElements.map(grader => grader -> GradingResult(grader, "", GradingStatus.Correct)).toMap
     val grader = interaction.gradingElements.head
     val error = current(grader).copy(gradingStatus = GradingStatus.TestError(it.evadid.distribution.command.SerializedException("execution failure")))
     val complete = icons.deriveGradingSymbol(GradingSummary(interaction.gradingElements, GradedState("", current.updated(grader, error))))
@@ -57,7 +57,7 @@ class InteractionInfoPanelSpec extends EditorDomSuite {
     try {
       assert(complete.ref.querySelector(".grading-error-path") != null)
     } finally closeComplete()
-    val unrequested = current(grader).copy(gradingStatus = GradingStatus.NotRequested())
+    val unrequested = current(grader).copy(gradingStatus = GradingStatus.NotRequested)
     val missing = icons.deriveGradingSymbol(GradingSummary(interaction.gradingElements, GradedState("", current.updated(grader, unrequested))))
     val closeMissing = mount(missing)
     try assert(missing.ref.querySelector(".grading-start-path") != null)
@@ -69,7 +69,7 @@ class InteractionInfoPanelSpec extends EditorDomSuite {
     val icons = IconGradingAndScaffolding(fullInfo, LaminarRenderHelper.singleton, interaction,
       it.evadid.homepage.control.info.interaction.GradingReporter(interaction))
     val feedback = LanguageMap.mapBasedLanguageMap[HumanLanguage](Map(German -> "Hinweis", English -> "Hint"))
-    val saved = ScaffoldingResult[String, it.evadid.core.datastructures.chat.MessengerModel]("", ScaffoldingStatus.ScaffoldingFeedback(feedback), FeedbackEntity.TestEntity(), None)
+    val saved = ScaffoldingResult[String, it.evadid.core.datastructures.chat.MessengerModel]("", ScaffoldingStatus.ScaffoldingFeedback(feedback), FeedbackEntity.TestEntity, None)
     val element = icons.deriveScaffoldingSymbol(ScaffoldingReport(Some(saved.scaffoldingStatus)))
     val originalLanguage = fullInfo.signals.currentLanguage.now()
     val close = mount(element)

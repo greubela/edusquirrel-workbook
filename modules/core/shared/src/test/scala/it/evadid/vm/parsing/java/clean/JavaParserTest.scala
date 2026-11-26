@@ -117,10 +117,10 @@ class JavaParserTest extends FunSuite {
     source.methods.find(_.name == name).getOrElse(fail(s"Missing resolved method: $name"))
 
   test("Java AST nodes expose child nodes for traversal") {
-    val target = JavaTarget("values", sliceExpr = Some(JavaLiteral("0", JavaType.JAVA_INTEGER())))
+    val target = JavaTarget("values", sliceExpr = Some(JavaLiteral("0", JavaType.JAVA_INTEGER)))
     val assignment = JavaAssignment(
       target,
-      JavaOperationBinary(JavaLiteral("1", JavaType.JAVA_INTEGER()), "+", JavaLiteral("2", JavaType.JAVA_INTEGER()))
+      JavaOperationBinary(JavaLiteral("1", JavaType.JAVA_INTEGER), "+", JavaLiteral("2", JavaType.JAVA_INTEGER))
     )
     assertEquals(assignment.getChildren(), Seq(target, assignment.value), "assignment children")
 
@@ -128,7 +128,7 @@ class JavaParserTest extends FunSuite {
       name = "run",
       modifiers = Seq("public"),
       returnType = Some(JavaType.JAVA_UNPARSABLE_TYPE("void")),
-      parameters = Seq(JavaVariableDeclaration("count", JavaType.JAVA_INTEGER(), None)),
+      parameters = Seq(JavaVariableDeclaration("count", JavaType.JAVA_INTEGER, None)),
       body = JavaExecutionBlock(Seq(assignment))
     )
     assertEquals(method.getChildren(), method.parameters ++ Seq(method.body), "method children")
@@ -201,8 +201,8 @@ class JavaParserTest extends FunSuite {
       "void draw(List<String>names) {}" -> "void draw(List<String> names) {}",
       "public static void main(String[]args) {}" -> "public static void main(String[] args) {}"
     ) do {
-      assertEquals(upickle.default.writeJs[JavaAST](completeProgram(compact)),
-        upickle.default.writeJs[JavaAST](completeProgram(spaced)), clue = compact)
+      assertEquals(completeProgram(compact),
+        completeProgram(spaced), clue = compact)
       assertSourceTree(located(compact))
     }
     for separator <- Seq("", " ", "\t", "\r\n", "/* names */") do {
@@ -443,7 +443,7 @@ class JavaParserTest extends FunSuite {
     ) + "\r\n\t "
     val checked = checkedSource(source)
     assertEquals(checked.structure.parsedSource.source, source)
-    assert(checked.structure.methods.head.parameters.head.javaType.isInstanceOf[JavaType.JAVA_FLOAT])
+    assert(checked.structure.methods.head.parameters.head.javaType.isInstanceOf[JavaType.JAVA_FLOAT.type])
     for number <- Seq("9" * 309 + ".0", "0." + "0" * 325 + "1") do {
       val invalid = turtleSource(s"Turtle.forward($number);")
       val problem = sourceProblem(invalid)
@@ -1367,11 +1367,11 @@ class JavaParserTest extends FunSuite {
   }
 
   test("serializes Java list and array types") {
-    val listType = JavaType.JAVA_LIST(JavaType.JAVA_INTEGER())
+    val listType = JavaType.JAVA_LIST(JavaType.JAVA_INTEGER)
     assertEquals(listType.serializerJavaValue.serialize(List(BigInt(1), BigInt(2))), "List.of(1, 2)")
     assertEquals(listType.serializerJavaValue.deserialize("List.of(1, 2)"), List(BigInt(1), BigInt(2)))
 
-    val arrayType = JavaType.JAVA_ARRAY(JavaType.JAVA_INTEGER())
+    val arrayType = JavaType.JAVA_ARRAY(JavaType.JAVA_INTEGER)
     assertEquals(arrayType.serializerJavaValue.serialize(List(BigInt(1), BigInt(2))), "{1, 2}")
     assertEquals(arrayType.serializerJavaValue.deserialize("{1, 2}"), List(BigInt(1), BigInt(2)))
   }
@@ -1516,7 +1516,7 @@ class JavaParserTest extends FunSuite {
       case (_, node) if node.value.isInstanceOf[JavaVariableDeclaration] => node
     }
     assertEquals(declarations.size, 2)
-    assertEquals(upickle.default.write[JavaAST](declarations.head.value), upickle.default.write[JavaAST](declarations.last.value))
+    assertEquals(declarations.head.value, declarations.last.value)
     val first = source.indexOf("int n = 1;")
     val second = source.indexOf("int n = 1;", source.indexOf("*/") + 2)
     assertEquals(declarations.map(_.range), Vector(first, second).map(start => JavaSourceMap.SourceRange(start, start + 10)))
@@ -1594,8 +1594,8 @@ class JavaParserTest extends FunSuite {
       "for (;;);" -> "for (;;) {;}"
     )
     pairs.foreach { (single, braced) =>
-      assertEquals(upickle.default.writeJs[JavaAST](statement(single)),
-        upickle.default.writeJs[JavaAST](statement(braced)), clue = single)
+      assertEquals(statement(single),
+        statement(braced), clue = single)
       assertSourceTree(located(single))
     }
   }
@@ -1695,7 +1695,7 @@ class JavaParserTest extends FunSuite {
     assertEquals(calls.head.range, JavaSourceMap.SourceRange(callStart, source.length))
     assertEquals(map.position(callStart), Some(JavaSourceMap.Position(2, 1)))
     assertEquals(map.position(source.length), Some(JavaSourceMap.Position(2, 12)))
-    assertEquals(sourceTexts(map) { case JavaLiteral(_, _: JavaType.JAVA_STRING) => true; case _ => false },
+    assertEquals(sourceTexts(map) { case JavaLiteral(_, JavaType.JAVA_STRING) => true; case _ => false },
       Vector("\"forward(1); 😀\""))
   }
 

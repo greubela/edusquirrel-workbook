@@ -175,39 +175,6 @@ class AsyncDataPackageSpec extends FunSuite {
     }
   }
 
-  test("FailureInfo maps optional metadata while retaining its serialized cause") {
-    val error = SerializedException("bad input")
-    val info = FailureInfo(error, Some("details"))
-    assertEquals(info.map(_.length).data, Some(7))
-    assertEquals(info.map(_.length).error, error)
-    assertEquals(FailureInfo[String](error, None).map(_.length).data, None)
-    val restored = read[FailureInfo[String]](write(info))
-    assertEquals(restored.error.msg, "bad input")
-    assertEquals(restored.data, Some("details"))
-    assertEquals(write(restored), write(info))
-  }
-
-  test("sealed async states and value models have default codecs") {
-    val states: List[AsyncDataState[String, Int]] = List(AsyncDataLoading(), AsyncDataSuccess(4),
-      AsyncDataFailed(new IllegalArgumentException("bad"), Some("details")))
-    states.foreach { state =>
-      val restored = read[AsyncDataState[String, Int]](write(state))
-      assertEquals(restored.loadingSince, state.loadingSince)
-      assertEquals(restored.isLoading, state.isLoading)
-      assertEquals(restored.value, state.value)
-      assertEquals(restored.failure.map(_.data), state.failure.map(_.data))
-      assertEquals(write(restored), write(state))
-    }
-    val value = AsyncValue[String, Int](AsyncDataSuccess(4))
-    assertEquals(read[AsyncValue[String, Int]](write(value)).stateNow().value, Some(4))
-  }
-  test("loading-state codecs always persist their creation time") {
-    val state = AsyncDataLoading[String, Int]()
-    val json = write[AsyncDataState[String, Int]](state)
-    assert(ujson.read(json).obj.contains("startedAt"))
-    assertEquals(read[AsyncDataState[String, Int]](json).loadingSince, state.loadingSince)
-  }
-
   test("ignore-error recovery converts throwing and failed callbacks into finished failures") {
     val value = AsyncValue[String, Int](AsyncDataFailed(new IllegalStateException("original")))
     val throwing = value.recoverOnErrorIgnoreError(_ => throw new IllegalStateException("synchronous recovery"))

@@ -47,9 +47,9 @@ class TurtlePathBuilderSpec extends FunSuite {
       List(
         TurtleCommand.Color("red"),
         TurtleCommand.Forward(10.0),
-        TurtleCommand.PenUp(),
+        TurtleCommand.PenUp,
         TurtleCommand.Forward(10.0),
-        TurtleCommand.PenDown(),
+        TurtleCommand.PenDown,
         TurtleCommand.Forward(10.0)
       ),
       90
@@ -64,7 +64,7 @@ class TurtlePathBuilderSpec extends FunSuite {
       Point(0.0, 0.0),
       List(
         TurtleCommand.Forward(20.0),
-        TurtleCommand.Clear(),
+        TurtleCommand.Clear,
         TurtleCommand.Forward(10.0)
       ),
       90

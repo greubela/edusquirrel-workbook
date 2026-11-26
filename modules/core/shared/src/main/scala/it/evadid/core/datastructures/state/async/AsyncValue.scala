@@ -1,14 +1,12 @@
 package it.evadid.core.datastructures.state.async
 
-import upickle.default.*
-
 import it.evadid.core.datastructures.state.async.AsyncDataState.*
 import it.evadid.core.datastructures.state.observable.{ConstantValueObservable, ObservableValue}
 
 import scala.concurrent.Future
 import scala.util.Try
 
-case class AsyncValue[F, S](underlyingState: AsyncDataStateFinished[F, S]) extends AsyncData[F, S] derives ReadWriter {
+case class AsyncValue[F, S](underlyingState: AsyncDataStateFinished[F, S]) extends AsyncData[F, S] {
 
   override lazy val observeAllStates: ObservableValue[AsyncDataState[F, S]] = ConstantValueObservable(underlyingState)
 

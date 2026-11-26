@@ -1,35 +1,18 @@
 package it.evadid.vm.types
 
-import upickle.default.ReadWriter
 
 import it.evadid.core.datastructures.language.LanguageMap
 
 import it.evadid.core.datastructures.language.*
 import it.evadid.core.datastructures.language.AppLanguage.*
 
-case class BeInfo(message: LanguageMap[HumanLanguage], infoType: BeInfo.InfoType) derives ReadWriter {
+case class BeInfo(message: LanguageMap[HumanLanguage], infoType: BeInfo.InfoType) {
 
 }
 
 object BeInfo {
 
   sealed trait InfoType
-
-  object InfoType {
-    given ReadWriter[InfoType] = upickle.default.readwriter[(String, String)].bimap(
-      {
-        case value: SyntaxError => "syntax" -> value.toString
-        case value: RuntimeError => "runtime" -> value.toString
-        case value: WarningType => "warning" -> value.toString
-      },
-      {
-        case ("syntax", value) => SyntaxError.valueOf(value)
-        case ("runtime", value) => RuntimeError.valueOf(value)
-        case ("warning", value) => WarningType.valueOf(value)
-        case (kind, _) => throw new IllegalArgumentException(s"Unknown diagnostic category: $kind")
-      }
-    )
-  }
 
   enum SyntaxError extends InfoType {
     case UnparsableBlock, UnsupportedBlock, MissingValue, InvalidLiteralValue, TypeMismatch, StructureMismatch
@@ -43,18 +26,6 @@ object BeInfo {
     case ImplicitTypeCast
   }
 
-  object SyntaxError {
-    given ReadWriter[SyntaxError] = upickle.default.readwriter[String].bimap(_.toString, SyntaxError.valueOf)
-  }
-
-  object RuntimeError {
-    given ReadWriter[RuntimeError] = upickle.default.readwriter[String].bimap(_.toString, RuntimeError.valueOf)
-  }
-
-  object WarningType {
-    given ReadWriter[WarningType] = upickle.default.readwriter[String].bimap(_.toString, WarningType.valueOf)
-  }
-
   def typeMismatchInfo(contextStrBegin: String, expectedType: BeDataType, actualType: BeDataType): Option[BeInfo] = {
     expectedType.canTakeValuesFrom(actualType) match {
       case AssigningNotPossible() => Some(
@@ -66,6 +37,5 @@ object BeInfo {
       case AssigningPossibleWithSameType(resultingType) => None
     }
   }
-
 
 }

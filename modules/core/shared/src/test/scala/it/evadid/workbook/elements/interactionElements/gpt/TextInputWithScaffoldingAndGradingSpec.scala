@@ -70,7 +70,7 @@ class TextInputWithScaffoldingAndGradingSpec extends FunSuite {
     val configuration = Some(it.evadid.llm.LlmConfiguration("https://own.example/chat", "own-model", Some("session-key")))
     val context = TestExecutionContext(List(f.client), languageMapIdResolver = Some(f.resolver), llmConfiguration = configuration)
     f.grader.gradeStateSafe("answer", true, UpdateImportance.MAJOR, context).flatMap { result =>
-      assertEquals(result.gradingStatus, GradingStatus.Correct())
+      assertEquals(result.gradingStatus, GradingStatus.Correct)
       TextInputLlmScaffolder(task, None, ContentForLlmInteraction(hint, Map.empty))
         .handleFeedbackGeneration("answer", context).map { _ =>
           assertEquals(f.requests.now().size, 3)
@@ -79,8 +79,8 @@ class TextInputWithScaffoldingAndGradingSpec extends FunSuite {
     }
   }
 
-  for ((marker, expected) <- List("CORRECT" -> GradingStatus.Correct(), "INCORRECT" -> GradingStatus.Incorrect(),
-    "PARTIALL_CORRECT" -> GradingStatus.PartiallyCorrect())) {
+  for ((marker, expected) <- List("CORRECT" -> GradingStatus.Correct, "INCORRECT" -> GradingStatus.Incorrect,
+    "PARTIALL_CORRECT" -> GradingStatus.PartiallyCorrect)) {
     test(s"$marker becomes a typed grade with marker-free localized plaintext feedback") {
       val f = new Fixture(List(Right(s"Ein Hinweis.\r\n$marker \n")))
       f.grade().map { result =>
@@ -89,7 +89,7 @@ class TextInputWithScaffoldingAndGradingSpec extends FunSuite {
         assertEquals(result.feedbackInformation.collect { case WorkbookContent.LanguageMapBasedContent(map) => map }.get.tryGetInLanguage(German), Some("Ein Hinweis."))
         assertEquals(result.feedbackInformation.collect { case WorkbookContent.LanguageMapBasedContent(map) => map }.get.tryGetInLanguage(English), None)
         assertEquals(result.grader, f.grader)
-        assert(result.grader.gradingEntity.isInstanceOf[FeedbackEntity.LlmEntity])
+        assert(result.grader.gradingEntity.isInstanceOf[FeedbackEntity.LlmEntity.type])
         assertEquals(result.additionalData.get.messages.last.text, s"Ein Hinweis.\r\n$marker \n")
         assertEquals(f.requests.now().size, 1)
       }
@@ -115,7 +115,7 @@ class TextInputWithScaffoldingAndGradingSpec extends FunSuite {
   test("a malformed first response gets exactly one classification-only retry and keeps its original feedback") {
     val f = new Fixture(List(Right("Deine Erklärung ist teilweise richtig."), Right("PARTIALL_CORRECT\n")))
     f.grade().map { result =>
-      assertEquals(result.gradingStatus, GradingStatus.PartiallyCorrect())
+      assertEquals(result.gradingStatus, GradingStatus.PartiallyCorrect)
       assertEquals(result.feedbackInformation.collect { case WorkbookContent.LanguageMapBasedContent(map) => map }.get.getInLanguage(German), "Deine Erklärung ist teilweise richtig.")
       assertEquals(f.requests.now().size, 2)
       assert(f.requests.now().last.systemPrompt.contains("ONLY one of CORRECT, INCORRECT, PARTIALL_CORRECT"))
@@ -131,7 +131,7 @@ class TextInputWithScaffoldingAndGradingSpec extends FunSuite {
     test(s"invalid final marker '$invalid' is not silently accepted") {
       val f = new Fixture(List(Right(invalid), Right("INCORRECT")))
       f.grade().map { result =>
-        assertEquals(result.gradingStatus, GradingStatus.Incorrect())
+        assertEquals(result.gradingStatus, GradingStatus.Incorrect)
         assertEquals(f.requests.now().size, 2)
       }
     }
@@ -151,7 +151,7 @@ class TextInputWithScaffoldingAndGradingSpec extends FunSuite {
   test("manual-only grading neither resolves content nor calls the LLM on ordinary edits") {
     val f = new Fixture
     f.grade(forced = false).map { result =>
-      assertEquals(result.gradingStatus, GradingStatus.NotRequested())
+      assertEquals(result.gradingStatus, GradingStatus.NotRequested)
       assertEquals(f.requests.now(), Vector.empty)
       assertEquals(f.resolutions.now(), Vector.empty)
     }
@@ -244,7 +244,7 @@ class TextInputWithScaffoldingAndGradingSpec extends FunSuite {
       assertEquals(prompt("examples")(0)("answer").str, "Deutsch: test/example-answer")
       assertEquals(prompt("examples")(0)("response").str, "Deutsch: test/example-feedback")
       assertEquals(f.resolutions.now().toSet, Set(task, criterion, solution, example, reply))
-      assertEquals(result.gradingStatus, GradingStatus.Correct())
+      assertEquals(result.gradingStatus, GradingStatus.Correct)
     }
   }
 
@@ -301,7 +301,7 @@ class TextInputWithScaffoldingAndGradingSpec extends FunSuite {
       val results = element.interactionVariable.currentHistory.historyGrading.gradingsMap("answer").testsWithResults
       assertEquals(results.size, 2)
       assertEquals(results.map(_.grader), element.gradingElements.toSet[WorkbookInteractionGrader[String, MessengerModel]])
-      assert(results.forall(_.gradingStatus == GradingStatus.Correct()))
+      assert(results.forall(_.gradingStatus == GradingStatus.Correct))
       assertEquals(f.requests.now().size, 2)
       assertEquals(f.requests.now().map(request => ujson.read(request.prompt)("criterion").str).toSet,
         Set(s"Deutsch: ${criterion.fullId}", s"Deutsch: ${secondCriterion.fullId}"))
@@ -317,7 +317,7 @@ class TextInputWithScaffoldingAndGradingSpec extends FunSuite {
     element.scaffoldingElement.get.handleFeedbackGeneration("current answer", TestExecutionContext(List(f.client), languageMapIdResolver = Some(f.resolver))).map { result =>
       assertEquals(result.forState, "current answer")
       assertEquals(result.scaffoldingStatus.asInstanceOf[ScaffoldingStatus.ScaffoldingFeedback].feedback.getInLanguage(German), "Welche Ursache könntest du nennen?")
-      assert(result.scaffoldingEntity.isInstanceOf[FeedbackEntity.LlmEntity])
+      assert(result.scaffoldingEntity.isInstanceOf[FeedbackEntity.LlmEntity.type])
       assertEquals(f.resolutions.now().toSet, Set(task, hint))
       assert(!f.requests.now().head.prompt.contains("test/criterion"))
       assertEquals(read[ScaffoldingResult[String, MessengerModel]](write(result)), result)
@@ -357,7 +357,7 @@ class TextInputWithScaffoldingAndGradingSpec extends FunSuite {
       first.zip(second).flatMap { (a, b) =>
         assertEquals(a, b)
         val result = element.interactionVariable.currentHistory.historyGrading.gradingsMap("answer").testsWithResults.head
-        assertEquals(result.gradingStatus, GradingStatus.Correct())
+        assertEquals(result.gradingStatus, GradingStatus.Correct)
         assertEquals(result.feedbackInformation.collect { case WorkbookContent.LanguageMapBasedContent(map) => map }.flatMap(_.tryGetInLanguage(German)), Some("Bestehendes Feedback."))
         grade().map { cached =>
           assertEquals(cached, a)

@@ -40,7 +40,7 @@ class JavaTurtleLibrarySpec extends FunSuite {
     commands.foldLeft((TurtlePathBuilder[Double](), Vector.empty[Vector[Double]])) { case ((builder, segments), command) =>
       val next = builder.handleCommand(command)
       val moved = (next.getX(), next.getY()) != (builder.getX(), builder.getY())
-      val kept = if command.isInstanceOf[it.evadid.core.datastructures.vectorShapes.svg.TurtleCommand.Clear[?]] then Vector.empty else segments
+      val kept = if command.isInstanceOf[it.evadid.core.datastructures.vectorShapes.svg.TurtleCommand.Clear.type] then Vector.empty else segments
       (next, if moved && builder.turtleState.penDown then kept :+ Vector(builder.getX(), builder.getY(), next.getX(), next.getY()) else kept)
     }._2
 

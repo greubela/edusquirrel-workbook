@@ -13,7 +13,3 @@ case class DateShape[T: Fractional]() extends DrawingRoutineRelativeToMaxDim[T] 
   override def hasDesiredAspectRatio: Option[AspectRatio] = None
 }
 
-object DateShape {
-  given [T: Fractional: upickle.default.ReadWriter]: upickle.default.ReadWriter[DateShape[T]] =
-    upickle.default.readwriter[Unit].bimap(value => (), _ => DateShape[T]())
-}

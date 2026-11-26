@@ -3,7 +3,7 @@ package it.evadid.evacuation.html.elements
 import it.evadid.evacuation.core.datastructures.utility.ObservableVar
 import it.evadid.evacuation.html.elements.TabPaneModel.TabProperty
 
-case class TabPaneModel(tabs: List[TabProperty]) derives upickle.default.ReadWriter {
+case class TabPaneModel(tabs: List[TabProperty]) {
 
   val currentTab: ObservableVar[TabProperty] = new ObservableVar[TabProperty](tabs.head)
 
@@ -11,7 +11,7 @@ case class TabPaneModel(tabs: List[TabProperty]) derives upickle.default.ReadWri
 
 object TabPaneModel {
 
-  case class TabProperty(id: String, description: String) derives upickle.default.ReadWriter
+  case class TabProperty(id: String, description: String)
 
 }
 

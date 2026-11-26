@@ -34,9 +34,9 @@ class TurtleDrawingComparisonSpec extends FunSuite {
     val target = build(List(TurtleCommand.Forward(100.0)))
     // Draw the same vertical segment from top to bottom instead of bottom to top.
     val actual = build(List(
-      TurtleCommand.PenUp(),
+      TurtleCommand.PenUp,
       TurtleCommand.Forward(100.0),
-      TurtleCommand.PenDown(),
+      TurtleCommand.PenDown,
       TurtleCommand.Backward(100.0)
     ))
     val result = TurtleDrawingComparison.compare(target, actual)
@@ -53,16 +53,16 @@ class TurtleDrawingComparisonSpec extends FunSuite {
     // Same two strokes, but horizontal first: go to corner with pen up, draw horizontal,
     // then return and draw vertical.
     val horizontalThenVertical = build(List(
-      TurtleCommand.PenUp(),
+      TurtleCommand.PenUp,
       TurtleCommand.Forward(40.0),
       TurtleCommand.Right(90.0),
-      TurtleCommand.PenDown(),
+      TurtleCommand.PenDown,
       TurtleCommand.Forward(40.0),
-      TurtleCommand.PenUp(),
+      TurtleCommand.PenUp,
       TurtleCommand.Backward(40.0),
       TurtleCommand.Left(90.0),
       TurtleCommand.Backward(40.0),
-      TurtleCommand.PenDown(),
+      TurtleCommand.PenDown,
       TurtleCommand.Forward(40.0)
     ))
     val result = TurtleDrawingComparison.compare(verticalThenHorizontal, horizontalThenVertical)
@@ -72,18 +72,18 @@ class TurtleDrawingComparisonSpec extends FunSuite {
   test("pen-up travel is ignored") {
     val target = build(List(
       TurtleCommand.Forward(50.0),
-      TurtleCommand.PenUp(),
+      TurtleCommand.PenUp,
       TurtleCommand.Forward(30.0),
-      TurtleCommand.PenDown(),
+      TurtleCommand.PenDown,
       TurtleCommand.Forward(50.0)
     ))
     val actual = build(List(
       TurtleCommand.Forward(50.0),
-      TurtleCommand.PenUp(),
+      TurtleCommand.PenUp,
       TurtleCommand.Forward(30.0),
-      TurtleCommand.PenDown(),
+      TurtleCommand.PenDown,
       TurtleCommand.Forward(50.0),
-      TurtleCommand.PenUp(),
+      TurtleCommand.PenUp,
       TurtleCommand.Left(90.0),
       TurtleCommand.Forward(200.0)
     ))
@@ -111,9 +111,9 @@ class TurtleDrawingComparisonSpec extends FunSuite {
       TurtleCommand.Left(90.0),
       TurtleCommand.Forward(50.0),
       // missing fourth side; extra diagonal-ish longer stroke elsewhere
-      TurtleCommand.PenUp(),
+      TurtleCommand.PenUp,
       TurtleCommand.Goto(200.0, 200.0),
-      TurtleCommand.PenDown(),
+      TurtleCommand.PenDown,
       TurtleCommand.Forward(80.0)
     ))
     val result = TurtleDrawingComparison.compare(target, actual)
@@ -126,9 +126,9 @@ class TurtleDrawingComparisonSpec extends FunSuite {
     val target = build(List(TurtleCommand.Forward(100.0)))
     // Same line but endpoints shifted by 0.3 (< 0.5 default tolerance) via slightly longer stroke from offset start.
     val actual = build(List(
-      TurtleCommand.PenUp(),
+      TurtleCommand.PenUp,
       TurtleCommand.Goto(0.0, -0.3),
-      TurtleCommand.PenDown(),
+      TurtleCommand.PenDown,
       TurtleCommand.Forward(100.0)
     ))
     val result = TurtleDrawingComparison.compare(target, actual, tolerance = Some(0.5))
@@ -138,9 +138,9 @@ class TurtleDrawingComparisonSpec extends FunSuite {
   test("deviation outside tolerance fails") {
     val target = build(List(TurtleCommand.Forward(100.0)))
     val actual = build(List(
-      TurtleCommand.PenUp(),
+      TurtleCommand.PenUp,
       TurtleCommand.Goto(0.0, -2.0),
-      TurtleCommand.PenDown(),
+      TurtleCommand.PenDown,
       TurtleCommand.Forward(100.0)
     ))
     val result = TurtleDrawingComparison.compare(target, actual, tolerance = Some(0.5))
@@ -205,9 +205,9 @@ class TurtleDrawingComparisonSpec extends FunSuite {
   test("extra stroke beside a matching circle fails") {
     val circle = polygon(36, side = 10.0, turn = 10.0)
     val withStroke = build(circle ++ List(
-      TurtleCommand.PenUp(),
+      TurtleCommand.PenUp,
       TurtleCommand.Goto(200.0, 200.0),
-      TurtleCommand.PenDown(),
+      TurtleCommand.PenDown,
       TurtleCommand.Forward(80.0)
     ))
     val result = TurtleDrawingComparison.compare(build(circle), withStroke)

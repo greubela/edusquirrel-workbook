@@ -26,7 +26,7 @@ class CrossLanguageRoundTripSpec extends FunSuite {
     case other => fail(s"unexpected language $other")
   }
   private def commands(state: ProgrammingState) =
-    state.toBeExpression.turtleCommandExecutionInfo.completedCommands.map(command => command.getClass.getSimpleName -> command.args)
+    state.toBeExpression.turtleCommandExecutionInfo.completedCommands.map(command => command.getClass.getSimpleName.stripSuffix("$") -> command.args)
   private def through(state: ProgrammingState, target: ProgrammingLanguage, origin: ProgrammingLanguage): ProgrammingState =
     converted(converted(state.toBeExpression, target).toBeExpression, origin)
 

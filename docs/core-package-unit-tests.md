@@ -61,11 +61,10 @@ cancel owned subscriptions/timers so one suite cannot alter another's environmen
 
 ## Coverage and serialization are different checks
 
-[The serialization inventory](testing-and-serialization-audit.md) accounts for
-production declarations and explicit exceptions. Behavioral tests must also check
-what a decoded model can do, validation failures and protocol compatibility. A
-runtime callback or live controller should have an explicit snapshot contract,
-not a derived codec added just to satisfy the scanner.
+Only types crossing a [serialization boundary](serialization-boundaries.md) have
+codecs, and the compiler rejects a boundary type without one. Round-trip tests
+show that a codec encodes; behavioral tests must also check what a decoded model
+can do, validation failures and protocol compatibility.
 
 When measuring coverage, report the tool, platform, source scope and current
 revision. Line/branch measurements, class inventories and test totals answer
@@ -85,17 +84,23 @@ or source-code spelling in automated tests. Review those when editing content or
 presentation. `WorkbookDefinitionsSpec` checks the current catalogue factories
 for unique element IDs and serialization without fixing their lesson structure.
 
-CI caches incremental Scala output separately from downloaded dependencies, with
-build-definition changes starting a new cache family. Scala still checks the
+CI caches incremental Scala output separately from downloaded dependencies.
+Build-definition changes start a new cache family but still restore the newest
+older entry; Zinc recompiles what the change invalidates. Scala still checks the
 current sources and test discovery on every run. A cold cache requires a full
-compile; deleting fast domain assertions does little to reduce that cost.
+compile; deleting fast domain assertions does little to reduce that cost. Most
+of `core`'s compile time is uPickle codec derivation, paid once per platform.
 
-The `scala-tests` job runs Scala/static checks, builds the development browser
-bundles and saves the compiled output. `browser-tests` downloads those bundles;
-when called by the Pages workflow, `pages-build` restores the compiled output and
+The cross-built core compiles on two runners in parallel: `scala-jvm` tests
+core JVM, server and desktop, and `scala-js` tests core JS, client and worker
+and saves the Scala.js output. Each caches only its own `target/<project>`
+directories. `browser-bundles` restores that cache and links the development
+bundles in parallel, so `browser-tests` need not wait for the Scala tests.
+`static-tests` runs the Node checks without a Scala build. When called by the
+Pages workflow, `pages-build` restores the tested Scala.js output and
 release-links in parallel with browser checks. Publication waits for the entire
-reusable workflow. The required `tests` status also gates Scala, browser and MySQL
-checks, including failures or cancellations in upstream jobs.
+reusable workflow. The required `tests` status gates every job, including
+failures or cancellations in upstream jobs.
 
 The MySQL job owns the server assembly/startup check. Browser bundles and Pages
 artifacts use the producing build's attempt-specific name, so retries reuse the

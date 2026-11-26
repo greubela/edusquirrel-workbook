@@ -17,27 +17,27 @@ object BeCallTarget {
   case class Function(definition: BeDefineFunction) extends BeCallTarget derives ReadWriter {
     require(definition.functionTypeInfo.isMethodInClass.isEmpty, "A free-function call cannot target a class member.")
     require(definition.functionTypeInfo.funcType match {
-      case BeDefineFunction.Function() | BeDefineFunction.Lambda() | BeDefineFunction.Operator(_) => true
+      case BeDefineFunction.Function | BeDefineFunction.Lambda | BeDefineFunction.Operator(_) => true
       case _ => false
     }, "A free-function call requires a function, lambda or operator declaration.")
   }
   case class InstanceMethod(instance: BeExpression, definition: BeDefineFunction) extends BeCallTarget derives ReadWriter {
-    require(definition.functionTypeInfo.funcType == BeDefineFunction.Method(), "An instance call requires an instance-method declaration.")
+    require(definition.functionTypeInfo.funcType == BeDefineFunction.Method, "An instance call requires an instance-method declaration.")
     owner(definition)
   }
   case class StaticMethod(definition: BeDefineFunction) extends BeCallTarget derives ReadWriter {
-    require(definition.functionTypeInfo.funcType == BeDefineFunction.StaticMethod(), "A static call requires a static-method declaration.")
+    require(definition.functionTypeInfo.funcType == BeDefineFunction.StaticMethod, "A static call requires a static-method declaration.")
     owner(definition)
   }
   case class Constructor(definition: BeDefineFunction) extends BeCallTarget derives ReadWriter {
-    require(definition.functionTypeInfo.funcType == BeDefineFunction.Constructor(), "A constructor call requires a constructor declaration.")
+    require(definition.functionTypeInfo.funcType == BeDefineFunction.Constructor, "A constructor call requires a constructor declaration.")
     owner(definition)
   }
 
   def forDefinition(definition: BeDefineFunction): BeCallTarget = definition.functionTypeInfo.funcType match {
-    case BeDefineFunction.Method() => InstanceMethod(BeCurrentInstance(owner(definition)), definition)
-    case BeDefineFunction.StaticMethod() => StaticMethod(definition)
-    case BeDefineFunction.Constructor() => Constructor(definition)
+    case BeDefineFunction.Method => InstanceMethod(BeCurrentInstance(owner(definition)), definition)
+    case BeDefineFunction.StaticMethod => StaticMethod(definition)
+    case BeDefineFunction.Constructor => Constructor(definition)
     case _ => Function(definition)
   }
   private def owner(definition: BeDefineFunction) = definition.functionTypeInfo.isMethodInClass

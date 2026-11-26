@@ -231,8 +231,7 @@ object CreateMonksWorkbook {
    * Several beats of the story are aggregated into one slide so the stories stay short.
    */
   case class Scene(id: String, imageKey: String, lines: List[String], copyright: CopyrightInfo = CopyrightInfo.fromAi,
-                   notice: Option[String] = None)
-    derives upickle.default.ReadWriter {
+                   notice: Option[String] = None) {
     require(lines.nonEmpty, "A slide needs at least one line")
   }
 
@@ -435,9 +434,9 @@ object CreateMonksWorkbook {
 
     def stein(breite: Double): List[TurtleCommand[Double]] =
       List.fill(2)(List(Forward(breite), Left(90.0), Forward(20.0), Left(90.0))).flatten
-    def hoch(): List[TurtleCommand[Double]] = List(PenUp(), Left(90.0), Forward(20.0), Right(90.0), PenDown())
-    def runter(): List[TurtleCommand[Double]] = List(PenUp(), Right(90.0), Forward(20.0), Left(90.0), PenDown())
-    def springe(weite: Double): List[TurtleCommand[Double]] = List(PenUp(), Forward(weite), PenDown())
+    def hoch(): List[TurtleCommand[Double]] = List(PenUp, Left(90.0), Forward(20.0), Right(90.0), PenDown)
+    def runter(): List[TurtleCommand[Double]] = List(PenUp, Right(90.0), Forward(20.0), Left(90.0), PenDown)
+    def springe(weite: Double): List[TurtleCommand[Double]] = List(PenUp, Forward(weite), PenDown)
 
     def vieleck(ecken: Int, laenge: Double): List[TurtleCommand[Double]] =
       List.fill(ecken)(List(Forward(laenge), Left(360.0 / ecken))).flatten

@@ -25,7 +25,7 @@ case class BeExpressionToJavaStr(language: HumanLanguage, skipUnparsable: Boolea
     language,
     if (targetLanguage == JavaScript) JavaScriptSeparation() else JavaSeparation(),
     skipUnparsable
-  ) derives upickle.default.ReadWriter {
+  ) {
 
   // A printer owns one rendering. Declarations are tracked per function/class scope.
   private var declared = Set.empty[String]
@@ -146,11 +146,11 @@ case class BeExpressionToJavaStr(language: HumanLanguage, skipUnparsable: Boolea
 
   override protected def functionDeclaration(function: BeDefineFunction, parameters: String, outputType: String): String =
     function.functionTypeInfo.funcType match {
-      case BeDefineFunction.Constructor() =>
+      case BeDefineFunction.Constructor =>
         val owner = function.functionTypeInfo.isMethodInClass.getOrElse(throw IllegalArgumentException("Constructor requires an owning class."))
         s"${className(owner.name)}$parameters {"
-      case BeDefineFunction.StaticMethod() => "static " + super.functionDeclaration(function, parameters, outputType)
-      case BeDefineFunction.Function() if insideMain && targetLanguage == Java => "static " + super.functionDeclaration(function, parameters, outputType)
+      case BeDefineFunction.StaticMethod => "static " + super.functionDeclaration(function, parameters, outputType)
+      case BeDefineFunction.Function if insideMain && targetLanguage == Java => "static " + super.functionDeclaration(function, parameters, outputType)
       case _ => super.functionDeclaration(function, parameters, outputType)
     }
 

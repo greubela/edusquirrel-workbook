@@ -15,9 +15,9 @@ class InteractionHistoryScaffoldingSpec extends FunSuite {
   private type F = TextInputWithLlmGradingAndScaffoldingFormat.type
   private val t0 = LocalDateTime.of(2026, 3, 1, 9, 0)
   private def started(time: LocalDateTime) =
-    ScaffoldingResult[String, MessengerModel]("answer", ScaffoldingRequestedButNotFinished(), FeedbackEntity.LlmEntity(), None, time)
+    ScaffoldingResult[String, MessengerModel]("answer", ScaffoldingRequestedButNotFinished(), FeedbackEntity.LlmEntity, None, time)
   private def finished(time: LocalDateTime, text: String = "hint") =
-    ScaffoldingResult[String, MessengerModel]("answer", ScaffoldingFeedback(LanguageMap.universalMap(text)), FeedbackEntity.LlmEntity(), None, time)
+    ScaffoldingResult[String, MessengerModel]("answer", ScaffoldingFeedback(LanguageMap.universalMap(text)), FeedbackEntity.LlmEntity, None, time)
 
   test("scaffolding requests and results are recorded once and the latest lifecycle event wins") {
     val history = InteractionVariableHistory.empty[F]

@@ -54,11 +54,11 @@ class InteractionHistoryMysqlSpec extends FunSuite {
     TextInputWithScaffoldingAndGrading.ContentForLlmInteraction(LanguageMapContentId(s"test/criterion-$index"), Map.empty))
   private def history(value: String = "first", at: LocalDateTime = time): History = {
     val grades = (0 to 1).map { index =>
-      GradingResult(grader(index), value, GradingStatus.Correct(), Some(WorkbookContent(LanguageMap.universalMap("regular grading feedback"))),
+      GradingResult(grader(index), value, GradingStatus.Correct, Some(WorkbookContent(LanguageMap.universalMap("regular grading feedback"))),
         Some(transcript), at.plusSeconds(1))
     }
     val scaffolding = ScaffoldingResult(value, ScaffoldingStatus.ScaffoldingFeedback(LanguageMap.universalMap("regular scaffolding feedback")),
-      FeedbackEntity.LlmEntity(), Some(transcript), at.plusSeconds(2))
+      FeedbackEntity.LlmEntity, Some(transcript), at.plusSeconds(2))
     val result = InteractionVariableHistory.empty[format.type].addState(InteractionVariableState(value, UpdateImportance.MAJOR, at))
       .addGradings(grades).addScaffolding(scaffolding)
     // A fixture describes the same logical events each time it is requested.
@@ -687,7 +687,7 @@ class InteractionHistoryMysqlSpec extends FunSuite {
     }
   Seq(BlobFormat, RelationalFormat).foreach { storage =>
     test(s"$storage SYNC_MAJOR preserves pending feedback outside the answer window and ignores newer defaults") {
-      val pending = ScaffoldingStartedEvent[format.type]("first", time.plusSeconds(3), LlmEntity())
+      val pending = ScaffoldingStartedEvent[format.type]("first", time.plusSeconds(3), LlmEntity)
       val saved = history().addEvent(pending).addEvent(AnswerChangedEvent[format.type]("", time.plusDays(1), UpdateImportance.DEFAULT))
       store(saved, storage)
       val request = FetchEventsFromDbRequest(context, Seq(key), pending.timestamp, pending.timestamp, config, storage,

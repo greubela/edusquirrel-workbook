@@ -20,7 +20,6 @@ import org.scalajs.dom
 import org.scalajs.dom.SVGSVGElement
 import scala.scalajs.js
 import scala.scalajs.concurrent.JSExecutionContext.Implicits.queue
-import upickle.default.*
 
 case class CodeMirrorEditor(
     logger: Logger,
@@ -130,7 +129,7 @@ object CodeMirrorEditor {
                                toCh: Option[Int] = None,
                                message: String = "",
                                severity: String = "warning"
-                             ) derives ReadWriter {
+                             ) {
     def toJs: js.Object =
       js.Dynamic.literal(
         line = line,

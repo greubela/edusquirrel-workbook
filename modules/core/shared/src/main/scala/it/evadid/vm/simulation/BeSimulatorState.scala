@@ -11,7 +11,7 @@ case class BeSimulatorState(isMiniStep: Boolean,
                             stopped: Boolean,
                             stack: List[BeExpression],
                             scopes: List[BeScope],
-                            machineState: BeVirtualMachineState) derives upickle.default.ReadWriter {
+                            machineState: BeVirtualMachineState) {
 
 }
 

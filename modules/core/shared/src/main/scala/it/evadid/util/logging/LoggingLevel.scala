@@ -1,7 +1,5 @@
 package it.evadid.util.logging
 
-import upickle.default.ReadWriter
-
-enum LoggingLevel derives ReadWriter {
+enum LoggingLevel {
   case INFO, WARN, ERROR
 }
