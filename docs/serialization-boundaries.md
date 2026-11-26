@@ -34,6 +34,8 @@ explicit data instead.
 
 | Model/boundary | Contract that tests must preserve |
 | --- | --- |
+| Numeric geometry and SVG builders | Reconstruct numeric evidence; mutable builders resume from current geometry, not the constructor seed |
+| Programming expressions and data types | Preserve the active representation and literal/type descriptors; reject unsupported tags instead of reconstructing executable serializer callbacks |
 | Workbook elements | Factories keep their definition formats; self-contained root codecs include the reference registry and prerequisites |
 | Interaction history | `InteractionFormat` owns typed event/history codecs; transport uses `InteractionHistoryJson` |
 | Execution transport | Typed `ExecutionInfo[T]` success/failure and `ExecutionClientResponse`; requests/results must decode on the selected backend |
