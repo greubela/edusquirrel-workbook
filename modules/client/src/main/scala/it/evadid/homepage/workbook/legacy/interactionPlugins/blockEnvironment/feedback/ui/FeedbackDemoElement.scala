@@ -886,11 +886,7 @@ object FeedbackDemoElement:
                         val usedLlm = fb.flatMap(_.debug).exists(_.aiHintAdded)
                         if usedLlm then
                           val label = if lang == AppLanguage.German then "KI" else "AI"
-                          Some(span(cls := "fd-ai-badge",
-                            span(cls := "fd-ai-badge__star fd-ai-badge__star--left", "✦"),
-                            span(cls := "fd-ai-badge__label", label),
-                            span(cls := "fd-ai-badge__star fd-ai-badge__star--right", "✦")
-                          ))
+                          Some(span(cls := "ai-badge", label))
                         else None
                       }
                     )

@@ -108,6 +108,8 @@
   "resetAllDataConfirm": "Tøm alle konfigurerede lokale svarlagre og slet denne brugers svar og feedback i alle arbejdsbøger på alle konfigurerede servermål? Det kan ikke fortrydes.",
   "resetAllDataError": "Ikke alle mål har bekræftet sletningen. Synkroniseringen er sat på pause, så slettede svar ikke gemmes igen. Prøv nulstillingen igen.",
   "gradingHiddenTest": "Skjult test",
+  "aiBadge": "AI",
+  "scaffoldingRetry": "Bed om et tip igen",
   "gradingAiAssessment": "AI-vurdering",
   "gradingAiCriterion": "AI-vurdering {number}",
   "programDataTitle": "Data efter main()",

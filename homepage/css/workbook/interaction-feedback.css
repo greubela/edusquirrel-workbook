@@ -1,3 +1,5 @@
+@import url("../generic/ai-badge.css");
+
 /* Grading and hint feedback, shared by the workbook overview (below an exercise)
    and the fullscreen editor sidebar. Both render FeedbackPanels with the same markup. */
 
@@ -230,6 +232,19 @@ details[open] > .feedback-summary { border-bottom: 1px solid var(--color-border-
 .feedback-date { color: var(--color-text-muted-light); font-size: 0.75rem; font-variant-numeric: tabular-nums; }
 
 .feedback-hint-text { line-height: 1.5; }
+
+.interaction-hint-panel:not(.feedback-status--neutral),
+.feedback-panel button.scaffolding-info:is(.feedback-status--pending, .feedback-status--error) {
+    border-color: var(--tone);
+}
+.feedback-panel button.scaffolding-info[aria-busy="true"] {
+    opacity: 1;
+    background: var(--tone-surface);
+}
+.feedback-hint-chip.feedback-status--pending,
+.interaction-hint-panel.feedback-status--pending[open] .feedback-chip__text {
+    display: none;
+}
 
 /* Sidebar: narrow column, so buttons share the row and labels may wrap. */
 .feedback-panel--sidebar .feedback-actions { flex: 1 1 100%; }

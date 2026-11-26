@@ -28,7 +28,7 @@ object GradingReporter {
       val state = history.historyStates.lastStateOption.get.value
       Report(
         GradingSummary(interaction.gradingElements, variable.control.getCurrentStateOfGrading(state)),
-        ScaffoldingReport(variable.control.getCurrentStateOfScaffolding(state).map(_.scaffoldingStatus)),
+        ScaffoldingReport(variable.control.getCurrentStateOfScaffolding(state)),
         history.historyStates.lastStateOption.exists(_.updateImportance != DEFAULT),
         CheckReport(interaction, history))
     }

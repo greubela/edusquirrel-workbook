@@ -88,5 +88,5 @@ private[interactionInfo] final class InteractionFeedbackView[F <: InteractionFor
     }
   }
   def requestGrading(): Unit = request(variable.control.getOrCalculateGrading(fullInfo.workbookContextInformation, forceGrading = true))
-  def requestScaffolding(): Unit = request(variable.control.getOrCalculateScaffolding(fullInfo.workbookContextInformation))
+  def requestScaffolding(): Unit = request(variable.control.getOrCalculateScaffolding(fullInfo.workbookContextInformation, retryErrors = true))
 }

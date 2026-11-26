@@ -17,7 +17,7 @@ test('Java hints retain in-flight feedback across editor close and display-langu
   const browser = await chromium.launch({chromiumSandbox: true,
     executablePath: process.env.CHROMIUM_PATH || chromium.executablePath()});
   try {
-    const page = await browser.newPage({viewport: {width: 1440, height: 1000}});
+    const page = await browser.newPage({viewport: {width: 1440, height: 1000}, reducedMotion: 'no-preference'});
     page.setDefaultTimeout(60000);
     const errors = [], requests = [], arrivals = [];
     const policy = {hold: false};
@@ -32,6 +32,16 @@ test('Java hints retain in-flight feedback across editor close and display-langu
         result: [1, {json: JSON.stringify(value), classSimpleName: 'String'}],
         receivedExecutionCommand: pending.command, additionalOutput: {loggerOut: '', loggerError: ''}
       })});
+    }
+    async function requestAfter(click) {
+      const received = new Promise(resolve => arrivals.push(resolve));
+      await click();
+      let timer;
+      try {
+        return await Promise.race([received, new Promise((_, reject) => {
+          timer = setTimeout(() => reject(new Error('Expected a hint request.')), 30000);
+        })]);
+      } finally { clearTimeout(timer); }
     }
     await page.route('**/*', async route => {
       const url = new URL(route.request().url());
@@ -76,30 +86,74 @@ test('Java hints retain in-flight feedback across editor close and display-langu
     await page.keyboard.press('ControlOrMeta+A');
     await page.keyboard.insertText(draft);
     policy.hold = true;
-    const received = new Promise(resolve => arrivals.push(resolve));
     // Feedback is owned by the workbook renderer, independently of the editor.
     await page.locator('.fullscreen-close-button').click();
-    await inlineHint.click();
-    let requestDeadline;
-    const pending = await Promise.race([received, new Promise((_, reject) => {
-      requestDeadline = setTimeout(() => reject(new Error('Expected a hint request for the edited Java answer.')), 30000);
-    })]).finally(() => clearTimeout(requestDeadline));
+    const pending = await requestAfter(() => inlineHint.click());
     assert.equal(requests.length, 2);
     assert.equal(requests.at(-1).source.code, draft);
     assert.equal(requests.at(-1).feedbackLanguage, 'German');
+    const waiting = page.locator('button.scaffolding-info[aria-busy="true"]').first();
+    assert(await waiting.isDisabled());
+    assert.equal(await waiting.innerText(), 'Hinweis wird erstellt …');
+    const spinner = waiting.locator('.feedback-icon-spin');
+    assert.equal(await spinner.evaluate(node => getComputedStyle(node).animationName), 'feedback-spin');
+    await page.emulateMedia({reducedMotion:'reduce'});
+    assert.equal(await spinner.evaluate(node => getComputedStyle(node).animationName), 'none');
     await page.getByRole('button', {name: /Editor.*öffnen|Open editor/i}).last().click();
+    const sidebarHint = page.locator('dialog[open] .interaction-hint-panel');
+    await sidebarHint.locator('.feedback-icon-spin').waitFor();
+    assert(await page.locator('dialog[open] button.scaffolding-info').isDisabled());
+    assert.equal(await sidebarHint.locator('.ai-badge').count(), 0);
+    for (const width of [390, 1440]) {
+      await page.setViewportSize({width, height: 1000});
+      const close = await page.locator('.fullscreen-close-button').boundingBox();
+      const action = await page.locator('dialog[open] button.scaffolding-info').boundingBox();
+      assert(close.y + close.height <= action.y || close.x >= action.x + action.width,
+        'the fullscreen close button clears the hint action at width ' + width);
+      if (width === 390) {
+        const source = await page.locator('dialog[open] .fullscreen-editor').boundingBox();
+        const hints = await page.locator('dialog[open] .fullscreen-sidepanel').boundingBox();
+        assert(hints.y >= source.y + source.height - 1 && hints.width >= source.width - 1);
+        assert(await sidebarHint.locator('.feedback-hint-text').evaluate(node =>
+          node.clientWidth > 300 && node.scrollWidth <= node.clientWidth + 1));
+      }
+    }
     await page.locator('.fullscreen-close-button').click();
     await page.locator('.select-language-line > div:has(.flag-fill-british-blue)').click();
     await inlineHint.click();
     assert.equal(requests.length, 2, 'a new display language joins the pending hint');
-    await answer(pending, 'Welcher Teil der Methode fehlt noch?');
-    await page.waitForFunction(() => [...document.querySelectorAll('.scaffolding-info')].some(
-      icon => icon.dataset.tooltip === '1. Welcher Teil der Methode fehlt noch?'));
+    await answer(pending, 'Private diagnostic?', ['unknown-evidence']);
+    const failed = page.locator('button.scaffolding-info.feedback-status--error').first();
+    await failed.waitFor();
+    assert(await failed.isEnabled());
+    assert.equal(await failed.innerText(), 'Try hint again');
+    assert(!await page.getByText('Private diagnostic?', {exact:true}).isVisible());
+    await page.locator('.select-language-line > div:has(.flag-fill-german-red)').click();
+    const retried = await requestAfter(() => failed.click());
+    assert.equal(requests.at(-1).feedbackLanguage, 'German');
+    await page.locator('button.scaffolding-info[aria-busy="true"]').first().waitFor();
+    await inlineHint.click();
+    assert.equal(requests.length, 3, 'the button retries; the status strip joins the pending request');
+    await page.locator('.select-language-line > div:has(.flag-fill-british-blue)').click();
+    const hintText = 'Dein Entwurf endet direkt nach der öffnenden Klammer von square. Was fehlt im Methodenrumpf?';
+    await answer(retried, hintText);
+    await page.waitForFunction(text => [...document.querySelectorAll('.scaffolding-info')].some(
+      icon => icon.dataset.tooltip === '1. ' + text), hintText);
+    const badge = page.locator('.feedback-panel--overview .interaction-hint-panel:visible .ai-badge').first();
+    assert.equal(await badge.innerText(), 'AI');
     await inlineHint.click();
     await page.locator('.select-language-line > div:has(.flag-fill-german-red)').click();
+    assert.equal(await badge.innerText(), 'KI');
     await inlineHint.click();
-    assert.equal(requests.length, 2, 'switching back reuses the completed hint');
+    assert.equal(requests.length, 3, 'switching back reuses the completed hint');
     assert.equal(await page.locator('.java-full-editor-preview pre').last().textContent(), draft);
+    await page.setViewportSize({width:390, height:844});
+    await page.getByRole('button', {name: /Editor.*öffnen|Open editor/i}).last().click();
+    const mobileHint = page.locator('dialog[open] .feedback-hint-text');
+    await mobileHint.scrollIntoViewIfNeeded();
+    assert.equal(await mobileHint.innerText(), '1. ' + hintText);
+    assert(await mobileHint.evaluate(node => node.clientWidth > 300 && node.scrollWidth <= node.clientWidth + 1));
+    await page.locator('.fullscreen-close-button').click();
     assert.deepEqual(errors, []);
   } finally { await browser.close(); }
 });

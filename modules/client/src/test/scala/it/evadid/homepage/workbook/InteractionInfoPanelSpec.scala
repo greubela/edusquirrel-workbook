@@ -70,7 +70,7 @@ class InteractionInfoPanelSpec extends EditorDomSuite {
       it.evadid.homepage.control.info.interaction.GradingReporter(interaction))
     val feedback = LanguageMap.mapBasedLanguageMap[HumanLanguage](Map(German -> "Hinweis", English -> "Hint"))
     val saved = ScaffoldingResult[String, it.evadid.core.datastructures.chat.MessengerModel]("", ScaffoldingStatus.ScaffoldingFeedback(feedback), FeedbackEntity.TestEntity, None)
-    val element = icons.deriveScaffoldingSymbol(ScaffoldingReport(Some(saved.scaffoldingStatus)))
+    val element = icons.deriveScaffoldingSymbol(ScaffoldingReport(Some(saved)))
     val originalLanguage = fullInfo.signals.currentLanguage.now()
     val close = mount(element)
     try {

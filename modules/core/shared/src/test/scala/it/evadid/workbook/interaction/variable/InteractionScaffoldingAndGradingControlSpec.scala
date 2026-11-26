@@ -254,15 +254,31 @@ class InteractionScaffoldingAndGradingControlSpec extends FunSuite {
     }
   }
 
-  test("completed hint cache entries are reused even when they contain an execution error") {
-    val scaffolder = CountingScaffolder(state => Future.successful(ScaffoldingResult[String, MessengerModel](state,
-      ScaffoldingStatus.ScaffoldingError(SerializedException("outage")), FeedbackEntity.TestEntity, None)))
+  test("only an explicit hint request retries an error and concurrent retries share the result") {
+    val firstReply = Promise[ScaffoldingResult[String, MessengerModel]]()
+    val retryReply = Promise[ScaffoldingResult[String, MessengerModel]]()
+    val scaffolder = CountingScaffolder(_ => if firstReply.isCompleted then retryReply.future else firstReply.future)
     val value = hintVariable(scaffolder)
-    value.control.getOrCalculateScaffolding(context).flatMap { first =>
-      value.control.getOrCalculateScaffolding(context).map { cached =>
-        assertEquals(cached, first)
+    val initial = value.control.getOrCalculateScaffolding(context)
+    val error = ScaffoldingResult[String, MessengerModel]("answer", ScaffoldingStatus.ScaffoldingError(SerializedException("outage")), FeedbackEntity.TestEntity, None)
+    val hint = error.copy(scaffoldingStatus = ScaffoldingStatus.ScaffoldingFeedback(LanguageMap.universalMap[HumanLanguage]("A hint")))
+    firstReply.success(error)
+    for {
+      _ <- initial
+      cached <- value.control.getOrCalculateScaffolding(context)
+      (first, second) <- {
+        assertEquals(cached, error)
         assertEquals(scaffolder.calls.now(), 1)
+        val retry = value.control.getOrCalculateScaffolding(context, retryErrors = true)
+        val joined = value.control.getOrCalculateScaffolding(context, retryErrors = true)
+        assertEquals(scaffolder.calls.now(), 2)
+        retryReply.success(hint)
+        retry.zip(joined)
       }
+      saved <- value.control.getOrCalculateScaffolding(context, retryErrors = true)
+    } yield {
+      assertEquals(List(first, second, saved), List.fill(3)(hint))
+      assertEquals(scaffolder.calls.now(), 2)
     }
   }
 
