@@ -9,7 +9,8 @@ class PythonMethodEditingSpec extends FunSuite {
   test("method edits retain their class indentation and leave the next method untouched") {
     val code = "class Box:\n    def f(self):\n        return 1\n\n    def g(self):\n        return 2\n"
     val method = PythonMethodEditing.functions(code, false).head
-    val edited = PythonMethodEditing.replace(code, method, "def f(self):\n    return 3")
+    val edited = code.take(method.span.start) + PythonMethodEditing.indented("def f(self):\n    return 3", method.span.text(code)) +
+      code.drop(method.span.end)
     assert(edited.contains("    def f(self):\n        return 3\n"))
     assert(edited.endsWith("    def g(self):\n        return 2\n"))
     assert(PythonMethodEditing.valid(edited))

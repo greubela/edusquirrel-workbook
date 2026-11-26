@@ -15,12 +15,17 @@ object PythonMethodEditing {
   def updated(state: ProgrammingStatePythonStructured, owner: BeEntityName, code: String): ProgrammingStatePythonStructured =
     if owner == module then state.copy(mainScript = code)
     else {
-      val key = SourceParsing.parse(code, SourceLanguage.Python).structured.classes.headOption
-        .map(clazz => BeEntityName.fromCodeString(clazz.name)).getOrElse(owner)
+      val key = ownerAfter(owner, code)
       state.copy(definedClasses = scala.collection.immutable.VectorMap.from(state.definedClasses.map { (existing, value) =>
         if existing == owner then key -> code else existing -> value
       }))
     }
+
+  /** The key of `owner`'s source once it is `code`: a class is stored under the name it declares. */
+  def ownerAfter(owner: BeEntityName, code: String): BeEntityName =
+    if owner == module then owner
+    else SourceParsing.parse(code, SourceLanguage.Python).structured.classes.headOption
+      .map(clazz => BeEntityName.fromCodeString(clazz.name)).getOrElse(owner)
 
   def functions(code: String, moduleScope: Boolean): Vector[PythonFunctionStructured] = {
     val all = SourceParsing.parse(code, SourceLanguage.Python).structured.functions
@@ -31,13 +36,11 @@ object PythonMethodEditing {
     }
   }
 
-  /** Replaces a dedented method fragment and restores the indentation of its original declaration. */
-  def replace(code: String, function: PythonFunctionStructured, draft: String): String = {
-    val original = function.span.text(code)
+  /** A dedented method `draft` at the indentation (and final line break) of the declaration `original`. */
+  def indented(draft: String, original: String): String = {
     val indent = original.takeWhile(c => c == ' ' || c == '\t')
     val body = draft.linesIterator.map(line => if line.isEmpty then "" else indent + line).mkString("\n")
-    val suffix = if original.endsWith("\n") then "\n" else ""
-    code.take(function.span.start) + body + suffix + code.drop(function.span.end)
+    body + (if original.endsWith("\n") then "\n" else "")
   }
 
   private val keywords = Set("False", "None", "True", "and", "as", "assert", "async", "await", "break", "class", "continue",

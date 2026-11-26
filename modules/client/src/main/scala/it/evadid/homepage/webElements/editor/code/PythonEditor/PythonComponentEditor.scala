@@ -8,18 +8,17 @@ import it.evadid.homepage.webElements.basic.PageScrollLock
 import it.evadid.homepage.webElements.editor.code.EvaEditor.{EvaEditorContext, EvaEditorTab}
 import it.evadid.homepage.webElements.editor.code.EvaEditor.uml.UmlStructureSelector
 import it.evadid.homepage.webElements.editor.code.codemirror.CodeMirrorEditor
+import it.evadid.homepage.webElements.editor.code.fragment.FragmentCodeEditor
 import it.evadid.homepage.webElements.editor.code.ProgrammingStateView
 import it.evadid.homepage.webElements.editor.code.program.ProgramAnalyzer
 import it.evadid.homepage.webElements.editor.config.CodeMirrorEditorConfig
 import it.evadid.vm.editing.PythonMethodEditing
 import it.evadid.vm.naming.BeEntityName
-import it.evadid.vm.parsing.source.{SourceParsing, SourceText}
+import it.evadid.vm.parsing.source.SourceParsing
 import it.evadid.vm.parsing.source.SourceParsing.SourceLanguage
 import it.evadid.vm.structure.PythonUmlDiagram
 import it.evadid.workbook.elements.interactionElements.programming.state.*
 import org.scalajs.dom
-import scala.concurrent.Future
-import scala.scalajs.concurrent.JSExecutionContext.Implicits.queue
 
 /** Python's class/function/full views share source parsing, UML rendering and CodeMirror with Java. */
 final class PythonComponentEditor(state: Var[ProgrammingStatePythonStructured], context: EvaEditorContext,
@@ -115,50 +114,23 @@ final class PythonComponentEditor(state: Var[ProgrammingStatePythonStructured], 
       button(typ := "button", child.text <-- labels("cancel"), onClick --> (_ => dialog.set(None))),
       button(typ := "button", child.text <-- labels(kind), onClick --> (_ => submit(kind)))))
 
+  /** The editor of the selected entry, created for this selection and released when another one is chosen. */
   private def sourceEditor(key: Option[UmlEntityKey], view: String): Element = {
-    val className = key.map(k => BeEntityName.fromCodeString(k.className)).getOrElse(PythonMethodEditing.module)
-    val initial = PythonMethodEditing.source(state.now(), className).getOrElse("")
-    val method = if view == "function" then key.flatMap(_.member).flatMap(member =>
-      PythonMethodEditing.functions(initial, className == PythonMethodEditing.module).filter(_.name == member.name).lift(member.occurrence)) else None
-    val range = Var(method)
-    val text = Var(if view == "full" then state.now().toString else method.fold(initial)(_.code))
-    def receive(value: ProgrammingStatePythonStructured): Unit = {
-      val code = if view == "full" then value.toString else PythonMethodEditing.source(value, className).getOrElse("")
-      val current = range.now().flatMap(previous => PythonMethodEditing.functions(code, className == PythonMethodEditing.module)
-        .find(_.name == previous.name))
-      if method.nonEmpty then range.set(current)
-      val next = if method.nonEmpty then current.fold(text.now())(_.code) else code
-      if SourceText.dedent(next) != SourceText.dedent(text.now()) then text.set(next)
+    val owner = key.map(entry => BeEntityName.fromCodeString(entry.className)).getOrElse(PythonMethodEditing.module)
+    val marks = context.conversionDiagnostics.combineWith(context.sourceDiagnostics(state.signal)).map(_ ++ _)
+    def selected[I](editor: FragmentCodeEditor[ProgrammingStatePythonStructured, I], identity: I): Element = {
+      editor.select(identity)
+      editor.getDomElement()
     }
-    def write(draft: String): Unit = if draft == text.now() then {
-      val current = state.now()
-      if view == "full" then {
-        val next = ProgrammingStatePythonStructured(draft)
-        if next != current then state.set(next)
-      } else PythonMethodEditing.source(current, className).foreach { code =>
-        val nextCode = range.now().fold(draft)(function => PythonMethodEditing.replace(code, function, draft))
-        if nextCode != code then {
-          val next = PythonMethodEditing.updated(current, className, nextCode)
-          if method.nonEmpty then {
-            val candidates = PythonMethodEditing.functions(nextCode, className == PythonMethodEditing.module)
-              .filter(_.span.start >= range.now().get.span.start)
-            val added = candidates.find(function => !PythonMethodEditing.functions(code, className == PythonMethodEditing.module).exists(_.name == function.name))
-            range.set(added.orElse(candidates.headOption))
-          }
-          state.set(next)
-        }
-      }
+    (view, key.flatMap(_.member)) match {
+      case ("full", _) => div(cls := "java-function-editor__source", CodeMirrorEditor(context.logger,
+        state.bimap(_.toString)(ProgrammingStatePythonStructured(_)).distinct, Python, Var(config), context.loading, diagnostics = marks,
+        sameSource = (left, right) => left == right || ProgrammingStatePythonStructured(left) == ProgrammingStatePythonStructured(right)).getDomElement())
+      case ("function", Some(member)) if member.kind == UmlEntityKind.Function =>
+        selected(PythonFunctionEditor(context.logger, state, context.loading, config, marks),
+          PythonFunctionEditor.Function(owner, member.name, member.occurrence))
+      case _ => selected(PythonClassEditor(context.logger, state, context.loading, config, marks), owner)
     }
-    val native = CodeMirrorEditor(context.logger, text, Python, Var(config), context.loading,
-      diagnostics = if view == "full" then context.conversionDiagnostics.combineWith(context.sourceDiagnostics(state.signal)).map(_ ++ _) else Val(Nil),
-      sameSource = if view == "full" then (a, b) => a == b || ProgrammingStatePythonStructured(a) == ProgrammingStatePythonStructured(b) else _ == _)
-    div(cls := "java-function-editor__method",
-      onMountCallback { ctx =>
-        state.signal.changes.foreach(receive)(using ctx.owner)
-        text.signal.changes.foreach(draft => Future(write(draft)))(using ctx.owner)
-      },
-      onUnmountCallback { _ => val before = state.now(); Future { if state.now() == before then write(text.now()) } },
-      native.getDomElement())
   }
 
   override def getDomElement(): Element = div(cls := "java-function-based-editor python-component-editor",

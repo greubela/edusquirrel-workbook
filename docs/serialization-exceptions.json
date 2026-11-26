@@ -65,8 +65,8 @@
   "modules/client/src/main/scala/it/evadid/homepage/webElements/editor/code/JavaEditor/JavaEditorLabels.scala#Key:1": "Language-map keys of editor texts; never persisted",
   "modules/client/src/main/scala/it/evadid/homepage/webElements/editor/code/JavaEditor/JavaEditorNavigation.scala#Mode:1": "Transient editing mode; not part of the saved answer",
   "modules/client/src/main/scala/it/evadid/homepage/webElements/editor/code/JavaEditor/JavaEditorNavigation.scala#Position:1": "Transient editor navigation (mode and diagram selection); not part of the saved answer",
-  "modules/client/src/main/scala/it/evadid/homepage/webElements/editor/code/JavaEditor/JavaFragmentEditor.scala#Fragment:1": "Transient editor selection and draft range; not a saved programming state",
-  "modules/client/src/main/scala/it/evadid/homepage/webElements/editor/code/JavaEditor/JavaFragmentRange.scala#JavaFragmentRange:1": "Transient editor draft range; not a saved programming state",
+  "modules/client/src/main/scala/it/evadid/homepage/webElements/editor/code/fragment/FragmentCodeEditor.scala#Fragment:1": "Transient editor selection and draft range; not a saved programming state",
+  "modules/client/src/main/scala/it/evadid/homepage/webElements/editor/code/fragment/FragmentRange.scala#FragmentRange:1": "Transient editor draft range; not a saved programming state",
   "modules/client/src/main/scala/it/evadid/homepage/webElements/editor/code/JavaEditor/JavaFunctionEditor.scala#Function:1": "Transient editor selection derived from the class source",
   "modules/client/src/main/scala/it/evadid/homepage/webElements/editor/code/JavaEditor/JavaStructureDialog.scala#MethodFields:1": "Transient editor dialog input",
   "modules/client/src/main/scala/it/evadid/homepage/webElements/editor/code/JavaEditor/JavaStructureDialog.scala#Request:1": "Transient editor dialog state holding its input Vars",
@@ -492,5 +492,6 @@
   "modules/server/src/main/scala/it/evadid/server/database/DatabaseSchemaInspector.scala#Report:1": "Database schema inspection value; compared in memory, never serialized",
   "modules/server/src/main/scala/it/evadid/server/database/DatabaseSchemaMetadata.scala#ColumnDetails:1": "Database schema inspection value; compared in memory, never serialized",
   "modules/server/src/main/scala/it/evadid/server/database/DatabaseSchemaMetadata.scala#ForeignKeyColumn:1": "Database schema inspection value; compared in memory, never serialized",
-  "modules/server/src/main/scala/it/evadid/server/database/DatabaseSchemaMetadata.scala#KeyColumn:1": "Database schema inspection value; compared in memory, never serialized"
+  "modules/server/src/main/scala/it/evadid/server/database/DatabaseSchemaMetadata.scala#KeyColumn:1": "Database schema inspection value; compared in memory, never serialized",
+  "modules/client/src/main/scala/it/evadid/homepage/webElements/editor/code/PythonEditor/PythonFragmentEditors.scala#Function:1": "Transient editor selection of a Python function; not a saved programming state"
 }

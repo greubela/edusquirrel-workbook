@@ -51,15 +51,21 @@ Diagnostics and worker-generated flowcharts arrive through signals. The gutter r
 ## Structure editors
 
 `JavaComponentEditor` (`editor/code/JavaEditor`) offers Class, Function and Full modes. `JavaEditorNavigation`
-owns mode/selection; `JavaFragmentEditor` splices partial drafts into source ranges, and
-core `JavaMethodEditing` locates, replaces and inserts methods on step-1 declarations.
+owns mode/selection; core `JavaMethodEditing` locates, replaces and inserts methods on step-1
+declarations.
+
+Class and function views of both languages are `FragmentCodeEditor[S, I]`s (`editor/code/fragment`):
+one update logic splices partial drafts into a `FragmentRange` of the structured answer `S`, with
+`FragmentSource[S]` describing its named sources (Java classes; Python classes and module). Subclasses
+only locate and identify their fragment, and may present it differently (Python methods dedented).
 Adding a declaration in Function Mode selects only the new function.
 Attribute and constructor dialogs, deletion and relationship arrows (inheritance, realization,
 association; no usage arrows) use the same shared UML model. All classes share one row, which
 scrolls horizontally when needed.
 
-`PythonComponentEditor` uses the same UML renderer and source stages for module,
-class and function views. `PythonMethodEditing` owns its source ranges and edits.
+`PythonComponentEditor` uses the same UML renderer, source stages and fragment editors
+(`PythonFunctionEditor`, `PythonClassEditor`) for module, class and function views, creating only
+the selected one. `PythonMethodEditing` owns its source ranges and edits.
 
 Shared UML data lives in `core.datastructures.uml`; `JavaUmlDiagram` and `PythonUmlDiagram`
 derive it from the parsing stages and `UmlStructureSelector` renders it. Program classes are

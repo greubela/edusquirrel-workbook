@@ -223,7 +223,7 @@ object JavaComponentEditor {
 
   /** `static void main(String[] args)`, if it is the only entry point (of class `Main`, if present). */
   private[JavaEditor] def entryFunction(state: ProgrammingStateJavaStructured): Option[JavaFunctionEditor.Function] = {
-    val main = state.definedClasses.filter((name, _) => JavaFragmentRange.sameName(name, BeEntityName.fromCodeString("Main")))
+    val main = state.definedClasses.filter((name, _) => it.evadid.homepage.webElements.editor.code.fragment.FragmentSource.sameName(name, BeEntityName.fromCodeString("Main")))
     (if main.nonEmpty then main else state.definedClasses).toSeq.flatMap((name, text) =>
       JavaMethodEditing.initialMethod(text, requirePublicMain = false).map(JavaFunctionEditor.Function(name, _))) match {
       case Seq(function) => Some(function)

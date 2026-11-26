@@ -1,18 +1,22 @@
-package it.evadid.homepage.webElements.editor.code.JavaEditor
+package it.evadid.homepage.webElements.editor.code.fragment
 
 import com.raquo.airstream.ownership.ManualOwner
 import com.raquo.laminar.api.L.*
 import it.evadid.homepage.webElements.editor.code.EditorDomSuite
+import it.evadid.homepage.webElements.editor.code.JavaEditor.{JavaClassEditor, JavaFunctionEditor}
+import it.evadid.homepage.webElements.editor.code.PythonEditor.{PythonClassEditor, PythonFunctionEditor}
 import it.evadid.util.logging.Logger
 import it.evadid.util.logging.derived.PrintToStdLogger
 import it.evadid.vm.naming.BeEntityName
-import it.evadid.workbook.elements.interactionElements.programming.state.ProgrammingStateJavaStructured
+import it.evadid.workbook.elements.interactionElements.programming.state.{ProgrammingStateJavaStructured, ProgrammingStatePythonStructured}
 
 import scala.concurrent.Future
 import scala.scalajs.concurrent.JSExecutionContext.Implicits.queue
 
-/** The class and function editors share one update logic: local edits are spliced into the structured answer. */
-class JavaFragmentEditorSpec extends EditorDomSuite {
+/** Java's and Python's class and function editors share one update logic: local edits are spliced into the
+  * structured answer.
+  */
+class FragmentCodeEditorSpec extends EditorDomSuite {
   private val logger = Logger.withNameAndPrefixes(Some("fragment-editor-test"), PrintToStdLogger.printNothing)
   private val helperClass = "class Helper {\n  void other() {}\n}"
   private val mainClass = "class Main {\n  static void helper() {}\n  static void main(String[] args) { forward(10); }\n}"
@@ -21,7 +25,7 @@ class JavaFragmentEditorSpec extends EditorDomSuite {
   private def state() = Var(ProgrammingStateJavaStructured(helperClass + "\n\n" + mainClass))
   private def classes(state: Var[ProgrammingStateJavaStructured]) = state.now().definedClasses
 
-  private def withMounted[E <: JavaFragmentEditor[?]](editor: E)(body: E => Future[Unit]): Future[Unit] = {
+  private def withMounted[E <: FragmentCodeEditor[?, ?]](editor: E)(body: E => Future[Unit]): Future[Unit] = {
     val close = mount(editor.getDomElement())
     Future.unit.flatMap(_ => body(editor)).andThen { case _ => close() }
   }
@@ -120,16 +124,16 @@ class JavaFragmentEditorSpec extends EditorDomSuite {
 
   test("fragment ranges map to lines of the printed program") {
     val answer = state()
-    val range = JavaFragmentRange(main, mainClass.indexOf("static void main"), mainClass.length - 2)
+    val range = FragmentRange(main, mainClass.indexOf("static void main"), mainClass.length - 2)
     assertEquals(range.text(answer.now()).map(_.take(16)), Some("static void main"))
     assertEquals(range.firstLineNumber(answer.now()), 7)
-    assertEquals(JavaFragmentRange(helper, 0, 1).firstLineNumber(answer.now()), 1)
+    assertEquals(FragmentRange(helper, 0, 1).firstLineNumber(answer.now()), 1)
   }
 
   test("diagnostics of the printed program move into the fragment's own lines; others are left out") {
     import it.evadid.homepage.webElements.editor.code.codemirror.CodeMirrorEditor.Diagnostic
     val answer = state()
-    val range = JavaFragmentRange(main, mainClass.indexOf("static void main"), mainClass.length - 2)
+    val range = FragmentRange(main, mainClass.indexOf("static void main"), mainClass.length - 2)
     val line = "  static void main(String[] args) { forward(10); }"
     val call = Diagnostic(7, Some(7), Some(line.indexOf("forward")), Some(line.indexOf("(10)")), "unknown", "warning")
     assertEquals(range.localize(answer.now(), call),
@@ -137,7 +141,54 @@ class JavaFragmentEditorSpec extends EditorDomSuite {
     assertEquals(range.localize(answer.now(), Diagnostic(7, None, None, None, "error", "error")),
       Some(Diagnostic(1, Some(1), None, None, "error", "error")), "a whole-line mark stays whole")
     assertEquals(range.localize(answer.now(), call.copy(line = 2, endLine = Some(2))), None, "outside the fragment")
-    val whole = JavaFragmentRange(main, 0, mainClass.length)
+    val whole = FragmentRange(main, 0, mainClass.length)
     assertEquals(whole.localize(answer.now(), call).map(mark => (mark.line, mark.fromCh)), Some((3, Some(line.indexOf("forward")))))
+  }
+
+  private val boxClass = "class Box:\n    def f(self):\n        return 1\n\n    def g(self):\n        return 2\n"
+  private val box = BeEntityName.fromCodeString("Box")
+  private def python() = Var(ProgrammingStatePythonStructured(boxClass + "\nb = Box()\n"))
+
+  test("a Python method is edited without its class indentation and stored indented") {
+    val answer = python()
+    withMounted(PythonFunctionEditor(logger, answer, Val("loading"))) { editor =>
+      editor.select(PythonFunctionEditor.Function(box, "f", 0))
+      assertEquals(editor.local.now(), "def f(self):\n    return 1")
+      editor.local.set("def f(self):\n    return 3")
+      eventually(answer.now().definedClasses(box).contains("    def f(self):\n        return 3\n"), "method edit written").map { _ =>
+        assert(answer.now().definedClasses(box).contains("    def g(self):\n        return 2"), "the next method is untouched")
+        assert(answer.now().mainScript.contains("b = Box()"))
+        assertEquals(editor.local.now(), "def f(self):\n    return 3", "the draft is not replaced by its stored form")
+      }
+    }
+  }
+
+  test("an unfinished Python draft stays in place, and an unmounted editor writes nothing more") {
+    val answer = python()
+    val editor = PythonFunctionEditor(logger, answer, Val("loading"))
+    withMounted(editor) { editor =>
+      editor.select(PythonFunctionEditor.Function(box, "g", 0))
+      editor.local.set("def g(self):\n    return (")
+      eventually(answer.now().definedClasses(box).contains("return ("), "unfinished draft written").map(_ => ())
+    }.flatMap { _ =>
+      val closed = answer.now()
+      editor.local.set("def g(self):\n    return 9")
+      Future(()).flatMap(_ => Future(())).map(_ => assertEquals(answer.now(), closed, "a released editor does not write"))
+    }
+  }
+
+  test("the Python class editor edits the whole class or module and follows a renamed class") {
+    val answer = python()
+    withMounted(PythonClassEditor(logger, answer, Val("loading"))) { editor =>
+      editor.select(box)
+      val stored = answer.now().definedClasses(box)
+      assert(stored.startsWith("class Box:") && stored.contains("return 2"), stored)
+      assertEquals(editor.local.now(), stored)
+      editor.local.set(stored.replace("class Box:", "class Crate:"))
+      eventually(answer.now().definedClasses.contains(BeEntityName.fromCodeString("Crate")), "class renamed").map { _ =>
+        assertEquals(answer.now().definedClasses.keys.toList, List(BeEntityName.fromCodeString("Crate")))
+        assertEquals(editor.target.observe(using ManualOwner()).now(), Some(BeEntityName.fromCodeString("Crate")))
+      }
+    }
   }
 }

@@ -97,7 +97,7 @@ final class JavaStructureDialog(
     val current = state.now()
     val key = BeEntityName.fromCodeString(name)
     if !validName(name) then error.set(Some(Key.javaInvalidClassName))
-    else if current.definedClasses.keys.exists(JavaFragmentRange.sameName(_, key)) then error.set(Some(Key.javaClassExists))
+    else if current.definedClasses.keys.exists(it.evadid.homepage.webElements.editor.code.fragment.FragmentSource.sameName(_, key)) then error.set(Some(Key.javaClassExists))
     else {
       val next = ProgrammingStateJavaStructured(VectorMap.from(current.definedClasses) + (key -> s"class $name {\n}"))
       if parses(next.toString) then {

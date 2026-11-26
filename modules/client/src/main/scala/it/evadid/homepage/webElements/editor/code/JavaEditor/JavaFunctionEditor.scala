@@ -1,6 +1,7 @@
 package it.evadid.homepage.webElements.editor.code.JavaEditor
 
 import it.evadid.vm.editing.JavaMethodEditing
+import it.evadid.homepage.webElements.editor.code.fragment.{FragmentCodeEditor, FragmentRange}
 import com.raquo.laminar.api.L.*
 import it.evadid.homepage.webElements.editor.code.codemirror.CodeMirrorEditor
 import it.evadid.homepage.webElements.editor.config.CodeMirrorEditorConfig
@@ -16,18 +17,18 @@ final class JavaFunctionEditor(
     loadingLabel: Signal[String],
     editorConfig: CodeMirrorEditorConfig = CodeMirrorEditorConfig.Default,
     diagnostics: Signal[Seq[CodeMirrorEditor.Diagnostic]] = Val(Nil)
-) extends JavaFragmentEditor[JavaFunctionEditor.Function](logger, state, editorConfig, loadingLabel, diagnostics) {
+) extends FragmentCodeEditor[ProgrammingStateJavaStructured, JavaFunctionEditor.Function](logger, state, editorConfig, loadingLabel, diagnostics) {
   import JavaFunctionEditor.Function
   import JavaMethodEditing.*
 
-  override protected def locate(source: ProgrammingStateJavaStructured, function: Function): Option[JavaFragmentRange] =
+  override protected def locate(source: ProgrammingStateJavaStructured, function: Function): Option[FragmentRange] =
     source.definedClasses.get(function.className)
       .flatMap(text => findSelection(discover(text), function.method))
-      .map(method => JavaFragmentRange(function.className, method.span.start, method.span.end))
-  override protected def identify(source: ProgrammingStateJavaStructured, range: JavaFragmentRange, previous: Function) =
-    source.definedClasses.get(range.className)
+      .map(method => FragmentRange(function.className, method.span.start, method.span.end))
+  override protected def identify(source: ProgrammingStateJavaStructured, range: FragmentRange, previous: Function) =
+    source.definedClasses.get(range.owner)
       .flatMap(text => findEditedMethod(text, discover(text), previous.method, MethodRange(range.start, range.end)))
-      .map(Function(range.className, _))
+      .map(Function(range.owner, _))
   override protected def cssClass: String = "java-function-editor__method"
 }
 
