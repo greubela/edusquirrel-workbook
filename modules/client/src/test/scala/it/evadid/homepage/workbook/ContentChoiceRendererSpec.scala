@@ -35,7 +35,7 @@ class ContentChoiceRendererSpec extends EditorDomSuite {
   test("content options localize without changing selections and use the shared grading panel") {
     val options = Seq("First" -> "Erste", "Second" -> "Zweite").map { (en, de) =>
       ChoiceOptionWorkbookContent(WorkbookContent(LanguageMap.mapBasedLanguageMap[HumanLanguage](Map(English -> en, German -> de))),
-        Some(GradingForChoice(GradingStatus.Correct(), LanguageMapContentId("digitalWorkbooks/correct"))))
+        Some(GradingForChoice(GradingStatus.Correct, LanguageMapContentId("digitalWorkbooks/correct"))))
     }
     val exercise = WorkbookContentChoiceInteraction("renderer-choice", ChoiceConfig(LanguageMapContentId("test/prompt"), Some(true), GraderRunningBehavior.RUN_ALWAYS), options)
     load(exercise)
@@ -62,7 +62,7 @@ class ContentChoiceRendererSpec extends EditorDomSuite {
   test("only a check grades; a failed check marks the wrong option until the next change and the solved strip counts the attempts") {
     val options = Seq(true, false).zipWithIndex.map { (correct, index) =>
       ChoiceOptionWorkbookContent(WorkbookContent(LanguageMap.universalMap[HumanLanguage](s"Option $index")),
-        Some(GradingForChoice(if correct then GradingStatus.Correct() else GradingStatus.Incorrect(), LanguageMapContentId("digitalWorkbooks/correct"))))
+        Some(GradingForChoice(if correct then GradingStatus.Correct else GradingStatus.Incorrect, LanguageMapContentId("digitalWorkbooks/correct"))))
     }
     val exercise = WorkbookContentChoiceInteraction("checked-choice", ChoiceConfig(LanguageMapContentId("test/prompt"), Some(false), GraderRunningBehavior.RUN_ONLY_MANUALLY), options)
     load(exercise)
@@ -80,18 +80,18 @@ class ContentChoiceRendererSpec extends EditorDomSuite {
       select(1)
       control.getOrCalculateGrading(context)
     }.flatMap { unchecked =>
-      assertEquals(unchecked.totalEvaluation(), GradingStatus.NotRequested())
+      assertEquals(unchecked.totalEvaluation(), GradingStatus.NotRequested)
       assert(!marked(1))
       check()
     }.flatMap { failed =>
-      assertEquals(failed.totalEvaluation(), GradingStatus.Incorrect())
+      assertEquals(failed.totalEvaluation(), GradingStatus.Incorrect)
       assert(marked(1))
       assert(tracker.isEmpty)
       select(0)
       assert(!marked(1), "the mark ends with the next interaction")
       check()
     }.map { solved =>
-      assertEquals(solved.totalEvaluation(), GradingStatus.Correct())
+      assertEquals(solved.totalEvaluation(), GradingStatus.Correct)
       assert(!marked(0) && !marked(1))
       assertEquals(tracker.map(_.querySelector(".interaction-info__attempts-count").textContent), Some("2"))
     }.andThen { case _ => close() }

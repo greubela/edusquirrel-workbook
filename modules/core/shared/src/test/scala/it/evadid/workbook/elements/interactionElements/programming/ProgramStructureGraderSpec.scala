@@ -20,7 +20,7 @@ class ProgramStructureGraderSpec extends FunSuite {
   test("comments and strings do not satisfy structural requirements") {
     val source = ProgrammingStatePythonStructured("# def quadrat(distanz): for i in range(4):\nforward(100)")
     Future.traverse(Seq(UsesLoop, DefinesFunction("quadrat", Seq("distanz")))) { requirement =>
-      grade(source, requirement).map(result => assertEquals(result.gradingStatus, GradingStatus.Incorrect()))
+      grade(source, requirement).map(result => assertEquals(result.gradingStatus, GradingStatus.Incorrect))
     }
   }
 
@@ -28,7 +28,7 @@ class ProgramStructureGraderSpec extends FunSuite {
     val source = ProgrammingStatePythonStructured("def quadrat(distanz):\n    for i in range(4):\n        forward(distanz)\n        right(90)\nfor j in range(5):\n    quadrat(100)")
     Future.traverse(Seq(source, source.toSnapXml)) { state =>
       Future.traverse(Seq(UsesLoop, DefinesFunction("quadrat", Seq("distanz")))) { requirement =>
-        grade(state, requirement).map(result => assertEquals(result.gradingStatus, GradingStatus.Correct()))
+        grade(state, requirement).map(result => assertEquals(result.gradingStatus, GradingStatus.Correct))
       }
     }
   }
@@ -39,7 +39,7 @@ class ProgramStructureGraderSpec extends FunSuite {
       ProgrammingStatePythonStructured("def quadrat():\n    forward(100)\nquadrat()") -> NoFunctions,
       ProgrammingStatePythonStructured("penup()\nforward(100)") -> OnlyCommands(Seq("forward", "right")))
     Future.traverse(cases)((state, requirement) => grade(state, requirement).map(result =>
-      assertEquals(result.gradingStatus, GradingStatus.Incorrect())))
+      assertEquals(result.gradingStatus, GradingStatus.Incorrect)))
   }
 
   test("unparsable source reports an error instead of passing absence requirements") {

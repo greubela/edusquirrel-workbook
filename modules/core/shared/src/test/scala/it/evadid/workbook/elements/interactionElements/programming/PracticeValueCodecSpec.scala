@@ -22,7 +22,7 @@ class PracticeValueCodecSpec extends FunSuite {
   test("grading status codecs preserve each refactored status variant") {
     import GradingStatus.*
     import it.evadid.distribution.command.SerializedException
-    val values: List[GradingStatus] = List(Correct(), PartiallyCorrect(), Incorrect(), NotRequested(),
+    val values: List[GradingStatus] = List(Correct, PartiallyCorrect, Incorrect, NotRequested,
       TestError(SerializedException(new IllegalArgumentException("fixture"))))
     values.foreach { value =>
       for (decoded <- List(read[GradingStatus](write(value)), readBinary[GradingStatus](writeBinary(value)))) {
@@ -30,8 +30,8 @@ class PracticeValueCodecSpec extends FunSuite {
         assertEquals(writeJs(decoded), writeJs(value))
       }
     }
-    roundTrip(Correct())
-    roundTrip(Incorrect())
+    roundTrip(Correct)
+    roundTrip(Incorrect)
   }
   test("workbook structure kinds round trip") {
     WorkbookStructuringType.values.foreach(roundTrip(_))

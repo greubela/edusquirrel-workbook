@@ -43,7 +43,7 @@ case class GradingCompletedEvent[F <: InteractionFormat](
     updateImportance: UpdateImportance = UpdateImportance.MAJOR,
     eventId: String = java.util.UUID.randomUUID().toString
 ) extends GradingEvent[F] {
-  require(result.gradingStatus != GradingStatus.NotRequested() && result.gradingStatus != GradingStatus.NotFinished(),
+  require(result.gradingStatus != GradingStatus.NotRequested && result.gradingStatus != GradingStatus.NotFinished,
     "A completed grading event requires a completed assessment or execution error")
   override def associatedState: InteractionFormat.State[F] = result.gradedState
   override def timestamp: LocalDateTime = result.gradingTime

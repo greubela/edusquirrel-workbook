@@ -25,7 +25,7 @@ case class TextInputLlmGrader(
 
   override val importance: GradingImportance = GradingImportance.REQUIRED_TEST
   override val runningBehavior: GraderRunningBehavior = GraderRunningBehavior.RUN_ONLY_MANUALLY
-  override val gradingEntity: FeedbackEntity = FeedbackEntity.LlmEntity()
+  override val gradingEntity: FeedbackEntity = FeedbackEntity.LlmEntity
 
   override protected def handleGrading(state: String, contextInformation: ExecutionContextInformation): Future[GradingResult[String, MessengerModel]] = {
     val clients = contextInformation.availableExecutionClients
@@ -80,9 +80,9 @@ case class TextInputLlmGrader(
 
 object TextInputLlmGrader {
   private[gpt] def status(marker: String): Option[GradingStatus] = marker match {
-    case "CORRECT" => Some(GradingStatus.Correct())
-    case "INCORRECT" => Some(GradingStatus.Incorrect())
-    case "PARTIALL_CORRECT" => Some(GradingStatus.PartiallyCorrect())
+    case "CORRECT" => Some(GradingStatus.Correct)
+    case "INCORRECT" => Some(GradingStatus.Incorrect)
+    case "PARTIALL_CORRECT" => Some(GradingStatus.PartiallyCorrect)
     case _ => None
   }
 

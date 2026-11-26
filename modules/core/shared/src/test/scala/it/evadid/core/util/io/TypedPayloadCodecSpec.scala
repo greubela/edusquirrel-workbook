@@ -24,7 +24,7 @@ class TypedPayloadCodecSpec extends FunSuite {
     val payload: ujson.Value = ujson.Obj("number" -> 42, "bool" -> true, "nothing" -> ujson.Null,
       "nested" -> ujson.Arr("学校", 1.25, false, ujson.Obj("value" -> "text")))
     val result = ScaffoldingResult[String, ujson.Value]("draft", ScaffoldingStatus.ScaffoldingRequestedButNotFinished(),
-      FeedbackEntity.SystemEntity(), Some(payload), LocalDateTime.of(2026, 11, 10, 12, 0))
+      FeedbackEntity.SystemEntity, Some(payload), LocalDateTime.of(2026, 11, 10, 12, 0))
     val history = InteractionVariableScaffoldingHistory(Map("draft" -> result))
     assertEquals(read[InteractionVariableScaffoldingHistory[String, ujson.Value]](write(history)), history)
     assertEquals(readBinary[InteractionVariableScaffoldingHistory[String, ujson.Value]](writeBinary(history)), history)

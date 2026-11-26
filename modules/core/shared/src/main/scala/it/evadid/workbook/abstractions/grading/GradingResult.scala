@@ -74,11 +74,11 @@ object GradingResult {
 
   private def statusPriority(status: GradingStatus): Int = status match {
     case TestError(_) => 1
-    case Incorrect() => 4
-    case PartiallyCorrect() => 3
-    case Correct() => 2
-    case NotFinished() => 0
-    case NotRequested() => -1
+    case Incorrect => 4
+    case PartiallyCorrect => 3
+    case Correct => 2
+    case NotFinished => 0
+    case NotRequested => -1
   }
 
 

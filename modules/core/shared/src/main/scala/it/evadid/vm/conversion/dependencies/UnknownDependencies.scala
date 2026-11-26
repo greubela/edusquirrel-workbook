@@ -27,7 +27,7 @@ object UnknownDependencies {
       .flatten.map(_.universalInterpretation()).toSet
     nodes.collect {
       case call: BeFunctionCall if call.funcDef.intrinsic.isEmpty &&
-          call.funcDef.functionTypeInfo.funcType == BeDefineFunction.Function() &&
+          call.funcDef.functionTypeInfo.funcType == BeDefineFunction.Function &&
           call.funcDef.functionTypeInfo.isNamed.exists(name => !defined(name.universalInterpretation())) =>
         UnknownCall(call.funcDef.functionTypeInfo.displayName.spelling().split('.').toSeq, call.arguments.size)
     }.distinct
@@ -69,7 +69,7 @@ object UnknownDependencies {
           values.distinct.map(read => BeDefineVariable(BeEntityName.fromCodeString(read.last), BeDataType.AnyType))
         val methods = qualified.filter(_.path.init == path).map(call =>
           function(call, BeDefineFunction.BeFunctionTypeInfo(Some(signature), Some(BeEntityName.fromCodeString(call.path.last)),
-            if path.size == 1 then BeDefineFunction.StaticMethod() else BeDefineFunction.Method())))
+            if path.size == 1 then BeDefineFunction.StaticMethod else BeDefineFunction.Method)))
         signature.copy(attributes = members.toList, methods = methods.toList)
       }
       BeUnknownDependency(owners.filter(_.size == 1).map(owner).toList, owners.filter(_.size > 1).map(owner).toList,

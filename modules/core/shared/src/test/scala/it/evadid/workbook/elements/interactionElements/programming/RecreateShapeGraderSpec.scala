@@ -20,7 +20,7 @@ class RecreateShapeGraderSpec extends FunSuite {
     assertEquals(commands.size, 5, clues(commands))
     Future.traverse(List(state, state.toSnapXml, state.toJava)) { source =>
       RecreateShapeGrader(target, GradingImportance.REQUIRED_TEST).gradeStateSafe(source, true, MAJOR, TestExecutionContext()).map { result =>
-        assertEquals(result.gradingStatus, GradingStatus.Correct(), clues(source, commands))
+        assertEquals(result.gradingStatus, GradingStatus.Correct, clues(source, commands))
       }
     }
 
@@ -28,9 +28,9 @@ class RecreateShapeGraderSpec extends FunSuite {
 
   test("interaction grading follows its drawing policy for travel and subdivision") {
     val cases = List(
-      ("forward(5)\nforward(5)", "M0 0 L10 0", List(GradingStatus.Incorrect(), GradingStatus.Incorrect(), GradingStatus.Correct())),
+      ("forward(5)\nforward(5)", "M0 0 L10 0", List(GradingStatus.Incorrect, GradingStatus.Incorrect, GradingStatus.Correct)),
       ("forward(10)\npen_up()\ngoto_x_y(10, 5)\ngoto_x_y(20, 0)\npen_down()\nforward(10)", "M0 0 L10 0 M20 0 L30 0",
-        List(GradingStatus.PartiallyCorrect(), GradingStatus.Correct(), GradingStatus.Correct())))
+        List(GradingStatus.PartiallyCorrect, GradingStatus.Correct, GradingStatus.Correct)))
     Future.traverse(cases) { (program, path, grades) =>
       Future.traverse(TurtleDrawingPolicy.values.toList.zip(grades)) { (policy, expected) =>
         val interaction = TurtleRecreateShapeInteraction(s"policy-$policy", ProgrammingStateRaw(Python, program),
@@ -54,11 +54,11 @@ class RecreateShapeGraderSpec extends FunSuite {
       .flatMap(_ => variable.control.getOrCalculateGrading(TestExecutionContext(), forceGrading = true))
     variable.setStateFromUserInteraction(first, MAJOR, context = TestExecutionContext())
     requested().flatMap { old =>
-      assertEquals(old.testsWithResults.head.gradingStatus, GradingStatus.PartiallyCorrect())
+      assertEquals(old.testsWithResults.head.gradingStatus, GradingStatus.PartiallyCorrect)
       variable.setStateFromUserInteraction(corrected, MAJOR, context = TestExecutionContext())
       requested().map { current =>
         assertEquals(current.state, corrected)
-        assertEquals(current.testsWithResults.head.gradingStatus, GradingStatus.Correct())
+        assertEquals(current.testsWithResults.head.gradingStatus, GradingStatus.Correct)
         assertEquals(variable.currentHistory.historyGrading.gradingsMap(first), old)
       }
     }
@@ -70,10 +70,10 @@ class RecreateShapeGraderSpec extends FunSuite {
     val variable = interaction.interactionVariable
     variable.setStateFromUserInteraction(ProgrammingStateRaw(Python, "forward(10)"), MAJOR, context = TestExecutionContext())
     variable.control.getOrCalculateGrading(TestExecutionContext()).flatMap { automatic =>
-      assertEquals(automatic.testsWithResults.head.gradingStatus, GradingStatus.NotRequested())
+      assertEquals(automatic.testsWithResults.head.gradingStatus, GradingStatus.NotRequested)
       assert(variable.currentHistory.gradingEvents.isEmpty, "an edit records no grading events")
       variable.control.getOrCalculateGrading(TestExecutionContext(), forceGrading = true).map { requested =>
-        assertEquals(requested.testsWithResults.head.gradingStatus, GradingStatus.Correct())
+        assertEquals(requested.testsWithResults.head.gradingStatus, GradingStatus.Correct)
       }
     }
   }

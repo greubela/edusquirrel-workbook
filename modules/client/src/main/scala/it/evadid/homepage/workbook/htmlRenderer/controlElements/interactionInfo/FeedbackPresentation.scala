@@ -31,7 +31,7 @@ private[interactionInfo] object FeedbackPresentation {
   }
 
   extension (entry: GradingSummary.Entry) {
-    private def partial: Boolean = entry.result.exists(_.gradingStatus == GradingStatus.PartiallyCorrect())
+    private def partial: Boolean = entry.result.exists(_.gradingStatus == GradingStatus.PartiallyCorrect)
     /** Partial results stay in the incorrect group but keep their own label and icon. */
     def tone: Tone = if partial then Tone.Partial else entry.group.tone
     /** Student-facing status word of one result row. */
@@ -51,14 +51,14 @@ private[interactionInfo] object FeedbackPresentation {
       Tone.values.toSeq.flatMap(tone => counts.get(tone).map(tone -> _))
     }
     def tone: Tone = summary.status match {
-      case GradingStatus.Correct() => Tone.Correct
-      case GradingStatus.PartiallyCorrect() => Tone.Partial
+      case GradingStatus.Correct => Tone.Correct
+      case GradingStatus.PartiallyCorrect => Tone.Partial
       // No fully correct result, but partial credit: not shown as a plain failure.
-      case GradingStatus.Incorrect() if summary.entries.exists(_.tone == Tone.Partial) => Tone.Partial
-      case GradingStatus.Incorrect() => Tone.Incorrect
-      case GradingStatus.NotFinished() => Tone.Pending
+      case GradingStatus.Incorrect if summary.entries.exists(_.tone == Tone.Partial) => Tone.Partial
+      case GradingStatus.Incorrect => Tone.Incorrect
+      case GradingStatus.NotFinished => Tone.Pending
       case GradingStatus.TestError(_) => Tone.Error
-      case GradingStatus.NotRequested() => Tone.Neutral
+      case GradingStatus.NotRequested => Tone.Neutral
     }
   }
 

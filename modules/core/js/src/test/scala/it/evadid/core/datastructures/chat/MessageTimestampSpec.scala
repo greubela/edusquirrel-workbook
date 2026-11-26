@@ -19,7 +19,7 @@ class MessageTimestampSpec extends FunSuite {
     try {
       date.updateDynamic("now")((() => instant): js.Function0[Double])
       val conversation = MessengerModel(List(Message("Hint", MessengerModel.pAgent)))
-      val result = ScaffoldingResult("answer", ScaffoldingStatus.ScaffoldingFeedback(LanguageMap.mapBasedLanguageMap(Map(German -> "Hinweis"))), FeedbackEntity.LlmEntity(), Some(conversation))
+      val result = ScaffoldingResult("answer", ScaffoldingStatus.ScaffoldingFeedback(LanguageMap.mapBasedLanguageMap(Map(German -> "Hinweis"))), FeedbackEntity.LlmEntity, Some(conversation))
       val saved = write(result)
       date.updateDynamic("now")((() => instant + 1000): js.Function0[Double])
       assertEquals(read[ScaffoldingResult[String, MessengerModel]](saved), result)

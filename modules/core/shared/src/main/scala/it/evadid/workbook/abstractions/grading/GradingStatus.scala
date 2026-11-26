@@ -13,13 +13,13 @@ sealed trait GradingStatus derives ReadWriter {
 
 object GradingStatus {
 
-  case class Correct() extends GradingStatus derives upickle.default.ReadWriter {
+  case object Correct extends GradingStatus {
     override def isCorrect: Boolean = true
   }
 
-  case class PartiallyCorrect() extends GradingStatus derives upickle.default.ReadWriter
+  case object PartiallyCorrect extends GradingStatus
 
-  case class Incorrect() extends GradingStatus derives upickle.default.ReadWriter
+  case object Incorrect extends GradingStatus
 
   object TestError {
     def apply(str: String): TestError = TestError(SerializedException(str))
@@ -30,11 +30,11 @@ object GradingStatus {
     override def shouldRetryExecution: Boolean = true
   }
 
-  case class NotFinished() extends GradingStatus derives upickle.default.ReadWriter {
+  case object NotFinished extends GradingStatus {
 
   }
 
-  case class NotRequested() extends GradingStatus {
+  case object NotRequested extends GradingStatus {
 
     override def shouldRetryExecution: Boolean = true
   }

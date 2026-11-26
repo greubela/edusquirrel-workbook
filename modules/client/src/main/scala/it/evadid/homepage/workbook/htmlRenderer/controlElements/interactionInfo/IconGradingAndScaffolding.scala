@@ -47,16 +47,16 @@ case class IconGradingAndScaffolding[F <: InteractionFormat](
     if !gradingReporter.isGradingSupported then div()
     else {
       val icon = report.status match {
-        case NotRequested() => createGradingUnrequested()
-        case NotFinished() => createGradingLoading()
+        case NotRequested => createGradingUnrequested()
+        case NotFinished => createGradingLoading()
         case TestError(_) => createGradingTestError()
-        case Incorrect() => createGradingNonePassed()
-        case Correct() => createGradingAllPassed()
-        case PartiallyCorrect() => createGradingSomePassed()
+        case Incorrect => createGradingNonePassed()
+        case Correct => createGradingAllPassed()
+        case PartiallyCorrect => createGradingSomePassed()
       }
       val (key, arguments) = report.status match {
-        case NotRequested() => ("basic/gradingInfoTooltipStart", Seq(report.total.toString))
-        case NotFinished() => ("basic/gradingInfoTooltipUnfinished", Seq(report.unfinished.toString, report.correct.toString, report.total.toString))
+        case NotRequested => ("basic/gradingInfoTooltipStart", Seq(report.total.toString))
+        case NotFinished => ("basic/gradingInfoTooltipUnfinished", Seq(report.unfinished.toString, report.correct.toString, report.total.toString))
         case TestError(_) => ("basic/gradingInfoTooltipError", Seq(report.retries.toString, report.correct.toString, report.total.toString))
         case _ => ("basic/gradingInfoTooltipNrCorrect", Seq(report.correct.toString, report.total.toString))
       }

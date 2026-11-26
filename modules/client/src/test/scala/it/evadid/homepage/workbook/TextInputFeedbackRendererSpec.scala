@@ -42,7 +42,7 @@ class TextInputFeedbackRendererSpec extends EditorDomSuite {
     val exercise = hintExercise("renderer-saved-hint")
     val content = LanguageMap.mapBasedLanguageMap[HumanLanguage](Map(English -> "English hint\nSecond line", German -> "Deutscher Hinweis"))
     exercise.interactionVariable.updateHistory(_.addScaffolding(ScaffoldingResult[String, MessengerModel]("",
-      ScaffoldingStatus.ScaffoldingFeedback(content), FeedbackEntity.TestEntity(), None, LocalDateTime.now())), fullInfo.workbookContextInformation)
+      ScaffoldingStatus.ScaffoldingFeedback(content), FeedbackEntity.TestEntity, None, LocalDateTime.now())), fullInfo.workbookContextInformation)
     loadExercise(exercise)
     val element = TextInputWithScaffoldingAndGradingRenderer.renderAppElement(exercise).getDomElement()
     val close = mount(element)
@@ -69,7 +69,7 @@ class TextInputFeedbackRendererSpec extends EditorDomSuite {
     val close = mount(element)
     val time = LocalDateTime.now()
     def save(status: ScaffoldingStatus, offset: Long): Unit = variable.updateHistory(_.addScaffolding(
-      ScaffoldingResult[String, MessengerModel]("", status, FeedbackEntity.TestEntity(), None, time.plusSeconds(offset))), context)
+      ScaffoldingResult[String, MessengerModel]("", status, FeedbackEntity.TestEntity, None, time.plusSeconds(offset))), context)
     try {
       val panel = element.ref.querySelector(".interaction-hint-panel")
       assert(panel.hasAttribute("hidden"))
@@ -96,7 +96,7 @@ class TextInputFeedbackRendererSpec extends EditorDomSuite {
     val exercise = TextInputWithScaffoldingAndGrading("renderer-criteria", LanguageMapContentId("test/task"),
       contentGrading = List("first", "second").map(id => ContentForLlmInteraction(LanguageMapContentId(s"test/$id"), Map.empty)))
     val results = exercise.gradingElements.zipWithIndex.map { (grader, index) =>
-      GradingResult[String, MessengerModel](grader, "", if index == 0 then GradingStatus.Correct() else GradingStatus.PartiallyCorrect(), Some(WorkbookContent(LanguageMap.universalMap[HumanLanguage](s"Feedback for criterion $index"))), None, java.time.LocalDateTime.now())
+      GradingResult[String, MessengerModel](grader, "", if index == 0 then GradingStatus.Correct else GradingStatus.PartiallyCorrect, Some(WorkbookContent(LanguageMap.universalMap[HumanLanguage](s"Feedback for criterion $index"))), None, java.time.LocalDateTime.now())
     }
     exercise.interactionVariable.updateHistory(_.addGradings(results), fullInfo.workbookContextInformation)
     loadExercise(exercise)
@@ -108,8 +108,8 @@ class TextInputFeedbackRendererSpec extends EditorDomSuite {
       assertEquals(displayed(0).querySelector(".feedback-text").textContent, "Feedback for criterion 0")
       assertEquals(displayed(1).querySelector(".feedback-text").textContent, "Feedback for criterion 1")
       assert(displayed(1).classList.contains("feedback-status--partial"))
-      assert(!element.ref.textContent.contains("Correct()"))
-      assert(!element.ref.textContent.contains("PartiallyCorrect()"))
+      assert(!element.ref.textContent.contains("Correct"))
+      assert(!element.ref.textContent.contains("PartiallyCorrect"))
     } finally close()
   }
 
@@ -118,7 +118,7 @@ class TextInputFeedbackRendererSpec extends EditorDomSuite {
       contentGrading = List(ContentForLlmInteraction(LanguageMapContentId("test/check"), Map.empty)))
     val grader = exercise.gradingElements.head
     val otherLanguage = if fullInfo.signals.currentLanguage.now() == English then German else English
-    val wrongAnswer = GradingResult[String, MessengerModel](grader, "another answer", GradingStatus.Correct(), Some(WorkbookContent(LanguageMap.universalMap("Wrong answer feedback"))), None, java.time.LocalDateTime.now())
+    val wrongAnswer = GradingResult[String, MessengerModel](grader, "another answer", GradingStatus.Correct, Some(WorkbookContent(LanguageMap.universalMap("Wrong answer feedback"))), None, java.time.LocalDateTime.now())
     val wrongLanguage = wrongAnswer.copy(gradedState = "", feedbackInformation = Some(WorkbookContent(
       LanguageMap.mapBasedLanguageMap[HumanLanguage](Map(otherLanguage -> "Wrong language feedback")))))
     loadExercise(exercise)

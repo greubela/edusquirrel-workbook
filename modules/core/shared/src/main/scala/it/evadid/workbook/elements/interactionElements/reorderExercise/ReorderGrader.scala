@@ -10,7 +10,7 @@ import upickle.default.ReadWriter
 private[reorderExercise] object ReorderGrading {
   /** Correct when nothing is [[misplaced]], so the grade and the marked items always agree. */
   def status(order: Seq[Int], constraints: Seq[(Int, Int)]): GradingStatus =
-    if misplaced(order, constraints).isEmpty then GradingStatus.Correct() else GradingStatus.Incorrect()
+    if misplaced(order, constraints).isEmpty then GradingStatus.Correct else GradingStatus.Incorrect
 
   /** Elements to move for a correct order. With constraints, the elements of every violated constraint; otherwise
    * the elements outside a longest run that is already in correct relative order, so a single misplaced element
@@ -34,7 +34,7 @@ case class ReorderCodeGrader(lines: Seq[String], orderConstraints: Seq[(Int, Int
     extends WorkbookInteractionGrader[ReorderInteractionState[String], Unit] derives ReadWriter {
   override val importance = GradingImportance.REQUIRED_TEST
   override val runningBehavior = GraderRunningBehavior.RUN_ONLY_MANUALLY
-  override val gradingEntity = FeedbackEntity.TestEntity()
+  override val gradingEntity = FeedbackEntity.TestEntity
   override protected def handleGrading(state: ReorderInteractionState[String], context: ExecutionContextInformation) = Future {
     require(state.elements == lines && state.correctOrder == lines.indices, "Stored reorder content does not match the exercise")
     GradingResult(this, state, ReorderGrading.status(state.sanitizedCurrentOrder, orderConstraints))
@@ -45,7 +45,7 @@ case class ReorderMapIdGrader(ids: Seq[LanguageMapContentId])
     extends WorkbookInteractionGrader[ReorderInteractionState[LanguageMapContentId], Unit] derives ReadWriter {
   override val importance = GradingImportance.REQUIRED_TEST
   override val runningBehavior = GraderRunningBehavior.RUN_ONLY_MANUALLY
-  override val gradingEntity = FeedbackEntity.TestEntity()
+  override val gradingEntity = FeedbackEntity.TestEntity
   override protected def handleGrading(state: ReorderInteractionState[LanguageMapContentId], context: ExecutionContextInformation) = Future {
     require(state.elements == ids && state.correctOrder == ids.indices, "Stored reorder content does not match the exercise")
     GradingResult(this, state, ReorderGrading.status(state.sanitizedCurrentOrder, Seq.empty))

@@ -16,7 +16,7 @@ class DependencySpec extends FunSuite {
   private def userDefinitions(state: ProgrammingState) = nodes(state).collect {
     case definition: BeDefineClass => definition.name.universalInterpretation()
     case definition: BeDefineFunction if definition.functionTypeInfo.isNamed.nonEmpty && definition.intrinsic.isEmpty &&
-        definition.functionTypeInfo.funcType == BeDefineFunction.Function() => definition.functionTypeInfo.displayName.universalInterpretation()
+        definition.functionTypeInfo.funcType == BeDefineFunction.Function => definition.functionTypeInfo.displayName.universalInterpretation()
   }.toSet
 
   test("default dependencies are serializable definition structures with their supplied classes") {

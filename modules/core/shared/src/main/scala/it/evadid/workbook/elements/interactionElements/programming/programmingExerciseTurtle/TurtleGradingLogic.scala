@@ -38,9 +38,9 @@ object TurtleGradingLogic {
     }
     lazy val gradingStatus: GradingStatus = {
       val graded = difference.filter(line => gradeJumps || !line.jump)
-      if graded.forall(_.status == TurtleLineStatus.CORRECT) then GradingStatus.Correct()
-      else if graded.exists(_.status == TurtleLineStatus.CORRECT) then GradingStatus.PartiallyCorrect()
-      else GradingStatus.Incorrect()
+      if graded.forall(_.status == TurtleLineStatus.CORRECT) then GradingStatus.Correct
+      else if graded.exists(_.status == TurtleLineStatus.CORRECT) then GradingStatus.PartiallyCorrect
+      else GradingStatus.Incorrect
     }
 
     /** Target angles retain correct references even when lines are missing or duplicated. */

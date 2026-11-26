@@ -99,28 +99,28 @@ object BeDefineFunction {
 
   sealed trait BeFunctionType derives ReadWriter
 
-  case class Lambda() extends BeFunctionType derives upickle.default.ReadWriter
+  case object Lambda extends BeFunctionType
 
-  case class Method() extends BeFunctionType derives upickle.default.ReadWriter
+  case object Method extends BeFunctionType
 
-  case class StaticMethod() extends BeFunctionType derives ReadWriter
+  case object StaticMethod extends BeFunctionType
 
-  case class Constructor() extends BeFunctionType derives ReadWriter
+  case object Constructor extends BeFunctionType
 
-  case class Function() extends BeFunctionType derives upickle.default.ReadWriter
+  case object Function extends BeFunctionType
 
   case class Operator(nameBeforeChildNr: Int) extends BeFunctionType derives upickle.default.ReadWriter
 
   def methodFunctionInfo(methodInClass: BeDefineClass, name: BeEntityName): BeFunctionTypeInfo = {
-    BeFunctionTypeInfo(Some(methodInClass), Some(name), Method())
+    BeFunctionTypeInfo(Some(methodInClass), Some(name), Method)
   }
 
   def lambdaFunctionInfo(): BeFunctionTypeInfo = {
-    BeFunctionTypeInfo(None, None, Lambda())
+    BeFunctionTypeInfo(None, None, Lambda)
   }
 
   def functionInfo(name: BeEntityName): BeFunctionTypeInfo = {
-    BeFunctionTypeInfo(None, Some(name), Function())
+    BeFunctionTypeInfo(None, Some(name), Function)
   }
 
   def operatorInfo(symbol: String, position: Int): BeFunctionTypeInfo = {

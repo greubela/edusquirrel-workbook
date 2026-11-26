@@ -27,7 +27,7 @@ import scala.util.Try
 final class ProgrammingHintScaffolder(exercise: ProgrammingHintScaffolder.Exercise, publicTaskId: LanguageMapContentId)
   extends WorkbookInteractionScaffolder[ProgrammingState, AdditionalInfoLlmScaffolding] {
 
-  override def scaffoldingEntity: FeedbackEntity = LlmEntity()
+  override def scaffoldingEntity: FeedbackEntity = LlmEntity
 
   override def handleFeedbackGeneration(currentState: ProgrammingState, contextInformation: ExecutionContextInformation): Future[ScaffoldingResult[ProgrammingState, AdditionalInfoLlmScaffolding]] = {
     if (contextInformation.languageMapIdResolver.isEmpty) {
@@ -55,7 +55,7 @@ final class ProgrammingHintScaffolder(exercise: ProgrammingHintScaffolder.Exerci
             val conversation = MessengerModel(List(Message(accepted, MessengerModel.pAgent)))
             val addInfo = Some(AdditionalInfoLlmScaffolding(conversation))
             ScaffoldingResult[ProgrammingState, AdditionalInfoLlmScaffolding](currentState, ScaffoldingFeedback(LanguageMap.mapBasedLanguageMap(Map(locale -> text))),
-              FeedbackEntity.LlmEntity(), addInfo)
+              FeedbackEntity.LlmEntity, addInfo)
           }(using contextInformation.futureExecutionContext)
         }(using contextInformation.futureExecutionContext)
 
@@ -89,7 +89,7 @@ final class ProgrammingHintScaffolder(exercise: ProgrammingHintScaffolder.Exerci
     require(latest.map(_.value).getOrElse(exercise.defaultValue) == state, "The answer changed while preparing this hint.")
     val results = exercise.results(state)
     val graders = exercise.graders.filter { grader =>
-      grader.importance != GradingImportance.HIDDEN_TEST && grader.gradingEntity == FeedbackEntity.TestEntity()
+      grader.importance != GradingImportance.HIDDEN_TEST && grader.gradingEntity == FeedbackEntity.TestEntity
     }.distinct
     require(graders.size <= 32, "Too many public checks for a hint.")
     val checks = graders.zipWithIndex.map { (grader, index) =>
@@ -217,9 +217,9 @@ object ProgrammingHintScaffolder {
       |""".stripMargin
 
   private def statusName(status: GradingStatus): String = status match {
-    case GradingStatus.Correct() => "correct"
-    case GradingStatus.Incorrect() => "incorrect"
-    case GradingStatus.PartiallyCorrect() => "partially-correct"
+    case GradingStatus.Correct => "correct"
+    case GradingStatus.Incorrect => "incorrect"
+    case GradingStatus.PartiallyCorrect => "partially-correct"
     case GradingStatus.TestError(_) => "error"
     case _ => "not-run"
   }

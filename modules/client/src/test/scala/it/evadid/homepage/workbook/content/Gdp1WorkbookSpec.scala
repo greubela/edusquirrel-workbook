@@ -183,7 +183,7 @@ class Gdp1WorkbookSpec extends FunSuite {
 
   private def failedTests(task: ProgrammingExerciseFullJava, source: String): Future[Seq[String]] =
     Future.traverse(task.gradingElements)(_.gradeStateSafe(ProgrammingStateJavaStructured(source), true, UpdateImportance.MAJOR, ExecutionContextInformation.default)).map { results =>
-      results.foreach(result => assert(result.gradingStatus.isCorrect || result.gradingStatus == GradingStatus.Incorrect(),
+      results.foreach(result => assert(result.gradingStatus.isCorrect || result.gradingStatus == GradingStatus.Incorrect,
         clues(task.elementId, result.grader, result.gradingStatus, result.feedbackInformation)))
       results.filterNot(_.gradingStatus.isCorrect).map(_.grader.asInstanceOf[ProgramDataTestGrader].publicDescription.entryKey)
     }
@@ -204,7 +204,7 @@ class Gdp1WorkbookSpec extends FunSuite {
       val task = javaTask(name)
       Future.traverse(task.gradingElements)(_.gradeStateSafe(ProgrammingStateJavaStructured(task.startingProgram), true, UpdateImportance.MAJOR, ExecutionContextInformation.default))
         .map { results =>
-          assert(results.exists(_ .gradingStatus == GradingStatus.Incorrect()), name)
+          assert(results.exists(_ .gradingStatus == GradingStatus.Incorrect), name)
           assert(results.forall(result => result.gradingStatus.isCorrect || result.feedbackInformation.nonEmpty), name)
         }
     }
@@ -296,7 +296,7 @@ class Gdp1WorkbookSpec extends FunSuite {
     } yield {
       assert(start.exists(!_.gradingStatus.isCorrect))
       val unsorted = set.find(_.grader.asInstanceOf[ProgramDataTestGrader].publicDescriptionArguments("list") == "[5, 1, 4, 2, 8]").get
-      assertEquals(unsorted.gradingStatus, GradingStatus.Incorrect())
+      assertEquals(unsorted.gradingStatus, GradingStatus.Incorrect)
       assert(unsorted.feedbackInformation.get.toString.contains("NumberList.set"), unsorted.feedbackInformation)
     }
   }

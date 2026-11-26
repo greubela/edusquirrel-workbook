@@ -38,6 +38,6 @@ case class RecreateShapeGrader(desiredResult: TurtleGraphic, override val import
   /** Runs the program and records the target with each result, so it grades on request, not on every edit. */
   override def runningBehavior: GraderRunningBehavior = RUN_ONLY_MANUALLY
 
-  override def gradingEntity: FeedbackEntity = TestEntity()
+  override def gradingEntity: FeedbackEntity = TestEntity
 
 }

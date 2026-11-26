@@ -27,14 +27,14 @@ case class BeExpressionToPythonString
     else super.callName(call)
   override protected def functionDeclaration(function: BeDefineFunction, parameters: String, outputType: String): String =
     function.functionTypeInfo.funcType match {
-      case BeDefineFunction.Constructor() => s"def __init__$parameters:"
-      case BeDefineFunction.StaticMethod() => "@staticmethod\n" + super.functionDeclaration(function, parameters, outputType)
+      case BeDefineFunction.Constructor => s"def __init__$parameters:"
+      case BeDefineFunction.StaticMethod => "@staticmethod\n" + super.functionDeclaration(function, parameters, outputType)
       case _ => super.functionDeclaration(function, parameters, outputType)
     }
 
   override protected def formatFunctionParameters(function: BeDefineFunction): String = {
     val explicit = formatFunctionParameters(function.inputs)
-    if function.functionTypeInfo.funcType == BeDefineFunction.Method() || function.functionTypeInfo.funcType == BeDefineFunction.Constructor() then
+    if function.functionTypeInfo.funcType == BeDefineFunction.Method || function.functionTypeInfo.funcType == BeDefineFunction.Constructor then
       "(self" + (if function.inputs.isEmpty then ")" else ", " + explicit.drop(1))
     else explicit
   }

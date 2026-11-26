@@ -145,7 +145,7 @@ class ProgrammingHintScaffolderSpec extends FunSuite {
     val answer = ProgrammingStateRaw(Java, source)
     val element = exercise(answer, tests = true)
     val grader = element.gradingElements.head
-    element.interactionVariable.updateHistory(_.addGrading(GradingResult(grader, answer, GradingStatus.Incorrect(), None, None,
+    element.interactionVariable.updateHistory(_.addGrading(GradingResult(grader, answer, GradingStatus.Incorrect, None, None,
       LocalDateTime.now())), TestExecutionContext())
     element.interactionVariable.control.getOrCalculateScaffolding(context(backend, language = English)).map { result =>
       val checks = backend.prompts.head("checks").arr.toList

@@ -260,7 +260,7 @@ object TurtleCommand {
         inputs.map((name, dataType) => variable(name, dataType)),
         output.map(dataType => variable("result", dataType)))
     })
-    definition.copy(methods = definition.methods.map(method => method.copy(functionTypeInfo = method.functionTypeInfo.copy(funcType = BeDefineFunction.StaticMethod()), intrinsic = Some(it.evadid.vm.code.defining.BeIntrinsic.Turtle))))
+    definition.copy(methods = definition.methods.map(method => method.copy(functionTypeInfo = method.functionTypeInfo.copy(funcType = BeDefineFunction.StaticMethod), intrinsic = Some(it.evadid.vm.code.defining.BeIntrinsic.Turtle))))
   }
 
   def isTurtleMethod(definition: BeDefineFunction): Boolean =

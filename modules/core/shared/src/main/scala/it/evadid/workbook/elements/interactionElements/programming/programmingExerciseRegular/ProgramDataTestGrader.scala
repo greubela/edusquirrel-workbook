@@ -68,7 +68,7 @@ case class ProgramDataTestGrader(
   require(testId.nonEmpty && testId == testId.trim, "A data test needs a nonempty ID.")
   require(expectations.nonEmpty, "A data test needs at least one expectation.")
   override val runningBehavior = GraderRunningBehavior.RUN_ONLY_MANUALLY
-  override val gradingEntity = FeedbackEntity.TestEntity()
+  override val gradingEntity = FeedbackEntity.TestEntity
 
   override protected def handleGrading(state: ProgrammingState, context: ExecutionContextInformation)
   : Future[GradingResult[ProgrammingState, AdditionalProgrammingTestInfo]] = Future {
@@ -91,21 +91,21 @@ case class ProgramDataTestGrader(
     }
     execution match {
       case Left(problem) =>
-        (GradingStatus.Incorrect(), Some(text(s"Das Programm kann so noch nicht ausgeführt werden: $problem",
+        (GradingStatus.Incorrect, Some(text(s"Das Programm kann so noch nicht ausgeführt werden: $problem",
           s"The program cannot be run yet: $problem")))
       case Right(run) => run.status match {
         case TurtleExecutionStatus.Completed =>
           expectations.iterator.flatMap(check(run, _)).nextOption() match {
-            case Some(problem) => (GradingStatus.Incorrect(), Some(problem))
-            case None => (GradingStatus.Correct(), None)
+            case Some(problem) => (GradingStatus.Incorrect, Some(problem))
+            case None => (GradingStatus.Correct, None)
           }
         case TurtleExecutionStatus.Failed(problem) =>
-          (GradingStatus.Incorrect(), Some(text(s"Beim Ausführen trat ein Fehler auf: $problem", s"Running the program failed: $problem")))
+          (GradingStatus.Incorrect, Some(text(s"Beim Ausführen trat ein Fehler auf: $problem", s"Running the program failed: $problem")))
         case TurtleExecutionStatus.LimitExceeded =>
-          (GradingStatus.Incorrect(), Some(text(
+          (GradingStatus.Incorrect, Some(text(
             "Das Programm wurde nach zu vielen Schritten angehalten. Gibt es eine Endlosschleife oder eine Rekursion ohne Abbruch?",
             "The program was stopped after too many steps. Is there an endless loop or a recursion without a base case?")))
-        case TurtleExecutionStatus.Cancelled => (GradingStatus.NotFinished(), None)
+        case TurtleExecutionStatus.Cancelled => (GradingStatus.NotFinished, None)
       }
     }
   }

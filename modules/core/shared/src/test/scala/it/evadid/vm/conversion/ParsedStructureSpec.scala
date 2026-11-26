@@ -60,9 +60,9 @@ class ParsedStructureSpec extends FunSuite {
     }
     case definition: BeDefineFunction =>
       val kind = definition.functionTypeInfo.funcType match {
-        case BeDefineFunction.Constructor() => "init"
-        case BeDefineFunction.Method() => "method"
-        case BeDefineFunction.StaticMethod() => "static"
+        case BeDefineFunction.Constructor => "init"
+        case BeDefineFunction.Method => "method"
+        case BeDefineFunction.StaticMethod => "static"
         case _ => "def"
       }
       val result = definition.outputs.map(output => s" -> ${typeName(output.variableType)}").getOrElse("")

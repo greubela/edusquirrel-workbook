@@ -25,7 +25,7 @@ object CheckReport {
   private case class Check[T](answer: T, time: LocalDateTime, passed: Boolean)
 
   private def isAssessment(status: GradingStatus): Boolean = status match {
-    case GradingStatus.Correct() | GradingStatus.Incorrect() | GradingStatus.PartiallyCorrect() => true
+    case GradingStatus.Correct | GradingStatus.Incorrect | GradingStatus.PartiallyCorrect => true
     case _ => false
   }
 

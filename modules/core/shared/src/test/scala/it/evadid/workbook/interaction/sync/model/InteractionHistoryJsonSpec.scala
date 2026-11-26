@@ -33,11 +33,11 @@ class InteractionHistoryJsonSpec extends FunSuite {
   private val feedbackHistory = InteractionVariableHistory[FeedbackFormat](InteractionEvents(Set(
     AnswerChangedEvent[FeedbackFormat](answer, time, UpdateImportance.MINOR),
     GradingStartedEvent[FeedbackFormat](answer, time.plusNanos(1), grader),
-    GradingCompletedEvent[FeedbackFormat](GradingResult(grader, answer, GradingStatus.Correct(),
+    GradingCompletedEvent[FeedbackFormat](GradingResult(grader, answer, GradingStatus.Correct,
       Some(WorkbookContent(feedback)), Some(transcript), time.plusNanos(2))),
-    ScaffoldingStartedEvent[FeedbackFormat](answer, time.plusNanos(3), FeedbackEntity.LlmEntity()),
+    ScaffoldingStartedEvent[FeedbackFormat](answer, time.plusNanos(3), FeedbackEntity.LlmEntity),
     ScaffoldingCompletedEvent[FeedbackFormat](ScaffoldingResult(answer, ScaffoldingStatus.ScaffoldingFeedback(feedback),
-      FeedbackEntity.LlmEntity(), Some(transcript), time.plusNanos(4)))
+      FeedbackEntity.LlmEntity, Some(transcript), time.plusNanos(4)))
   )))
 
   private def copies(value: InteractionHistoryJson): Seq[InteractionHistoryJson] = Seq(
@@ -102,7 +102,7 @@ class InteractionHistoryJsonSpec extends FunSuite {
       GradingCompletedEvent[FeedbackFormat](GradingResult(grader, answer, GradingStatus.TestError(error),
         Some(WorkbookContent(feedback)), Some(transcript), time)),
       ScaffoldingCompletedEvent[FeedbackFormat](ScaffoldingResult(answer, ScaffoldingStatus.ScaffoldingError(error),
-        FeedbackEntity.LlmEntity(), Some(transcript), time.plusNanos(1)))
+        FeedbackEntity.LlmEntity, Some(transcript), time.plusNanos(1)))
     )))
     assertRoundTrips(TextInputWithLlmGradingAndScaffoldingFormat, history)
   }

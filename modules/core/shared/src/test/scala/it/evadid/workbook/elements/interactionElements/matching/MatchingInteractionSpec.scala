@@ -41,7 +41,7 @@ class MatchingInteractionSpec extends FunSuite {
     Future.traverse(states)(grade).map { results =>
       assertEquals(results.map(_.additionalData), List(Some(3), Some(1), Some(0), Some(0)))
       assertEquals(results.map(_.gradingStatus),
-        List(GradingStatus.Correct(), GradingStatus.PartiallyCorrect(), GradingStatus.Incorrect(), GradingStatus.Incorrect()))
+        List(GradingStatus.Correct, GradingStatus.PartiallyCorrect, GradingStatus.Incorrect, GradingStatus.Incorrect))
     }
   }
 

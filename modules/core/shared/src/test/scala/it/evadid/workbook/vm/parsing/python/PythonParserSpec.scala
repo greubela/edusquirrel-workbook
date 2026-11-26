@@ -463,7 +463,7 @@ class PythonParserSpec extends FunSuite {
         val methodNames = clazz.methods.map(_.functionTypeInfo.displayName.getNameIn(English, NamingStyle.SnakeCase)).toSet
         assertEquals(methodNames, Set("test_method", "test_with_int_result"))
         assert(clazz.methods.forall(_.isInstanceOf[BeDefineFunction]))
-        assert(clazz.methods.forall(_.functionTypeInfo.funcType.isInstanceOf[BeDefineFunction.Method]))
+        assert(clazz.methods.forall(_.functionTypeInfo.funcType.isInstanceOf[BeDefineFunction.Method.type]))
       }
     ),
     RoundTripCase(
@@ -914,7 +914,7 @@ class PythonParserSpec extends FunSuite {
 
     val methodNames = clazz.methods.map(_.functionTypeInfo.displayName.getNameIn(English, NamingStyle.SnakeCase))
     assertEquals(methodNames, List("λ", "greet"))
-    assertEquals(clazz.methods.map(_.functionTypeInfo.funcType), List(BeDefineFunction.Constructor(), BeDefineFunction.Method()))
+    assertEquals(clazz.methods.map(_.functionTypeInfo.funcType), List(BeDefineFunction.Constructor, BeDefineFunction.Method))
     assert(clazz.methods.forall(_.functionTypeInfo.isMethodInClass.nonEmpty))
 
     assert(!result.definedFunctions.exists(_.functionTypeInfo.displayName.getNameIn(English, NamingStyle.SnakeCase) == "greet"))

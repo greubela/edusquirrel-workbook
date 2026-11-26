@@ -38,13 +38,13 @@ class InteractionFormatSpec extends FunSuite {
     val format = TextInputWithLlmGradingAndScaffoldingFormat
     val grader = TextInputLlmGrader(LanguageMapContentId("custom/task"), None,
       TextInputWithScaffoldingAndGrading.ContentForLlmInteraction(LanguageMapContentId("custom/criterion"), Map.empty))
-    val grade = GradingResult(grader, "answer", GradingStatus.Correct(), feedbackInformation = None, additionalData = Some(MessengerModel.empty), gradingTime = time.plusNanos(1))
+    val grade = GradingResult(grader, "answer", GradingStatus.Correct, feedbackInformation = None, additionalData = Some(MessengerModel.empty), gradingTime = time.plusNanos(1))
     val hint = ScaffoldingResult[String, MessengerModel]("answer", ScaffoldingStatus.ScaffoldingError(it.evadid.distribution.command.SerializedException("test")),
-      FeedbackEntity.LlmEntity(), Some(MessengerModel.empty), time.plusNanos(2))
+      FeedbackEntity.LlmEntity, Some(MessengerModel.empty), time.plusNanos(2))
     val events: Set[InteractionEvent[F]] = Set(
       AnswerChangedEvent[F]("answer", time, UpdateImportance.MAJOR),
       GradingStartedEvent[F]("answer", time, grader), GradingCompletedEvent[F](grade),
-      ScaffoldingStartedEvent[F]("answer", time, FeedbackEntity.LlmEntity()), ScaffoldingCompletedEvent[F](hint))
+      ScaffoldingStartedEvent[F]("answer", time, FeedbackEntity.LlmEntity), ScaffoldingCompletedEvent[F](hint))
     val history = InteractionVariableHistory[F](InteractionEvents(events))
     val envelope = InteractionHistoryJson.fromHistory(format, history)
     assertEquals(InteractionHistoryJson.deserialize(envelope.serialized).typedAs(format), history)

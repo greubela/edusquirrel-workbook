@@ -33,7 +33,7 @@ case class ProgrammingUnitTestGrader(testId: String, pythonTestCode: String,
   require(!publishCommandComparison || publishInvocationArguments, "A public command comparison requires its invocation arguments.")
 
   override val runningBehavior = GraderRunningBehavior.RUN_ONLY_MANUALLY
-  override val gradingEntity = FeedbackEntity.TestEntity()
+  override val gradingEntity = FeedbackEntity.TestEntity
 
   /** The program runs as written in Pyodide (dynamic execution), so the exercise environment does not apply. */
   override def inEnvironment(environment: ProgrammingEnvironment): ProgrammingUnitTestGrader = this
@@ -58,8 +58,8 @@ case class ProgrammingUnitTestGrader(testId: String, pythonTestCode: String,
     }
     evaluation.map { result =>
       val status = result.result match {
-        case BeTestResult.Passed => GradingStatus.Correct()
-        case BeTestResult.Failed => GradingStatus.Incorrect()
+        case BeTestResult.Passed => GradingStatus.Correct
+        case BeTestResult.Failed => GradingStatus.Incorrect
         case BeTestResult.Error(message) => GradingStatus.TestError(SerializedException(message))
       }
       val invocation = result.testInvocation.filter(_ => publishInvocationArguments && importance != GradingImportance.HIDDEN_TEST)
@@ -73,7 +73,7 @@ case class ProgrammingUnitTestGrader(testId: String, pythonTestCode: String,
   Future[GradingResult[ProgrammingState, AdditionalProgrammingTestInfo]] =
     gradeState(state, clients).flatMap { result =>
       val described = publicDescription.filter(_ => importance != GradingImportance.HIDDEN_TEST &&
-        Set[GradingStatus](GradingStatus.Correct(), GradingStatus.Incorrect(), GradingStatus.PartiallyCorrect()).contains(result.gradingStatus))
+        Set[GradingStatus](GradingStatus.Correct, GradingStatus.Incorrect, GradingStatus.PartiallyCorrect).contains(result.gradingStatus))
       described.fold(Future.successful(result)) { id =>
         val resolution = Try(Option(resolver).flatMap(value => Option(value.resolveMap(id)))).toOption.flatten
         resolution.fold(Future.successful(result))(_.map { description =>

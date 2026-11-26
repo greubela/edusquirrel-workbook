@@ -97,7 +97,7 @@ trait WorkbookFactory {
       options.zipWithIndex.map { (id, index) =>
         ChoiceOptionWorkbookContent(WorkbookContent(id), expected.map { indices =>
           val correct = indices.contains(index)
-          GradingForChoice(if correct then GradingStatus.Correct() else GradingStatus.Incorrect(),
+          GradingForChoice(if correct then GradingStatus.Correct else GradingStatus.Incorrect,
             LanguageMapContentId(if correct then "digitalWorkbooks/correct" else "digitalWorkbooks/tryAgain"))
         })
       })

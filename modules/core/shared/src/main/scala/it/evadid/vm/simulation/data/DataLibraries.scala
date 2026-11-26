@@ -72,7 +72,7 @@ object DataLibraries {
         Some(BeDefineVariable(BeEntityName.fromUniversalNameInParts("result"), if returnsValue then BeDataType.Int else BeDataType.Unit)))
     })
     definition.copy(methods = definition.methods.map(method => method.copy(
-      functionTypeInfo = method.functionTypeInfo.copy(funcType = BeDefineFunction.StaticMethod()), intrinsic = Some(intrinsic))))
+      functionTypeInfo = method.functionTypeInfo.copy(funcType = BeDefineFunction.StaticMethod), intrinsic = Some(intrinsic))))
   }
 
   val numberList: BeDefineClass = library("NumberList", BeIntrinsic.NumberList, List(

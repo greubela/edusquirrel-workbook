@@ -14,7 +14,7 @@ case class MatchingGrader(expected: Seq[Int], rightCount: Int)
   extends WorkbookInteractionGrader[MatchingInteractionState, Int] derives ReadWriter {
   override val importance = GradingImportance.REQUIRED_TEST
   override val runningBehavior = GraderRunningBehavior.RUN_ONLY_MANUALLY
-  override val gradingEntity = FeedbackEntity.TestEntity()
+  override val gradingEntity = FeedbackEntity.TestEntity
 
   override protected def handleGrading(state: MatchingInteractionState, context: ExecutionContextInformation): Future[GradingResult[MatchingInteractionState, Int]] = Future {
     val correct = MatchingGrader.correctCount(expected, rightCount, state)
@@ -37,7 +37,7 @@ object MatchingGrader {
     verdicts(expected, rightCount, state).zipWithIndex.collect { case (Some(false), index) => index }.toSet
 
   def status(correct: Int, total: Int): GradingStatus =
-    if correct == total then GradingStatus.Correct()
-    else if correct == 0 then GradingStatus.Incorrect()
-    else GradingStatus.PartiallyCorrect()
+    if correct == total then GradingStatus.Correct
+    else if correct == 0 then GradingStatus.Incorrect
+    else GradingStatus.PartiallyCorrect
 }
