@@ -110,6 +110,10 @@ class FetchFromRemoteSpec extends JsDomSuite {
     assertEquals(file.getChildrenFile("child"), None)
     assertEquals(file.asUrlString, "https://example.org/assets/logo.png")
     assertEquals(FileFactory.singleton.fromUrl(new dom.URL("https://example.org/a")).asUrlString, "https://example.org/a")
+    val inline = factory.fromUrl(new dom.URL("data:image/png;base64,iVBORw0KGgo/AAA"))
+    assert(!inline.isDirectory)
+    assertEquals(inline.mediaType, Some("image/png"))
+    assertEquals(inline.getChildrenFile("child"), None)
   }
 
   test("other file descriptions load through their own loader and share the cache") {

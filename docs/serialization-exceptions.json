@@ -182,6 +182,7 @@
   "modules/core/js/src/main/scala/it/evadid/util/FileFactory.scala#InternetResourceFileDescription:1": "Depends on runtime declaration(s): FetchFromRemote",
   "modules/core/js/src/main/scala/it/evadid/util/FileFactory.scala#UploadedResourceFileDescription:1": "Depends on runtime declaration(s): FetchFromRemote",
   "modules/core/js/src/main/scala/it/evadid/util/PostToRemote.scala#PostToRemote:1": "Constructor contains runtime services, callbacks, state, or an open service interface",
+  "modules/core/shared/src/main/scala/it/evadid/core/datastructures/file/FileDescription.scala#NamedDataFileDescription:1": "Transported as a LoadedFile through ReadWriter[LoadedFile] (name, media type, copyright, Base64 bytes); no own wire form",
   "modules/core/shared/src/main/scala/it/evadid/core/datastructures/file/LoadedFile.scala#BasicLoadedFile:1": "FileDescription carries a runtime data loader; serialize a file descriptor and bytes explicitly",
   "modules/core/shared/src/main/scala/it/evadid/core/datastructures/language/serialization/LanguageMapCollectionSource.scala#LanguageMapCollectionSource:1": "Constructor contains runtime services, callbacks, state, or an open service interface",
   "modules/core/shared/src/main/scala/it/evadid/core/datastructures/language/serialization/LanguageMapInputSource.scala#EvaDirectorySource:1": "FileDescription carries a runtime data loader",

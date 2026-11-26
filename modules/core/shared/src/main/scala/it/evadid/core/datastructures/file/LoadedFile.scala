@@ -1,5 +1,9 @@
 package it.evadid.core.datastructures.file
 
+import upickle.default.*
+
+import java.util.Base64
+
 trait LoadedFile {
 
   def description: FileDescription
@@ -17,6 +21,16 @@ object LoadedFile {
   private case class BasicLoadedFile(description: FileDescription, data: Array[Byte]) extends LoadedFile {
 
   }
+
+  /** Wire form: file name (never the source location, which may be a path or a `data:` URL), declared media type,
+   * copyright and Base64-encoded bytes. */
+  private case class LoadedFileJson(filename: String, mediaType: Option[String], copyrightInfo: CopyrightInfo, base64Data: String) derives ReadWriter
+
+  given ReadWriter[LoadedFile] = readwriter[LoadedFileJson].bimap[LoadedFile](
+    file => LoadedFileJson(file.description.filenameWithExtension, file.description.mediaType, file.description.copyrightInfo,
+      Base64.getEncoder.encodeToString(file.data)),
+    json => NamedDataFileDescription(json.filename, Base64.getDecoder.decode(json.base64Data), json.copyrightInfo, json.mediaType)
+  )
 
   def apply(description: FileDescription, data: Array[Byte]): LoadedFile = BasicLoadedFile(description, data)
 
