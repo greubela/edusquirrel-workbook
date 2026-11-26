@@ -495,5 +495,6 @@
   "modules/server/src/main/scala/it/evadid/server/database/DatabaseSchemaMetadata.scala#KeyColumn:1": "Database schema inspection value; compared in memory, never serialized",
   "modules/client/src/main/scala/it/evadid/homepage/webElements/editor/code/PythonEditor/PythonFragmentEditors.scala#Function:1": "Transient editor selection of a Python function; not a saved programming state",
   "modules/core/shared/src/main/scala/it/evadid/vm/conversion/parsed/SymbolTable.scala#ParseContext:1": "Transient binding context while a parsed program is built; never serialized",
-  "modules/core/shared/src/main/scala/it/evadid/vm/conversion/parsed/SymbolTable.scala#ParsedSources:1": "Transient source locations of a build, keyed by expression identity; never serialized"
+  "modules/core/shared/src/main/scala/it/evadid/vm/conversion/parsed/SymbolTable.scala#ParsedSources:1": "Transient source locations of a build, keyed by expression identity; never serialized",
+  "modules/core/shared/src/main/scala/it/evadid/vm/conversion/parsed/ParsedProgramBuilder.scala#ParseStep:1": "Builder step function over the transient ParseContext; never serialized"
 }
