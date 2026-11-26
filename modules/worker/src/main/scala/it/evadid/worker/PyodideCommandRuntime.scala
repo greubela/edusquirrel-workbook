@@ -32,7 +32,7 @@ object PyodideCommandRuntime {
   }
 
   private def json(value: js.Any): ujson.Value = {
-    if (value == null || js.isUndefined(value)) ujson.Null
+    if (!isDefined(value)) ujson.Null
     else {
       val encoded = js.JSON.stringify(value, ((_: String, item: js.Any) => {
         // Pyodide turns Python None into undefined. Keep it as JSON null so object keys survive.
@@ -67,79 +67,98 @@ object PyodideCommandRuntime {
       }.toJSArray)
   }
 
+  private val identifier = "[A-Za-z_][A-Za-z0-9_]*"
+
+  private def isDefined(value: js.Any): Boolean = value != null && !js.isUndefined(value)
+
+  /** A Pyodide proxy for a Python object; it must be converted to plain JavaScript and destroyed. */
+  private def isPyProxy(value: js.Any): Boolean =
+    isDefined(value) && js.typeOf(value.asInstanceOf[js.Dynamic].toJs) == "function"
+
+  private def proxyToJs(value: js.Any): js.Any = value.asInstanceOf[js.Dynamic].toJs(
+    js.Dynamic.literal(dict_converter = js.Dynamic.global.Object.fromEntries, create_pyproxies = false))
+
+  private def newDecoder(): js.Dynamic = js.Dynamic.newInstance(js.Dynamic.global.TextDecoder)("utf-8")
+
+  /** Pyodide output stream that streams decoded text to `append` only when `capture` is set. */
+  private def outputStream(capture: Boolean, decoder: js.Dynamic)(append: String => Unit): js.Object =
+    js.Dynamic.literal(write = ((bytes: js.typedarray.Uint8Array) => {
+      if (capture) append(decoder.decode(bytes, js.Dynamic.literal(stream = true)).asInstanceOf[String])
+      bytes.length
+    }): js.Function1[js.typedarray.Uint8Array, Int])
+
+  private def program(request: RunPythonRequest): String = request.turtleCalls match {
+    case PythonTurtleCalls.Native => request.code
+    case PythonTurtleCalls.Logged => PythonConsoleProgram.wrap(request.code)
+    case PythonTurtleCalls.Ignored => PythonConsoleProgram.wrap(request.code, log = false)
+  }
+
+  /** The persistent globals, recreated when requested or before the first job. */
+  private def globalsFor(pyodide: PyodideRuntime, request: RunPythonRequest): js.Dynamic = {
+    if (request.resetGlobals || namespace.isEmpty) {
+      namespace.foreach(_.destroy())
+      namespace = Some(pyodide.runPython("dict()").asInstanceOf[js.Dynamic])
+    }
+    val globals = namespace.get
+    request.context.foreach { (key, value) =>
+      val converted = pyodide.toPy(pythonContextValue(value))
+      try globals.set(key, converted)
+      finally if (isDefined(converted) && js.typeOf(converted.destroy) == "function") converted.destroy()
+    }
+    globals
+  }
+
+  /** Replaces the previous job's callback modules; each call is recorded in [[callbackOps]]. */
+  private def registerCallbacks(pyodide: PyodideRuntime, callbacks: Map[String, Seq[String]]): Unit = {
+    registeredModules.foreach { module =>
+      pyodide.unregisterJsModule(module)
+      pyodide.runPython(s"import sys; sys.modules.pop('$module', None)")
+    }
+    registeredModules = Set.empty
+    callbacks.foreach { (module, methods) =>
+      require(module.matches(identifier), "Invalid Python callback module")
+      val functions = js.Dictionary.empty[js.Any]
+      methods.foreach { method =>
+        require(method.matches(identifier), "Invalid Python callback method")
+        val handler = js.Dynamic.literal(apply = ((_: js.Any, _: js.Any, args: js.Array[js.Any]) => {
+          callbackOps :+= PythonCallback(module, method, args.toList.map(arg => json(if (isPyProxy(arg)) proxyToJs(arg) else arg)))
+          js.undefined
+        }): js.Function3[js.Any, js.Any, js.Array[js.Any], js.Any])
+        functions(method) = js.Dynamic.newInstance(js.Dynamic.global.Proxy)((() => ()): js.Function0[Unit], handler)
+      }
+      pyodide.registerJsModule(module, functions)
+      registeredModules += module
+    }
+  }
+
   private def execute(request: RunPythonRequest, logger: Logger): Future[RunPythonResult] = {
     load().flatMap { pyodide =>
       var stdout = Vector.empty[String]
       var stderr = Vector.empty[String]
       callbackOps = Vector.empty
-      val stdoutDecoder = js.Dynamic.newInstance(js.Dynamic.global.TextDecoder)("utf-8")
-      val stderrDecoder = js.Dynamic.newInstance(js.Dynamic.global.TextDecoder)("utf-8")
-      pyodide.setStdout(js.Dynamic.literal(write = ((bytes: js.typedarray.Uint8Array) => {
-        if (request.captureStdout) stdout :+= stdoutDecoder.decode(bytes, js.Dynamic.literal(stream = true)).asInstanceOf[String]
-        bytes.length
-      }): js.Function1[js.typedarray.Uint8Array, Int]))
-      pyodide.setStderr(js.Dynamic.literal(write = ((bytes: js.typedarray.Uint8Array) => {
-        if (request.captureStderr) stderr :+= stderrDecoder.decode(bytes, js.Dynamic.literal(stream = true)).asInstanceOf[String]
-        bytes.length
-      }): js.Function1[js.typedarray.Uint8Array, Int]))
+      val stdoutDecoder = newDecoder()
+      val stderrDecoder = newDecoder()
+      pyodide.setStdout(outputStream(request.captureStdout, stdoutDecoder)(text => stdout :+= text))
+      pyodide.setStderr(outputStream(request.captureStderr, stderrDecoder)(text => stderr :+= text))
       def flushOutput(): Unit = {
         Try(pyodide.runPython("import sys; sys.stdout.flush(); sys.stderr.flush()"))
         stdout :+= stdoutDecoder.decode().asInstanceOf[String]
         stderr :+= stderrDecoder.decode().asInstanceOf[String]
       }
-      if (request.resetGlobals || namespace.isEmpty) {
-        namespace.foreach(_.destroy())
-        namespace = Some(pyodide.runPython("dict()").asInstanceOf[js.Dynamic])
-      }
-      val globals = namespace.get
-      request.context.foreach { (key, value) =>
-        val converted = pyodide.toPy(pythonContextValue(value))
-        try globals.set(key, converted)
-        finally if (converted != null && !js.isUndefined(converted) && js.typeOf(converted.destroy) == "function") converted.destroy()
-      }
-      registeredModules.foreach { module =>
-        pyodide.unregisterJsModule(module)
-        pyodide.runPython(s"import sys; sys.modules.pop('$module', None)")
-      }
-      registeredModules = Set.empty
-      request.callbacks.foreach { (module, methods) =>
-        require(module.matches("[A-Za-z_][A-Za-z0-9_]*"), "Invalid Python callback module")
-        val functions = js.Dictionary.empty[js.Any]
-        methods.foreach { method =>
-          require(method.matches("[A-Za-z_][A-Za-z0-9_]*"), "Invalid Python callback method")
-          val handler = js.Dynamic.literal(apply = ((_: js.Any, _: js.Any, args: js.Array[js.Any]) => {
-            callbackOps :+= PythonCallback(module, method, args.toList.map { arg =>
-              val dynamic = arg.asInstanceOf[js.Dynamic]
-              json(if (arg != null && !js.isUndefined(arg) && js.typeOf(dynamic.toJs) == "function") dynamic.toJs(
-                js.Dynamic.literal(dict_converter = js.Dynamic.global.Object.fromEntries, create_pyproxies = false)) else arg)
-            })
-            js.undefined
-          }): js.Function3[js.Any, js.Any, js.Array[js.Any], js.Any])
-          functions(method) = js.Dynamic.newInstance(js.Dynamic.global.Proxy)((() => ()): js.Function0[Unit], handler)
-        }
-        pyodide.registerJsModule(module, functions)
-        registeredModules += module
-      }
+      val globals = globalsFor(pyodide, request)
+      registerCallbacks(pyodide, request.callbacks)
       val prepared = if (request.packages.isEmpty) Future.successful(())
         else pyodide.loadPackage(request.packages.toJSArray).asInstanceOf[js.Promise[js.Any]].toFuture.map(_ => ())
       prepared.flatMap(_ => pyodide.loadPackagesFromImports(request.code).asInstanceOf[js.Promise[js.Any]].toFuture)
-        .flatMap(_ => pyodide.runPythonAsync(
-          request.turtleCalls match {
-            case PythonTurtleCalls.Native => request.code
-            case PythonTurtleCalls.Logged => PythonConsoleProgram.wrap(request.code)
-            case PythonTurtleCalls.Ignored => PythonConsoleProgram.wrap(request.code, log = false)
-          },
-          js.Dynamic.literal(globals = globals))
+        .flatMap(_ => pyodide.runPythonAsync(program(request), js.Dynamic.literal(globals = globals))
           .asInstanceOf[js.Promise[js.Any]].toFuture)
         .map { value =>
           flushOutput()
-          val dynamic = value.asInstanceOf[js.Dynamic]
-          val isProxy = value != null && !js.isUndefined(value) && js.typeOf(dynamic.toJs) == "function"
+          val isProxy = isPyProxy(value)
           try {
-            val converted = if (isProxy) dynamic.toJs(js.Dynamic.literal(
-              dict_converter = js.Dynamic.global.Object.fromEntries, create_pyproxies = false)) else value
+            val converted = if (isProxy) proxyToJs(value) else value
             RunPythonResult(json(converted), stdout.mkString, stderr.mkString, callbackOps.toList)
-          } finally if (isProxy) dynamic.destroy()
+          } finally if (isProxy) value.asInstanceOf[js.Dynamic].destroy()
         }.recoverWith { case error =>
           flushOutput()
           stdout.foreach(logger.logInfo(_))

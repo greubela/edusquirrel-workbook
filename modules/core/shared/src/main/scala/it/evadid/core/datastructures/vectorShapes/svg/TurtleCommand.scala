@@ -1,7 +1,7 @@
 package it.evadid.core.datastructures.vectorShapes.svg
 
 import it.evadid.vm.naming.{BeEntityName, NamingStyle}
-import it.evadid.vm.code.defining.{BeDefineClass, BeDefineFunction, BeDefineVariable}
+import it.evadid.vm.code.defining.{BeDefineClass, BeDefineFunction, BeDefineVariable, BeIntrinsic}
 import it.evadid.vm.types.BeDataType
 import it.evadid.vm.types.BeDataType.{Boolean as BooleanType, Numeric as NumericType, String as StringType, Unit as UnitType}
 import upickle.default.*
@@ -13,29 +13,29 @@ sealed trait TurtleCommand[+T] derives ReadWriter {
   def name: BeEntityName = this match {
     case Unsupported(entityName, _, _) => entityName
     case Stitch(mode, _, _) => mode.name
-    case Forward(_) => TurtleCommand.canonicalNames("forward")
-    case Backward(_) => TurtleCommand.canonicalNames("backward")
-    case Left(_) => TurtleCommand.canonicalNames("left")
-    case Right(_) => TurtleCommand.canonicalNames("right")
-    case SetHeading(_) => TurtleCommand.canonicalNames("setheading")
-    case SetX(_) => TurtleCommand.canonicalNames("setx")
-    case SetY(_) => TurtleCommand.canonicalNames("sety")
-    case Dot(_) => TurtleCommand.canonicalNames("dot")
-    case PenSize(_) => TurtleCommand.canonicalNames("pensize")
-    case Speed(_) => TurtleCommand.canonicalNames("speed")
-    case Goto(_, _) => TurtleCommand.canonicalNames("goto")
-    case Towards(_, _) => TurtleCommand.canonicalNames("towards")
-    case ArcLeft(_, _) => TurtleCommand.canonicalNames("arc_left")
-    case ArcRight(_, _) => TurtleCommand.canonicalNames("arc_right")
-    case PenUp => TurtleCommand.canonicalNames("pen_up")
-    case PenDown => TurtleCommand.canonicalNames("pen_down")
-    case ShowTurtle => TurtleCommand.canonicalNames("showturtle")
-    case HideTurtle => TurtleCommand.canonicalNames("hideturtle")
-    case Home => TurtleCommand.canonicalNames("home")
-    case Reset => TurtleCommand.canonicalNames("reset")
-    case Clear => TurtleCommand.canonicalNames("clear")
-    case Circle(_, _, _) => TurtleCommand.canonicalNames("circle")
-    case Color(_) => TurtleCommand.canonicalNames("color")
+    case Forward(_) => canonicalNames("forward")
+    case Backward(_) => canonicalNames("backward")
+    case Left(_) => canonicalNames("left")
+    case Right(_) => canonicalNames("right")
+    case SetHeading(_) => canonicalNames("setheading")
+    case SetX(_) => canonicalNames("setx")
+    case SetY(_) => canonicalNames("sety")
+    case Dot(_) => canonicalNames("dot")
+    case PenSize(_) => canonicalNames("pensize")
+    case Speed(_) => canonicalNames("speed")
+    case Goto(_, _) => canonicalNames("goto")
+    case Towards(_, _) => canonicalNames("towards")
+    case ArcLeft(_, _) => canonicalNames("arc_left")
+    case ArcRight(_, _) => canonicalNames("arc_right")
+    case PenUp => canonicalNames("pen_up")
+    case PenDown => canonicalNames("pen_down")
+    case ShowTurtle => canonicalNames("showturtle")
+    case HideTurtle => canonicalNames("hideturtle")
+    case Home => canonicalNames("home")
+    case Reset => canonicalNames("reset")
+    case Clear => canonicalNames("clear")
+    case Circle(_, _, _) => canonicalNames("circle")
+    case Color(_) => canonicalNames("color")
   }
 
   /** Derived argument views for VM observation/formatting, never separately stored state. */
@@ -250,21 +250,23 @@ object TurtleCommand {
 
   /** One shared, typed turtle definition; methods retain the canonical name objects. */
   lazy val turtleClass: BeDefineClass = {
-    val definition = BeDefineClass.withMethods(
-    BeEntityName.fromUniversalNameInParts("turtle"), Nil,
-    turtleMethodSignatures.map { (alias, inputs, output) =>
-      def variable(name: String, dataType: BeDataType): BeDefineVariable =
-        BeDefineVariable(BeEntityName.fromUniversalNameInParts(name), dataType)
+    def variable(name: String, dataType: BeDataType): BeDefineVariable =
+      BeDefineVariable(BeEntityName.fromUniversalNameInParts(name), dataType)
+    val className = BeEntityName.fromUniversalNameInParts("turtle")
+    val signatures = turtleMethodSignatures.map { (alias, inputs, output) =>
       BeDefineClass.MethodSignature(
         resolveCanonicalNames(alias).getOrElse(throw IllegalArgumentException(s"Unknown turtle method: $alias")),
         inputs.map((name, dataType) => variable(name, dataType)),
         output.map(dataType => variable("result", dataType)))
-    })
-    definition.copy(methods = definition.methods.map(method => method.copy(functionTypeInfo = method.functionTypeInfo.copy(funcType = BeDefineFunction.StaticMethod), intrinsic = Some(it.evadid.vm.code.defining.BeIntrinsic.Turtle))))
+    }
+    val definition = BeDefineClass.withMethods(className, Nil, signatures)
+    definition.copy(methods = definition.methods.map(method => method.copy(
+      functionTypeInfo = method.functionTypeInfo.copy(funcType = BeDefineFunction.StaticMethod),
+      intrinsic = Some(BeIntrinsic.Turtle))))
   }
 
   def isTurtleMethod(definition: BeDefineFunction): Boolean =
-    definition.intrinsic.contains(it.evadid.vm.code.defining.BeIntrinsic.Turtle)
+    definition.intrinsic.contains(BeIntrinsic.Turtle)
 
   def resolveTurtleMethod(sourceName: String): Option[BeDefineFunction] =
     resolveCanonicalNames(sourceName).flatMap { name =>
@@ -284,6 +286,8 @@ object TurtleCommand {
       case Seq(first, second) if stringArgs.isEmpty => Some(make(first, second))
       case _ => None
     }
+    def noArgs(command: TurtleCommand[T]): Option[TurtleCommand[T]] = Option.when(args.isEmpty && stringArgs.isEmpty)(command)
+    def stitch(mode: TurtleStitchMode): Option[TurtleCommand[T]] = Some(Stitch(mode, args, stringArgs))
     val decoded: Option[TurtleCommand[T]] = normalized match {
       case "forward" => one(Forward(_))
       case "backward" => one(Backward(_))
@@ -299,13 +303,13 @@ object TurtleCommand {
       case "towards" => two(Towards(_, _))
       case "arc_left" => two(ArcLeft(_, _))
       case "arc_right" => two(ArcRight(_, _))
-      case "pen_up" => Option.when(args.isEmpty && stringArgs.isEmpty)(PenUp)
-      case "pen_down" => Option.when(args.isEmpty && stringArgs.isEmpty)(PenDown)
-      case "showturtle" => Option.when(args.isEmpty && stringArgs.isEmpty)(ShowTurtle)
-      case "hideturtle" => Option.when(args.isEmpty && stringArgs.isEmpty)(HideTurtle)
-      case "home" => Option.when(args.isEmpty && stringArgs.isEmpty)(Home)
-      case "reset" => Option.when(args.isEmpty && stringArgs.isEmpty)(Reset)
-      case "clear" => Option.when(args.isEmpty && stringArgs.isEmpty)(Clear)
+      case "pen_up" => noArgs(PenUp)
+      case "pen_down" => noArgs(PenDown)
+      case "showturtle" => noArgs(ShowTurtle)
+      case "hideturtle" => noArgs(HideTurtle)
+      case "home" => noArgs(Home)
+      case "reset" => noArgs(Reset)
+      case "clear" => noArgs(Clear)
       case "circle" => if args.nonEmpty && args.size <= 3 && stringArgs.isEmpty then args.headOption.map(radius => Circle(radius, args.lift(1), args.lift(2))) else None
       case "color" =>
         stringArgs.headOption.orElse {
@@ -314,17 +318,17 @@ object TurtleCommand {
             Some(s"rgb(${n.toDouble(args(0)).toInt},${n.toDouble(args(1)).toInt},${n.toDouble(args(2)).toInt})")
           } else None
         }.map(Color(_))
-      case "running_stitch" => Some(Stitch(TurtleStitchMode.Running, args, stringArgs))
-      case "cross_stitch" => Some(Stitch(TurtleStitchMode.Cross, args, stringArgs))
-      case "bean_stitch" => Some(Stitch(TurtleStitchMode.Bean, args, stringArgs))
-      case "zigzag_stitch" => Some(Stitch(TurtleStitchMode.Zigzag, args, stringArgs))
-      case "z_stitch" => Some(Stitch(TurtleStitchMode.Z, args, stringArgs))
-      case "satin_stitch" => Some(Stitch(TurtleStitchMode.Satin, args, stringArgs))
-      case "tatami_stitch" => Some(Stitch(TurtleStitchMode.Tatami, args, stringArgs))
-      case "jump_stitch" => Some(Stitch(TurtleStitchMode.Jump, args, stringArgs))
-      case "tie_stitch" => Some(Stitch(TurtleStitchMode.Tie, args, stringArgs))
-      case "trim_stitch" => Some(Stitch(TurtleStitchMode.Trim, args, stringArgs))
-      case "stop_running" => Some(Stitch(TurtleStitchMode.StopRunning, args, stringArgs))
+      case "running_stitch" => stitch(TurtleStitchMode.Running)
+      case "cross_stitch" => stitch(TurtleStitchMode.Cross)
+      case "bean_stitch" => stitch(TurtleStitchMode.Bean)
+      case "zigzag_stitch" => stitch(TurtleStitchMode.Zigzag)
+      case "z_stitch" => stitch(TurtleStitchMode.Z)
+      case "satin_stitch" => stitch(TurtleStitchMode.Satin)
+      case "tatami_stitch" => stitch(TurtleStitchMode.Tatami)
+      case "jump_stitch" => stitch(TurtleStitchMode.Jump)
+      case "tie_stitch" => stitch(TurtleStitchMode.Tie)
+      case "trim_stitch" => stitch(TurtleStitchMode.Trim)
+      case "stop_running" => stitch(TurtleStitchMode.StopRunning)
       case _ => None
     }
     decoded.getOrElse(Unsupported(name, args, stringArgs))

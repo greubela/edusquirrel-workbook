@@ -5,6 +5,7 @@ import it.evadid.core.util.crypto.Sha256
 import upickle.default.*
 
 import java.nio.charset.StandardCharsets
+import scala.annotation.tailrec
 
 /** Educational text blocks, with a deliberately explicit format rather than Bitcoin headers. */
 case class TeachingBlock(data: String, nonce: Int = 0) derives ReadWriter {
@@ -53,17 +54,14 @@ case class TeachingChain(blocks: Seq[TeachingBlock]) derives ReadWriter {
     require(maxAttempts >= 1 && maxAttempts <= 1000, "Mining batches must contain 1–1000 attempts")
     TeachingChain.validateDifficulty(zeros)
     val previous = previousHash(index)
-    var nonce = startNonce
-    var attempts = 0
-    var found = false
-    var finished = false
-    while (!finished) {
-      attempts += 1
-      found = blocks(index).copy(nonce = nonce).hash(index, previous).startsWith("0" * zeros)
-      finished = found || attempts >= maxAttempts || nonce == Int.MaxValue
-      if !finished then nonce += 1
+    val target = "0" * zeros
+    @tailrec
+    def tryNonce(nonce: Int, attempts: Int): MiningResult = {
+      val found = blocks(index).copy(nonce = nonce).hash(index, previous).startsWith(target)
+      if found || attempts >= maxAttempts || nonce == Int.MaxValue then MiningResult(nonce, attempts, found)
+      else tryNonce(nonce + 1, attempts + 1)
     }
-    MiningResult(nonce, attempts, found)
+    tryNonce(startNonce, 1)
   }
 }
 

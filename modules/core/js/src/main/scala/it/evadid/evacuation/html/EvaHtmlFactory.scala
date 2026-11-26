@@ -11,7 +11,6 @@ import org.scalajs.dom
 import org.scalajs.dom.html.{Input, TextArea}
 import org.scalajs.dom.{Element, MouseEvent, document}
 
-import scala.collection.mutable
 import scala.scalajs.js.Any
 
 object EvaHtmlFactory {
@@ -26,20 +25,9 @@ object EvaHtmlFactory {
     curTab
   }
 
-  private case class RadioButtonConfig(idAndValue: String, description: String)
-
-  private type RadioButtonChangeListener = (RadioButtonConfig, List[RadioButtonConfig]) => Any
-
   def createFileUploadButton(label: String, id: String, attributes: Map[String, String], listener: EvaFileInformation => Any): Element = {
     val res = new ObservableFileInputElement(id, listener, attributes)
     res.getElement
-  }
-
-
-  private def createTickBoxForm(propName: String, initValue: Boolean, onChange: HtmlInputChangeListener[Boolean], attributes: Map[String, String] = Map()): Element = {
-    val id = "select-" + propName
-    val field = new BasicObservableInputElement[Boolean](id, "checkbox", initValue, onChange, GeneralUtility.factoryToEitherFactory(_.toBoolean), attributes)
-    field.getElement
   }
 
   def createPropertyTickBox(property: ObservableConfigProperty[Boolean]): Element = {
@@ -65,7 +53,6 @@ object EvaHtmlFactory {
       property.setValue(!property.getValue.value)
       syncCheckboxAttribute()
       checkbox.setAttribute("checked", String.valueOf(property.getValue.value))
-      //println("is checked?: " + checkbox.getAttribute("checked") + " - " + checkbox.getAttribute("value"))
       true
     })
 
@@ -89,8 +76,7 @@ object EvaHtmlFactory {
 
     val span = document.createElement("span")
     span.setAttribute("class", "box-span")
-    val textBefore = if (property.description.isDefined) property.description.get else property.name
-    span.textContent = textBefore
+    span.textContent = property.description.getOrElse(property.name)
     mainDiv.appendChild(span)
 
 
@@ -105,12 +91,11 @@ object EvaHtmlFactory {
 
     showValues.foreach(curOption => {
 
-      val text = if (curOption.description.isDefined) curOption.description.get else curOption.name
+      val text = curOption.description.getOrElse(curOption.name)
       val radioId = "radio-element-" + curOption.name
 
       val radioElement = document.createElement("input")
       radioElement.setAttribute("type", "radio")
-      //radioElement.setAttribute("id", radioId)
       radioElement.setAttribute("name", "radio-group-" + property.name)
       radioElement.setAttribute("value", radioId)
       if (observableConfigProperty.getValue.name == curOption.name) {
@@ -156,7 +141,7 @@ object EvaHtmlFactory {
 
   def createNumberForm(observableConfigProperty: ObservableConfigProperty[Integer], stepSize: Option[Int] = None, minValue: Option[Int] = None, maxValue: Option[Int] = None, additionalListener: List[HtmlInputChangeListener[Int]] = List()): Element = {
 
-    val res = createNumberField(
+    createNumberField(
       observableConfigProperty.property.description.getOrElse(observableConfigProperty.property.name),
       "number-form-" + observableConfigProperty.property.name,
       observableConfigProperty.getValue.value,
@@ -168,9 +153,6 @@ object EvaHtmlFactory {
       minValue,
       maxValue
     )
-
-    res
-
   }
 
   def createNumberField(label: String, id: String, defaultValue: Integer, onChangeEvent: HtmlInputChangeListener[Int], stepSize: Option[Int] = None, minValue: Option[Int] = None, maxValue: Option[Int] = None): Element = {
@@ -180,12 +162,10 @@ object EvaHtmlFactory {
 
     root.appendChild(createLabel(label))
 
-    val attributes = mutable.HashMap[String, String]()
-    minValue.foreach(min => attributes.put("min", min.toString))
-    maxValue.foreach(max => attributes.put("max", max.toString))
-    stepSize.foreach(step => attributes.put("step", step.toString))
+    val attributes = Map("min" -> minValue, "max" -> maxValue, "step" -> stepSize)
+      .collect { case (name, Some(value)) => name -> value.toString }
 
-    val field = new BasicObservableInputElement[Int](id, "number", defaultValue, onChangeEvent, GeneralUtility.factoryToEitherFactory(str => Integer.parseInt(str)), attributes.toMap)
+    val field = new BasicObservableInputElement[Int](id, "number", defaultValue, onChangeEvent, GeneralUtility.factoryToEitherFactory(str => Integer.parseInt(str)), attributes)
     root.appendChild(field.getElement)
 
     root
@@ -244,8 +224,6 @@ object EvaHtmlFactory {
     // Selector Container
     val selectorContainer = document.createElement("div")
     selectorContainer.setAttribute("id", "tab-selector-container")
-    val templateColumsString = "grid-template-columns:repeat(" + model.tabs.size + ", " + (100.0 / model.tabs.size) + "%);"
-    // selectorContainer.setAttribute("style", "display:grid;" + templateColumsString)
     tabPane.appendChild(selectorContainer)
 
     // Content
@@ -254,32 +232,31 @@ object EvaHtmlFactory {
     tabPane.appendChild(contentPane)
 
     // Selectors
-    var selectorList: List[Element] = List()
+    val selectors: List[(TabProperty, Element)] = model.tabs.map { curTab =>
+      val selector = document.createElement("div")
+      selector.textContent = curTab.description
+      selector.setAttribute("id", "tab-selector")
+      selectorContainer.appendChild(selector)
+      curTab -> selector
+    }
 
-    def select(property: TabProperty): Unit = {
-      selectorList.foreach(selector => selector.setAttribute("class", "tab-inactive"))
+    def select(property: TabProperty, selector: Element): Unit = {
+      selectors.foreach { case (_, other) => other.setAttribute("class", "tab-inactive") }
 
       model.currentTab.setValue(property)
 
       HtmlHelper.clearChildrenFromElement(contentPane)
       val content = elementFactories(property).apply()
       contentPane.appendChild(content)
+      selector.setAttribute("class", "tab-active")
     }
 
-    selectorList = model.tabs.map(curTab => {
-      val selector = document.createElement("div")
-      selector.textContent = curTab.description
-      selector.setAttribute("id", "tab-selector")
-      selector.addEventListener("click", (e: dom.MouseEvent) => {
-        select(curTab)
-        selector.setAttribute("class", "tab-active")
-      })
-      selectorContainer.appendChild(selector)
-      selector
-    })
+    selectors.foreach { (curTab, selector) =>
+      selector.addEventListener("click", (e: dom.MouseEvent) => select(curTab, selector))
+    }
 
-    select(model.tabs.head)
-    selectorList.head.setAttribute("class", "tab-active")
+    val (firstTab, firstSelector) = selectors.head
+    select(firstTab, firstSelector)
 
     tabPane
   }

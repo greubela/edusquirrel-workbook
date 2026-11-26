@@ -1,19 +1,17 @@
 package it.evadid.workbook.elements.interactionElements.programming.programmingExerciseRegular
 
-import it.evadid.core.datastructures.language.AppLanguage.{Java, Python, SnapLanguage}
 import it.evadid.core.datastructures.chat.{Message, MessengerModel}
 import it.evadid.core.datastructures.language.AppLanguage.{English, HumanLanguage, Java, Python}
 import it.evadid.core.datastructures.language.{LanguageMap, LanguageMapContentId}
+import it.evadid.distribution.command.ExecutionInfo.ExecutionSuccess
 import it.evadid.distribution.command.{ExecutionCommand, SerializedException}
 import it.evadid.distribution.commandTypes.LLMCommands
 import it.evadid.util.logging.BasicLogger
-import it.evadid.vm.compilation.java.turtle.JavaTurtleProgram
 import it.evadid.workbook.abstractions.FeedbackEntity.LlmEntity
 import it.evadid.workbook.abstractions.grading.{GradingImportance, GradingResult, GradingStatus, WorkbookInteractionGrader}
 import it.evadid.workbook.abstractions.scaffolding.ScaffoldingStatus.*
 import it.evadid.workbook.abstractions.scaffolding.{AdditionalInfoLlmScaffolding, ScaffoldingResult, WorkbookInteractionScaffolder}
-import it.evadid.workbook.abstractions.{FeedbackEntity, WorkbookInteractionElement}
-import it.evadid.workbook.elements.interactionElements.programming
+import it.evadid.workbook.abstractions.FeedbackEntity
 import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseRegular.ProgrammingHintScaffolder.*
 import it.evadid.workbook.elements.interactionElements.programming.state.*
 import it.evadid.workbook.elements.interactionElements.programming.{AdditionalProgrammingTestInfo, ProgrammingTestGrader, ProgrammingTestProgramObservation}
@@ -29,38 +27,47 @@ final class ProgrammingHintScaffolder(exercise: ProgrammingHintScaffolder.Exerci
 
   override def scaffoldingEntity: FeedbackEntity = LlmEntity
 
-  override def handleFeedbackGeneration(currentState: ProgrammingState, contextInformation: ExecutionContextInformation): Future[ScaffoldingResult[ProgrammingState, AdditionalInfoLlmScaffolding]] = {
-    if (contextInformation.languageMapIdResolver.isEmpty) {
-      Future.failed(SerializedException("Llm Scaffolding needs a LanguageMapIdResolver!"))
-    } else {
-      Try {
-        val resolver = contextInformation.languageMapIdResolver.get
-        val context = prepare(currentState)
-        val language = resolver.languageFuture()
-        language.zip(resolver.resolveMap(publicTaskId)).flatMap { (locale, translations) =>
-          val task = translations.tryGetInLanguage(locale).orElse(translations.tryGetInLanguage(English))
-            .filter(text => text != null && text.trim.nonEmpty && text.length <= 8000)
-            .getOrElse(throw IllegalArgumentException("Public task instructions are missing or too long."))
-          verifyChecks(currentState, context, locale)
-          val request = context.request(locale, task).copy(llmConfiguration = contextInformation.llmConfiguration)
-          val factory = LLMCommands.feedbackLlmCommandFactory
-          val command = ExecutionCommand(factory.name, upickle.default.writeJs(request))
-          val client = contextInformation.availableExecutionClients.find(_.canExecuteCommand(command))
-            .getOrElse(throw IllegalStateException("No execution client supports programming hints."))
-          factory.sendCommandTo(client, request, Some(BasicLogger())).map { response =>
+  override def handleFeedbackGeneration(currentState: ProgrammingState, contextInformation: ExecutionContextInformation): Future[ScaffoldingResult[ProgrammingState, AdditionalInfoLlmScaffolding]] =
+    contextInformation.languageMapIdResolver match {
+      case None => Future.failed(SerializedException("Llm Scaffolding needs a LanguageMapIdResolver!"))
+      case Some(resolver) =>
+        Try {
+          val ec = contextInformation.futureExecutionContext
+          val context = prepare(currentState)
+          val language = resolver.languageFuture()
+          language.zip(resolver.resolveMap(publicTaskId)).flatMap { (locale, translations) =>
+            val task = publicTask(translations, locale)
             verifyChecks(currentState, context, locale)
-            val hints = parse(response.result, context.evidenceIds(locale))
-            val text = hints.zipWithIndex.map((hint, index) => s"${index + 1}. ${hint.question}").mkString("\n")
-            val accepted = ujson.write(ujson.Obj("hints" -> ujson.Arr.from(hints.map(_.toJson))))
-            val conversation = MessengerModel(List(Message(accepted, MessengerModel.pAgent)))
-            val addInfo = Some(AdditionalInfoLlmScaffolding(conversation))
-            ScaffoldingResult[ProgrammingState, AdditionalInfoLlmScaffolding](currentState, ScaffoldingFeedback(LanguageMap.mapBasedLanguageMap(Map(locale -> text))),
-              FeedbackEntity.LlmEntity, addInfo)
-          }(using contextInformation.futureExecutionContext)
-        }(using contextInformation.futureExecutionContext)
-
-      }.fold(Future.failed, identity)
+            val request = context.request(locale, task).copy(llmConfiguration = contextInformation.llmConfiguration)
+            sendRequest(request, contextInformation).map { response =>
+              verifyChecks(currentState, context, locale)
+              hintResult(currentState, locale, parse(response.result, context.evidenceIds(locale)))
+            }(using ec)
+          }(using ec)
+        }.fold(Future.failed, identity)
     }
+
+  private def publicTask(translations: LanguageMap[HumanLanguage], locale: HumanLanguage): String =
+    translations.tryGetInLanguage(locale).orElse(translations.tryGetInLanguage(English))
+      .filter(text => text != null && text.trim.nonEmpty && text.length <= 8000)
+      .getOrElse(throw IllegalArgumentException("Public task instructions are missing or too long."))
+
+  private def sendRequest(request: LLMCommands.FeedbackLlmRequest, contextInformation: ExecutionContextInformation): Future[ExecutionSuccess[String]] = {
+    val factory = LLMCommands.feedbackLlmCommandFactory
+    val command = ExecutionCommand(factory.name, upickle.default.writeJs(request))
+    val client = contextInformation.availableExecutionClients.find(_.canExecuteCommand(command))
+      .getOrElse(throw IllegalStateException("No execution client supports programming hints."))
+    factory.sendCommandTo(client, request, Some(BasicLogger()))
+  }
+
+  /** The numbered questions as feedback text; the accepted hints are retained as the conversation. */
+  private def hintResult(state: ProgrammingState, locale: HumanLanguage, hints: Vector[Hint]): ScaffoldingResult[ProgrammingState, AdditionalInfoLlmScaffolding] = {
+    val text = hints.zipWithIndex.map((hint, index) => s"${index + 1}. ${hint.question}").mkString("\n")
+    val accepted = ujson.write(ujson.Obj("hints" -> ujson.Arr.from(hints.map(_.toJson))))
+    val conversation = MessengerModel(List(Message(accepted, MessengerModel.pAgent)))
+    val addInfo = Some(AdditionalInfoLlmScaffolding(conversation))
+    ScaffoldingResult[ProgrammingState, AdditionalInfoLlmScaffolding](state, ScaffoldingFeedback(LanguageMap.mapBasedLanguageMap(Map(locale -> text))),
+      FeedbackEntity.LlmEntity, addInfo)
   }
 
   private def verifyChecks(state: ProgrammingState, context: Context, locale: HumanLanguage): Unit = {
@@ -71,14 +78,7 @@ final class ProgrammingHintScaffolder(exercise: ProgrammingHintScaffolder.Exerci
   }
 
   private def prepare(state: ProgrammingState): Context = {
-    val (sourceLanguage, source) = state match {
-      case ProgrammingStateRaw(Java, code) => Java.name -> code
-      case ProgrammingStateRaw(Python, code) => Python.name -> code
-      case value: ProgrammingStateJavaStructured => Java.name -> value.toString
-      case value: ProgrammingStatePythonStructured => Python.name -> value.toString
-      // Blocks and Snap projects are discussed as the Python they correspond to.
-      case other => Python.name -> other.toPython.code
-    }
+    val (sourceLanguage, source) = sourceOf(state)
     require(source != null && source.length <= 24000, "The source is too long for a hint.")
     val lines = source.split("\\r\\n|\\r|\\n", -1).toVector
     require(lines.size <= 400, "The source has too many lines for a hint.")
@@ -93,27 +93,43 @@ final class ProgrammingHintScaffolder(exercise: ProgrammingHintScaffolder.Exerci
     }.distinct
     require(graders.size <= 32, "Too many public checks for a hint.")
     val checks = graders.zipWithIndex.map { (grader, index) =>
-      val publishObservation = grader match {
-        case test: ProgrammingTestGrader => test.publishProgramObservation
-        case _ => false
-      }
-      val matches = results.filter(result => result.gradedState == state && result.grader == grader)
-      val latest = matches.maxByOption(_.gradingTime).toList.flatMap { latest =>
-        matches.filter(_.gradingTime == latest.gradingTime).map { result =>
-          val status = statusName(result.gradingStatus)
-          val info = Option(result.additionalData).flatten.collect {
-            case info: AdditionalProgrammingTestInfo if evidenceStatuses.contains(status) => info
-          }
-          val descriptions = info.map(value => AdditionalProgrammingTestInfo.descriptions(value.humanReadableTestExecutionDescription))
-            .getOrElse(Map.empty[HumanLanguage, String])
-          val observation = info.filter(_ => publishObservation)
-            .flatMap(value => Option(value.programObservation).flatten.flatMap(Option(_)))
-          (status, descriptions, observation)
-        }
-      }
-      Check(s"check-${index + 1}", grader, grader.importance == GradingImportance.REQUIRED_TEST, latest)
+      Check(s"check-${index + 1}", grader, grader.importance == GradingImportance.REQUIRED_TEST, latestResults(state, grader, results))
     }
     Context(sourceLanguage, source, sourceLines, checks, latest)
+  }
+
+  /** The source language's name and the code it is discussed in. */
+  private def sourceOf(state: ProgrammingState): (String, String) = state match {
+    case ProgrammingStateRaw(Java, code) => Java.name -> code
+    case ProgrammingStateRaw(Python, code) => Python.name -> code
+    case value: ProgrammingStateJavaStructured => Java.name -> value.toString
+    case value: ProgrammingStatePythonStructured => Python.name -> value.toString
+    // Blocks and Snap projects are discussed as the Python they correspond to.
+    case other => Python.name -> other.toPython.code
+  }
+
+  /** Status, descriptions and the published program observation of each of the grader's latest results for the state. */
+  private def latestResults(state: ProgrammingState, grader: WorkbookInteractionGrader[ProgrammingState, AdditionalProgrammingTestInfo],
+      results: Seq[GradingResult[ProgrammingState, AdditionalProgrammingTestInfo]])
+      : Seq[(String, Map[HumanLanguage, String], Option[ProgrammingTestProgramObservation])] = {
+    val publishObservation = grader match {
+      case test: ProgrammingTestGrader => test.publishProgramObservation
+      case _ => false
+    }
+    val matches = results.filter(result => result.gradedState == state && result.grader == grader)
+    matches.maxByOption(_.gradingTime).toList.flatMap { latest =>
+      matches.filter(_.gradingTime == latest.gradingTime).map { result =>
+        val status = statusName(result.gradingStatus)
+        val info = Option(result.additionalData).flatten.collect {
+          case info: AdditionalProgrammingTestInfo if evidenceStatuses.contains(status) => info
+        }
+        val descriptions = info.map(value => AdditionalProgrammingTestInfo.descriptions(value.humanReadableTestExecutionDescription))
+          .getOrElse(Map.empty[HumanLanguage, String])
+        val observation = info.filter(_ => publishObservation)
+          .flatMap(value => Option(value.programObservation).flatten.flatMap(Option(_)))
+        (status, descriptions, observation)
+      }
+    }
   }
 }
 
@@ -142,7 +158,7 @@ object ProgrammingHintScaffolder {
           ujson.Arr.from(List(ujson.Str(command.name.universalInterpretation())) ++ command.args.map(ujson.Num(_))))))))
   }
 
-  private case class Check(id: String, grader: WorkbookInteractionGrader[ProgrammingState, programming.AdditionalProgrammingTestInfo], required: Boolean,
+  private case class Check(id: String, grader: WorkbookInteractionGrader[ProgrammingState, AdditionalProgrammingTestInfo], required: Boolean,
                            latest: Seq[(String, Map[HumanLanguage, String], Option[ProgrammingTestProgramObservation])]) {
     def localized(language: HumanLanguage): PublicCheck = {
       val values = latest.map { (status, descriptions, observation) =>

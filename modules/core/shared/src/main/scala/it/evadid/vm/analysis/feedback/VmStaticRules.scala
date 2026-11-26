@@ -13,8 +13,6 @@ import it.evadid.vm.code.usage.{BeAssignVariable, BeUseValue}
 import it.evadid.vm.naming.NamingStyle
 import it.evadid.vm.types.{BeChildInfo, BeInfo, BeUseValueReference}
 
-import scala.collection.mutable
-
 /**
  * Static rules executed on the VM model (BeExpression).
  *
@@ -32,17 +30,11 @@ object VmStaticRules {
   def runAll(root: BeExpression, humanLanguage: HumanLanguage = AppLanguage.default()): Seq[RuleResult] = {
     val allExprs: Seq[BeExpression] = collectAllExpressions(root)
 
-    val results = mutable.ListBuffer.empty[RuleResult]
-
-    results ++= checkEmptyProgram(root, humanLanguage)
-
-    results += checkMaxNesting(root, humanLanguage, maxDepthAllowed = 8)
-
-    results ++= checkUnusedVariables(allExprs, humanLanguage)
-
-    results ++= checkUnreachableAfterReturn(allExprs, humanLanguage)
-    results ++= checkSyntaxErrors(root, humanLanguage)
-    results.toList
+    (checkEmptyProgram(root, humanLanguage) ++
+      Seq(checkMaxNesting(root, humanLanguage, maxDepthAllowed = 8)) ++
+      checkUnusedVariables(allExprs, humanLanguage) ++
+      checkUnreachableAfterReturn(allExprs, humanLanguage) ++
+      checkSyntaxErrors(root, humanLanguage)).toList
   }
 
   private def checkSyntaxErrors(root: BeExpression, humanLanguage: HumanLanguage): Seq[RuleResult] = {
@@ -77,18 +69,9 @@ object VmStaticRules {
       }
   }
   
-  /** Traverses the tree and collects all BeExpression nodes. */
-  private def collectAllExpressions(root: BeExpression): List[BeExpression] = {
-    val buffer = mutable.ListBuffer.empty[BeExpression]
-
-    def loop(expr: BeExpression): Unit = {
-      buffer += expr
-      directChildren(expr).foreach(loop)
-    }
-
-    loop(root)
-    buffer.toList
-  }
+  /** Traverses the tree and collects all BeExpression nodes in pre-order. */
+  private def collectAllExpressions(root: BeExpression): List[BeExpression] =
+    root :: directChildren(root).toList.flatMap(collectAllExpressions)
 
   private def directChildren(expr: BeExpression): Seq[BeExpression] =
     expr.structureInfo
@@ -210,31 +193,17 @@ object VmStaticRules {
 
   /** Finds defined variables and checks whether they are used at least once. */
   private def checkUnusedVariables(allExprs: Seq[BeExpression], humanLanguage: HumanLanguage): Seq[RuleResult] = {
-    val defined = mutable.LinkedHashSet.empty[BeDefineVariable]
-    val used    = mutable.LinkedHashSet.empty[BeDefineVariable]
-
-    allExprs.foreach {
-      case d: BeDefineVariable =>
-        defined += d
-
-      case BeUseValue(_, Some(ctx)) =>
-        used += ctx
-
-      case BeAssignVariable(target, _) =>
-        used += target
-
-      case uv: BeUseValue =>
-        uv.value match {
-          case BeUseValueReference(v) => used += v
-          case _                      =>
-        }
-
-      case _ =>
-    }
+    val defined = allExprs.collect { case d: BeDefineVariable => d }.distinct
+    val used = allExprs.flatMap {
+      case BeUseValue(_, Some(ctx)) => Some(ctx)
+      case BeAssignVariable(target, _) => Some(target)
+      case BeUseValue(BeUseValueReference(v), _) => Some(v)
+      case _ => None
+    }.toSet
 
     if defined.isEmpty then Seq.empty
     else {
-      val unused = defined.diff(used)
+      val unused = defined.filterNot(used)
 
       if unused.isEmpty then
         Seq(

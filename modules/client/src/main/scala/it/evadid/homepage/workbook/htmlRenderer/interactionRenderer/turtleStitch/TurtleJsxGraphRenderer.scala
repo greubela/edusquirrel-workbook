@@ -86,12 +86,6 @@ object TurtleJsxGraphRenderer:
     }
   }
 
-  /* Factories */
-
-
-
-  /* details */
-
   /** A line segment used as the expected result of a turtle exercise. */
   final case class LineToRender[T: Fractional](start: Point[T], end: Point[T], jump: Boolean = false)
 
@@ -124,7 +118,7 @@ object TurtleJsxGraphRenderer:
     * are converted to JSXGraph here, and ordered to select the smaller sector.
     */
   private[turtleStitch] def angleSector(scene: Scene, angle: RenderedAngle, radius: Double): AngleSector =
-    val vertex = Point(angle.vertex.x, -angle.vertex.y)
+    val vertex = toBoard(angle.vertex)
     def ray(endpoint: Point[Double]): Point[Double] =
       val dx = endpoint.x - angle.vertex.x
       val dy = angle.vertex.y - endpoint.y
@@ -222,7 +216,7 @@ object TurtleJsxGraphRenderer:
     val points = scene.lines.flatMap(line => List(line.start, line.end)) ++ scene.marker ++ scene.frame
     if points.exists(point => !point.x.isFinite || !point.y.isFinite) then
       throw IllegalArgumentException("The drawing contains non-finite coordinates.")
-    val bounds = boundingBox(points.map(p => Point(p.x, -p.y)))
+    val bounds = boundingBox(points.map(toBoard))
     if bounds.exists(!_.isFinite) || !((bounds(2) - bounds(0)).isFinite && (bounds(1) - bounds(3)).isFinite) ||
       bounds(2) <= bounds(0) || bounds(1) <= bounds(3) then
       throw IllegalArgumentException("The drawing exceeds the supported display range.")
@@ -249,13 +243,34 @@ object TurtleJsxGraphRenderer:
 
   private val hoverLabel = js.Dynamic.literal(display = "internal", cssClass = "turtle-hover-label", highlightCssClass = "turtle-hover-label")
 
+  /** Scene coordinates (positive y downwards) in JSXGraph's upward-positive coordinates. */
+  private def toBoard(point: Point[Double]): Point[Double] = Point(point.x, -point.y)
+
+  /** Whether the board can batch object creation; dense embroidery targets otherwise redraw the board after each object. */
+  private def canSuspendUpdates(board: JSXGraph.Board): Boolean =
+    val dynamic = board.asInstanceOf[js.Dynamic]
+    js.typeOf(dynamic.selectDynamic("suspendUpdate")) == "function" && js.typeOf(dynamic.selectDynamic("unsuspendUpdate")) == "function"
+
+  /** Angles with their scene index. Hundreds of repeated angle sectors obscure dense stitch patterns: there,
+    * only one representative of each turn is kept.
+    */
+  private def visibleAngles(angles: Seq[RenderedAngle]): Seq[(RenderedAngle, Int)] =
+    val angleEntries = angles.zipWithIndex
+    if angleEntries.size <= 128 then angleEntries
+    else angleEntries.groupBy { case (angle, _) => math.round(angle.degrees * 1e6) }
+      .values.map(_.head).toList.sortBy(_._2)
+
+  /** A sector fits both adjacent segments and stays small relative to the board's width. */
+  private def sectorRadius(scene: Scene, angle: RenderedAngle, bounds: Array[Double]): Double =
+    def length(line: RenderedLine): Double = math.hypot(line.end.x - line.start.x, line.end.y - line.start.y)
+    math.min((bounds(2) - bounds(0)) / 18.0,
+      math.min(length(scene.lines(angle.lineBefore)), length(scene.lines(angle.lineAfter))) / 4.0)
+
   /** Creates the scene's objects in one suspended update. Angles are filled curves: JSXGraph angle objects
     * end the suspended update and redraw the whole board for every angle.
     */
   private def draw(board: JSXGraph.Board, scene: Scene, bounds: Array[Double]): Unit =
-    // Dense embroidery targets otherwise redraw the entire board after each object.
-    val canBatch = js.typeOf(board.asInstanceOf[js.Dynamic].selectDynamic("suspendUpdate")) == "function" &&
-      js.typeOf(board.asInstanceOf[js.Dynamic].selectDynamic("unsuspendUpdate")) == "function"
+    val canBatch = canSuspendUpdates(board)
     if canBatch then board.suspendUpdate()
 
     val pointObjects: Map[Point[Double], js.Dynamic] =
@@ -271,17 +286,10 @@ object TurtleJsxGraphRenderer:
         cssClass = classes, highlightCssClass = classes, fixed = true))
     }
 
-    // Hundreds of repeated angle sectors obscure dense stitch patterns. Keep one representative of each turn there.
-    val angleEntries = scene.angles.zipWithIndex
-    val visibleAngles = if angleEntries.size <= 128 then angleEntries
-      else angleEntries.groupBy { case (angle, _) => math.round(angle.degrees * 1e6) }
-        .values.map(_.head).toList.sortBy(_._2)
-    val sectors: Map[Int, (js.Dynamic, AngleSector, Double)] = visibleAngles.map { case (angle, index) =>
-      def length(line: RenderedLine): Double = math.hypot(line.end.x - line.start.x, line.end.y - line.start.y)
-      val radius = math.min((bounds(2) - bounds(0)) / 18.0,
-        math.min(length(scene.lines(angle.lineBefore)), length(scene.lines(angle.lineAfter))) / 4.0)
+    val sectors: Map[Int, (js.Dynamic, AngleSector, Double)] = visibleAngles(scene.angles).map { case (angle, index) =>
+      val radius = sectorRadius(scene, angle, bounds)
       val sector = angleSector(scene, angle, radius)
-      val outline = sectorOutline(Point(angle.vertex.x, -angle.vertex.y), sector, radius)
+      val outline = sectorOutline(toBoard(angle.vertex), sector, radius)
       index -> (board.create("curve", js.Array(outline.map(_.x).toJSArray, outline.map(_.y).toJSArray), js.Dynamic.literal(
         // Hovering anywhere inside the sector, not only on its outline.
         cssClass = "turtle-angle", highlightCssClass = "turtle-angle", fixed = true, withLabel = false, hasInnerPoints = true)), sector, radius)
@@ -300,7 +308,7 @@ object TurtleJsxGraphRenderer:
         case Some(label) => label.setAttribute(js.Dynamic.literal(visible = active))
         case None if active =>
           // Created on first hover: measuring many text labels while drawing is costly.
-          val position = sectorLabelPosition(Point(scene.angles(index).vertex.x, -scene.angles(index).vertex.y), sector, radius)
+          val position = sectorLabelPosition(toBoard(scene.angles(index).vertex), sector, radius)
           labels.update(_.updated(index, board.create("text", js.Array(position.x, position.y, s"${format(sector.degrees)}°"),
             js.Dynamic.literal(fixed = true, display = "internal", anchorX = "middle", anchorY = "middle",
               cssClass = "turtle-hover-label", highlightCssClass = "turtle-hover-label"))))

@@ -4,11 +4,11 @@ import it.evadid.core.datastructures.language.AppLanguage.{HumanLanguage, Java, 
 import it.evadid.core.util.CodeStringBuilderMutable
 import it.evadid.vm.code.abstractions.{BeControlStructure, BeDefineStructure, BeExpression}
 import it.evadid.vm.code.controlStructures.{BeFor, BeIfElse, BeRepeatNr, BeSequence, BeWhile}
-import it.evadid.vm.code.defining.{BeDefineClass, BeDefineFunction, BeDefineVariable}
+import it.evadid.vm.code.defining.{BeDefineClass, BeDefineFunction, BeDefineVariable, BeDependency}
 import it.evadid.vm.code.errors.{BeExpressionUnparsable, BeExpressionUnsupported, BeSingleLineComment}
 import it.evadid.vm.code.others.{BeReturn, BeStartProgram}
 import it.evadid.vm.code.usage.*
-import it.evadid.vm.conversion.printing.GenericJavaLikeStringPrinter.{JavaSeparation, PythonSeparation, SeparateStructures}
+import it.evadid.vm.conversion.printing.GenericJavaLikeStringPrinter.{PythonSeparation, SeparateStructures}
 import it.evadid.vm.naming.NamingStyle.{CamelCase, SnakeCase}
 import it.evadid.vm.naming.{BeEntityName, NamingStyle}
 import it.evadid.vm.types.{BeDataType, BeDataValueLiteral, BeDataValueUnit, BeUseValueReference}
@@ -23,9 +23,9 @@ abstract class GenericJavaLikeStringPrinter(
     val inCurLanguage: String = GenericJavaLikeStringPrinter.identifier(entityName.getNameIn(humLang, sepLogic.preferedDisplayStyle), progLang)
   }
 
-  private case class TypeInfo(dataType: BeDataType) {
-    val inCurLanguage: String = dataType.formatTypeForDisplay.getInLanguage(progLang)
-  }
+  private def typeName(dataType: BeDataType): String = dataType.formatTypeForDisplay.getInLanguage(progLang)
+
+  private def isPython: Boolean = sepLogic.isInstanceOf[PythonSeparation]
 
   def forExpression(exprOp: Option[BeExpression]): String = exprOp.map(forExpression).getOrElse("")
 
@@ -34,14 +34,6 @@ abstract class GenericJavaLikeStringPrinter(
     case ds: BeDefineStructure => forDefinition(ds)
     case other => forOther(other)
   }
-
-  /*protected def assignToString(target: BeDefineVariable, value: BeExpression, willBeInlined: Boolean): String = {
-    assignToString(
-      target.variableType.formatTypeForDisplay.getInLanguage(progLang),
-      NameInfo(target.name).inCurLanguage,
-      value, willBeInlined
-    )
-  }*/
 
   protected def forValue(expression: BeExpression): String =
     if sepLogic.endLineWith.nonEmpty then forExpression(expression).stripSuffix(sepLogic.endLineWith) else forExpression(expression)
@@ -55,7 +47,7 @@ abstract class GenericJavaLikeStringPrinter(
   }
 
   protected def entityName(name: BeEntityName): String = NameInfo(name).inCurLanguage
-  protected def className(name: BeEntityName): String = BeDataType.ClassType(name).formatTypeForDisplay.getInLanguage(progLang)
+  protected def className(name: BeEntityName): String = typeName(BeDataType.ClassType(name))
   protected def currentInstanceName: String = "this"
   protected def constructorCallPrefix: String = "new "
   protected def callName(call: BeFunctionCall): String = {
@@ -115,6 +107,16 @@ abstract class GenericJavaLikeStringPrinter(
     if rendered.trim.isEmpty && emptyBody.nonEmpty then emptyBody else rendered
   }
 
+  /** A header line, the indented [[blockBody]] and the closing line. */
+  private def indentedBlock(headerLine: String, body: BeExpression): String =
+    CodeStringBuilderMutable()
+      .appendNextLine(headerLine)
+      .changeIntLevel(1)
+      .appendAsLines(blockBody(body))
+      .changeIntLevel(-1)
+      .appendNextLine(sepLogic.endBlockWith)
+      .toString
+
   protected def forStatement(expr: BeExpression): String = {
     forExpression(expr) + (expr match {
       case _: BeControlStructure | _: BeReturn | _: BeFunctionCall | _: BeDefineClass | _: BeDefineFunction |
@@ -122,8 +124,6 @@ abstract class GenericJavaLikeStringPrinter(
       case _ => sepLogic.endLineWith
     })
   }
-
-  // protected def assignToString(typeString: String, nameString: String, value: BeExpression, willBeInlined: Boolean): String
 
   def forOther(other: BeExpression): String = other.match {
     case source: BeExpressionUnparsable => if (skipUnparsable) "" else source.sourceFor(progLang)
@@ -136,11 +136,7 @@ abstract class GenericJavaLikeStringPrinter(
     case BeStartProgram(startSequence) => forExpression(startSequence)
     // usage
     case BeAssignVariable(target, value) => {
-      assignToDefinedVar(
-        NameInfo(target.name).inCurLanguage,
-        target.variableType.formatTypeForDisplay.getInLanguage(progLang),
-        value
-      )
+      assignToDefinedVar(NameInfo(target.name).inCurLanguage, typeName(target.variableType), value)
     }
     case call: BeFunctionCall => {
       val funcDef = call.funcDef
@@ -148,11 +144,9 @@ abstract class GenericJavaLikeStringPrinter(
       if (funcDef.functionTypeInfo.isNamed.isEmpty && !call.target.isInstanceOf[BeCallTarget.Constructor])
         throw UnsupportedOperationException("Anonymous function calls are not supported by this printer.")
       else {
-        val callParInfo = funcDef.inputs.map(curIn => {
-          val name = NameInfo(curIn.name)
-          val typeStr = curIn.variableType.formatTypeForDisplay.getInLanguage(progLang)
-          assignToFunctionPar(name.inCurLanguage, typeStr, parameterValueMap(curIn))
-        }).mkString("(", ", ", ")")
+        val callParInfo = funcDef.inputs.map(curIn =>
+          assignToFunctionPar(NameInfo(curIn.name).inCurLanguage, typeName(curIn.variableType), parameterValueMap(curIn))
+        ).mkString("(", ", ", ")")
         s"${callName(call)}${callParInfo}${sepLogic.endLineWith}"
       }
     }
@@ -166,7 +160,7 @@ abstract class GenericJavaLikeStringPrinter(
   }
 
   def forDefinition(ds: BeDefineStructure): String = ds.match {
-    case dependency: it.evadid.vm.code.defining.BeDependency => dependency.definition(progLang).getOrElse("")
+    case dependency: BeDependency => dependency.definition(progLang).getOrElse("")
     case BeDefineClass(name, attributes, methods) => {
       CodeStringBuilderMutable()
         .appendNextLine(defineClassLine(className(name)))
@@ -182,7 +176,7 @@ abstract class GenericJavaLikeStringPrinter(
         throw UnsupportedOperationException("Anonymous function declarations are not supported by this printer.")
       else {
         val par = formatFunctionParameters(function)
-        val outTypeStr = outputs.map(_.variableType.formatTypeForDisplay.getInLanguage(progLang)).getOrElse(BeDataType.Unit.formatTypeForDisplay.getInLanguage(progLang))
+        val outTypeStr = typeName(outputs.map(_.variableType).getOrElse(BeDataType.Unit))
         val renderedBody = forExpression(body)
         val bodyText = if renderedBody.trim.isEmpty then emptyBody else renderedBody
         CodeStringBuilderMutable()
@@ -194,11 +188,8 @@ abstract class GenericJavaLikeStringPrinter(
           .toString
       }
     }
-    case BeDefineVariable(name, variableType, initValueOp) => {
-      val nameInfo = NameInfo(name)
-      val varType = variableType.formatTypeForDisplay.getInLanguage(progLang)
-      defineVariableLine(nameInfo.inCurLanguage, varType, initValueOp)
-    }
+    case BeDefineVariable(name, variableType, initValueOp) =>
+      defineVariableLine(NameInfo(name).inCurLanguage, typeName(variableType), initValueOp)
   }
 
   /** The condition of an `if` or `while`, as one line. */
@@ -209,10 +200,8 @@ abstract class GenericJavaLikeStringPrinter(
     case BeIfElse(condition, thenBody, elseBody) => {
       def header(keyword: String, condition: BeSequence): String = {
         val conditionString = conditionText(condition)
-        sepLogic match {
-          case _: PythonSeparation => s"$keyword $conditionString${sepLogic.startBlockWith}"
-          case _ => s"$keyword ($conditionString) ${sepLogic.startBlockWith}"
-        }
+        if isPython then s"$keyword $conditionString${sepLogic.startBlockWith}"
+        else s"$keyword ($conditionString) ${sepLogic.startBlockWith}"
       }
       val res = CodeStringBuilderMutable()
         .appendNextLine(header("if", condition))
@@ -222,63 +211,35 @@ abstract class GenericJavaLikeStringPrinter(
       // An else branch holding only another if prints as an elif / else-if chain.
       @scala.annotation.tailrec def branches(otherwise: BeSequence): Unit = otherwise.body match {
         case Seq(BeIfElse(nextCondition, nextThen, nextElse)) =>
-          sepLogic match {
-            case _: PythonSeparation => res.appendNextLine(header("elif", nextCondition))
-            case _ => res.appendNextLine(sepLogic.endBlockWith + " " + header("else if", nextCondition))
-          }
+          res.appendNextLine(if isPython then header("elif", nextCondition) else sepLogic.endBlockWith + " " + header("else if", nextCondition))
           res.changeIntLevel(1).appendAsLines(blockBody(nextThen)).changeIntLevel(-1)
           branches(nextElse)
         case Seq() => res.appendNextLine(sepLogic.endBlockWith)
         case _ =>
-          sepLogic match {
-            case _: PythonSeparation => res.appendNextLine(s"else${sepLogic.startBlockWith}")
-            case _ => res.appendNextLine(s"${sepLogic.endBlockWith} else ${sepLogic.startBlockWith}")
-          }
+          res.appendNextLine(if isPython then s"else${sepLogic.startBlockWith}" else s"${sepLogic.endBlockWith} else ${sepLogic.startBlockWith}")
           res.changeIntLevel(1).appendAsLines(forExpression(otherwise)).changeIntLevel(-1).appendNextLine(sepLogic.endBlockWith)
       }
       branches(elseBody)
       res.toString
     }
-    case BeRepeatNr(amount, body) => {
-      CodeStringBuilderMutable()
-        .appendNextLine(repetitionLine(forValue(amount)))
-        .changeIntLevel(1)
-        .appendAsLines(blockBody(body))
-        .changeIntLevel(-1)
-        .appendNextLine(sepLogic.endBlockWith)
-        .toString
-    }
+    case BeRepeatNr(amount, body) =>
+      indentedBlock(repetitionLine(forValue(amount)), body)
     case BeFor(variable, start, end, body, direction) => {
       val varName = NameInfo(variable.name).inCurLanguage
       val startStr = forExpression(start).replaceAll("\n", "").trim
       val endStr = forExpression(end).replaceAll("\n", "").trim
-      CodeStringBuilderMutable()
-        .appendNextLine(namedRangeLine(varName, startStr, endStr, countsDown(startStr, endStr, direction)))
-        .changeIntLevel(1)
-        .appendAsLines(blockBody(body))
-        .changeIntLevel(-1)
-        .appendNextLine(sepLogic.endBlockWith)
-        .toString
+      indentedBlock(namedRangeLine(varName, startStr, endStr, countsDown(startStr, endStr, direction)), body)
     }
     case BeSequence(body, sequenceInfo) => {
       val rendered = CodeStringBuilderMutable()
         .appendAllAsLines(body.map(forStatement))
         .toString
-      if (sepLogic.isInstanceOf[PythonSeparation] && levelIsTopLevel(rendered)) rendered + "\n" else rendered
+      if (isPython && levelIsTopLevel(rendered)) rendered + "\n" else rendered
     }
     case BeWhile(condition, body) => {
       val conditionString = conditionText(condition)
-      val formattedCondition = sepLogic match {
-        case _: PythonSeparation => s" $conditionString"
-        case _ => s" ($conditionString) "
-      }
-      CodeStringBuilderMutable()
-        .appendNextLine(s"while$formattedCondition${sepLogic.startBlockWith}")
-        .changeIntLevel(1)
-        .appendAsLines(blockBody(body))
-        .changeIntLevel(-1)
-        .appendNextLine(sepLogic.endBlockWith)
-        .toString
+      val formattedCondition = if isPython then s" $conditionString" else s" ($conditionString) "
+      indentedBlock(s"while$formattedCondition${sepLogic.startBlockWith}", body)
     }
     case _ => ???
   }

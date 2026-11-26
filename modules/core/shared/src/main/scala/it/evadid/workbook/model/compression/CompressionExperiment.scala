@@ -4,6 +4,8 @@ import it.evadid.workbook.model.text.UnicodeText
 import it.evadid.core.datastructures.language.LanguageMapContentId
 import upickle.default.*
 
+import scala.annotation.tailrec
+
 /** Persisted experiment settings; computed results and browser resources are not learner state. */
 sealed trait CompressionExperiment derives ReadWriter
 case class VideoBudget(bitrateMbps: Double = 5, durationSeconds: Int = 300, copies: Int = 1, capacityMB: Int = 2000)
@@ -96,40 +98,35 @@ object CompressionAlgorithms {
   def wordCount(text: String): Int = tokens(text).count(!_.forall(_.isWhitespace))
   def dictionary(text: String, steps: Int): DictionaryResult = {
     require(steps >= 0 && steps <= wordCount(text))
-    var words = List.empty[String]
-    var processed = 0
-    val encoded = tokens(text).iterator.takeWhile(token => processed < steps || token.forall(_.isWhitespace) && processed > 0).map { token =>
-      if token.forall(_.isWhitespace) then DictionaryToken(Some(token), None)
-      else {
-        processed += 1
-        val existing = words.indexOf(token)
-        if existing < 0 then { words = words :+ token; DictionaryToken(Some(token), None) }
-        else DictionaryToken(None, Some(existing + 1))
+    def isWhitespace(token: String): Boolean = token.forall(_.isWhitespace)
+    // Encode `steps` words, plus the whitespace that follows the last of them.
+    @tailrec
+    def encode(remaining: List[String], words: List[String], processed: Int, encoded: Vector[DictionaryToken]): DictionaryResult =
+      remaining match {
+        case token :: rest if processed < steps || isWhitespace(token) && processed > 0 =>
+          if isWhitespace(token) then encode(rest, words, processed, encoded :+ DictionaryToken(Some(token), None))
+          else words.indexOf(token) match {
+            case -1 => encode(rest, words :+ token, processed + 1, encoded :+ DictionaryToken(Some(token), None))
+            case existing => encode(rest, words, processed + 1, encoded :+ DictionaryToken(None, Some(existing + 1)))
+          }
+        case _ => DictionaryResult(words, encoded.toList)
       }
-    }
-    val output = encoded.toList
-    DictionaryResult(words, output)
+    encode(tokens(text).toList, Nil, 0, Vector.empty)
   }
 
   /** Average one row-major channel, retaining partial edge blocks. */
   def averageBlocks(channel: Vector[Double], width: Int, height: Int, block: Int): Vector[Double] = {
     require(width > 0 && height > 0 && channel.size == width * height && blockSizes.contains(block))
-    val result = channel.toArray
-    var top = 0
-    while top < height do {
-      var left = 0
-      while left < width do {
-        val bottom = math.min(top + block, height); val right = math.min(left + block, width)
-        var total = 0.0; var y = top
-        while y < bottom do { var x = left; while x < right do { total += channel(y * width + x); x += 1 }; y += 1 }
-        val mean = total / ((bottom - top) * (right - left))
-        y = top
-        while y < bottom do { var x = left; while x < right do { result(y * width + x) = mean; x += 1 }; y += 1 }
-        left += block
-      }
-      top += block
+    val blocksPerRow = (width + block - 1) / block
+    val blockRows = (height + block - 1) / block
+    // Row-major means of the blocks; sums run row by row, as the pixels are stored.
+    val means = Vector.tabulate(blockRows * blocksPerRow) { index =>
+      val top = index / blocksPerRow * block; val left = index % blocksPerRow * block
+      val bottom = math.min(top + block, height); val right = math.min(left + block, width)
+      val total = (top until bottom).foldLeft(0.0)((rows, y) => (left until right).foldLeft(rows)((sum, x) => sum + channel(y * width + x)))
+      total / ((bottom - top) * (right - left))
     }
-    result.toVector
+    Vector.tabulate(width * height)(index => means(index / width / block * blocksPerRow + index % width / block))
   }
   def imageBlocks(rgb: Vector[(Int, Int, Int)], width: Int, height: Int, yBlock: Int, cBlock: Int): Vector[(Int, Int, Int)] = {
     val y = averageBlocks(rgb.map((r, g, b) => 0.299 * r + 0.587 * g + 0.114 * b), width, height, yBlock)
@@ -199,13 +196,17 @@ case class FileSimulation(scenario: String, files: Seq[SimulationFile], tutorial
       else {
         val count = picked.map(_.count).sum
         val name = if count > picked.size then s"logs_${count}_dateien.rar" else s"paket_${count}_dateien.rar"
-        val bytes = math.round(picked.map(f => f.bytes * (if f.kind == "text" || List("txt", "csv").contains(f.extension) then 0.22
-          else if List("video", "encrypted").contains(f.kind) || List("mp4", "jpg", "jpeg").contains(f.extension) then 0.97 else 0.58)).sum + CompressionSimulation.archiveOverhead)
+        val bytes = math.round(picked.map(f => f.bytes * archivedFraction(f)).sum + CompressionSimulation.archiveOverhead)
         copy(files = files.zipWithIndex.filterNot(f => selected.contains(f._2)).map(_._1) :+ SimulationFile(name, bytes, "archive", count = count),
           selected = Nil, steps = steps + 1, error = false)
       }
     }
   }
+  /** Text compresses well in an archive; video, encrypted data and JPEG images hardly at all. */
+  private def archivedFraction(file: SimulationFile): Double =
+    if file.kind == "text" || List("txt", "csv").contains(file.extension) then 0.22
+    else if List("video", "encrypted").contains(file.kind) || List("mp4", "jpg", "jpeg").contains(file.extension) then 0.97
+    else 0.58
 }
 object CompressionSimulation {
   val capacity: Long = 16L * 1024 * 1024 * 1024

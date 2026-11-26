@@ -21,6 +21,8 @@ object JavaTurtleSnapPrimitives {
   private def fail(message: String): Nothing =
     throw js.JavaScriptException(js.Dynamic.newInstance(js.Dynamic.global.Error)(message))
 
+  private def isAbsent(value: js.Any): Boolean = js.isUndefined(value) || value == null
+
   private def number(value: js.Any): Double =
     if js.typeOf(value) != "number" then fail("Java arithmetic needs numeric operands.")
     else value.asInstanceOf[Double]
@@ -33,7 +35,7 @@ object JavaTurtleSnapPrimitives {
 
   private def receiver(process: js.Dynamic): js.Dynamic = {
     val target = process.applyDynamic("blockReceiver")()
-    if js.isUndefined(target) || target == null then fail("A Java turtle command needs a sprite receiver.")
+    if isAbsent(target) then fail("A Java turtle command needs a sprite receiver.")
     target
   }
 
@@ -71,8 +73,12 @@ object JavaTurtleSnapPrimitives {
     else value.asInstanceOf[Boolean]
 
   private def operation(value: js.Any): String =
-    if js.typeOf(value) != "string" then fail("Choose a supported Java arithmetic operation.")
+    if js.typeOf(value) != "string" then fail(UnsupportedArithmetic)
     else value.asInstanceOf[String]
+
+  private val UnsupportedArithmetic = "Choose a supported Java arithmetic operation."
+
+  private def binaryOperator(op: String): R.BinaryOperator = binaryOperators.getOrElse(op, fail(UnsupportedArithmetic))
 
   private[execution] def cell(value: js.Any): js.Any =
     js.Dynamic.literal(_eduJavaNumericCell = true, value = number(value))
@@ -104,9 +110,7 @@ object JavaTurtleSnapPrimitives {
     op match {
       case "pos" => a.toDouble
       case "neg" => JavaInt32.negate(a).toDouble
-      case _ =>
-        val binary = binaryOperators.getOrElse(op, fail("Choose a supported Java arithmetic operation."))
-        result(E.arithmetic(binary, E.Value.IntValue(a), E.Value.IntValue(integer(right))))
+      case _ => result(E.arithmetic(binaryOperator(op), E.Value.IntValue(a), E.Value.IntValue(integer(right))))
     }
   }
 
@@ -116,9 +120,7 @@ object JavaTurtleSnapPrimitives {
     op match {
       case "pos" => a
       case "neg" => -a
-      case _ =>
-        val binary = binaryOperators.getOrElse(op, fail("Choose a supported Java arithmetic operation."))
-        result(E.arithmetic(binary, E.Value.DoubleValue(a), E.Value.DoubleValue(number(right))))
+      case _ => result(E.arithmetic(binaryOperator(op), E.Value.DoubleValue(a), E.Value.DoubleValue(number(right))))
     }
   }
 
@@ -146,47 +148,52 @@ object JavaTurtleSnapPrimitives {
     if before then next else old
   }
 
+  /** Palette specs of the primitives, keyed by selector; fresh objects for each installation. */
+  private def blockSpecs: List[(String, js.Dynamic)] = List(
+    "reportJavaInt" -> js.Dynamic.literal(
+      `type` = "reporter", reports = "number", category = "operators", spec = "Java int %s %n %n",
+      defaults = js.Array[js.Any]("add", 0, 0)),
+    "reportJavaDouble" -> js.Dynamic.literal(
+      `type` = "reporter", reports = "number", category = "operators", spec = "Java double %s %n %n",
+      defaults = js.Array[js.Any]("add", 0, 0)),
+    "reportJavaUpdate" -> js.Dynamic.literal(
+      `type` = "reporter", reports = "number", category = "variables", spec = "Java update %s %n %b %b",
+      defaults = js.Array[js.Any]("", 1, false, false)),
+    "reportJavaCompare" -> js.Dynamic.literal(
+      `type` = "predicate", category = "operators", spec = "Java compare %s %n %n %b",
+      defaults = js.Array[js.Any]("eq", 0, 0, false)),
+    "reportJavaCell" -> js.Dynamic.literal(
+      `type` = "reporter", reports = "number", category = "variables", spec = "Java numeric cell %n",
+      defaults = js.Array[js.Any](0)),
+    "reportJavaRead" -> js.Dynamic.literal(
+      `type` = "reporter", reports = "number", category = "variables", spec = "Java numeric variable %s",
+      defaults = js.Array[js.Any]("")),
+    "doJavaForward" -> js.Dynamic.literal(
+      `type` = "command", category = "motion", spec = "Java forward %n", defaults = js.Array[js.Any](10)),
+    "doJavaTurnRight" -> js.Dynamic.literal(
+      `type` = "command", category = "motion", spec = "Java turn right %n", defaults = js.Array[js.Any](90)),
+    "doJavaReset" -> js.Dynamic.literal(
+      `type` = "command", category = "motion", spec = "Java reset turtle")
+  )
+
   private def installSpecs(prototype: js.Dynamic): Unit = {
     val blocks = prototype.selectDynamic("blocks")
-    if js.isUndefined(blocks) || blocks == null then return
-    blocks.updateDynamic("reportJavaInt")(js.Dynamic.literal(
-      `type` = "reporter", reports = "number", category = "operators", spec = "Java int %s %n %n",
-      defaults = js.Array[js.Any]("add", 0, 0)))
-    blocks.updateDynamic("reportJavaDouble")(js.Dynamic.literal(
-      `type` = "reporter", reports = "number", category = "operators", spec = "Java double %s %n %n",
-      defaults = js.Array[js.Any]("add", 0, 0)))
-    blocks.updateDynamic("reportJavaUpdate")(js.Dynamic.literal(
-      `type` = "reporter", reports = "number", category = "variables", spec = "Java update %s %n %b %b",
-      defaults = js.Array[js.Any]("", 1, false, false)))
-    blocks.updateDynamic("reportJavaCompare")(js.Dynamic.literal(
-      `type` = "predicate", category = "operators", spec = "Java compare %s %n %n %b",
-      defaults = js.Array[js.Any]("eq", 0, 0, false)))
-    blocks.updateDynamic("reportJavaCell")(js.Dynamic.literal(
-      `type` = "reporter", reports = "number", category = "variables", spec = "Java numeric cell %n",
-      defaults = js.Array[js.Any](0)))
-    blocks.updateDynamic("reportJavaRead")(js.Dynamic.literal(
-      `type` = "reporter", reports = "number", category = "variables", spec = "Java numeric variable %s",
-      defaults = js.Array[js.Any]("")))
-    blocks.updateDynamic("doJavaForward")(js.Dynamic.literal(
-      `type` = "command", category = "motion", spec = "Java forward %n", defaults = js.Array[js.Any](10)))
-    blocks.updateDynamic("doJavaTurnRight")(js.Dynamic.literal(
-      `type` = "command", category = "motion", spec = "Java turn right %n", defaults = js.Array[js.Any](90)))
-    blocks.updateDynamic("doJavaReset")(js.Dynamic.literal(
-      `type` = "command", category = "motion", spec = "Java reset turtle"))
-    // Internal targets of converted Java programs, not blocks to offer: Snap's block search skips `dev` primitives.
-    Selectors.foreach(selector => blocks.selectDynamic(selector).updateDynamic("dev")(true))
+    if !isAbsent(blocks) then {
+      val specs = blockSpecs
+      specs.foreach((selector, spec) => blocks.updateDynamic(selector)(spec))
+      // Internal targets of converted Java programs, not blocks to offer: Snap's block search skips `dev` primitives.
+      specs.foreach((selector, _) => blocks.selectDynamic(selector).updateDynamic("dev")(true))
+    }
   }
-
-  private val Selectors = List("reportJavaInt", "reportJavaDouble", "reportJavaUpdate", "reportJavaCompare",
-    "reportJavaCell", "reportJavaRead", "doJavaForward", "doJavaTurnRight", "doJavaReset")
 
   def install(): Unit = {
     val globals = js.Dynamic.global.globalThis
     val process = globals.selectDynamic("Process")
     val sprite = globals.selectDynamic("SpriteMorph")
-    if js.isUndefined(process) || process == null || js.isUndefined(sprite) || sprite == null then return
-    val processPrototype = process.selectDynamic("prototype")
-    val spritePrototype = sprite.selectDynamic("prototype")
+    if !isAbsent(process) && !isAbsent(sprite) then installPrimitives(process.selectDynamic("prototype"), sprite.selectDynamic("prototype"))
+  }
+
+  private def installPrimitives(processPrototype: js.Dynamic, spritePrototype: js.Dynamic): Unit = {
     val intReporter: js.ThisFunction3[js.Dynamic, js.Any, js.Any, js.Any, Double] =
       (_: js.Dynamic, operator: js.Any, left: js.Any, right: js.Any) => intOperation(operator, left, right)
     val doubleReporter: js.ThisFunction3[js.Dynamic, js.Any, js.Any, js.Any, Double] =
@@ -200,18 +207,14 @@ object JavaTurtleSnapPrimitives {
     val forwardCommand: js.ThisFunction1[js.Dynamic, js.Any, Unit] = (self: js.Dynamic, value: js.Any) => forward(self, value)
     val turnCommand: js.ThisFunction1[js.Dynamic, js.Any, Unit] = (self: js.Dynamic, value: js.Any) => turnRight(self, value)
     val resetCommand: js.ThisFunction0[js.Dynamic, Unit] = (self: js.Dynamic) => reset(self)
-    processPrototype.updateDynamic("reportJavaInt")(intReporter)
-    processPrototype.updateDynamic("reportJavaDouble")(doubleReporter)
-    processPrototype.updateDynamic("reportJavaUpdate")(updateReporter)
-    processPrototype.updateDynamic("reportJavaCompare")(comparisonReporter)
-    processPrototype.updateDynamic("reportJavaCell")(cellReporter)
-    processPrototype.updateDynamic("reportJavaRead")(readReporter)
-    processPrototype.updateDynamic("doJavaForward")(forwardCommand)
-    processPrototype.updateDynamic("doJavaTurnRight")(turnCommand)
-    processPrototype.updateDynamic("doJavaReset")(resetCommand)
+    List[(String, js.Any)](
+      "reportJavaInt" -> intReporter, "reportJavaDouble" -> doubleReporter, "reportJavaUpdate" -> updateReporter,
+      "reportJavaCompare" -> comparisonReporter, "reportJavaCell" -> cellReporter, "reportJavaRead" -> readReporter,
+      "doJavaForward" -> forwardCommand, "doJavaTurnRight" -> turnCommand, "doJavaReset" -> resetCommand
+    ).foreach((selector, primitive) => processPrototype.updateDynamic(selector)(primitive))
     val stored = spritePrototype.selectDynamic(OriginalInitBlocks)
     val original = spritePrototype.selectDynamic("initBlocks")
-    if (js.isUndefined(stored) || stored == null) && js.typeOf(original) == "function" then {
+    if isAbsent(stored) && js.typeOf(original) == "function" then {
       spritePrototype.updateDynamic(OriginalInitBlocks)(original)
       val wrapped: js.ThisFunction0[js.Dynamic, js.Any] = (self: js.Dynamic) => {
         val value = original.applyDynamic("call")(self)

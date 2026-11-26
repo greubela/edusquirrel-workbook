@@ -1,5 +1,7 @@
 package it.evadid.facades.internal
 
+import scala.annotation.tailrec
+
 /** VS Code's indentation on Enter and on a closing brace, decided from the text around the cursor only,
   * so it also holds in method snippets and unfinished code that a syntax tree cannot parse.
   */
@@ -16,27 +18,27 @@ private[evadid] object CodeIndentation {
     * so brackets, colons and keywords inside them do not count.
     */
   private[internal] def code(text: String, python: Boolean): String = {
-    val result = new StringBuilder(text.length)
-    var quote = Option.empty[Char]
-    var comment = false
-    var index = 0
-    while index < text.length do {
-      val c = text(index)
-      if c == '\n' then { quote = None; comment = false; result += c }
-      else if comment then result += ' '
-      else quote match {
-        case Some(open) =>
-          if c == '\\' && index + 1 < text.length && text(index + 1) != '\n' then { result ++= "  "; index += 1 }
-          else if c == open then { quote = None; result += c }
-          else result += ' '
-        case None =>
-          if c == '"' || c == '\'' then { quote = Some(c); result += c }
-          else if (python && c == '#') || (!python && c == '/' && text.startsWith("//", index)) then { comment = true; result += ' ' }
-          else result += c
+    @tailrec def mask(index: Int, quote: Option[Char], comment: Boolean, masked: List[String]): String =
+      if index >= text.length then masked.reverse.mkString
+      else {
+        val c = text(index)
+        // The characters consumed, their masked text, the open quote and whether a line comment continues.
+        val (consumed, output, nextQuote, nextComment): (Int, String, Option[Char], Boolean) =
+          if c == '\n' then (1, "\n", None, false)
+          else if comment then (1, " ", quote, true)
+          else quote match {
+            case Some(open) =>
+              if c == '\\' && index + 1 < text.length && text(index + 1) != '\n' then (2, "  ", quote, false)
+              else if c == open then (1, c.toString, None, false)
+              else (1, " ", quote, false)
+            case None =>
+              if c == '"' || c == '\'' then (1, c.toString, Some(c), false)
+              else if (python && c == '#') || (!python && c == '/' && text.startsWith("//", index)) then (1, " ", None, true)
+              else (1, c.toString, None, false)
+          }
+        mask(index + consumed, nextQuote, nextComment, output :: masked)
       }
-      index += 1
-    }
-    result.toString
+    mask(0, None, comment = false, Nil)
   }
 
   private def unclosedBrace(text: String): Boolean = text.count(_ == '{') > text.count(_ == '}')

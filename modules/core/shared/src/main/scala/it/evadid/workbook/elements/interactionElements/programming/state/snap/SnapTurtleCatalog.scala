@@ -49,8 +49,17 @@ object SnapTurtleCatalog {
     def arity: Int = inputKinds.size
   }
 
-  private def extra(spec: String, category: String, defaults: Seq[ujson.Value] = Nil): ExtraBlockSpec =
-    ExtraBlockSpec(spec, category, defaults)
+  /** A primitive vanilla Snap lacks: the editor injects a block with `spec` into `category`. */
+  private def injected(snapSelector: String, pythonName: String, aliases: Seq[String], turtleCommand: String,
+      example: String, tab: PaletteTab, spec: String, category: String, defaults: Seq[ujson.Value],
+      inputKinds: Seq[SnapInputKind]): Primitive =
+    Primitive(snapSelector, pythonName, aliases, turtleCommand, example, tab, extraPrimitive = true,
+      extraSpec = Some(ExtraBlockSpec(spec, category, defaults)), inputKinds = inputKinds)
+
+  /** An injected embroidery primitive whose Python name is also its turtle command. */
+  private def embroidery(snapSelector: String, pythonName: String, example: String, spec: String,
+      defaults: Seq[ujson.Value], inputKinds: Seq[SnapInputKind]): Primitive =
+    injected(snapSelector, pythonName, Nil, pythonName, example, PaletteTab.Embroidery, spec, "embroidery", defaults, inputKinds)
 
   import SnapInputKind.{Bool, Color, Numeric}
 
@@ -72,165 +81,31 @@ object SnapTurtleCatalog {
     Primitive("setHeading", "set_heading", List("setheading", "seth"), "setheading", "set_heading(degrees)", PaletteTab.Motion, inputKinds = n),
     Primitive("setXPosition", "set_x", List("setx"), "setx", "set_x(x)", PaletteTab.Motion, inputKinds = n),
     Primitive("setYPosition", "set_y", List("sety"), "sety", "set_y(y)", PaletteTab.Motion, inputKinds = n),
-    Primitive(
-      "backward",
-      "backward",
-      List("back", "bk"),
-      "backward",
-      "backward(steps)",
-      PaletteTab.Motion,
-      extraPrimitive = true,
-      extraSpec = Some(extra("move back %n steps", "motion", List(10))),
-      inputKinds = n
-    ),
-    Primitive(
-      "home",
-      "home",
-      Nil,
-      "home",
-      "home()",
-      PaletteTab.Motion,
-      extraPrimitive = true,
-      extraSpec = Some(extra("go to origin", "motion")),
-      inputKinds = none
-    ),
-    Primitive(
-      "circle",
-      "circle",
-      Nil,
-      "circle",
-      "circle(radius)",
-      PaletteTab.Motion,
-      extraPrimitive = true,
-      extraSpec = Some(extra("circle radius %n", "motion", List(50))),
-      inputKinds = n
-    ),
+    injected("backward", "backward", List("back", "bk"), "backward", "backward(steps)", PaletteTab.Motion,
+      "move back %n steps", "motion", List(10), n),
+    injected("home", "home", Nil, "home", "home()", PaletteTab.Motion, "go to origin", "motion", Nil, none),
+    injected("circle", "circle", Nil, "circle", "circle(radius)", PaletteTab.Motion, "circle radius %n", "motion", List(50), n),
     Primitive("clear", "clear", List("clearscreen"), "clear", "clear()", PaletteTab.Pen, inputKinds = none),
     Primitive("down", "down", List("pendown", "pd", "pen_down"), "pendown", "down()", PaletteTab.Pen, inputKinds = none),
     Primitive("up", "up", List("penup", "pu", "pen_up"), "penup", "up()", PaletteTab.Pen, inputKinds = none),
     Primitive("setColor", "color", List("pencolor"), "color", "color(value)", PaletteTab.Pen, inputKinds = c),
     Primitive("setSize", "pensize", Nil, "pensize", "pensize(width)", PaletteTab.Pen, inputKinds = n),
-    Primitive(
-      "runningStitch",
-      "running_stitch",
-      Nil,
-      "running_stitch",
-      "running_stitch(steps)",
-      PaletteTab.Embroidery,
-      extraPrimitive = true,
-      extraSpec = Some(extra("running stitch by %n steps", "embroidery", List(10))),
-      inputKinds = n
-    ),
-    Primitive(
-      "crossStitch",
-      "cross_stitch",
-      Nil,
-      "cross_stitch",
-      "cross_stitch(size, size, center)",
-      PaletteTab.Embroidery,
-      extraPrimitive = true,
-      extraSpec = Some(extra("cross stitch in %n by %n center %b", "embroidery", List(10, 10, true))),
-      inputKinds = nnb
-    ),
-    Primitive(
-      "beanStitch",
-      "bean_stitch",
-      Nil,
-      "bean_stitch",
-      "bean_stitch(length)",
-      PaletteTab.Embroidery,
-      extraPrimitive = true,
-      extraSpec = Some(extra("triple run by %n", "embroidery", List(10))),
-      inputKinds = n
-    ),
-    Primitive(
-      "zigzagStitch",
-      "zigzag_stitch",
-      Nil,
-      "zigzag_stitch",
-      "zigzag_stitch(density, width, center)",
-      PaletteTab.Embroidery,
-      extraPrimitive = true,
-      extraSpec = Some(extra("zigzag with density %n width %n center %b", "embroidery", List(20, 20, true))),
-      inputKinds = nnb
-    ),
-    Primitive(
-      "ZStitch",
-      "z_stitch",
-      Nil,
-      "z_stitch",
-      "z_stitch(density, width, center)",
-      PaletteTab.Embroidery,
-      extraPrimitive = true,
-      extraSpec = Some(extra("Z-stitch with density %n width %n center %b", "embroidery", List(20, 10, true))),
-      inputKinds = nnb
-    ),
-    Primitive(
-      "satinStitch",
-      "satin_stitch",
-      Nil,
-      "satin_stitch",
-      "satin_stitch(width, center)",
-      PaletteTab.Embroidery,
-      extraPrimitive = true,
-      extraSpec = Some(extra("satin stitch with width %n center %b", "embroidery", List(20, true))),
-      inputKinds = nb
-    ),
-    Primitive(
-      "tatamiStitch",
-      "tatami_stitch",
-      Nil,
-      "tatami_stitch",
-      "tatami_stitch(width, interval, center)",
-      PaletteTab.Embroidery,
-      extraPrimitive = true,
-      extraSpec = Some(extra("tatami stitch width %n interval %n center %b", "embroidery", List(100, 40, true))),
-      inputKinds = nnb
-    ),
-    Primitive(
-      "jumpStitch",
-      "jump_stitch",
-      Nil,
-      "jump_stitch",
-      "jump_stitch(enabled)",
-      PaletteTab.Embroidery,
-      extraPrimitive = true,
-      extraSpec = Some(extra("jump stitch %b", "embroidery", List(true))),
-      inputKinds = b
-    ),
-    Primitive(
-      "tieStitch",
-      "tie_stitch",
-      Nil,
-      "tie_stitch",
-      "tie_stitch()",
-      PaletteTab.Embroidery,
-      extraPrimitive = true,
-      extraSpec = Some(extra("tie stitch", "embroidery")),
-      inputKinds = none
-    ),
-    Primitive(
-      "trimStitch",
-      "trim_stitch",
-      List("trim"),
-      "trim",
-      "trim_stitch()",
-      PaletteTab.Embroidery,
-      extraPrimitive = true,
-      extraSpec = Some(extra("trim", "embroidery")),
-      inputKinds = none
-    ),
-    Primitive(
-      "stopRunning",
-      "stop_running",
-      Nil,
-      "stop_running",
-      "stop_running()",
-      PaletteTab.Embroidery,
-      extraPrimitive = true,
-      extraSpec = Some(extra("stop running", "embroidery")),
-      inputKinds = none
-    )
+    embroidery("runningStitch", "running_stitch", "running_stitch(steps)", "running stitch by %n steps", List(10), n),
+    embroidery("crossStitch", "cross_stitch", "cross_stitch(size, size, center)",
+      "cross stitch in %n by %n center %b", List(10, 10, true), nnb),
+    embroidery("beanStitch", "bean_stitch", "bean_stitch(length)", "triple run by %n", List(10), n),
+    embroidery("zigzagStitch", "zigzag_stitch", "zigzag_stitch(density, width, center)",
+      "zigzag with density %n width %n center %b", List(20, 20, true), nnb),
+    embroidery("ZStitch", "z_stitch", "z_stitch(density, width, center)",
+      "Z-stitch with density %n width %n center %b", List(20, 10, true), nnb),
+    embroidery("satinStitch", "satin_stitch", "satin_stitch(width, center)",
+      "satin stitch with width %n center %b", List(20, true), nb),
+    embroidery("tatamiStitch", "tatami_stitch", "tatami_stitch(width, interval, center)",
+      "tatami stitch width %n interval %n center %b", List(100, 40, true), nnb),
+    embroidery("jumpStitch", "jump_stitch", "jump_stitch(enabled)", "jump stitch %b", List(true), b),
+    embroidery("tieStitch", "tie_stitch", "tie_stitch()", "tie stitch", Nil, none),
+    injected("trimStitch", "trim_stitch", List("trim"), "trim", "trim_stitch()", PaletteTab.Embroidery, "trim", "embroidery", Nil, none),
+    embroidery("stopRunning", "stop_running", "stop_running()", "stop running", Nil, none)
   )
 
   /** Library blocks with a shared intrinsic but no turtle semantics: printing becomes Snap's `say`
@@ -323,14 +198,13 @@ object SnapTurtleCatalog {
     else "n"
   }
 
-  def uniqueSlotNames(names: Seq[String]): Seq[String] = {
-    val used = scala.collection.mutable.LinkedHashSet.empty[String]
-    names.map { raw =>
+  /** Valid slot names, numbering repeats from 2 (`n`, `n2`, ...) while skipping names already taken. */
+  def uniqueSlotNames(names: Seq[String]): Seq[String] =
+    names.foldLeft((Vector.empty[String], Set.empty[String])) { case ((unique, used), raw) =>
       val base = slotNameFromPython(raw)
-      if used.add(base) then base
-      else Iterator.from(2).map(i => s"$base$i").find(used.add).get
-    }
-  }
+      val name = if !used(base) then base else Iterator.from(2).map(i => s"$base$i").find(!used(_)).get
+      (unique :+ name, used + name)
+    }._1
 
   def arityFromSpec(spec: String): Int =
     SnapCustomBlockRules.slotNames(spec).size

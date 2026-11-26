@@ -9,7 +9,7 @@ import it.evadid.core.util.io.serializer.ConstructorLikeSerializer.VariableDispl
 import it.evadid.distribution.command.SerializedException
 import it.evadid.workbook.abstractions.WorkbookElement
 import it.evadid.workbook.elements.displayElements.WorkbookImageElement.LanguageMapBasedWorkbookImageElement
-import it.evadid.workbook.elements.displayElements.{CollapsibleInstructionElement, DisplayLangMapContent, LabeledWorkbookElement, WorkbookImageElement}
+import it.evadid.workbook.elements.displayElements.{CollapsibleInstructionElement, DisplayLangMapContent, LabeledWorkbookElement, TwoColumnPanel, WorkbookImageElement}
 import it.evadid.workbook.elements.interactionElements.qr.CreateQrCodeInteraction
 import it.evadid.workbook.elements.interactionElements.basic.{LabeledCheckboxInteraction, LabeledNumberInteraction, MessagingInteraction, TextInteraction}
 import it.evadid.workbook.elements.interactionElements.codeTaskToggle.{CodeTaskToggleInteraction, SketchDownloadInteraction}
@@ -25,7 +25,6 @@ import upickle.default
 import upickle.default.*
 
 import scala.annotation.tailrec
-import scala.collection.mutable
 import it.evadid.workbook.elements.interactionElements.choice.*
 import it.evadid.workbook.elements.interactionElements.neuron.ThresholdNeuronInteraction
 import it.evadid.workbook.elements.interactionElements.table.AnswerTableInteraction
@@ -36,7 +35,6 @@ import it.evadid.workbook.elements.interactionElements.blockchain.Sha256Interact
 import it.evadid.workbook.elements.interactionElements.blockchain.BlockchainInteraction
 import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseRegular.*
 import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseTurtle.{TurtleRecreateShapeInteraction, TurtleStitchExploreProjectElement, TurtleStitchRecreateShapeInteractionLegacy}
-import it.evadid.workbook.elements.interactionElements.slideshow
 import it.evadid.workbook.elements.interactionElements.sorting.sortingExercise.SortingInteraction
 import it.evadid.workbook.elements.interactionElements.sorting.sortingReasonExercise.SortingReasonInteraction
 import it.evadid.workbook.elements.interactionElements.text.UnicodeComparisonInteraction
@@ -138,13 +136,9 @@ object WorkbookElementFactory {
     override lazy val elementMapAndOrderForConstructorLike: Map[Int, Seq[VariableDisplayConfig]] = ???
     override lazy val writerJsonRegularRefBased: default.Writer[T] = ???
 
-
     override def addElementsToSerialization(element: T): Map[String, ujson.Value] = Map()
   }
 
-
-  import it.evadid.workbook.elements.displayElements.TwoColumnPanel
-  import it.evadid.workbook.elements.structureElements.ExerciseGroup
 
   private lazy val knownFactoriesMap: Map[String, WorkbookElementFactory[? <: WorkbookElement]] = Map(
     classOf[TwoColumnPanel].getSimpleName -> TwoColumnPanel.factory,
@@ -213,6 +207,14 @@ object WorkbookElementFactory {
     parseAll(elementsInOrder, elementsInOrder, knownElements, knownFactoriesMap, Set.empty[String])._2
   }
 
+  /** The outcome of one pass over the open elements. */
+  private final case class ParsePass(
+      finished: Map[String, WorkbookElement] = Map.empty,
+      stillOpen: Vector[WorkbookElementSerializable] = Vector.empty,
+      provided: Vector[WorkbookElementSerializable] = Vector.empty,
+      expandedIds: Set[String]
+  )
+
   @tailrec
   private def parseAll(
                         elementsInOrder: Seq[WorkbookElementSerializable],
@@ -230,36 +232,29 @@ object WorkbookElementFactory {
         (resList, resMap)
       }
     } else {
-      val newlyFinished: mutable.HashMap[String, WorkbookElement] = mutable.HashMap[String, WorkbookElement]()
-      val stillOpen: mutable.ListBuffer[WorkbookElementSerializable] = mutable.ListBuffer()
-      val newlyProvided: mutable.ListBuffer[WorkbookElementSerializable] = mutable.ListBuffer()
-
-      val expanded = mutable.HashSet.from(expandedRegistryIds)
-
-      open.foreach(curOpenElement => {
-        val factory = knownFactories.get(curOpenElement.elementType)
-        if (factory.isEmpty) {
-          throw SerializedException(s"No factory known for WorkbookElement with type ${curOpenElement.elementType}")
-        } else if (expanded.add(curOpenElement.elementId)) {
-          newlyProvided ++= factory.get.serializedElementKeysThatContainOtherSerializations(curOpenElement).flatMap(curOtherKey => {
-            curOpenElement.getElementsAsSerializableElement(curOtherKey)
-          })
-        }
-        if (factory.get.idsRequiredForDeserialization(curOpenElement).forall(alreadyParsed.keySet.contains(_))) {
-          val parsed: WorkbookElement = factory.get.fromSerializedElement(curOpenElement, alreadyParsed)
-          newlyFinished += parsed.elementId -> parsed
-        } else {
-          stillOpen += curOpenElement
-        }
-      })
-
-      if (stillOpen.nonEmpty && newlyFinished.isEmpty && newlyProvided.isEmpty) {
+      val pass = open.foldLeft(ParsePass(expandedIds = expandedRegistryIds))(parseStep(knownFactories, alreadyParsed))
+      if (pass.stillOpen.nonEmpty && pass.finished.isEmpty && pass.provided.isEmpty) {
         throw SerializedException(s"Iteration with no progress, likely because of a cyclic dependency, stop parsing! (still open: ${open.map(_.elementId)})")
       } else {
-        parseAll(elementsInOrder, stillOpen.toList ++ newlyProvided, alreadyParsed ++ newlyFinished, knownFactories, expanded.toSet)
+        parseAll(elementsInOrder, pass.stillOpen.toList ++ pass.provided, alreadyParsed ++ pass.finished, knownFactories, pass.expandedIds)
       }
-
     }
+  }
+
+  /** Provides an element's nested serializations the first time its ID is seen, then parses it if all its references are resolved. */
+  private def parseStep(knownFactories: Map[String, WorkbookElementFactory[? <: WorkbookElement]], alreadyParsed: Map[String, WorkbookElement])
+      (pass: ParsePass, element: WorkbookElementSerializable): ParsePass = {
+    val factory = knownFactories.getOrElse(element.elementType,
+      throw SerializedException(s"No factory known for WorkbookElement with type ${element.elementType}"))
+    val expanded =
+      if pass.expandedIds.contains(element.elementId) then pass
+      else pass.copy(
+        provided = pass.provided ++ factory.serializedElementKeysThatContainOtherSerializations(element).flatMap(element.getElementsAsSerializableElement),
+        expandedIds = pass.expandedIds + element.elementId)
+    if (factory.idsRequiredForDeserialization(element).forall(alreadyParsed.contains)) {
+      val parsed: WorkbookElement = factory.fromSerializedElement(element, alreadyParsed)
+      expanded.copy(finished = expanded.finished + (parsed.elementId -> parsed))
+    } else expanded.copy(stillOpen = expanded.stillOpen :+ element)
   }
 }
 
@@ -271,9 +266,6 @@ trait WorkbookElementFactory[T <: WorkbookElement] {
   lazy val writerJsonRegularRefBased: Writer[T] = writer[ujson.Value].comap { element =>
     ujson.Obj.from(Map("elementId" -> writeJs(element.elementId)) ++ toSerializableElement(element).allConstructorFields)
   }
-  /*
-  element.getElementsAs[WorkbookElementSerializable]("serializedElements")(using )
-   */
 
   def addElementsToSerialization(element: T): Map[String, ujson.Value] = Map.empty
 
@@ -281,8 +273,6 @@ trait WorkbookElementFactory[T <: WorkbookElement] {
     WorkbookElementSerializable(element.elementId, element.getClass.getSimpleName, Map.empty)
 
   def toSerializableElement(element: T): WorkbookElementSerializable = {
-    // val map = WorkbookElementSerializable.getAutoFieldsMap(element)(using writerJsonRegularRefBased)
-    // WorkbookElementSerializable(element.elementId, element.getClass.getSimpleName, map)
     val res = WorkbookElementSerializable.getSerializedVersion(element)(using writerJsonRegularRefBased)
     res.copy(allConstructorFields = res.allConstructorFields ++ addElementsToSerialization(element))
   }

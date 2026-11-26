@@ -25,6 +25,9 @@ case class RemoteInteractionCacheControl(fullInfo: FullInfo) extends SyncControl
   private def settled(operations: Seq[Future[Unit]]): Future[Unit] =
     Future.sequence(operations.map(_.transform(result => Success(result)))).flatMap(results =>
       results.collectFirst { case scala.util.Failure(error) => error }.fold(Future.unit)(Future.failed))
+  /** Runs `second` after `first` has settled; the result reports the first failure. */
+  private def inOrder(first: Future[Unit], second: => Future[Unit]): Future[Unit] =
+    first.transformWith(before => second.transform(after => before.flatMap(_ => after)))
 
   private case class UserSyncState(reset: SyncResetState = SyncResetState.Idle, pending: Set[Future[Unit]] = Set.empty)
 
@@ -97,6 +100,9 @@ case class RemoteInteractionCacheControl(fullInfo: FullInfo) extends SyncControl
     val interactions: Seq[InteractionBinding] = environment.toSeq.flatMap(owner =>
       owner.interactions.toSeq.map(interaction => new TypedBinding(interaction, owner, subscriptions)))
     val restorations: Signal[Seq[Restoration]] = Signal.combineSeq(interactions.map(_.restoration)).map(_.flatten)
+    def snapshots: Seq[InteractionSnapshot] = interactions.map(_.snapshot)
+    def snapshotsOf(variable: InteractionVariable[? <: InteractionFormat]): Seq[InteractionSnapshot] =
+      interactions.filter(_.variable eq variable).map(_.snapshot)
 
     def flush(): Unit = environment.foreach(_.syncDestinations.foreach(_.handler.flush(true)))
     def detach(): Unit = {
@@ -111,9 +117,8 @@ case class RemoteInteractionCacheControl(fullInfo: FullInfo) extends SyncControl
         user.track(settled(operations :+ flushing))
       }
     def phases(forceFlush: Boolean)(first: InteractionSnapshot => Future[Unit], second: InteractionSnapshot => Future[Unit]): Future[Unit] = {
-      val captured = if user.enabled then interactions.map(_.snapshot) else Seq.empty
-      batch(captured, forceFlush)(first).transformWith(before =>
-        batch(captured, forceFlush)(second).transform(after => before.flatMap(_ => after)))
+      val captured = if user.enabled then snapshots else Seq.empty
+      inOrder(batch(captured, forceFlush)(first), batch(captured, forceFlush)(second))
     }
   }
 
@@ -152,11 +157,11 @@ case class RemoteInteractionCacheControl(fullInfo: FullInfo) extends SyncControl
 
   override def storeAll(forceFlush: Boolean): Future[Unit] = {
     val current = binding.now()
-    current.batch(current.interactions.map(_.snapshot), forceFlush)(_.store())
+    current.batch(current.snapshots, forceFlush)(_.store())
   }
   override def fetchAll(forceFlush: Boolean): Future[Unit] = {
     val current = binding.now()
-    current.batch(current.interactions.map(_.snapshot), forceFlush)(_.fetch())
+    current.batch(current.snapshots, forceFlush)(_.fetch())
   }
   /** History updates return to the UI at once: the cache is compared and written after the current task.
     * Updates of one interaction before that point (an answer and its grading starts) share one store. The store
@@ -186,13 +191,12 @@ case class RemoteInteractionCacheControl(fullInfo: FullInfo) extends SyncControl
 
   override def synchronize[F <: InteractionFormat](variable: InteractionVariable[F]): Future[Unit] = {
     val current = binding.now()
-    val selected = current.interactions.filter(_.variable eq variable).map(_.snapshot)
-    current.batch(selected, forceFlush = true)(_.store()).transformWith(stored =>
-      current.batch(selected, forceFlush = true)(_.fetch()).transform(fetched => stored.flatMap(_ => fetched)))
+    val selected = current.snapshotsOf(variable)
+    inOrder(current.batch(selected, forceFlush = true)(_.store()), current.batch(selected, forceFlush = true)(_.fetch()))
   }
 
   private def storeNow[F <: InteractionFormat](current: WorkbookBinding, variable: InteractionVariable[F], forceFlush: Boolean): Future[Unit] =
-    current.batch(current.interactions.filter(_.variable eq variable).map(_.snapshot), forceFlush)(_.store())
+    current.batch(current.snapshotsOf(variable), forceFlush)(_.store())
 
   private def afterCurrentTask(): Future[Unit] = {
     val due = Promise[Unit]()

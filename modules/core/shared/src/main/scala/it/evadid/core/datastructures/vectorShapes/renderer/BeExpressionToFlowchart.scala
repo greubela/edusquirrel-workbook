@@ -19,6 +19,8 @@ import it.evadid.vm.code.others.{BeReturn, BeStartProgram}
 import it.evadid.vm.conversion.expressionpython.BeExpressionToPythonString
 import it.evadid.vm.naming.NamingStyle.SnakeCase
 
+import scala.annotation.tailrec
+import scala.collection.immutable.Queue
 import scala.collection.mutable
 import scala.util.control.NonFatal
 
@@ -115,7 +117,7 @@ object BeExpressionToFlowchart {
         process(counter + " = " + label(repetition.amount), test)
       case repetition: BeFor =>
         val name = repetition.variable.name.getNameIn(English, SnakeCase)
-        val down = repetition.direction == it.evadid.vm.code.controlStructures.BeFor.Direction.Down
+        val down = repetition.direction == BeFor.Direction.Down
         val test = node(name + (if down then " >= " else " <= ") + label(repetition.end), NodeKind.Decision, Some(repetition))
         loop(test, repetition.body, next, Some(name + (if down then " -= 1" else " += 1")))
         process(name + " = " + label(repetition.start), test)
@@ -128,16 +130,43 @@ object BeExpressionToFlowchart {
     val start = node("Start", NodeKind.Terminal)
     edge(start, entry)
     // A return must not introduce a fall-through path or unreachable statements.
-    val outgoing = edges.toList.groupBy(_.from)
-    val reachable = mutable.Set(start)
-    val pending = mutable.Queue(start)
-    while (pending.nonEmpty) {
-      val from = pending.dequeue()
-      outgoing.getOrElse(from, Nil).foreach { connection =>
-        if (reachable.add(connection.to)) pending.enqueue(connection.to)
-      }
-    }
+    val reachable = reachableFrom(start, edges.toList)
     Flowchart(nodes.filter(n => reachable(n.id)).toList, edges.filter(e => reachable(e.from)).toList, start, end)
+  }
+
+  private def reachableFrom(start: Int, edges: List[Edge]): Set[Int] = {
+    val outgoing = edges.groupMap(_.from)(_.to)
+    @tailrec def visit(pending: List[Int], reached: Set[Int]): Set[Int] = pending match {
+      case Nil => reached
+      case from :: rest =>
+        val discovered = outgoing.getOrElse(from, Nil).filterNot(reached).distinct
+        visit(discovered ++ rest, reached ++ discovered)
+    }
+    visit(List(start), Set(start))
+  }
+
+  /** Longest-path rank of every node over the forward edges; only marked back edges may close a cycle. */
+  private def ranksOf(chart: Flowchart): Map[Int, Int] = {
+    val forward = chart.edges.filterNot(_.backEdge)
+    val outgoing = forward.groupBy(_.from)
+    val counts = forward.groupMapReduce(_.to)(_ => 1)(_ + _)
+    @tailrec def visit(queue: Queue[Int], incoming: Map[Int, Int], ranks: Map[Int, Int], visited: Int): (Map[Int, Int], Int) =
+      queue.dequeueOption match {
+        case None => (ranks, visited)
+        case Some((id, rest)) =>
+          val (nextQueue, nextIncoming, nextRanks) = outgoing.getOrElse(id, Nil).foldLeft((rest, incoming, ranks)) {
+            case ((pending, remaining, ranked), edge) =>
+              val rankedTarget = ranked.updated(edge.to, math.max(ranked(edge.to), ranked(id) + 1))
+              val unresolved = remaining(edge.to) - 1
+              (if (unresolved == 0) pending.enqueue(edge.to) else pending, remaining.updated(edge.to, unresolved), rankedTarget)
+          }
+          visit(nextQueue, nextIncoming, nextRanks, visited + 1)
+      }
+    val incoming = chart.nodes.map(n => n.id -> counts.getOrElse(n.id, 0)).toMap
+    val sources = Queue.from(chart.nodes.filter(n => incoming(n.id) == 0).map(_.id))
+    val (ranks, visited) = visit(sources, incoming, chart.nodes.map(n => n.id -> 0).toMap, 0)
+    require(visited == chart.nodes.size, "Flowchart contains a cycle without a marked back edge")
+    ranks
   }
 
   private def style(config: Config, fill: Boolean): AppShapeElementConfig[Double] = new AppShapeElementConfig[Double] {
@@ -152,23 +181,7 @@ object BeExpressionToFlowchart {
   }
 
   private def render(chart: Flowchart, config: Config): AppShapeElement[Double] = {
-    val forward = chart.edges.filterNot(_.backEdge)
-    val outgoing = forward.groupBy(_.from)
-    val counts = forward.groupMapReduce(_.to)(_ => 1)(_ + _)
-    val incoming = mutable.Map.from(chart.nodes.map(n => n.id -> counts.getOrElse(n.id, 0)))
-    val ranks = mutable.Map.from(chart.nodes.map(n => n.id -> 0))
-    val queue = mutable.Queue.from(chart.nodes.filter(n => incoming(n.id) == 0).map(_.id))
-    var visited = 0
-    while (queue.nonEmpty) {
-      val id = queue.dequeue()
-      visited += 1
-      outgoing.getOrElse(id, Nil).foreach { edge =>
-        ranks(edge.to) = math.max(ranks(edge.to), ranks(id) + 1)
-        incoming(edge.to) -= 1
-        if (incoming(edge.to) == 0) queue.enqueue(edge.to)
-      }
-    }
-    require(visited == chart.nodes.size, "Flowchart contains a cycle without a marked back edge")
+    val ranks = ranksOf(chart)
     val sizes = chart.nodes.map(n => config.font.measureText(n.label))
     val width = math.max(config.minimumNodeSize.width, sizes.map(_.width * 2 + 32).maxOption.getOrElse(0.0))
     val height = math.max(config.minimumNodeSize.height, sizes.map(_.height * 2 + 32).maxOption.getOrElse(0.0))
@@ -217,21 +230,21 @@ object BeExpressionToFlowchart {
       override def fillEnabled: Boolean = false
       def onMouseClicked(leftButton: Boolean): Unit = ()
     }
-    val elements = mutable.ListBuffer.empty[(AppShapeElement[Double], Bounds[Double])]
-    elements += ((AppShapeDrawingRoutineElement(Connections(routes.map(_._2)), connectorStyle, Some(fullSize)),
-      Bounds(Point(0.0, 0.0), fullSize)))
-    def text(value: String, area: Bounds[Double]): Unit = {
+    type Placed = (AppShapeElement[Double], Bounds[Double])
+    val connectors: Placed = (AppShapeDrawingRoutineElement(Connections(routes.map(_._2)), connectorStyle, Some(fullSize)),
+      Bounds(Point(0.0, 0.0), fullSize))
+    def text(value: String, area: Bounds[Double]): Placed = {
       val size = config.font.measureText(value)
       val origin = Point(area.centerX - size.width / 2, area.centerY - size.height / 2)
-      elements += ((AppShapeTextElement[Double](value, textStyle), Bounds(origin, size)))
+      (AppShapeTextElement[Double](value, textStyle), Bounds(origin, size))
     }
-    chart.nodes.foreach { node =>
+    val nodeElements: List[Placed] = chart.nodes.flatMap { node =>
       val area = bounds(node.id)
-      elements += ((AppShapeDrawingRoutineElement(NodeOutline(node.kind), shapeStyle, Some(area.dimension)), area))
-      text(node.label, area)
+      List[Placed]((AppShapeDrawingRoutineElement(NodeOutline(node.kind), shapeStyle, Some(area.dimension)), area),
+        text(node.label, area))
     }
-    routes.foreach { (edge, points) =>
-      edge.label.foreach { label =>
+    val edgeLabels: List[Placed] = routes.flatMap { (edge, points) =>
+      edge.label.map { label =>
         val first = points.head
         val second = points(1)
         val target = bounds(edge.to)
@@ -240,7 +253,8 @@ object BeExpressionToFlowchart {
         text(label, Bounds(Point(x - 15, (first.y + second.y) / 2 - 8), Dimension(30.0, 16.0)))
       }
     }
-    AppShapeComposition(FixedLayout(fullSize, elements.map(_._2).toList), textStyle, elements.map(_._1).toList)
+    val elements = connectors :: nodeElements ++ edgeLabels
+    AppShapeComposition(FixedLayout(fullSize, elements.map(_._2)), textStyle, elements.map(_._1))
   }
 
   /** Absolute child slots keep connectors and text aligned through the normal layout pipeline. */

@@ -2,7 +2,7 @@ package it.evadid.workbook.elements.interactionElements.programming.programmingE
 
 import it.evadid.core.datastructures.vectorShapes.svg.TurtleCommand
 
-import scala.collection.mutable.ListBuffer
+import scala.annotation.tailrec
 
 /** Converts an SVG path `d` value to the small, portable turtle instruction set.
   *
@@ -36,77 +36,87 @@ object SvgToTurtleProgram {
     turtleCommands(points)
   }
 
+  /** The parsed destinations so far, with the state that following path commands refer to. */
+  private final case class PathCursor(
+      current: Point = Point(0, 0),
+      subpathStart: Point = Point(0, 0),
+      lastCubicControl: Option[Point] = None,
+      lastQuadraticControl: Option[Point] = None,
+      destinations: Vector[(Point, Boolean)] = Vector.empty
+  ) {
+    def moveTo(point: Point): PathCursor = PathCursor(point, point, None, None, destinations :+ (point -> false))
+    def lineTo(points: Point*): PathCursor =
+      copy(current = points.lastOption.getOrElse(current), destinations = destinations ++ points.map(_ -> true))
+    def withControls(cubic: Option[Point] = None, quadratic: Option[Point] = None): PathCursor =
+      copy(lastCubicControl = cubic, lastQuadraticControl = quadratic)
+    def withoutControls: PathCursor = withControls()
+    /** The previous control point mirrored through the current point, as smooth curves continue a curve. */
+    def reflected(control: Option[Point]): Point = control.map(c => current + (current - c)).getOrElse(current)
+  }
+
   /** Each entry is a destination and whether the trip to it draws ink. */
-  private def parse(tokens: Seq[String]): Seq[(Point, Boolean)] = {
-    val out = ListBuffer.empty[(Point, Boolean)]
-    var i = 0
-    var command = ' '
-    var current = Point(0, 0)
-    var subpathStart = current
-    var lastCubicControl: Option[Point] = None
-    var lastQuadraticControl: Option[Point] = None
-
+  private def parse(pathTokens: Seq[String]): Seq[(Point, Boolean)] = {
+    val tokens = pathTokens.toVector
     def isCommand(s: String) = s.length == 1 && s.head.isLetter
-    def available(n: Int) = i + n <= tokens.length && (0 until n).forall(k => !isCommand(tokens(i + k)))
-    def number(): Double = { val value = tokens(i).toDouble; i += 1; value }
-    def point(relative: Boolean): Point = {
-      val p = Point(number(), number())
-      if relative then current + p else p
-    }
-    def line(p: Point, draw: Boolean = true): Unit = { out += p -> draw; current = p }
-    def resetControls(): Unit = { lastCubicControl = None; lastQuadraticControl = None }
 
-    while i < tokens.length do
-      if isCommand(tokens(i)) then { command = tokens(i).head; i += 1 }
-      else require(command != ' ', "SVG path must begin with a command")
-      val relative = command.isLower
-      command.toUpper match
-        case 'M' =>
-          require(available(2), "Move command requires a coordinate pair")
-          line(point(relative), draw = false); subpathStart = current; resetControls()
-          // Subsequent pairs after moveto are implicit lineto commands.
-          command = if relative then 'l' else 'L'
-        case 'L' => require(available(2), "Line command requires a coordinate pair"); line(point(relative)); resetControls()
-        case 'H' =>
-          require(available(1), "Horizontal line requires a coordinate")
-          val x = number(); line(Point(if relative then current.x + x else x, current.y)); resetControls()
-        case 'V' =>
-          require(available(1), "Vertical line requires a coordinate")
-          val y = number(); line(Point(current.x, if relative then current.y + y else y)); resetControls()
-        case 'C' =>
-          require(available(6), "Cubic curve requires three coordinate pairs")
-          val origin = current
-          val c1raw = Point(number(), number()); val c2raw = Point(number(), number()); val eraw = Point(number(), number())
-          val c1 = if relative then origin + c1raw else c1raw
-          val c2 = if relative then origin + c2raw else c2raw
-          val end = if relative then origin + eraw else eraw
-          line(c1); line(c2); line(end); lastCubicControl = Some(c2); lastQuadraticControl = None
-        case 'S' =>
-          require(available(4), "Smooth cubic curve requires two coordinate pairs")
-          val origin = current
-          val c1 = lastCubicControl.map(c => origin + (origin - c)).getOrElse(origin)
-          val c2raw = Point(number(), number()); val eraw = Point(number(), number())
-          val c2 = if relative then origin + c2raw else c2raw; val end = if relative then origin + eraw else eraw
-          line(c1); line(c2); line(end); lastCubicControl = Some(c2); lastQuadraticControl = None
-        case 'Q' =>
-          require(available(4), "Quadratic curve requires two coordinate pairs")
-          val origin = current; val craw = Point(number(), number()); val eraw = Point(number(), number())
-          val control = if relative then origin + craw else craw; val end = if relative then origin + eraw else eraw
-          line(control); line(end); lastQuadraticControl = Some(control); lastCubicControl = None
-        case 'T' =>
-          require(available(2), "Smooth quadratic curve requires a coordinate pair")
-          val origin = current; val control = lastQuadraticControl.map(c => origin + (origin - c)).getOrElse(origin)
-          val end = point(relative); line(control); line(end); lastQuadraticControl = Some(control); lastCubicControl = None
-        case 'A' =>
-          require(available(7), "Arc requires seven parameters")
-          val origin = current; val rx = number(); val ry = number(); val rotation = number()
-          val large = flag(number()); val sweep = flag(number()); val rawEnd = Point(number(), number())
-          val end = if relative then origin + rawEnd else rawEnd
-          arcPoints(origin, end, rx, ry, rotation, large, sweep).foreach(line(_)); resetControls()
-        case 'Z' =>
-          line(subpathStart); resetControls(); command = ' '
-        case other => throw new IllegalArgumentException(s"Unsupported SVG path command: $other")
-    out.toList
+    @tailrec
+    def parseFrom(index: Int, previousCommand: Char, cursor: PathCursor): Seq[(Point, Boolean)] =
+      if index >= tokens.length then cursor.destinations.toList
+      else {
+        val explicit = isCommand(tokens(index))
+        if !explicit then require(previousCommand != ' ', "SVG path must begin with a command")
+        val command = if explicit then tokens(index).head else previousCommand
+        val start = if explicit then index + 1 else index
+        val relative = command.isLower
+        val origin = cursor.current
+        /** The command's next `count` parameters, which must all be present. */
+        def numbers(count: Int, message: String): Vector[Double] = {
+          require(start + count <= tokens.length && (0 until count).forall(k => !isCommand(tokens(start + k))), message)
+          tokens.slice(start, start + count).map(_.toDouble)
+        }
+        def point(x: Double, y: Double): Point = if relative then origin + Point(x, y) else Point(x, y)
+        command.toUpper match
+          case 'M' =>
+            val v = numbers(2, "Move command requires a coordinate pair")
+            // Subsequent pairs after moveto are implicit lineto commands.
+            parseFrom(start + 2, if relative then 'l' else 'L', cursor.moveTo(point(v(0), v(1))))
+          case 'L' =>
+            val v = numbers(2, "Line command requires a coordinate pair")
+            parseFrom(start + 2, command, cursor.lineTo(point(v(0), v(1))).withoutControls)
+          case 'H' =>
+            val x = numbers(1, "Horizontal line requires a coordinate")(0)
+            parseFrom(start + 1, command, cursor.lineTo(Point(if relative then origin.x + x else x, origin.y)).withoutControls)
+          case 'V' =>
+            val y = numbers(1, "Vertical line requires a coordinate")(0)
+            parseFrom(start + 1, command, cursor.lineTo(Point(origin.x, if relative then origin.y + y else y)).withoutControls)
+          case 'C' =>
+            val v = numbers(6, "Cubic curve requires three coordinate pairs")
+            val c2 = point(v(2), v(3))
+            parseFrom(start + 6, command, cursor.lineTo(point(v(0), v(1)), c2, point(v(4), v(5))).withControls(cubic = Some(c2)))
+          case 'S' =>
+            val v = numbers(4, "Smooth cubic curve requires two coordinate pairs")
+            val c2 = point(v(0), v(1))
+            parseFrom(start + 4, command,
+              cursor.lineTo(cursor.reflected(cursor.lastCubicControl), c2, point(v(2), v(3))).withControls(cubic = Some(c2)))
+          case 'Q' =>
+            val v = numbers(4, "Quadratic curve requires two coordinate pairs")
+            val control = point(v(0), v(1))
+            parseFrom(start + 4, command, cursor.lineTo(control, point(v(2), v(3))).withControls(quadratic = Some(control)))
+          case 'T' =>
+            val v = numbers(2, "Smooth quadratic curve requires a coordinate pair")
+            val control = cursor.reflected(cursor.lastQuadraticControl)
+            parseFrom(start + 2, command, cursor.lineTo(control, point(v(0), v(1))).withControls(quadratic = Some(control)))
+          case 'A' =>
+            val v = numbers(7, "Arc requires seven parameters")
+            val large = flag(v(3)); val sweep = flag(v(4))
+            val arc = arcPoints(origin, point(v(5), v(6)), v(0), v(1), v(2), large, sweep)
+            parseFrom(start + 7, command, cursor.lineTo(arc*).withoutControls)
+          case 'Z' =>
+            parseFrom(start, ' ', cursor.lineTo(cursor.subpathStart).withoutControls)
+          case other => throw new IllegalArgumentException(s"Unsupported SVG path command: $other")
+      }
+
+    parseFrom(0, ' ', PathCursor())
   }
 
   private def flag(value: Double): Boolean = {
@@ -116,50 +126,60 @@ object SvgToTurtleProgram {
 
   private def arcPoints(start: Point, end: Point, rxInput: Double, ryInput: Double,
                         rotationDegrees: Double, largeArc: Boolean, sweep: Boolean): Seq[Point] = {
-    var rx = math.abs(rxInput); var ry = math.abs(ryInput)
-    if rx == 0 || ry == 0 || start == end then return if start == end then Nil else List(end)
-    val phi = math.toRadians(rotationDegrees % 360); val cosPhi = math.cos(phi); val sinPhi = math.sin(phi)
-    val dx = (start.x - end.x) / 2; val dy = (start.y - end.y) / 2
-    val x1 = cosPhi * dx + sinPhi * dy; val y1 = -sinPhi * dx + cosPhi * dy
-    val scale = x1 * x1 / (rx * rx) + y1 * y1 / (ry * ry)
-    if scale > 1 then { val s = math.sqrt(scale); rx *= s; ry *= s }
-    val numerator = rx * rx * ry * ry - rx * rx * y1 * y1 - ry * ry * x1 * x1
-    val denominator = rx * rx * y1 * y1 + ry * ry * x1 * x1
-    val sign = if largeArc == sweep then -1.0 else 1.0
-    val factor = sign * math.sqrt(math.max(0, numerator / denominator))
-    val cx1 = factor * rx * y1 / ry; val cy1 = factor * -ry * x1 / rx
-    val cx = cosPhi * cx1 - sinPhi * cy1 + (start.x + end.x) / 2
-    val cy = sinPhi * cx1 + cosPhi * cy1 + (start.y + end.y) / 2
-    def angle(ux: Double, uy: Double, vx: Double, vy: Double) = math.atan2(ux * vy - uy * vx, ux * vx + uy * vy)
-    val ux = (x1 - cx1) / rx; val uy = (y1 - cy1) / ry
-    val vx = (-x1 - cx1) / rx; val vy = (-y1 - cy1) / ry
-    val startAngle = angle(1, 0, ux, uy)
-    var delta = angle(ux, uy, vx, vy)
-    if !sweep && delta > 0 then delta -= 2 * math.Pi
-    if sweep && delta < 0 then delta += 2 * math.Pi
-    val segments = math.max(1, math.ceil(math.abs(delta) / math.toRadians(10)).toInt)
-    (1 to segments).map { n =>
-      if n == segments then end
-      else { val theta = startAngle + delta * n / segments; val x = rx * math.cos(theta); val y = ry * math.sin(theta)
-        Point(cx + cosPhi * x - sinPhi * y, cy + sinPhi * x + cosPhi * y) }
-    }.toList
+    val radiusX = math.abs(rxInput); val radiusY = math.abs(ryInput)
+    if start == end then Nil
+    else if radiusX == 0 || radiusY == 0 then List(end)
+    else {
+      val phi = math.toRadians(rotationDegrees % 360); val cosPhi = math.cos(phi); val sinPhi = math.sin(phi)
+      val dx = (start.x - end.x) / 2; val dy = (start.y - end.y) / 2
+      val x1 = cosPhi * dx + sinPhi * dy; val y1 = -sinPhi * dx + cosPhi * dy
+      // Radii too small to reach the end point are scaled up uniformly.
+      val scale = x1 * x1 / (radiusX * radiusX) + y1 * y1 / (radiusY * radiusY)
+      val (rx, ry) = if scale > 1 then { val s = math.sqrt(scale); (radiusX * s, radiusY * s) } else (radiusX, radiusY)
+      val numerator = rx * rx * ry * ry - rx * rx * y1 * y1 - ry * ry * x1 * x1
+      val denominator = rx * rx * y1 * y1 + ry * ry * x1 * x1
+      val sign = if largeArc == sweep then -1.0 else 1.0
+      val factor = sign * math.sqrt(math.max(0, numerator / denominator))
+      val cx1 = factor * rx * y1 / ry; val cy1 = factor * -ry * x1 / rx
+      val cx = cosPhi * cx1 - sinPhi * cy1 + (start.x + end.x) / 2
+      val cy = sinPhi * cx1 + cosPhi * cy1 + (start.y + end.y) / 2
+      def angle(ux: Double, uy: Double, vx: Double, vy: Double) = math.atan2(ux * vy - uy * vx, ux * vx + uy * vy)
+      val ux = (x1 - cx1) / rx; val uy = (y1 - cy1) / ry
+      val vx = (-x1 - cx1) / rx; val vy = (-y1 - cy1) / ry
+      val startAngle = angle(1, 0, ux, uy)
+      val unsignedDelta = angle(ux, uy, vx, vy)
+      val delta =
+        if !sweep && unsignedDelta > 0 then unsignedDelta - 2 * math.Pi
+        else if sweep && unsignedDelta < 0 then unsignedDelta + 2 * math.Pi
+        else unsignedDelta
+      val segments = math.max(1, math.ceil(math.abs(delta) / math.toRadians(10)).toInt)
+      (1 to segments).map { n =>
+        if n == segments then end
+        else { val theta = startAngle + delta * n / segments; val x = rx * math.cos(theta); val y = ry * math.sin(theta)
+          Point(cx + cosPhi * x - sinPhi * y, cy + sinPhi * x + cosPhi * y) }
+      }.toList
+    }
   }
 
-  private def turtleCommands(destinations: Seq[(Point, Boolean)]): Seq[TurtleCommand[Double]] = {
-    val result = ListBuffer.empty[TurtleCommand[Double]]
-    var current = Point(0, 0); var heading = 0.0; var penDown = true
-    destinations.foreach { (next, draw) =>
-      if draw != penDown then { result += (if draw then TurtleCommand.PenDown else TurtleCommand.PenUp); penDown = draw }
-      val dx = next.x - current.x; val dy = next.y - current.y
-      val distance = math.hypot(dx, dy)
-      if distance > 1e-12 then
-        val target = math.toDegrees(math.atan2(-dy, dx))
-        val delta = ((target - heading + 540) % 360) - 180
-        if delta > 1e-10 then result += TurtleCommand.Left(delta)
-        else if delta < -1e-10 then result += TurtleCommand.Right(-delta)
-        result += TurtleCommand.Forward(distance); heading = target
-      current = next
-    }
-    result.toList
-  }
+  private def turtleCommands(destinations: Seq[(Point, Boolean)]): Seq[TurtleCommand[Double]] =
+    destinations.foldLeft((Vector.empty[TurtleCommand[Double]], Point(0, 0), 0.0, true)) {
+      case ((commands, current, heading, penDown), (next, draw)) =>
+        val pen: Vector[TurtleCommand[Double]] =
+          if draw == penDown then Vector.empty
+          else Vector(if draw then TurtleCommand.PenDown else TurtleCommand.PenUp)
+        val dx = next.x - current.x; val dy = next.y - current.y
+        val distance = math.hypot(dx, dy)
+        val (movement, nextHeading) =
+          if distance > 1e-12 then {
+            val target = math.toDegrees(math.atan2(-dy, dx))
+            val delta = ((target - heading + 540) % 360) - 180
+            val rotation: Vector[TurtleCommand[Double]] =
+              if delta > 1e-10 then Vector(TurtleCommand.Left(delta))
+              else if delta < -1e-10 then Vector(TurtleCommand.Right(-delta))
+              else Vector.empty
+            (rotation :+ TurtleCommand.Forward(distance), target)
+          } else (Vector.empty, heading)
+        (commands ++ pen ++ movement, next, nextHeading, draw)
+    }._1.toList
+
 }

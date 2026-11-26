@@ -16,7 +16,6 @@ class WebCanvas(canvas: ReactiveHtmlElement[Canvas], width: Int, height: Int) ex
 
   val ctx: CanvasRenderingContext2D = canvas.ref.getContext("2d").asInstanceOf[dom.CanvasRenderingContext2D]
 
-  //def setAttributeResolution(setWidth: Int = width, setHeight: Int = height): Unit = {
   canvas.ref.width = width
   canvas.ref.height = height
 
@@ -97,10 +96,7 @@ class WebCanvas(canvas: ReactiveHtmlElement[Canvas], width: Int, height: Int) ex
     ctx.setLineDash(oldDash)
   }
 
-  def drawLoadedImage(img: Image, x: Double, y: Double, width: Double, height: Double, alpha: Double = 1.0): Unit = {
-    //println("drawLoadedImage(" + img + ", " + x + ", " + y + ", " + width + ", " + height + ", " + alpha + ")")
-
-  }
+  def drawLoadedImage(img: Image, x: Double, y: Double, width: Double, height: Double, alpha: Double = 1.0): Unit = ()
 
   override def drawStringCentered(x: Double, y: Double, content: String): Unit = {
     ctx.textAlign = "center"
@@ -109,17 +105,9 @@ class WebCanvas(canvas: ReactiveHtmlElement[Canvas], width: Int, height: Int) ex
   }
 
   override def drawCircle(x: Double, y: Double, diameter: Double, strokeWidth: Double = 1): Unit = {
-    val oldStroke = ctx.lineWidth
-    if (strokeWidth >= 0) {
-      ctx.lineWidth = strokeWidth
-    }
-
     ctx.beginPath()
     ctx.arc(x, y, diameter / 2.0, 0, 2 * Math.PI)
-
-    ctx.stroke()
-
-    ctx.lineWidth = oldStroke
+    strokeWithWidth(strokeWidth)
   }
 
   override def fillCircle(x: Double, y: Double, diameter: Double): Unit = {
@@ -129,18 +117,11 @@ class WebCanvas(canvas: ReactiveHtmlElement[Canvas], width: Int, height: Int) ex
   }
 
   override def drawImage(x: Double, y: Double, width: Double, height: Double, image: AppImage, alphaUpTp255: Double = 255): Unit = {
-
-    if (alphaUpTp255 >= 0 && alphaUpTp255 <= 255) ctx.globalAlpha = alphaUpTp255 / 255.0
-    else ctx.globalAlpha = 1.0
-    //if (width > 0 && height > 0) {
+    ctx.globalAlpha = if (alphaUpTp255 >= 0 && alphaUpTp255 <= 255) alphaUpTp255 / 255.0 else 1.0
     val imageElement = dom.document.createElement("img").asInstanceOf[dom.html.Image]
     imageElement.src = image.imageSourceString
     ctx.drawImage(imageElement, x, y, width, height)
-    //} else {
-    //ctx.drawImage(img.domImage, x, y)
-    //}
     ctx.globalAlpha = 1.0
-
   }
 
   override def setFont(font: AppFont): Unit = {
@@ -158,60 +139,40 @@ class WebCanvas(canvas: ReactiveHtmlElement[Canvas], width: Int, height: Int) ex
    * @param strokeWidth the width of the stroke (-1 = default)
    */
   override def drawArc(x: Double, y: Double, diameter: Double, startAngle: Double, arcAngle: Double, strokeWidth: Double = -1): Unit = {
-
     ctx.beginPath()
-
-    val startAnglePosJS = (startAngle - 90 + 720) % 360
-    val endAnglePosJS = (startAnglePosJS + arcAngle + 720) % 360
-
-    val startAngleRad = startAnglePosJS * Math.PI / 180.0
-    val endAngleRad = endAnglePosJS * Math.PI / 180.0
-
-    if (arcAngle > 0) {
-      ctx.arc(x, y, diameter / 2.0, startAngleRad, endAngleRad)
-    } else {
-      ctx.arc(x, y, diameter / 2.0, startAngleRad, endAngleRad, true)
-    }
-
-
-    val oldStroke = ctx.lineWidth
-    if (strokeWidth >= 0) {
-      ctx.lineWidth = strokeWidth
-    }
-
-    ctx.stroke()
-
-    ctx.lineWidth = oldStroke
+    arcPath(x, y, diameter, startAngle, arcAngle)
+    strokeWithWidth(strokeWidth)
   }
 
 
   override def fillArc(x: Double, y: Double, diameter: Double, startAngle: Double, arcAngle: Double): Unit = {
-
     ctx.beginPath()
-
     ctx.moveTo(x, y)
 
     val (startX, startY) = AppCanvas.calcArcPoint(x, y, diameter, startAngle)
     val (endX, endY) = AppCanvas.calcArcPoint(x, y, diameter, startAngle + arcAngle)
-
-
     ctx.lineTo(startX, startY)
     ctx.lineTo(endX, endY)
 
+    arcPath(x, y, diameter, startAngle, arcAngle)
+    ctx.fill()
+  }
+
+  /** Adds an arc around (x, y); angles in degrees with 0 = top, positive arc angles run clockwise. */
+  private def arcPath(x: Double, y: Double, diameter: Double, startAngle: Double, arcAngle: Double): Unit = {
     val startAnglePosJS = (startAngle - 90 + 720) % 360
     val endAnglePosJS = (startAnglePosJS + arcAngle + 720) % 360
+    ctx.arc(x, y, diameter / 2.0, startAnglePosJS * Math.PI / 180.0, endAnglePosJS * Math.PI / 180.0, !(arcAngle > 0))
+  }
 
-    val startAngleRad = startAnglePosJS * Math.PI / 180.0
-    val endAngleRad = endAnglePosJS * Math.PI / 180.0
-
-
-    if (arcAngle > 0) {
-      ctx.arc(x, y, diameter / 2.0, startAngleRad, endAngleRad)
-    } else {
-      ctx.arc(x, y, diameter / 2.0, startAngleRad, endAngleRad, true)
+  /** Strokes the current path with `strokeWidth` (negative = current width) and restores the previous width. */
+  private def strokeWithWidth(strokeWidth: Double): Unit = {
+    val oldStroke = ctx.lineWidth
+    if (strokeWidth >= 0) {
+      ctx.lineWidth = strokeWidth
     }
-
-    ctx.fill()
+    ctx.stroke()
+    ctx.lineWidth = oldStroke
   }
 
   def clear(clearColor: AppColor = RGBColor.white): Unit = {
@@ -226,21 +187,7 @@ class WebCanvas(canvas: ReactiveHtmlElement[Canvas], width: Int, height: Int) ex
 
 object WebCanvas {
 
-  private case class DrawingInformation(x: Double, y: Double)
-
-  def apply(width: Int, height: Int): WebCanvas = {
-    val myCanvas: ReactiveHtmlElement[Canvas] = canvasTag(
-      // backgroundColor := "red", // optional styling,
-      idAttr := "myCanvas",
-      inContext { thisNode =>
-        onMountCallback { _ =>
-          //    val actualCanvas = thisNode.ref.asInstanceOf[dom.html.Canvas]
-          //   resCanvas = WebCanvas(actualCanvas, width, height)
-        }
-      }
-    )
-    new WebCanvas(myCanvas, width, height)
-  }
-
+  def apply(width: Int, height: Int): WebCanvas =
+    new WebCanvas(canvasTag(idAttr := "myCanvas"), width, height)
 
 }

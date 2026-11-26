@@ -20,15 +20,17 @@ class EvaWebCanvas(width: Double, height: Double) extends EvaCanvas[Canvas] {
     canvas.height = height.asInstanceOf[Int]
     val ctx = canvas.getContext("2d").asInstanceOf[dom.CanvasRenderingContext2D]
 
-    canvas.onclick = event => listener.foreach(mL => mL.onMouseClicked(event.clientX - canvas.getBoundingClientRect().left, event.clientY - canvas.getBoundingClientRect().top, event.button == 0))
-    canvas.onmousemove = event => listener.foreach(mL => mL.onMouseMoved(event.clientX - canvas.getBoundingClientRect().left, event.clientY - canvas.getBoundingClientRect().top))
-    canvas.onmouseenter = event => listener.foreach(mL => mL.onMouseEntered(event.clientX - canvas.getBoundingClientRect().left, event.clientY - canvas.getBoundingClientRect().top))
-    canvas.onmouseleave = event => listener.foreach(mL => mL.onMouseExited(event.clientX - canvas.getBoundingClientRect().left, event.clientY - canvas.getBoundingClientRect().top))
+    // Passes each listener the event position relative to the canvas.
+    def relayPosition(event: dom.MouseEvent)(notify: (EvaMouseListener, Double, Double) => Unit): Unit =
+      listener.foreach(mL => notify(mL, event.clientX - canvas.getBoundingClientRect().left, event.clientY - canvas.getBoundingClientRect().top))
+
+    canvas.onclick = event => relayPosition(event)(_.onMouseClicked(_, _, event.button == 0))
+    canvas.onmousemove = event => relayPosition(event)(_.onMouseMoved(_, _))
+    canvas.onmouseenter = event => relayPosition(event)(_.onMouseEntered(_, _))
+    canvas.onmouseleave = event => relayPosition(event)(_.onMouseExited(_, _))
 
     (canvas, ctx)
   }
-
-  private var scale = 1.0
 
   protected var fillColor: EvaColor = setFillColor(EvaColor(0, 0, 0, 255))
   protected var strokeColor: EvaColor = setStrokeColor(EvaColor(0, 0, 0, 255))
@@ -49,15 +51,18 @@ class EvaWebCanvas(width: Double, height: Double) extends EvaCanvas[Canvas] {
 
   override def setFillColor(color: EvaColor): EvaColor = {
     this.fillColor = color
-    ctx.fillStyle = "rgb(" + color.red + ", " + color.green + ", " + color.blue + ", " + (color.alpha / 255.0) + ")"
+    ctx.fillStyle = cssColor(color)
     color
   }
 
   override def setStrokeColor(color: EvaColor): EvaColor = {
     this.strokeColor = color
-    ctx.strokeStyle = "rgb(" + color.red + ", " + color.green + ", " + color.blue + ", " + (color.alpha / 255.0) + ")"
+    ctx.strokeStyle = cssColor(color)
     color
   }
+
+  private def cssColor(color: EvaColor): String =
+    "rgb(" + color.red + ", " + color.green + ", " + color.blue + ", " + (color.alpha / 255.0) + ")"
 
   override def drawRect(x: Double, y: Double, width: Double, height: Double): Unit =
     ctx.strokeRect(x, y, width, height)
@@ -79,11 +84,7 @@ class EvaWebCanvas(width: Double, height: Double) extends EvaCanvas[Canvas] {
 
 
   def drawLoadedImage(img: Image, x: Double, y: Double, width: Double, height: Double, alpha: Double = 1.0): Unit = {
-
-    //println("drawLoadedImage(" + img + ", " + x + ", " + y + ", " + width + ", " + height + ", " + alpha + ")")
-
-    if (alpha >= 0 && alpha <= 1.0) ctx.globalAlpha = alpha
-    else ctx.globalAlpha = 1.0
+    ctx.globalAlpha = if (alpha >= 0 && alpha <= 1.0) alpha else 1.0
     if (width > 0 && height > 0) {
       ctx.drawImage(img, x, y, width, height)
     } else {
@@ -102,15 +103,6 @@ class EvaWebCanvas(width: Double, height: Double) extends EvaCanvas[Canvas] {
     ctx.fillText(content, x, y)
   }
 
-  /*
-    override def getScalingFactor(): Double = scale
-
-    override def setScalingFactor(scalingFactor: Double): Unit = {
-      this.scale = scale
-      ctx.scale(scalingFactor, scalingFactor)
-    }
-  */
-
   override def addMouseListener(mL: EvaMouseListener): Unit = {
     listener += mL
   }
@@ -120,17 +112,9 @@ class EvaWebCanvas(width: Double, height: Double) extends EvaCanvas[Canvas] {
   }
 
   override def drawCircle(x: Double, y: Double, diameter: Double, strokeWidth: Double = 1): Unit = {
-    val oldStroke = ctx.lineWidth
-    if (strokeWidth >= 0) {
-      ctx.lineWidth = strokeWidth
-    }
-
     ctx.beginPath()
     ctx.arc(x, y, diameter / 2.0, 0, 2 * Math.PI)
-
-    ctx.stroke()
-
-    ctx.lineWidth = oldStroke
+    strokeWithWidth(strokeWidth)
   }
 
   override def fillCircle(x: Double, y: Double, diameter: Double): Unit = {
@@ -139,12 +123,8 @@ class EvaWebCanvas(width: Double, height: Double) extends EvaCanvas[Canvas] {
     ctx.fill()
   }
 
-  override def drawImageWithAlpha(x: Double, y: Double, alphaUpTp255: Double, img: EvaImage): Unit = {
-
+  override def drawImageWithAlpha(x: Double, y: Double, alphaUpTp255: Double, img: EvaImage): Unit =
     ImageDrawer.drawImage(this, img, x, y, -1, -1, alphaUpTp255 / 255.0)
-
-
-  }
 
   override def drawScaledImage(x: Double, y: Double, width: Double, height: Double, img: EvaImage): Unit = {
     ImageDrawer.drawImage(this, img, x, y, width, height, 1.0)
@@ -177,57 +157,33 @@ class EvaWebCanvas(width: Double, height: Double) extends EvaCanvas[Canvas] {
    * @param strokeWidth the width of the stroke (-1 = default)
    */
   override def drawArc(x: Double, y: Double, diameter: Double, startAngle: Double, arcAngle: Double, strokeWidth: Double = -1): Unit = {
-
     ctx.beginPath()
+    arcPath(x, y, diameter, startAngle, arcAngle)
+    strokeWithWidth(strokeWidth)
+  }
 
+
+  /** Unlike [[drawArc]], (x, y) is the top-left corner of the circle's bounding box. */
+  override def fillArc(x: Double, y: Double, diameter: Double, startAngle: Double, arcAngle: Double): Unit = {
+    ctx.beginPath()
+    arcPath(x + diameter / 2, y + diameter / 2, diameter, startAngle, arcAngle)
+    ctx.fill()
+  }
+
+  /** Adds an arc around (centerX, centerY); angles in degrees with 0 = top, positive arc angles run clockwise. */
+  private def arcPath(centerX: Double, centerY: Double, diameter: Double, startAngle: Double, arcAngle: Double): Unit = {
     val startAnglePosJS = (startAngle - 90 + 720) % 360
     val endAnglePosJS = (startAnglePosJS + arcAngle + 720) % 360
+    ctx.arc(centerX, centerY, diameter / 2.0, startAnglePosJS * Math.PI / 180.0, endAnglePosJS * Math.PI / 180.0, !(arcAngle > 0))
+  }
 
-    val startAngleRad = startAnglePosJS * Math.PI / 180.0
-    val endAngleRad = endAnglePosJS * Math.PI / 180.0
-
-    if (arcAngle > 0) {
-      ctx.arc(x, y, diameter / 2.0, startAngleRad, endAngleRad)
-    } else {
-      ctx.arc(x, y, diameter / 2.0, startAngleRad, endAngleRad, true)
-    }
-
-
+  /** Strokes the current path with `strokeWidth` (negative = current width) and restores the previous width. */
+  private def strokeWithWidth(strokeWidth: Double): Unit = {
     val oldStroke = ctx.lineWidth
     if (strokeWidth >= 0) {
       ctx.lineWidth = strokeWidth
     }
-
     ctx.stroke()
-
     ctx.lineWidth = oldStroke
   }
-
-
-  override def fillArc(x: Double, y: Double, diameter: Double, startAngle: Double, arcAngle: Double): Unit = {
-
-    ctx.beginPath()
-
-    val startAnglePosJS = (startAngle - 90 + 720) % 360
-    val endAnglePosJS = (startAnglePosJS + arcAngle + 720) % 360
-
-    val startAngleRad = startAnglePosJS * Math.PI / 180.0
-    val endAngleRad = endAnglePosJS * Math.PI / 180.0
-
-
-    if (arcAngle > 0) {
-      ctx.arc(x + diameter / 2, y + diameter / 2, diameter / 2.0, startAngleRad, endAngleRad)
-    } else {
-      ctx.arc(x + diameter / 2, y + diameter / 2, diameter / 2.0, startAngleRad, endAngleRad, true)
-    }
-    ctx.fill()
-
-  }
-}
-
-object EvaWebCanvas {
-
-  private case class DrawingInformation(x: Double, y: Double)
-
-
 }

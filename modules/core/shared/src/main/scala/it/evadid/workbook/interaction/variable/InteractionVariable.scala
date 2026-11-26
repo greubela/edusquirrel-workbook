@@ -16,11 +16,6 @@ import java.time.LocalDateTime
 import scala.concurrent.ExecutionContext
 import scala.util.Try
 
-object InteractionVariable {
-
-
-}
-
 case class InteractionVariable[F <: InteractionFormat](underlyingInteraction: WorkbookInteractionElement[F], debug: Boolean = false) {
 
   given ec: ExecutionContext = ExecutionContext.global
@@ -131,9 +126,7 @@ case class InteractionVariable[F <: InteractionFormat](underlyingInteraction: Wo
       else transformedHistory
       withCurrentState.cleanedHistory()
     })
-    if (executionContextInformation.syncControl.nonEmpty) {
-      executionContextInformation.syncControl.get.store(this, false)
-    }
+    executionContextInformation.syncControl.foreach(_.store(this, false))
     if safeLastState.value != previousValue then control.getOrCalculateGrading(executionContextInformation, false)
   }
 
@@ -155,19 +148,16 @@ case class InteractionVariable[F <: InteractionFormat](underlyingInteraction: Wo
 
 
   def setStateFromUserInteraction(newValue: InteractionFormat.State[F], updateSize: UpdateImportance, timestamp: LocalDateTime = LocalDateTime.now(), context: ExecutionContextInformation): Unit = this.synchronized {
-    //useLogger.logInfo(s"InteractionVariable.updateStateFromUserInteraction(${innerStateHistory.now().lastState.value} -> $newValue ($timestamp, $updateSize)")
     try {
       val lastKnown: InteractionVariableState[InteractionFormat.State[F]] = safeLastState
       if (newValue != lastKnown.value || updateSize != lastKnown.updateImportance) {
         val newInteractionState = InteractionVariableState[InteractionFormat.State[F]](newValue, updateSize, timestamp)
         updateHistory(_.addState(newInteractionState), context)
-      } else if (context.syncControl.nonEmpty) {
-        context.syncControl.get.syncLogger.logInfo(s"InteractionVariable.updateStateFromUserInteraction was ignored because it was identical to the last known value!")
+      } else {
+        context.syncControl.foreach(_.syncLogger.logInfo(s"InteractionVariable.updateStateFromUserInteraction was ignored because it was identical to the last known value!"))
       }
     } catch case e: Exception => {
-      if (context.syncControl.nonEmpty) {
-        context.syncControl.get.syncLogger.logExceptionWarn(s"InteractionVariable.updateStateFromUserInteraction failed with exception", e)
-      }
+      context.syncControl.foreach(_.syncLogger.logExceptionWarn(s"InteractionVariable.updateStateFromUserInteraction failed with exception", e))
       throw e
     }
   }
