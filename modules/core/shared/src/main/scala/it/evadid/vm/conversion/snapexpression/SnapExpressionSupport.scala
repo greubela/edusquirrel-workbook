@@ -29,7 +29,9 @@ object SnapExpressionSupport {
       SnapControlFlow.ConditionSelectors ++
       SnapControlFlow.ArithmeticSelectors +
       // `report` ends a reporter or predicate definition with its value.
-      "doReport" + "doStopThis"
+      "doReport" + "doStopThis" +
+      // `say … for … secs` prints like `say`; `join` joins text.
+      "doSayFor" + "reportJoinWords"
 
 
   def isScriptStatement(expression: BeExpression): Boolean =

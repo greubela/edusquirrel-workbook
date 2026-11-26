@@ -116,6 +116,11 @@ Detached Snap scripts use the reserved, uncalled `unusedCode` function and expor
 loose blocks. Empty source remains an empty program across all conversions, including
 a green flag in Snap. `StructuredProgrammingStateSpec` tests these contracts.
 
+Snap slots hold a string's text, never its quoted literal (`SnapInputCodec.slotText`).
+`say` and `say … for … secs` print (the duration is dropped); `join` is a text `+` whose
+non-text items are `str(...)`, and a text `+` or `str(...)` is written back as `join`.
+`NativeSnapRoundTripSpec` runs a project saved by native Snap through Python and Java.
+
 ## Running Python
 
 `ProgrammingStatePythonStructured.startExecution` uses `worker.runPython` and returns

@@ -278,6 +278,7 @@ object SnapControlFlow {
             SupportedOperators.contains(op) &&
               call.arguments.forall(isSupportedValue(_, userFunctions))
           // Library reporters such as `url` produce a value in Snap as well.
+          case _ if isToText(call) => call.arguments.forall(isSupportedValue(_, userFunctions))
           case _ =>
             SnapModuleBlocks.of(call.funcDef).exists(_.blockType == SnapVocabulary.BlockType.Reporter) &&
               call.arguments.forall(isSupportedValue(_, userFunctions)) ||
@@ -391,6 +392,26 @@ object SnapControlFlow {
       BeDefineFunction.operatorInfo(symbol, if args.size <= 1 then 0 else 1)
     )
     BeFunctionCall.fromDefinition(define, params.zip(args).toMap)
+  }
+
+  /** Snap's `join` as text concatenation: `+` of its items, values that are not text converted with `str`. */
+  def textJoin(items: List[BeExpression]): BeExpression = items.map(item => if isText(item) then item else toText(item)) match {
+    case Nil => BeUseValue(BeDataValueLiteral("\"\""), None)
+    case List(single) => single
+    case several => operatorCall("+", several)
+  }
+
+  /** A `+` that joins text, which Snap writes as `join`. */
+  def isTextJoin(call: BeFunctionCall): Boolean = call.isOperator && operatorSymbol(call) == "+" && call.arguments.exists(isText)
+
+  def isText(value: BeExpression): Boolean = value.staticInformationExpression.staticType == BeDataType.String
+
+  /** `str(value)`; Snap's `join` converts on its own. */
+  def isToText(call: BeFunctionCall): Boolean = call.funcDef.intrinsic.contains(it.evadid.vm.code.defining.BeIntrinsic.ToText)
+
+  private def toText(value: BeExpression): BeFunctionCall = {
+    val definition = it.evadid.vm.conversion.parsed.DefaultDefinitions.builtinFunctionsByName("str")
+    BeFunctionCall.fromDefinition(definition, definition.inputs.map(_ -> value).toMap)
   }
 
   def literalInt(value: String): Option[Int] =

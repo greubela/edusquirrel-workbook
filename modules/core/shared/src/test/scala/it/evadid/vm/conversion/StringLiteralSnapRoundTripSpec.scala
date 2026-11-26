@@ -36,6 +36,7 @@ class StringLiteralSnapRoundTripSpec extends FunSuite {
       assert(python.contains("print(\"say \\\"hi\\\"\")") && python.contains("print(\"it's\")") && python.contains("print(\"back\\\\slash\")"), python)
       assert(python.contains("\"Hello \" + "), s"spaces belong to the string:\n$python")
       assert(!python.contains("\"\\\"Ada"), python)
+      assertEquals(converted(converted(state, SnapLanguage), Python).toPythonStructured.toString, python, "a second route changes nothing")
     }
   }
 

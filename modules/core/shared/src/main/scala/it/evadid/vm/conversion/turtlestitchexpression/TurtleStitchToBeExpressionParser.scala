@@ -260,6 +260,12 @@ object TurtleStitchToBeExpressionParser {
             case _ => throw it.evadid.vm.code.errors.ProgrammingConversionException.unsupported(
               "Only stop this block can be converted to a function return.")
           }
+          // `say … for … secs` prints like `say`; the bubble's duration has no counterpart in text output.
+          case "doSayFor" => block match {
+            case primitive: PrimitiveBlock => parseGenericBlock(primitive.copy(selector = Some("bubble"), inputs = primitive.inputs.take(1)), phaseOne)
+            case _ => parseGenericBlock(block, phaseOne)
+          }
+          case "reportJoinWords" => Some(SnapControlFlow.textJoin(expandModelInputsToExpressions(block.inputs.toList, phaseOne)))
           case "doReport" => Some(BeReturn(Some(block.inputs.headOption.map(parseInputValue(_, None, phaseOne)).getOrElse(BeExpression.pass))))
           case name if SnapControlFlow.isSnapValueReporter(name) =>
             Some(reporterExpressionFromModel(block, phaseOne))

@@ -351,6 +351,7 @@ object SnapProjectXml {
     case BeUseValue(BeDataValueLiteral(value), _) => SnapInputCodec.renderLiteral(kind, value)
     case BeUseValue(BeUseValueReference(variable), _) => renderVariableReporter(variable)
     case sequence: BeSequence => s"<script>${renderScriptBody(sequence)}</script>"
+    case call: BeFunctionCall if SnapControlFlow.isToText(call) => renderJoin(call.arguments)
     case call: BeFunctionCall if call.isOperator => renderOperator(call)
     case call: BeFunctionCall => renderCall(call)
     case _ => "<l></l>"
@@ -365,10 +366,18 @@ object SnapProjectXml {
     case _ => """<block s="reportTrue"></block>"""
   }
 
+  /** Snap's `join`, which converts its items to text; `str(value)` items are their value. */
+  private def renderJoin(items: List[BeExpression])(using RenderContext): String =
+    s"""<block s="reportJoinWords"><list>${items.map {
+      case call: BeFunctionCall if SnapControlFlow.isToText(call) => call.arguments.map(renderConditionValue).mkString
+      case item => renderConditionValue(item)
+    }.mkString}</list></block>"""
+
   private def renderOperator(call: BeFunctionCall)(using RenderContext): String = {
     val op = SnapControlFlow.operatorSymbol(call)
     val args = call.arguments
     op match {
+      case "+" if SnapControlFlow.isTextJoin(call) => renderJoin(args)
       case "-" if args.size == 1 =>
         // Snap's difference reporter is binary; unary minus needs an explicit zero.
         s"""<block s="reportDifference"><l>0</l>${renderConditionValue(args.head)}</block>"""
@@ -396,6 +405,7 @@ object SnapProjectXml {
     case BeUseValue(BeDataValueLiteral(value), _) => s"<l>${SnapXmlText.escape(SnapInputCodec.slotText(value))}</l>"
     case BeUseValue(BeUseValueReference(variable), _) => renderVariableReporter(variable)
     case call: BeFunctionCall if call.isOperator => renderOperator(call)
+    case call: BeFunctionCall if SnapControlFlow.isToText(call) => renderJoin(call.arguments)
     case call: BeFunctionCall => renderCall(call)
     case _ => "<l>0</l>"
   }
