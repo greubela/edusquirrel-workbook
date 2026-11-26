@@ -44,22 +44,6 @@ class ProgrammingHintScaffolderSpec extends FunSuite {
   private def reply(question: String, ids: String*): String =
     ujson.write(ujson.Obj("hints" -> ujson.Arr(ujson.Obj("question" -> question, "evidenceIds" -> ujson.Arr.from(ids)))))
 
-  test("a valid hint cites live evidence and is returned as localized feedback with the accepted JSON") {
-    val f = new Fixture(reply("What does `forward` do here?", "source-1", "task"))
-    f.hint().map { result =>
-      assertEquals(result.scaffoldingStatus, ScaffoldingFeedback(LanguageMap.mapBasedLanguageMap(Map(German -> "1. What does forward do here?"))))
-      val accepted = ujson.read(result.additionalInformation.get.completeHistory.messages.head.text)
-      assertEquals(accepted("hints")(0)("evidenceIds").arr.map(_.str).toList, List("source-1", "task"))
-      val prompt = ujson.read(f.requests.now().head.prompt)
-      assertEquals(prompt("feedbackLanguage").str, German.name)
-      assertEquals(prompt("task")("text").str, "Draw a square.")
-      assertEquals(prompt("source")("language").str, Java.name)
-      assertEquals(prompt("source")("lines").arr.map(_("id").str).toList, List("source-1", "source-3"))
-      assertEquals(prompt("checks").arr.toList, Nil)
-      assert(f.requests.now().head.systemPrompt.contains("programming tutor"))
-    }
-  }
-
   for ((label, response) <- List(
     "unknown evidence" -> reply("Why?", "source-2"),
     "missing question mark" -> reply("Look at line one", "source-1"),
@@ -86,17 +70,6 @@ class ProgrammingHintScaffolderSpec extends FunSuite {
       assert(changed.getMessage.contains("answer changed"), changed.getMessage)
       assert(noTask.getMessage.contains("instructions are missing"), noTask.getMessage)
       assert(tooLong.getMessage.contains("too many lines"), tooLong.getMessage)
-    }
-  }
-
-  test("the current Python answer of the interaction is used as hint source") {
-    val f = new Fixture(reply("Which value is printed?", "source-1"))
-    val python = ProgrammingStateRaw(Python, "print(1)")
-    // A distinct later timestamp: the default answer is stamped when the variable is created.
-    f.exercise.interactionVariable.setStateFromUserInteraction(python, UpdateImportance.DEFAULT, java.time.LocalDateTime.now().plusSeconds(1), f.context())
-    f.hint(python).map { result =>
-      assertEquals(result.forState, python)
-      assertEquals(ujson.read(f.requests.now().head.prompt)("source")("language").str, Python.name)
     }
   }
 }

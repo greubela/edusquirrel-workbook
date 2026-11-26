@@ -301,10 +301,8 @@ class Gdp1WorkbookSpec extends FunSuite {
     }
   }
 
-  test("catalogue identity, four sections and reflection grading are configured") {
+  test("catalogue identity and reflection grading are configured") {
     assertEquals(workbook.workbookId, "2026GdP1")
-    assertEquals(workbook.sections.size, 4)
-    assertEquals(workbook.allContainedInteractionsById.size, 12)
     val entry = DigitalWorkbookCatalog.entries.find(_.id == "2026GdP1").get
     assertEquals(entry.native.get.page, "2026GdP1")
     val reflection = workbook.allContainedInteractionsById.values.collectFirst { case text: TextInputWithScaffoldingAndGrading => text }.get

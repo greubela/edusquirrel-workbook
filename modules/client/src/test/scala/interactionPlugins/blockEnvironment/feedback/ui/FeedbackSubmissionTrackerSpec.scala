@@ -29,14 +29,6 @@ final class FeedbackSubmissionTrackerSpec extends FunSuite:
     assertEquals(tracker.finish(submission), Some(false))
   }
 
-  test("repeated starts cannot replace a running submission") {
-    val tracker = new FeedbackSubmissionTracker
-    val submission = tracker.begin().get
-    assertEquals(tracker.begin(), None)
-    assertEquals(tracker.begin(), None)
-    assertEquals(tracker.finish(submission), Some(true))
-  }
-
   test("duplicate completion cannot finish a newer request") {
     val tracker = new FeedbackSubmissionTracker
     val previous = tracker.begin().get

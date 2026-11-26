@@ -61,13 +61,6 @@ class SvgPathRoundTripSuite extends FunSuite {
     assertEquals(reparsedAbsolute, originalAbsolute)
   }
 
-  test("absolute input canonicalises to same absolute representation") {
-    val parsed = parsePath(sampleAbsolutePath)
-    val canonical1 = canonicalAbsoluteString(parsed)
-    val canonical2 = canonicalAbsoluteString(parsed)
-    assertEquals(canonical2, canonical1)
-  }
-
   test("builder -> path -> builder round trip keeps absolute representation") {
     val builder = SvgPathBuilder[Double](Point(5.0, 7.0))
       .lineToRel(Dimension(10.0, 0.0))

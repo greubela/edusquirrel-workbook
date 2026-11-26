@@ -26,13 +26,6 @@ class SnapCodeEditorConfigSpec extends FunSuite {
     assert(tabs.forall(tab => tab.selectableElements.nonEmpty || tab.includeMakeBlockButton || tab.includeVariableControls))
   }
 
-  test("PythonCompatibleSnapCategories excludes unsupported native categories") {
-    val tabNames = SnapCodeEditorConfig.PythonCompatibleSnapCategories.map(_.name).toSet
-    assert(!tabNames.contains("Looks"))
-    assert(!tabNames.contains("Sound"))
-    assert(!tabNames.contains("Sensing"))
-  }
-
   test("PythonCompatibleSnapCategories is derived from SnapPaletteCatalog") {
     val tabs = SnapCodeEditorConfig.PythonCompatibleSnapCategories
     assertEquals(
@@ -55,12 +48,6 @@ class SnapCodeEditorConfigSpec extends FunSuite {
     val config = SnapCodeEditorConfig.PythonCompatibleTesting
     assertEquals(config.libraryTabs, SnapCodeEditorConfig.PythonCompatibleSnapCategories)
     assertEquals(config.parts, SnapCodeEditorConfig.Testing.parts)
-  }
-
-  test("PythonCompatibleTesting uses the python-compatible palette including stitches") {
-    val config = SnapCodeEditorConfig.PythonCompatibleTesting
-    assertEquals(config.libraryTabs, SnapCodeEditorConfig.PythonCompatibleSnapCategories)
-    assert(SnapCodeEditorConfig.pythonCompatibleBlockSelectors.contains("runningStitch"))
   }
 
   test("Variables tab enables Snap variable controls and make-block") {

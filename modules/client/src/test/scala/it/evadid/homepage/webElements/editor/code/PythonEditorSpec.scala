@@ -249,9 +249,4 @@ class PythonEditorSpec extends EditorDomSuite {
       }
     }
   }
-
-  test("languages map to their native CodeMirror modes") {
-    assertEquals(CodeMirrorEditor.languageToJs(Python), "python")
-    assertEquals(CodeMirrorEditor.languageToJs(Java), "java")
-  }
 }

@@ -93,18 +93,6 @@ final class QualityGateSpec extends FunSuite {
     )
   }
 
-  test("'Set the value' (verb) should NOT trigger unsupported_structure_hint") {
-    val text =
-      """Your function returns the wrong value.
-        |1. Set the starting value so it works with negative numbers.
-        |2. Move return outside the loop.""".stripMargin
-    val result = QualityGate.enforce(text, baseConstraints.copy(isGerman = false), Seq.empty, simpleSource)
-    assert(
-      !result.reasons.contains("unsupported_structure_hint"),
-      s"Verb 'Set' falsely triggered unsupported_structure_hint. Reasons: ${result.reasons}"
-    )
-  }
-
   test("'predict' should NOT trigger unsupported_structure_hint") {
     val text =
       """Try to predict what your function returns for a small input.

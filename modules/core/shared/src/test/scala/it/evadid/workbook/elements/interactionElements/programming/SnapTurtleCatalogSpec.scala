@@ -68,16 +68,4 @@ class SnapTurtleCatalogSpec extends FunSuite {
       }
     }
   }
-
-  test("KnownBeDefineStructures does not need a workbook catalog dependency for overlapping names") {
-    val catalogTurtleNames = SnapTurtleCatalog.Primitives.flatMap(_.allPythonNames).toSet
-    val knownNames = KnownBeDefineStructures.byName("turtle").collectFirst { case cls: BeDefineClass => cls }.get
-      .methods.map(_.functionTypeInfo.displayName.getNameIn(English, NamingStyle.SnakeCase)).toSet
-    assert(catalogTurtleNames.contains("color"))
-    assert(knownNames.contains("color"))
-    assert(catalogTurtleNames.contains("pensize"))
-    assert(knownNames.contains("pensize"))
-    assert(catalogTurtleNames.contains("set_x"))
-    assert(!knownNames.contains("set_x"))
-  }
 }

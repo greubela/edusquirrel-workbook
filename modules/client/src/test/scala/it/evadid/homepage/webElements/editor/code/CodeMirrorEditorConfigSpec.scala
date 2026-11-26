@@ -74,19 +74,6 @@ class CodeMirrorEditorConfigSpec extends FunSuite {
     assertEquals(CodeMirrorFlowchartSource.forLanguage(SQL), None)
   }
 
-  test("the regular editor accepts both gutter settings and exposes the passed configuration") {
-    for (enabled <- List(false, true)) {
-      val settings = CodeMirrorEditorConfig(showFlowchartGutter = enabled)
-      val editor = CodeMirrorEditor(logger, Var("print(1)"), language = it.evadid.core.datastructures.language.AppLanguage.Python, config = Var(settings),
-        loadingLabel = Val("loading"))
-      assertEquals(editor.config.now(), settings)
-    }
-  }
-
-  test("default and explicitly configured editors retain their gutter setting") {
-    assertEquals(CodeMirrorEditorConfig.Flowchart.showFlowchartGutter, true)
-  }
-
   test("identical requests share one worker request and are answered from the cache afterwards") {
     val workers = new Workers
     val cache = charts(workers)

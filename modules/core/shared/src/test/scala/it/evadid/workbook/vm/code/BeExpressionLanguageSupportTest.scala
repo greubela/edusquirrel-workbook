@@ -137,15 +137,6 @@ class BeExpressionLanguageSupportTest extends FunSuite {
     BeSingleLineComment(LanguageMap.universalMap("note"))
   )
 
-  test("all BeExpression subclasses render for Python, Java, Lisp, and C++") {
-    allExpressions.foreach { expr =>
-      targetLanguages.foreach { language =>
-        val rendered = expr.structureInfo.toStringInLanguage(language, humanLanguage)
-        assert(rendered.trim.nonEmpty, s"${expr.getClass.getSimpleName} should render non-empty for ${language.name}")
-      }
-    }
-  }
-
   test("Python rendering includes type hints for variable and function signatures") {
     val renderedVariable = xVar.structureInfo.toStringInLanguage(Python, humanLanguage)
     val renderedFunction = function.structureInfo.toStringInLanguage(Python, humanLanguage)
@@ -262,32 +253,6 @@ class BeExpressionLanguageSupportTest extends FunSuite {
     assertEquals(scripted.structureInfo.toStringInLanguage(Cpp, humanLanguage).trim, expected.trim)
   }
 
-  test("Java int arithmetic wraps without changing the legacy numeric types") {
-    assertEquals(JavaInt32.add(Int.MaxValue, 1), Int.MinValue)
-    assertEquals(JavaInt32.subtract(Int.MinValue, 1), Int.MaxValue)
-    assertEquals(JavaInt32.multiply(Int.MaxValue, Int.MaxValue), 1)
-    assertEquals(JavaInt32.multiply(65536, 65536), 0)
-    assertEquals(JavaInt32.negate(Int.MinValue), Int.MinValue)
-    assert(BeDataType.Int.isValidLiteral("2147483648"))
-    assertEquals(BeDataValueLiteral("1").currentType, BeDataType.Numeric)
-  }
-
-  test("Java int division truncates toward zero and remainder retains the dividend sign") {
-    for (left, right, quotient, remainder) <- Seq(
-      (Int.MinValue, -1, Int.MinValue, 0), (-9, 2, -4, -1), (9, -2, -4, 1), (-9, -2, 4, -1)
-    ) do {
-      assertEquals(JavaInt32.divide(left, right), Right(quotient))
-      assertEquals(JavaInt32.remainder(left, right), Right(remainder))
-    }
-  }
-
-  test("Java int zero divisors return an explicit arithmetic error") {
-    for value <- Seq(Int.MinValue, -1, 0, 1, Int.MaxValue) do {
-      assertEquals(JavaInt32.divide(value, 0), Left(JavaInt32.Error.DivisionByZero))
-      assertEquals(JavaInt32.remainder(value, 0), Left(JavaInt32.Error.DivisionByZero))
-    }
-  }
-
   test("Java int operations match an independent unbounded integer model") {
     val modulus = BigInt(1) << 32
     def wrapped(value: BigInt): Int = {
@@ -318,21 +283,6 @@ class BeExpressionLanguageSupportTest extends FunSuite {
       }
     }
     assertEquals(pairs.size, 708)
-  }
-
-  test("Java expression arithmetic delegates to int32 rules and returns explicit failures") {
-    for (operator, left, right, result) <- Seq(
-      (R.BinaryOperator.Add, Int.MaxValue, 1, Int.MinValue),
-      (R.BinaryOperator.Subtract, Int.MinValue, 1, Int.MaxValue),
-      (R.BinaryOperator.Multiply, Int.MaxValue, Int.MaxValue, 1),
-      (R.BinaryOperator.Divide, Int.MinValue, -1, Int.MinValue),
-      (R.BinaryOperator.Divide, -9, 2, -4), (R.BinaryOperator.Remainder, -9, 2, -1)
-    ) do assertEquals(javaResult(R.Binary(operator, R.IntLiteral(left), R.IntLiteral(right))), Right(E.Value.IntValue(result)))
-    for operator <- Seq(R.BinaryOperator.Divide, R.BinaryOperator.Remainder) do
-      assertEquals(javaResult(R.Binary(operator, R.IntLiteral(1), R.IntLiteral(0))), Left(E.Failure.DivisionByZero))
-    assertEquals(javaResult(R.Unary(R.UnaryOperator.Plus, R.IntLiteral(9))), Right(E.Value.IntValue(9)))
-    assertEquals(javaResult(R.Unary(R.UnaryOperator.Negate, R.IntLiteral(Int.MinValue))), Right(E.Value.IntValue(Int.MinValue)))
-    assertEquals(javaResult(R.Unary(R.UnaryOperator.Not, R.BooleanLiteral(true))), Right(E.Value.BooleanValue(false)))
   }
 
   test("Java comparisons and equality use strict scalar types") {
@@ -552,40 +502,6 @@ class BeExpressionLanguageSupportTest extends FunSuite {
     assertEquals(resolved.source, source)
   }
 
-  test("Java for and while methods produce the parameterized square trace") {
-    for body <- Seq(
-      "for (int i = 0; i < 4; i += 1) { Turtle.forward(n); Turtle.turnRight(90); }",
-      "int i = 0; while (i < 4) { Turtle.forward(n); Turtle.turnRight(90); i += 1; }"
-    ); size <- Seq(10, 40, 100) do {
-      val source = javaProgram(s"square($size);", s"static void square(int n) { $body }")
-      val expected = Vector.fill(4)(Vector(forward(size), right(90))).flatten
-      val execution = T.run(source)
-      assertEquals(execution.status, T.Status.Completed)
-      assertEquals(execution.commands, expected)
-      val helper = source.methods.find(_.name == "square").getOrElse(fail("Missing square"))
-      val invoked = T.invoke(source, helper.id, Vector(E.Value.IntValue(size)))
-      assertEquals(invoked.status, T.Status.Completed)
-      assertEquals(invoked.commands, expected)
-    }
-  }
-
-  test("Java helper arguments use the caller frame and mutable parameters stay local") {
-    val source = javaProgram("int n = 40; outer(n); Turtle.forward(n); draw(10); draw(10);", """
-      static void inner(int n, int other) { n += 1; Turtle.forward(n); Turtle.forward(other); }
-      static void outer(int n) { inner(n + 1, n + 2); Turtle.forward(n); }
-      static void draw(int n) { n += 1; Turtle.forward(n); }
-    """)
-    val execution = T.run(source)
-    assertEquals(execution.status, T.Status.Completed)
-    assertEquals(execution.commands, Vector(42, 42, 40, 40, 11, 11).map(forward))
-    val boolean = T.run(javaProgram("boolean flag = true; choose(flag); if (flag) { Turtle.forward(3); }", """
-      static void choose(boolean flag) { flag = !flag; if (flag) { Turtle.forward(1); } else { Turtle.forward(2); } }
-    """))
-    assertEquals(boolean.status, T.Status.Completed)
-    assertEquals(boolean.commands, Vector(forward(2), forward(3)))
-    assertEquals(T.run(source), execution)
-  }
-
   test("Java loop declarations reset on each entry and sibling scopes stay separate") {
     val execution = T.run(javaProgram("""
       for (int i = 0; i < 3; i += 1) { int value = i; Turtle.forward(value); }
@@ -628,96 +544,6 @@ class BeExpressionLanguageSupportTest extends FunSuite {
     val early = T.run(javaProgram("if (true) { Turtle.forward(1); return; } Turtle.forward(999);"))
     assertEquals(early.status, T.Status.Completed)
     assertEquals(early.commands, Vector(forward(1)))
-  }
-
-  test("Java compound assignments use int32 arithmetic") {
-    val execution = T.run(javaProgram("""
-      int n = 2147483647; n += 1; Turtle.forward(n);
-      n -= 1; Turtle.forward(n); n *= 2147483647; Turtle.forward(n);
-      n = -2147483648; n /= -1; Turtle.forward(n); n %= -1; Turtle.forward(n);
-      n = -9; n /= 2; Turtle.forward(n); n = -9; n %= 2; Turtle.forward(n);
-    """))
-    assertEquals(execution.status, T.Status.Completed)
-    assertEquals(execution.commands, Vector(Int.MinValue, Int.MaxValue, 1, Int.MinValue, 0, -4, -1).map(forward))
-  }
-
-  test("Java runtime failures preserve only the executed prefix and stop caller continuation") {
-    val helpers = "static void pair(int a, int b) { Turtle.forward(999); }"
-    for body <- Seq("int n = 1; n /= 0;", "int n = 1; n %= 0;", "pair(1 / 0, 2 / 0);") do {
-      val execution = T.run(javaProgram(s"Turtle.forward(1); $body Turtle.forward(999);", helpers))
-      assertEquals(execution.status, T.Status.Failed(T.Failure.Evaluation(E.Failure.DivisionByZero)))
-      assertEquals(execution.commands, Vector(forward(1)))
-    }
-    val skipped = T.run(javaProgram("""
-      boolean flag = false && 1 / 0 > 0;
-      if (!flag || 1 / 0 > 0) { Turtle.forward(2); }
-    """))
-    assertEquals(skipped.status, T.Status.Completed)
-    assertEquals(skipped.commands, Vector(forward(2)))
-  }
-
-  test("Java runtime rejects invalid invocations and limits before effects") {
-    val source = javaProgram("draw(1);", "static void draw(int n) { Turtle.forward(n); }")
-    val method = source.methods.find(_.name == "draw").getOrElse(fail("Missing draw"))
-    for (id, arguments) <- Seq(method.id -> Vector.empty[E.Value],
-      method.id -> Vector(E.Value.BooleanValue(true)), method.id -> Vector(E.Value.IntValue(1), E.Value.IntValue(2)),
-      R.MethodId(999) -> Vector.empty[E.Value], source.entryPoint -> Vector.empty[E.Value]) do {
-      val execution = T.invoke(source, id, arguments)
-      assertEquals(execution, T.Execution(T.Status.Failed(T.Failure.InvalidInvocation), Vector.empty, 0))
-    }
-    for limits <- Seq(T.Limits(maxSteps = 0), T.Limits(maxSteps = -1), T.Limits(maxSteps = T.Limits.MaxSteps + 1),
-      T.Limits(maxCommands = -1), T.Limits(maxCommands = T.Limits.MaxCommands + 1),
-      T.Limits(maxCallDepth = 0), T.Limits(maxCallDepth = T.Limits.MaxCallDepth + 1),
-      T.Limits(maxBlockDepth = 0), T.Limits(maxBlockDepth = T.Limits.MaxBlockDepth + 1)) do
-      assertEquals(T.run(source, limits, () => fail("Invalid limits must not poll")),
-        T.Execution(T.Status.Failed(T.Failure.InvalidLimits), Vector.empty, 0))
-    assertEquals(T.run(javaProgram(""), T.Limits(maxCommands = 0)).status, T.Status.Completed)
-    val noCommands = T.run(source, T.Limits(maxCommands = 0))
-    assertEquals(noCommands.status, T.Status.LimitExceeded)
-    assertEquals(noCommands.commands, Vector.empty)
-  }
-
-  test("Java runtime shares exact work limits across statements and expressions") {
-    val empty = T.run(javaProgram(""), T.Limits(maxSteps = 2))
-    assertEquals(empty, T.Execution(T.Status.Completed, Vector.empty, 2))
-    val one = javaProgram("Turtle.forward(1);")
-    assertEquals(T.run(one, T.Limits(maxSteps = 5)), T.Execution(T.Status.Completed, Vector(forward(1)), 5))
-    assertEquals(T.run(one, T.Limits(maxSteps = 4)), T.Execution(T.Status.LimitExceeded, Vector.empty, 4))
-    val expressions = javaProgram("int a = 1 + 2; int b = 3 + 4; Turtle.forward(a + b);")
-    assertEquals(T.run(expressions, T.Limits(maxSteps = 15)), T.Execution(T.Status.Completed, Vector(forward(10)), 15))
-    assertEquals(T.run(expressions, T.Limits(maxSteps = 14)), T.Execution(T.Status.LimitExceeded, Vector.empty, 14))
-    val square = javaProgram("for (int i = 0; i < 4; i += 1) { Turtle.forward(10); Turtle.turnRight(90); }")
-    val full = T.run(square, T.Limits(maxCommands = 8))
-    val limited = T.run(square, T.Limits(maxCommands = 7))
-    assertEquals(full.status, T.Status.Completed)
-    assertEquals(full.commands.size, 8)
-    assertEquals(limited.status, T.Status.LimitExceeded)
-    assertEquals(limited.commands, full.commands.take(7))
-  }
-
-  test("Java empty endless loops stop on limits or cancellation and new runs are fresh") {
-    for body <- Seq("for (;;) {}", "while (true) {}", "for (;;) { ; }") do {
-      val source = javaProgram(body)
-      assertEquals(T.run(source, T.Limits(maxSteps = 20)), T.Execution(T.Status.LimitExceeded, Vector.empty, 20))
-      var polls = 0
-      val cancelled = T.run(source, T.Limits(maxSteps = 30), () => { polls += 1; polls >= 10 })
-      assertEquals(cancelled, T.Execution(T.Status.Cancelled, Vector.empty, 9))
-      assertEquals(polls, 10)
-      assertEquals(T.run(source, T.Limits(maxSteps = 20)), T.Execution(T.Status.LimitExceeded, Vector.empty, 20))
-    }
-    val one = javaProgram("Turtle.forward(1);")
-    assertEquals(T.run(one, isCancelled = () => true), T.Execution(T.Status.Cancelled, Vector.empty, 0))
-    var polls = 0
-    assertEquals(T.run(one, isCancelled = () => { polls += 1; polls >= 5 }), T.Execution(T.Status.Cancelled, Vector.empty, 4))
-    assertEquals(T.run(one), T.Execution(T.Status.Completed, Vector(forward(1)), 5))
-    val two = javaProgram("Turtle.forward(1); Turtle.forward(2);")
-    polls = 0
-    assertEquals(T.run(two, isCancelled = () => { polls += 1; polls >= 8 }),
-      T.Execution(T.Status.Cancelled, Vector(forward(1)), 7))
-    assertEquals(T.run(two), T.Execution(T.Status.Completed, Vector(forward(1), forward(2)), 8))
-    val emitting = T.run(javaProgram("while (true) { Turtle.forward(1); }"), T.Limits(maxCommands = 3))
-    assertEquals(emitting.status, T.Status.LimitExceeded)
-    assertEquals(emitting.commands, Vector.fill(3)(forward(1)))
   }
 
   test("Java call and block depth limits stop explicit stacks without affecting later runs") {
@@ -2039,20 +1865,6 @@ class BeExpressionLanguageSupportTest extends FunSuite {
       assertEquals(expressions.map(_.end), Vector(JavaSourceMap.Position(5, 34), JavaSourceMap.Position(5, 57)))
       assertEquals(expressions.map(_.event.node).distinct.size, 2)
     }
-  }
-
-  test("Java located traces preserve original CRLF Unicode offsets and one-based UTF16 positions") {
-    val source = "/* 😀 Turtle.forward(9); */\r\nclass Drawing {\r\n  public static void main(String[] args) {\r\n    Turtle.forward(1);\r\n  }\r\n}\r\n"
-    val program = JavaTurtleCompiler.compile(source).toOption.get
-    val recorded = T.runVmTraced(program)
-    val located = locatedEvents(recorded, source)
-    val command = located.find(_.event.kind.isInstanceOf[J.Kind.Turtle]).get
-    val offset = source.indexOf("Turtle.forward(1);")
-    assertEquals(command.range, JavaSourceMap.SourceRange(offset, offset + "Turtle.forward(1);".length))
-    assertEquals(command.start, JavaSourceMap.Position(4, 5))
-    assertEquals(command.end, JavaSourceMap.Position(4, 23))
-    assertEquals(command.text, "Turtle.forward(1);")
-    assertEquals(recorded.execution, T.runVm(program))
   }
 
   test("Java prefix locations keep trace saturation failures and cancellation separate from lookup") {

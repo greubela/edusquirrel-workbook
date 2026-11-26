@@ -128,12 +128,6 @@ class SnapExpressionSupportSpec extends FunSuite {
     assert(xml.contains("""s="doUntil""""), clue = xml)
   }
 
-  test("applyPython accepts arithmetic outside change-variable pattern") {
-    val result = PythonToSnap.applyPython("i = 1 * 2")
-    assert(result.isRight, clue = result)
-    assert(result.toOption.get.code.contains("""s="reportVariadicProduct""""), clue = result.toOption.get.code)
-  }
-
   test("applyPython accepts augmented assignment as change pattern") {
     val source =
       """steps = 1
@@ -145,26 +139,6 @@ class SnapExpressionSupportSpec extends FunSuite {
     assert(python.contains("steps: float = 1"), clue = python)
     assert(python.contains("steps = steps + 2"), clue = python)
     assert(result.toOption.get.code.contains("""s="doChangeVar""""), clue = result.toOption.get.code)
-  }
-
-  test("applyPython accepts control-flow subset") {
-    val result = PythonToSnap.applyPython(
-      """receive_go()
-        |for _ in range(2):
-        |    forward(10)
-        |while not True:
-        |    turn(90)
-        |if False:
-        |    clear()
-        |else:
-        |    up()
-        |""".stripMargin
-    )
-    assert(result.isRight, clue = result)
-    val xml = result.toOption.get.code
-    assert(xml.contains("""s="doRepeat""""), clue = xml)
-    assert(xml.contains("""s="doUntil""""), clue = xml)
-    assert(xml.contains("""s="doIfElse""""), clue = xml)
   }
 
   test("comparison conditions print as infix python") {

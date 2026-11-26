@@ -16,11 +16,6 @@ import it.evadid.homepage.webElements.editor.code.codemirror.CodeMirrorEditor
 import it.evadid.facades.internal.CodeMirrorDiagnostics
 
 class ProgrammingEditorDiagnosticsSpec extends FunSuite {
-  test("ProgrammingState converts itself at the Snap editor boundary") {
-    val snap = ProgrammingStateRaw(Python, "forward(10)").toSnapXml
-    assert(snap.code.contains("<project"), clue = snap.code.take(120))
-    assert(snap.code.contains("forward"), clue = snap.code)
-  }
 
   test("CodeMirror maps Java and Python independently") {
     assertEquals(CodeMirrorEditor.languageToJs(AppLanguage.Java), "java")

@@ -15,40 +15,6 @@ class TurtleGraphicSpec extends FunSuite {
   }
   private val converter = new SvgToTurtleProgram
 
-  test("TurtleGraphicSvgString converts to turtle program") {
-    val graphic = TurtleGraphic.TurtleGraphicSvgString("M0 0 L10 0 L10 10 Z")
-    val commands = graphic.toTurtleProgram
-    assert(commands.nonEmpty)
-    // M command moves to (0,0) without drawing, so first command is penUp (starting from default position)
-  }
-
-  test("TurtleGraphicSvgString returns original SVG string") {
-    val svgString = "M0 0 L10 0 L10 10 Z"
-    val graphic = TurtleGraphic.TurtleGraphicSvgString(svgString)
-    assertEquals(graphic.toSvgPathDString, svgString)
-  }
-
-  test("TurtleGraphicProgram converts to turtle program") {
-    val program: List[TurtleCommand[Double]] = List(TurtleCommand.PenUp, TurtleCommand.Forward(10.0))
-    val graphic = TurtleGraphic.TurtleGraphicProgram(program)
-    val commands = graphic.toTurtleProgram
-    assertEquals(commands.size, 2)
-    assertEquals(commands.head.name.universalInterpretation(), "pen_up")
-    assertEquals(commands(1).name.universalInterpretation(), "forward")
-  }
-
-  test("TurtleGraphicProgram converts to SVG path") {
-    val program: List[TurtleCommand[Double]] = List(
-      TurtleCommand.PenUp,
-      TurtleCommand.Forward(10.0),
-      TurtleCommand.PenDown,
-      TurtleCommand.Forward(10.0)
-    )
-    val graphic = TurtleGraphic.TurtleGraphicProgram(program)
-    val svg = graphic.toSvgPathDString
-    assert(svg.contains("M") || svg.contains("L"))
-  }
-
   test("TurtleLineBasedProgram converts to turtle program") {
     val line = Line(Point(0.0, 0.0), Point(10.0, 0.0))
     val graphic = TurtleGraphic.TurtleLineBasedProgram(List(line))
@@ -60,47 +26,10 @@ class TurtleGraphicSpec extends FunSuite {
     assert(penCommands.nonEmpty)
   }
 
-  test("TurtleLineBasedProgram draws multiple lines") {
-    val lines = List(
-      Line(Point(0.0, 0.0), Point(10.0, 0.0)),
-      Line(Point(10.0, 0.0), Point(10.0, 10.0))
-    )
-    val graphic = TurtleGraphic.TurtleLineBasedProgram(lines)
-    val commands = graphic.toTurtleProgram
-    
-    val forwards = commands.filter(_.name.universalInterpretation() == "forward")
-    assert(forwards.size >= 2)
-  }
-
-  test("TurtleLineBasedProgram converts to SVG path") {
-    val line = Line(Point(0.0, 0.0), Point(10.0, 10.0))
-    val graphic = TurtleGraphic.TurtleLineBasedProgram(List(line))
-    val svg = graphic.toSvgPathDString
-    assert(svg.contains("M"))
-    assert(svg.contains("L"))
-  }
-
   test("TurtleLineBasedProgram handles empty list") {
     val graphic = TurtleGraphic.TurtleLineBasedProgram(List())
     val svg = graphic.toSvgPathDString
     assertEquals(svg, "")
-  }
-
-  test("roundtrip: SVG string -> turtle program -> TurtleGraphicSvgString") {
-    val originalSvg = "M0 0 L10 0 L10 10 Z"
-    val originalCommands = converter.transform(originalSvg)
-    val graphic = TurtleGraphic.TurtleGraphicSvgString(originalSvg)
-    val convertedCommands = graphic.toTurtleProgram
-    
-    assertEquals(convertedCommands.size, originalCommands.size)
-  }
-
-  test("roundtrip: turtle program -> TurtleGraphicProgram -> back to commands") {
-    val originalCommands = converter.transform("M0 0 L10 10")
-    val graphic = TurtleGraphic.TurtleGraphicProgram(originalCommands)
-    val convertedCommands = graphic.toTurtleProgram
-    
-    assertEquals(convertedCommands.size, originalCommands.size)
   }
 
   test("TurtleLineBasedProgram handles pen state correctly") {

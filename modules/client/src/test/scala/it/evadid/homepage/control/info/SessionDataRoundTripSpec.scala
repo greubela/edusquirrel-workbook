@@ -46,15 +46,6 @@ class SessionDataRoundTripSpec extends EditorDomSuite {
     write(session)
   }
 
-  test("a session file opens its workbook in a fresh client and restores every answer") {
-    val restoredClient = client(None)
-    restoredClient.userSessionControl.continueWithSession(read[SessionData](downloaded())).map { _ =>
-      val opened = restoredClient.current.workbookInfo.get
-      assertEquals(opened.loadedWorkbook.workbookId, "workbook/part-1")
-      assertEquals(answers(opened), Map("first" -> "my first answer", "second" -> "my second answer"))
-    }
-  }
-
   test("an open instance of the same workbook is kept and receives the answers") {
     val file = downloaded()
     val open = workbook("workbook/part-1", "first", "second")

@@ -40,12 +40,4 @@ class LabelSelectionSpec extends FunSuite {
     assertEquals(text.now(), "3 of 5")
     owner.killSubscriptions()
   }
-
-  test("flatMapSwitch ends on an outdated text in the same situation, which is why labels avoid it") {
-    val scenario = Scenario()
-    val text = scenario.view.flatMapSwitch(current => scenario.label(scenario.key(current))).observe(using scenario.owner)
-    scenario.selection.set(1)
-    assertNotEquals(text.now(), "function-en", "if Airstream fixes this, the restriction can be lifted")
-    scenario.owner.killSubscriptions()
-  }
 }

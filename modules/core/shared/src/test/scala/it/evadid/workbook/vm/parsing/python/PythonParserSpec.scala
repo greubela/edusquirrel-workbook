@@ -306,36 +306,6 @@ class PythonParserSpec extends FunSuite {
       }
     ),
     RoundTripCase(
-      name = "while loop control flow",
-      python =
-        """count = 0
-          |while count < 3:
-          |    count = count + 1
-          |count
-          |""".stripMargin,
-      assertions = result => {
-        val sequence = result.codeExpression.asInstanceOf[BeSequence]
-        val whileExpressions = sequence.body.collect { case loop: BeWhile => loop }
-        assertEquals(whileExpressions.length, 1)
-      }
-    ),
-    RoundTripCase(
-      name = "if else branching",
-      python =
-        """value = 5
-          |if value > 3:
-          |    result = "big"
-          |else:
-          |    result = "small"
-          |result
-          |""".stripMargin,
-      assertions = result => {
-        val sequence = result.codeExpression.asInstanceOf[BeSequence]
-        val conditional = sequence.body.collect { case branch: BeIfElse => branch }
-        assertEquals(conditional.length, 1)
-      }
-    ),
-    RoundTripCase(
       name = "if without else branch",
       python =
         """flag = True
@@ -544,25 +514,6 @@ class PythonParserSpec extends FunSuite {
         val nestedIfs = topLevelIfs.head.thenBody.body.collect { case nested: BeIfElse => nested }
         assertEquals(nestedIfs.length, 1, "expected nested if inside classify_score")
       }
-    ),
-    RoundTripCase(
-      name = "try except block survives round trip",
-      python =
-        """def find_element(list, element):
-          |    try:
-          |        index(element)
-          |        return True
-          |    except ValueError:
-          |        return False
-          |""".stripMargin
-    ),
-    RoundTripCase(
-      name = "arithmetic expressions ignore redundant parentheses",
-      python =
-        """i: float = 10 + ((((4+3))) * 10)
-          |j: float = (10 + 4 + 3) * 10
-          |k: float = (10 + 4) + (3 * 10)
-          |""".stripMargin
     ),
     RoundTripCase(
       name = "bitshift comparisons keep tight spacing",

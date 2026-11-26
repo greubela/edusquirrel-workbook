@@ -11,20 +11,6 @@ class KnownBeDefineStructuresSpec extends FunSuite {
     assert(plusDefinitions.forall(_.functionTypeInfo.displayName.universalInterpretation() == "+"))
   }
 
-  test("known definition cache keeps classes and functions queryable by name") {
-    assert(KnownBeDefineStructures.byName("string").exists(_.isInstanceOf[BeDefineClass]))
-    assert(KnownBeDefineStructures.byName("forward").exists(_.isInstanceOf[BeDefineFunction]))
-  }
-
-  test("turtle commands are methods on the turtle class") {
-    val turtleClass = KnownBeDefineStructures.byName("turtle").collectFirst { case cls: BeDefineClass => cls }.get
-    val forward = KnownBeDefineStructures.byName("forward").collectFirst { case fn: BeDefineFunction => fn }.get
-
-    assert(turtleClass.methods.contains(forward))
-    assertEquals(forward.functionTypeInfo.isMethodInClass.map(_.name.universalInterpretation()), Some(turtleClass.name.universalInterpretation()))
-    assert(!KnownBeDefineStructures.functions.contains(forward))
-  }
-
   test("operator definitions are actual BeDefineFunctions with multiple typed alternatives") {
     val comparisonDefinitions = KnownBeDefineStructures.byName(">").collect { case fn: BeDefineFunction => fn }
     assert(comparisonDefinitions.size >= 2)

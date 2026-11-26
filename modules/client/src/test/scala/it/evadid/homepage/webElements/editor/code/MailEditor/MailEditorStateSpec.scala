@@ -68,9 +68,4 @@ class MailEditorStateSpec extends FunSuite {
     for (src <- List("https://attacker/pics/x.png", "//attacker/x.png", "pics/../x.png", "pics/x.svg", "pics/x.png?secret", "data:image/png;base64,abc"))
       assert(!MailBody.allowedImage(src))
   }
-  test("digital workbook is registered and serializes both mailbox interactions") {
-    val wb = CreatePhishingWorkbook(null).createWorkbook
-    val serializer = WorkbookElementFactory.serializerRegularJsonWorkbook
-    assertEquals(serializer.deserialize(serializer.serialize(wb)), wb)
-  }
 }

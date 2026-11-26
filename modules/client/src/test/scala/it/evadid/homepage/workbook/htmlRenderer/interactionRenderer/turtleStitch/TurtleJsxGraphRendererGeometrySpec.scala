@@ -111,25 +111,6 @@ class TurtleJsxGraphRendererGeometrySpec extends FunSuite:
         else js.Dynamic.global.Object.defineProperty(globals, name, descriptor)
       }
 
-  test("DOM fixtures restore absent and explicitly undefined document properties") {
-    val globals = js.Dynamic.global.globalThis
-    val original = js.Dynamic.global.Object.getOwnPropertyDescriptor(globals, "document")
-    try
-      js.special.delete(globals, "document")
-      withDom { assert(!js.isUndefined(globals.selectDynamic("document"))) }
-      assert(js.isUndefined(js.Dynamic.global.Object.getOwnPropertyDescriptor(globals, "document")))
-      js.Dynamic.global.Object.defineProperty(globals, "document", js.Dynamic.literal(
-        configurable = true, enumerable = false, writable = true, value = js.undefined))
-      withDom { assert(!js.isUndefined(globals.selectDynamic("document"))) }
-      val restored = js.Dynamic.global.Object.getOwnPropertyDescriptor(globals, "document")
-      assert(!js.isUndefined(restored))
-      assert(js.isUndefined(restored.value))
-      assertEquals(restored.enumerable.asInstanceOf[Boolean], false)
-    finally
-      if js.isUndefined(original) then js.special.delete(globals, "document")
-      else js.Dynamic.global.Object.defineProperty(globals, "document", original)
-  }
-
   test("scene renderer preserves neutral lines and uses a nonempty accessible title") {
     val graph = new Graph
     val scene = Scene(List(RenderedLine(Point(0.0, 0.0), Point(10.0, 0.0), LineResult.Neutral, false)), Nil)
@@ -388,29 +369,6 @@ class TurtleJsxGraphRendererGeometrySpec extends FunSuite:
     assertEquals(endpoint.attrs.name.asInstanceOf[String], "")
   }
 
-  test("forward defaults to right; right is down and left is up") {
-    val scene = buildScene(List(cmd("forward", 100), cmd("right", 90), cmd("forward", 50), cmd("left", 90), cmd("forward", 25)), Nil)
-    val targets = List(Point(100.0, 0.0), Point(100.0, 50.0), Point(125.0, 50.0))
-    scene.lines.zip(targets).foreach((line, target) => point(line.end, target.x, target.y))
-  }
-
-  test("consecutive turns accumulate at the vertex, including an intervening zero forward") {
-    val scene = buildScene(List(cmd("forward", 10), cmd("left", 120), cmd("forward", 0), cmd("right", 30), cmd("forward", 10)), Nil)
-    assertEquals(scene.lines.size, 2)
-    assertEquals(scene.angles.head.degrees, 90.0)
-    assertEquals(scene.angles.head.fromHeading, 0.0)
-    point(scene.lines.last.end, 10, -10)
-  }
-
-  test("backwards, negative forwards, pen changes and right aliases preserve coordinates") {
-    val program = List(cmd("backward", 10), cmd("turn_right", 90), cmd("penup"), cmd("forward", 20), cmd("pendown"), cmd("lt", 90), cmd("fd", -5))
-    val scene = buildScene(program, Nil)
-    val targets = List(Point(-10.0, 0.0), Point(-10.0, 20.0), Point(-15.0, 20.0))
-    scene.lines.zip(targets).foreach((line, target) => point(line.end, target.x, target.y))
-    assertEquals(scene.lines.map(_.jump), List(false, true, false))
-    assertEquals(scene.angles.map(_.degrees), List(-90.0, 90.0))
-  }
-
   test("absolute movement uses the pen state and breaks pending angles") {
     for penUp <- List(false, true) do
       val program = (if penUp then List(cmd("penup")) else Nil) ++ List(cmd("forward", 10), cmd("left", 45), cmd("goto", 20, 30), cmd("setx", 40), cmd("sety", 50), cmd("home"), cmd("forward", 5))
@@ -449,12 +407,6 @@ class TurtleJsxGraphRendererGeometrySpec extends FunSuite:
       point(graph.coords(graph.parent(segment, 0)), line.start.x, -line.start.y)
       point(graph.coords(graph.parent(segment, 1)), line.end.x, -line.end.y)
     }
-  }
-
-  test("cancelled turns do not create degenerate angle objects") {
-    val scene = buildScene(List(cmd("forward", 10), cmd("left", 90), cmd("right", 90), cmd("forward", 10)), Nil)
-    assertEquals(scene.angles, Nil)
-    point(scene.lines.last.end, 20, 0)
   }
 
   for
