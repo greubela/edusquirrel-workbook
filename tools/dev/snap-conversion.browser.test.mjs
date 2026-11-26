@@ -75,7 +75,8 @@ test('native Snap exports retain execution behavior through shared parsing and P
     });
     for (const fixture of cases) {
       const native = await page.evaluate(async ({name, xml}) => {
-        nativeCorpusIde.openProjectString(xml);
+        // openProjectString opens on a later step; the raw call replaces the project before it is read and run.
+        nativeCorpusIde.rawOpenProjectString(xml);
         const sprite = nativeCorpusIde.currentSprite;
         const trace = [];
         for (const [method, command] of [['forward','Forward'],['turn','Right'],['turnLeft','Left']]) {
