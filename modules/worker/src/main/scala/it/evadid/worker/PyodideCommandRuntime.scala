@@ -3,7 +3,7 @@ package it.evadid.worker
 import it.evadid.distribution.commandTypes.WorkerCommands.*
 import it.evadid.util.logging.Logger
 import it.evadid.facades.{Pyodide, PyodideRuntime}
-import it.evadid.vm.simulation.python.PythonConsoleProgram
+import it.evadid.vm.simulation.python.{PythonConsoleProgram, PythonTurtleCalls}
 import scala.concurrent.{ExecutionContext, Future}
 import scala.scalajs.js
 import scala.scalajs.js.JSConverters.*
@@ -124,7 +124,11 @@ object PyodideCommandRuntime {
         else pyodide.loadPackage(request.packages.toJSArray).asInstanceOf[js.Promise[js.Any]].toFuture.map(_ => ())
       prepared.flatMap(_ => pyodide.loadPackagesFromImports(request.code).asInstanceOf[js.Promise[js.Any]].toFuture)
         .flatMap(_ => pyodide.runPythonAsync(
-          if request.logTurtleCalls then PythonConsoleProgram.wrap(request.code) else request.code,
+          request.turtleCalls match {
+            case PythonTurtleCalls.Native => request.code
+            case PythonTurtleCalls.Logged => PythonConsoleProgram.wrap(request.code)
+            case PythonTurtleCalls.Ignored => PythonConsoleProgram.wrap(request.code, log = false)
+          },
           js.Dynamic.literal(globals = globals))
           .asInstanceOf[js.Promise[js.Any]].toFuture)
         .map { value =>

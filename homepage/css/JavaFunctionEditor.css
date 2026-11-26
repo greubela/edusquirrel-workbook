@@ -2,12 +2,10 @@
 @import url("editors.css");
 
 .java-function-based-editor {
-    /* Code area, class boxes and dialogs share the editor background instead of a separate white surface. */
-    --editor-code-surface: var(--editor-shell);
     position: relative;
     display: grid;
     flex: 1 1 auto;
-    grid-template-columns: minmax(280px, 40%) minmax(0, 1fr);
+    grid-template-columns: 218px minmax(0, 1fr);
     grid-template-rows: auto minmax(0, 1fr);
     grid-template-areas: "header header" "navigation workspace";
     gap: 12px;
@@ -50,8 +48,7 @@
 .fullscreen-content-container > .java-function-based-editor > .java-function-editor__topbar { padding-inline-end: 5rem; }
 .java-function-editor__subtitle,
 .java-function-editor__section-hint { margin-top: 4px !important; color: var(--editor-muted); font-size: 13px; }
-.java-function-editor__topbar-actions,
-.java-function-editor__view-toggle {
+.java-function-editor__topbar-actions {
     display: flex;
     align-items: center;
     flex-wrap: wrap;
@@ -63,9 +60,10 @@
     background: linear-gradient(135deg, var(--editor-glass-lens), transparent 90%), var(--editor-chrome-surface);
     box-shadow: inset 0 1px var(--editor-glass-shine), 0 7px 20px -14px var(--editor-shadow);
 }
-.java-uml,
+.java-function-editor__sync { padding-inline: 7px; color: var(--editor-muted); font-size: 12px; overflow-wrap: anywhere; }
+.java-function-editor__diagram-section,
 .java-function-editor__workspace { display: flex; flex-direction: column; min-width: 0; min-height: 0; }
-.java-uml { grid-area: navigation; gap: 10px; padding: 6px 2px; overflow: hidden; }
+.java-function-editor__diagram-section { grid-area: navigation; gap: 12px; padding: 6px 2px; overflow: hidden; }
 .java-function-editor__workspace {
     grid-area: workspace;
     overflow: hidden;
@@ -74,100 +72,13 @@
     background: var(--editor-code-surface);
     box-shadow: 0 9px 25px -18px var(--editor-shadow);
 }
-.java-function-editor__section-heading,
+
 .java-function-editor__workspace-heading { display: flex; align-items: flex-start; justify-content: space-between; flex-wrap: wrap; gap: 10px; }
 .java-function-editor__workspace-heading { padding: 12px 14px; border-bottom: 1px solid var(--editor-border); background: var(--editor-code-surface); }
 .java-function-editor__section-title { font-size: 14px; font-weight: 600; overflow-wrap: anywhere; }
-.java-function-editor__section-heading > div,
-.java-function-editor__workspace-heading > div { min-width: 0; }
 
-/* UML class diagram: HTML class boxes in rows (supertypes above subtypes), SVG relationship arrows behind them. */
-.java-uml__heading { display: flex; align-items: flex-start; justify-content: space-between; flex-wrap: wrap; gap: 10px; }
-.java-uml__heading > div { min-width: 0; }
-.java-uml__title { font-size: 14px; font-weight: 600; }
-.java-uml__hint { margin-top: 4px !important; color: var(--editor-muted); font-size: 13px; }
-.java-uml__draft-notice { padding: 8px 10px; border: 1px solid var(--editor-warning-border); border-radius: 9px; background: var(--editor-warning-surface); color: var(--editor-warning-ink); font-size: 12px; }
-.java-uml__draft-notice--hidden { display: none; }
-.java-uml__canvas {
-    position: relative;
-    display: flex;
-    flex: 1;
-    flex-direction: column;
-    gap: 44px;
-    min-height: 0;
-    padding: 12px 8px 24px;
-    overflow: auto;
-    scrollbar-color: var(--editor-scrollbar) transparent;
-    scrollbar-width: thin;
-}
-.java-uml--draft .java-uml__canvas { opacity: 0.55; filter: grayscale(0.6); }
-.java-uml__relations-layer { position: absolute; top: 0; left: 0; z-index: 0; overflow: visible; color: var(--editor-muted); pointer-events: none; }
-.java-uml__marker-hollow { fill: var(--editor-shell); }
-.java-uml__arrow-label { fill: var(--editor-muted); font: 11px/1 Consolas, "JetBrains Mono", monospace; }
-.java-uml__row { position: relative; z-index: 1; display: flex; flex-wrap: wrap; align-items: flex-start; gap: 44px 56px; }
-.java-uml__class {
-    display: flex;
-    flex: 0 1 auto;
-    flex-direction: column;
-    min-width: 170px;
-    max-width: 100%;
-    border: 1.5px solid var(--editor-ink);
-    border-radius: 3px;
-    background: var(--editor-shell);
-    box-shadow: 0 6px 18px -14px var(--editor-shadow);
-    font: 13px/1.45 Consolas, "JetBrains Mono", monospace;
-}
-.java-uml__name-compartment { display: flex; flex-direction: column; align-items: center; padding: 6px 12px; text-align: center; }
-.java-uml__stereotype { color: var(--editor-muted); font-size: 11px; }
-.java-uml__class-name { font-size: 14px; font-weight: 700; overflow-wrap: anywhere; }
-.java-uml__class-name--abstract { font-style: italic; }
-.java-uml__compartment { display: flex; flex-direction: column; align-items: stretch; gap: 1px; min-height: 14px; padding: 4px; border-top: 1.5px solid var(--editor-ink); }
-/* Scoped under `.java-uml .java-uml__class` to win over the global `:root button` defaults (incl. :hover/:focus) in colors.css. */
-.java-uml .java-uml__class .java-uml__member { display: block; width: 100%; margin: 0; padding: 3px 8px; border: 1px solid transparent; border-radius: 4px; background: transparent; color: var(--editor-ink); font: inherit; text-align: left; white-space: pre-wrap; overflow-wrap: anywhere; }
-.java-uml .java-uml__class button.java-uml__member { cursor: pointer; }
-.java-uml .java-uml__class button.java-uml__member:hover:not(:disabled) { border-color: var(--editor-border-strong); background: var(--editor-hover); box-shadow: none; transform: none; }
-.java-uml .java-uml__class button.java-uml__member:disabled { cursor: not-allowed; }
-.java-uml__member--static { text-decoration: underline; text-underline-offset: 3px; }
-.java-uml__member--abstract { font-style: italic; }
-.java-uml .java-uml__class .java-uml__member--selected { border-color: var(--editor-border-strong); background: var(--editor-selected); color: var(--editor-accent); font-weight: 600; }
-/* Class selectors only (no element name), so a later re-import of colors.css cannot change padding/border on hover. */
-.java-function-based-editor .java-uml .java-uml__add {
-    align-self: flex-start;
-    margin: 2px 4px;
-    padding: 2px 8px;
-    border: 1px dashed var(--editor-border-strong);
-    border-radius: 12px;
-    background: transparent;
-    color: var(--editor-muted);
-    cursor: pointer;
-    font: 12px/1.5 system-ui, sans-serif;
-}
-.java-uml .java-uml__heading .java-uml__add { margin: 0; padding: 6px 12px; font-size: 13px; }
-.java-uml .java-uml__add:hover:not(:disabled) { border-style: solid; color: var(--editor-ink); background: var(--editor-hover); box-shadow: none; transform: none; }
-.java-uml__add:disabled { opacity: 0.55; cursor: not-allowed; }
-.java-uml__class--library { border-style: dashed; border-color: var(--editor-muted); color: var(--editor-muted); background: transparent; box-shadow: none; }
-.java-uml__class--library > summary { list-style: none; cursor: pointer; }
-.java-uml__class--library > summary::-webkit-details-marker { display: none; }
-.java-uml__class--library .java-uml__compartment { border-top-color: var(--editor-muted); border-top-style: dashed; }
-.java-uml .java-uml__class--library .java-uml__member { color: var(--editor-muted); }
-.java-uml__empty { padding: 16px; border: 1px dashed var(--editor-border-strong); border-radius: 11px; background: var(--editor-shell); }
-.java-uml__empty span { display: block; margin-top: 6px; color: var(--editor-muted); }
-/* The relationships as text, for screen readers; the arrows show them visually. */
-.java-uml__relation-list { position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
-.java-uml-line { display: block; margin-top: 4px; color: var(--editor-accent); font: 13px/1.45 Consolas, "JetBrains Mono", monospace; overflow-wrap: anywhere; }
-.java-uml-line.java-uml__member--static { text-decoration: underline; text-underline-offset: 3px; }
-.java-function-editor__preview { display: flex; flex-direction: column; gap: 6px; padding: 10px 12px; border: 1px solid var(--editor-border); border-radius: 9px; background: var(--editor-chrome-surface); }
-.java-function-editor__preview-caption { color: var(--editor-muted); font-size: 12px; }
-.java-function-editor__preview-java { color: var(--editor-ink); font: 13px/1.45 Consolas, "JetBrains Mono", monospace; overflow-wrap: anywhere; }
-.java-function-editor__parameters { display: flex; flex-direction: column; gap: 6px; min-width: 0; margin: 0; padding: 10px 12px; border: 1px solid var(--editor-border); border-radius: 9px; }
-.java-function-editor__parameters > legend { padding-inline: 4px; }
-.java-function-editor__parameters > button { align-self: flex-start; }
-.java-function-editor__parameter { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) auto; gap: 6px; }
-.java-function-based-editor .java-function-editor__parameter input,
-.java-function-based-editor .java-function-editor__field select { width: 100%; min-height: 38px; padding: 9px 12px; border: 1px solid var(--editor-border); border-radius: 9px; background: var(--editor-chrome-surface); color: var(--editor-ink); font: 13px Consolas, "JetBrains Mono", monospace; }
-.java-function-based-editor.editor-appearance .java-function-editor__button--danger { border-color: var(--editor-error); color: var(--editor-error); }
-.java-function-based-editor.editor-appearance .java-function-editor__button--danger:hover:not(:disabled) { border-color: var(--editor-error); background: var(--editor-hover); color: var(--editor-error); }
-.java-function-based-editor.editor-appearance :is(.java-function-editor__button, .java-function-editor__function) {
+.java-function-editor__workspace-heading > div { min-width: 0; }
+.java-function-based-editor.editor-appearance .java-function-editor__button {
     min-height: 38px;
     min-width: 44px;
     padding: 8px 12px;
@@ -181,29 +92,22 @@
     transition: background-color 120ms ease, border-color 120ms ease;
 }
 .java-function-editor__button { display: inline-flex; align-items: center; justify-content: center; overflow-wrap: anywhere; }
-.java-function-based-editor.editor-appearance .java-function-editor__button--small { padding-inline: 10px; font-size: 12px; }
+
 .java-function-based-editor.editor-appearance .java-function-editor__button--primary {
     border-color: var(--editor-button-primary);
     background: var(--editor-button-primary);
     box-shadow: inset 0 1px var(--editor-glass-shine), 0 5px 12px -8px var(--editor-shadow);
     color: var(--editor-on-primary);
 }
-.java-function-based-editor.editor-appearance :is(.java-function-editor__button, .java-function-editor__function):hover:not(:disabled) { border-color: var(--editor-border-strong); background: var(--editor-hover); color: var(--editor-ink); }
+.java-function-based-editor.editor-appearance .java-function-editor__button:hover:not(:disabled) { border-color: var(--editor-border-strong); background: var(--editor-hover); color: var(--editor-ink); }
 .java-function-based-editor.editor-appearance .java-function-editor__button--primary:hover:not(:disabled) { border-color: var(--editor-focus); background: var(--editor-button-primary); color: var(--editor-on-primary); }
-.java-function-based-editor.editor-appearance :is(.java-function-editor__button, .java-function-editor__function):focus { border-color: var(--editor-focus); }
+.java-function-based-editor.editor-appearance .java-function-editor__button:focus { border-color: var(--editor-focus); }
 .java-function-based-editor :is(button, input, textarea):focus-visible { outline: 2px solid var(--editor-focus); outline-offset: 2px; }
-.java-function-editor__button:disabled,
-.java-function-editor__function:disabled { opacity: 0.55; cursor: not-allowed; }
-.java-function-editor__view-toggle { gap: 3px; padding: 3px; border-radius: 23px; box-shadow: inset 0 1px var(--editor-glass-shine); }
-.java-function-based-editor .java-function-editor__view-toggle .java-function-editor__button { padding: 7px 11px; border-color: transparent; background: transparent; color: var(--editor-muted); font-size: 12px; }
-.java-function-based-editor .java-function-editor__view-toggle .java-function-editor__button--primary { border-color: var(--editor-border); background: var(--editor-selected); box-shadow: none; color: var(--editor-accent); }
-.java-function-based-editor .java-function-editor__view-toggle .java-function-editor__button--primary:hover:not(:disabled) { background: var(--editor-selected); color: var(--editor-accent); }
-.java-function-editor__compact-navigation { display: none; align-items: center; flex-wrap: wrap; gap: 6px; min-width: 0; max-width: 100%; margin-top: 8px; color: var(--editor-muted); font-size: 12px; }
-.java-function-editor__compact-navigation select { min-width: 0; min-height: 38px; max-width: 100%; padding: 7px 10px; border: 1px solid var(--editor-border); border-radius: 9px; background: var(--editor-chrome-surface); color: var(--editor-ink); font: inherit; }
-.java-function-editor__compact-navigation select:focus-visible { outline: 2px solid var(--editor-focus); outline-offset: 2px; }
-.java-function-based-editor--structure-collapsed .java-function-editor__compact-navigation { display: flex; }
+.java-function-editor__button:disabled { opacity: 0.55; cursor: not-allowed; }
+
 .java-function-editor__editor-panel,
 .java-function-editor__method,
+.java-function-editor__class,
 .java-function-editor__source,
 .java-function-based-editor .code-mirror-editor { display: flex; flex: 1; flex-direction: column; min-width: 0; min-height: 0; background: var(--editor-code-surface); }
 .java-function-based-editor .code-mirror-editor { overflow: hidden; }
@@ -213,11 +117,13 @@
 .java-function-based-editor .cm-scroller { min-height: 0; overflow: auto; font: 14px/1.65 Consolas, "JetBrains Mono", monospace; }
 .java-function-based-editor .cm-content { padding-block: 12px; }
 .java-function-based-editor .code-mirror-editor__fallback { flex: 1; width: 100%; min-height: 0; padding: 16px; border: 0; font: 14px/1.65 Consolas, "JetBrains Mono", monospace; resize: none; }
-.java-function-editor__editor-panel--hidden,
-.java-function-editor__editor-placeholder--hidden,
+
 .java-function-editor__draft-warning--hidden { display: none !important; }
 .java-function-editor__draft-warning { padding: 12px 16px; border-top: 1px solid var(--editor-warning-border); background: var(--editor-warning-surface); color: var(--editor-warning-ink); }
-.java-function-editor__editor-placeholder { flex: 1; margin: 16px; padding: 16px; border: 1px dashed var(--editor-border-strong); border-radius: 11px; background: var(--editor-code-surface); }
+.java-function-editor__empty-diagram,
+.java-function-editor__editor-placeholder { padding: 16px; border: 1px dashed var(--editor-border-strong); border-radius: 11px; background: var(--editor-code-surface); }
+.java-function-editor__editor-placeholder { flex: 1; margin: 16px; }
+.java-function-editor__empty-diagram span,
 .java-function-editor__editor-placeholder span { display: block; margin-top: 6px; color: var(--editor-muted); }
 .java-function-editor__reference {
     grid-area: reference;
@@ -234,8 +140,6 @@
 }
 .java-function-editor__reference :is(h2, h3) { font-size: 16px; }
 .java-function-editor__reference p { color: var(--editor-muted); }
-.java-function-editor__reference .turtle-execution__figure { background: var(--editor-reference-figure-surface); }
-.java-function-editor__reference .turtle-execution__figure figcaption { color: var(--editor-reference-figure-ink); }
 .java-function-editor__reference :is(img, svg, canvas) { display: block; max-width: 100%; height: auto; }
 .java-function-editor__dialog::backdrop { background: var(--editor-dialog-backdrop); }
 .java-function-editor__dialog {
@@ -262,13 +166,16 @@
 .java-function-editor__dialog-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 8px; }
 .java-function-editor__method-option { display: flex; align-items: center; gap: 8px; min-height: 44px; cursor: pointer; }
 .java-function-based-editor .java-function-editor__method-option input { width: 18px; height: 18px; padding: 0; margin: 0; accent-color: var(--editor-accent, var(--color-focus)); }
-.java-function-based-editor--with-reference { grid-template-columns: minmax(260px, 34%) minmax(0, 1fr) minmax(260px, 300px); grid-template-areas: "header header header" "navigation workspace reference"; }
+.java-function-based-editor--with-reference { grid-template-columns: 218px minmax(0, 1fr) minmax(280px, 320px); grid-template-areas: "header header header" "navigation workspace reference"; }
 .java-function-based-editor--structure-collapsed { grid-template-columns: minmax(0, 1fr); grid-template-rows: auto minmax(0, 1fr); grid-template-areas: "header" "workspace"; }
-.java-function-based-editor--structure-collapsed .java-uml { display: none; }
+.java-function-based-editor--structure-collapsed .java-function-editor__diagram-section { display: none; }
 .java-function-based-editor--with-reference.java-function-based-editor--structure-collapsed { grid-template-columns: minmax(0, 1fr) minmax(280px, 320px); grid-template-areas: "header header" "workspace reference"; }
+.java-component-editor__diagram { min-width: 0; margin: 0; padding: 0; border: 0; }
+.java-component-editor__diagram:disabled { opacity: 0.55; }
+.java-component-editor .java-function-editor__diagram-section { overflow: auto; scrollbar-color: var(--editor-scrollbar) transparent; scrollbar-width: thin; }
 
 @media (max-width: 1024px) {
-    .java-function-based-editor--with-reference { grid-template-columns: minmax(240px, 32%) minmax(0, 1fr) 260px; }
+    .java-function-based-editor--with-reference { grid-template-columns: 202px minmax(0, 1fr) 280px; }
 }
 @media (max-width: 760px) {
     .java-function-based-editor,
@@ -277,8 +184,8 @@
     .java-function-based-editor { grid-template-rows: auto minmax(0, 1fr); grid-template-areas: "header" "workspace"; }
     .java-function-based-editor--with-reference { grid-template-rows: auto minmax(0, 1.4fr) minmax(0, 1fr); grid-template-areas: "header" "workspace" "reference"; }
     .java-function-editor__subtitle,
-    .java-uml .java-uml__hint { display: none; }
-    .java-uml {
+    .java-function-editor__diagram-section .java-function-editor__section-hint { display: none; }
+    .java-function-editor__diagram-section {
         position: absolute;
         grid-area: auto;
         inset: 64px 8px auto;
@@ -291,19 +198,17 @@
         background: var(--editor-code-surface);
         box-shadow: 0 10px 24px -8px var(--editor-shadow);
     }
-    .java-function-editor__compact-navigation { display: flex; }
     .java-function-based-editor--structure-collapsed { grid-template-rows: auto minmax(0, 1fr); grid-template-areas: "header" "workspace"; }
     .java-function-based-editor--with-reference.java-function-based-editor--structure-collapsed { grid-template-rows: auto minmax(0, 1.4fr) minmax(0, 1fr); grid-template-areas: "header" "workspace" "reference"; }
     .java-function-editor__topbar { gap: 6px; padding: 8px 0; }
     .eva-editor__content > .java-function-based-editor > .java-function-editor__topbar { padding-top: 8px; }
     .java-function-editor__topbar > div:first-child { display: none; }
     .java-function-editor__title,
-    .java-function-editor__workspace-heading .java-function-editor__section-hint { display: none; }
+    .java-function-editor__workspace-heading .java-function-editor__section-hint,
+    .java-function-editor__sync { display: none; }
     .java-function-editor__workspace-heading { padding: 8px; gap: 6px; }
     .java-function-editor__workspace-heading > div:first-child { display: none; }
-    .java-function-editor__compact-navigation { margin: 0; width: 100%; flex-wrap: nowrap; }
-    .java-function-editor__compact-navigation select { flex: 1; width: 0; }
-    .java-function-editor__view-toggle { padding: 2px; }
+
 }
 @media (max-width: 520px) {
     .java-function-based-editor { gap: 10px; padding: 0 8px 8px; }
@@ -316,8 +221,7 @@
     .java-function-editor__workspace-heading { padding: 6px; }
     .java-function-editor__title,
     .java-function-editor__section-hint { overflow-wrap: anywhere; }
-    .java-function-editor__view-toggle { width: 100%; }
-    .java-function-based-editor .java-function-editor__view-toggle .java-function-editor__button { flex: 1; min-width: 0; padding-inline: 8px; }
+
     .java-function-editor__topbar-actions { width: 100%; border-radius: 16px; }
 }
 @media (max-width: 320px) {
@@ -328,29 +232,42 @@
 @media (max-height: 600px) and (min-width: 761px) {
     .java-function-editor__topbar { padding-block: 8px; gap: 6px; }
     .java-function-editor__topbar > div:first-child,
+    .java-function-editor__sync,
     .java-function-editor__workspace-heading > div:first-child { display: none; }
     .java-function-editor__workspace-heading { padding: 6px; gap: 6px; }
-    .java-function-editor__compact-navigation { margin: 0; }
-}
-@media (max-height: 600px) and (max-width: 760px) {
-    .java-function-based-editor .java-function-editor__view-toggle { width: auto; flex: 0 0 auto; }
-    .java-function-based-editor .java-function-editor__view-toggle .java-function-editor__button {
-        min-width: 44px;
-        font-size: 0;
-    }
-    .java-function-editor__view-toggle .java-function-editor__button::before { font: 14px/1 monospace; }
-    .java-function-editor__view-toggle .java-function-editor__button[data-view="diagram"]::before { content: "▤"; }
-    .java-function-editor__view-toggle .java-function-editor__button[data-view="source"]::before { content: "{ }"; }
-    .java-function-editor__view-toggle .java-function-editor__button[data-action="delete-member"]::before { content: "×"; }
-    .java-function-editor__compact-navigation { flex: 1; width: auto; }
-    .java-function-editor__compact-navigation > span { display: none; }
 }
 @media (pointer: coarse) {
-    .java-function-based-editor.editor-appearance :is(.java-function-editor__button, .java-function-editor__function),
-    .java-function-based-editor .java-function-editor__field input,
-    .java-uml button.java-uml__member { min-height: 44px; }
-    .java-function-editor__compact-navigation select { min-height: 44px; }
+    .java-function-based-editor.editor-appearance .java-function-editor__button,
+    .java-function-based-editor .java-function-editor__field input { min-height: 44px; }
     .java-function-based-editor .cm-scroller,
     .java-function-based-editor .code-mirror-editor__fallback,
     .java-function-based-editor .java-function-editor__field input { font-size: 16px; }
 }
+
+/* Component modes, diagram, source and console form one vertical workspace. */
+.java-function-based-editor.java-component-editor {
+    grid-template-columns: minmax(0, 1fr);
+    /* Shrink the diagram before it consumes the code editor's usable height. */
+    grid-template-rows: auto auto minmax(0, auto) minmax(var(--editor-workspace-min-height), 1fr);
+    grid-template-areas: "modes" "header" "navigation" "workspace";
+}
+.java-component-editor__modes { grid-area: modes; display: flex; gap: var(--space-sm); }
+.java-component-editor__modes [aria-selected="true"] { background: var(--editor-selected); color: var(--editor-accent); }
+.java-component-editor > .java-function-editor__diagram-section { max-height: 30vh; overflow: auto; }
+.java-component-editor.java-function-based-editor--structure-collapsed { grid-template-rows: auto auto minmax(0, 1fr); grid-template-areas: "modes" "header" "workspace"; }
+
+.java-component-editor__modes > button { flex: 1; min-width: 0; border: 1px solid var(--editor-border); border-radius: 0; font: inherit; }
+@media (min-width: 761px) {
+    .java-component-editor.java-function-based-editor--with-reference { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); grid-template-areas: "modes modes" "header header" "navigation reference" "workspace reference"; }
+    .java-component-editor.java-function-based-editor--with-reference.java-function-based-editor--structure-collapsed { grid-template-areas: "modes modes" "header header" "workspace reference"; }
+}
+
+/* Python uses the shared class boxes and editor controls in a vertical workspace. */
+.python-component-editor { display: flex; flex-direction: column; min-height: 0; height: 100%; gap: var(--space-sm); }
+.python-component-editor > .uml-structure-selector { flex: 0 1 auto; max-height: 30vh; overflow: auto; }
+.python-component-editor > .java-function-editor__workspace { flex: 1; min-height: 0; }
+.python-component-editor .java-function-editor__method { flex: 1; min-height: 0; }
+.python-component-editor .java-function-editor__modes { display: flex; flex-wrap: wrap; gap: var(--space-sm); }
+.python-component-editor button:not(.uml-entry) { padding: var(--space-sm) var(--space-md); color: var(--editor-code-ink); background: var(--editor-code-surface); border: var(--space-borders) solid var(--editor-border); cursor: pointer; }
+.python-component-editor button:not(.uml-entry):hover { background: var(--editor-hover); }
+.python-component-editor button[aria-selected="true"] { background: var(--editor-selected); }

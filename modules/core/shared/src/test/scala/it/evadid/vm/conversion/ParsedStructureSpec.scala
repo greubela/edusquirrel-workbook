@@ -191,7 +191,7 @@ class ParsedStructureSpec extends FunSuite {
   }
 
   test("library calls carry their intrinsic in every spelling") {
-    val expected = "[page: str = <FetchText>fetch_text(\"https://example.org\"); <Print>print(page)]"
+    val expected = "[page: str = <FetchText>fetch_text(\"https://example.org\"); SystemFunctionality.printToOut(page)]"
     val pythonOnly = ProgrammingStateRaw(Python, "page = fetch_text(\"https://example.org\")\nprint(page)\n")
     val javaSource = java("", "        String page = Web.fetchText(\"https://example.org\");\n        System.out.println(page);")
     assertEquals(outlineOf(pythonOnly), expected)

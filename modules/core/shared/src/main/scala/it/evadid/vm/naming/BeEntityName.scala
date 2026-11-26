@@ -11,6 +11,9 @@ sealed trait BeEntityName derives ReadWriter{
 
   def universalInterpretation(): String = getNameIn(English, NamingStyle.SnakeCase)
 
+  /** The name as written in `humanLanguage`, before a naming style normalizes its case and separators. */
+  def spelling(humanLanguage: HumanLanguage = English): String
+
   def asLanguageMap(namingStyle: NamingStyle): LanguageMap[HumanLanguage] = LanguageMap.mapBasedLanguageMap(
     AppLanguage.humanLanguages.map(language => language -> getNameIn(language, namingStyle)).toMap
   )
@@ -36,10 +39,14 @@ object BeEntityName {
       val parts: List[String] = NamingStyle.fromAnyNotationToParts(partsString)
       namingStyle.applyStyle(parts)
     }
+
+    override def spelling(humanLanguage: HumanLanguage): String = languageMapWithPartsString.getInLanguage(humanLanguage)
   }
 
   private case class BeEntityNameLiteral(literalName: String) extends BeEntityName derives upickle.default.ReadWriter {
     override def getNameIn(humanLanguage: HumanLanguage, namingStyle: NamingStyle): String = literalName
+
+    override def spelling(humanLanguage: HumanLanguage): String = literalName
   }
 
 }

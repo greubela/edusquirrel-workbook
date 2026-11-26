@@ -20,32 +20,6 @@
 
 .eva-editor__language-icon { display: block; width: 24px; height: 24px; }
 
-.editor-appearance[data-editor-theme] .editor-appearance__toggle {
-    display: inline-flex;
-    flex: 0 0 auto;
-    align-items: center;
-    justify-content: center;
-    gap: 8px;
-    min-height: 44px;
-    min-width: 44px;
-    max-width: 100%;
-    padding: 9px 13px;
-    border: 1px solid var(--editor-border);
-    border-radius: 24px;
-    background: linear-gradient(135deg, var(--editor-glass-lens), transparent 90%), var(--editor-chrome-surface);
-    box-shadow: inset 0 1px var(--editor-glass-shine), 0 7px 20px -14px var(--editor-shadow);
-    color: var(--editor-ink);
-    font: inherit;
-    line-height: 1.4;
-    cursor: pointer;
-    transition: background-color 120ms ease, border-color 120ms ease;
-}
-
-.editor-appearance__icon { font-size: 19px; line-height: 1; }
-.editor-appearance[data-editor-theme] .editor-appearance__toggle:hover { background-color: var(--editor-hover); border-color: var(--editor-border-strong); }
-.editor-appearance[data-editor-theme] .editor-appearance__toggle:focus { color: var(--editor-ink); border-color: var(--editor-focus); }
-.editor-appearance[data-editor-theme] .editor-appearance__toggle:focus-visible { outline: 2px solid var(--editor-focus); outline-offset: 3px; }
-
 .eva-editor.editor-appearance { gap: 12px; padding: 14px; }
 .editor-appearance .eva-editor__toolbar {
     display: flex;
@@ -91,92 +65,13 @@
 }
 .eva-editor.editor-appearance .eva-editor__tabs > button:focus-visible { outline: 2px solid var(--editor-focus); outline-offset: 2px; }
 .eva-editor.editor-appearance .eva-editor__tabs > button[aria-disabled="true"] { color: var(--editor-muted); opacity: 0.55; }
-.editor-appearance .code-editor__conversion,
-.editor-appearance .java-function-editor__conversion { color: var(--editor-error); }
+
 .editor-appearance .eva-editor__error { color: var(--editor-error); }
 .editor-appearance .eva-editor__content {
     border-color: var(--editor-border);
     border-radius: 15px;
     background: var(--editor-code-surface);
     box-shadow: 0 9px 25px -18px var(--editor-shadow);
-}
-
-.editor-appearance .turtle-sidebar {
-    border-color: var(--editor-border);
-    border-radius: 19px;
-    background: linear-gradient(135deg, var(--editor-glass-lens), transparent 80%), var(--editor-chrome-surface);
-    box-shadow: inset 0 1px var(--editor-glass-shine), 0 14px 35px -25px var(--editor-shadow);
-    color: var(--editor-ink);
-}
-.editor-appearance .turtle-sidebar .element-card-label { color: var(--editor-ink); }
-.editor-appearance[data-editor-theme] .turtle-execution__actions button {
-    min-height: 44px;
-    padding: var(--space-md) var(--space-lg);
-    border: 1px solid var(--editor-border);
-    border-radius: 22px;
-    background: var(--editor-chrome-surface);
-    color: var(--editor-ink);
-    font: inherit;
-}
-.editor-appearance .turtle-execution__actions button:hover:not(:disabled) { background: var(--editor-hover); border-color: var(--editor-border-strong); }
-.editor-appearance .turtle-execution__actions button:focus-visible { outline-color: var(--editor-focus); }
-.editor-appearance .turtle-execution__error { color: var(--editor-error); }
-.editor-appearance .turtle-sidebar:has(.turtle-execution) { display: flex; overflow: hidden; }
-.editor-appearance .turtle-execution {
-    display: grid;
-    flex: 1;
-    grid-template-columns: auto minmax(0, 1fr);
-    grid-template-rows: auto auto minmax(0, 1fr);
-    gap: 10px;
-    min-height: 0;
-}
-.editor-appearance .turtle-execution > h3 { grid-area: 1 / 1; margin: 0; align-self: center; font-size: 16px; }
-.editor-appearance .turtle-execution__actions { grid-area: 1 / 2; justify-content: flex-end; gap: 6px; }
-.editor-appearance :is(.turtle-execution__status, .turtle-execution__error) {
-    grid-column: 1 / -1;
-    grid-row: 2;
-    margin: 0;
-    min-height: 0;
-    font-size: 13px;
-    max-height: 5em;
-    overflow: auto;
-}
-.editor-appearance .turtle-execution__figure {
-    grid-column: 1 / -1;
-    grid-row: 3;
-    display: flex;
-    flex-direction: column;
-    gap: 6px;
-    min-height: 0;
-    padding: 10px;
-    overflow: hidden;
-}
-.editor-appearance .turtle-execution__figure figcaption { flex: 0 0 auto; margin: 0; }
-.editor-appearance .turtle-execution__canvas {
-    container-type: size;
-    display: grid;
-    flex: 1;
-    place-items: center;
-    min-height: 0;
-}
-.editor-appearance .turtle-execution__canvas > .turtle-gradig-panel {
-    width: min(100cqw, 100cqh);
-    height: min(100cqw, 100cqh);
-    min-height: 0;
-    max-width: 100%;
-}
-.editor-appearance .turtle-sidebar:has(> .turtle-live-preview) { display: flex; overflow: hidden; }
-.editor-appearance .turtle-live-preview { display: flex; flex: 1; min-height: 0; }
-.editor-appearance .turtle-live-preview .element-card { display: flex; flex: 1; flex-direction: column; min-height: 0; }
-.editor-appearance .turtle-live-preview .element-card-label { margin-bottom: 8px; }
-.editor-appearance .turtle-live-preview .element-card-content { flex: 1; min-height: 0; container-type: size; display: grid; place-items: center; }
-.editor-appearance .turtle-live-preview .element-card-content > div { display: grid; place-items: center; }
-.editor-appearance .turtle-live-preview .turtle-gradig-panel { width: min(100cqw, 100cqh); height: min(100cqw, 100cqh); min-height: 0; }
-.editor-appearance .turtle-execution__figure,
-.editor-appearance .turtle-live-preview .element-card-content {
-    background: var(--color-surface-base);
-    color: var(--color-text-primary);
-    color-scheme: light;
 }
 
 .editor-appearance .code-mirror-editor > .cm-editor,
@@ -222,7 +117,7 @@
 .editor-appearance .edusquirrel-code-mirror :is(.cm-todo-token, .cm-todo-token *) { color: var(--editor-error) !important; }
 
 @supports ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
-    .editor-appearance[data-editor-theme] :is(.editor-appearance__toggle, .eva-editor__tabs, .java-function-editor__topbar-actions, .java-function-editor__view-toggle, .java-function-editor__reference) {
+    .editor-appearance[data-editor-theme] :is(.eva-editor__tabs, .java-function-editor__topbar-actions, .java-function-editor__reference) {
         background: linear-gradient(135deg, var(--editor-glass-lens), transparent 90%), var(--editor-glass-surface);
         -webkit-backdrop-filter: blur(18px) saturate(125%);
         backdrop-filter: blur(18px) saturate(125%);
@@ -234,29 +129,6 @@
     .editor-appearance .eva-editor__toolbar { padding-inline-end: 3.25rem; gap: 8px; }
     .editor-appearance .eva-editor__tabs { border-radius: 20px; }
     .eva-editor.editor-appearance .eva-editor__tabs > button { padding-inline: 10px; }
-}
-
-@media (max-width: 760px), (max-width: 860px) and (min-height: 601px) {
-    .eva-editor--java.editor-appearance:has(> .turtle-sidebar) { grid-template-rows: auto minmax(0, 1.2fr) minmax(0, 0.8fr); }
-    .eva-editor--java.eva-editor--error.editor-appearance:has(> .turtle-sidebar) { grid-template-rows: auto auto minmax(0, 1.2fr) minmax(0, 0.8fr); }
-    .editor-appearance .turtle-sidebar:has(.turtle-execution) { padding: 8px; }
-    .editor-appearance .turtle-execution { gap: 6px; }
-    .editor-appearance .turtle-execution__figure { padding: 6px; gap: 4px; }
-    .editor-appearance .turtle-execution__figure figcaption,
-    .editor-appearance .turtle-execution__status { font-size: 12px; line-height: 1.35; }
-}
-
-@media (max-height: 600px) and (min-width: 761px) {
-    .editor-appearance .turtle-sidebar:has(.turtle-execution) { padding: 8px; }
-    .eva-editor.editor-appearance:has(> .turtle-sidebar) {
-        grid-template-columns: minmax(0, 1fr) minmax(200px, 30%);
-        grid-template-rows: auto minmax(0, 1fr);
-    }
-    .eva-editor.eva-editor--error.editor-appearance:has(> .turtle-sidebar) { grid-template-rows: auto auto minmax(0, 1fr); }
-}
-
-@media (max-width: 360px) {
-    .editor-appearance .editor-appearance__toggle { padding-inline: 11px; }
 }
 
 @media (pointer: coarse) {

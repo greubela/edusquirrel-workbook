@@ -7,27 +7,21 @@ import it.evadid.vm.code.defining.{BeDefineFunction, BeDefineVariable}
 import it.evadid.vm.code.others.BeStartProgram
 import it.evadid.vm.code.usage.{BeAssignVariable, BeFunctionCall, BeUseValue}
 import it.evadid.vm.conversion.turtlestitchexpression.TurtleStitchToBeExpressionParser
-import it.evadid.vm.conversion.turtlestitchexpression.{TurtleStitchProgramModel, TurtleStitchXmlLoader}
+import it.evadid.vm.conversion.turtlestitchexpression.TurtleStitchProgramModel
 import it.evadid.vm.naming.BeEntityName
 import it.evadid.vm.types.{BeDataType, BeDataValueLiteral}
 
 /** Snap execution metadata becomes ordinary startup and uncalled functions in the shared tree. */
 object SnapToExpression {
-  def parse(xml: String): BeExpression = {
-    val project = TurtleStitchXmlLoader.load(xml)
-    val unsupported = SnapExpressionSupport.unsupportedSnapSelectors(xml, project)
-    if unsupported.nonEmpty then
-      throw it.evadid.vm.code.errors.ProgrammingConversionException.unsupported(s"Unsupported Snap blocks: ${unsupported.mkString(", ")}")
-    fromProject(project).expression
+  def convert(document: it.evadid.workbook.elements.interactionElements.programming.state.snap.SnapScalaModel.Document): TurtleStitchToBeExpressionParser.ParseWithLayout = {
+    val project = it.evadid.vm.conversion.turtlestitchexpression.TurtleStitchModelMapper.toProject(document)
+    convert(project, SnapExpressionSupport.unsupportedSnapSelectors(document, project))
   }
 
-  def parseWithLayout(xml: String): TurtleStitchToBeExpressionParser.ParseWithLayout = {
-    val project = TurtleStitchXmlLoader.load(xml)
-    if SnapExpressionSupport.unsupportedSnapSelectors(xml, project).nonEmpty then TurtleStitchToBeExpressionParser.ParseWithLayout(
-      it.evadid.vm.code.errors.BeExpressionUnsupported(xml, parsedFromLanguage = Some(SnapLanguage)),
-      it.evadid.workbook.elements.interactionElements.programming.state.snap.SnapCanvasLayout.empty)
+  def convert(project: TurtleStitchProgramModel.Project, unsupported: List[String]): TurtleStitchToBeExpressionParser.ParseWithLayout =
+    if unsupported.nonEmpty then
+      throw it.evadid.vm.code.errors.ProgrammingConversionException.unsupported(s"Unsupported Snap blocks: ${unsupported.mkString(", ")}")
     else fromProject(project)
-  }
 
   private def fromProject(loaded: TurtleStitchProgramModel.Project): TurtleStitchToBeExpressionParser.ParseWithLayout = {
     val project = TurtleStitchToBeExpressionParser.withoutModuleLibraries(loaded)
@@ -59,7 +53,7 @@ object SnapToExpression {
       val literal = variable.value match {
         case Some(TurtleStitchProgramModel.BoolLiteral(value)) => if value then "True" else "False"
         case Some(TurtleStitchProgramModel.Literal(raw)) if raw.toDoubleOption.nonEmpty => raw
-        case Some(TurtleStitchProgramModel.Literal(text)) => SnapInputCodec.quotePython(text)
+        case Some(TurtleStitchProgramModel.Literal(text)) => it.evadid.vm.types.StringLiteral.quote(text)
         case None => "0"
         case Some(other) => throw it.evadid.vm.code.errors.ProgrammingConversionException.unsupported(
           s"The saved value of Snap variable ${variable.name} (${other.getClass.getSimpleName}) has no Python form.")

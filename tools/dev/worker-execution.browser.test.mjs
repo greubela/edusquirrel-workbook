@@ -45,7 +45,7 @@ test('Pyodide runs on the main thread and in a worker, with independent interpre
     });
     const health = await page.evaluate(() => request('health','worker.health',{}));
     assert.equal(result(health).service,'edusquirrel-worker');
-    assert.deepEqual(new Set(result(health).commands),new Set(['worker.health','worker.parseSnapXml','worker.pythonFlowchart','worker.calculateQrCode','worker.runPython','worker.javaExecutionEvidence']));
+    assert.deepEqual(new Set(result(health).commands),new Set(['worker.health','worker.parseSnapXml','worker.flowchart','worker.programAnalysis','worker.calculateQrCode','worker.runPython','worker.javaExecutionEvidence']));
     const replies = await page.evaluate(() => Promise.all([
       request('xml','worker.parseSnapXml',{xml:'<project><block s="Grüße"><block s="外"/></block></project>',tag:'block'}),
       request('qr','worker.calculateQrCode',{text:'Hello',version:2,mask:3})
@@ -54,8 +54,8 @@ test('Pyodide runs on the main thread and in a worker, with independent interpre
     assert.deepEqual(result(replies[0]).map(element=>element.attributes.find(attribute=>attribute.name === 's')?.rawValue),['Grüße','外']);
     assert(result(replies[1]),JSON.stringify(replies[1]));
     assert.equal(result(replies[1]).modules.length,25);
-    const chart = result(await page.evaluate(() => request('chart','worker.pythonFlowchart',{
-      source:'# Grüße 外\r\nx = 1\r\nif x > 0:\r\n\tprint(x)\r\nprint(2)\r\n'
+    const chart = result(await page.evaluate(() => request('chart','worker.flowchart',{
+      language:'Python', source:'# Grüße 外\r\nx = 1\r\nif x > 0:\r\n\tprint(x)\r\nprint(2)\r\n'
     })));
     assert.deepEqual(chart.nodes.map(node => node.line),[2,3,4,5]);
     assert.deepEqual(chart.entries,[2]);
@@ -76,14 +76,14 @@ test('Pyodide runs on the main thread and in a worker, with independent interpre
       const animate = () => { frames++; frame = requestAnimationFrame(animate); };
       frame = requestAnimationFrame(animate);
       try {
-        const reply = await request('large-chart','worker.pythonFlowchart',{source});
+        const reply = await request('large-chart','worker.flowchart',{language:'Python', source});
         return {reply,ticks,frames,chars:source.length};
       } finally { clearInterval(interval); cancelAnimationFrame(frame); }
     });
     assert(flowchartHeavy.chars > 5000,'the fixture exercises generated typed cell operations');
     assert.deepEqual(result(flowchartHeavy.reply),{nodes:[],edges:[],entries:[]},'unsupported generated code returns an empty chart');
     assert(flowchartHeavy.ticks > 0 && flowchartHeavy.frames > 0,'the GUI can update and render during worker parsing');
-    assert.equal(result(await page.evaluate(() => request('chart-recovered','worker.pythonFlowchart',{source:'print(1)'}))).nodes.length,1);
+    assert.equal(result(await page.evaluate(() => request('chart-recovered','worker.flowchart',{language:'Python', source:'print(1)'}))).nodes.length,1);
     const unsupported = await page.evaluate(() => request('no-handler','server-only',{}));
     assert.equal(result(unsupported),undefined);
     assert.equal(unsupported.requestId,'no-handler');
@@ -109,24 +109,24 @@ test('Pyodide runs on the main thread and in a worker, with independent interpre
       code:"import sys\nid(sys.modules.get('turtle'))"
     }))).value;
     const consoleProgram = result(await page.evaluate(() => request('console-program','worker.runPython',{
-      code:'from turtle import *\nforward(100)\nprintln("hai")\n',logTurtleCalls:true
+      code:'from turtle import *\nforward(100)\nprintln("hai")\n',turtleCalls:'Logged'
     })));
     assert.equal(consoleProgram.stdout,'forward(100)\nhai\n');
     assert.equal(consoleProgram.stderr,'');
     const mixedConsole = result(await page.evaluate(() => request('mixed-console','worker.runPython',{
-      code:'import turtle as t\nfor i in range(2):\n    t.fd(i)\n    print("学校", end="!")\nt.forward(distance=3)\nimport sys\nprint("warning",file=sys.stderr)\n',logTurtleCalls:true
+      code:'import turtle as t\nfor i in range(2):\n    t.fd(i)\n    print("学校", end="!")\nt.forward(distance=3)\nimport sys\nprint("warning",file=sys.stderr)\n',turtleCalls:'Logged'
     })));
     assert.equal(mixedConsole.stdout,'fd(0)\n学校!fd(1)\n学校!forward(distance=3)\n');
     assert.equal(mixedConsole.stderr,'warning\n');
     await page.evaluate(() => request('console-state','worker.runPython',{
-      code:'console_value = 21',logTurtleCalls:true
+      code:'console_value = 21',turtleCalls:'Logged'
     }));
     const retainedConsole = result(await page.evaluate(() => request('console-retained','worker.runPython',{
-      code:'println(console_value * 2)',logTurtleCalls:true,resetGlobals:false
+      code:'println(console_value * 2)',turtleCalls:'Logged',resetGlobals:false
     })));
     assert.equal(retainedConsole.stdout,'42\n','console mode honors explicitly retained globals');
     const failingConsole = await page.evaluate(() => request('failing-console','worker.runPython',{
-      code:'forward(7)\nraise ValueError("stop")',logTurtleCalls:true
+      code:'forward(7)\nraise ValueError("stop")',turtleCalls:'Logged'
     }));
     assert.equal(result(failingConsole),undefined);
     assert(failingConsole.response.additionalOutput.loggerOut.includes('forward(7)'));

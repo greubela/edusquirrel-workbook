@@ -4,7 +4,7 @@ import it.evadid.workbook.interaction.sync.UpdateImportance
 
 import munit.FunSuite
 import it.evadid.core.datastructures.language.AppLanguage.{SnapLanguage, Python, Java}
-import it.evadid.homepage.webElements.editor.code.SnapEditor.toRefactor.SnapCodeEditorConfig
+import it.evadid.homepage.webElements.editor.code.SnapEditor.SnapCodeEditorConfig
 import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseTurtle.*
 import it.evadid.workbook.elements.interactionElements.programming.state.{ProgrammingStateJavaStructured, ProgrammingStatePythonStructured, ProgrammingStateRaw}
 import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseRegular.{ExerciseDataView, ProgramDataTestGrader, ProgrammingExerciseFullJava, SortListExercise}
@@ -85,13 +85,12 @@ class Gdp1WorkbookSpec extends FunSuite {
     }
   }
 
-  test("editor execution and grading share the BeExpression drawing for all languages") {
-    val execution = new it.evadid.homepage.webElements.editor.code.EvaEditor.extensions.turtle.TurtleProgramExecution(sharedInterpreter = true)
+  test("previews and grading share the static BeExpression drawing for all languages") {
     val python = ProgrammingStatePythonStructured(oriented)
     val expected = python.toBeExpression.turtleCommandExecutionInfo.completedCommands
-    Future.traverse(Seq(python, python.toSnapXml, python.toJavaStructured)) { source =>
-      execution.commandsFor(source).map(commands => assertEquals(commands, expected))
-    }.andThen { case _ => execution.close() }
+    Seq(python, python.toSnapXml, python.toJavaStructured).foreach { source =>
+      assertEquals(it.evadid.vm.analysis.ProgramAnalysis.of(source).drawing, Right(expected), source.associatedLanguage.name)
+    }
   }
 
   test("correct geometry alone cannot bypass the requested structure") {

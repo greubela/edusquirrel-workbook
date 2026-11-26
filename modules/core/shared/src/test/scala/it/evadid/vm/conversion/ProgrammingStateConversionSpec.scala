@@ -1,5 +1,8 @@
 package it.evadid.vm.conversion
 
+import it.evadid.vm.parsing.source.SourceParsing
+import it.evadid.vm.parsing.source.SourceParsing.SourceLanguage
+
 import it.evadid.vm.compilation.java.turtle.JavaTurtleCompiler
 
 import it.evadid.core.datastructures.language.AppLanguage.{Java, Python, SnapLanguage}
@@ -637,8 +640,7 @@ class ProgrammingStateConversionSpec extends FunSuite {
   }
 
   test("Python int hints convert with a widening warning, which hints in comments and strings do not cause") {
-    // The result is used: Snap has no command block for a reporter, so a discarded result would not convert.
-    val hinted = ProgrammingStateRaw(Python, "def side(length: int) -> int:\n    forward(length)\n    return length\n\nforward(side(10))\n")
+    val hinted = ProgrammingStateRaw(Python, "def side(length: int) -> int:\n    forward(length)\n    return length\n\nprint(side(10))\n")
     Seq(Java, SnapLanguage).foreach { target =>
       val result = hinted.convertToLanguage(target)
       assert(result.finalState.nonEmpty, result.conversionInfo.toString)
@@ -677,7 +679,7 @@ class ProgrammingStateConversionSpec extends FunSuite {
 
   test("clean Python AST recognizes None return annotations on editable Java methods") {
     val source = "def draw(length: float) -> None:\n    return\n\ndef main() -> None:\n    draw(2.0)\n"
-    val parsed = it.evadid.vm.parsing.python.clean.PythonAstParserSimple.parse(source).fold(error => fail(error.getMessage), identity)
+    val parsed = SourceParsing.parse(source, SourceLanguage.Python).syntax.map(_.program).fold(error => fail(error.message), identity)
     val methods = parsed.statements.collect { case it.evadid.vm.parsing.python.clean.model.PyAST.StatementWithLineNumber(method: it.evadid.vm.parsing.python.clean.model.PyAST.PyFunctionDef, _) => method.name }
     assertEquals(methods.toList, List("draw", "main"))
   }

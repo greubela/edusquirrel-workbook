@@ -1,9 +1,9 @@
 package it.evadid.workbook.elements.interactionElements.programming
 
+import it.evadid.vm.parsing.source.SourceParsing.SourceLanguage
 import it.evadid.core.datastructures.language.AppLanguage.{Java, Python, SnapLanguage}
 import it.evadid.vm.conversion.snapmodelxml.SnapModelToXml.*
-import it.evadid.vm.conversion.snapxmlmodel.SnapScalaXmlCodec
-
+import it.evadid.vm.parsing.source.SourceParsing
 import munit.FunSuite
 import upickle.default.*
 import it.evadid.workbook.elements.interactionElements.programming.state.*
@@ -51,7 +51,7 @@ two</options></input></inputs>
 """
 
   private def converted(xml: String): ProgrammingStateSnapScalaModel =
-    ProgrammingStateRaw(SnapLanguage, xml).toSnapScalaModel.fold(message => fail(message), identity)
+    ProgrammingStateRaw(SnapLanguage, xml).toSnapScalaModel.fold(failure => fail(failure.message), identity)
 
   private def assertRoundTrip(xml: String): Unit = {
     val source = ProgrammingStateRaw(SnapLanguage, xml)
@@ -136,7 +136,7 @@ two</options></input></inputs>
       case p: Project => p.withAttribute("name", "\"&<>'")
       case node => node
     }
-    assertEquals(SnapScalaXmlCodec.parse(edited.toXml).toOption.get.root.name, Some("\"&<>'"))
+    assertEquals(SourceParsing.parse(edited.toXml, SourceLanguage.Snap).syntax.toOption.get.root.name, Some("\"&<>'"))
     assertRoundTrip(edited.toXml)
   }
   test("DOCTYPE entities remain opaque and external resources are never resolved") {

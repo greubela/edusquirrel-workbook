@@ -7,6 +7,7 @@ import it.evadid.vm.editing.BeValueInput.Kind
 
 /** UI strings of the block editor; supply them with [[fromContent]] from a workbook renderer. */
 final case class BlockEditorLabels(
+    tab: Signal[String],
     library: Signal[String],
     libraryHint: Signal[String],
     program: Signal[String],
@@ -23,26 +24,27 @@ object BlockEditorLabels {
   def fromContent(text: LanguageMapContentId => Signal[String]): BlockEditorLabels = {
     def label(key: String) = text(LanguageMapContentId(key))
     BlockEditorLabels(
-      library = label("basic/blockEditorLibrary"),
-      libraryHint = label("basic/blockEditorLibraryHint"),
-      program = label("basic/blockEditorProgram"),
-      placeholders = label("basic/blockEditorPlaceholders"),
-      controlFlow = label("basic/blockEditorControlFlow"),
+      tab = label("blockeditor/blocksTab"),
+      library = label("blockeditor/library"),
+      libraryHint = label("blockeditor/libraryHint"),
+      program = label("blockeditor/program"),
+      placeholders = label("blockeditor/placeholders"),
+      controlFlow = label("blockeditor/controlFlow"),
       controlFlowOption = {
-        case ControlFlowDisplay.Hidden => label("basic/blockEditorFlowHidden")
-        case ControlFlowDisplay.Backgrounds => label("basic/blockEditorFlowBackgrounds")
-        case ControlFlowDisplay.Full => label("basic/blockEditorFlowFull")
+        case ControlFlowDisplay.Hidden => label("blockeditor/flowHidden")
+        case ControlFlowDisplay.Backgrounds => label("blockeditor/flowBackgrounds")
+        case ControlFlowDisplay.Full => label("blockeditor/flowFull")
       },
-      editValue = label("basic/blockEditorEditValue"),
-      apply = label("basic/blockEditorApply"),
-      cancel = label("basic/blockEditorCancel"),
+      editValue = label("blockeditor/editValue"),
+      apply = label("blockeditor/apply"),
+      cancel = label("blockeditor/cancel"),
       invalid = {
-        case Kind.Number => label("basic/blockEditorInvalidNumber")
-        case Kind.Integer => label("basic/blockEditorInvalidInteger")
-        case Kind.Boolean => label("basic/blockEditorInvalidBoolean")
-        case Kind.Text => label("basic/blockEditorInvalidText")
-        case Kind.Date => label("basic/blockEditorInvalidDate")
-        case Kind.AnyValue => label("basic/blockEditorInvalidAnyValue")
+        case Kind.Number => label("blockeditor/invalidNumber")
+        case Kind.Integer => label("blockeditor/invalidInteger")
+        case Kind.Boolean => label("blockeditor/invalidBoolean")
+        case Kind.Text => label("blockeditor/invalidText")
+        case Kind.Date => label("blockeditor/invalidDate")
+        case Kind.AnyValue => label("blockeditor/invalidAnyValue")
       }
     )
   }

@@ -49,9 +49,10 @@ test('slow CodeMirror loading leaves the app usable, shares one load and ignores
     assert.equal(requests(), 1, 'the pending background load is shared with editors');
     const dialog = page.locator('dialog[open]');
     await dialog.getByRole('tab', {name:'Python',exact:true}).click();
+    // The whole program is replaced, so the Python tab shows it in full rather than its main function.
+    await dialog.getByRole('tab', {name:/^(Full Mode|Gesamtmodus)$/}).click();
     const fallback = dialog.locator('.code-mirror-editor__fallback');
-    // The Python structure editor edits one function at a time; the text stays a valid program for the Snap switch.
-    await fallback.fill('def main():\n    forward(77)\n');
+    await fallback.fill('forward(77)\n');
     assert.equal(requests(), 1, 'opening and editing share the pending startup load');
     assert.equal(await page.evaluate(() => !!window.EduSquirrelCodeMirror), false,
       'the native editor stays pending until the module gate is released');
@@ -63,12 +64,20 @@ test('slow CodeMirror loading leaves the app usable, shares one load and ignores
     await page.waitForTimeout(300);
     assert.equal(await page.locator('.cm-editor').count(), 0, 'resolved load cannot mount a stale Python tab');
     await dialog.getByRole('tab', {name:'Python',exact:true}).click();
+    await dialog.getByRole('tab', {name:/^(Full Mode|Gesamtmodus)$/}).click();
     await dialog.locator('.cm-editor').waitFor();
     assert.match(await dialog.locator('.cm-content').innerText(), /forward\(77\)/, 'text entered while loading survives enhancement');
-    // Eva's Python edits like Java: foldable blocks, no flowchart gutter (codemirror-flowchart.test.mjs covers the gutter).
-    assert.equal(await dialog.locator('.cm-flowchart-gutter').count(), 0, 'Eva shows no flowchart gutter by default');
-    assert.equal(await dialog.locator('.cm-foldGutter').count(), 1, 'Python blocks can be folded');
-    const source = await dialog.locator('.cm-content').innerText();
+    // Eva's default configuration has no flowchart gutter (codemirror-flowchart.test.mjs covers the gutter).
+    assert.equal(await dialog.locator('.cm-flowchart-gutter').count(), 0, 'Python shows no flowchart gutter unless configured');
+    assert.match(await dialog.locator('.cm-content').innerText(), /forward\(77\)/);
+    const source = 'while True:\n    if True:\n        print(1)\n    else:\n        print(2)\nprint(3)';
+    await dialog.locator('.cm-content').click();
+    await page.keyboard.press('Control+Home');
+    await page.keyboard.press('Control+a');
+    await page.keyboard.insertText(source);
+    assert.equal(await dialog.locator('.cm-line').count(), source.split('\n').length,
+      'synthetic branch and closing rows do not add content lines');
+    assert.equal(await dialog.locator('.cm-content').innerText(), source);
     await page.evaluate(() => {
       const node = document.querySelector('dialog[open] .cm-editor');
       window.loadingAppearanceProbe = {node, view: EduSquirrelCodeMirrorLibraries.EditorView.findFromDOM(node)};
@@ -89,6 +98,9 @@ test('slow CodeMirror loading leaves the app usable, shares one load and ignores
     }
     await dialog.getByRole('tab', {name:'Java',exact:true}).click();
     await dialog.locator('.cm-editor').waitFor();
+    assert.equal(await dialog.locator('.cm-flowchart-gutter').count(), 0, 'Java shows no flowchart gutter unless configured');
+    const bounds = await dialog.locator('.cm-editor').boundingBox();
+    assert(bounds.height >= 80, 'the class diagram leaves usable space for the editor at the default viewport');
     assert.equal(requests(), 1, 'all tabs reuse the same module load');
     assert.deepEqual(errors, []);
   } finally { await browser.close(); }
@@ -100,9 +112,10 @@ test('a failed CodeMirror request leaves the fallback editable and other tabs us
     const {page, release, errors} = await fixture(browser, true);
     const dialog = page.locator('dialog[open]');
     await dialog.getByRole('tab', {name:'Python',exact:true}).click();
+    await dialog.getByRole('tab', {name:/^(Full Mode|Gesamtmodus)$/}).click();
     release();
     const fallback = dialog.locator('.code-mirror-editor__fallback');
-    await fallback.fill('def main():\n    forward(88)\n');
+    await fallback.fill('forward(88)\n');
     await dialog.getByRole('tab', {name:'Snap!',exact:true}).click();
     await dialog.getByRole('tab', {name:'Python',exact:true}).click();
     assert.match(await fallback.inputValue(), /forward\(88\)/);

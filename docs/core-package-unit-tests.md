@@ -93,11 +93,12 @@ compile; deleting fast domain assertions does little to reduce that cost. Most
 of `core`'s compile time is uPickle codec derivation, paid once per platform.
 
 The cross-built core compiles on two runners in parallel: `scala-jvm` tests
-core JVM, server and desktop, and `scala-js` tests core JS, client and worker,
-builds the development browser bundles and saves its compiled output. Each
-caches only its own `target/<project>` directories. `static-tests` runs the Node
-checks without a Scala build. `browser-tests` downloads the bundles; when called
-by the Pages workflow, `pages-build` restores the Scala.js output and
+core JVM, server and desktop, and `scala-js` tests core JS, client and worker
+and saves the Scala.js output. Each caches only its own `target/<project>`
+directories. `browser-bundles` restores that cache and links the development
+bundles in parallel, so `browser-tests` need not wait for the Scala tests.
+`static-tests` runs the Node checks without a Scala build. When called by the
+Pages workflow, `pages-build` restores the tested Scala.js output and
 release-links in parallel with browser checks. Publication waits for the entire
 reusable workflow. The required `tests` status gates every job, including
 failures or cancellations in upstream jobs.

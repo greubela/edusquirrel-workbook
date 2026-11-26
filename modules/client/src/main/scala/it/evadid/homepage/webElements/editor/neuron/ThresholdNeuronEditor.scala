@@ -1,6 +1,7 @@
 package it.evadid.homepage.webElements.editor.neuron
 
 import com.raquo.laminar.api.L.*
+import it.evadid.homepage.webElements.basic.LabelSelection
 import it.evadid.homepage.webElements.HtmlAppElement
 import it.evadid.workbook.elements.interactionElements.neuron.*
 import it.evadid.core.datastructures.language.LanguageMapContentId
@@ -24,7 +25,7 @@ case class ThresholdNeuronEditor(state: Var[NeuronParameters], labels: Seq[Langu
         state.set(initial); draft.restore(initial)
       }))
     ),
-    p(cls := "neuron-error", role := "alert", text <-- draft.invalid.signal.flatMapSwitch(b => if b then textFor("invalidNumbers") else Val(""))),
+    p(cls := "neuron-error", role := "alert", text <-- LabelSelection(draft.invalid.signal, Seq("invalidNumbers"), textFor)(Option.when(_)("invalidNumbers"))),
     div(cls := "neuron-results", table(
       caption(text <-- textFor("examples")),
       thead(tr(th(text <-- textFor("example")), labels.map(id => th(text <-- laminarHelper.plaintextStringSignal(id))),
@@ -33,7 +34,8 @@ case class ThresholdNeuronEditor(state: Var[NeuronParameters], labels: Seq[Langu
         th(text <-- laminarHelper.plaintextStringSignal(e.label)), e.inputs.map(x => td(x.toInt.toString)),
         td(text <-- state.signal.map(_.weightedSum(e.inputs).toString)),
         td(text <-- state.signal.map(p => binary(p.activates(e.inputs)))), td(binary(e.expected)),
-        td(text <-- state.signal.map(_.activates(e.inputs) == e.expected).flatMapSwitch(b => textFor(if b then "matches" else "differs")))
+        td(text <-- LabelSelection(state.signal.map(_.activates(e.inputs) == e.expected), Seq("matches", "differs"), textFor)(b =>
+          Some(if b then "matches" else "differs")))
       )))
     )),
     p(role := "status", aria.live := "polite", text <-- state.signal.map(p => examples.count(e => p.activates(e.inputs) == e.expected))

@@ -111,4 +111,93 @@ class JavaTurtleSnapPrimitivesSpec extends FunSuite {
       assert(spritePrototype.initBlocks eq initBlocks)
     }
   }
+
+  test("typed Java comparisons retain NaN infinity and signed zero semantics") {
+    for op <- Seq("lt", "le", "gt", "ge", "eq") do {
+      assert(!JavaTurtleSnapPrimitives.compare(op, Double.NaN, 1.0, true), clue = op)
+      assert(!JavaTurtleSnapPrimitives.compare(op, 1.0, Double.NaN, true), clue = op)
+      assert(!JavaTurtleSnapPrimitives.compare(op, Double.NaN, Double.NaN, true), clue = op)
+    }
+    assert(JavaTurtleSnapPrimitives.compare("ne", Double.NaN, Double.NaN, true))
+    for op <- Seq("eq", "le", "ge") do assert(JavaTurtleSnapPrimitives.compare(op, 0.0, -0.0, true), clue = op)
+    assert(JavaTurtleSnapPrimitives.compare("eq", Double.PositiveInfinity, Double.PositiveInfinity, true))
+    assert(JavaTurtleSnapPrimitives.compare("lt", Double.NegativeInfinity, Double.PositiveInfinity, true))
+    assert(JavaTurtleSnapPrimitives.compare("lt", Int.MinValue, Int.MaxValue, false))
+    intercept[js.JavaScriptException](JavaTurtleSnapPrimitives.compare("eq", true, 1, false))
+    intercept[js.JavaScriptException](JavaTurtleSnapPrimitives.compare("eq", true, 1.0, true))
+    intercept[js.JavaScriptException](JavaTurtleSnapPrimitives.compare("eq", 0.5, 1, false))
+    intercept[js.JavaScriptException](JavaTurtleSnapPrimitives.compare("eq", 1, 1, 0))
+    intercept[js.JavaScriptException](JavaTurtleSnapPrimitives.compare("eval", 1, 1, false))
+  }
+
+  test("native Java numeric operations retain int32 and IEEE semantics") {
+    val native = JavaTurtleSnapPrimitives
+    assertEquals(native.intOperation("add", Int.MaxValue, 1), Int.MinValue.toDouble)
+    assertEquals(native.intOperation("mul", Int.MaxValue, Int.MaxValue), 1.0)
+    assertEquals(native.intOperation("neg", Int.MinValue, 0), Int.MinValue.toDouble)
+    assertEquals(native.intOperation("div", -7, 3), -2.0)
+    assertEquals(native.intOperation("rem", -7, 3), -1.0)
+    assertEquals(native.intOperation("div", Int.MinValue, -1), Int.MinValue.toDouble)
+    intercept[js.JavaScriptException](native.intOperation("div", 1, 0))
+    intercept[js.JavaScriptException](native.intOperation("add", true, 1))
+    intercept[js.JavaScriptException](native.intOperation("add", 0.5, 1))
+    intercept[js.JavaScriptException](native.intOperation("eval", 1, 2))
+    assertEquals(native.doubleOperation("div", 1.0, -0.0), Double.NegativeInfinity)
+    assert(native.doubleOperation("div", 0.0, 0.0).isNaN)
+    assertEquals(native.doubleOperation("rem", -7.5, 2.0), -1.5)
+    intercept[js.JavaScriptException](native.doubleOperation("add", false, 1.0))
+  }
+
+  test("native Java updates read and write the active lexical variable once") {
+    var current: js.Any = JavaTurtleSnapPrimitives.cell(Int.MaxValue)
+    var writes = 0
+    val get: js.Function2[String, js.Any, js.Any] = (name: String, owner: js.Any) => {
+      assertEquals(name, "n")
+      current
+    }
+    val set: js.Function2[String, js.Any, Unit] = (name: String, value: js.Any) => {
+      assertEquals(name, "n")
+      writes += 1
+      current = value
+    }
+    val process = js.Dynamic.literal(context = js.Dynamic.literal(variables = js.Dynamic.literal(getVar = get)), doSetVar = set)
+    assertEquals(JavaTurtleSnapPrimitives.update(process, "n", 1, false, false), Int.MaxValue.toDouble)
+    assertEquals(JavaTurtleSnapPrimitives.read(process, "n"), Int.MinValue.toDouble)
+    assertEquals(JavaTurtleSnapPrimitives.update(process, "n", -1, true, false), Int.MaxValue.toDouble)
+    assertEquals(writes, 2)
+    intercept[js.JavaScriptException](JavaTurtleSnapPrimitives.update(process, "n", true, false, false))
+    current = false
+    intercept[js.JavaScriptException](JavaTurtleSnapPrimitives.update(process, "n", 1, false, false))
+    assertEquals(writes, 2)
+  }
+
+  test("native Java numeric cells preserve NaN and signed zero across Snap variable binding") {
+    def normalized(value: js.Any): js.Any =
+      if js.typeOf(value) == "number" && value.asInstanceOf[Double] == 0.0 then 0
+      else if js.typeOf(value) == "boolean" && !value.asInstanceOf[Boolean] then false
+      else if js.typeOf(value) == "string" && value.asInstanceOf[String].isEmpty then ""
+      else if js.Dynamic.global.Boolean(value).asInstanceOf[Boolean] then value
+      else 0
+    assertEquals(normalized(Double.NaN).asInstanceOf[Double], 0.0)
+    assertEquals(1.0 / normalized(-0.0).asInstanceOf[Double], Double.PositiveInfinity)
+    var current: js.Any = normalized(JavaTurtleSnapPrimitives.cell(Double.NaN))
+    var writes = 0
+    val get: js.Function2[String, js.Any, js.Any] = (_: String, _: js.Any) => normalized(current)
+    val set: js.Function2[String, js.Any, Unit] = (_: String, value: js.Any) => { current = value; writes += 1 }
+    val process = js.Dynamic.literal(context = js.Dynamic.literal(variables = js.Dynamic.literal(getVar = get)), doSetVar = set)
+    assert(JavaTurtleSnapPrimitives.read(process, "n").isNaN)
+    assert(JavaTurtleSnapPrimitives.update(process, "n", 1, false, true).isNaN)
+    assert(JavaTurtleSnapPrimitives.read(process, "n").isNaN)
+    current = normalized(JavaTurtleSnapPrimitives.cell(-0.0))
+    assertEquals(1.0 / JavaTurtleSnapPrimitives.read(process, "n"), Double.NegativeInfinity)
+    val previous = JavaTurtleSnapPrimitives.update(process, "n", 1, false, true)
+    assertEquals(1.0 / previous, Double.NegativeInfinity)
+    assertEquals(JavaTurtleSnapPrimitives.read(process, "n"), 1.0)
+    assertEquals(writes, 2)
+    intercept[js.JavaScriptException](JavaTurtleSnapPrimitives.cell(false))
+    current = 0
+    intercept[js.JavaScriptException](JavaTurtleSnapPrimitives.read(process, "n"))
+    current = js.Dynamic.literal(value = 1)
+    intercept[js.JavaScriptException](JavaTurtleSnapPrimitives.read(process, "n"))
+  }
 }

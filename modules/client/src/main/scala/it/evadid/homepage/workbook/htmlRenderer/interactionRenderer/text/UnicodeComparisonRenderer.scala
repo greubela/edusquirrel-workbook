@@ -1,6 +1,7 @@
 package it.evadid.homepage.workbook.htmlRenderer.interactionRenderer.text
 
 import com.raquo.laminar.api.L.*
+import it.evadid.homepage.webElements.basic.LabelSelection
 import it.evadid.core.datastructures.state.StateHelper.StateBasedVar
 import it.evadid.homepage.workbook.htmlRenderer.HtmlRenderFactory.LineBasedRenderingFactory
 import it.evadid.homepage.workbook.htmlRenderer.atomarLineRenderings.AtomarLineRendering
@@ -34,7 +35,8 @@ case object UnicodeComparisonRenderer extends LineBasedRenderingFactory[UnicodeC
       div(cls := "unicode-controls", inputField(true), inputField(false),
         button(typ := "button", disabled <-- locked, text <-- localized("unicodeReset"), onClick --> (_ => state.set(e.initial)))),
       p(cls := "unicode-status", role := "status", aria.live := "polite",
-        text <-- state.signal.map(a => if a.first == a.second then "unicodeEqual" else "unicodeDifferent").flatMapSwitch(localized)),
+        text <-- LabelSelection(state.signal, Seq("unicodeEqual", "unicodeDifferent"), localized)(a =>
+          Some(if a.first == a.second then "unicodeEqual" else "unicodeDifferent"))),
       div(cls := "unicode-tables", codeTable(true), codeTable(false)))
     AtomarLineRendering.basicLine(e, dom)
   }

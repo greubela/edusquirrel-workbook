@@ -42,13 +42,7 @@ class EvaEditorSpec extends EditorDomSuite {
     override val futureExecutionContext = queue
   }
 
-  private val specLabels = EvaEditorLabels(
-    unavailable = Val("_"),
-    languages = Val("_"),
-    switchFailed = Val("_"),
-    loading = Val("_"),
-    blocks = it.evadid.homepage.webElements.editor.blocks.BlockEditorLabels.fromContent(_ => Val("_"))
-  )
+  private val specLabels = EvaEditorLabels.fromContent(_ => Val("_"))
   private val logger = Logger.withNameAndPrefixes(Some("EvaEditorSpec"), PrintToStdLogger.printNothing)
 
   private class Fixture(source: ProgrammingState, languages: List[ProgrammingLanguage] = List(SnapLanguage, Python, Java)) {
@@ -59,18 +53,21 @@ class EvaEditorSpec extends EditorDomSuite {
     val maximum = Var(0)
     val choices = languages.distinct.map { lang => new EvaEditorTab {
       override val language = lang
-      override val label = lang.toString
-      override def create(bound: Var[ProgrammingState], appearance: EditorAppearance,
-          marker: Signal[Option[it.evadid.vm.code.errors.ProgrammingConversionError]], loading: Signal[String]): HtmlAppElement = {
+      override def create(bound: Var[ProgrammingState], context: EvaEditorContext): HtmlAppElement = {
         created.update(_ :+ lang)
         HtmlAppElement(div(
-          onMountCallback { _ => mounted.update(_ + lang); maximum.update(_ max mounted.now().size) },
+          dataAttr("spec-editor") := lang.name,
+          // Var updates inside the replacing transaction are deferred; the document shows what is mounted.
+          onMountCallback { _ =>
+            mounted.update(_ + lang)
+            maximum.update(_ max dom.document.querySelectorAll("[data-spec-editor]").length)
+          },
           onUnmountCallback(_ => mounted.update(_ - lang)),
           bound.signal --> (value => observed.update(_ :+ (lang -> value)))
         ))
       }
     }}
-    val editor = EvaEditor(logger, state, Nil, Var(EvaEditorConfig(enabledLanguages = languages)), Some(choices), labels = specLabels)
+    val editor = EvaEditor(state, Var(EvaEditorConfig(enabledLanguages = languages)), EvaTestContext.environment(specLabels), Some(choices))
     val close = mount(editor.getDomElement())
   }
 

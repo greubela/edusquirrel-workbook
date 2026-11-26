@@ -1,5 +1,6 @@
 package it.evadid.workbook.elements.interactionElements.programming.programmingExerciseTurtle
 
+import it.evadid.vm.conversion.dependencies.ProgrammingEnvironment
 import it.evadid.core.datastructures.language.LanguageMapContentId
 import it.evadid.core.datastructures.vectorShapes.svg.TurtleCommand
 import it.evadid.vm.BeProgram
@@ -30,15 +31,18 @@ case class ProgramStructureGrader(
     requirement: ProgramStructureRequirement,
     testId: String,
     publicDescription: LanguageMapContentId,
-    importance: GradingImportance = GradingImportance.REQUIRED_TEST
+    importance: GradingImportance = GradingImportance.REQUIRED_TEST,
+    /** The libraries the exercise provides; its exercise sets it ([[ProgrammingTestGrader.inEnvironment]]). */
+    environment: ProgrammingEnvironment = ProgrammingEnvironment.all
 ) extends ProgrammingTestGrader derives ReadWriter {
   require(testId.nonEmpty && testId == testId.trim, "A structure test needs a nonempty ID.")
+  override def inEnvironment(environment: ProgrammingEnvironment): ProgramStructureGrader = copy(environment = environment)
   override val runningBehavior = GraderRunningBehavior.RUN_ON_AT_LEAST_MINOR
   override val gradingEntity = FeedbackEntity.TestEntity()
 
   override protected def handleGrading(state: ProgrammingState, context: ExecutionContextInformation)
       : Future[GradingResult[ProgrammingState, AdditionalProgrammingTestInfo]] = Future {
-    val passed = satisfies(state.toBeExpression.expression)
+    val passed = satisfies(state.inEnvironment(environment).expression.expression)
     GradingResult(this, state, if passed then GradingStatus.Correct() else GradingStatus.Incorrect())
   }(using context.futureExecutionContext)
 

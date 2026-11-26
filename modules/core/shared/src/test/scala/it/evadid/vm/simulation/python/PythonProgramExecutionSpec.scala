@@ -14,7 +14,7 @@ class PythonProgramExecutionSpec extends FunSuite {
     val expected = RunPythonResult(ujson.Null, "forward(100)\nhai\n", "", Nil)
     given ExecutionClient = runPython.toLocalExecutionClient((request, _) => {
       assertEquals(request.code, state.toString)
-      assert(request.logTurtleCalls)
+      assertEquals(request.turtleCalls, it.evadid.vm.simulation.python.PythonTurtleCalls.Logged)
       assert(request.resetGlobals && request.captureStdout && request.captureStderr)
       Future.successful(expected)
     })

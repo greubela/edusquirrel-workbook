@@ -1,6 +1,6 @@
 package it.evadid.homepage.webElements.editor.code
 
-import it.evadid.core.datastructures.vectorShapes.renderer.PythonFlowchartGutter
+import it.evadid.core.datastructures.vectorShapes.renderer.{FlowchartGutter, PythonFlowchartGutter}
 import it.evadid.homepage.webElements.editor.code.codemirror.CodeMirrorFlowchartGutter
 import scala.scalajs.js.URIUtils.decodeURIComponent
 import org.scalajs.dom
@@ -36,10 +36,17 @@ class NestedFlowchartGutterSpec extends EditorDomSuite {
   test("function diagrams stay independent and blank source rows do not become content shapes") {
     val chart = PythonFlowchartGutter.fromPython("def draw():\n    print(1)\n\nprint(2)")
     val rendered = CodeMirrorFlowchartGutter.render(chart)
-    assertEquals(rendered.rows.keySet, Set(1, 2, 3, 4))
-    assertEquals(rendered.rows(2).slices.size, 2)
-    assert(rendered.rows(2).slices.exists(_.x > 0))
+    assertEquals(rendered.rows.keySet, Set(1, 2))
+    assertEquals(rendered.rows(2).slices.size, 1)
+    assertEquals(rendered.rows(2).slices.head.x, 0.0)
     assert(rendered.rows.values.flatMap(_.slices).forall(slice => svg(slice.image).querySelectorAll("text").length == 0))
-    assertEquals(CodeMirrorFlowchartGutter.render(PythonFlowchartGutter.empty).rows, Map.empty)
+    assertEquals(CodeMirrorFlowchartGutter.render(FlowchartGutter.empty).rows, Map.empty)
+  }
+
+  test("a nested function's graph is drawn beside its outer function's") {
+    val rendered = CodeMirrorFlowchartGutter.render(PythonFlowchartGutter.fromPython(
+      "def outer():\n    x = 1\n    def inner():\n        print(x)\n    inner()\nouter()"))
+    assertEquals(rendered.rows(4).slices.map(_.x).sorted, List(0.0, 12.0))
+    assertEquals(rendered.rows(1).slices.map(_.x), List(0.0))
   }
 }

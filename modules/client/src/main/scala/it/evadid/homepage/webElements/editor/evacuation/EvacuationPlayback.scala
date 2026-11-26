@@ -18,12 +18,18 @@ class EvacuationPlayback(schedule: (() => Unit) => (() => Unit)) {
   val running = Var(false)
   val atEnd = Var(false)
   val result = Var(Option.empty[EvacuationMeasurement])
-  private var player: Option[ScenarioPlayerMode] = None
-  private var cancelScheduled: () => Unit = () => ()
-  private var generation = 0
+  private val player = Var(Option.empty[ScenarioPlayerMode])
+  private val cancelScheduled = Var[() => Unit](() => ())
+  /** Ticks of an earlier run see a newer generation and stop. */
+  private val generation = Var(0)
 
-  def pause(): Unit = { generation += 1; cancelScheduled(); cancelScheduled = () => (); running.set(false) }
-  def clear(): Unit = { pause(); player = None; ready.set(false); atEnd.set(false); result.set(None); step.set(0) }
+  def pause(): Unit = {
+    generation.update(_ + 1)
+    cancelScheduled.now()()
+    cancelScheduled.set(() => ())
+    running.set(false)
+  }
+  def clear(): Unit = { pause(); player.set(None); ready.set(false); atEnd.set(false); result.set(None); step.set(0) }
   def prepare(value: EvacuationExperiment): Unit = {
     clear()
     require(value.floor.tiles.size <= 400 && value.floor.people.size <= 100 && value.floor.exitCount <= 8,
@@ -38,25 +44,28 @@ class EvacuationPlayback(schedule: (() => Unit) => (() => Unit)) {
       else if (totalSteps >= EvacuationExperiment.maxSteps) EvacuationOutcome.StepLimit else EvacuationOutcome.Blocked
     result.set(Some(EvacuationMeasurement("Run", value.floor, value.settings, totalSteps, remaining, outcome)))
     val mode = ScenarioPlayerMode(initial, simulation, EvacuationMetaData(simulation, 0, neighbours.name, "closest goal / stable order"),
-      next => { floor.set(next); step.set(simulation.steps.distinct.count(i => i > 0 && i <= player.get.currentStateIndex))
-        atEnd.set(player.get.currentStateIndex == simulation.states.size - 1) },
+      next => player.now().foreach { current =>
+        floor.set(next)
+        step.set(simulation.steps.distinct.count(i => i > 0 && i <= current.currentStateIndex))
+        atEnd.set(current.currentStateIndex == simulation.states.size - 1)
+      },
       () => false, () => ShowMovementOption.SHOW_NO_MOVEMENTS, () => (), () => ())
-    player = Some(mode)
+    player.set(Some(mode))
     ready.set(true)
     mode.changeStatus(_ => 0)
   }
   def next(): Unit = { pause(); advance() }
-  private def advance(): Unit = player.foreach(mode => mode.changeStatus(mode.evacuationSimulation.nextStep))
-  def previous(): Unit = { pause(); player.foreach(mode => mode.changeStatus(mode.evacuationSimulation.previousStep)) }
-  def reset(): Unit = { pause(); player.foreach(_.changeStatus(_ => 0)) }
+  private def advance(): Unit = player.now().foreach(mode => mode.changeStatus(mode.evacuationSimulation.nextStep))
+  def previous(): Unit = { pause(); player.now().foreach(mode => mode.changeStatus(mode.evacuationSimulation.previousStep)) }
+  def reset(): Unit = { pause(); player.now().foreach(_.changeStatus(_ => 0)) }
   def play(): Unit = if (ready.now() && !atEnd.now() && !running.now()) {
     running.set(true)
-    val token = generation
-    def tick(): Unit = if (token == generation && running.now()) {
+    val token = generation.now()
+    def tick(): Unit = if (token == generation.now() && running.now()) {
       advance()
-      if (atEnd.now()) pause() else cancelScheduled = schedule(() => tick())
+      if (atEnd.now()) pause() else cancelScheduled.set(schedule(() => tick()))
     }
-    cancelScheduled = schedule(() => tick())
+    cancelScheduled.set(schedule(() => tick()))
   }
   def measurement(label: String): EvacuationMeasurement = {
     require(ready.now() && atEnd.now(), "Finish playback before recording the run")

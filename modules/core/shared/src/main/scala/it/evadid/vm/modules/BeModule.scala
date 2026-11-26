@@ -8,6 +8,7 @@ import upickle.default.ReadWriter
 
 /** One call of a predefined module's function, recorded while a program runs, in program order. */
 enum ModuleCommand derives ReadWriter {
+  case System(command: SystemCommand)
   case Turtle(command: TurtleCommand[Double])
   case NumberList(command: ListCommand)
   case Sudoku(command: SudokuCommand)
@@ -55,7 +56,17 @@ object BeModules {
       recorded match { case ModuleCommand.Sudoku(command) => Some(command); case _ => None }
   }
 
-  val all: Seq[BeModule[?]] = Seq(Turtle, NumberList, Sudoku)
+  object System extends BeModule[SystemCommand]("SystemFunctionality", BeIntrinsic.Print) {
+    override def library = SystemFunctionality.library
+    override def dependency = Some(KnownDependencies.system)
+    override def owns(definition: BeDefineFunction) = definition.intrinsic.exists(value => value == BeIntrinsic.Print || value == BeIntrinsic.PrintErr)
+    override def command(recorded: ModuleCommand): Option[SystemCommand] = recorded match {
+      case ModuleCommand.System(command) => Some(command)
+      case _ => None
+    }
+  }
+
+  val all: Seq[BeModule[?]] = Seq(Turtle, NumberList, Sudoku, System)
 
   /** The module a function belongs to, if any. */
   def of(definition: BeDefineFunction): Option[BeModule[?]] = all.find(_.owns(definition))

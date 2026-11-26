@@ -1,6 +1,7 @@
 package it.evadid.homepage.workbook.htmlRenderer.interactionRenderer.evacuation
 
 import com.raquo.laminar.api.L.*
+import it.evadid.homepage.webElements.basic.LabelSelection
 import it.evadid.core.datastructures.state.StateHelper.StateBasedVar
 import it.evadid.core.datastructures.language.LanguageMapContentId
 import it.evadid.homepage.webElements.basic.HtmlButtonElement
@@ -19,8 +20,9 @@ case object EvacuationConstructFloorRenderer extends LineBasedRenderingFactory[E
       text <-- state.signal.combineWith(laminarHelper.plaintextStringSignal("digitalWorkbooks/evacuationPreview"))
         .map((plan, template) => template.replace("{cols}", plan.cols.toString).replace("{rows}", plan.rows.toString)
           .replace("{people}", plan.people.size.toString).replace("{exits}", plan.exitCount.toString)),
-      span(text <-- state.signal.map(e.requirements.isSatisfiedBy).flatMapSwitch(passed =>
-        laminarHelper.plaintextStringSignal(if (passed) "digitalWorkbooks/evacuationComplete" else "digitalWorkbooks/evacuationIncomplete"))))
+      span(text <-- LabelSelection(state.signal.map(e.requirements.isSatisfiedBy),
+        Seq("digitalWorkbooks/evacuationComplete", "digitalWorkbooks/evacuationIncomplete"), laminarHelper.plaintextStringSignal)(passed =>
+          Some(if (passed) "digitalWorkbooks/evacuationComplete" else "digitalWorkbooks/evacuationIncomplete"))))
     AtomarLineRendering.cardLine(e, List(ElementCard(LanguageMapContentId("digitalWorkbooks/evacuationTitle"), preview),
       ElementCard(LanguageMapContentId("basic/openEditor"), open.getDomElement())))
   }

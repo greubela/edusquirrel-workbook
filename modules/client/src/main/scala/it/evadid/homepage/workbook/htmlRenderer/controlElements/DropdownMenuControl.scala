@@ -1,6 +1,7 @@
 package it.evadid.homepage.workbook.htmlRenderer.controlElements
 
 import com.raquo.laminar.api.L.*
+import it.evadid.homepage.webElements.basic.LabelSelection
 import com.raquo.laminar.nodes.ReactiveHtmlElement
 import it.evadid.core.datastructures.file.{CopyrightInfo, LoadedFile}
 import it.evadid.core.datastructures.language.{LanguageMap, LanguageMapContentId}
@@ -25,14 +26,12 @@ case class DropdownMenuControl(curWorkbook: Option[AllWorkbookInfo], curUser: Op
 
 
   private val resetState = fullInfo.syncControl.resetState
-  private val resetLabel: Signal[String] = resetState.flatMapSwitch { state =>
-    val key = state match {
-      case SyncResetState.Idle | SyncResetState.Completed => "basic/resetAllData"
-      case _: SyncResetState.Running => "basic/resetAllDataRunning"
-      case _: SyncResetState.Failed => "basic/resetAllDataRetry"
+  private val resetLabel: Signal[String] = LabelSelection(resetState,
+    Seq("basic/resetAllData", "basic/resetAllDataRunning", "basic/resetAllDataRetry"), laminarHelper.plaintextStringSignal) {
+      case SyncResetState.Idle | SyncResetState.Completed => Some("basic/resetAllData")
+      case _: SyncResetState.Running => Some("basic/resetAllDataRunning")
+      case _: SyncResetState.Failed => Some("basic/resetAllDataRetry")
     }
-    laminarHelper.plaintextStringSignal(key)
-  }
 
   private def resetOwner = fullInfo.signals.user.now().map(_.user.personId)
 

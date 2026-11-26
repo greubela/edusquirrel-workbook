@@ -7,23 +7,24 @@ import org.scalajs.dom
 import scala.concurrent.duration.*
 import scala.concurrent.{ExecutionContext, Future, Promise}
 import scala.scalajs.js
-import scala.util.Try
+import scala.util.{Success, Try}
 
 /** Redraws a costly view only after its source has rested for `delay`, so typing stays fluent.
   *
   * Every change waits `delay` knowing its state; if a newer state arrived meanwhile, that state
-  * requested its own drawing and the older one does nothing. `prepare` then runs in a Future after
-  * the status line has been painted. Results of superseded states are discarded. Views mounted on
+  * requested its own drawing and the older one does nothing. `prepare` then starts after the status line
+  * has been painted, and may complete later (e.g. in a worker). Results of superseded states are discarded. Views mounted on
   * one instance share its prepared results; each keeps showing its previous drawing meanwhile.
   */
-final class DeferredRendering[S, R](source: Signal[S], prepare: S => R, delay: FiniteDuration = DeferredRendering.defaultDelay)(
+final class DeferredRendering[S, R](source: Signal[S], prepare: S => Future[R], delay: FiniteDuration = DeferredRendering.defaultDelay)(
     using ExecutionContext) {
   import DeferredRendering.*
 
   private val settled: Signal[S] = source.composeChanges(_.debounce(delay.toMillis.toInt))
 
   private val prepared: Signal[Option[Prepared[S, R]]] =
-    settled.flatMapSwitch(state => EventStream.fromFuture(afterPaint().map(_ => Prepared(state, Try(prepare(state))))))
+    settled.flatMapSwitch(state => EventStream.fromFuture(afterPaint().flatMap(_ => Future.delegate(prepare(state)))
+      .transform(result => Success(Prepared(state, result)))))
       .toWeakSignal
 
   /** Only a new result updates the view; an equal result of a newer state keeps the existing drawing. */
@@ -39,7 +40,7 @@ final class DeferredRendering[S, R](source: Signal[S], prepare: S => R, delay: F
   def status(text: LanguageMapContentId => Signal[String]): Element =
     p(cls := "deferred-rendering__status", role := "status", aria.live := "polite",
       cls("deferred-rendering__status--hidden") <-- phase.map(_ == Phase.Ready),
-      child.text <-- phase.flatMapSwitch(phase => statusText(phase).fold(Val(""))(text)))
+      child.text <-- LabelSelection(phase, Phase.values.flatMap(statusText), text)(statusText))
 
   /** Status line followed by the drawing. `view` is built once, when the first result is ready, and then follows
     * the results, so a view can keep its board instead of being rebuilt.

@@ -1,5 +1,6 @@
 package it.evadid.workbook.elements.interactionElements.programming.programmingExerciseRegular
 
+import it.evadid.vm.conversion.dependencies.ProgrammingEnvironment
 import it.evadid.vm.conversion.unittest.ProgramForUnitTestExecution
 import it.evadid.core.datastructures.language.AppLanguage.HumanLanguage
 import it.evadid.core.datastructures.language.{LanguageMap, LanguageMapContentId}
@@ -33,6 +34,9 @@ case class ProgrammingUnitTestGrader(testId: String, pythonTestCode: String,
 
   override val runningBehavior = GraderRunningBehavior.RUN_ONLY_MANUALLY
   override val gradingEntity = FeedbackEntity.TestEntity()
+
+  /** The program runs as written in Pyodide (dynamic execution), so the exercise environment does not apply. */
+  override def inEnvironment(environment: ProgrammingEnvironment): ProgrammingUnitTestGrader = this
 
   override protected def handleGrading(state: ProgrammingState, contextInformation: ExecutionContextInformation): Future[GradingResult[ProgrammingState, AdditionalProgrammingTestInfo]] = {
 

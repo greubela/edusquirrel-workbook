@@ -29,6 +29,7 @@ object HtmlCodeTaskToggleRenderer extends LineBasedRenderingFactory[CodeTaskTogg
       codeState = advancedCodeVar,
       resetTemplate = interaction.advancedCodeTemplate,
       title = laminarHelper.plaintextStringSignal(interaction.codeEditorTitle),
+      loadingLabel = laminarHelper.plaintextStringSignal(LanguageMapContentId("blockeditor/loading")),
       todoLegend = laminarHelper.plaintextStringSignal(LanguageMapContentId("basic/codeTodoLegend")),
       checkButtonLabel = laminarHelper.plaintextStringSignal(LanguageMapContentId("basic/checkCode")),
       resetButtonLabel = laminarHelper.plaintextStringSignal(LanguageMapContentId("basic/resetCode")),

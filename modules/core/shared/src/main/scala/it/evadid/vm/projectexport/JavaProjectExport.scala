@@ -4,7 +4,8 @@ import it.evadid.core.datastructures.language.AppLanguage.Java
 import it.evadid.vm.code.abstractions.BeExpression
 import it.evadid.vm.modules.BeModules
 import it.evadid.vm.conversion.dependencies.{JavaTurtleLibrary, KnownDependencies}
-import it.evadid.vm.conversion.structured.SourceStructure
+import it.evadid.vm.parsing.source.SourceParsing
+import it.evadid.vm.parsing.source.SourceParsing.SourceLanguage
 import it.evadid.vm.simulation.data.{DataLibrarySources, DataWorld}
 import it.evadid.workbook.elements.interactionElements.programming.state.{ProgrammingState, ProgrammingStateJavaStructured, ProgrammingStateRaw}
 
@@ -46,9 +47,9 @@ object JavaProjectExport {
   def classFiles(structured: ProgrammingStateJavaStructured): Seq[JavaClassFile] = {
     val sources = structured.definedClasses.values.toSeq
     val split = sources.flatMap { source =>
-      SourceStructure.javaClasses(source).headOption.map { block =>
-        val preamble = source.substring(0, block.start)
-        (block.name, preamble, source.substring(block.start).trim)
+      SourceParsing.parse(source, SourceLanguage.Java).structured.classes.headOption.map { owner =>
+        val preamble = source.substring(0, owner.span.start)
+        (owner.name, preamble, source.substring(owner.span.start).trim)
       }
     }
     // Line-based: multiline regex flags are unavailable in Scala.js.
@@ -80,7 +81,7 @@ object JavaProjectExport {
       Option.when(program.moduleCalls(BeModules.NumberList).nonEmpty)(DataLibrarySources.javaNumberList(world.list)),
       Option.when(program.moduleCalls(BeModules.Sudoku).nonEmpty)(DataLibrarySources.javaSudoku(world.sudoku))).flatten
     (dependencies ++ data).flatMap { source =>
-      SourceStructure.javaClasses(source).headOption.map(block => JavaClassFile(block.name, source.trim + "\n", library = true))
+      SourceParsing.parse(source, SourceLanguage.Java).structured.classes.headOption.map(owner => JavaClassFile(owner.name, source.trim + "\n", library = true))
     }
   }
 

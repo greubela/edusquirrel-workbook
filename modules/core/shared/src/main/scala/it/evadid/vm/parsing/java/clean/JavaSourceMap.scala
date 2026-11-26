@@ -35,6 +35,13 @@ final class JavaSourceMap private[clean](val source: String, val root: JavaSourc
     collect(0, Vector(0))
   }
 
+  private lazy val ranges: Map[it.evadid.vm.parsing.source.SourceIdentity[JavaAST], SourceRange] = {
+    def nodes(node: Node[JavaAST]): Vector[Node[JavaAST]] = node +: node.children.flatMap(nodes)
+    nodes(root).map(node => it.evadid.vm.parsing.source.SourceIdentity(node.value) -> node.range).toMap
+  }
+
+  def rangeOf(node: JavaAST): Option[SourceRange] = ranges.get(it.evadid.vm.parsing.source.SourceIdentity(node))
+
   def program: JavaProgram = root.value
 
   def at(path: Vector[Int]): Option[Node[JavaAST]] =

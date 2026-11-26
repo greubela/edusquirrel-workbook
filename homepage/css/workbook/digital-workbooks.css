@@ -3,7 +3,7 @@
 .choice-interaction legend { font-weight: 600; padding-inline: var(--space-sm); }
 .choice-interaction label { display: flex; align-items: start; gap: var(--space-sm); margin-block: var(--space-sm); cursor: pointer; }
 .choice-interaction input { flex: 0 0 auto; accent-color: var(--color-accent-active); }
-.choice-feedback, .neuron-preview { color: var(--color-text-secondary); }
+ .neuron-preview { color: var(--color-text-secondary); }
 .neuron-editor { display: flex; flex-direction: column; gap: var(--space-md); min-width: 0; padding: var(--space-lg); overflow: auto; }
 .neuron-editor h2, .neuron-editor p { margin: 0; }
 .neuron-controls { display: flex; flex-wrap: wrap; gap: var(--space-md); align-items: end; }

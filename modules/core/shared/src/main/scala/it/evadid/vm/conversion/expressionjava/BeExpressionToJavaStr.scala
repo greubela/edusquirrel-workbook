@@ -1,6 +1,6 @@
 package it.evadid.vm.conversion.expressionjava
 
-import it.evadid.vm.conversion.structured.SourceStructure.indent
+import it.evadid.vm.parsing.source.SourceText.indent
 import it.evadid.core.datastructures.language.AppLanguage.{HumanLanguage, Java, JavaScript, ProgrammingLanguage}
 import it.evadid.core.datastructures.vectorShapes.svg.TurtleCommand
 import it.evadid.vm.code.abstractions.{BeControlStructure, BeDefineStructure, BeExpression}
@@ -133,6 +133,7 @@ case class BeExpressionToJavaStr(language: HumanLanguage, skipUnparsable: Boolea
 
   override protected def callName(call: BeFunctionCall): String = call.funcDef.intrinsic match {
     case Some(BeIntrinsic.Print) => "System.out.println"
+    case Some(BeIntrinsic.PrintErr) => "System.err.println"
     case Some(BeIntrinsic.Turtle) => "Turtle." + JavaTurtleLibrary.methodName(call.funcDef)
     case Some(BeIntrinsic.NumberList | BeIntrinsic.Sudoku) =>
       it.evadid.vm.modules.BeModules.qualifiedName(call.funcDef).get + "." + entityName(call.funcDef.functionTypeInfo.displayName)
@@ -189,7 +190,7 @@ case class BeExpressionToJavaStr(language: HumanLanguage, skipUnparsable: Boolea
 
   /** Like Python's `print(a, b)`, several values print on one line separated by spaces. */
   private def printCall(call: BeFunctionCall): String =
-    s"System.out.println(${call.arguments.map(forOperand).mkString(" + \" \" + ")});"
+    s"${if call.funcDef.intrinsic.contains(BeIntrinsic.PrintErr) then "System.err.println" else "System.out.println"}(${call.arguments.map(forOperand).mkString(" + \" \" + ")});"
 
   override protected def conditionText(condition: BeSequence): String = condition.body match {
     case Seq(value) if targetLanguage == Java => JavaSpelling.truthValue(value, forValue(value))
@@ -198,8 +199,11 @@ case class BeExpressionToJavaStr(language: HumanLanguage, skipUnparsable: Boolea
 
   override def forOther(other: BeExpression): String = other match {
     case BeUseValue(BeDataValueLiteral(raw @ ("True" | "False")), _) => raw.toLowerCase
+    // Java strings are double-quoted: Python's '…' literals keep their text.
+    case BeUseValue(BeDataValueLiteral(raw), _) if targetLanguage == Java && raw.startsWith("'") && it.evadid.vm.types.StringLiteral.isQuoted(raw) =>
+      it.evadid.vm.types.StringLiteral.quote(it.evadid.vm.types.StringLiteral.content(raw))
     case BeUseValue(BeDataValueUnit(), _) if targetLanguage == Java => "null"
-    case call: BeFunctionCall if targetLanguage == Java && call.funcDef.intrinsic.contains(BeIntrinsic.Print) && call.arguments.size != 1 =>
+    case call: BeFunctionCall if targetLanguage == Java && call.funcDef.intrinsic.exists(value => value == BeIntrinsic.Print || value == BeIntrinsic.PrintErr) && call.arguments.size != 1 =>
       printCall(call)
     case call: BeFunctionCall if targetLanguage == Java && call.funcDef.intrinsic.exists(JavaSpelling.handles) =>
       val arguments = call.arguments
@@ -220,6 +224,9 @@ case class BeExpressionToJavaStr(language: HumanLanguage, skipUnparsable: Boolea
         // Python's floor division and power have no Java operator; the Java parser reads these calls back.
         case ("//", Seq(_, _)) => s"Math.floor(${arguments.head} / ${arguments(1)})"
         case ("**", Seq(_, _)) => s"Math.pow(${arguments.head}, ${arguments(1)})"
+        // Python's `/` always divides exactly; a whole-number dividend would make Java divide integers.
+        case ("/", Seq(BeUseValue(BeDataValueLiteral(dividend), _), _)) if dividend.trim.matches("[0-9]+") =>
+          s"${dividend.trim}.0 / ${arguments(1)}"
         case ("==" | "!=", Seq(left, right)) if JavaSpelling.isText(left) || JavaSpelling.isText(right) =>
           val (receiver, other) = if JavaSpelling.isText(left) then (arguments.head, arguments(1)) else (arguments(1), arguments.head)
           (if symbol == "!=" then "!" else "") + s"$receiver.equals($other)"

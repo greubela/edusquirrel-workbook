@@ -1,8 +1,9 @@
 package it.evadid.homepage.webElements.editor.code.SnapEditor
 
 import com.raquo.airstream.ownership.Owner
+import com.raquo.airstream.state.Var
 import it.evadid.core.datastructures.language.AppLanguage.HumanLanguage
-import it.evadid.homepage.webElements.editor.code.SnapEditor.toRefactor.SnapCodeEditorConfig
+import it.evadid.homepage.webElements.editor.code.SnapEditor.SnapCodeEditorConfig
 import it.evadid.workbook.elements.interactionElements.programming.*
 import it.evadid.workbook.elements.interactionElements.programming.state.snap.*
 import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseRegular.*
@@ -22,31 +23,19 @@ trait SnapCodeEditorImpl {
 
   def changeLanguage(humanLanguage: HumanLanguage): Unit
 
-  /** Mount the complete interactive Snap editor and keep its Morphic world ticking. */
-  def renderEditorInto(initState: ProgrammingStateRaw, canvas: Canvas, config: SnapCodeEditorConfig): Unit
+  /** Mount the complete interactive Snap editor bound to `project` ([[SnapProjectBinding]]) until `owner` ends, and
+    * keep its Morphic world ticking. A `None` project is not shown as Snap: Snap keeps its project and writes nothing.
+    */
+  def renderEditorInto(project: Var[Option[ProgrammingStateSnapScalaModel]], canvas: Canvas, config: SnapCodeEditorConfig)(
+      using owner: Owner): Unit
 
   /** Render only the scripts as a static, tightly-sized preview. */
   def renderPreviewInto(state: ProgrammingStateRaw, canvas: Canvas, config: SnapCodeEditorConfig): Unit
 
-  /** Apply an externally restored state to the retained editor without recreating the world. */
-  def loadProgramIfChanged(state: ProgrammingStateRaw): Unit
-
-  /** Like loadProgramIfChanged but always re-opens (fullscreen reopen / hard restore). */
-  def forceLoadProgram(state: ProgrammingStateRaw): Unit
-
-  /** Record that the live Snap project was just written into this state (skip lossy reload). */
-  def acknowledgeProgramFromEditor(state: ProgrammingStateRaw): Unit
-
-  /** Push any pending Snap XML edits into the change listener immediately. */
-  def flushPendingProjectChanges(): Unit
-
-  /** Push Snap XML edits into the change listener, unless a slot is still being edited. */
+  /** Write pending Snap edits, including an unfinished slot text, into the bound project now. */
   def publishProjectChanges(): Unit
 
-  /** The retained IDE's exact live XML, when it has been mounted. */
-  def currentProjectXml(): Option[String]
-
-  def mount(ctx: Owner): Unit
+  def flushPendingProjectChanges(): Unit
 
   /** Start driving the Morphic world. Snap controls only become responsive while cycles run. */
   def startWorldCycles(): Unit
@@ -56,7 +45,7 @@ trait SnapCodeEditorImpl {
 
   /**
    * Green-flag the live (hidden) Snap stage and mirror frames onto `mirrorTarget`
-   * so turtle motion animates Scratch-style in the fullscreen panel.
+   * so turtle motion animates Scratch-style in the run panel.
    */
   def runGreenFlagOnStage(mirrorTarget: Canvas): Unit
 
@@ -66,11 +55,8 @@ trait SnapCodeEditorImpl {
   /** Pause between blocks during Execute, in milliseconds (>= 0). */
   def setGreenFlagStepMs(ms: Double): Unit
 
-  /** Match canvas bitmap+CSS to the fullscreen parent and relayout Morphic. */
+  /** Match the canvas bitmap and CSS size to its container and relayout Morphic. */
   def fitEditorToContainer(): Unit
-
-  /** Register a listener for XML changes caused by edits in the mounted Snap project. */
-  def setOnProjectXmlChangedListener(callback: String => Unit): Unit
 
   /** Remove custom tabs and, when requested, Snap's standard library too. */
   def removeAllLibraries(includeDefaultLibraries: Boolean = false): Unit

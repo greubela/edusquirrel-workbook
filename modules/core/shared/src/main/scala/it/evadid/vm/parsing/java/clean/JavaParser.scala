@@ -3,7 +3,6 @@ package it.evadid.vm.parsing.java.clean
 import fastparse.*
 import fastparse.NoWhitespace.*
 import it.evadid.vm.code.errors.{ProgrammingConversionException, ProgrammingConversionLocation}
-import it.evadid.vm.parsing.generic.abstractions.pipeline.GenericAstScanner
 import it.evadid.vm.parsing.java.clean.model.JavaAST.*
 import it.evadid.vm.parsing.java.clean.JavaLexer.*
 import it.evadid.vm.parsing.generic.CodeLexer.{LPAR, RPAR, LSQB, RSQB, LBRACE, RBRACE, DOT, COMMA, SEMI, LESS, GREATER, ASSIGN}
@@ -11,33 +10,17 @@ import it.evadid.vm.parsing.java.clean.model.JavaType.*
 import it.evadid.vm.parsing.java.clean.model.{JavaAST, JavaType}
 import it.evadid.vm.parsing.java.clean.JavaSourceMap.{Node, SourceRange}
 
-object JavaParser extends JavaParser(retainParentheses = false, retainComments = false)
+/** The Java grammar (step 2 of [[it.evadid.vm.parsing.source.SourceParsing]], its only caller): a located syntax
+  * tree in which parentheses and `//` comments are kept as nodes.
+  */
+private[parsing] object JavaParser {
+  private val grammar = new JavaGrammar(retainParentheses = true, trackLocations = true, retainComments = true)
 
-/** `retainComments` keeps `//` comments as statements, as source conversion needs them. */
-class JavaParser(private val retainParentheses: Boolean, retainComments: Boolean = false) extends GenericAstScanner[JavaAST] {
-  private val grammar = new JavaGrammar(retainParentheses, trackLocations = false, retainComments)
-  private val locatedGrammar = new JavaGrammar(retainParentheses, trackLocations = true, retainComments)
-
-  override def parseASTFromProgramString(programString: String): Either[Throwable, JavaAST] = parse(programString)
-
-  def parse(javaCode: String): Either[Throwable, JavaProgram] = {
-    val trimmed = javaCode.trim
-    fastparse.parse(trimmed, c => javaProgram(using c)) match {
-      case Parsed.Success(program, _) => Right(program)
-      case f: Parsed.Failure =>
-        val (line, column) = ProgrammingConversionLocation.inTrimmed(javaCode, trimmed, f.index)
-        Left(ProgrammingConversionException.unparsable(
-          s"Java Parsing Error: ${f.trace().longAggregateMsg}", Some(line), Some(column)))
-    }
-  }
-
-  def parseWithLocations(source: String): Either[Parsed.Failure, JavaSourceMap] =
-    fastparse.parse(source, c => locatedGrammar.javaProgram(using c)) match {
+  def parse(source: String): Either[Parsed.Failure, JavaSourceMap] =
+    fastparse.parse(source, c => grammar.javaProgram(using c)) match {
       case Parsed.Success(root, _) => Right(new JavaSourceMap(source, root))
       case failure: Parsed.Failure => Left(failure)
     }
-
-  def javaProgram[$: P]: P[JavaProgram] = grammar.javaProgram.map(_.value)
 }
 
 private class JavaGrammar(retainParentheses: Boolean, trackLocations: Boolean, retainComments: Boolean) {

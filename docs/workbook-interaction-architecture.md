@@ -68,7 +68,10 @@ answer assessed, with localized feedback and optional typed additional data.
 otherwise its `runningBehavior` decides for the answer's recorded `UpdateImportance`
 (`RUN_ALWAYS`, `RUN_ON_AT_LEAST_MINOR`, which skips TEMPORARY typing and unedited DEFAULT answers,
 or `RUN_ONLY_MANUALLY`). `InteractionVariable` requests unforced grading on history updates.
-LLM grading and hints require an explicit request through the shared info panel.
+LLM grading and hints require an explicit request through the shared info panel. Programming exercises share one
+`ProgrammingHintScaffolder`: full Java exercises with a `hintTask` and recreate-shape exercises with an
+`instructionText` get the hint button. Each exercise supplies its answers, graders and results as a
+`ProgrammingHintScaffolder.Exercise`; Snap and block answers are sent as their Python form.
 
 Choice options and grading feedback carry `WorkbookContent` (a language-map ID,
 a translated map, or literal content); `LaminarRenderHelper.workbookContentSignal`
@@ -93,16 +96,16 @@ translations. Synchronization includes feedback updates even when the answer is 
 
 Step-by-step replays live in `htmlRenderer/interactionRenderer/steps/`. `StepNavigator` owns only the
 selected step (step 0 = initial state; a new execution jumps to its end); the panels derive everything
-else from the central answer `Var`, running the shared interpreter debounced in a Future.
+else from the central answer `Var`; the turtle panel reads its run from the shared analysis worker.
 
 Costly drawings use [`DeferredRendering`](../modules/client/src/main/scala/it/evadid/homepage/webElements/basic/DeferredRendering.scala):
-a view is redrawn only after the answer has rested for one second; meanwhile the previous drawing stays,
+a view is redrawn only after the answer has rested for one second (its `prepare` returns a Future); meanwhile the previous drawing stays,
 dimmed, under a localized status (`basic/renderingWaiting`, `basic/renderingInProgress`). Superseded
 states are never prepared. `CompareShapePreview` and `TurtleStepPanel` draw this way; each new scene replaces the
 panel with a fresh JSXGraph board (`TurtleJsxGraphRenderer.render(scenes, title)`), since a reused
 board does not return to its default view. Angles are filled curves with
-labels created on hover: JSXGraph angle objects end a suspended update and redraw the board for each angle. The preview and
-`RecreateShapeGrader` share one `ProgrammingStateBeExpression.turtleComparison(target, policy)` per state.
+labels created on hover: JSXGraph angle objects end a suspended update and redraw the board for each angle. The preview compares the
+worker's `ProgramAnalysis.completedCommands` with the target, as `RecreateShapeGrader` compares the state's commands.
 `TurtleStepPanel` draws the strokes of the first k turtle commands on the JSXGraph board (current step
 highlighted, later strokes faint, turtle marker) and appears in recreate-shape editors.
 `SortStepPanel` replays the `ListCommand`s of a `SortListExercise`, the sorting counterpart of

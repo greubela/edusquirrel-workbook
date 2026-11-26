@@ -3,7 +3,6 @@ package it.evadid.vm.conversion.turtlestitchexpression
 import it.evadid.vm.conversion.snapexpression.SnapControlFlow
 import it.evadid.vm.conversion.snapexpression.SnapExpressionSupport
 import it.evadid.vm.conversion.snapexpression.SnapInputCodec
-
 import it.evadid.vm.conversion.turtlestitchexpression.TurtleStitchProgramModel.{BlockLike, BoolLiteral, ColorLiteral, CustomBlockCall, CustomBlockDefinition, InputValue, ListLiteral, Literal, NestedBlock, NestedScript, PrimitiveBlock, Project, Script}
 import it.evadid.vm.code.abstractions.BeExpression
 import it.evadid.vm.code.controlStructures.*
@@ -13,7 +12,6 @@ import it.evadid.vm.code.usage.{BeFunctionCall, BeUseValue}
 import it.evadid.vm.naming.BeEntityName
 import it.evadid.vm.types.{BeDataType, BeDataValueLiteral}
 import it.evadid.workbook.elements.interactionElements.programming.state.snap.*
-
 import scala.collection.mutable.ListBuffer
 
 object TurtleStitchToBeExpressionParser {
@@ -33,8 +31,6 @@ object TurtleStitchToBeExpressionParser {
       variables = variables(scene.variables), stage = scene.stage.copy(variables = variables(scene.stage.variables)))))
   }
 
-  def parseXml(xml: String): BeExpression = parseXmlWithLayout(xml).expression
-  def parseXmlWithLayout(xml: String): ParseWithLayout = Reader().parseXmlWithLayout(xml)
 
   private final class Reader {
   private val OperatorSymbols = Set(
@@ -75,13 +71,6 @@ object TurtleStitchToBeExpressionParser {
       ParseWithLayout(BeStartProgram(BeSequence.optionalBody(statements)), layout)
     }
   }
-
-  def parseXml(xml: String): BeExpression =
-    parseXmlWithLayout(xml).expression
-
-  /** Snap XML through the single lossless reader; malformed XML is unparsable. */
-  def parseXmlWithLayout(xml: String): ParseWithLayout = parseProjectWithLayout(TurtleStitchXmlLoader.load(xml))
-
 
   private def slotDataType(slot: String): BeDataType = slot match {
     case "%n" => BeDataType.Numeric
@@ -124,8 +113,8 @@ object TurtleStitchToBeExpressionParser {
 
   private def expandModelInputsToExpressions(inputs: List[InputValue], phaseOne: PhaseOneResult): List[BeExpression] =
     inputs.flatMap {
-      case Literal(value) =>
-        if value.trim.isEmpty then Nil else List(slotLiteral(value, numeric = true))
+      // An empty slot keeps its position: it is 0 in a number slot (see slotLiteral), not a missing argument.
+      case Literal(value) => List(slotLiteral(value, numeric = true))
       case BoolLiteral(value) => List(BeUseValue(BeDataValueLiteral(booleanRaw(value)), None))
       case ListLiteral(items) => expandModelInputsToExpressions(items.toList, phaseOne)
       case NestedBlock(block) => parseBlock(block, phaseOne).toList
@@ -140,7 +129,7 @@ object TurtleStitchToBeExpressionParser {
   private def slotLiteral(value: String, numeric: Boolean): BeExpression =
     if value.trim.toDoubleOption.nonEmpty then BeUseValue(BeDataValueLiteral(value.trim), None)
     else if value.isEmpty && numeric then BeUseValue(BeDataValueLiteral("0"), None)
-    else BeUseValue(BeDataValueLiteral(SnapInputCodec.quotePython(value)), None)
+    else BeUseValue(BeDataValueLiteral(it.evadid.vm.types.StringLiteral.quote(value)), None)
 
   /** The result of a reporter (of `valueType`) or a predicate (a truth value); commands return nothing. */
   private def reportedResult(blockType: SnapVocabulary.BlockType, valueType: BeDataType): Option[BeDefineVariable] = blockType match {
@@ -271,6 +260,25 @@ object TurtleStitchToBeExpressionParser {
             case _ => throw it.evadid.vm.code.errors.ProgrammingConversionException.unsupported(
               "Only stop this block can be converted to a function return.")
           }
+          // `say … for … secs` prints like `say`; the bubble's duration has no counterpart in text output.
+          case "doSayFor" => block match {
+            case primitive: PrimitiveBlock => parseGenericBlock(primitive.copy(selector = Some("bubble"), inputs = primitive.inputs.take(1)), phaseOne)
+            case _ => parseGenericBlock(block, phaseOne)
+          }
+          case "reportMonadic" => block.inputs.toList match {
+            case Literal(function) :: value if function.trim == "sqrt" =>
+              Some(SnapControlFlow.mathCall("sqrt", expandModelInputsToExpressions(value, phaseOne)))
+            case Literal(function) :: _ => throw it.evadid.vm.code.errors.ProgrammingConversionException.unsupported(
+              s"Snap's '${function.trim} of' has no translation; only 'sqrt of' has.")
+            case _ => throw it.evadid.vm.code.errors.ProgrammingConversionException.unsupported("Snap's function reporter needs a chosen function.")
+          }
+          case "reportRandom" => block.inputs.toList match {
+            case List(Literal(low), Literal(high)) if low.trim.toDoubleOption.contains(0.0) && high.trim == SnapControlFlow.RandomUpperBound =>
+              Some(SnapControlFlow.mathCall("random", Nil))
+            case _ => throw it.evadid.vm.code.errors.ProgrammingConversionException.unsupported(
+              s"Snap's 'pick random' translates only as random(), from 0 to ${SnapControlFlow.RandomUpperBound}.")
+          }
+          case "reportJoinWords" => Some(SnapControlFlow.textJoin(expandModelInputsToExpressions(block.inputs.toList, phaseOne)))
           case "doReport" => Some(BeReturn(Some(block.inputs.headOption.map(parseInputValue(_, None, phaseOne)).getOrElse(BeExpression.pass))))
           case name if SnapControlFlow.isSnapValueReporter(name) =>
             Some(reporterExpressionFromModel(block, phaseOne))
@@ -384,10 +392,20 @@ object TurtleStitchToBeExpressionParser {
     definition.map { defn =>
       val params = defn.inputs
       val values = block.inputs.toList
+      // A primitive's slot kinds come from the catalog: an empty number slot (`forward ()`) is 0, as in Snap.
+      val kinds = block match {
+        case PrimitiveBlock(Some(selector), _, _, _) => SnapTurtleCatalog.inputKindsForSelector(selector)
+        case _ => Nil
+      }
       val mapped = params.zipAll(values, null, Literal(""))
         .filter(_._1 != null)
-        .map { case (parameter, input) =>
-          parameter -> parseInputValue(input, Some(parameter), phaseOne)
+        .zipWithIndex
+        .map { case ((parameter, input), index) =>
+          parameter -> (input match {
+            case Literal(value) if kinds.lift(index).contains(SnapTurtleCatalog.SnapInputKind.Numeric) =>
+              slotLiteral(value, numeric = true)
+            case other => parseInputValue(other, Some(parameter), phaseOne)
+          })
         }.toMap
       BeFunctionCall.fromDefinition(defn, mapped)
     }
@@ -428,7 +446,7 @@ object TurtleStitchToBeExpressionParser {
 
   private def colorLiteralToPython(value: TurtleStitchProgramModel.Rgba): String = {
     val raw = s"${value.r},${value.g},${value.b},${value.a}"
-    SnapInputCodec.pythonQuotedColorFromRaw(raw).getOrElse(SnapInputCodec.quotePython(raw))
+    SnapInputCodec.pythonQuotedColorFromRaw(raw).getOrElse(it.evadid.vm.types.StringLiteral.quote(raw))
   }
 
   private def createDefinition(signature: Signature): BeDefineFunction = {

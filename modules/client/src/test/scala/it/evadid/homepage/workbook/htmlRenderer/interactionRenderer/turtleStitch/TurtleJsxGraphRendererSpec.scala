@@ -41,17 +41,17 @@ class TurtleJsxGraphRendererSpec extends FunSuite {
   }
 
   private def previewAssessment(state: ProgrammingState): Try[TurtleDrawingGrading.Assessment] =
-    CompareShapePreview(Var(state).signal,TurtleGraphic.TurtleGraphicSvgString("M0,0 L12,0"), TurtleDrawingPolicy.Strokes).assessment(state)
+    CompareShapePreview(Var(state).signal, TurtleGraphic.TurtleGraphicSvgString("M0,0 L12,0"), TurtleDrawingPolicy.Strokes, it.evadid.vm.conversion.dependencies.ProgrammingEnvironment.all)
+      .assessment(it.evadid.vm.analysis.ProgramAnalysis.of(state))
 
-  test("previews and graders of one state share a single comparison per target and policy") {
+  test("previews compare the analysed commands as graders compare the state") {
     val state = ProgrammingStateRaw(Python, "forward(12)")
     val target = TurtleGraphic.TurtleGraphicSvgString("M0,0 L12,0")
+    val commands = it.evadid.vm.analysis.ProgramAnalysis.of(state).completedCommands.toOption.get
     TurtleDrawingPolicy.values.toList.foreach { policy =>
-      val preview = TurtleDrawingGrading.assess(state, target, policy)
-      val shared = state.toBeExpression.turtleComparison(target, policy)
-      assert(shared eq state.toBeExpression.turtleComparison(target, policy), clues(policy))
-      assertEquals(preview.matches, shared.gradingStatus.isCorrect)
-      assertEquals(preview, TurtleDrawingGrading.assess(state.toBeExpression.turtleCommandExecutionInfo.completedCommands, target, policy))
+      val preview = TurtleDrawingGrading.assess(commands, target, policy)
+      val graded = state.toBeExpression.turtleComparison(target, policy)
+      assertEquals(preview.matches, graded.gradingStatus.isCorrect, clues(policy))
     }
   }
 
@@ -458,12 +458,5 @@ class TurtleJsxGraphRendererSpec extends FunSuite {
     val commands = List(TurtleCommand.Forward(10.0), TurtleCommand.Left(90.0), TurtleCommand.Forward(5.0))
     val scene = TurtleJsxGraphRenderer.buildScene(commands, TurtleGraphic.TurtleGraphicProgram(commands))
     assertEquals(read[TurtleJsxGraphRenderer.Scene](write(scene)), scene)
-  }
-
-  test("display bounds take the board's aspect ratio and still contain the whole drawing") {
-    // A wide drawing (left, top, right, bottom) on a square board grows in height around its centre.
-    assertEquals(TurtleJsxGraphRenderer.fitToRatio(Array(0.0, 40.0, 300.0, 0.0), 1.0).toList, List(0.0, 170.0, 300.0, -130.0))
-    // A tall drawing on a board twice as wide as high grows in width.
-    assertEquals(TurtleJsxGraphRenderer.fitToRatio(Array(0.0, 100.0, 50.0, 0.0), 2.0).toList, List(-75.0, 100.0, 125.0, 0.0))
   }
 }

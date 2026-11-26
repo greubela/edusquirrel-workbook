@@ -1,9 +1,9 @@
 package it.evadid.workbook.elements.interactionElements.programming.state
 
+import it.evadid.vm.parsing.source.{SourceParsing, SyntaxFailure}
+import it.evadid.vm.parsing.source.SourceParsing.SourceLanguage
 import it.evadid.workbook.elements.interactionElements.programming.state.snap.SnapScalaModel
-
 import it.evadid.vm.conversion.expressionsnap.SnapProjectXml
-
 import it.evadid.core.datastructures.language.AppLanguage.{BlockDisplay, Java, Python, SnapLanguage, ProgrammingLanguage}
 import it.evadid.vm.simulation.turtle.{TurtleProgramAnalysis, TurtleCommandExecutionInfo}
 import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseTurtle.{TurtleDrawingPolicy, TurtleGradingLogic, TurtleGraphic}
@@ -20,12 +20,28 @@ import it.evadid.util.logging.BasicLogger
 import scala.concurrent.{ExecutionContext, Future}
 import upickle.default.*
 import it.evadid.vm.naming.BeEntityName
-import it.evadid.vm.conversion.structured.{SourceStructure, StructuredProgramConversions}
+import it.evadid.vm.conversion.structured.StructuredProgramConversions
+import it.evadid.vm.conversion.dependencies.ProgrammingEnvironment
 
 /** The source representation currently edited by a programming exercise. */
 sealed trait ProgrammingState {
+  /** Derivations where every library exists; see [[inEnvironment]]. */
   lazy val derivations: it.evadid.vm.conversion.ProgrammingStateDerivations =
-    new it.evadid.vm.conversion.ProgrammingStateDerivations(this)
+    new it.evadid.vm.conversion.ProgrammingStateDerivations(this, ProgrammingEnvironment.all)
+  private val environmentDerivations = AtomicReference(Map.empty[ProgrammingEnvironment, it.evadid.vm.conversion.ProgrammingStateDerivations])
+
+  /** Parsing, conversions and analyses of this state in an exercise providing `environment`'s libraries; calls into
+    * other libraries become its unknown dependency. Each environment's derivations are computed once per state.
+    */
+  def inEnvironment(environment: ProgrammingEnvironment): it.evadid.vm.conversion.ProgrammingStateDerivations =
+    if environment == ProgrammingEnvironment.all then derivations
+    else environmentDerivations.get().getOrElse(environment, environmentDerivations.synchronized {
+      environmentDerivations.get().getOrElse(environment, {
+        val created = new it.evadid.vm.conversion.ProgrammingStateDerivations(this, environment)
+        environmentDerivations.set(environmentDerivations.get().updated(environment, created))
+        created
+      })
+    })
   def convertToLanguage(language: it.evadid.core.datastructures.language.AppLanguage.ProgrammingLanguage): it.evadid.vm.conversion.ConversionResult = derivations.convertToLanguage(language)
   def toBeExpression: ProgrammingStateBeExpression = derivations.expression
   def toJava: ProgrammingStateRaw = derivations.java
@@ -82,8 +98,12 @@ object ProgrammingState {
 }
 
 final case class ProgrammingStateBeExpression(expression: BeExpression) extends ProgrammingState derives ReadWriter {
+  /** Definitions the program calls without defining them and without a configured dependency providing them. */
+  lazy val unknownDependency: Option[it.evadid.vm.code.defining.BeUnknownDependency] =
+    it.evadid.vm.conversion.dependencies.UnknownDependencies.of(expression)
   lazy val turtleCommandSites = TurtleProgramAnalysis.commandSites(expression)
-  lazy val turtleCommandExecutionInfo: TurtleCommandExecutionInfo[Double] = TurtleProgramAnalysis(expression)
+  lazy val turtleCommandExecutionInfo: TurtleCommandExecutionInfo[Double] = TurtleCommandExecutionInfo(
+    programExecution.moduleCommands(it.evadid.vm.modules.BeModules.Turtle), turtleCommandSites, programExecution.status)
   /** The drawing of the completed commands; its trace is computed once for all comparisons. */
   lazy val turtleGraphic: TurtleGraphic = TurtleGraphic(turtleCommandExecutionInfo.completedCommands)
   private val turtleComparisons =
@@ -122,7 +142,7 @@ final case class ProgrammingStateBeExpression(expression: BeExpression) extends 
 
 /** Transport and in-progress source. Prefer the structured language states for saved answers. */
 final case class ProgrammingStateRaw(language: ProgrammingLanguage, code: String) extends ProgrammingState derives ReadWriter {
-  def toSnapScalaModel: Either[String, ProgrammingStateSnapScalaModel] = derivations.snapModel
+  def toSnapScalaModel: Either[SyntaxFailure, ProgrammingStateSnapScalaModel] = derivations.snapModel
 
   def removeBloatFromXml: ProgrammingStateRaw = {
     val cleaned = if language == SnapLanguage then SnapGeneratedImages.remove(code) else code
@@ -159,8 +179,8 @@ object ProgrammingStateSnapScalaModel {
   lazy val empty: ProgrammingStateSnapScalaModel = fromXml(SnapProjectXml.empty)
   lazy val mini: ProgrammingStateSnapScalaModel = fromXml(SnapProjectXml.mini)
   private def fromXml(xml: String): ProgrammingStateSnapScalaModel =
-    it.evadid.vm.conversion.snapxmlmodel.SnapScalaXmlCodec.parse(xml)
-      .fold(message => throw IllegalArgumentException(message), ProgrammingStateSnapScalaModel(_))
+    SourceParsing.parse(xml, SourceLanguage.Snap).syntax
+      .fold(failure => throw failure.unparsable(), ProgrammingStateSnapScalaModel(_))
 
   private case class Saved(model: snap.SnapScalaModel.Document) derives ReadWriter
   given ReadWriter[ProgrammingStateSnapScalaModel] = upickle.default.readwriter[Saved].bimap(
@@ -175,7 +195,7 @@ final case class ProgrammingStateJavaStructured(definedClasses: Map[BeEntityName
 object ProgrammingStateJavaStructured {
   /** Loose code, including none at all, becomes `Main.main`: an empty program is a `Main` class with an empty entry point. */
   def apply(source: String): ProgrammingStateJavaStructured = {
-    val parts = SourceStructure.java(source)
+    val parts = StructuredProgramConversions.javaParts(source)
     if parts.remaining.isEmpty && parts.definedClasses.nonEmpty then new ProgrammingStateJavaStructured(parts.definedClasses)
     else StructuredProgramConversions.javaWithLooseCode(parts.definedClasses, parts.remaining)
   }
@@ -187,7 +207,7 @@ final case class ProgrammingStatePythonStructured(definedClasses: Map[BeEntityNa
     * Turtle operations print their calls; they do not create a drawing window.
     */
   def startExecution()(using client: ExecutionClient, ec: ExecutionContext): Future[RunPythonResult] = {
-    val request = WorkerCommands.RunPythonRequest(toString, logTurtleCalls = true)
+    val request = WorkerCommands.RunPythonRequest(toString, turtleCalls = it.evadid.vm.simulation.python.PythonTurtleCalls.Logged)
     val command = ExecutionCommand(WorkerCommands.runPython.name, upickle.default.writeJs(request))
     val logger = BasicLogger()
     client.executeResponse(logger, command).map { response =>
@@ -212,7 +232,7 @@ object ProgrammingStatePythonStructured {
   lazy val emptyMainScript: String =
     it.evadid.vm.conversion.expressionpython.ExpressionToPython.convert(it.evadid.vm.BeProgram.empty.fullProgram).code.trim
   def apply(source: String): ProgrammingStatePythonStructured = {
-    val parts = SourceStructure.python(source)
+    val parts = StructuredProgramConversions.pythonParts(source)
     new ProgrammingStatePythonStructured(parts.definedClasses,
       if parts.remaining.isEmpty && parts.definedClasses.isEmpty then emptyMainScript else parts.remaining)
   }

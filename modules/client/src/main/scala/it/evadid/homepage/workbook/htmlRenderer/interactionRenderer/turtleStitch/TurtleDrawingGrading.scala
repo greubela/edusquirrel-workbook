@@ -5,7 +5,6 @@ import it.evadid.core.datastructures.vectorShapes.svg.TurtleDrawingComparison.Se
 import it.evadid.core.datastructures.vectorShapes.svg.TurtleCommand
 import it.evadid.homepage.workbook.htmlRenderer.interactionRenderer.turtleStitch.TurtleJsxGraphRenderer.{LineResult, RenderedAngle, RenderedLine, Scene}
 import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseTurtle.{TurtleDrawingPolicy, TurtleGraphic, TurtleGradingLogic}
-import it.evadid.workbook.elements.interactionElements.programming.state.ProgrammingState
 import it.evadid.workbook.elements.interactionElements.programming.state.snap.SnapTurtleCatalog
 
 object TurtleDrawingGrading {
@@ -33,12 +32,6 @@ object TurtleDrawingGrading {
   def assess(commands: Seq[TurtleCommand[Double]], target: TurtleGraphic, policy: TurtleDrawingPolicy): Assessment = {
     val actual = TurtleGraphic(commands)
     assessment(checkedComparison(actual, target, policy)(TurtleGradingLogic.compare(actual, target, policy)))
-  }
-
-  /** Shares the state's comparison with the graders of the same target and policy. */
-  def assess(state: ProgrammingState, target: TurtleGraphic, policy: TurtleDrawingPolicy): Assessment = {
-    val expression = state.toBeExpression
-    assessment(checkedComparison(expression.turtleGraphic, target, policy)(expression.turtleComparison(target, policy)))
   }
 
   def validateDrawing(commands: Seq[TurtleCommand[Double]]): Unit = {

@@ -1,5 +1,6 @@
 package it.evadid.distribution.commandTypes
 
+import it.evadid.vm.parsing.source.SourceParsing.SourceLanguage
 import it.evadid.core.datastructures.chat.{Message, MessengerModel}
 import it.evadid.core.datastructures.user.{AllUserInfo, User, UserConfig, UserTokenInfo}
 import it.evadid.core.datastructures.user.UserTokenInfo.SignedToken
@@ -8,7 +9,7 @@ import it.evadid.core.datastructures.vectorShapes.renderer.PythonFlowchartGutter
 import it.evadid.distribution.command.{ExecutionCommand, ExecutionCommandFactory}
 import it.evadid.llm.LlmConfiguration
 import it.evadid.sql.{BackendDatabase, DatabaseHistoryFormat}
-import it.evadid.vm.conversion.snapxmlmodel.SnapScalaXmlCodec
+import it.evadid.vm.parsing.source.SourceParsing
 import it.evadid.vm.simulation.java.JavaTurtleExecutionEvidence as Evidence
 import it.evadid.workbook.abstractions.InteractionFormat.TextInteractionFormat
 import it.evadid.workbook.elements.interactionElements.sql.SqlDatabaseConfig
@@ -55,7 +56,7 @@ class ExecutionCommandRoundTripSpec extends FunSuite {
     .addEvent(AnswerChangedEvent[TextInteractionFormat.type]("answer \"quoted\" 学校", at, UpdateImportance.MAJOR)))
   private val synced = SyncSuccess(1, 2, 0, at)
   private val qr = QrCode.fromText("https://example.invalid/?q=1", QrErrorCorrection.Q, None, None)
-  private val snapElement = SnapScalaXmlCodec.parse("""<project name="demo"><scripts><script x="1"/></scripts></project>""")
+  private val snapElement = SourceParsing.parse("""<project name="demo"><scripts><script x="1"/></scripts></project>""", SourceLanguage.Snap).syntax
     .toOption.get.root.element
 
   private val samples: List[Sample[?, ?]] = List(
@@ -86,12 +87,15 @@ class ExecutionCommandRoundTripSpec extends FunSuite {
         Seq(SqlEditorCommands.Table("pupil", Seq(SqlEditorCommands.Column("name", "VARCHAR", nullable = true, primaryKey = false)), Nil)))),
     Sample(WorkerCommands.health, WorkerCommands.HealthRequest(), WorkerCommands.HealthResult("edusquirrel-worker", Seq("worker.health"))),
     Sample(WorkerCommands.parseSnapXml, WorkerCommands.ParseSnapXmlRequest("<project name=\"demo\"/>", "project"), Seq(snapElement)),
-    Sample(WorkerCommands.pythonFlowchart, WorkerCommands.PythonFlowchartRequest("if x:\n    y = 1\n"),
+    Sample(WorkerCommands.flowchart, WorkerCommands.FlowchartRequest(it.evadid.core.datastructures.language.AppLanguage.Python, "if x:\n    y = 1\n"),
       PythonFlowchartGutter.fromPython("if x:\n    y = 1\nelse:\n    y = 2\n")),
+    Sample(WorkerCommands.programAnalysis, WorkerCommands.ProgramAnalysisRequest(it.evadid.workbook.elements.interactionElements.programming.state.ProgrammingStateRaw(it.evadid.core.datastructures.language.AppLanguage.Python, "helper(1)\nforward(10)\n"),
+      it.evadid.vm.conversion.dependencies.ProgrammingEnvironment.of(it.evadid.vm.conversion.dependencies.ProgrammingLibrary.Turtle)),
+      it.evadid.vm.analysis.ProgramAnalysis.of(it.evadid.workbook.elements.interactionElements.programming.state.ProgrammingStateRaw(it.evadid.core.datastructures.language.AppLanguage.Python, "helper(1)\nforward(10)\n"))),
     Sample(WorkerCommands.calculateQrCode, WorkerCommands.CalculateQrCodeRequest("https://example.invalid/?q=1", QrErrorCorrection.Q),
       WorkerCommands.CalculateQrCodeResult(qr, qr.modules)),
     Sample(WorkerCommands.runPython, WorkerCommands.RunPythonRequest("forward(n)", Map("n" -> ujson.Num(10)), Map("turtle" -> Seq("forward")),
-      logTurtleCalls = true), WorkerCommands.RunPythonResult(ujson.Obj("done" -> true), "ok\n", "", Seq(WorkerCommands.PythonCallback("turtle", "forward", Seq(ujson.Num(10)))))),
+      turtleCalls = it.evadid.vm.simulation.python.PythonTurtleCalls.Logged), WorkerCommands.RunPythonResult(ujson.Obj("done" -> true), "ok\n", "", Seq(WorkerCommands.PythonCallback("turtle", "forward", Seq(ujson.Num(10)))))),
     Sample(WorkerCommands.javaExecutionEvidence, WorkerCommands.JavaExecutionEvidenceRequest("class Main { static int f(int a) { return a; } }",
       Some("f"), Vector(Evidence.Scalar.Int32(3))), Evidence.Snapshot(Evidence.Outcome.Completed, 2, 0, Vector.empty))
   )

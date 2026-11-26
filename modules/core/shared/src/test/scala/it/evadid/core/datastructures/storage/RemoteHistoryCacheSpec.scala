@@ -209,14 +209,16 @@ class RemoteHistoryCacheSpec extends FunSuite {
       assertEquals(control.reports.now().get(key).lastKnownValues, Map.empty)
       // The destination acknowledges, but never stores: the next read finds nothing.
       destination.writeOperation.set(_ => Future.successful(SyncSuccess.emptyNow()))
-      control.storeAll().flatMap(_ => control.ensureMaxAge(Set(key)))
+      control.storeAll().flatMap(_ => control.ensureMaxAge(Set(key), LocalDateTime.MAX))
     }.flatMap { _ =>
       assertEquals(control.reports.now().get(key).syncedDestinations, Set.empty)
       assertEquals(control.reports.now().get(key).pendingWrites(destination).events.values, Set(event(1, 1)))
       destination.writeOperation.set(persist)
-      control.storeAll().flatMap(_ => control.ensureMaxAge(Set(key)))
+      // Force confirmation even if both reads complete within one clock tick (Scala.js).
+      control.storeAll().flatMap(_ => control.ensureMaxAge(Set(key), LocalDateTime.MAX))
     }.map { _ =>
       assertEquals(destination.writes.now().size, 3)
+      assertEquals(destination.reads.now().size, 2)
       assertEquals(control.reports.now().get(key).syncedDestinations, Set(destination))
     }
   }
@@ -400,7 +402,7 @@ class RemoteHistoryCacheSpec extends FunSuite {
       control.storeAll()
     }.flatMap { _ =>
       assertEquals(control.reports.now().get(key).syncedDestinations, Set.empty, "written, but not read yet")
-      control.ensureMaxAge(Set(key))
+      control.ensureMaxAge(Set(key), LocalDateTime.MAX)
     }.flatMap { _ =>
       assertEquals(control.reports.now().get(key).syncedDestinations, Set(destination))
       assertEquals(destination.writes.now().last(key).size, 1)

@@ -1,10 +1,12 @@
 package it.evadid.vm.editing
 
+import it.evadid.vm.parsing.source.SourceParsing
+import it.evadid.vm.parsing.source.SourceParsing.SourceLanguage
+
 import it.evadid.core.datastructures.language.AppLanguage.{BlockDisplay, Python}
 import it.evadid.vm.BeProgram
 import it.evadid.vm.code.controlStructures.{BeRepeatNr, BeWhile}
 import it.evadid.vm.code.usage.{BeFunctionCall, BeUseValue}
-import it.evadid.vm.conversion.pythonexpression.PythonToExpression
 import it.evadid.vm.types.BeChildRole.{BodySequence, ConditionInControlStructure, ExpressionInSequence, FunctionParameter}
 import it.evadid.vm.types.{BeDataType, BeDataValueLiteral}
 import it.evadid.workbook.elements.interactionElements.programming.state.{ProgrammingStateBeExpression, ProgrammingStateRaw}
@@ -68,7 +70,7 @@ class BeProgramEditingSpec extends FunSuite {
     val program = BeProgramEditing.insert(BeProgram.empty, BeSequenceSlot(main, 0), repeat).toOption.get
     assert(BeProgramEditing.move(program, statement(0), BeSequenceSlot(statement(0) / BodySequence(0), 0)).isLeft)
     assert(BeProgramEditing.insert(program, BeSequenceSlot(main, 5), forward).isLeft)
-    val whileLoop = PythonToExpression.program("while True:\n    forward(1)\n")
+    val whileLoop = SourceParsing.parse("while True:\n    forward(1)\n", SourceLanguage.Python).parsed().program
     val condition = BeNodePath.root / BodySequence(0) / ExpressionInSequence(0) / ConditionInControlStructure
     assert(!BeProgramEditing.accepts(whileLoop, BeSequenceSlot(condition, 0), forward))
     assert(BeProgramEditing.remove(program, main).isLeft)
@@ -109,7 +111,7 @@ class BeProgramEditingSpec extends FunSuite {
   }
 
   test("calls bind to the program's own functions and inputs may only use its variables") {
-    val program = PythonToExpression.program("def add(a: float, b: float) -> float:\n    return a + b\n\nforward(1)\n")
+    val program = SourceParsing.parse("def add(a: float, b: float) -> float:\n    return a + b\n\nforward(1)\n", SourceLanguage.Python).parsed().program
     val forwardPath = BeProgramEditing.slots(program).collectFirst { case slot if slot.sequence == main => slot }
       .map(slot => main / ExpressionInSequence(slot.index)).get
     val sequencePath = BeProgramEditing.find(program, main).collect { case seq: it.evadid.vm.code.controlStructures.BeSequence =>

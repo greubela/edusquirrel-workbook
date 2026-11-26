@@ -11,25 +11,26 @@ class BlockchainMiningController(state: Var[TeachingChain], zeros: Int,
   val running = Var(false)
   val attempts = Var(0)
   val message = Var("miningIdle")
-  private var generation = 0
-  private var cancelScheduled: () => Unit = () => ()
+  /** Chunks of an earlier job see a newer generation and stop. */
+  private val generation = Var(0)
+  private val cancelScheduled = Var[() => Unit](() => ())
   def cancel(): Unit = {
-    generation += 1
-    cancelScheduled()
-    cancelScheduled = () => ()
+    generation.update(_ + 1)
+    cancelScheduled.now()()
+    cancelScheduled.set(() => ())
     if running.now() then message.set("miningStopped")
     running.set(false)
   }
   def start(index: Int): Unit = {
     require(index >= 0 && index < state.now().blocks.size)
     cancel()
-    val job = generation
+    val job = generation.now()
     attempts.set(0)
     running.set(true)
     message.set("miningRunning")
     def enqueue(snapshot: TeachingChain, startNonce: Int): Unit = {
-      cancelScheduled = schedule(() => {
-        if generation == job && running.now() then {
+      cancelScheduled.set(schedule(() => {
+        if generation.now() == job && running.now() then {
           if state.now() != snapshot then {
             running.set(false)
             message.set("miningChanged")
@@ -44,8 +45,13 @@ class BlockchainMiningController(state: Var[TeachingChain], zeros: Int,
             else enqueue(updated, result.nextNonce.get)
           }
         }
-      })
+      }))
     }
     enqueue(state.now(), state.now().blocks(index).nonce)
   }
+}
+
+object BlockchainMiningController {
+  /** The label keys `message` takes. */
+  val messages: Seq[String] = Seq("miningIdle", "miningStopped", "miningRunning", "miningChanged", "miningFound", "miningExhausted", "miningBudget")
 }

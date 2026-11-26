@@ -70,6 +70,24 @@ class CodeMirrorRuntimeSpec extends CodeMirrorSuite {
     }
   }
 
+  test("Enter indents unfinished Python and Java functions without a complete syntax tree") {
+    withLibraries { libs =>
+      Seq(("python", "def draw():", "def draw():\n    "),
+        ("java", "void draw() {", "void draw() {\n    \n}")).foreach { (language, source, expected) =>
+        val parent = host()
+        val handle = editor(parent, source, language)
+        try {
+          val view = viewIn(libs, parent)
+          select(view, source.length, source.length)
+          assert(press(libs, view, "Enter"))
+          assertEquals(handle.getDoc(), expected)
+          assertEquals(view.state.selection.main.anchor.asInstanceOf[Int], source.length + 5)
+        } finally handle.destroy()
+      }
+      Future.unit
+    }
+  }
+
   test("Tab inserts four spaces at the cursor, indents selections and Shift-Tab outdents") {
     withLibraries { libs =>
       val parent = host()

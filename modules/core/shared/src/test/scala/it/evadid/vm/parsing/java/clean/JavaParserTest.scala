@@ -1,5 +1,8 @@
 package it.evadid.vm.parsing.java.clean
 
+import it.evadid.vm.parsing.source.SourceParsing
+import it.evadid.vm.parsing.source.SourceParsing.SourceLanguage
+
 import it.evadid.vm.compilation.java.turtle.JavaTurtleCompiler
 
 import it.evadid.vm.parsing.java.clean.model.JavaAST.*
@@ -11,8 +14,8 @@ import it.evadid.vm.compilation.java.turtle.{JavaTurtleExpressionCompiler as X, 
 import munit.FunSuite
 
 class JavaParserTest extends FunSuite {
-  private def located(source: String, retainParentheses: Boolean = false): JavaSourceMap =
-    new JavaParser(retainParentheses).parseWithLocations(source).fold(error => fail(error.toString), identity)
+  private def located(source: String): JavaSourceMap =
+    SourceParsing.parse(source, SourceLanguage.Java).syntax.fold(error => fail(error.toString), _.sourceMap)
 
   private def sourceNodes(map: JavaSourceMap): Vector[(Vector[Int], JavaSourceMap.Node[JavaAST])] = {
     def visit(path: Vector[Int], node: JavaSourceMap.Node[JavaAST]): Vector[(Vector[Int], JavaSourceMap.Node[JavaAST])] =
@@ -54,7 +57,7 @@ class JavaParserTest extends FunSuite {
     }.flatten
 
   private def completeProgram(source: String): JavaProgram = {
-    val program = JavaParser.parse(source).fold(error => fail(error.getMessage), identity)
+    val program = SourceParsing.parse(source, SourceLanguage.Java).syntax.map(_.program).fold(error => fail(error.message), identity)
     assertEquals(unsupportedStatements(program), Set.empty[String], clue = source)
     program
   }
@@ -181,7 +184,7 @@ class JavaParserTest extends FunSuite {
     assert(method.body.statements.exists(_.isInstanceOf[JavaIfStatement]))
   }
   test("parses Java list and array types") {
-    val parsed = JavaParser.parse("List<String> names; int[] scores;")
+    val parsed = SourceParsing.parse("List<String> names; int[] scores;", SourceLanguage.Java).syntax.map(_.program)
     assert(parsed.isRight, parsed.left.toOption.getOrElse(""))
 
     val declarations = parsed.toOption.get.statements.map(_.statement).collect { case declaration: JavaVariableDeclaration => declaration }
@@ -210,7 +213,7 @@ class JavaParserTest extends FunSuite {
 
   test("adjacent identifiers are not split into a type and a declaration name") {
     for source <- Seq("intvalue;", "doublelength;", "booleanflag;", "void draw(intvalue) {}") do
-      JavaParser.parse(source).toOption.foreach { program =>
+      SourceParsing.parse(source, SourceLanguage.Java).syntax.map(_.program).toOption.foreach { program =>
         assert(!sourceNodes(located(source)).exists { (_, node) =>
           node.value.isInstanceOf[JavaVariableDeclaration]
         }, clue = program)
@@ -258,7 +261,7 @@ class JavaParserTest extends FunSuite {
     val b = JavaTarget("b")
     val c = JavaTarget("c")
     assertEquals(statement("a + b * c;"), JavaOperationBinary(a, "+", JavaOperationBinary(b, "*", c)))
-    assertEquals(statement("(a + b) * c;"), JavaOperationBinary(JavaOperationBinary(a, "+", b), "*", c))
+    assertEquals(statement("(a + b) * c;"), JavaOperationBinary(JavaParenthesizedExpression(JavaOperationBinary(a, "+", b)), "*", c))
     assertEquals(statement("a - b - c;"), JavaOperationBinary(JavaOperationBinary(a, "-", b), "-", c))
     assertEquals(statement("a / b / c;"), JavaOperationBinary(JavaOperationBinary(a, "/", b), "/", c))
     assertEquals(statement("a || b && c;"), JavaOperationBinary(a, "||", JavaOperationBinary(b, "&&", c)))
@@ -289,7 +292,7 @@ class JavaParserTest extends FunSuite {
       "a << b;", "a >> b;", "a >>> b;", "a <<= b;", "a >>= b;", "a >>>= b;", "a -> b;"
     )
     for source <- sources do
-      val parsed = JavaParser.parse(source)
+      val parsed = SourceParsing.parse(source, SourceLanguage.Java).syntax.map(_.program)
       assert(parsed.isLeft || unsupportedStatements(parsed.toOption.get).nonEmpty, clue = source)
   }
 
@@ -413,7 +416,7 @@ class JavaParserTest extends FunSuite {
       prefix <- Seq("", "/* 😀 */\r\n", "/* // byte /* float */ ")
     do {
       val source = turtleSource(s"$prefix$name value = 1; Turtle.forward(40);")
-      assert(JavaParser.parse(source).isRight, clue = source)
+      assert(SourceParsing.parse(source, SourceLanguage.Java).syntax.map(_.program).isRight, clue = source)
       val problem = sourceProblem(source)
       assertEquals(problem.problem, JavaTurtleSourceParser.Problem.UnsupportedType)
       val start = source.indexOf(s"$name value")
@@ -485,10 +488,10 @@ class JavaParserTest extends FunSuite {
     assertEquals(problem.range, Some(JavaSourceMap.SourceRange(4, 5)))
   }
 
-  test("legacy Java parsing remains independent of the turtle source restrictions") {
-    assert(JavaParser.parse("long value = 40;").isRight)
-    assert(JavaParser.parse("String value = \"hello\";").isRight)
-    assert(JavaParser.parse("/* unfinished").isRight)
+  test("the syntax step accepts Java the checked turtle runner refuses, within the parser input limits") {
+    assert(SourceParsing.parse("long value = 40;", SourceLanguage.Java).syntax.map(_.program).isRight)
+    assert(SourceParsing.parse("String value = \"hello\";", SourceLanguage.Java).syntax.map(_.program).isRight)
+    assertEquals(SourceParsing.parse("/* unfinished", SourceLanguage.Java).syntax.left.map(_.message), Left("Close the block comment with */."))
   }
 
   test("turtle input bounds source length before scanning and preserves accepted text") {
@@ -646,7 +649,8 @@ class JavaParserTest extends FunSuite {
       assertEquals(sourceProblem(invalid).problem, JavaTurtleSourceParser.Problem.InputLimit)
       assertEquals(resolvedSource(valid).source, valid)
     }
-    assert(JavaParser.parse("int " + "x" * 129 + ";").isRight)
+    // The single syntax step reads every source within the same parser input limits.
+    assert(SourceParsing.parse("int " + "x" * 129 + ";", SourceLanguage.Java).syntax.isLeft)
     completeProgram("int" + "[]" * 17 + " values;")
   }
 
@@ -780,16 +784,16 @@ class JavaParserTest extends FunSuite {
     }
   }
 
-  test("turtle parsing retains grouping while the legacy parser keeps its AST") {
+  test("parentheses are syntax nodes for conversion and the checked runner alike") {
     val plain = JavaTarget("distance")
-    assertEquals(statement("(distance);"), plain)
+    assertEquals(statement("(distance);"), JavaParenthesizedExpression(plain))
     assertEquals(sourceStatement("(distance);"), JavaParenthesizedExpression(plain))
     assertEquals(sourceStatement("((distance));"), JavaParenthesizedExpression(JavaParenthesizedExpression(plain)))
     val grouped = sourceStatement("(distance + 1) * 2;").asInstanceOf[JavaOperationBinary]
     assertEquals(grouped.op, "*")
     assert(grouped.left.isInstanceOf[JavaParenthesizedExpression])
     assertEquals(grouped.left.getChildren().size, 1)
-    assert(statement("(distance + 1) * 2;").asInstanceOf[JavaOperationBinary].left.isInstanceOf[JavaOperationBinary])
+    assert(statement("(distance + 1) * 2;").asInstanceOf[JavaOperationBinary].left.isInstanceOf[JavaParenthesizedExpression])
   }
 
   test("turtle parsing distinguishes parenthesized statement expressions and call receivers") {
@@ -1344,7 +1348,7 @@ class JavaParserTest extends FunSuite {
   }
 
   test("parses chained Java call, attribute, and subscript trailers") {
-    val parsed = JavaParser.parse("factory().create(1).items[0];")
+    val parsed = SourceParsing.parse("factory().create(1).items[0];", SourceLanguage.Java).syntax.map(_.program)
     assert(parsed.isRight, parsed.left.toOption.getOrElse(""))
 
     val expression = parsed.toOption.get.statements.head.statement.asInstanceOf[JavaExpression]
@@ -1377,7 +1381,7 @@ class JavaParserTest extends FunSuite {
     "while" -> "while (total < 10) { total = total + 1; }",
     "try" -> "try { risky(); } catch (Exception ex) { throw ex; } finally { cleanup(); }"
   )) test(s"parses $name as a structured statement inside a method") {
-    val parsed = JavaParser.parse(s"class Example { void run() { $code } }")
+    val parsed = SourceParsing.parse(s"class Example { void run() { $code } }", SourceLanguage.Java).syntax.map(_.program)
     assert(parsed.isRight, parsed.left.toOption.toString)
     val clazz = parsed.toOption.get.statements.head.statement.asInstanceOf[JavaClassDef]
     assert(clazz.body.statements.head.isInstanceOf[JavaMethodDef])
@@ -1385,7 +1389,7 @@ class JavaParserTest extends FunSuite {
   }
 
   test("operator matching preserves comparison, equality and compact unary arithmetic") {
-    val parsed = JavaParser.parse("boolean enabled = a<=b && a!=b; int value = 1+-2*3;")
+    val parsed = SourceParsing.parse("boolean enabled = a<=b && a!=b; int value = 1+-2*3;", SourceLanguage.Java).syntax.map(_.program)
     assert(parsed.isRight, parsed.left.toOption.toString)
     val declarations = parsed.toOption.get.statements.map(_.statement).collect { case d: JavaVariableDeclaration => d }
     assertEquals(declarations.size, 2)
@@ -1483,7 +1487,7 @@ class JavaParserTest extends FunSuite {
     assertEquals(current, E.Value.IntValue(5))
   }
 
-  test("located parsing preserves ordinary ASTs through alternatives and unsupported fallbacks") {
+  test("the syntax step locates every node of accepted sources, through alternatives and unsupported fallbacks") {
     val sources = Vector(
       "", " \r\n// only a comment at EOF", "/* unfinished",
       "package demo; import java.util.List; class C { int x = 1; void run(int n) { return; } }",
@@ -1492,23 +1496,16 @@ class JavaParserTest extends FunSuite {
       "try { risky(); } catch (Exception ex) { throw ex; } finally { cleanup(); }",
       "a << b; after();", "int x <<= 1; x = 2;", "Turtle.forward(; after();",
       "class C { void run() { unknown ???; int x = 1; } }", "\r\n}", "class C {")
-    for source <- sources; retain <- Vector(false, true) do {
-      val parser = new JavaParser(retain)
-      val ordinary = fastparse.parse(source, context => parser.javaProgram(using context))
-      val positioned = parser.parseWithLocations(source)
-      ordinary match {
-        case fastparse.Parsed.Success(program, _) =>
-          val map = positioned.fold(error => fail(s"$source: $error"), identity)
-          assertEquals(map.source, source)
-          assertEquals(upickle.default.write[JavaAST](map.program), upickle.default.write[JavaAST](program), clue = source)
-          assertSourceTree(map)
-        case failure: fastparse.Parsed.Failure =>
-          assertEquals(positioned.left.toOption.map(_.index), Some(failure.index), clue = source)
+    // Step 2 either locates every node or reports where it stopped.
+    for source <- sources do {
+      SourceParsing.parse(source, SourceLanguage.Java).syntax match {
+        case Right(syntax) =>
+          assertEquals(syntax.sourceMap.source, source)
+          assertSourceTree(syntax.sourceMap)
+        case Left(failure) =>
+          assert(failure.offset >= 0 && failure.offset <= source.length, clue = source)
       }
     }
-    val source = "int x = 0; call(x);"
-    assertEquals(upickle.default.write[JavaAST](JavaParser.parseWithLocations(source).toOption.get.program),
-      upickle.default.write[JavaAST](completeProgram(source)))
   }
 
   test("equal statement values keep separate occurrence ranges and no failed-alternative children") {
@@ -1543,7 +1540,8 @@ class JavaParserTest extends FunSuite {
     Vector("", "// comment at EOF", "/* comment */\r\n\t").foreach { text =>
       val empty = located(text)
       assertSourceTree(empty)
-      assertEquals(empty.program.statements.size, 0)
+      // `//` comments are statements of the syntax tree; nothing else is.
+      assert(empty.program.statements.forall(_.statement.isInstanceOf[JavaCommentStatement]), clue = text)
       assertEquals(empty.text(Vector.empty), Some(text))
       assert(empty.position(text.length).nonEmpty)
     }
@@ -1670,13 +1668,10 @@ class JavaParserTest extends FunSuite {
     assertEquals(sourceTexts(emptyLoop)(_.isInstanceOf[JavaExecutionBlock]), Vector("{}"))
   }
 
-  test("parenthesis retention preserves located AST shape and the checked source map") {
+  test("parentheses are located syntax nodes, in the conversion's and the checked runner's syntax tree alike") {
     val source = "int value = ((a + b)) * (c - d);"
-    val erased = located(source)
-    val retained = located(source, retainParentheses = true)
-    assertSourceTree(erased)
+    val retained = located(source)
     assertSourceTree(retained)
-    assertEquals(sourceTexts(erased)(_.isInstanceOf[JavaParenthesizedExpression]), Vector.empty[String])
     assertEquals(sourceTexts(retained)(_.isInstanceOf[JavaParenthesizedExpression]),
       Vector("((a + b))", "(a + b)", "(c - d)"))
     assertEquals(sourceTexts(retained) { case JavaOperationBinary(_, "+", _) => true; case _ => false }, Vector("a + b"))

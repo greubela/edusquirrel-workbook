@@ -2,6 +2,7 @@ package it.evadid.homepage.workbook.htmlRenderer.controlElements.interactionInfo
 
 import com.raquo.laminar.api.L.*
 import com.raquo.laminar.codecs.BooleanAsIsCodec
+import it.evadid.homepage.webElements.basic.LabelSelection
 import it.evadid.homepage.workbook.htmlRenderer.controlElements.interactionInfo.FeedbackPresentation.*
 import it.evadid.homepage.workbook.htmlRenderer.controlElements.interactionInfo.InteractionInfoPanelIcons.{FeedbackIcon, createFeedbackIcon}
 import it.evadid.workbook.abstractions.InteractionFormat
@@ -40,8 +41,8 @@ object FeedbackPanels {
     val expanded = Var(false)
     val toggle = button(typ := "button", cls := "feedback-action feedback-details-toggle",
       aria.expanded <-- expanded.signal,
-      span(cls := "feedback-button-label", child.text <-- expanded.signal.flatMapSwitch(open =>
-        view.label(if open then "gradingDetailsHide" else "gradingDetailsShow"))),
+      span(cls := "feedback-button-label", child.text <-- LabelSelection(expanded.signal,
+        Seq("gradingDetailsHide", "gradingDetailsShow"), view.label)(open => Some(if open then "gradingDetailsHide" else "gradingDetailsShow"))),
       onClick --> (_ => expanded.update(!_)))
     Seq(div(cls := barCss, actions(view, Some(toggle))),
       div(cls := "feedback-details", hidden <-- expanded.signal.map(!_),
@@ -69,7 +70,7 @@ object FeedbackPanels {
         createFeedbackIcon(FeedbackIcon.Hint), span(cls := "feedback-button-label", child.text <-- view.label("scaffoldingRequest")),
         disabled <-- view.scaffolding.combineWith(view.disabled).map((result, disabled) =>
           disabled || result.status == ScaffoldingReport.Status.Pending),
-        dataAttr("tooltip") <-- view.scaffolding.flatMapSwitch(view.scaffoldingText),
+        dataAttr("tooltip") <-- view.scaffoldingText,
         onClick --> (_ => view.requestScaffolding()))),
       toggle)
   }
@@ -81,14 +82,14 @@ object FeedbackPanels {
     val scoreText = view.grading.combineWith(view.label("gradingCompactScore")).map { (state, template) =>
       template.replace("{correct}", state.correct.toString).replace("{total}", state.total.toString)
     }
-    val hintStatus = view.scaffolding.flatMapSwitch(result => view.label(view.scaffoldingLabel(result)))
+    val hintStatus = hintStatusText(view)
       .combineWith(view.label("scaffoldingLabel")).map((status, label) => s"$label: $status")
     div(cls := "feedback-status-line", role := "status", aria.live := "polite",
       Option.when(canGrade)(span(tone(view.grading.map(_.tone), "feedback-chip feedback-score-chip"),
         title <-- scoreText, aria.label <-- scoreText,
         toneIcon(view.grading.map(_.tone)),
-        span(cls := "feedback-chip__text", child.text <-- view.grading.flatMapSwitch { state =>
-          if state.notRequested == state.total then view.label("gradingNotRun") else Val(s"${state.correct}/${state.total}")
+        span(cls := "feedback-chip__text", child.text <-- view.grading.combineWith(view.label("gradingNotRun")).map { (state, notRun) =>
+          if state.notRequested == state.total then notRun else s"${state.correct}/${state.total}"
         }),
         progressTag(cls := "feedback-progress", aria.hidden := true,
           maxAttr <-- view.grading.map(_.total.max(1).toString), value <-- view.grading.map(_.correct.toString)))),
@@ -102,8 +103,12 @@ object FeedbackPanels {
       Option.when(canHint)(span(tone(view.scaffolding.map(_.status.tone), "feedback-chip feedback-hint-chip"),
         title <-- hintStatus, aria.label <-- hintStatus,
         createFeedbackIcon(FeedbackIcon.Hint),
-        span(cls := "feedback-chip__text", child.text <-- view.scaffolding.flatMapSwitch(result => view.label(view.scaffoldingLabel(result)))))))
+        span(cls := "feedback-chip__text", child.text <-- hintStatusText(view)))))
   }
+
+  /** The label of the hint's status, e.g. "pending". */
+  private def hintStatusText[F <: InteractionFormat](view: InteractionFeedbackView[F]): Signal[String] =
+    LabelSelection(view.scaffolding, ScaffoldingReport.Status.values.map(_.labelKey), view.label)(result => Some(view.scaffoldingLabel(result)))
 
   /** Counts per nonempty result tone, shown in the header so a collapsed section stays informative. */
   private def groupChips[F <: InteractionFormat](view: InteractionFeedbackView[F]): Element =
@@ -162,10 +167,8 @@ object FeedbackPanels {
           h3(cls := "feedback-summary__title", child.text <-- view.label("SidepanelScaffoldingTitle")),
           span(tone(view.scaffolding.map(_.status.tone), "feedback-chip feedback-chip--compact"),
             toneIcon(view.scaffolding.map(_.status.tone)),
-            span(cls := "feedback-chip__text", child.text <-- view.scaffolding.flatMapSwitch(result => view.label(view.scaffoldingLabel(result)))))),
+            span(cls := "feedback-chip__text", child.text <-- hintStatusText(view)))),
         p(cls := "feedback-text feedback-section-content feedback-hint-text",
-          child.text <-- (if placement == Placement.Overview
-            then view.scaffolding.flatMapSwitch(result => result.feedback.map(view.localized).getOrElse(Val("")))
-            else view.scaffolding.flatMapSwitch(view.scaffoldingText))))
+          child.text <-- (if placement == Placement.Overview then view.hintText else view.scaffoldingText)))
     }
 }

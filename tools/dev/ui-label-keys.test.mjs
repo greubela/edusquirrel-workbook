@@ -58,3 +58,23 @@ test('2026GdP1 lesson texts and test descriptions exist in German, English and D
   ]);
   assertTranslated('2026gdp1', keys);
 });
+
+test('Java component editor labels exist in German, English and Danish', () => {
+  const labels = read('modules/client/src/main/scala/it/evadid/homepage/webElements/editor/code/JavaEditor/JavaEditorLabels.scala');
+  const keyEnum = labels.slice(labels.indexOf('enum Key'), labels.indexOf('def entry'));
+  const keys = new Set(matches(keyEnum, /case ([A-Za-z, ]+)/g).flatMap(names => names.split(',').map(name => name.trim())));
+  assertTranslated('blockeditor', keys);
+});
+
+test('Eva, console and block editor labels exist in German, English and Danish', () => {
+  const files = [
+    read('modules/client/src/main/scala/it/evadid/homepage/webElements/editor/code/program/ProgrammingExecutionLabels.scala'),
+    read('modules/client/src/main/scala/it/evadid/homepage/webElements/editor/blocks/BlockEditorLabels.scala'),
+    read('modules/client/src/main/scala/it/evadid/homepage/webElements/editor/code/EvaEditor/EvaEditorLabels.scala'),
+  ].join('\n');
+  const keys = new Set([
+    ...matches(files, /label\("(?:blockeditor\/)?([A-Za-z]+)"\)/g),
+    ...matches(files, /LanguageMapContentId\("blockeditor\/([A-Za-z]+)"\)/g),
+  ]);
+  assertTranslated('blockeditor', keys);
+});

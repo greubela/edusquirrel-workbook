@@ -6,12 +6,12 @@ import com.raquo.laminar.api.L.*
 import it.evadid.core.datastructures.language.LanguageMapContentId
 import it.evadid.core.datastructures.state.StateHelper.StateBasedVar
 import it.evadid.homepage.webElements.basic.HtmlButtonElement
-import it.evadid.homepage.webElements.editor.code.EvaEditor.{EvaEditor, EvaEditorConfig, EvaEditorLabels}
-import it.evadid.homepage.webElements.editor.code.SnapEditor.toRefactor.SnapCodeEditorConfig
+import it.evadid.homepage.webElements.editor.code.EvaEditor.EvaEditorConfig
+import it.evadid.homepage.webElements.editor.code.SnapEditor.SnapCodeEditorConfig
 import it.evadid.workbook.elements.interactionElements.programming.state.snap.ProgrammingEditorPalette
 import it.evadid.homepage.workbook.htmlRenderer.HtmlRenderFactory.LineBasedRenderingFactory
 import it.evadid.homepage.workbook.htmlRenderer.atomarLineRenderings.{AtomarLineRendering, ElementCard}
-import it.evadid.homepage.workbook.htmlRenderer.workbookEditors.EditorWithWorkbookPanel
+import it.evadid.homepage.workbook.htmlRenderer.workbookEditors.{EditorWithWorkbookPanel, WorkbookEvaEditor}
 import it.evadid.workbook.abstractions.{LangMapContentIdType, RoleInWorkbook, TypeOfTextDisplay}
 import it.evadid.workbook.elements.displayElements.DisplayLangMapContent
 import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseRegular.SortListExercise
@@ -40,16 +40,9 @@ case object HtmlSortListExerciseRenderer extends LineBasedRenderingFactory[SortL
     def stepsCard = sortStepsCard(element, boundVar)
 
     def openEditor(): Unit = {
-      val instruction = element.instructionText.map(content => DisplayLangMapContent(element.elementId + "-sidebar-instruction", content,
-        LangMapContentIdType(RoleInWorkbook.EXERCISE_DESCRIPTION, TypeOfTextDisplay.MARKDOWN)))
-      val editor = EvaEditor(
-        fullInfo.loggerSystemInfo.uiAndDomLogger,
-        boundVar,
-        Nil,
-        Var(EvaEditorConfig(enabledLanguages = element.allowedLanguages.toList,
-          snapConfig = SnapCodeEditorConfig.forPalette(ProgrammingEditorPalette.NumberList))),
-        humanLanguage = fullInfo.signals.currentLanguage,
-        labels = EvaEditorLabels.fromContent(laminarHelper.plaintextStringSignal))
+      val instruction = element.instructionText.map(WorkbookEvaEditor.instruction(element.elementId, _))
+      val editor = WorkbookEvaEditor(fullInfo, element, boundVar, EvaEditorConfig(enabledLanguages = element.allowedLanguages.toList,
+        snapConfig = SnapCodeEditorConfig.forPalette(ProgrammingEditorPalette.NumberList)))
       fullInfo.displayControl.setFullscreen(EditorWithWorkbookPanel(element, instruction, gradingReporter, List(stepsCard), editor))
     }
 

@@ -155,8 +155,6 @@ jobs:
 
   scala-js:
     runs-on: ubuntu-latest
-    outputs:
-      browser_artifact_name: browser-bundles-${{ github.run_attempt }}
     # Allow a clean dependency/build cache.
     timeout-minutes: 30
     steps:
@@ -196,8 +194,47 @@ jobs:
       - name: Install Node test dependencies
         run: npm ci
       # The JVM-only updates complete the dependency cache this job saves.
-      - name: Test the Scala.js modules and build browser artifacts
-        run: sbt -batch -J-Xmx4G -Dsbt.supershell=false 'all coreJS/test client/test worker/test' buildClientDev buildWorkerDev coreJVM/update server/update desktop/update
+      - name: Test the Scala.js modules
+        run: sbt -batch -J-Xmx4G -Dsbt.supershell=false 'all coreJS/test client/test worker/test' coreJVM/update server/update desktop/update
+
+  # Builds the bundles for the browser checks alongside scala-js, so those checks
+  # need not wait for every Scala test. scala-js alone saves the Scala.js build cache.
+  browser-bundles:
+    runs-on: ubuntu-latest
+    outputs:
+      browser_artifact_name: browser-bundles-${{ github.run_attempt }}
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: '21'
+          cache: sbt
+          cache-read-only: true
+          cache-dependency-path: |
+            build.sbt
+            project/*.scala
+            project/*.sbt
+            project/build.properties
+            project/repositories
+      - uses: sbt/setup-sbt@v1
+      - name: Restore incremental Scala.js build
+        uses: actions/cache/restore@v5
+        with:
+          path: |
+            target/coreJS
+            target/client
+            target/worker
+            target/root
+            target/streams
+            project/target
+          key: ${{ runner.os }}-scala-js-build-${{ hashFiles('build.sbt', 'project/*.scala', 'project/*.sbt', 'project/build.properties', 'project/repositories') }}-${{ github.sha }}
+          restore-keys: |
+            ${{ runner.os }}-scala-js-build-${{ hashFiles('build.sbt', 'project/*.scala', 'project/*.sbt', 'project/build.properties', 'project/repositories') }}-
+            ${{ runner.os }}-scala-js-build-
+      - name: Build browser artifacts
+        run: sbt -batch -J-Xmx4G -Dsbt.supershell=false buildClientDev buildWorkerDev
       - name: Upload browser bundles
         uses: actions/upload-artifact@v7
         with:
@@ -209,7 +246,7 @@ jobs:
           retention-days: 1
 
   browser-tests:
-    needs: scala-js
+    needs: browser-bundles
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
@@ -222,7 +259,7 @@ jobs:
       - name: Download tested browser bundles
         uses: actions/download-artifact@v8
         with:
-          name: ${{ needs.scala-js.outputs.browser_artifact_name }}
+          name: ${{ needs.browser-bundles.outputs.browser_artifact_name }}
           path: artifacts/newest
       - run: npx playwright install --with-deps chromium
       - name: Allow Chromium's sandbox on Ubuntu
@@ -319,7 +356,7 @@ jobs:
   # Preserve the required "tests" status as the gate for the whole test suite.
   tests:
     if: ${{ always() }}
-    needs: [static-tests, scala-jvm, scala-js, browser-tests, mysql-integration]
+    needs: [static-tests, scala-jvm, scala-js, browser-bundles, browser-tests, mysql-integration]
     runs-on: ubuntu-latest
     steps:
       - name: Require every test job to pass
@@ -327,11 +364,13 @@ jobs:
           STATIC_RESULT: ${{ needs.static-tests.result }}
           SCALA_JVM_RESULT: ${{ needs.scala-jvm.result }}
           SCALA_JS_RESULT: ${{ needs.scala-js.result }}
+          BUNDLES_RESULT: ${{ needs.browser-bundles.result }}
           BROWSER_RESULT: ${{ needs.browser-tests.result }}
           MYSQL_RESULT: ${{ needs.mysql-integration.result }}
         run: |
           test "$STATIC_RESULT" = success
           test "$SCALA_JVM_RESULT" = success
           test "$SCALA_JS_RESULT" = success
+          test "$BUNDLES_RESULT" = success
           test "$BROWSER_RESULT" = success
           test "$MYSQL_RESULT" = success

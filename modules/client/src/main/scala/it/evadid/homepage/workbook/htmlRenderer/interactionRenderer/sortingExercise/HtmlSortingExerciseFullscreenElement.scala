@@ -1,6 +1,7 @@
 package it.evadid.homepage.workbook.htmlRenderer.interactionRenderer.sortingExercise
 
 import com.raquo.laminar.api.L.*
+import it.evadid.homepage.webElements.basic.LabelSelection
 import it.evadid.core.datastructures.language.LanguageMapContentId
 import it.evadid.core.datastructures.state.StateHelper.InteractionVariableOnJS
 import it.evadid.homepage.control.model.FullInfo
@@ -206,10 +207,7 @@ case class HtmlSortingExerciseFullscreenElement(
         cls("is-visible") <-- errorPopupContentId.signal.map(_.nonEmpty),
         div(
           cls := "sorting-error-popup__content",
-          child.text <-- errorPopupContentId.signal.flatMapSwitch {
-            case Some(contentId) => contentIdSignal(contentId)
-            case None => Val("")
-          },
+          child.text <-- LabelSelection(errorPopupContentId.signal, interaction.items.map(_.wrongFeedback), contentIdSignal)(identity),
           button(
             typ := "button",
             cls := "sorting-error-popup__button",

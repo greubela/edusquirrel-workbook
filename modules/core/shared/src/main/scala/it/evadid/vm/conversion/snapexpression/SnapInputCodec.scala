@@ -23,9 +23,6 @@ object SnapInputCodec {
     else trimmed
   }
 
-  def quotePython(value: String): String =
-    "\"" + value.replace("\\", "\\\\").replace("\"", "\\\"").replace("\n", "\\n").replace("\r", "\\r").replace("\t", "\\t") + "\""
-
   def parseColor(raw: String): Option[RGBColor] = {
     val value = stripQuotes(raw).trim
     if value.isEmpty then None
@@ -57,7 +54,7 @@ object SnapInputCodec {
   def pythonQuotedColor(color: RGBColor): String = {
     val hex = color.toHex("#").toLowerCase
     val named = WebColor.reverseNameMap.get(hex)
-    quotePython(named.getOrElse(s"rgb(${color.red}, ${color.green}, ${color.blue})"))
+    it.evadid.vm.types.StringLiteral.quote(named.getOrElse(s"rgb(${color.red}, ${color.green}, ${color.blue})"))
   }
 
   def pythonQuotedColorFromRaw(raw: String): Option[String] =
@@ -85,7 +82,7 @@ object SnapInputCodec {
           else value
         s"<l>${SnapXmlText.escape(normalized)}</l>"
       case _ =>
-        s"<l>${SnapXmlText.escape(value)}</l>"
+        s"<l>${SnapXmlText.escape(it.evadid.vm.types.StringLiteral.content(value))}</l>"
 
   def isValidForKind(kind: SnapInputKind, expression: BeExpression, userFunctions: Map[String, Int] = Map.empty): Boolean =
     kind match

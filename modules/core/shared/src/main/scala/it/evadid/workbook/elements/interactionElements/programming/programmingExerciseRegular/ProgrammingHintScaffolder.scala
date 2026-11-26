@@ -9,7 +9,6 @@ import it.evadid.distribution.commandTypes.LLMCommands
 import it.evadid.util.logging.BasicLogger
 import it.evadid.vm.compilation.java.turtle.JavaTurtleProgram
 import it.evadid.workbook.abstractions.FeedbackEntity.LlmEntity
-import it.evadid.workbook.abstractions.InteractionFormat.ProgrammingExerciseWithLlmScaffoldingAndGrading
 import it.evadid.workbook.abstractions.grading.{GradingImportance, GradingResult, GradingStatus, WorkbookInteractionGrader}
 import it.evadid.workbook.abstractions.scaffolding.ScaffoldingStatus.*
 import it.evadid.workbook.abstractions.scaffolding.{AdditionalInfoLlmScaffolding, ScaffoldingResult, WorkbookInteractionScaffolder}
@@ -24,8 +23,8 @@ import it.evadid.workbook.meta.ExecutionContextInformation
 import scala.concurrent.Future
 import scala.util.Try
 
-final class ProgrammingHintScaffolder(val interaction: WorkbookInteractionElement[ProgrammingExerciseWithLlmScaffoldingAndGrading.type],
-                                      publicTaskId: LanguageMapContentId)
+/** One short, evidence-based question about the learner's current program, for any programming exercise. */
+final class ProgrammingHintScaffolder(exercise: ProgrammingHintScaffolder.Exercise, publicTaskId: LanguageMapContentId)
   extends WorkbookInteractionScaffolder[ProgrammingState, AdditionalInfoLlmScaffolding] {
 
   override def scaffoldingEntity: FeedbackEntity = LlmEntity()
@@ -77,7 +76,8 @@ final class ProgrammingHintScaffolder(val interaction: WorkbookInteractionElemen
       case ProgrammingStateRaw(Python, code) => Python.name -> code
       case value: ProgrammingStateJavaStructured => Java.name -> value.toString
       case value: ProgrammingStatePythonStructured => Python.name -> value.toString
-      case _ => throw IllegalArgumentException("Hints currently require Java or Python source text.")
+      // Blocks and Snap projects are discussed as the Python they correspond to.
+      case other => Python.name -> other.toPython.code
     }
     require(source != null && source.length <= 24000, "The source is too long for a hint.")
     val lines = source.split("\\r\\n|\\r|\\n", -1).toVector
@@ -85,13 +85,10 @@ final class ProgrammingHintScaffolder(val interaction: WorkbookInteractionElemen
     val sourceLines = lines.zipWithIndex.collect {
       case (line, index) if line.trim.nonEmpty => s"source-${index + 1}" -> line
     }
-    val variable = interaction.interactionVariable
-    val history = variable.currentHistory
-    require(history.historyStates.lastStateOption.map(_.value).getOrElse(interaction.defaultValue) == state,
-      "The answer changed while preparing this hint.")
-    val results: Seq[GradingResult[ProgrammingState, AdditionalProgrammingTestInfo]] =
-      history.historyGrading.gradingsMap.get(state).filter(_.state == state).toList.flatMap(_.graderResultMap.values)
-    val graders = interaction.gradingElements.filter { grader =>
+    val latest = exercise.latestAnswer()
+    require(latest.map(_.value).getOrElse(exercise.defaultValue) == state, "The answer changed while preparing this hint.")
+    val results = exercise.results(state)
+    val graders = exercise.graders.filter { grader =>
       grader.importance != GradingImportance.HIDDEN_TEST && grader.gradingEntity == FeedbackEntity.TestEntity()
     }.distinct
     require(graders.size <= 32, "Too many public checks for a hint.")
@@ -116,11 +113,20 @@ final class ProgrammingHintScaffolder(val interaction: WorkbookInteractionElemen
       }
       Check(s"check-${index + 1}", grader, grader.importance == GradingImportance.REQUIRED_TEST, latest)
     }
-    Context(sourceLanguage, source, sourceLines, checks, history.historyStates.lastStateOption)
+    Context(sourceLanguage, source, sourceLines, checks, latest)
   }
 }
 
 object ProgrammingHintScaffolder {
+  /** What a hint needs from its exercise, independently of the exercise's saved format: the latest saved answer,
+    * the default answer, the exercise's graders and the recorded results of a state.
+    */
+  final case class Exercise(
+      latestAnswer: () => Option[InteractionVariableState[ProgrammingState]],
+      defaultValue: ProgrammingState,
+      graders: Seq[WorkbookInteractionGrader[ProgrammingState, AdditionalProgrammingTestInfo]],
+      results: ProgrammingState => Seq[GradingResult[ProgrammingState, AdditionalProgrammingTestInfo]])
+
   private val evidenceStatuses = Set("correct", "partially-correct", "incorrect")
 
   private case class PublicCheck(id: String, required: Boolean, status: String, description: Option[String],

@@ -178,18 +178,36 @@ class ProgrammingHintScaffolderSpec extends FunSuite {
     }.map(outcomes => assertEquals(outcomes.filterNot(_._2), Nil))
   }
 
-  test("no command is sent for a Snap answer, without a task resolver or without an LLM client") {
+  test("a Snap answer is discussed as its Python form") {
+    val backend = new LlmBackend(reply.replace("source-3", "source-1"))
+    val snapAnswer: ProgrammingState = ProgrammingStateRaw(Python, "forward(10)\n").toSnapScalaModel.toOption.get
+    exercise(snapAnswer).interactionVariable.control.getOrCalculateScaffolding(context(backend)).map { _ =>
+      val prompt = backend.prompts.head
+      assertEquals(prompt("source")("language").str, Python.name)
+      assertEquals(prompt("source")("code").str, snapAnswer.toPython.code)
+    }
+  }
+
+  test("a turtle exercise with a public task offers hints; one without a task does not") {
+    val backend = new LlmBackend(reply.replace("source-3", "source-1"))
+    val target = it.evadid.workbook.elements.interactionElements.programming.programmingExerciseTurtle.TurtleGraphic(Seq.empty[it.evadid.core.datastructures.vectorShapes.svg.TurtleCommand[Double]])
+    val shape = it.evadid.workbook.elements.interactionElements.programming.programmingExerciseTurtle.TurtleRecreateShapeInteraction(
+      s"turtle-${java.util.UUID.randomUUID()}", ProgrammingStateRaw(Python, "forward(10)\n"), target, instructionText = Some(task))
+    assertEquals(shape.copy(elementId = "no-task", instructionText = None).scaffoldingElement, None)
+    shape.interactionVariable.control.getOrCalculateScaffolding(context(backend)).map { _ =>
+      assertEquals(backend.prompts.map(_("task")("text").str), Vector("Gib die Summe zweier positiver Zahlen zurück."))
+      assertEquals(backend.prompts.head("source")("code").str, "forward(10)\n")
+    }
+  }
+
+  test("no command is sent without a task resolver or without an LLM client") {
     val backend = new LlmBackend(reply)
     val java = exercise(ProgrammingStateRaw(Java, source))
-    val snapAnswer: ProgrammingState = ProgrammingStateRaw(Python, "forward(10)\n").toSnapScalaModel.toOption.get
-    val snap = exercise(snapAnswer)
     for {
-      snapFailure <- snap.scaffoldingElement.get.handleFeedbackGeneration(snapAnswer, context(backend)).failed
       noResolver <- java.scaffoldingElement.get.handleFeedbackGeneration(ProgrammingStateRaw(Java, source), TestExecutionContext(List(backend))).failed
       noClient <- java.scaffoldingElement.get.handleFeedbackGeneration(ProgrammingStateRaw(Java, source),
         TestExecutionContext(Nil, languageMapIdResolver = Some(resolver(German)))).failed
     } yield {
-      assert(snapFailure.getMessage.contains("Java or Python"), snapFailure.getMessage)
       assert(noResolver.getMessage.contains("LanguageMapIdResolver"), noResolver.getMessage)
       assert(noClient.getMessage.contains("No execution client"), noClient.getMessage)
       assertEquals(backend.requests, Vector.empty[LLMCommands.FeedbackLlmRequest])
@@ -198,7 +216,8 @@ class ProgrammingHintScaffolderSpec extends FunSuite {
 
   test("a hint is not accepted when the answer changed while the request was running") {
     val element = ProgrammingExerciseFullJava("java-changing", hintTask = Some(task))
-    element.interactionVariable.setStateFromUserInteraction(ProgrammingStateRaw(Java, source), UpdateImportance.MAJOR, context = TestExecutionContext())
+    element.interactionVariable.setStateFromUserInteraction(ProgrammingStateRaw(Java, source), UpdateImportance.MAJOR,
+      timestamp = LocalDateTime.now().minusSeconds(1), context = TestExecutionContext())
     val backend = new LlmBackend(reply) {
       override protected def rawExecution(logger: Logger, request: LLMCommands.FeedbackLlmRequest): Future[String] = {
         element.interactionVariable.setStateFromUserInteraction(ProgrammingStateRaw(Java, source + "\n// edited"),

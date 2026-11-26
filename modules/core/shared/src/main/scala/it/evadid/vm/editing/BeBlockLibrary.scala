@@ -1,11 +1,13 @@
 package it.evadid.vm.editing
 
+import it.evadid.vm.parsing.source.SourceParsing
+import it.evadid.vm.parsing.source.SourceParsing.SourceLanguage
+
 import it.evadid.core.datastructures.language.{AppLanguage, LanguageMap}
 import it.evadid.core.datastructures.language.AppLanguage.HumanLanguage
 import it.evadid.vm.code.abstractions.BeExpression
 import it.evadid.vm.code.controlStructures.BeSequence
 import it.evadid.vm.code.others.BeStartProgram
-import it.evadid.vm.conversion.pythonexpression.PythonToExpression
 
 /** A template that a block editor can copy into a program. */
 final case class BeBlockTemplate(statement: BeExpression, label: Option[LanguageMap[HumanLanguage]] = None)
@@ -19,7 +21,7 @@ object BeBlockLibrary {
 
   /** The first statement of a one-statement Python program. */
   def statementFromPython(source: String): BeExpression =
-    PythonToExpression.program(source).fullProgram match {
+    SourceParsing.parse(source, SourceLanguage.Python).parsed().program.fullProgram match {
       case BeStartProgram(Some(BeSequence(statement +: _, _))) => statement
       case other => throw IllegalArgumentException(s"Expected one statement in '$source', got $other.")
     }

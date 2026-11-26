@@ -4,12 +4,48 @@ import fastparse.*
 import fastparse.NoWhitespace.*
 import it.evadid.vm.code.errors.{ProgrammingConversionException, ProgrammingConversionLocation}
 import it.evadid.vm.parsing.generic.CodeLexer.*
-import it.evadid.vm.parsing.generic.abstractions.pipeline.GenericAstScanner
 import it.evadid.vm.parsing.python.clean.model.PyAST.*
 import it.evadid.vm.parsing.python.clean.model.PythonType.*
 import it.evadid.vm.parsing.python.clean.model.*
 
-object PythonAstParserSimple extends GenericAstScanner[PyAST] {
+/** The Python grammar; only step 2 of [[it.evadid.vm.parsing.source.SourceParsing]] parses with it. */
+object PythonAstParserSimple {
+  def normalizeLineEndingsAndDetab(source: String): String =
+    source.replace("\r\n", "\n").replace('\r', '\n').replace("\t", "    ")
+
+  private[parsing] def parse(source: String): Either[Throwable, PythonSourceMap] = {
+    val input = PythonSourceText(source)
+    val grammar = PythonGrammar(source, input)
+    fastparse.parse(input.text, context => grammar.py_program(using context)) match {
+      case Parsed.Success(program, _) => Right(grammar.result(program))
+      case failure: Parsed.Failure =>
+        val lines = it.evadid.vm.parsing.source.SourceLines(source)
+        val offset = input.originalOffset(failure.index)
+        Left(ProgrammingConversionException.unparsable(s"Python Parsing Error: ${failure.trace().longAggregateMsg}",
+          Some(lines.line(offset)), Some(lines.column(offset))))
+    }
+  }
+}
+
+private final class PythonGrammar(original: String, input: PythonSourceText) {
+  import it.evadid.vm.parsing.python.clean.model.PyAST
+  import it.evadid.vm.parsing.source.{SourceIdentity, SourceLines, SourceSpan}
+  private val spans = scala.collection.mutable.Map.empty[SourceIdentity[PyAST], SourceSpan]
+  private val lines = SourceLines(original)
+  private def record[A <: PyAST](node: A, start: Int, end: Int): A = {
+    val key = SourceIdentity[PyAST](node)
+    if !spans.contains(key) then spans.update(key, lines.span(input.originalOffset(start), input.originalOffset(end)))
+    node
+  }
+  private def located[A <: PyAST, ctx: P](rule: => P[A]): P[A] =
+    P(Index ~~ rule ~~ Index).map((start, node, end) => record(node, start, end))
+
+  def result(program: PyProgram): PythonSourceMap = {
+    def nodes(node: PyAST): Seq[PyAST] = node +: node.getChildren().collect { case child: PyAST => child }.flatMap(nodes)
+    val live = nodes(program).map(SourceIdentity(_)).toSet
+    PythonSourceMap(original, program, spans.toMap.filter((key, _) => live(key)))
+  }
+
 
   // ==========================================
   // 1. HELPER
@@ -46,30 +82,6 @@ object PythonAstParserSimple extends GenericAstScanner[PyAST] {
   // 2. PROGRAM
   // ==========================================
 
-  override def parseASTFromProgramString(programString: String): Either[Throwable, PyAST] = parse(programString)
-
-  /** Unix line endings and four spaces per tab, as Python's tokenizer expands them for indentation. */
-  def normalizeLineEndingsAndDetab(source: String): String =
-    source.replace("\r\n", "\n").replace('\r', '\n').replace("\t", "    ")
-
-  /** Removes the indentation all non-blank lines share, as an indented fragment carries it. */
-  def dedent(source: String): String = {
-    val lines = normalizeLineEndingsAndDetab(source).split("\n", -1).toVector
-    val shared = lines.filter(_.trim.nonEmpty).map(_.takeWhile(_ == ' ').length).minOption.getOrElse(0)
-    lines.map(_.drop(shared)).mkString("\n")
-  }
-
-  def parse(pythonCode: String): Either[Throwable, PyProgram] = {
-    val trimmed = dedent(pythonCode).trim
-    fastparse.parse(trimmed + "\n", c => py_program(using c)) match {
-      case Parsed.Success(astModule, _) => Right(astModule)
-      case f: Parsed.Failure =>
-        val (line, column) = ProgrammingConversionLocation.inTrimmed(pythonCode, trimmed, f.index)
-        Left(ProgrammingConversionException.unparsable(
-          s"Python Parsing Error: ${f.trace().longAggregateMsg}", Some(line), Some(column)))
-    }
-  }
-
   def py_program[ctx: P]: P[PyProgram] = P(
     (NEWLINE.rep ~~ statement(IndentState(0)).rep ~~ End).map(programFrom)
   )
@@ -101,7 +113,11 @@ object PythonAstParserSimple extends GenericAstScanner[PyAST] {
     P(STAR.map(_ => Right(true)) | targetList.map(Left(_)))
   }
 
-  def argument_expressions[ctx: P]: P[Seq[PyExpression]] = P(expression.rep(sep = P(SPACES.? ~ COMMA ~ SPACES.?)))
+  def argument_expressions[ctx: P]: P[Seq[PyExpression]] = P(argument.rep(sep = P(SPACES.? ~ COMMA ~ SPACES.?)))
+
+  /** A positional argument or a keyword argument such as `file=sys.stderr` (not `a == b`). */
+  private def argument[ctx: P]: P[PyExpression] =
+    P((NAME ~~ SPACES.? ~~ "=" ~~ !"=" ~~ SPACES.? ~~ expression).map(PyKeywordArgument(_, _)) | expression)
 
   // ==========================================
   // 4. STATEMENTS TYPES
@@ -121,7 +137,10 @@ object PythonAstParserSimple extends GenericAstScanner[PyAST] {
   private def trailingComment[ctx: P]: P[Option[PyCommentStatement]] =
     P(INLINE_WS ~~ ("#" ~~ CharsWhile(_ != '\n', 0).!).? ~~ INLINE_WS).map(_.map(text => PyCommentStatement(text.trim)))
 
-  def statement[ctx: P](state: IndentState): P[Seq[PyStatement]] = P(
+  def statement[ctx: P](state: IndentState): P[Seq[PyStatement]] =
+    P(Index ~~ statementValue(state) ~~ Index).map((start, statements, end) => statements.map(record(_, start, end)))
+
+  private def statementValue[ctx: P](state: IndentState): P[Seq[PyStatement]] = P(
     commentLine.map(Seq(_))
       | (simple_stmt(state).rep(1, sep = P(SPACES ~~ SEMI ~~ SPACES)) ~~ (SPACES ~~ SEMI).? ~~ trailingComment ~~ NEWLINE)
         .map((stmts: Seq[PyStatement], comment: Option[PyCommentStatement]) => stmts ++ comment)
@@ -141,7 +160,9 @@ object PythonAstParserSimple extends GenericAstScanner[PyAST] {
     type_alias.map(ExprStmt(_)) |
 */
 
-  def simple_stmt[ctx: P](state: IndentState): P[PyStatement] = P(
+  def simple_stmt[ctx: P](state: IndentState): P[PyStatement] = located(simpleStatement(state))
+
+  private def simpleStatement[ctx: P](state: IndentState): P[PyStatement] = P(
     import_stmt | assignment | declaration | emptyLine
       | P(PASS).map(_ => PyPassStatement)
       | P(BREAK).map(_ => PyBreakStatement)
@@ -243,7 +264,7 @@ object PythonAstParserSimple extends GenericAstScanner[PyAST] {
   // 7. EXPRESSION TYPES
   // ==========================================
 
-  def expression[ctx: P]: P[PyExpression] = lambdaExpression | named_expression | disjunction
+  def expression[ctx: P]: P[PyExpression] = located(P(lambdaExpression | named_expression | disjunction))
 
   /** Lambdas are kept as source text; the shared tree has no anonymous functions. */
   def lambdaExpression[ctx: P]: P[PyExpression] =
@@ -313,8 +334,9 @@ object PythonAstParserSimple extends GenericAstScanner[PyAST] {
   // 8. ATOMAR SEQUENCES
   // ==========================================
 
-  def primary[ctx: P]: P[PyExpression] = P(atom ~~ trailer.rep).map { case (base, trailers) =>
-    trailers.foldLeft(base) { case (receiver, applyTrailer) => applyTrailer(receiver) }
+  def primary[ctx: P]: P[PyExpression] = P(Index ~~ atom ~~ Index ~~ (trailer ~~ Index).rep).map {
+    case (start, base, baseEnd, trailers) =>
+      trailers.foldLeft(record(base, start, baseEnd)) { case (receiver, (make, finish)) => record(make(receiver), start, finish) }
   }
 
   def atom[ctx: P]: P[PyExpression] = P(listLiteral | dictLiteral | setLiteral | parenthesizedOrTuple | literal | targetAtom)
@@ -338,7 +360,7 @@ object PythonAstParserSimple extends GenericAstScanner[PyAST] {
   private def targetAtom[ctx: P]: P[PyTarget] = NAME.map(PyTarget(_))
 
   def target[ctx: P](knownContext: List[String] = List()): P[PyTarget] = {
-    identifierWithTypeHint
+    located(identifierWithTypeHint)
   }
 
   def identifierWithTypeHint[ctx: P]: P[PyTarget] = {

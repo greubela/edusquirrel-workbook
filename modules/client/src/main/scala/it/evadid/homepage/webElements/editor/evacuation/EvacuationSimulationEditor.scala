@@ -1,6 +1,7 @@
 package it.evadid.homepage.webElements.editor.evacuation
 
 import com.raquo.laminar.api.L.*
+import it.evadid.homepage.webElements.basic.LabelSelection
 import it.evadid.homepage.webElements.HtmlAppElement
 import it.evadid.workbook.model.evacuation.*
 import org.scalajs.dom
@@ -53,8 +54,9 @@ case class EvacuationSimulationEditor(answer: Var[EvacuationExperiment], initial
         }) })),
       button(typ := "button", text <-- textFor("evacuationEdit"), disabled <-- locked,
         onClick --> (_ => resetPlayback()))),
-    p(cls := "evacuation-error", role := "alert", text <-- error.signal.combineWith(speedDraft.signal).flatMapSwitch((key, draft) =>
-      if (settingsSpeed(draft).isEmpty) textFor("evacuationSpeedInvalid") else if (key.isEmpty) Val("") else textFor(key))),
+    p(cls := "evacuation-error", role := "alert", text <-- LabelSelection(error.signal.combineWith(speedDraft.signal),
+      Seq("evacuationSpeedInvalid", "evacuationRunLimit"), textFor)((key, draft) =>
+        if (settingsSpeed(draft).isEmpty) Some("evacuationSpeedInvalid") else Option.when(key.nonEmpty)(key))),
     child <-- editing.signal.map(edit => if (edit) ScenarioEditor(plan, initial.floor, locked).getDomElement()
       else div(cls := "evacuation-editor evacuation-playback",
         div(cls := "evacuation-tools",
@@ -63,9 +65,10 @@ case class EvacuationSimulationEditor(answer: Var[EvacuationExperiment], initial
           button(typ := "button", text <-- textFor("evacuationPlay"), disabled <-- locked.combineWith(playback.running.signal, playback.atEnd.signal).map((disabled, busy, done) => disabled || busy || done), onClick --> (_ => playback.play())),
           button(typ := "button", text <-- textFor("evacuationPause"), disabled <-- playback.running.signal.map(!_), onClick --> (_ => playback.pause())),
           button(typ := "button", text <-- textFor("evacuationRestart"), onClick --> (_ => playback.reset()))),
-        p(role := "status", aria.live := "polite", text <-- playback.step.signal.combineWith(playback.floor.signal, playback.atEnd.signal)
-          .flatMapSwitch((step, floor, done) => textFor(if (done) s"evacuation${playback.result.now().get.outcome}" else "evacuationPlaying")
-            .map(_.replace("{steps}", step.toString).replace("{remaining}", floor.persons.size.toString)))),
+        p(role := "status", aria.live := "polite", text <-- LabelSelection.formatted(
+          playback.step.signal.combineWith(playback.floor.signal, playback.atEnd.signal, playback.result.signal),
+          "evacuationPlaying" +: EvacuationOutcome.values.toSeq.map(outcome => s"evacuation$outcome"), textFor)((step, floor, done, result) =>
+            Some(result.filter(_ => done).fold("evacuationPlaying")(run => s"evacuation${run.outcome}") -> Seq("steps" -> step.toString, "remaining" -> floor.persons.size.toString)))),
         EvacuationFloorView(playback.floor.signal, Val(true), _ => ()).getDomElement())),
     div(cls := "evacuation-tools", label(span(text <-- textFor("evacuationRunLabel")),
       input(typ := "text", maxLength := 80, disabled <-- locked, value <-- labelDraft.signal, onInput.mapToValue --> labelDraft)),
