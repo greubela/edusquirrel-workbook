@@ -51,19 +51,20 @@ object HtmlReorderInteractionRenderer extends LineBasedRenderingFactory[ReorderI
           dragging.set(None)
           hover.set(None)
         },
-        children <-- state.signal.combineWith(hover.signal).map { (answer, target) =>
-          val items = answer.currentOrder.map { index => div(
+        // Items keep their DOM nodes while the order or drop position changes: the browser delivers the drop to the
+        // node under the pointer at the last dragover, so re-creating nodes on each dragover would lose the drop.
+        children <-- state.signal.combineWith(hover.signal.distinct).map { (answer, target) =>
+          val items: Seq[Option[(Int, T)]] = answer.currentOrder.map(index => Some(index -> answer.elements(index)))
+          target.fold(items)(index => items.take(index) ++ Seq(None) ++ items.drop(index))
+        }.split(identity) { (entry, _, _) =>
+          entry.fold(div(cls := "drop-placeholder")) { (index, _) => div(
             cls := s"reorder-item $itemCss",
             cls("reorder-item--dragging") <-- dragging.signal.map(_.contains(index)),
             cls("answer-part--wrong") <-- wrong.map(_.contains(index)),
             draggable <-- disabled.signal.map(!_),
             onDragStart --> { event => if disabled.now() then event.preventDefault() else dragging.set(Some(index)) },
             onDragEnd --> (_ => { dragging.set(None); hover.set(None) }),
-            content(answer, index))
-          }
-          target match {
-            case Some(index) => items.take(index) ++ Seq(div(cls := "drop-placeholder")) ++ items.drop(index)
-            case None => items
+            content(state.now(), index))
           }
         }))
   }

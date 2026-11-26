@@ -27,6 +27,7 @@ case class RenderingInteractionLine[F <: InteractionFormat](
   override lazy val render: Element = {
     div(
       cls := elementCssString + " " + interactionCssString,
+      dataAttr("element-id") := interactionElement.elementId,
       interactionInfoPanel.getDomElement(),
       createElementsWithoutContainer
     )
