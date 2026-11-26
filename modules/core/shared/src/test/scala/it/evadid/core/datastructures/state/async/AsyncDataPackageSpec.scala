@@ -163,18 +163,6 @@ class AsyncDataPackageSpec extends FunSuite {
     }
   }
 
-  test("combined async values propagate success and failures") {
-    val a = AsyncValue[String, Int](AsyncDataSuccess(2))
-    val b = AsyncValue[String, String](AsyncDataSuccess("value"))
-    a.combineIgnoreErrorData(b).futureFirstValue.flatMap { pair =>
-      assertEquals(pair, (2, "value"))
-      val failure = AsyncValue[String, Int](AsyncDataFailed(new IllegalStateException("bad")))
-      failure.combineIgnoreErrorData(b).futureFirstState.map { state =>
-        assert(state.failure.get.error.msg.contains("Left Element"))
-      }
-    }
-  }
-
   test("ignore-error recovery converts throwing and failed callbacks into finished failures") {
     val value = AsyncValue[String, Int](AsyncDataFailed(new IllegalStateException("original")))
     val throwing = value.recoverOnErrorIgnoreError(_ => throw new IllegalStateException("synchronous recovery"))

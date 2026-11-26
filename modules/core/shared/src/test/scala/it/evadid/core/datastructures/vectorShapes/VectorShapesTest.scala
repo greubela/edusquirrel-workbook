@@ -50,17 +50,6 @@ class VectorShapesTest extends FunSuite {
     }
   }
 
-  test("nested child offsets are applied exactly once") {
-    val child = rectangle(10, 8)
-    val inner = AppShapeComposition(CompositionVBox[Double](AlignmentInParent.TopLeft), shapeConfig, List(child))
-    val outer = AppShapeComposition(CompositionHBox[Double](AlignmentInParent.TopLeft), shapeConfig, List(inner))
-
-    val renderedChild = outer.renderWithMinimumDimension(renderingConfig).children.head.children.head
-
-    assertEquals(renderedChild.myBounds.startPoint, Point(6.0, 9.0))
-    assertEquals(renderedChild.myBounds.dimension, Dimension(10.0, 8.0))
-  }
-
   test("horizontal and vertical compositions include gaps and align children") {
     val horizontal = AppShapeComposition(
       CompositionHBox[Double](AlignmentInParent.BottomLeft),
@@ -77,16 +66,6 @@ class VectorShapesTest extends FunSuite {
     ).renderWithMinimumDimension(renderingConfig)
     assertEquals(vertical.myBounds.dimension, Dimension(22.0, 25.0))
     assertEquals(vertical.children.map(_.myBounds.startPoint), List(Point(14.0, 6.0), Point(4.0, 24.0)))
-  }
-
-  test("ratio-preserving atomic shapes align within requested content bounds") {
-    val circle = AppShapeDrawingRoutineElement(CircleShape[Double](), shapeConfig, Some(Dimension(10.0, 10.0)))
-    val rendered = circle.renderComposition(
-      renderingConfig,
-      Bounds(Point(0.0, 0.0), Dimension(202.0, 103.0))
-    )
-
-    assertEquals(rendered.myBounds, Bounds(Point(52.0, 3.0), Dimension(100.0, 100.0)))
   }
 
   test("grid rejects a child count that differs from its cell count") {

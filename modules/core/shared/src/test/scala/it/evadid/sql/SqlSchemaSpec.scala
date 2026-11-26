@@ -60,7 +60,7 @@ class SqlSchemaSpec extends FunSuite {
   }
 
   test("column and table identifiers are restricted to safe SQL identifiers") {
-    List("1abc", "a-b", "a b", "a;DROP TABLE x", "", "x" * 65).foreach { name =>
+    List("1abc", "a-b", "a b", "a;DROP TABLE x", "commandLog`; DROP TABLE user; --", "", "x" * 65).foreach { name =>
       intercept[IllegalArgumentException](DatabaseColumn(name, Json))
       intercept[IllegalArgumentException](DatabaseTable(name))
     }

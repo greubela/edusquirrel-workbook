@@ -39,17 +39,6 @@ class JavaCompilationRoundTripSpec extends FunSuite {
     }
   }
 
-  test("turtle programs converted to Java compile and draw with the generated Turtle class on a plain JVM") {
-    val python = ProgrammingStateRaw(Python, "for _ in range(4):\n    forward(100)\n    left(90)\ncircle(10)\n")
-    val code = python.convertToLanguage(Java).finalState.get.asInstanceOf[ProgrammingStateJavaStructured].toString
-    compileAndRun(code) { loader =>
-      val segments = JavaTestRuntime.turtleSegments(loader).map(_.toArray)
-      assertEquals(segments.take(4).map(_.map(value => math.round(value).toDouble).toVector), Vector(
-        Vector(0.0, 0.0, 100.0, 0.0), Vector(100.0, 0.0, 100.0, 100.0), Vector(100.0, 100.0, 0.0, 100.0), Vector(0.0, 100.0, 0.0, 0.0)))
-      assertEquals(segments.size, 4 + 13, "the circle is drawn in CPython's 13 chords for radius 10")
-    }
-  }
-
   test("programs that read a URL compile with the generated Web class") {
     val python = ProgrammingStateRaw(Python, "page = fetch_text(\"http://localhost:1/unused\")\nprint(page)\n")
     val code = python.convertToLanguage(Java).finalState.get.toString

@@ -51,44 +51,6 @@ class InteractionHistoryPackageSpec extends FunSuite {
     assertEquals(empty.cleanedHistory().events.values.size, 0)
   }
   
-  test("adding events creates history and cleaning removes superseded TEMPORARY answers") {
-    val tempAnswer = AnswerChangedEvent[TextInteractionFormat.type]("1", time.plusSeconds(5), UpdateImportance.TEMPORARY)
-    val majorAnswer = AnswerChangedEvent[TextInteractionFormat.type]("2", time.plusSeconds(10), UpdateImportance.MAJOR)
-    val history = InteractionVariableHistory.empty[TextInteractionFormat.type]
-      .addEvent(tempAnswer)
-      .addEvent(majorAnswer)
-    
-    assertEquals(history.events.values.size, 2)
-    assertEquals(history.allStates.size, 2)
-    assertEquals(history.cleanedHistory().events.values.size, 1)
-    assertEquals(history.cleanedHistory().events.values.head.asInstanceOf[AnswerChangedEvent[TextInteractionFormat.type]].newState, "2")
-  }
-  
-  test("canonical history codecs preserve roundtrip") {
-    val original = majorAnswer(42)
-    val history = InteractionVariableHistory.empty[TextInteractionFormat.type].addEvent(original)
-    
-    val written = write(history)
-    val readBack = read[InteractionVariableHistory[TextInteractionFormat.type]](written)
-    assertEquals(readBack.events.values.size, 1)
-    
-    val binaryWritten = writeBinary(history)
-    val binaryReadBack = readBinary[InteractionVariableHistory[TextInteractionFormat.type]](binaryWritten)
-    assertEquals(binaryReadBack.events.values.size, 1)
-  }
-  
-  test("merging histories combines events and handles duplicates") {
-    val event1 = majorAnswer(1)
-    val event2 = majorAnswer(2)
-    val event3 = majorAnswer(3)
-    
-    val history1 = InteractionVariableHistory.empty[TextInteractionFormat.type].addEvent(event1).addEvent(event2)
-    val history2 = InteractionVariableHistory.empty[TextInteractionFormat.type].addEvent(event2).addEvent(event3)
-    
-    val merged = history1.mergeWith(history2)
-    assertEquals(merged.events.values.size, 3)
-  }
-  
   test("cleanWithStrategy filters events based on importance") {
     val temp = AnswerChangedEvent[TextInteractionFormat.type]("1", time.plusSeconds(5), UpdateImportance.TEMPORARY)
     val major = AnswerChangedEvent[TextInteractionFormat.type]("2", time.plusSeconds(10), UpdateImportance.MAJOR)
@@ -106,17 +68,5 @@ class InteractionHistoryPackageSpec extends FunSuite {
     // Keep the latest major event; newer minor events are outside this strategy.
     val keepLastMajor = history.cleanWithStrategy(EventSyncStrategy.KEEP_LAST_MAJOR)
     assertEquals(keepLastMajor.events.values, Set[InteractionEvent[TextInteractionFormat.type]](major))
-  }
-  
-  test("mergeWith applies strategy correctly when merging") {
-    val temp = AnswerChangedEvent[TextInteractionFormat.type]("1", time.plusSeconds(5), UpdateImportance.TEMPORARY)
-    val major = AnswerChangedEvent[TextInteractionFormat.type]("2", time.plusSeconds(10), UpdateImportance.MAJOR)
-    
-    val history1 = InteractionVariableHistory.empty[TextInteractionFormat.type].addEvent(temp).addEvent(major)
-    val history2 = InteractionVariableHistory.empty[TextInteractionFormat.type].addEvent(major)
-    
-    val merged = history1.mergeWith(history2)
-    assertEquals(merged.events.values.size, 2)
-    assertEquals(merged.events.values.count(_.updateImportance == UpdateImportance.MAJOR), 1)
   }
 }

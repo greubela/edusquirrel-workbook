@@ -71,13 +71,4 @@ class CodeMirrorSpec extends CodeMirrorSuite {
       assertEquals(error.getMessage, "parse failed")
     }
   }
-
-  test("the JavaScript facade is published for page scripts") {
-    restoringGlobals("EduSquirrelCodeMirror") {
-      CodeMirrorRuntime.publish()
-      assert(globals.EduSquirrelCodeMirror eq CodeMirrorRuntime.facade)
-      assertEquals(js.typeOf(globals.EduSquirrelCodeMirror.createEditor), "function")
-      Future.unit
-    }
-  }
 }

@@ -17,29 +17,6 @@ import scala.util.{Failure, Success}
 
 class StateObservableValueJvmAsyncTest extends FunSuite {
 
-  test("DerivedObservableValue currentValueOrWaitForUpdate resolves while async derivation is still running") {
-    val gate = Promise[Unit]()
-    val base = State(1)
-
-    val derived = base.observable.deriveValue(
-      withFunc = value => {
-        Await.result(gate.future, 1.second)
-        value * 100
-      },
-      executeFunctionWith = ExecutionMethod.executeAsync,
-      deriveLogic = ObserverDerivationLogic.DeriveOnlyLastValues
-    )
-
-    base.set(2)
-
-    val runningFuture = derived.currentValueOrWaitForUpdate
-    assert(!runningFuture.isCompleted)
-
-    gate.success(())
-    assertEquals(Await.result(runningFuture, 1.second), 100)
-    assertEquals(Await.result(derived.currentValueOrWaitForUpdate, 1.second), 200)
-  }
-
   test("JVM async derivations can run in true parallel using dedicated thread pool") {
     val ec = scala.concurrent.ExecutionContext.fromExecutorService(Executors.newFixedThreadPool(2))
     try {

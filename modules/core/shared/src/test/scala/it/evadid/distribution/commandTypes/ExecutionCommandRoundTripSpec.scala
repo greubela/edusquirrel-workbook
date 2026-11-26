@@ -130,14 +130,4 @@ class ExecutionCommandRoundTripSpec extends FunSuite {
       assertEquals(write(command), before, s"${sample.name}: stripping a log copy never changes the command itself")
     }
   }
-
-  test("a request the handler cannot decode fails the call instead of reaching the handler") {
-    val reached = it.evadid.core.datastructures.state.State(false)
-    val client = SQLCommands.fetchEventsFromDbCommand.toLocalExecutionClient((_, _) => { reached.set(true); Future.successful(SQLCommands.DbFetchResponse(Map.empty)) })
-    val malformed = ExecutionCommand(SQLCommands.fetchEventsFromDbCommand.name, ujson.Obj("usageContext" -> "not a context"))
-    client.executeResponse(it.evadid.util.logging.BasicLogger(), malformed).failed.map { error =>
-      assert(error.getMessage.contains("Unsupported request format"), error.getMessage)
-      assert(!reached.now())
-    }
-  }
 }

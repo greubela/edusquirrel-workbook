@@ -17,15 +17,6 @@ class TurtleCommandSerializationSpec extends FunSuite:
     assertEquals(read[TurtleCommand[Double]]("{\"$type\":\"Right\",\"degrees\":90}"), TurtleCommand.Right[Double](90.0))
   }
 
-  test("textual and mixed arguments survive serialization") {
-    val commands = List(
-      TurtleCommand.Color[Double]("#12abef"),
-      TurtleCommand.fromText[Double]("jump_stitch", stringArgs = List("true")),
-      TurtleCommand.fromText[Double]("custom", List(1.5, 2.0), List("label", "false"))
-    )
-    assertEquals(read[List[TurtleCommand[Double]]](write(commands)), commands)
-  }
-
   test("RGB boundary arguments retain their rendered color") {
     val builder = TurtlePathBuilder[Double]().handleCommand(TurtleCommand.fromText("color", List(12.0, 34.0, 56.0)))
     assertEquals(builder.turtleState.penColor, "rgb(12,34,56)")

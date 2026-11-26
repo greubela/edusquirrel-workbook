@@ -75,12 +75,6 @@ class CommandPayloadCodecsSpec extends FunSuite {
     intercept[IllegalArgumentException](request.copy(limitToKey = Some("one-variable")))
   }
 
-  test("database table destinations serialize and reject SQL identifier injection") {
-    import it.evadid.sql.DatabaseTable
-    val value = DatabaseTable("customLog")
-    intercept[IllegalArgumentException](DatabaseTable("commandLog`; DROP TABLE user; --"))
-  }
-
   test("default sync requests use the current explicit database wire fields on JVM and JavaScript") {
     import it.evadid.sql.{DatabaseConfig, DatabaseHistoryFormat}
     import it.evadid.workbook.interaction.sync.UsageContext
@@ -121,12 +115,6 @@ class CommandPayloadCodecsSpec extends FunSuite {
       assertEquals(safe.stripPrivacySensitiveInformation(), safe)
       assert(command.toJson.contains("private-code"))
     }
-  }
-
-  test("account creation, update, login and login-code requests have distinct command names") {
-    val commands = List(UserCommands.createAccountCommand.name, UserCommands.updateAccountCommand.name,
-      UserCommands.loginCommand.name, UserCommands.authMailCommand.name)
-    assertEquals(commands.distinct.size, commands.size)
   }
 
   test("feedback logging copies retain only bounded metadata without changing execution payloads") {

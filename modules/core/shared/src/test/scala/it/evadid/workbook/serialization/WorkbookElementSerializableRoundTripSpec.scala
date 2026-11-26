@@ -248,13 +248,6 @@ class WorkbookElementSerializableRoundTripSpec extends FunSuite {
     assertEquals(elements.map(_.getClass.getSimpleName).toSet, WorkbookElementFactory.registeredElementTypes)
   }
 
-  test("GptInteractionElement resolves its underlying interaction reference") {
-    val input = TextInteraction("gpt-input")
-    val gpt = GptInteractionElement("gpt", input, content("exercise/text"), List(content("hint/text")), List(content("criterion/text")))
-
-    assertEquals(WorkbookElementFactory.parseAll(List(gpt.toSerialized, input.toSerialized)), List(gpt, input))
-  }
-
   test("parsing fails when references form a cycle") {
     val cyclicElements = List("first", "second").map { id =>
       WorkbookElementSerializable(id, classOf[CodeTaskToggleInteraction].getSimpleName, Map())

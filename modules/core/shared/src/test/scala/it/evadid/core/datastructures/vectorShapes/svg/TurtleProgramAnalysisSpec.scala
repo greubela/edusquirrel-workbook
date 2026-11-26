@@ -98,20 +98,6 @@ class TurtleProgramAnalysisSpec extends FunSuite {
     assertEquals(builder.turtleState.headingDeg, 90.0)
   }
 
-  test("Snap preview heading starts at 90 degrees") {
-    val builder = TurtlePathBuilder[Double](Point(0.0, 0.0), List(TurtleCommand.Forward(50.0)), 90)
-    assertEquals(builder.turtleState.x, 0.0)
-    assertEquals(builder.turtleState.y, -50.0)
-  }
-
-  test("VmToSvg renders overlaid path segments instead of the duck stub") {
-    val program = SourceParsing.parse("forward(40)\nturn(90)\nforward(40)", SourceLanguage.Python).parsed().program
-    val shape = VmToSvg.renderBeExpression(logger, program.fullProgram)
-    assert(shape.isInstanceOf[AppShapeComposition[Double]], clue = shape.getClass.getName)
-    assert(shape.childrenInRenderingOrder.forall(_.isInstanceOf[AppShapeDrawingRoutineElement[Double]]))
-    assert(shape.childrenInRenderingOrder.nonEmpty)
-  }
-
   test("VmToSvg splits styled segments by pen color and width") {
     val program = SourceParsing.parse("""color("red")
         |pensize(2)

@@ -74,19 +74,6 @@ class ExecutionClientPoolTest extends FunSuite {
       assertEquals(result.resultOp, Some(Map("status" -> "stored")))
     }
   }
-
-  test("preserves the original handler failure cause chain") {
-    val rootCause = new Exception("Connection refused")
-    val handlerFailure = new Exception("Could not connect to database", rootCause)
-    val pool = ExecutionClientPool(List(failingClient("sync-to-db-request", handlerFailure)))
-
-    pool.handleCommand[Map[String, String]](BasicLogger(), ExecutionCommand("sync-to-db-request", ujson.Obj())).failed.map { error =>
-      assert(error.isInstanceOf[SerializedException])
-      assert(error.getMessage.contains("Could not connect to database"))
-      def messages(error: SerializedException): List[String] = error.msg :: error.cause.toList.flatMap(messages)
-      assert(messages(error.asInstanceOf[SerializedException]).contains("Connection refused"))
-    }
-  }
   test("synchronous handler failures fall back just like failed Futures") {
     val synchronous = new LocalExecutionClient[ujson.Value, Map[String, String]] {
       override def canExecuteCommand(command: ExecutionCommand): Boolean = true

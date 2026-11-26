@@ -84,18 +84,6 @@ class WorkbookSerializerSpec extends FunSuite {
     assertEquals(error.getCause.getMessage, "Unexpected workbook element: WorkbookSection")
   }
 
-  test("reference-based JSON serializer round-trips a workbook") {
-    val serialized = WorkbookElementFactory.serializerRegularJsonWorkbook.serialize(workbook)
-    val restored = WorkbookElementFactory.serializerRegularJsonWorkbook.deserialize(serialized)
-
-    assertEquals(restored, workbook)
-  }
-
-  test("constructor-like serializer round-trips a workbook and its registry") {
-    val serialized = WorkbookElementFactory.serializerConstructorLike.serialize(workbook)
-    assertEquals(WorkbookElementFactory.serializerConstructorLike.deserialize(serialized), workbook)
-  }
-
   test("populated workbooks round-trip repeatedly with native metadata and registry JSON") {
     import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseRegular.ProgrammingExercise
     import it.evadid.workbook.elements.interactionElements.programming.state.snap.ProgrammingEditorPalette

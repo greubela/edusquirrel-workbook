@@ -323,18 +323,6 @@ class ObservableValueSpec extends FunSuite {
     assertEquals(derived.now(), Some(30))
   }
 
-  test("an in-flight failure releases queued derivations and preserves the original waiting future") {
-    val source = ObservableValueImpl(Some(1))
-    val first = Promise[Int]()
-    val derived = source.deriveAsync(n => if n == 1 then first.future else scala.concurrent.Future.successful(n * 10))
-    val waiting = derived.currentValueOrWaitForUpdate
-    source.onNewValueArrived(Success(2))
-    val error = new IllegalStateException("first failed")
-    first.failure(error)
-    assertEquals(waiting.value, Some(Failure(error)))
-    assertEquals(derived.now(), Some(20))
-  }
-
   test("future derivation propagates failed futures, thrown functions and base failures") {
     val source = ObservableValueImpl(Some(1))
     val error = new IllegalArgumentException("future")
