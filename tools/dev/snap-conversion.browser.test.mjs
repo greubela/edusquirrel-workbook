@@ -74,7 +74,7 @@ test('native Snap exports retain execution behavior through shared parsing and P
       window.corpusWorker = worker;
     });
     for (const fixture of cases) {
-      const native = await page.evaluate(async ({xml}) => {
+      const native = await page.evaluate(async ({name, xml}) => {
         nativeCorpusIde.openProjectString(xml);
         const sprite = nativeCorpusIde.currentSprite;
         const trace = [];
@@ -89,7 +89,8 @@ test('native Snap exports retain execution behavior through shared parsing and P
         for (let tick=0;tick<500 && threads.processes.includes(process);tick++) {
           threads.step(); await new Promise(resolve => setTimeout(resolve,0));
         }
-        if (process.errorFlag || threads.processes.includes(process)) throw new Error('Native Snap did not complete the fixture');
+        if (process.errorFlag || threads.processes.includes(process))
+          throw new Error(`Native Snap did not complete '${name}': ${process.errorFlag ? 'the script raised an error' : 'still running after 500 steps'}; trace ${JSON.stringify(trace)}`);
         return {xml:exported,trace};
       }, fixture);
       const snap = result(await page.evaluate(({id,code}) => corpusRequest(id,{$type:'Raw',value:{$type:'ProgrammingStateRaw',language:'Snap',code}}), {id:fixture.name,code:native.xml}));
