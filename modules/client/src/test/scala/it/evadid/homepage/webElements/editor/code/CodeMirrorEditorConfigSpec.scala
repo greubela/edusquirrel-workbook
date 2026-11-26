@@ -1,15 +1,11 @@
 package it.evadid.homepage.webElements.editor.code
 
 import it.evadid.core.datastructures.language.AppLanguage.Python
-import com.raquo.laminar.api.L.*
 import it.evadid.core.datastructures.vectorShapes.renderer.FlowchartGutter
 import it.evadid.distribution.clients.WebWorkerExecutionClient
 import it.evadid.distribution.command.SerializedException
 import it.evadid.distribution.formats.{ExecutionClientResponse, WorkerExecutionProtocol}
 import it.evadid.distribution.formats.ExecutionClientResponse.ExecutionClientResponseTimestamps
-import it.evadid.homepage.webElements.editor.config.CodeMirrorEditorConfig
-import it.evadid.homepage.webElements.editor.code.EvaEditor.EvaEditorConfig
-import it.evadid.homepage.webElements.editor.code.codemirror.CodeMirrorEditor
 import it.evadid.homepage.webElements.editor.code.worker.{SharedWorker, SharedWorkerCache}
 import it.evadid.distribution.commandTypes.WorkerCommands
 import munit.FunSuite
@@ -20,11 +16,9 @@ import java.time.LocalDateTime
 import scala.collection.mutable.ListBuffer
 import scala.concurrent.Future
 import scala.scalajs.js
-import scala.scalajs.js.JSConverters.*
 import scala.scalajs.concurrent.JSExecutionContext.Implicits.queue
 
 class CodeMirrorEditorConfigSpec extends FunSuite {
-  private val logger = it.evadid.util.logging.Logger.withNameAndPrefixes(Some("test"), it.evadid.util.logging.derived.PrintToStdLogger.printNothing)
   private def chart(label: String) = FlowchartGutter.Chart(
     List(FlowchartGutter.Node(1, "process", 0, label)), Nil, List(1))
 

@@ -4,7 +4,6 @@ import it.evadid.vm.parsing.source.SourceParsing.SourceLanguage
 import it.evadid.core.datastructures.chat.{Message, MessengerModel}
 import it.evadid.core.datastructures.user.{AllUserInfo, User, UserConfig, UserTokenInfo}
 import it.evadid.core.datastructures.user.UserTokenInfo.SignedToken
-import it.evadid.core.datastructures.user.User.SingleAccessToken
 import it.evadid.core.datastructures.vectorShapes.renderer.PythonFlowchartGutter
 import it.evadid.distribution.command.{ExecutionCommand, ExecutionCommandFactory}
 import it.evadid.llm.LlmConfiguration

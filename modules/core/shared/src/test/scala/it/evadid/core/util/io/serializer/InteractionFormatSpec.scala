@@ -1,6 +1,5 @@
 package it.evadid.core.util.io.serializer
 
-import it.evadid.core.datastructures.chat.MessengerModel
 import it.evadid.core.datastructures.language.LanguageMapContentId
 import it.evadid.workbook.abstractions.{FeedbackEntity, InteractionFormat}
 import it.evadid.workbook.abstractions.InteractionFormat.*

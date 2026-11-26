@@ -1,7 +1,6 @@
 package it.evadid.workbook.interaction.variable
 
 import it.evadid.workbook.interaction.sync.{EventSyncStrategy, UpdateImportance}
-import it.evadid.workbook.interaction.sync.UpdateImportance.*
 import it.evadid.workbook.interaction.variable.events.*
 import it.evadid.workbook.interaction.variable.InteractionVariableHistory
 import java.time.LocalDateTime
@@ -12,9 +11,6 @@ import it.evadid.workbook.abstractions.InteractionFormat.*
 
 class InteractionHistoryPackageSpec extends FunSuite {
   private val time = LocalDateTime.of(2025, 1, 1, 12, 0)
-  
-  private def answer(value: Int, importance: UpdateImportance): AnswerChangedEvent[TextInteractionFormat.type] =
-    AnswerChangedEvent[TextInteractionFormat.type](value.toString, time.plusSeconds(10), importance)
   
   private def majorAnswer(value: Int): AnswerChangedEvent[TextInteractionFormat.type] =
     AnswerChangedEvent[TextInteractionFormat.type](value.toString, time.plusSeconds(10), UpdateImportance.MAJOR)

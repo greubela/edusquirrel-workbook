@@ -2,15 +2,8 @@ package it.evadid.homepage.webElements.editor.code
 
 import it.evadid.core.datastructures.language.AppLanguage.{Java, Python, SnapLanguage}
 import munit.FunSuite
-import com.raquo.airstream.state.Var
-import com.raquo.airstream.ownership.ManualOwner
 import it.evadid.core.datastructures.language.AppLanguage
-import it.evadid.core.datastructures.vectorShapes.svg.TurtleCommand
-import it.evadid.workbook.elements.interactionElements.programming.state.*
-import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseRegular.*
-import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseTurtle.*
 import scala.concurrent.{Future, Promise}
-import scala.scalajs.concurrent.JSExecutionContext.Implicits.queue
 import scala.scalajs.js
 import it.evadid.homepage.webElements.editor.code.codemirror.CodeMirrorEditor
 import it.evadid.facades.internal.CodeMirrorDiagnostics

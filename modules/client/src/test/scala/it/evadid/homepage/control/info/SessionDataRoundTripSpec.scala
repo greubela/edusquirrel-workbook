@@ -6,7 +6,6 @@ import it.evadid.core.datastructures.language.control.LanguageMapStorage
 import it.evadid.core.datastructures.user.{AllUserInfo, UserConfig}
 import it.evadid.homepage.control.model.*
 import it.evadid.homepage.webElements.editor.code.EditorDomSuite
-import it.evadid.workbook.abstractions.InteractionFormat.TextInteractionFormat
 import it.evadid.workbook.elements.interactionElements.basic.TextInteraction
 import it.evadid.workbook.elements.structureElements.{Workbook, WorkbookSection}
 import it.evadid.workbook.elements.structureElements.Workbook.WorkbookMetadata

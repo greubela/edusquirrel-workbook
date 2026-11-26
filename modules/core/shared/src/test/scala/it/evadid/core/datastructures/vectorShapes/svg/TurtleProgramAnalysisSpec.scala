@@ -4,13 +4,10 @@ import it.evadid.vm.parsing.source.SourceParsing
 import it.evadid.vm.parsing.source.SourceParsing.SourceLanguage
 
 
-import it.evadid.core.datastructures.geometry.Point
-import it.evadid.core.datastructures.vectorShapes.abstractions.AppShapeElement.AppShapeComposition
 import it.evadid.core.datastructures.vectorShapes.atomar.AppShapeDrawingRoutineElement
 import it.evadid.core.datastructures.vectorShapes.renderer.VmToSvg
 import it.evadid.core.datastructures.vectorShapes.svg.TurtleCommand
 import it.evadid.util.logging.Logger
-import it.evadid.vm.BeProgram
 import it.evadid.vm.code.usage.{BeFunctionCall, BeUseValue}
 import it.evadid.vm.types.BeDataValueLiteral
 import it.evadid.vm.conversion.snapexpression.SnapControlFlow

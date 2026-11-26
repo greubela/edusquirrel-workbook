@@ -6,8 +6,6 @@ import it.evadid.vm.parsing.source.SourceParsing.SourceLanguage
 import it.evadid.core.datastructures.language.AppLanguage.{English, German, HumanLanguage, JavaScript, Python}
 import it.evadid.vm.conversion.parsed.SymbolTable
 import it.evadid.vm.conversion.parsed.SymbolTable.KnownStructure
-import it.evadid.core.datastructures.language.LanguageMap
-import it.evadid.core.datastructures.language.AppLanguage.*
 import it.evadid.vm.code.abstractions.BeExpression
 import it.evadid.vm.code.controlStructures.{BeIfElse, BeSequence, BeWhile}
 import it.evadid.vm.code.defining.{BeDefineClass, BeDefineFunction, BeDefineVariable}
@@ -121,43 +119,6 @@ class PythonParserSpec extends FunSuite {
     hints.toMap
   }
 
-  private def stripTypeHints(code: String): String = {
-    val lines = code.split("\n", -1).toVector
-    val processed = lines.map {
-      case FunctionHeaderPattern(indent, name, params, _) =>
-        val strippedParams = params
-          .split(",")
-          .toList
-          .map(_.trim)
-          .filter(_.nonEmpty)
-          .map { param =>
-            val colonIndex = param.indexOf(':')
-            if (colonIndex >= 0) {
-              val before = param.substring(0, colonIndex).trim
-              val after = param.substring(colonIndex + 1).trim
-              val defaultIdx = after.indexOf('=')
-              if (defaultIdx >= 0) {
-                val defaultPart = after.substring(defaultIdx).trim
-                if (defaultPart.nonEmpty) s"$before $defaultPart" else before
-              } else {
-                val eqIdx = before.indexOf('=')
-                if (eqIdx >= 0) {
-                  val nameOnly = before.substring(0, eqIdx).trim
-                  val defaultPart = before.substring(eqIdx).trim
-                  if (defaultPart.nonEmpty) s"$nameOnly $defaultPart" else nameOnly
-                } else before
-              }
-            } else param
-          }
-        val paramsJoined = strippedParams.filter(_.nonEmpty).mkString(", ")
-        s"${indent}def $name($paramsJoined):"
-      case AssignmentWithTypePattern(indent, identifier, _, value) =>
-        s"$indent$identifier = $value"
-      case other => normalizeCamelIdentifiers(other)
-    }
-    processed.mkString("\n")
-  }
-
   private def assertPythonEquivalentAllowingAdditionalTypeHints(
       original: String,
       regenerated: String
@@ -178,17 +139,6 @@ class PythonParserSpec extends FunSuite {
     }
 
   }
-
-  private def normalizeComparisonLayout(source: String): String =
-    source.linesIterator.map { line =>
-      val leadingSpaces = line.takeWhile(_ == ' ').length
-      val normalizedIndent = " " * (if leadingSpaces >= 4 then leadingSpaces / 2 else leadingSpaces)
-      val content = line.drop(leadingSpaces) match {
-        case ClassHeaderPattern(name) => s"class ${camelToSnake(name)}:"
-        case other => normalizeCamelIdentifiers(other)
-      }
-      normalizedIndent + content
-    }.mkString("\n")
 
   private val ClassHeaderPattern = "class ([A-Za-z_][A-Za-z0-9_]*)[:]".r
 
@@ -488,14 +438,6 @@ class PythonParserSpec extends FunSuite {
       assertions = result => {
         val regenerated = result.codeExpression.structureInfo.toStringInLanguage(Python, English)
         val normalizedRegenerated = normalizer.normalizePython(regenerated)
-
-        def indentationProfile(text: String): List[String] =
-          normalizer
-            .normalizePython(text)
-            .split("\n")
-            .toList
-            .filter(_.trim.nonEmpty)
-            .map(_.takeWhile(_ == ' '))
 
         assert(
           !normalizedRegenerated.linesIterator.exists(_.trim == "pass"),

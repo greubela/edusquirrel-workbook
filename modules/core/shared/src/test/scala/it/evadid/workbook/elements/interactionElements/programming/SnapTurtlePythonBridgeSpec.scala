@@ -13,11 +13,7 @@ import it.evadid.vm.conversion.snapexpression.SnapExpressionSupport
 import it.evadid.vm.conversion.snapmodelxml.SnapModelToXml.toXml
 import it.evadid.workbook.elements.interactionElements.programming.state.*
 import it.evadid.workbook.elements.interactionElements.programming.state.snap.*
-import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseRegular.*
-import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseTurtle.*
 
-import it.evadid.vm.BeProgram
-import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseRegular.ProgrammingExercise
 import it.evadid.workbook.elements.interactionElements.programming.state.snap.{SnapCanvasLayout, SnapCanvasScript}
 import munit.FunSuite
 

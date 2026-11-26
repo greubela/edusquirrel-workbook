@@ -4,7 +4,6 @@ import com.raquo.laminar.api.L.*
 import it.evadid.homepage.webElements.editor.MailEditor.{MailBody, MailEditorState}
 import it.evadid.workbook.elements.interactionElements.emailSimulator.*
 import it.evadid.homepage.workbook.content.wip.{CreatePhishingWorkbook, PhishingMailboxData}
-import it.evadid.workbook.jsonFactory.WorkbookElementFactory
 import munit.FunSuite
 
 class MailEditorStateSpec extends FunSuite {

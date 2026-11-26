@@ -19,7 +19,7 @@ class SqlSchemaSpec extends FunSuite {
     assertEquals(samples.map(_.ordinal).toSet, (0 until constValue[Tuple.Size[mirror.MirroredElemLabels]]).toSet)
   }
 
-  test("each type's canonical SQL reads back to the same type, and its codec round-trips") {
+  test("each type's canonical SQL reads back to the same type") {
     samples.foreach { sample =>
       assertEquals(sample.problem, None, sample.toString)
       assertEquals(MySqlType.fromSql(sample.sql), Some(sample), sample.sql)

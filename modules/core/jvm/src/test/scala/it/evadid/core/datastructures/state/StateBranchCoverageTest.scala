@@ -4,7 +4,6 @@ import it.evadid.core.datastructures.state.observable.ObservableValueImpl
 import munit.FunSuite
 
 import scala.collection.mutable.ListBuffer
-import scala.concurrent.ExecutionContext.Implicits.global
 import scala.util.{Failure, Success, Try}
 
 class StateBranchCoverageTest extends FunSuite {

@@ -4,9 +4,7 @@ import it.evadid.vm.compilation.java.turtle.JavaTurtleCompiler
 
 import it.evadid.vm.code.defining.BeDefineFunction.functionInfo
 import it.evadid.core.datastructures.language.AppLanguage.*
-import it.evadid.core.datastructures.language.LanguageMap
 import it.evadid.core.datastructures.state.State
-import it.evadid.vm.code.abstractions.BeExpression
 import it.evadid.vm.code.controlStructures.{BeIfElse, BeRepeatNr, BeSequence, BeWhile}
 import it.evadid.vm.code.defining.{BeDefineClass, BeDefineFunction, BeDefineVariable}
 import it.evadid.vm.code.errors.{BeExpressionUnparsable, BeExpressionUnsupported, BeSingleLineComment}
@@ -95,7 +93,6 @@ class BeExpressionLanguageSupportTest extends FunSuite {
     case P.Node.For(init, condition, update, body) => R.For(restoredJavaBlock(init), condition.map(value => restoredJavaExpression(value.expression)), restoredJavaBlock(update), restoredJavaBlock(body))
   } })
 
-  private val targetLanguages = List(Python, Java, Lisp, Cpp)
   private val humanLanguage = English
 
   private val xVar = BeDefineVariable(BeEntityName.fromUniversalNameInParts("x"), BeDataType.Int)
@@ -118,24 +115,6 @@ class BeExpressionLanguageSupportTest extends FunSuite {
   )
 
   private val functionCall = BeFunctionCall.fromDefinition(function, Map(xVar -> literalOne, yVar -> literalTwo))
-
-  private val allExpressions: List[BeExpression] = List(
-    xVar,
-    function,
-    BeDefineClass(BeEntityName.fromUniversalNameInParts("Counter"), attributes = List(xVar), methods = List(function)),
-    assignX,
-    BeUseValue(BeDataValueLiteral("7"), Some(xVar)),
-    functionCall,
-    BeReturn(Some(literalOne)),
-    BeStartProgram(Some(sequence)),
-    sequence,
-    BeIfElse(BeSequence.conditionalBody(List(literalTrue)), BeSequence.optionalBody(List(assignX)), BeSequence.optionalBody(List(returnX))),
-    BeWhile(BeSequence.conditionalBody(List(literalTrue)), BeSequence.optionalBody(List(assignX))),
-    BeRepeatNr.times(3, BeSequence.optionalBody(List(assignX))),
-    BeExpressionUnsupported("unsupported"),
-    BeExpressionUnparsable("raw", "bad syntax"),
-    BeSingleLineComment(LanguageMap.universalMap("note"))
-  )
 
   test("Python rendering includes type hints for variable and function signatures") {
     val renderedVariable = xVar.structureInfo.toStringInLanguage(Python, humanLanguage)

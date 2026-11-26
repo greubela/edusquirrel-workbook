@@ -1,22 +1,16 @@
 package it.evadid.vm.conversion
 
-import it.evadid.vm.parsing.source.SourceParsing
-import it.evadid.vm.parsing.source.SourceParsing.SourceLanguage
 
 import it.evadid.vm.compilation.java.turtle.JavaTurtleCompiler
 
 import it.evadid.core.datastructures.language.AppLanguage.{Java, Python, SnapLanguage}
 import it.evadid.vm.conversion.pythonsnap.PythonToSnap
-import it.evadid.vm.conversion.snapexpression.SnapCustomBlockRules
 import it.evadid.workbook.elements.interactionElements.programming.state.*
-import it.evadid.workbook.elements.interactionElements.programming.state.snap.*
 import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseRegular.*
-import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseTurtle.*
 
-import it.evadid.vm.compilation.java.turtle.{JavaTurtleSymbolResolver as R, JavaTurtleSourceParser, JavaTurtleProgram as P}
+import it.evadid.vm.compilation.java.turtle.{JavaTurtleSymbolResolver as R, JavaTurtleSourceParser}
 import it.evadid.vm.simulation.{BeSimulatorConfig, BeSimulatorState, BeVirtualMachineState}
 import it.evadid.vm.simulation.java.JavaTurtleInterpreter as T
-import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseRegular.ProgrammingExercise
 import it.evadid.vm.conversion.snapexpression.SnapExpressionSupport
 import munit.FunSuite
 

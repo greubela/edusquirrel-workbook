@@ -2,7 +2,6 @@ package it.evadid.vm.conversion.turtlestitchexpression
 
 import it.evadid.vm.parsing.source.SourceParsing
 import it.evadid.vm.parsing.source.SourceParsing.SourceLanguage
-import it.evadid.vm.conversion.expressionpython.ExpressionToPython
 import it.evadid.vm.conversion.turtlestitchexpression.TurtleStitchProgramModel.*
 import munit.FunSuite
 

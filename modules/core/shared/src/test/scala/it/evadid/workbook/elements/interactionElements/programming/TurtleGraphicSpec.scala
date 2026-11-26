@@ -1,8 +1,4 @@
 package it.evadid.workbook.elements.interactionElements.programming
-import it.evadid.workbook.elements.interactionElements.programming.state.*
-import it.evadid.workbook.elements.interactionElements.programming.state.snap.*
-import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseRegular.*
-import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseTurtle.*
 
 import it.evadid.core.datastructures.geometry.{Line, Point}
 import it.evadid.core.datastructures.vectorShapes.svg.TurtleCommand
@@ -13,7 +9,6 @@ class TurtleGraphicSpec extends FunSuite {
   private def assertEqualsDouble(actual: Double, expected: Double, tolerance: Double): Unit = {
     assert(Math.abs(actual - expected) < tolerance, s"Expected $expected but got $actual (diff: ${Math.abs(actual - expected)})")
   }
-  private val converter = new SvgToTurtleProgram
 
   test("TurtleLineBasedProgram converts to turtle program") {
     val line = Line(Point(0.0, 0.0), Point(10.0, 0.0))

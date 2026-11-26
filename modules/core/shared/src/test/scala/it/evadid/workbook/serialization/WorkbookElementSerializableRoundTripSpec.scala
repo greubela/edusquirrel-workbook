@@ -30,7 +30,6 @@ import it.evadid.workbook.elements.interactionElements.programming.programmingEx
 import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseTurtle.{ProgramStructureGrader, ProgramStructureRequirement}
 import it.evadid.workbook.elements.interactionElements.programming.state.{ProgrammingState, ProgrammingStateRaw}
 import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseTurtle.{TurtleDrawingPolicy, TurtleGraphic}
-import it.evadid.workbook.elements.interactionElements.programming.state.snap.ProgrammingEditorPalette
 import it.evadid.workbook.elements.interactionElements.text.*
 import it.evadid.workbook.elements.interactionElements.sql.{SqlCommandExercise, SqlDatabaseConfig}
 import munit.FunSuite
@@ -43,7 +42,6 @@ class WorkbookElementSerializableRoundTripSpec extends FunSuite {
   import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseTurtle.*
   import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseRegular.ProgrammingExercise
   import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseRegular.ProgrammingExerciseFullJava
-  import it.evadid.workbook.elements.interactionElements.programming.state.*
   import it.evadid.workbook.elements.interactionElements.programming.state.snap.ProgrammingEditorPalette
   import it.evadid.workbook.elements.interactionElements.emailSimulator.*
   import it.evadid.workbook.elements.interactionElements.qr.*

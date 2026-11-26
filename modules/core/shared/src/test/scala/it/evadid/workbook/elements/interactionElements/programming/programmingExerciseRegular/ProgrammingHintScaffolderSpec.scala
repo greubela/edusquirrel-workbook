@@ -8,9 +8,7 @@ import it.evadid.distribution.clients.LocalExecutionClient
 import it.evadid.distribution.command.ExecutionCommand
 import it.evadid.distribution.commandTypes.LLMCommands
 import it.evadid.util.logging.Logger
-import it.evadid.workbook.abstractions.scaffolding.ScaffoldingStatus.ScaffoldingFeedback
 import it.evadid.workbook.elements.interactionElements.programming.state.{ProgrammingState, ProgrammingStateRaw}
-import it.evadid.workbook.interaction.sync.UpdateImportance
 import it.evadid.workbook.support.TestExecutionContext
 import munit.FunSuite
 

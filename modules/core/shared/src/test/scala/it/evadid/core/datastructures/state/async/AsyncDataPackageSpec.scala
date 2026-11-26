@@ -3,7 +3,6 @@ package it.evadid.core.datastructures.state.async
 import it.evadid.core.datastructures.state.observable.ObservableValueImpl
 import it.evadid.core.datastructures.state.State
 import it.evadid.core.datastructures.state.async.AsyncDataState.*
-import it.evadid.distribution.command.SerializedException
 import munit.FunSuite
 import scala.concurrent.{ExecutionContext, Future, Promise}
 import upickle.default.{read, write}
