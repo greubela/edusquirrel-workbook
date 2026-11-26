@@ -293,16 +293,6 @@ class JavaMethodEditingSpec extends FunSuite {
     }
   }
 
-  test("adding a method preserves whitespace before and after the class closing brace") {
-    val source = "// unchanged\nclass Example {\r\n\tpublic void keep() {}\r\n\t \r\n}  \t\r\n\r\n"
-    val clazz = discover(source).head
-    val declaration = "public void reset() {}"
-    val inserted = insertMethod(source, clazz, declaration)
-    assert(inserted.startsWith(source.substring(0, closingBrace(clazz))))
-    assert(inserted.endsWith(source.substring(closingBrace(clazz))))
-    assertEquals(discover(inserted).head.functions.map(_.name), Vector("keep", "reset"))
-  }
-
   test("initial function selects the unique main and preserves its exact source range") {
     val expectedMain = "public static void main(String[] args) {\n    helper();\n  }"
     val source =

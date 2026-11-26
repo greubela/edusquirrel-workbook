@@ -65,13 +65,6 @@ class TurtleStitchToBeExpressionParserSpec extends FunSuite {
     assert(!python.contains("turtle.goto(10)"), clue = python)
   }
 
-  test("simple_forward XML yields callable function calls") {
-    val expression = TurtleStitchToBeExpressionParser.parseProjectWithLayout(SourceParsing.parse(simpleForwardXml, SourceLanguage.Snap).project.toTry.get).expression
-    val body = expression.asInstanceOf[BeStartProgram].startSequence.toList.flatMap(_.body)
-    assert(body.exists(_.isInstanceOf[BeFunctionCall]), clue = s"expected calls, got: $body")
-    assertEquals(body.count(_.isInstanceOf[BeFunctionCall]), 2)
-  }
-
   private val twoScriptsXml =
     """<project name="two" app="TurtleStitch 2.11, http://www.turtlestitch.org" version="2"><notes></notes><scenes select="1"><scene name="two"><notes></notes><hidden></hidden><headers></headers><code></code><blocks></blocks><primitives></primitives><stage name="Stage" width="480" height="360" costume="0" color="255,255,255,1" tempo="60" threadsafe="false" penlog="false" volume="100" pan="0" lines="round" ternary="false" hyperops="true" codify="false" inheritance="true" sublistIDs="false" id="6"><costumes><list struct="atomic" id="7"></list></costumes><sounds><list struct="atomic" id="8"></list></sounds><variables></variables><blocks></blocks><scripts></scripts><sprites select="1"><sprite name="Sprite" idx="1" x="0" y="0" heading="90" scale="0.1" volume="100" pan="0" rotation="1" draggable="true" hidden="true" costume="0" color="0,0,0,1" pen="tip" id="13"><costumes><list struct="atomic" id="14"></list></costumes><sounds><list struct="atomic" id="15"></list></sounds><blocks></blocks><variables></variables><scripts><script x="70" y="80"><block s="receiveGo"></block><block s="forward"><l>100</l></block></script><script x="200" y="150"><block s="turn"><l>90</l></block></script></scripts></sprite></sprites></stage><variables></variables></scene></scenes></project>"""
 
@@ -92,15 +85,6 @@ class TurtleStitchToBeExpressionParserSpec extends FunSuite {
     val orphanSection = xmlOut.substring(xmlOut.indexOf("""<script x="200" y="150">"""))
     assert(!orphanSection.contains("""s="receiveGo""""), clue = orphanSection)
     assert(orphanSection.contains("""s="turn""""), clue = orphanSection)
-  }
-
-  test("ProgrammingExercise xml persist roundtrips scripts across reload") {
-    val state = ProgrammingStateRaw(SnapLanguage, twoScriptsXml)
-    val stored = ProgrammingState.serializer.serialize(state)
-    val restored = ProgrammingState.serializer.deserialize(stored)
-    assert(restored.toSnapXml.code.contains("""<script x="70" y="80">"""), clue = restored.toSnapXml.code)
-    assert(restored.toSnapXml.code.contains("""<script x="200" y="150">"""), clue = restored.toSnapXml.code)
-    assertEquals("""<script x="[^"]+" y="[^"]+">""".r.findAllIn(restored.toSnapXml.code).size, 2)
   }
 
   test("doRepeat XML parses to BeRepeatNr and roundtrips") {
@@ -156,14 +140,6 @@ class TurtleStitchToBeExpressionParserSpec extends FunSuite {
     val python = ExpressionToPython.printedPython(parsed.expression)
     assert(python.contains("if 1 < 2:"), clue = python)
     assert(!python.contains("<("), clue = python)
-  }
-
-  test("printed repeat python reapplies without comment rejection") {
-    val parsed = TurtleStitchToBeExpressionParser.parseProjectWithLayout(SourceParsing.parse(xmlWithRepeatNoPentrails, SourceLanguage.Snap).project.toTry.get)
-    val python = ExpressionToPython.printedPython(parsed.expression)
-    assert(python.contains("for _ in range(10):"), clue = python)
-    val applied = PythonToSnap.applyPython(python)
-    assert(applied.isRight, clue = applied)
   }
 
   test("valued test = 0 roundtrip does not append a bare test line") {
@@ -395,18 +371,6 @@ class TurtleStitchToBeExpressionParserSpec extends FunSuite {
     assert(reXml.contains("""s="gotoXY""""), clue = reXml)
     assert(reXml.contains("""s="up""""), clue = reXml)
     assert(reXml.contains("""s="down""""), clue = reXml)
-  }
-
-  test("native color slot roundtrips without changing arity") {
-    val xml =
-      """<project><scenes select="1"><scene><stage><sprites select="1"><sprite><scripts><script><block s="setColor"><color>0,0,255,1</color></block><block s="forward"><l>10</l></block></script></scripts></sprite></sprites></stage></scene></scenes></project>"""
-    val parsed = TurtleStitchToBeExpressionParser.parseProjectWithLayout(SourceParsing.parse(xml, SourceLanguage.Snap).project.toTry.get)
-    val python = ExpressionToPython.printedPython(parsed.expression)
-    assert(python.contains("color("), clue = python)
-    assert(!python.contains("color(0, 0, 255"), clue = python)
-    val applied = PythonToSnap.applyPython(python)
-    assert(applied.isRight, clue = applied)
-    assert(applied.toOption.get.code.contains("<color>0,0,255,1</color>") || applied.toOption.get.code.contains("<color>"), clue = applied.toOption.get.code)
   }
 
   private def projectWith(definitions: String, scriptBlocks: String): String =

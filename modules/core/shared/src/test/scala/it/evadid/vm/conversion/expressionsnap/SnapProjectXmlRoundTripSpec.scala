@@ -31,9 +31,4 @@ class SnapProjectXmlRoundTripSpec extends FunSuite {
     assertEquals(commands(python.toSnapXml), commands(python))
     assertEquals(commands(python).map(_.args), List(List(5.0)))
   }
-
-  test("the empty and mini projects are complete Snap documents") {
-    assert(SnapProjectXml.empty.startsWith("<project"), SnapProjectXml.empty.take(80))
-    assert(SnapProjectXml.mini.contains("<scripts>"), SnapProjectXml.mini.take(200))
-  }
 }

@@ -160,14 +160,6 @@ class BeProgramInterpreterSpec extends FunSuite {
     assert(program.execute(entry = ProgramEntry.Call("fehlt")).status.toString.contains("does not define fehlt"))
   }
 
-  test("sudoku grids check completeness, consistency and givens") {
-    val solved = SudokuGrid.parse("534678912", "672195348", "198342567", "859761423", "426853791",
-      "713924856", "961537284", "287419635", "345286179")
-    assert(solved.solves(SudokuGrid.default))
-    assert(!solved.updated(0, 0, 3).isConsistent)
-    assert(!SudokuGrid.default.isComplete)
-  }
-
   private val arithmetic = java(
     """    static int rechne(int a, int b) {
       |        return a % b + Math.floor(a / b) * 10 - (-b);

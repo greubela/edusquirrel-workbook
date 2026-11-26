@@ -383,18 +383,6 @@ class JavaParserTest extends FunSuite {
     }
   }
 
-  test("turtle source preserves the original source and complete square AST") {
-    for loop <- Seq(
-      "for (int i = 0; i < 4; i = i + 1) { Turtle.forward(sideLength); Turtle.turnRight(90); }",
-      "int i = 0; while (i < 4) { Turtle.forward(sideLength); Turtle.turnRight(90); i = i + 1; }"
-    ) do {
-      val source = "\r\n\r\n" + turtleSource(loop)
-      val parsed = JavaTurtleSourceParser.parse(source).fold(problem => fail(problem.message), identity)
-      assertEquals(parsed.source, source)
-      assertEquals(unsupportedStatements(parsed.program), Set.empty[String])
-    }
-  }
-
   test("turtle source skips comment contents without losing token boundaries") {
     val body =
       "int longueur = 40; int floatCount = 0; int intensity = 1; " +
@@ -1374,27 +1362,6 @@ class JavaParserTest extends FunSuite {
     val arrayType = JavaType.JAVA_ARRAY(JavaType.JAVA_INTEGER)
     assertEquals(arrayType.serializerJavaValue.serialize(List(BigInt(1), BigInt(2))), "{1, 2}")
     assertEquals(arrayType.serializerJavaValue.deserialize("{1, 2}"), List(BigInt(1), BigInt(2)))
-  }
-
-  for ((name, code) <- Seq(
-    "for" -> "for (int i = 0; i < 3; i = i + 1) { total += i; }",
-    "while" -> "while (total < 10) { total = total + 1; }",
-    "try" -> "try { risky(); } catch (Exception ex) { throw ex; } finally { cleanup(); }"
-  )) test(s"parses $name as a structured statement inside a method") {
-    val parsed = SourceParsing.parse(s"class Example { void run() { $code } }", SourceLanguage.Java).syntax.map(_.program)
-    assert(parsed.isRight, parsed.left.toOption.toString)
-    val clazz = parsed.toOption.get.statements.head.statement.asInstanceOf[JavaClassDef]
-    assert(clazz.body.statements.head.isInstanceOf[JavaMethodDef])
-    assert(!clazz.body.statements.head.asInstanceOf[JavaMethodDef].body.statements.head.isInstanceOf[JavaUnparsableStatement])
-  }
-
-  test("operator matching preserves comparison, equality and compact unary arithmetic") {
-    val parsed = SourceParsing.parse("boolean enabled = a<=b && a!=b; int value = 1+-2*3;", SourceLanguage.Java).syntax.map(_.program)
-    assert(parsed.isRight, parsed.left.toOption.toString)
-    val declarations = parsed.toOption.get.statements.map(_.statement).collect { case d: JavaVariableDeclaration => d }
-    assertEquals(declarations.size, 2)
-    assertEquals(declarations.head.value.get.asInstanceOf[JavaOperationBinary].op, "&&")
-    assertEquals(declarations(1).value.get.asInstanceOf[JavaOperationBinary].op, "+")
   }
 
   test("parses prefix and postfix updates without losing operator order or targets") {

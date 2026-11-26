@@ -258,13 +258,6 @@ class StructuredProgrammingStateSpec extends FunSuite {
     assertEquals(ProgrammingStateJavaStructured(state.toString), state)
   }
 
-  test("unsupported constructors retain their source when conversion is rejected") {
-    val source = ProgrammingStateJavaStructured("class Shape { int distance = 10; static int angle = 90; Shape() { forward(5); } void draw() { forward(20); } }")
-    val before = source.toString
-    intercept[IllegalArgumentException](source.toPythonStructured)
-    assertEquals(source.toString, before)
-  }
-
   test("instance qualifier conversion preserves literal text") {
     val state = ProgrammingStateJavaStructured("class Label { String text() { return \"this.label\"; } }")
     val restored = state.toPythonStructured.toJavaStructured

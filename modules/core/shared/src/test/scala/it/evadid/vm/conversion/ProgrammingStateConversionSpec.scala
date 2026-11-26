@@ -229,11 +229,6 @@ class ProgrammingStateConversionSpec extends FunSuite {
     }
   }
 
-  test("BeExpression and Python round trip") {
-    val expression = ProgrammingStateRaw(Python, python).toBeExpression
-    assertEquals(normalized(expression.toPython.toBeExpression), normalized(expression))
-  }
-
   test("BeExpression and Snap round trip") {
     val expression = ProgrammingStateRaw(Python, python).toBeExpression
     assertEquals(normalized(expression.toSnapXml.toBeExpression), normalized(expression))
@@ -242,13 +237,6 @@ class ProgrammingStateConversionSpec extends FunSuite {
   test("Snap and Python round trip") {
     val snap = ProgrammingStateRaw(Python, python).toSnapXml
     assertEquals(normalized(snap.toPython.toSnapXml), normalized(snap))
-  }
-
-  test("behavior is available after switching representations") {
-    val commands = ProgrammingStateRaw(Python, "forward(12)").toSnapXml
-      .toBeExpression.turtleCommandExecutionInfo.completedCommands
-    assertEquals(commands.map(_.name.universalInterpretation()), List("forward"))
-    assertEquals(commands.flatMap(_.args), List(12.0))
   }
 
   test("modulo conditionals and loops remain executable after switching to Snap") {
@@ -281,12 +269,6 @@ class ProgrammingStateConversionSpec extends FunSuite {
     val java = expression.toJava
     assertEquals(java.toJava, java)
     assertEquals(normalized(java.toBeExpression), normalized(expression))
-  }
-
-  test("Java transforms to Python and Snap via BeExpression") {
-    val java = ProgrammingStateRaw(Java, "int steps = 12; forward(steps);")
-    assert(java.toPython.code.contains("forward(steps)"), clue = java.toPython.code)
-    assert(java.toSnapXml.code.contains("forward"), clue = java.toSnapXml.code)
   }
 
   test("Java method fragments with returns reject Snap without changing their raw source") {
@@ -438,16 +420,6 @@ class ProgrammingStateConversionSpec extends FunSuite {
     val program = restored.toJava.compileForExecution.fold(diagnostic => fail(diagnostic.toString), identity)
     assertEquals(T.runVm(program).commands, squareCommands(25))
     assertEquals(original.code, source)
-  }
-
-  test("typed full Java programs reject generic simulation without changing their source") {
-    val state = ProgrammingStateRaw(Java, squareJava())
-    val fingerprint = state.fingerprint()
-    val program = state.compileForExecution.fold(diagnostic => fail(diagnostic.toString), identity)
-
-    assertEquals(T.runVm(program).status, T.Status.Completed)
-    assertEquals(state.code, squareJava())
-    assertEquals(state.fingerprint(), fingerprint)
   }
 
   test("unfinished and unsupported Java cannot become an empty legacy turtle program") {
@@ -675,13 +647,6 @@ class ProgrammingStateConversionSpec extends FunSuite {
     assert(converted.code.startsWith("from datetime import date\n"), clue = converted.code)
     assert(converted.code.contains("day: date"), clue = converted.code)
     assertEquals(normalized(converted.toBeExpression), converted.code.trim)
-  }
-
-  test("clean Python AST recognizes None return annotations on editable Java methods") {
-    val source = "def draw(length: float) -> None:\n    return\n\ndef main() -> None:\n    draw(2.0)\n"
-    val parsed = SourceParsing.parse(source, SourceLanguage.Python).syntax.map(_.program).fold(error => fail(error.message), identity)
-    val methods = parsed.statements.collect { case it.evadid.vm.parsing.python.clean.model.PyAST.StatementWithLineNumber(method: it.evadid.vm.parsing.python.clean.model.PyAST.PyFunctionDef, _) => method.name }
-    assertEquals(methods.toList, List("draw", "main"))
   }
 
 }

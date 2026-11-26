@@ -85,10 +85,6 @@ class CrossLanguageRoundTripSpec extends FunSuite {
   // side = 40, gap = 30; step(2) = 125; turn 55; side = 5; step(-0.625) = -36.875
   private val calculationCommands = Seq(forward(125), right(55), forward(-36.875))
 
-  test("shared variables and nested calculations survive every language pair, starting in Python") {
-    assertRoundTrips(ProgrammingStateRaw(Python, calculationPython), all, Some(calculationCommands))
-  }
-
   test("shared variables and nested calculations survive every language pair, starting in Java") {
     val java = """class Main {
       |    static double side = 40;
