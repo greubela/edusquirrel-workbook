@@ -359,5 +359,7 @@
   "k5-row3": "Hvor mange af kaldene ved `koch(270, 3)` tegner et linjestykke?",
   "k5outro": "Ved tårnet tilføjer hver byggeklods **ét** kald. Ved Koch-kurven bliver antallet af kald omtrent firedoblet for hver yderligere rekursionsdybde, fordi metoden kalder sig selv **fire gange**. Senere i studiet lærer du at beskrive sådan en arbejdsindsats mere præcist.",
   "imagenotice": "*Billederne i historien er skærmbilleder fra Minecraft. Denne arbejdsbog er ikke et officielt Minecraft-produkt og er ikke tilknyttet Mojang eller Microsoft.*",
-  "stacktitle": "Opgave 1.5"
+  "stacktitle": "Opgave 1.5",
+  "kochexplain0": "Koch-kurven med **rekursionsdybde 0** er et ret linjestykke. På billedet er det 270 langt, så kurven har bredde 270.",
+  "kochcaption0": "*Figur: Koch-kurve med rekursionsdybde 0 med bredde 270, ét linjestykke med længde 270*"
 }

@@ -16,6 +16,8 @@ case object AnswerTableRenderer extends LineBasedRenderingFactory[AnswerTableInt
   override protected def createRendering(e: AnswerTableInteraction): AtomarLineRendering = {
     val state = e.interactionVariable.createBoundStateWithUpdateImportance(UpdateImportance.MAJOR, fullInfo.workbookContextInformation).toAirstreamVar
     val disabledSignal = e.isDisabledState.toAirstreamVar.signal
+    // Cells that a failed check found wrong are marked until the answer changes.
+    val wrong = fullInfo.signals.reportersFor(e).grading.checks.map(_.wrongParts).distinct
     def cell(row: Int, column: Int, config: AnswerTableCell): Element = config match {
       case FixedTableCell(content) => td(InlineMarkdown.element(laminarHelper.plaintextStringSignal(content)))
       case editable: EditableTableCell =>
@@ -30,7 +32,7 @@ case object AnswerTableRenderer extends LineBasedRenderingFactory[AnswerTableInt
           editable.choices.map(choice => option(value := choice, choice)))
         else input(typ := "text", aria.label <-- label, disabled <-- disabledSignal,
           controlled(value <-- valueSignal, onInput.mapToValue --> (value => state.update(e.update(_, row, column, value)))))
-        td(control)
+        td(cls("answer-part--wrong") <-- wrong.map(_.contains(index)), control)
     }
     val dom = div(cls := "answer-table",
       div(cls := "answer-table__scroll", table(

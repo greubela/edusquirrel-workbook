@@ -106,8 +106,14 @@ abstract class GenericJavaLikeStringPrinter(
     if down then s"for (int $varName = $start; $varName >= $end; $varName--) ${sepLogic.startBlockWith}"
     else s"for (int $varName = $start; $varName <= $end; $varName++) ${sepLogic.startBlockWith}"
 
-  /** Printed when a function body would otherwise be empty. Python overrides this with `pass`. */
-  protected def emptyFunctionBody: String = ""
+  /** Printed when a function or block body would otherwise be empty. Python overrides this with `pass`. */
+  protected def emptyBody: String = ""
+
+  /** A block's body; an empty one is printed as [[emptyBody]] where the language needs a statement. */
+  private def blockBody(body: BeExpression): String = {
+    val rendered = forExpression(body)
+    if rendered.trim.isEmpty && emptyBody.nonEmpty then emptyBody else rendered
+  }
 
   protected def forStatement(expr: BeExpression): String = {
     forExpression(expr) + (expr match {
@@ -178,7 +184,7 @@ abstract class GenericJavaLikeStringPrinter(
         val par = formatFunctionParameters(function)
         val outTypeStr = outputs.map(_.variableType.formatTypeForDisplay.getInLanguage(progLang)).getOrElse(BeDataType.Unit.formatTypeForDisplay.getInLanguage(progLang))
         val renderedBody = forExpression(body)
-        val bodyText = if renderedBody.trim.isEmpty then emptyFunctionBody else renderedBody
+        val bodyText = if renderedBody.trim.isEmpty then emptyBody else renderedBody
         CodeStringBuilderMutable()
           .appendNextLine(functionDeclaration(function, par, outTypeStr))
           .changeIntLevel(1)
@@ -211,7 +217,7 @@ abstract class GenericJavaLikeStringPrinter(
       val res = CodeStringBuilderMutable()
         .appendNextLine(header("if", condition))
         .changeIntLevel(1)
-        .appendAsLines(forExpression(thenBody))
+        .appendAsLines(blockBody(thenBody))
         .changeIntLevel(-1)
       // An else branch holding only another if prints as an elif / else-if chain.
       @scala.annotation.tailrec def branches(otherwise: BeSequence): Unit = otherwise.body match {
@@ -220,7 +226,7 @@ abstract class GenericJavaLikeStringPrinter(
             case _: PythonSeparation => res.appendNextLine(header("elif", nextCondition))
             case _ => res.appendNextLine(sepLogic.endBlockWith + " " + header("else if", nextCondition))
           }
-          res.changeIntLevel(1).appendAsLines(forExpression(nextThen)).changeIntLevel(-1)
+          res.changeIntLevel(1).appendAsLines(blockBody(nextThen)).changeIntLevel(-1)
           branches(nextElse)
         case Seq() => res.appendNextLine(sepLogic.endBlockWith)
         case _ =>
@@ -237,7 +243,7 @@ abstract class GenericJavaLikeStringPrinter(
       CodeStringBuilderMutable()
         .appendNextLine(repetitionLine(forValue(amount)))
         .changeIntLevel(1)
-        .appendAsLines(forExpression(body))
+        .appendAsLines(blockBody(body))
         .changeIntLevel(-1)
         .appendNextLine(sepLogic.endBlockWith)
         .toString
@@ -249,7 +255,7 @@ abstract class GenericJavaLikeStringPrinter(
       CodeStringBuilderMutable()
         .appendNextLine(namedRangeLine(varName, startStr, endStr, countsDown(startStr, endStr, direction)))
         .changeIntLevel(1)
-        .appendAsLines(forExpression(body))
+        .appendAsLines(blockBody(body))
         .changeIntLevel(-1)
         .appendNextLine(sepLogic.endBlockWith)
         .toString
@@ -269,7 +275,7 @@ abstract class GenericJavaLikeStringPrinter(
       CodeStringBuilderMutable()
         .appendNextLine(s"while$formattedCondition${sepLogic.startBlockWith}")
         .changeIntLevel(1)
-        .appendAsLines(forExpression(body))
+        .appendAsLines(blockBody(body))
         .changeIntLevel(-1)
         .appendNextLine(sepLogic.endBlockWith)
         .toString

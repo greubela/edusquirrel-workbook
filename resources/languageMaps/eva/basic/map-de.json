@@ -164,10 +164,13 @@
   "sortStepStats": "{swaps} Vertauschungen · {sets} Zuweisungen · {reads} Lesezugriffe",
   "sortTestList": "Sortiert {list}",
   "DrawTitle": "Zeichnung",
-  "matchingHint": "Ziehe von einem Eintrag links zum passenden Eintrag rechts. Oder klicke erst links und dann rechts.",
+  "matchingHint": "Ziehe einen Eintrag zum passenden Eintrag auf der anderen Seite. Oder klicke erst einen Eintrag und dann den passenden auf der anderen Seite.",
   "matchingRemove": "Verbindung lösen",
   "matchingConnectedTo": "verbunden mit",
   "gradingMatchingDescription": "Zuordnungen prüfen",
   "gradingMatchingCount": "{correct} von {total} Zuordnungen stimmen.",
-  "likertClear": "Auswahl entfernen"
+  "likertClear": "Auswahl entfernen",
+  "gradingAttempt": "Versuch",
+  "gradingAttempts": "Versuche",
+  "gradingAttemptsTooltip": "Gelöst. Geprüfte Antworten bis zur richtigen Lösung: {count}"
 }

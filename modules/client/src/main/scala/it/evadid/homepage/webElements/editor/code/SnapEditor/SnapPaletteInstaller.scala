@@ -82,12 +82,21 @@ private[SnapEditor] final class SnapPaletteInstaller(resources: Var[SnapSessionR
             controls ++ blocks ++ SnapCustomBlocks.paletteItems(ide, tab.name)
         }.toJSArray
 
+    // The palette's primitive selectors; custom and module blocks are matched by their definitions instead.
+    lazy val offeredSelectors: Set[String] = libraries.flatMap(tab => blockTemplates(tab.name, true).toList).flatMap { item =>
+      val selector = item.asInstanceOf[js.Dynamic].selectDynamic("selector")
+      Option.when(js.typeOf(selector) == "string")(selector.toString)
+    }.toSet
+    val blocksMatching = searchWithinPalette(offeredSelectors)
+
     sprite.asInstanceOf[js.Dynamic].updateDynamic("blockTemplates")(blockTemplates)
+    sprite.asInstanceOf[js.Dynamic].updateDynamic("blocksMatching")(blocksMatching)
     sprite.asInstanceOf[js.Dynamic].updateDynamic("primitivesCache")(js.Dictionary.empty[js.Any])
     sprite.paletteCache = js.Dictionary.empty
     val stage = ide.asInstanceOf[js.Dynamic].selectDynamic("stage")
     if !js.isUndefined(stage) && stage != null then
       stage.updateDynamic("blockTemplates")(blockTemplates)
+      stage.updateDynamic("blocksMatching")(blocksMatching)
       stage.updateDynamic("primitivesCache")(js.Dictionary.empty[js.Any])
     SnapVariableButtons.flushWithExerciseTabs(ide, libraries.filter(needsVariablePaletteFlush).map(_.name))
     menus.wrap()
@@ -95,6 +104,22 @@ private[SnapEditor] final class SnapPaletteInstaller(resources: Var[SnapSessionR
     ide.createCategories()
     categories.enlargeTabs(ide)
     ide.refreshPalette(true)
+
+  /**
+   * Snap's block search lists every primitive it knows, including those the exercise palette leaves out
+   * and that the conversion does not support. Keep primitives the palette offers, plus custom and module
+   * blocks (they carry a definition) and variable getters.
+   */
+  private def searchWithinPalette(offeredSelectors: => Set[String])
+      : js.ThisFunction4[js.Dynamic, js.Any, js.Any, js.Any, js.Any, js.Array[js.Dynamic]] =
+    (self: js.Dynamic, search: js.Any, strictly: js.Any, types: js.Any, varNames: js.Any) =>
+      val original = spriteMorphPrototype.selectDynamic("blocksMatching")
+      original.applyDynamic("call")(self, search, strictly, types, varNames).asInstanceOf[js.Array[js.Dynamic]].filter { block =>
+        val definition = block.selectDynamic("definition")
+        val selector = block.selectDynamic("selector")
+        (!js.isUndefined(definition) && definition != null) ||
+          (js.typeOf(selector) == "string" && (selector.toString == "reportGetVar" || offeredSelectors.contains(selector.toString)))
+      }
 
   private def needsVariablePaletteFlush(tab: LibraryTab): Boolean =
     tab.includeVariableControls || (tab.useNativeCategory && tab.color == SnapCategoryColor.Variables)
@@ -178,6 +203,8 @@ private[SnapEditor] final class SnapPaletteInstaller(resources: Var[SnapSessionR
           .asInstanceOf[js.Function2[String, js.UndefOr[Boolean], js.Array[BlockMorph]]]
       else original
       sprite.asInstanceOf[js.Dynamic].updateDynamic("blockTemplates")(templates)
+      // Without exercise tabs the search covers Snap's own palette again.
+      js.special.delete(sprite, "blocksMatching")
       sprite.asInstanceOf[js.Dynamic].updateDynamic("primitivesCache")(js.Dictionary.empty[js.Any])
       sprite.paletteCache = js.Dictionary.empty
       categories.clear()

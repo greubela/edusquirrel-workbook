@@ -59,6 +59,7 @@ final class SnapMorphicSession() extends SnapCodeEditorImpl:
 
     val answer = project.now().getOrElse(ProgrammingStateSnapScalaModel.empty)
     val world = Snap.world(canvas).createLoadedInstance()
+    SnapCanvasLayout.releaseRetinaCssSize(canvas)
     require(
       world.worldCanvas eq canvas,
       "WorldMorph did not retain the mounted editor canvas used to register input listeners"

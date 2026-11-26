@@ -25,7 +25,8 @@ object PythonToExpression {
   /** The definitions the builder bound, for analyses that need them. */
   final case class Details(definedClasses: List[BeDefineClass], definedFunctions: List[BeDefineFunction],
       definedVariables: List[BeDefineVariable], currentlyKnownStructures: SymbolTable.CurrentlyKnownStructures, codeExpression: BeSequence,
-      sourceFunctions: Map[it.evadid.vm.parsing.source.SourceSpan, BeDefineFunction])
+      sourceFunctions: Map[it.evadid.vm.parsing.source.SourceSpan, BeDefineFunction],
+      sourceOrigins: Map[it.evadid.vm.parsing.source.SourceIdentity[it.evadid.vm.code.abstractions.BeExpression], it.evadid.vm.parsing.source.SourceSpan])
 
   /** The language-neutral program of the step-2 syntax tree; an unreadable source stays one unparsable statement. */
   def neutral(structured: PythonSourceStructured, syntax: Either[SyntaxFailure, PythonSyntax]): ParsedProgram =
@@ -43,7 +44,7 @@ object PythonToExpression {
       it.evadid.vm.parsing.source.SourceIdentity(function) }.toSet
     (BeProgram(start), Details(built.context.definedClasses, built.context.definedFunctions, built.context.definedVariables,
       built.context.currentStructures, start.startSequence.getOrElse(built.expression),
-      built.sourceFunctions.filter((_, definition) => live(it.evadid.vm.parsing.source.SourceIdentity(definition)))))
+      built.sourceFunctions.filter((_, definition) => live(it.evadid.vm.parsing.source.SourceIdentity(definition))), built.sourceOrigins))
   }
 
  }

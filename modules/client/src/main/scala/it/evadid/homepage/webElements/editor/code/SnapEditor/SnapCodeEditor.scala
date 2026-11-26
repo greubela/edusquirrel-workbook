@@ -94,6 +94,10 @@ case class SnapCodeEditor(
       onBlur.useCapture.filter(_.target == dom.document.getElementById("morphic_keyboard")) --> { _ =>
         impl.flushPendingProjectChanges()
       },
+      // A hidden page may be closed before the input pause ends (see RemoteInteractionCacheControl).
+      documentEvents(_.onVisibilityChange).filter(_ => dom.document.hidden) --> { _ =>
+        if SnapCodeEditor.shownAsSnap(state.now()) then impl.flushPendingProjectChanges()
+      },
       onUnmountCallback { _ =>
         impl.flushPendingProjectChanges()
         impl.destroy()

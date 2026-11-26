@@ -412,7 +412,7 @@ class SnapExpressionSupportSpec extends FunSuite {
     val python = ExpressionToPython.printedPython(
       SourceParsing.parse("def square(n):\n    pass\n", SourceLanguage.Python).parsed().program.fullProgram
     )
-    assert(python.contains("def square(n: Any) -> None:"), clue = python)
+    assert(python.contains("def square(n: Any):"), clue = python)
     assert(python.contains("pass"), clue = python)
   }
 

@@ -261,3 +261,13 @@
     .java-component-editor.java-function-based-editor--with-reference { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); grid-template-areas: "modes modes" "header header" "navigation reference" "workspace reference"; }
     .java-component-editor.java-function-based-editor--with-reference.java-function-based-editor--structure-collapsed { grid-template-areas: "modes modes" "header header" "workspace reference"; }
 }
+
+/* Python uses the shared class boxes and editor controls in a vertical workspace. */
+.python-component-editor { display: flex; flex-direction: column; min-height: 0; height: 100%; gap: var(--space-sm); }
+.python-component-editor > .uml-structure-selector { flex: 0 1 auto; max-height: 30vh; overflow: auto; }
+.python-component-editor > .java-function-editor__workspace { flex: 1; min-height: 0; }
+.python-component-editor .java-function-editor__method { flex: 1; min-height: 0; }
+.python-component-editor .java-function-editor__modes { display: flex; flex-wrap: wrap; gap: var(--space-sm); }
+.python-component-editor button:not(.uml-entry) { padding: var(--space-sm) var(--space-md); color: var(--editor-code-ink); background: var(--editor-code-surface); border: var(--space-borders) solid var(--editor-border); cursor: pointer; }
+.python-component-editor button:not(.uml-entry):hover { background: var(--editor-hover); }
+.python-component-editor button[aria-selected="true"] { background: var(--editor-selected); }

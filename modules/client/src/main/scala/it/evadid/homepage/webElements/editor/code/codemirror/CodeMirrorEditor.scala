@@ -45,20 +45,17 @@ case class CodeMirrorEditor(
   /** Typed text not yet in `underlyingVar`: the answer (history, sync, grading) follows after a typing pause,
     * on blur or on unmount, so these reactions never delay a keystroke.
     */
-  private val unwrittenText = Var(Option.empty[UnwrittenText])
+  private val unwrittenText = Var(Option.empty[String])
 
-  /** Writes typed text only onto the answer it was typed over: a restoration, synchronization or language
-    * conversion that arrived meanwhile is newer and stays.
-    */
-  private def writeTypedText(): Unit = unwrittenText.now().foreach { pending =>
+  private def writeTypedText(): Unit = unwrittenText.now().foreach { typed =>
     unwrittenText.set(None)
-    val current = underlyingVar.now()
-    if current == pending.base && !sameSource(current, pending.text) then underlyingVar.set(pending.text)
+    if !sameSource(underlyingVar.now(), typed) then underlyingVar.set(typed)
   }
 
   override def getDomElement(): L.Element = div(
     cls := "code-mirror-editor-host",
     onBlur.useCapture --> (_ => writeTypedText()),
+    documentEvents(_.onVisibilityChange).filter(_ => dom.document.hidden) --> (_ => writeTypedText()),
     child <-- config.signal.map(_.showFlowchartGutter).distinct.map { showFlowchart =>
       div(
         cls := ("code-editor code-mirror-editor" + (if showFlowchart && flowchart.nonEmpty then " code-mirror-editor-flowchart" else "")),
@@ -80,7 +77,7 @@ case class CodeMirrorEditor(
               // The callback is required by the native CodeMirror API; Scala consumers observe the Var.
               val created = createEditor(EditorConfig(ctx.thisNode.ref, underlyingVar.now(),
                 value => if !lifetime.isKilled then
-                  unwrittenText.update(pending => Some(UnwrittenText(pending.fold(underlyingVar.now())(_.base), value))),
+                  unwrittenText.set(Some(value)),
                 languageToJs(language), analysis.map(current => source => current.chart(source).map(CodeMirrorFlowchartGutter.render)),
                 firstLineNumber = lineNumbers.now()))
               created.foreach { native =>
@@ -112,26 +109,11 @@ case class CodeMirrorEditor(
 }
 object CodeMirrorEditor {
   val typingWriteDelayMillis: Int = 400
-  private final case class UnwrittenText(base: String, text: String)
 
   def languageToJs(language: ProgrammingLanguage): String = language.asJsLanguage.getOrElse("python")
 
   def apply(logger: Logger, state: Var[String], language: ProgrammingLanguage, loadingLabel: Signal[String]): CodeMirrorEditor =
     CodeMirrorEditor(logger, state, language, Var(CodeMirrorEditorConfig.Default), loadingLabel)
-
-  def pythonEditorForEva(config: CodeMirrorEditorConfig): EvaEditorTab = new EvaEditorTab {
-    override val language = Python
-    override def icon = Some(it.evadid.homepage.webElements.editor.code.EvaEditor.EvaLanguageIcons.python)
-    override def create(state: Var[ProgrammingState], context: EvaEditorContext): it.evadid.homepage.webElements.HtmlAppElement = {
-      val text = ProgrammingStateView(state, inactive = "") {
-        case ProgrammingStateRaw(Python, code) => code
-        case value: ProgrammingStatePythonStructured => value.toString
-      }(ProgrammingStatePythonStructured(_))
-      CodeMirrorEditor(context.logger, text, Python, Var(config), diagnostics = context.conversionDiagnostics.combineWith(context.sourceDiagnostics(state.signal)).map(_ ++ _),
-        loadingLabel = context.loading,
-        sameSource = (left, right) => left == right || ProgrammingStatePythonStructured(left) == ProgrammingStatePythonStructured(right))
-    }
-  }
 
   /** A located warning of the program analysis, with `message` as its explanation. */
   def mark(warning: it.evadid.vm.analysis.SourceWarning, message: String): Diagnostic =

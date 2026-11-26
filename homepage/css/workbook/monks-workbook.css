@@ -18,6 +18,13 @@
     height: auto;
 }
 
+/* The call stack figure is wide and detailed: centered across the full text width of its task. */
+.monks-workbook .workbook-image[data-element-id="monks-image-callstack"] img {
+    display: block;
+    width: 100%;
+    margin: 0 auto;
+}
+
 .monks-workbook .slide-deck-content img {
     display: block;
     width: auto;

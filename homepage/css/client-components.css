@@ -46,7 +46,7 @@
     stroke-opacity: 1;
 }
 
-.fullscreen-overlay-dialog { position: relative; }
+.fullscreen-overlay-dialog { position: fixed; }
 
 .svg-button { fill: none; }
 .svg-button path { stroke: var(--color-text-primary); stroke-width: 2px; stroke-linecap: round; stroke-linejoin: round; }

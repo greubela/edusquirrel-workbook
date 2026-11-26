@@ -16,6 +16,9 @@
 
 .eva-editor {
     display: grid;
+    /* An explicit column: with an implicit auto column the Snap canvas, which sizes its bitmap to its
+       container, would size the column itself and could never shrink again. */
+    grid-template-columns: minmax(0, 1fr);
     grid-template-rows: auto minmax(0, 1fr);
     gap: var(--space-md);
     padding: var(--space-md);

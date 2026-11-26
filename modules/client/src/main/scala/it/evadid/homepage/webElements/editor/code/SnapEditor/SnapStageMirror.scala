@@ -96,10 +96,12 @@ private[SnapEditor] final class SnapStageMirror(editor: () => Option[IDEMorph], 
         if force || !mirrorPenTrails(stage, target) then {
           val source = stage.fullImage()
           if source != null then {
-            if target.width != source.width then target.width = source.width
-            if target.height != source.height then target.height = source.height
+            if CanvasSize.differs(target, CanvasSize.roundedWidth(source), CanvasSize.roundedHeight(source)) then {
+              target.width = CanvasSize.roundedWidth(source)
+              target.height = CanvasSize.roundedHeight(source)
+            }
             val context = target.getContext("2d").asInstanceOf[CanvasRenderingContext2D]
-            context.clearRect(0, 0, target.width.toDouble, target.height.toDouble)
+            context.clearRect(0, 0, CanvasSize.width(target), CanvasSize.height(target))
             context.drawImage(source, 0, 0)
           }
         }
@@ -126,13 +128,15 @@ private[SnapEditor] object SnapStageMirror {
   private def mirrorPenTrails(stage: StageMorph, target: Canvas): Boolean =
     try {
       val trails = stage.penTrails()
-      if trails == null || trails.width <= 0 || trails.height <= 0 then false
+      if trails == null || CanvasSize.width(trails) <= 0 || CanvasSize.height(trails) <= 0 then false
       else {
-        if target.width != trails.width then target.width = trails.width
-        if target.height != trails.height then target.height = trails.height
+        if CanvasSize.differs(target, CanvasSize.roundedWidth(trails), CanvasSize.roundedHeight(trails)) then {
+          target.width = CanvasSize.roundedWidth(trails)
+          target.height = CanvasSize.roundedHeight(trails)
+        }
         val context = target.getContext("2d").asInstanceOf[CanvasRenderingContext2D]
         context.fillStyle = "#ffffff"
-        context.fillRect(0, 0, trails.width.toDouble, trails.height.toDouble)
+        context.fillRect(0, 0, CanvasSize.width(trails), CanvasSize.height(trails))
         context.drawImage(trails, 0, 0)
         true
       }

@@ -86,5 +86,20 @@
   "javaInitializer": "Startværdi",
   "javaAssignFields": "Tildel eksisterende attributter fra parametre",
   "javaFieldExists": "Der findes allerede en attribut med dette navn.",
-  "javaDelete": "Slet"
+  "javaDelete": "Slet",
+  "pythonEditorTitle": "Python-editor",
+  "pythonModes": "Redigeringstilstande",
+  "pythonModeClass": "Klassetilstand",
+  "pythonModeFunction": "Funktionstilstand",
+  "pythonModeFull": "Fuld kildekode",
+  "pythonAddClass": "Tilføj klasse",
+  "pythonAddFunction": "Tilføj funktion",
+  "pythonAddAttribute": "Tilføj attribut",
+  "pythonAddConstructor": "Tilføj konstruktør",
+  "pythonName": "Navn",
+  "pythonParameters": "Parametre (for eksempel: antal: int)",
+  "pythonType": "Type (valgfri)",
+  "pythonInitializer": "Startværdi",
+  "pythonStatic": "Statisk metode",
+  "pythonInvalidDeclaration": "Deklarationen er ugyldig, eller navnet er allerede i brug."
 }

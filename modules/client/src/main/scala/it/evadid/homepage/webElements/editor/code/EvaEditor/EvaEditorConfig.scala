@@ -15,7 +15,7 @@ import upickle.default.*
 case class EvaEditorConfig(
                             enabledLanguages: Seq[ProgrammingLanguage] = List(SnapLanguage, Python, Java, BlockDisplay),
                             snapConfig: SnapCodeEditorConfig = SnapCodeEditorConfig.PythonCompatibleTesting,
-                            codeMirrorConfig: CodeMirrorEditorConfig = CodeMirrorEditorConfig.Flowchart
+                            codeMirrorConfig: CodeMirrorEditorConfig = CodeMirrorEditorConfig.Default
                           ) extends WebEditorConfig derives ReadWriter {
 
   override protected def additionalCssClasses: List[String] = List()
@@ -29,7 +29,7 @@ object EvaEditorConfig {
     */
   def tabs(config: EvaEditorConfig): Seq[EvaEditorTab] =
     config.enabledLanguages.distinct.map {
-      case Python => CodeMirrorEditor.pythonEditorForEva(config.codeMirrorConfig)
+      case Python => it.evadid.homepage.webElements.editor.code.PythonEditor.PythonComponentEditor.forEvaTab(config.codeMirrorConfig)
       case SnapLanguage => SnapCodeEditor.forEvaTab(config.snapConfig)
       case Java => JavaComponentEditor.forEvaTab(config.codeMirrorConfig)
       case BlockDisplay => BlockProgramEditor.forEvaTab()

@@ -133,23 +133,23 @@ final class ProgrammingStateDerivations private[evadid](source: ProgrammingState
     }
     def firstLine(fragment: String) = fragment.trim.linesIterator.nextOption().getOrElse("").trim
     expression.expression.subtree.collectFirst {
-      case BeExpressionUnparsable(fragment, reason, Some(origin)) if origin != target =>
-        (ProgrammingConversionKind.Unparsable, fragment, s"$reason: ${firstLine(fragment)}")
-      case BeExpressionUnsupported(fragment, Some(origin), reason) if origin != target =>
-        (ProgrammingConversionKind.UnsupportedConstruct, fragment,
+      case value @ BeExpressionUnparsable(fragment, reason, Some(origin)) if origin != target =>
+        (value, ProgrammingConversionKind.Unparsable, s"$reason: ${firstLine(fragment)}")
+      case value @ BeExpressionUnsupported(fragment, Some(origin), reason) if origin != target =>
+        (value, ProgrammingConversionKind.UnsupportedConstruct,
           if reason.nonEmpty then s"$reason: ${firstLine(fragment)}" else s"${firstLine(fragment)} has no form in $target.")
-    }.foreach { (kind, fragment, message) =>
-      val warnings = source.associatedLanguage match {
-        case Java => it.evadid.vm.analysis.JavaSourceWarnings.of(javaSource, Set.empty)
-        case Python => it.evadid.vm.analysis.PythonSourceWarnings.of(SourceParsing.parse(text, SourceLanguage.Python), Set.empty)
-        case _ => Nil
+    }.foreach { (value, kind, message) =>
+      val identity = it.evadid.vm.parsing.source.SourceIdentity[it.evadid.vm.code.abstractions.BeExpression](value)
+      val span = source.associatedLanguage match {
+        case Java => javaSource.parsed(environment).toOption.flatMap(_.sourceOrigins.get(identity))
+        case Python => pythonSource.parsed(environment).details.sourceOrigins.get(identity).flatMap { prepared =>
+          preparedSource.origins.flatMap(_.originalSpan(prepared, text))
+        }
+        case _ => None
       }
-      val warning = warnings.find(value => value.kind != it.evadid.vm.analysis.SourceWarning.Kind.UnknownDependency &&
-        value.subject == firstLine(fragment))
       val lines = it.evadid.vm.parsing.source.SourceLines(text)
-      val span = warning.map(value => lines.span(lines.offset(value.startLine, value.startColumn), lines.offset(value.endLine, value.endColumn)))
       throw new ProgrammingConversionException(message, it.evadid.vm.code.errors.ProgrammingConversionError(kind,
-        warning.map(_.startLine), warning.map(_.startColumn), span))
+        span.map(_.startLine), span.map(value => lines.column(value.start)), span))
     }
   }
 

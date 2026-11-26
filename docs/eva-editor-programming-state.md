@@ -17,9 +17,9 @@ The central Var is authoritative. Restoration, conversion and user changes use t
 same binding; components observe signals rather than editor callbacks or separate
 synchronization stores. All changing client state uses `val`-bound `Var[T]` values.
 
-`TypingDraftBinding` keeps uncommitted typing local. Token boundaries, quiet/time
-limits, focus loss, switching and unmount commit to the answer; panels, grading and
-storage observe those commits. External answer changes replace the local draft.
+CodeMirror and Snap buffer typing locally and publish after a pause, focus loss,
+page hiding or unmount. Eva binds directly to the answer; there is no second buffer.
+External answer changes replace pending local text.
 
 Conversions run asynchronously. Success commits the target representation; failure
 keeps the draft/editor. Source changes, newer requests and unmount invalidate stale
@@ -48,13 +48,16 @@ editors share the library load; failure leaves an editable fallback and permits 
 Diagnostics and worker-generated flowcharts arrive through signals. The gutter reuses
 `FlowLayout` on physical source lines; CodeMirror alone renders source text.
 
-## Java component editor
+## Structure editors
 
 `JavaComponentEditor` (`editor/code/JavaEditor`) offers Class, Function and Full modes. `JavaEditorNavigation`
 owns mode/selection; `JavaFragmentEditor` splices partial drafts into source ranges, and
 core `JavaMethodEditing` locates, replaces and inserts methods on step-1 declarations.
 Adding a declaration in Function Mode selects only the new function.
 Attribute and constructor dialogs, deletion and relationship arrows use the same shared UML model.
+
+`PythonComponentEditor` uses the same UML renderer and source stages for module,
+class and function views. `PythonMethodEditing` owns its source ranges and edits.
 
 Shared UML data lives in `core.datastructures.uml`; `JavaUmlDiagram` derives it from
 the parsing stages and `UmlStructureSelector` renders it. Program classes are editable.

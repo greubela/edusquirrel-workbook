@@ -130,14 +130,9 @@ codecs; see [interaction formats](interaction-format.md) for the types and wire
 contract. Update a bound state instead of writing directly to storage.
 
 `createBoundStateWithUpdateLogic` chooses significance from each edit. Code editors
-keep keystrokes local: the EvaEditor's views edit a [`TypingDraft`](../modules/core/shared/src/main/scala/it/evadid/workbook/interaction/sync/TypingDraft.scala)
-through the client's [`TypingDraftBinding`](../modules/client/src/main/scala/it/evadid/homepage/webElements/editor/abstractions/TypingDraftBinding.scala),
-and only committed values reach the answer, bound with MAJOR importance.
-[`TypingUpdateImportance`](../modules/core/shared/src/main/scala/it/evadid/workbook/interaction/sync/TypingUpdateImportance.scala)
-classifies each edit by the key typed in the editor: whitespace and `()[]{}.,-+*;`
-commit, as do a keystroke five seconds after the last commit and a change without a
-recent key; other keystrokes are TEMPORARY edits, committed when one stays the latest
-for a one-second quiet period, when focus leaves the editor or when it closes.
+keep keystrokes local: the typing editors (CodeMirror, Snap) write the answer, bound with
+MAJOR importance, after a typing pause, when focus leaves them, when the page is hidden and
+when they unmount (see [Eva's programming state](eva-editor-programming-state.md)).
 Importance is not a debounce interval or a guarantee of immediate persistence:
 
 | Importance | Meaning |

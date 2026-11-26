@@ -74,17 +74,25 @@ private[SnapEditor] object SnapCanvasLayout {
     * factors and distorted hits. Assigning canvas.width/height always clears the bitmap, even with an unchanged
     * value, which left a blank IDE until the next click, so unchanged sizes are not assigned.
     */
+
+  /** Retina may pin CSS dimensions during initialization; the containing layout owns those dimensions. */
+  def releaseRetinaCssSize(canvas: Canvas): Unit = {
+    canvas.style.removeProperty("width")
+    canvas.style.removeProperty("height")
+  }
+
   def size(canvas: Canvas, config: SnapCodeEditorConfig): Boolean = {
     val parent = Option(canvas.parentElement)
     val parentWidth = parent.map(_.clientWidth).getOrElse(0)
     val parentHeight = parent.map(_.clientHeight).getOrElse(0)
     val width = math.max(1, if parentWidth > 0 then parentWidth else config.visuals.CanvasWidth)
     val height = math.max(1, if parentHeight > 0 then parentHeight else config.visuals.CanvasHeight)
-    val bitmapChanged = canvas.width != width || canvas.height != height
+    val bitmapChanged = CanvasSize.differs(canvas, width, height)
     if bitmapChanged then {
       canvas.width = width
       canvas.height = height
     }
+    releaseRetinaCssSize(canvas)
     // WorldMorph registers mouse/touch listeners synchronously in its constructor. Make this exact mounted canvas an
     // explicit input target; a second canvas would only copy pixels, not those listeners or the world behind them.
     canvas.tabIndex = 0

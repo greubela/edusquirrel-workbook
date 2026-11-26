@@ -48,8 +48,13 @@ final class JavaSource private[source] (val source: String) extends ParsedSource
         case conversion: ProgrammingConversionException => conversion
         case other => ProgrammingConversionException.unparsable(Option(other.getMessage).getOrElse(other.toString))
       }
-    } yield JavaProgramParsed(tree, program, bound._1, tree.functions.map(function =>
-      JavaFunctionParsed(function.structured, function.node, bound._2.get(SourceLines(source).span(function.node.range.start, function.node.range.end))))))
+    } yield {
+      val functions = tree.functions.map { function =>
+        val span = SourceLines(source).span(function.node.range.start, function.node.range.end)
+        JavaFunctionParsed(function.structured, function.node, bound._2.sourceFunctions.get(span))
+      }
+      JavaProgramParsed(tree, program, bound._1, functions, bound._2.sourceOrigins)
+    })
 }
 
 object JavaSource {

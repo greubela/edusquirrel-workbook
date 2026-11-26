@@ -13,35 +13,42 @@ import scala.collection.immutable.VectorMap
   */
 object StructuredProgramConversions {
   /** Classes hoisted out of a source (first definition per name) and the code that remains. */
-  final case class Parts(definedClasses: Map[BeEntityName, String], remaining: String)
+  final case class Parts(definedClasses: Map[BeEntityName, String], remaining: String,
+      prepared: Option[SourceTextWithOrigins] = None)
 
   private val logger = Logger.withNameAndPrefixes(Some("StructuredProgramConversions"))
   private val mainName = BeEntityName.fromCodeString("Main")
   private def join(parts: Iterable[String]): String = parts.filter(_.trim.nonEmpty).mkString("\n\n")
 
   private def hoist(source: String, blocks: Vector[(String, SourceSpan)], python: Boolean, warn: String => Unit): Parts = {
-    val classes = blocks.foldLeft(VectorMap.empty[BeEntityName, String]) { case (saved, (name, span)) =>
+    val original = SourceTextWithOrigins(source)
+    val classes = blocks.foldLeft(VectorMap.empty[BeEntityName, SourceTextWithOrigins]) { case (saved, (name, span)) =>
       val entity = BeEntityName.fromCodeString(name)
       if saved.keys.exists(_.universalInterpretation() == entity.universalInterpretation()) then {
         warn(s"Duplicate class '$name' ignored; keeping the first definition."); saved
       } else {
         val children = blocks.map(_._2).filter(child => child.start > span.start && child.end <= span.end)
-        val text = SourceText.remove(span.text(source), children.map(child => (child.start - span.start, child.end - span.start)))
-        saved.updated(entity, if python then repairEmptyBlocks(SourceText.dedent(text)) else text)
+        val text = original.slice(span.start, span.end).without(children.map(child => (child.start - span.start, child.end - span.start)))
+        saved.updated(entity, if python then repairEmptyBlocks(text.dedented) else text)
       }
     }
-    val remaining = SourceText.remove(source, blocks.map((_, span) => span.start -> span.end))
-    Parts(classes, if python then repairEmptyBlocks(remaining).trim else remaining.trim)
+    val rest = original.without(blocks.map((_, span) => span.start -> span.end))
+    val remaining = (if python then repairEmptyBlocks(rest) else rest).trimmed
+    val prepared = SourceTextWithOrigins.join((classes.values.toSeq :+ remaining).filter(_.text.nonEmpty), "\n\n")
+    Parts(VectorMap.from(classes.map((key, value) => key -> value.text)), remaining.text, Option.when(python)(prepared))
   }
 
-  /** A block header left without a body after hoisting receives `pass`. */
-  private def repairEmptyBlocks(source: String): String = {
-    val lines = SourceParsing.parse(source, SourceLanguage.Python).structured.lines
-    lines.zipWithIndex.flatMap { (line, index) =>
-      val text = line.span.text(source)
+  /** A block header left without a body after hoisting receives `pass`, anchored to that header. */
+  private def repairEmptyBlocks(source: SourceTextWithOrigins): SourceTextWithOrigins = {
+    val lines = SourceParsing.parse(source.text, SourceLanguage.Python).structured.lines
+    SourceTextWithOrigins.join(lines.zipWithIndex.flatMap { (line, index) =>
+      val text = source.slice(line.span.start, line.span.end)
       val next = lines.drop(index + 1).find(_.code.nonEmpty)
-      if line.opensBlock && next.forall(_.indent <= line.indent) then Vector(text, " " * (line.indent + 4) + "pass") else Vector(text)
-    }.mkString("\n")
+      if line.opensBlock && next.forall(_.indent <= line.indent) then {
+        val pass = " " * (line.indent + 4) + "pass"
+        Vector(text, SourceTextWithOrigins(pass, Vector.fill(pass.length)(text.offsets.lastOption.getOrElse(0))))
+      } else Vector(text)
+    }, "\n")
   }
 
   /** Java classes as entries; package and import declarations, and remaining comments, become the first class's preamble. */

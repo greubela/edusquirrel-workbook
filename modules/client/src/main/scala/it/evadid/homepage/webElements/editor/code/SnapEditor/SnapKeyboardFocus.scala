@@ -11,6 +11,7 @@ private[SnapEditor] object SnapKeyboardFocus {
     * Morphic's keyboard/IME event pipeline.
     */
   def keepInEditor(world: WorldMorph, canvas: Canvas): Unit = {
+    SnapKeyboardHandlerPosition.install()
     Option(canvas.parentElement).foreach(_.appendChild(world.keyboardHandler))
     world.keyboardHandler.setAttribute("aria-hidden", "true")
     world.keyboardHandler.tabIndex = -1

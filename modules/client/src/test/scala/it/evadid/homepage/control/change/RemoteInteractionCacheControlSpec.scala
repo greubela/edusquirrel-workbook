@@ -34,6 +34,7 @@ import scala.scalajs.js
 import scala.scalajs.js.JSConverters.*
 import upickle.default.*
 import java.time.LocalDateTime
+import org.scalajs.dom
 
 /** Exercise the real controller, shared buffers and HTTP adapter together. */
 class RemoteInteractionCacheControlSpec extends EditorDomSuite {
@@ -274,6 +275,28 @@ class RemoteInteractionCacheControlSpec extends EditorDomSuite {
       }
     }
   }
+
+  /** Each event as a closing page fires it: `visibilitychange` at the document, bubbling to the window, then `pagehide`. */
+  for (target, kind) <- List((() => dom.document, "visibilitychange"), (() => dom.window, "pagehide")) do
+    test(s"$kind sends edits at once whose stores are only scheduled and buffered") {
+      val fixture = new Fixture
+      fixture.withHttp {
+        fixture.info.syncControl.ensureSynced().flatMap(_ => settled(fixture)).flatMap { _ =>
+          val written = Promise[Unit]()
+          fixture.afterStore.set(() => written.trySuccess(()))
+          fixture.elements.foreach(element => element.interactionVariable.setStateFromUserInteraction(
+            s"typed before $kind", UpdateImportance.MAJOR, context = fixture.info.workbookContextInformation))
+          // The buffered destinations would hold these writes for 30 seconds.
+          target().dispatchEvent(js.Dynamic.newInstance(EditorDomSuite.window.Event)(kind,
+            js.Dynamic.literal(bubbles = true)).asInstanceOf[dom.Event])
+          written.future.map { _ =>
+            val writes = fixture.requests.now().filter(_.name == bulkStoreToDbCommand.name)
+              .map(command => read[BulkStoreToDbRequest](command.json))
+            assert(writes.exists(_.histories.exists(_.typedAs(TextInteractionFormat).allStates.exists(_.newState == s"typed before $kind"))))
+          }
+        }
+      }
+    }
 
   test("a failed catalogue reset does not leave the next user paused") {
     val fixture = new Fixture

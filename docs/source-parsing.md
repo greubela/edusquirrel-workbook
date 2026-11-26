@@ -43,7 +43,8 @@ edits one Java method at a time on these declarations for the Java editors.
 Function definitions carry source spans into binding; the binder returns their exact
 source-to-definition associations. Diagnostics retain those same occurrences. Python's
 normalization maps tabs, dedenting and line endings back to original UTF-16 offsets;
-positions are never recovered by searching for source fragments.
+positions are never recovered by searching for source fragments. Bound placeholders
+retain their syntax identity; preparation carries offsets through class hoisting.
 
 Tests: `SourceBindingSpec`, `LocatedSourceWarningsSpec`, `JavaStructuredSpec`, `PythonStructuredSpec`, `SnapSourceSpec` and
 `SourceParsingSpec`. See [programming conversions](programming-conversions.md)

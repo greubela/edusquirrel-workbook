@@ -86,5 +86,20 @@
   "javaInitializer": "Anfangswert",
   "javaAssignFields": "Vorhandene Attribute aus Parametern zuweisen",
   "javaFieldExists": "Ein Attribut mit diesem Namen existiert bereits.",
-  "javaDelete": "Löschen"
+  "javaDelete": "Löschen",
+  "pythonEditorTitle": "Python-Editor",
+  "pythonModes": "Bearbeitungsmodi",
+  "pythonModeClass": "Klassenmodus",
+  "pythonModeFunction": "Funktionsmodus",
+  "pythonModeFull": "Gesamtmodus",
+  "pythonAddClass": "Klasse hinzufügen",
+  "pythonAddFunction": "Funktion hinzufügen",
+  "pythonAddAttribute": "Attribut hinzufügen",
+  "pythonAddConstructor": "Konstruktor hinzufügen",
+  "pythonName": "Name",
+  "pythonParameters": "Parameter (zum Beispiel: anzahl: int)",
+  "pythonType": "Typ (optional)",
+  "pythonInitializer": "Anfangswert",
+  "pythonStatic": "Statische Methode",
+  "pythonInvalidDeclaration": "Die Deklaration ist ungültig oder ihr Name wird bereits verwendet."
 }

@@ -5,7 +5,8 @@ import it.evadid.vm.conversion.ConversionInfo
 import it.evadid.util.logging.LoggingLevel
 
 /** One source preparation shared by parsing and conversion diagnostics: classes hoisted before module code. */
-case class PreparedProgramSource(code: String, diagnostics: Seq[ConversionInfo])
+case class PreparedProgramSource(code: String, diagnostics: Seq[ConversionInfo],
+    origins: Option[it.evadid.vm.parsing.source.SourceTextWithOrigins] = None)
 object PreparedProgramSource {
   def apply(code: String, language: ProgrammingLanguage): PreparedProgramSource = {
     val warnings = Vector.newBuilder[ConversionInfo]
@@ -18,6 +19,6 @@ object PreparedProgramSource {
       case Java => StructuredProgramConversions.javaParts(code, warn)
       case _ => return PreparedProgramSource(code, Seq.empty)
     }
-    PreparedProgramSource((parts.definedClasses.values.toSeq :+ parts.remaining).filter(_.nonEmpty).mkString("\n\n"), warnings.result())
+    PreparedProgramSource((parts.definedClasses.values.toSeq :+ parts.remaining).filter(_.nonEmpty).mkString("\n\n"), warnings.result(), parts.prepared)
   }
 }

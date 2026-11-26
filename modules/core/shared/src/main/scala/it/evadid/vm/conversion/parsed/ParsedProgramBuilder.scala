@@ -14,6 +14,7 @@ import it.evadid.vm.conversion.parsed.ParsedStatement as S
 import it.evadid.vm.conversion.dependencies.ProgrammingEnvironment
 import it.evadid.vm.conversion.parsed.SymbolTable.{CurrentlyKnownStructures, ParseContext}
 import it.evadid.vm.conversion.parsed.SymbolTable
+import it.evadid.vm.parsing.source.{SourceIdentity, SourceSpan}
 import it.evadid.vm.naming.BeEntityName
 import it.evadid.vm.types.{BeDataType, BeDataValueLiteral, BeDataValueUnit, BeUseValueReference}
 import it.evadid.vm.types.BeDataType.BeUnionAllowedTypes
@@ -26,12 +27,19 @@ import it.evadid.vm.types.BeDataType.BeUnionAllowedTypes
   */
 final class ParsedProgramBuilder(language: ProgrammingLanguage, environment: ProgrammingEnvironment = ProgrammingEnvironment.all) {
 
-  final case class Result(expression: BeSequence, context: ParseContext,
-      sourceFunctions: Map[it.evadid.vm.parsing.source.SourceSpan, BeDefineFunction])
+  import ParsedProgramBuilder.Result
 
   private val sourceFunctions = scala.collection.mutable.Map.empty[it.evadid.vm.parsing.source.SourceSpan, BeDefineFunction]
 
+  private val sourceOrigins = scala.collection.mutable.Map.empty[SourceIdentity[BeExpression], SourceSpan]
+
+  private def located(value: BeExpression, origin: Option[SourceSpan]): BeExpression = {
+    origin.foreach(sourceOrigins.update(SourceIdentity(value), _))
+    value
+  }
+
   def build(source: ParsedProgram): Result = {
+    sourceOrigins.clear()
     sourceFunctions.clear()
     val program = ParsedTypeInference.infer(source)
     val context = new ParseContext(CurrentlyKnownStructures.fromKnown(environment.knownStructures), environment = environment)
@@ -42,7 +50,7 @@ final class ParsedProgramBuilder(language: ProgrammingLanguage, environment: Pro
       context.registerClass(definition.name, classSignatures(definition, context))
     }
     val expression = BeSequence.optionalBody(block(program.statements, context))
-    Result(expression, context, sourceFunctions.toMap)
+    Result(expression, context, sourceFunctions.toMap, sourceOrigins.toMap)
   }
 
   private def keep(expression: BeExpression): Boolean = expression match {
@@ -93,8 +101,8 @@ final class ParsedProgramBuilder(language: ProgrammingLanguage, environment: Pro
     case S.Evaluate(value) => expression(value, context)
     case S.Comment(text) => BeSingleLineComment(LanguageMap.universalMap(text))
     case S.Pass => BeExpression.pass
-    case value: S.Unsupported if value.unparsable => BeExpressionUnparsable(value.source, value.reason, Some(language))
-    case value: S.Unsupported => BeExpressionUnsupported(value.source, Some(language), value.reason)
+    case value: S.Unsupported if value.unparsable => located(BeExpressionUnparsable(value.source, value.reason, Some(language)), value.origin)
+    case value: S.Unsupported => located(BeExpressionUnsupported(value.source, Some(language), value.reason), value.origin)
   }
 
   private def buildFunction(definition: S.FunctionDef, context: ParseContext): BeDefineFunction = {
@@ -198,7 +206,7 @@ final class ParsedProgramBuilder(language: ProgrammingLanguage, environment: Pro
       val owner = context.lookupClass(className)
         .getOrElse(throw IllegalArgumentException(s"Cannot convert construction of unknown class '$className'."))
       bind(className, BeCallTarget.Constructor(constructor(owner)), arguments.map(expression(_, context)).toList)
-    case value: E.Unsupported => BeExpressionUnsupported(value.source, Some(language))
+    case value: E.Unsupported => located(BeExpressionUnsupported(value.source, Some(language)), value.origin)
   }
 
   /** An assignment to an attribute nothing defines (`Config.limit = 3`) keeps its source, like a read of one;
@@ -286,4 +294,9 @@ final class ParsedProgramBuilder(language: ProgrammingLanguage, environment: Pro
   }
 
   private def dataType(parsed: Option[ParsedType]): BeDataType = parsed.map(dataType).getOrElse(BeDataType.AnyType)
+}
+
+object ParsedProgramBuilder {
+  final case class Result(expression: BeSequence, context: ParseContext,
+      sourceFunctions: Map[SourceSpan, BeDefineFunction], sourceOrigins: Map[SourceIdentity[BeExpression], SourceSpan])
 }

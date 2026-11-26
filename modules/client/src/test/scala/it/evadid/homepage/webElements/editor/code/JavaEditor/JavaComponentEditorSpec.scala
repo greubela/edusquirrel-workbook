@@ -273,12 +273,13 @@ class JavaComponentEditorSpec extends UiDomSuite {
     val state = Var[ProgrammingState](ProgrammingStateJavaStructured("class Main { static void main(String[] args) { forward(10); } }"))
     val config = CodeMirrorEditorConfig.Default
     val eva = EvaEditor(state, Var(EvaEditorConfig(enabledLanguages = List(Java, Python))), EvaTestContext.environment(evaLabels),
-      Some(List(JavaComponentEditor.forEvaTab(config), CodeMirrorEditor.pythonEditorForEva(config))))
+      Some(List(JavaComponentEditor.forEvaTab(config), it.evadid.homepage.webElements.editor.code.PythonEditor.PythonComponentEditor.forEvaTab(config))))
     val close = mount(eva.getDomElement())
     eva.setActiveTab(Python).flatMap { _ =>
       assert(state.now().isInstanceOf[ProgrammingStatePythonStructured])
       typeInto(textarea, textarea.value.replace("forward(10)", "forward(35)"))
-      eva.setActiveTab(Java)
+      eventually(state.now().toPython.code.contains("forward(35)"), "the Python method edit reached the answer")
+        .flatMap(_ => eva.setActiveTab(Java))
     }.map { _ =>
       assert(state.now().isInstanceOf[ProgrammingStateJavaStructured])
       assert(textarea.value.contains("forward(35)"), textarea.value)

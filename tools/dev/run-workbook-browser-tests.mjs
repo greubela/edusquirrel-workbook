@@ -26,7 +26,8 @@ const exports = {
   '@codemirror/view': 'EditorView Decoration keymap drawSelection highlightActiveLine lineNumbers highlightActiveLineGutter ViewPlugin GutterMarker gutter',
   '@codemirror/commands': 'defaultKeymap history historyKeymap indentLess indentMore invertedEffects',
   '@codemirror/language': 'bracketMatching foldGutter foldKeymap indentUnit indentOnInput syntaxHighlighting defaultHighlightStyle syntaxTree',
-  '@codemirror/search': 'highlightSelectionMatches searchKeymap', '@codemirror/lang-python': 'python',
+  '@codemirror/search': 'highlightSelectionMatches searchKeymap',
+  '@codemirror/autocomplete': 'closeBrackets closeBracketsKeymap', '@codemirror/lang-python': 'python',
   '@codemirror/lang-sql': 'sql MySQL', '@codemirror/lang-cpp': 'cpp', '@codemirror/lang-java': 'java',
   '@codemirror/theme-one-dark': 'oneDark', '@replit/codemirror-indentation-markers': 'indentationMarkers'
 };

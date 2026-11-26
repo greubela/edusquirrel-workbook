@@ -32,10 +32,10 @@ object JavaToExpression {
     * placeholders, as in Python; conversion to another language reports them with their position
     * ([[it.evadid.vm.conversion.ProgrammingStateDerivations]]). A statement the grammar kept unreadable is refused.
     */
-  def convert(syntax: JavaSyntax, neutral: ParsedProgram, environment: ProgrammingEnvironment): (ProgrammingStateBeExpression, Map[it.evadid.vm.parsing.source.SourceSpan, it.evadid.vm.code.defining.BeDefineFunction]) = {
+  def convert(syntax: JavaSyntax, neutral: ParsedProgram, environment: ProgrammingEnvironment): (ProgrammingStateBeExpression, ParsedProgramBuilder.Result) = {
     syntax.readable.left.foreach(error => throw error)
     val built = ParsedProgramBuilder(Java, environment).build(neutral)
-    ProgrammingStateBeExpression(BeStartProgram(built.expression)) -> built.sourceFunctions
+    ProgrammingStateBeExpression(BeStartProgram(built.expression)) -> built
   }
 
   /** The language-neutral program of the step-2 syntax tree. */

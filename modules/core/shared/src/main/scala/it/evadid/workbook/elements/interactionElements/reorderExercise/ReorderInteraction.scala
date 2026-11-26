@@ -30,6 +30,10 @@ object ReorderInteraction {
 
     override val defaultValue = ReorderInteractionState.initStateFromElementsAndSeed(lines, seed, ReorderType.CODELINES(programmingLanguage))
 
+    /** Indices of the lines to move, see [[ReorderGrading.misplaced]]. */
+    override def wrongParts(state: ReorderInteractionState[String]): Set[Int] =
+      ReorderGrading.misplaced(state.sanitizedCurrentOrder, orderConstraints)
+
     override lazy val childrenOfThisElement: Seq[WorkbookElement] = List()
 
    }
@@ -71,6 +75,10 @@ object ReorderInteraction {
         "Stored reorder content does not match the exercise")
 
     override val defaultValue = ReorderInteractionState.initStateFromElementsAndSeed(ids, seed,ReorderType.LANGUAGE_MAP_IDS)
+
+    /** Indices of the items to move, see [[ReorderGrading.misplaced]]. */
+    override def wrongParts(state: ReorderInteractionState[LanguageMapContentId]): Set[Int] =
+      ReorderGrading.misplaced(state.sanitizedCurrentOrder, Seq.empty)
 
     override lazy val childrenOfThisElement: Seq[WorkbookElement] = List()
 

@@ -27,7 +27,7 @@ case class BeExpressionToPythonString
     else super.callName(call)
   override protected def functionDeclaration(function: BeDefineFunction, parameters: String, outputType: String): String =
     function.functionTypeInfo.funcType match {
-      case BeDefineFunction.Constructor() => s"def __init__$parameters -> None:"
+      case BeDefineFunction.Constructor() => s"def __init__$parameters:"
       case BeDefineFunction.StaticMethod() => "@staticmethod\n" + super.functionDeclaration(function, parameters, outputType)
       case _ => super.functionDeclaration(function, parameters, outputType)
     }
@@ -134,9 +134,10 @@ case class BeExpressionToPythonString
   override protected def defineClassLine(nameStr: String): String =
     s"class $nameStr:"
 
-  override protected def defineFunctionLine(nameStr: String, parStr: String, outputTypeStr: String): String = {
-    s"def $nameStr$parStr -> $outputTypeStr:"
-  }
+  /** Functions without a result read as void when parsed back, so they need no `-> None`. */
+  override protected def defineFunctionLine(nameStr: String, parStr: String, outputTypeStr: String): String =
+    if outputTypeStr == BeExpressionToPythonString.noResult then s"def $nameStr$parStr:"
+    else s"def $nameStr$parStr -> $outputTypeStr:"
 
   override protected def formatFunctionParameters(inputs: List[BeDefineVariable]): String =
     inputs.map(variable =>
@@ -162,11 +163,14 @@ case class BeExpressionToPythonString
     }
   }
 
-  override protected def emptyFunctionBody: String = "pass"
+  override protected def emptyBody: String = "pass"
 
 }
 
 object BeExpressionToPythonString {
   /** Canonical turtle names that Python's standard `turtle` module spells differently. */
   private[expressionpython] val standardTurtleNames: Map[String, String] = Map("pen_up" -> "penup", "pen_down" -> "pendown")
+
+  /** How the printer spells a missing result type. */
+  private val noResult: String = it.evadid.vm.types.BeDataType.Unit.formatTypeForDisplay.getInLanguage(Python)
 }

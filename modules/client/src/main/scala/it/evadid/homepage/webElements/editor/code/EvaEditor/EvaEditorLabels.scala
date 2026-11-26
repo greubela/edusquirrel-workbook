@@ -16,6 +16,7 @@ final case class EvaEditorLabels(
     execution: ProgrammingExecutionLabels,
     sourceWarnings: SourceWarningLabels,
     blocks: BlockEditorLabels,
+    python: it.evadid.homepage.webElements.editor.code.PythonEditor.PythonEditorLabels,
     java: JavaEditorLabels
 )
 
@@ -31,6 +32,7 @@ object EvaEditorLabels {
     execution = ProgrammingExecutionLabels.fromContent(text),
     sourceWarnings = SourceWarningLabels(key => text(LanguageMapContentId("blockeditor", key))),
     blocks = BlockEditorLabels.fromContent(text),
+    python = new it.evadid.homepage.webElements.editor.code.PythonEditor.PythonEditorLabels(text),
     java = JavaEditorLabels.fromContent(text)
   )
 }

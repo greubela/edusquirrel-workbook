@@ -12,20 +12,22 @@ import org.scalajs.dom
 object HtmlReorderInteractionRenderer extends LineBasedRenderingFactory[ReorderInteraction.ReorderCodeInteraction | ReorderInteraction.ReorderMapIdInteraction] {
   override protected def createRendering(reorder: ReorderInteraction.ReorderCodeInteraction | ReorderInteraction.ReorderMapIdInteraction): AtomarLineRendering = {
     val disabled = reorder.isDisabledState.toAirstreamVar
+    // Items that a failed check found misplaced are marked until the answer changes.
+    val wrong = fullInfo.signals.reportersFor(reorder).grading.checks.map(_.wrongParts).distinct
     val dom = reorder match {
       case exercise: ReorderInteraction.ReorderCodeInteraction =>
-        renderReorder(exercise.interactionVariable.createBoundVarWithUpdateImportance(MAJOR, fullInfo.workbookContextInformation), disabled,
+        renderReorder(exercise.interactionVariable.createBoundVarWithUpdateImportance(MAJOR, fullInfo.workbookContextInformation), disabled, wrong,
           (state, index) => div(cls := "reorder-item-content", pre(code(state.elements(index))),
             exercise.hints.lift(index).map(id => span(cls := "reorder-item-hint", text <-- laminarHelper.plaintextStringSignal(id)))),
           "reorder-item--code")
       case exercise: ReorderInteraction.ReorderMapIdInteraction =>
-        renderReorder(exercise.interactionVariable.createBoundVarWithUpdateImportance(MAJOR, fullInfo.workbookContextInformation), disabled,
+        renderReorder(exercise.interactionVariable.createBoundVarWithUpdateImportance(MAJOR, fullInfo.workbookContextInformation), disabled, wrong,
           (state, index) => span(text <-- laminarHelper.plaintextStringSignal(state.elements(index))), "")
     }
     AtomarLineRendering.basicLine(reorder, dom)
   }
 
-  private def renderReorder[T](state: Var[ReorderInteractionState[T]], disabled: Var[Boolean],
+  private def renderReorder[T](state: Var[ReorderInteractionState[T]], disabled: Var[Boolean], wrong: Signal[Set[Int]],
       content: (ReorderInteractionState[T], Int) => Element, itemCss: String): Element = {
     val dragging = Var(Option.empty[Int])
     val hover = Var(Option.empty[Int])
@@ -53,6 +55,7 @@ object HtmlReorderInteractionRenderer extends LineBasedRenderingFactory[ReorderI
           val items = answer.currentOrder.map { index => div(
             cls := s"reorder-item $itemCss",
             cls("reorder-item--dragging") <-- dragging.signal.map(_.contains(index)),
+            cls("answer-part--wrong") <-- wrong.map(_.contains(index)),
             draggable <-- disabled.signal.map(!_),
             onDragStart --> { event => if disabled.now() then event.preventDefault() else dragging.set(Some(index)) },
             onDragEnd --> (_ => { dragging.set(None); hover.set(None) }),

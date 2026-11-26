@@ -55,11 +55,15 @@ case class CreateMonksWorkbook(override val fullInfo: FullInfo) extends Workbook
         Some(scene.copyright)
       ) :: (scene.notice.toList ++ scene.lines).map(line => instructionMarkdown(key(line))))
 
+  /** Picture followed by its caption, which says what the picture shows. The image renderer does not display the
+   * description itself, so the caption is added as text below the picture. */
+  private def figure(id: String, fileKey: String, captionKey: String, copyright: CopyrightInfo): List[WorkbookElement] =
+    List(LanguageMapBasedWorkbookImageElement(id, lm(fileKey), TypeOfTextDisplay.URL_RELATIVE_TO_WORKBOOK_RESOURCES,
+      Some(lm(captionKey)), Some(copyright)), text(captionKey))
+
   /** Static picture of the Koch curve of the given depth, with its caption. */
-  private def kochImage(depth: Int): WorkbookDisplayElement =
-    LanguageMapBasedWorkbookImageElement("monks-image-koch-" + depth, lm("filekoch" + depth),
-      TypeOfTextDisplay.URL_RELATIVE_TO_WORKBOOK_RESOURCES, Some(lm("kochcaption" + depth)),
-      Some(CopyrightInfo.plattformCopyrightInfo()))
+  private def kochFigure(depth: Int): List[WorkbookElement] =
+    figure("monks-image-koch-" + depth, "filekoch" + depth, "kochcaption" + depth, CopyrightInfo.plattformCopyrightInfo())
 
   // ---- task builders: the task `id` determines the container title and all language-map keys
 
@@ -104,12 +108,12 @@ case class CreateMonksWorkbook(override val fullInfo: FullInfo) extends Workbook
   private def reorder(id: String, itemCount: Int): ReorderMapIdInteraction =
     ReorderMapIdInteraction("monks-" + id, List.tabulate(itemCount)(i => lm(s"$id-item$i")), seed = id.hashCode.toLong)
 
-  /** Editor task: prompt and a Java turtle editor whose drawing is compared with the sample solution.
-   * `lead` is shown before the prompt, `extra` after the editor. */
-  private def editorTask(id: String, extra: List[WorkbookElement] = Nil, lead: List[WorkbookElement] = Nil): WorkbookElement =
+  /** Editor task: prompt and a Java turtle editor whose drawing is compared with the sample solution. The prompt is
+   * also shown in the editor's side panel. `lead` is shown before the prompt. */
+  private def editorTask(id: String, lead: List[WorkbookElement] = Nil): WorkbookElement =
     task(id, lead ++ List(prompt(id),
       TurtleRecreateShapeInteraction("monks-" + id, ProgrammingStateJavaStructured(EditorCode(id)), editorTarget(id),
-        customExerciseConfig = Some(EditorConfig))) ++ extra)
+        customExerciseConfig = Some(EditorConfig), instructionText = Some(lm(id + "prompt")))))
 
   // Building once makes IDs and state references stable across createWorkbook/createEverything calls.
   override lazy val createWorkbook: Workbook = workbook(
@@ -132,10 +136,8 @@ case class CreateMonksWorkbook(override val fullInfo: FullInfo) extends Workbook
           List("abort", "simplify", "call", "combine", "first", "none"),
           List("simplify", "call", "abort", "combine", "first")))),
         // The call stack figure introduces `sortieren` before the gap task; the check question makes sure it is read.
-        task("stack", List(text("stack-intro"),
-          LanguageMapBasedWorkbookImageElement("monks-image-callstack", lm("filecallstack"),
-            TypeOfTextDisplay.URL_RELATIVE_TO_WORKBOOK_RESOURCES, Some(lm("stack-caption")), Some(FigureCopyright)),
-          choice("stack", List(0, 2), 4, multiple = true))),
+        task("stack", text("stack-intro") :: figure("monks-image-callstack", "filecallstack", "stack-caption", FigureCopyright) ++
+          List(choice("stack", List(0, 2), 4, multiple = true))),
         // The story as code: one method with four gaps, one question per gap.
         task("ac", List(text("ac-intro"), text("ac-code"),
           choice("ac-1", List(0), 3), choice("ac-2", List(1), 3), choice("ac-3", List(2), 3), choice("ac-4", List(1), 3))),
@@ -186,20 +188,19 @@ case class CreateMonksWorkbook(override val fullInfo: FullInfo) extends Workbook
         summary("partd-summary"))),
 
       // Final task: the Koch curve. The introduction explains the figure only; decomposition, angles and the
-      // method's contract are left to the tasks and to the hints, so the support fades compared to section 4.
+      // method's contract are left to the tasks, so the support fades compared to section 4.
+      // Each depth is explained first and then shown in a captioned picture.
       section("monks-koch", key("kochtitle"), List(
-        container(key("kochintroductioncont"), List(
-          text("kochintroduction"),
-          kochImage(1), text("kochexplain1"),
-          kochImage(2), text("kochexplain2"))),
+        container(key("kochintroductioncont"), text("kochintroduction") ::
+          (0 to 2).toList.flatMap(depth => text("kochexplain" + depth) :: kochFigure(depth))),
         task("k1", List(
           table("k1", List("k1-col0", "k1-col1"),
             List(List("1", "270"), List("4", "90"), List("16", "30"), List("64", "10")), "k1-rowheader"),
           choice("k1b", List(0), 4))),
-        editorTask("k2", (1 to 3).toList.map(i => instructionCollapsibleHint(key(s"k2-hint${i}title"), key(s"k2-hint$i")))),
+        editorTask("k2"),
         task("k3", List(choice("k3a", List(1), 4), choice("k3b", List(0, 1), 5, multiple = true))),
         editorTask("k4"),
-        task("k5", List(singleColumn("k5", List("6", "21", "85", "64")), text("k5outro"))))),
+        task("k5", List(singleColumn("k5", List("6", "21", "85", "64")))))),
       section("finishTitle", key("finishTitle"), List[WorkbookElement](
         text("finish"),
         // Optional survey. Consent is opt-in: the checkbox starts unchecked.
@@ -219,8 +220,8 @@ case class CreateMonksWorkbook(override val fullInfo: FullInfo) extends Workbook
 }
 
 object CreateMonksWorkbook {
-  /** Python is hidden in this workbook for now; learners work in Snap! or Java. */
-  val EditorLanguages: List[AppLanguage.ProgrammingLanguage] = List(AppLanguage.SnapLanguage, AppLanguage.Java)
+  /** Learners work in Snap!, Python or Java. */
+  val EditorLanguages: List[AppLanguage.ProgrammingLanguage] = List(AppLanguage.SnapLanguage, AppLanguage.Python, AppLanguage.Java)
 
   val EditorConfig: RecreateTurtleDidacticConfig = RecreateTurtleDidacticConfig.defaultForPalette(ProgrammingEditorPalette.PythonCompatibleSnap)
     .copy(restrictEditorToLanguages = EditorLanguages)
@@ -238,7 +239,7 @@ object CreateMonksWorkbook {
   /** Figures drawn for this workbook, such as the call stack in task 1.5(`tools/dev/monks-callstack-figure.py`). */
   val FigureCopyright: CopyrightInfo = CopyrightInfo(CopyrightInfo.CC_LICENCE, CopyrightInfo.AuthorNameInfo("André Greubel"))
 
-  /** The theater images are Minecraft screenshots whose author is unknown. */
+  /** The theater and tower images are Minecraft screenshots whose author is unknown. */
   val ScreenshotCopyright: CopyrightInfo = CopyrightInfo(CopyrightInfo.UnknownLicence, CopyrightInfo.UnknownAuthorInfo())
 
   val theaterScenes: List[Scene] = List(
@@ -261,12 +262,13 @@ object CreateMonksWorkbook {
     .map(_.copy(copyright = ScreenshotCopyright))
 
   val countingScenes: List[Scene] = List(
-    Scene("family", "filebeatfamilychildquestion", List("familydialogue", "family-father-replydialogue",
+    Scene("family", "filetower01", List("familydialogue", "family-father-replydialogue",
       "family-child-questiondialogue")),
-    Scene("count-red", "filebeatcounttally", List("count-explanationdialogue", "narr-count-red")),
-    Scene("count-yellow", "filebeatcounttallytwo", List("narr-count-yellow")),
-    Scene("count-blue", "filebeatcountempty", List("narr-count-blue", "count-resultdialogue", "count-brokendialogue",
+    Scene("count-red", "filetower02", List("count-explanationdialogue", "narr-count-red")),
+    Scene("count-yellow", "filetower03", List("narr-count-yellow")),
+    Scene("count-blue", "filetower04", List("narr-count-blue", "count-resultdialogue", "count-brokendialogue",
       "count-rememberdialogue", "narr-count-rebuild", "count-grandmadialogue")))
+    .map(_.copy(copyright = ScreenshotCopyright))
 
   /** Java starting code of the editor tasks E1–E6. Section 3 lets the learner write the building-brick methods
    * `stein`, `hoch`, `runter` and `springe`; from E4 on they are prefilled ([[EditorCode.helpers]]).

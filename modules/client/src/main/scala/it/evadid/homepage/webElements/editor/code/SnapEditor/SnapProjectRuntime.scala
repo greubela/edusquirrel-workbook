@@ -117,7 +117,7 @@ private[SnapEditor] object SnapProjectRuntime:
     * a scene replaced SpriteMorph.prototype.blocks), restore the full table.
     */
   def layoutEditor(world: WorldMorph, ide: IDEMorph, canvas: Canvas): Unit =
-    world.setExtent(new SnapPoint(canvas.width.toDouble, canvas.height.toDouble))
+    world.setExtent(new SnapPoint(CanvasSize.width(canvas), CanvasSize.height(canvas)))
     ide.setExtent(world.extent())
     ide.fixLayout()
     // Canvas bitmap clears on width/height assignment; damage the full world so

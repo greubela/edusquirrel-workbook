@@ -13,7 +13,7 @@ import it.evadid.workbook.elements.interactionElements.programming.state.Program
   * built from it, and each structured function with its syntax node and the definition the expression tree holds for it.
   */
 final case class JavaProgramParsed(syntax: JavaSyntax, neutral: ParsedProgram, expression: ProgrammingStateBeExpression,
-    functions: Vector[JavaFunctionParsed]) {
+    functions: Vector[JavaFunctionParsed], sourceOrigins: Map[SourceIdentity[BeExpression], SourceSpan]) {
   def structured: JavaSourceStructured = syntax.structured
 }
 

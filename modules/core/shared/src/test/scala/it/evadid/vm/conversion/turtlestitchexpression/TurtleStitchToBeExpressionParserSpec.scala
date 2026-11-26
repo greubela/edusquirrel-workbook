@@ -309,7 +309,7 @@ class TurtleStitchToBeExpressionParserSpec extends FunSuite {
       """<project><scenes select="1"><scene><blocks><block-definition s="square %n" type="command" category="Variables"><inputs><input type="%n" name="n">n</input></inputs><script><block s="forward"><block var="n"/></block><block s="turn"><l>90</l></block></script></block-definition></blocks><stage><sprites select="1"><sprite><scripts><script><block s="receiveGo"></block><custom-block s="square %n"><l>50</l></custom-block></script></scripts></sprite></sprites></stage></scene></scenes></project>"""
     val parsed = TurtleStitchToBeExpressionParser.parseProjectWithLayout(SourceParsing.parse(xml, SourceLanguage.Snap).project.toTry.get)
     val python = ExpressionToPython.printedPython(parsed.expression)
-    assert(python.contains("def square(n: float) -> None:"), clue = python)
+    assert(python.contains("def square(n: float):"), clue = python)
     assert(python.contains("forward(n)"), clue = python)
     assert(python.contains("turtle.right(90)"), clue = python)
     assert(python.contains("square(50)"), clue = python)
@@ -320,7 +320,7 @@ class TurtleStitchToBeExpressionParserSpec extends FunSuite {
       """<project><scenes select="1"><scene><blocks><block-definition s="square %size" type="command" category="Variables"><inputs><input type="%n"></input></inputs><script><block s="forward"><block var="size"/></block></script></block-definition></blocks><stage><sprites select="1"><sprite><scripts><script><block s="receiveGo"></block><custom-block s="square %n"><l>50</l></custom-block></script></scripts></sprite></sprites></stage></scene></scenes></project>"""
     val parsed = TurtleStitchToBeExpressionParser.parseProjectWithLayout(SourceParsing.parse(xml, SourceLanguage.Snap).project.toTry.get)
     val python = ExpressionToPython.printedPython(parsed.expression)
-    assert(python.contains("def square(size: float) -> None:"), clue = python)
+    assert(python.contains("def square(size: float):"), clue = python)
     assert(python.contains("forward(size)"), clue = python)
     assert(python.contains("square(50)"), clue = python)
     assertEquals(python.split("def square").length - 1, 1, clue = python)
@@ -406,7 +406,7 @@ class TurtleStitchToBeExpressionParserSpec extends FunSuite {
 
     val parsed = TurtleStitchToBeExpressionParser.parseProjectWithLayout(SourceParsing.parse(xml, SourceLanguage.Snap).project.toTry.get)
     val python = ExpressionToPython.printedPython(parsed.expression)
-    assert(python.contains("def draw_square(size: Any) -> None:"), clue = python)
+    assert(python.contains("def draw_square(size: Any):"), clue = python)
     assert(python.contains("forward(size)"), clue = python)
     assert(python.contains("draw_square(10)"), clue = python)
 
@@ -448,8 +448,8 @@ after.element.element.named("comment").headOption.map(_.element.toXml),
 
     val parsed = TurtleStitchToBeExpressionParser.parseProjectWithLayout(SourceParsing.parse(xml, SourceLanguage.Snap).project.toTry.get)
     val python = ExpressionToPython.printedPython(parsed.expression)
-    assert(python.contains("def draw_square(size: float) -> None:"), clue = python)
-    assert(python.contains("def draw_circle(radius: float) -> None:"), clue = python)
+    assert(python.contains("def draw_square(size: float):"), clue = python)
+    assert(python.contains("def draw_circle(radius: float):"), clue = python)
     assert(python.contains("draw_square(10)"), clue = python)
     assert(python.contains("draw_circle(20)"), clue = python)
 

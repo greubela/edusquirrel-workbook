@@ -165,10 +165,13 @@
   "sortStepStats": "{swaps} swaps · {sets} assignments · {reads} reads",
   "sortTestList": "Sorts {list}",
   "DrawTitle": "Drawing",
-  "matchingHint": "Drag from an item on the left to the matching item on the right. Or click the left item first and then the right one.",
+  "matchingHint": "Drag an item to the matching item on the other side. Or click an item first and then the matching one on the other side.",
   "matchingRemove": "Remove connection",
   "matchingConnectedTo": "connected to",
   "gradingMatchingDescription": "Check the connections",
   "gradingMatchingCount": "{correct} of {total} connections are correct.",
-  "likertClear": "Clear selection"
+  "likertClear": "Clear selection",
+  "gradingAttempt": "attempt",
+  "gradingAttempts": "attempts",
+  "gradingAttemptsTooltip": "Solved. Checked answers until the correct solution: {count}"
 }

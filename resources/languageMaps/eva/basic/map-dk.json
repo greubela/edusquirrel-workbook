@@ -170,5 +170,8 @@
   "matchingConnectedTo": "forbundet med",
   "gradingMatchingDescription": "Kontrollér forbindelserne",
   "gradingMatchingCount": "{correct} af {total} forbindelser er korrekte.",
-  "likertClear": "Ryd valg"
+  "likertClear": "Ryd valg",
+  "gradingAttempt": "forsøg",
+  "gradingAttempts": "forsøg",
+  "gradingAttemptsTooltip": "Løst. Kontrollerede svar indtil den korrekte løsning: {count}"
 }
