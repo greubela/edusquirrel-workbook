@@ -135,7 +135,7 @@ class SystematicDerivedCodecSpec extends FunSuite {
     roundTrip(state)
   }
   test("protocol request records expose their own derived codec") {
-    roundTrip(SendMailRequest("a@example.com", "学校", "body\nline two"))
+    roundTrip(SendMailRequest("a@example.com", "学校", "body\nline two", Nil))
   }
   test("derived workbook containers resolve nested registered element interfaces") {
     val panel = TwoColumnPanel("panel", TextInteraction("left"), TextInteraction("right"))

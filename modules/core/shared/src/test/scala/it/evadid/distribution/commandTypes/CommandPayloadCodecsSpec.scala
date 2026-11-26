@@ -380,39 +380,59 @@ class CommandPayloadCodecsSpec extends FunSuite {
     assertEquals(attachment.description.mediaType, None)
     assertEquals(attachment.description.copyrightInfo, CopyrightInfo.fromAi)
     assertEquals(attachment.data.toList, bytes.toList)
-    assertEquals(read[MailCommands.SendMailRequest](write(MailCommands.SendMailRequest("a@example.org", "S", "B"))).attachments, Nil)
+    val withoutAttachments = MailCommands.SendMailRequest("a@example.org", "S", "B", Nil)
+    assertEquals(read[MailCommands.SendMailRequest](write(withoutAttachments)), withoutAttachments)
+    intercept[Exception](read[MailCommands.SendMailRequest]("""{"recipientMail":"a@example.org","subject":"S","content":"B"}"""))
   }
 
-  test("a data URL attachment crosses the transport nameless with its media type and without a duplicated payload") {
+  test("a data URL file crosses the transport nameless with its media type and without a duplicated payload") {
     import it.evadid.core.datastructures.file.{CopyrightInfo, FileDescription, LoadedFile}
     val bytes = "Grüße".getBytes("UTF-8")
-    val dataUrl = "data:text/plain;charset=utf-8;base64,R3LDvMOfZQ=="
     val source = new FileDescription {
       def copyrightInfo = CopyrightInfo.unknownCopyrightInfo
-      def asUrlString = dataUrl
+      def asUrlString = "data:text/plain;charset=utf-8;base64,R3LDvMOfZQ=="
       def loadData(): Future[LoadedFile] = Future.successful(LoadedFile(this, bytes))
       def getChildrenFile(name: String, copyright: CopyrightInfo): Option[FileDescription] = None
     }
-    val json = write(MailCommands.SendMailRequest("a@example.org", "S", "B", List(LoadedFile(source, bytes))))
+    val json = write[LoadedFile](LoadedFile(source, bytes))
     assert(!json.contains("data:"))
     assertEquals(json.split("R3LDvMOfZQ==", -1).length, 2)
-    val attachment = read[MailCommands.SendMailRequest](json).attachments.head
-    assertEquals(attachment.description.filenameWithExtension, "")
-    assertEquals(attachment.description.mediaType, Some("text/plain;charset=utf-8"))
-    assertEquals(attachment.fileDataAsUtf8String, "Grüße")
+    val restored = read[LoadedFile](json)
+    assertEquals(restored.description.filenameWithExtension, "")
+    assertEquals(restored.description.mediaType, Some("text/plain;charset=utf-8"))
+    assertEquals(restored.fileDataAsUtf8String, "Grüße")
+  }
+
+  test("mail requests reject nameless attachments and names with control characters, when built and when read") {
+    import it.evadid.core.datastructures.file.{CopyrightInfo, NamedDataFileDescription}
+    def named(name: String) = NamedDataFileDescription(name, Array[Byte](1), CopyrightInfo.unknownCopyrightInfo, None)
+    def request(names: String*) = MailCommands.SendMailRequest("a@example.org", "S", "B", names.toList.map(named))
+    assertEquals(intercept[IllegalArgumentException](request("a.txt", "")).getMessage,
+      "Invalid mail request: attachment 2 has no file name.")
+    assertEquals(intercept[IllegalArgumentException](request("data:text/plain,Hi")).getMessage,
+      "Invalid mail request: attachment 1 has no file name.")
+    assertEquals(intercept[IllegalArgumentException](request("evil.txt\r\nX-Injected: 1")).getMessage,
+      "Invalid mail request: the file name of attachment 1 contains control characters.")
+    val valid = write(request("a.txt"))
+    for ((replacement, expected) <- List("\"\"" -> "has no file name", "\"tab\\tname.txt\"" -> "contains control characters")) {
+      val error = intercept[Exception](read[MailCommands.SendMailRequest](valid.replace("\"a.txt\"", replacement)))
+      def messages(e: Throwable): List[String] = Option(e).toList.flatMap(t => Option(t.getMessage).toList ++ messages(t.getCause))
+      assert(messages(error).exists(_.contains(expected)), messages(error))
+    }
   }
 
   test("an attachment with malformed Base64 data is rejected instead of silently altered") {
-    val json = write(MailCommands.SendMailRequest("a@example.org", "S", "B")).dropRight(1) +
-      ""","attachments":[{"filename":"a.txt","mediaType":null,"copyrightInfo":""" +
-      write(it.evadid.core.datastructures.file.CopyrightInfo.unknownCopyrightInfo) + ""","base64Data":"not base64!"}]}"""
-    intercept[Exception](read[MailCommands.SendMailRequest](json))
+    import it.evadid.core.datastructures.file.{CopyrightInfo, LoadedFile, NamedDataFileDescription}
+    val valid = write(MailCommands.SendMailRequest("a@example.org", "S", "B",
+      List(NamedDataFileDescription("a.txt", Array[Byte](1, 2, 3), CopyrightInfo.unknownCopyrightInfo, None))))
+    assert(valid.contains("\"AQID\""))
+    intercept[Exception](read[MailCommands.SendMailRequest](valid.replace("\"AQID\"", "\"not base64!\"")))
   }
 
   test("a typed mail command preserves the response through the serialized transport") {
     val response = MailCommands.SendMailResponse(None, sent = true)
     val client = MailCommands.sendMailCommand.toLocalExecutionClient((_, _) => Future.successful(response))
-    val request = MailCommands.SendMailRequest("student@example.org", "Subject", "Grüße")
+    val request = MailCommands.SendMailRequest("student@example.org", "Subject", "Grüße", Nil)
     val command = ExecutionCommand(MailCommands.sendMailCommand.name, writeJs(request))
     client.executeResponse(BasicLogger(), command).map { transported =>
       val restored = read[it.evadid.distribution.formats.ExecutionClientResponse](write(transported))

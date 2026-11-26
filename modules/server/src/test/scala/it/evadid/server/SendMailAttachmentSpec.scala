@@ -3,7 +3,8 @@ package it.evadid.server
 import it.evadid.core.datastructures.file.{CopyrightInfo, FileDescription, LoadedFile, NamedDataFileDescription}
 import it.evadid.distribution.commandTypes.MailCommands.SendMailRequest
 import jakarta.mail.{Message, Part, Session}
-import jakarta.mail.internet.{MimeMessage, MimeMultipart}
+import jakarta.mail.internet.{ContentType, MimeMessage, MimeMultipart}
+import it.evadid.util.logging.BasicLogger
 import munit.FunSuite
 import upickle.default.*
 
@@ -30,7 +31,7 @@ class SendMailAttachmentSpec extends FunSuite {
   }
 
   test("a mail without attachments stays a plain UTF-8 text message with sender, recipient and subject") {
-    val message = delivered(SendMailRequest("a@example.org", "Grüße 学校", "Zeile 1\nZeile 2"))
+    val message = delivered(SendMailRequest("a@example.org", "Grüße 学校", "Zeile 1\nZeile 2", Nil))
     assertEquals(message.getFrom.map(_.toString).toList, List("sender@example.org"))
     assertEquals(message.getRecipients(Message.RecipientType.TO).map(_.toString).toList, List("a@example.org"))
     assertEquals(message.getSubject, "Grüße 学校")
@@ -71,42 +72,35 @@ class SendMailAttachmentSpec extends FunSuite {
     assertEquals(attachment.getInputStream.readAllBytes().toList, bytes.toList)
   }
 
-  test("a nameless attachment, e.g. from a data URL, gets a fallback name and keeps its declared media type") {
+  test("data URL content is attached under the name the caller gives it, with its declared media type") {
     val bytes = "Grüße".getBytes("UTF-8")
-    val dataUrlFile = file("data:text/plain;charset=utf-8;base64,R3LDvMOfZQ==", bytes)
-    val misleadingName = NamedDataFileDescription("report.pdf", bytes, CopyrightInfo.unknownCopyrightInfo, Some("text/csv"))
-    val parts = delivered(SendMailRequest("a@example.org", "S", "B", List(dataUrlFile, misleadingName))).getContent.asInstanceOf[MimeMultipart]
-    val inline = parts.getBodyPart(1)
-    assertEquals(inline.getFileName, SendMailCommand.unnamedAttachmentName)
-    assert(inline.isMimeType("text/plain"))
-    assertEquals(inline.getContent, "Grüße")
+    val dataUrlType = FileDescription.dataUrlMediaType("data:text/plain;charset=utf-8;base64,R3LDvMOfZQ==")
+    val named = NamedDataFileDescription("greeting.txt", bytes, CopyrightInfo.unknownCopyrightInfo, dataUrlType)
+    val declaredType = NamedDataFileDescription("report.pdf", bytes, CopyrightInfo.unknownCopyrightInfo, Some("text/csv"))
+    val parts = delivered(SendMailRequest("a@example.org", "S", "B", List(named, declaredType))).getContent.asInstanceOf[MimeMultipart]
+    assertEquals(parts.getBodyPart(1).getFileName, "greeting.txt")
+    assert(parts.getBodyPart(1).isMimeType("text/plain"))
+    assertEquals(ContentType(parts.getBodyPart(1).getContentType).getParameter("charset"), "utf-8")
+    assertEquals(parts.getBodyPart(1).getContent, "Grüße")
     assert(parts.getBodyPart(2).isMimeType("text/csv"))
     assertEquals(parts.getBodyPart(2).getFileName, "report.pdf")
   }
 
-  test("client-supplied attachment names and media types cannot inject MIME headers or parts") {
-    val injection = "\r\nX-Injected: 1\r\n\r\n--forged"
-    val request = SendMailRequest("a@example.org", "S", "B", List(
-      NamedDataFileDescription("evil.txt" + injection, Array[Byte](1), CopyrightInfo.unknownCopyrightInfo, None),
-      NamedDataFileDescription("b.bin", Array[Byte](2), CopyrightInfo.unknownCopyrightInfo, Some("text/plain" + injection)),
-      NamedDataFileDescription("c.bin", Array[Byte](3), CopyrightInfo.unknownCopyrightInfo, Some("not a media type"))))
-    val out = ByteArrayOutputStream()
-    SendMailCommand.mailMessage(session, "sender@example.org", request).writeTo(out)
-    val wire = out.toString("UTF-8")
-    assert(!wire.contains("\r\nX-Injected"), wire)
-    assert(!wire.contains("\r\n--forged"), wire)
-    val parts = MimeMessage(session, ByteArrayInputStream(out.toByteArray)).getContent.asInstanceOf[MimeMultipart]
-    assertEquals(parts.getCount, 4)
-    assertEquals(parts.getBodyPart(1).getFileName, "evil.txtX-Injected: 1--forged")
-    assertEquals(parts.getBodyPart(1).getInputStream.readAllBytes().toList, List[Byte](1))
-    assert(parts.getBodyPart(2).isMimeType("application/octet-stream"))
-    assert(parts.getBodyPart(3).isMimeType("application/octet-stream"))
-    assertEquals(parts.getBodyPart(3).getInputStream.readAllBytes().toList, List[Byte](3))
+  private val mailEnv = Map("MAIL_EMAIL" -> "sender@example.org", "MAIL_PW" -> "unused", "MAIL_SMTP_HOST" -> "localhost").get
+
+  /** Sends through the command entry point; rejected requests fail before any SMTP connection is opened. */
+  private def rejection(attachments: LoadedFile*): String =
+    intercept[IllegalArgumentException](SendMailCommand.sendMail(SendMailRequest("a@example.org", "S", "B", attachments.toList), BasicLogger(), mailEnv)).getMessage
+
+  test("an invalid declared media type rejects the mail instead of being replaced by a guess") {
+    for (invalid <- List("not a media type", "text/plain\r\nX-Injected: 1\r\n\r\n--forged", "", "text/"))
+      assertEquals(rejection(NamedDataFileDescription("a.txt", Array[Byte](1), CopyrightInfo.unknownCopyrightInfo, Some(invalid))),
+        "Could not send email: attachment 1 declares an invalid media type.", invalid)
   }
 
   test("a client-supplied subject cannot inject top-level headers such as additional recipients") {
     val out = ByteArrayOutputStream()
-    SendMailCommand.mailMessage(session, "sender@example.org", SendMailRequest("a@example.org", "Hi\r\nBcc: other@example.org", "B")).writeTo(out)
+    SendMailCommand.mailMessage(session, "sender@example.org", SendMailRequest("a@example.org", "Hi\r\nBcc: other@example.org", "B", Nil)).writeTo(out)
     assert(!out.toString("UTF-8").contains("\r\nBcc:"), out.toString("UTF-8"))
     val message = MimeMessage(session, ByteArrayInputStream(out.toByteArray))
     assertEquals(message.getRecipients(Message.RecipientType.BCC), null)

@@ -78,23 +78,26 @@ object SendMailCommand {
   private def multipartContent(request: SendMailRequest): MimeMultipart = {
     val textPart = MimeBodyPart()
     textPart.setText(request.content, "UTF-8")
-    MimeMultipart((textPart +: request.attachments.map(attachmentPart))*)
+    val attachmentParts = request.attachments.zipWithIndex.map((file, index) => attachmentPart(file, index + 1))
+    MimeMultipart((textPart +: attachmentParts)*)
   }
 
-  /** Name for files without one, e.g. those located by a `data:` URL. */
-  private[server] val unnamedAttachmentName = "attachment"
-
-  /** Client values never reach MIME headers raw: control characters leave the name, and a malformed declared media type
-   * yields to the guess from the file name. */
-  private def attachmentPart(file: LoadedFile): MimeBodyPart = {
-    val filename = Some(file.description.filenameWithExtension.filterNot(_.isControl).trim).filter(_.nonEmpty).getOrElse(unnamedAttachmentName)
-    val declared = file.description.mediaType.flatMap(mediaType => Try(ContentType(mediaType).toString).toOption.flatMap(Option(_)))
-    val contentType = declared.orElse(Option(URLConnection.guessContentTypeFromName(filename))).getOrElse("application/octet-stream")
+  /** Names are validated by [[SendMailRequest]]; client metadata is used as given or rejected, never altered. */
+  private def attachmentPart(file: LoadedFile, position: Int): MimeBodyPart = {
     val part = MimeBodyPart()
-    part.setDataHandler(DataHandler(ByteArrayDataSource(file.data, contentType)))
-    part.setFileName(filename)
+    part.setDataHandler(DataHandler(ByteArrayDataSource(file.data, attachmentContentType(file, position))))
+    part.setFileName(file.description.filenameWithExtension)
     part
   }
+
+  /** The declared media type must be valid; without one, the type follows from the file name (RFC 2046 binary data
+   * when the name does not identify a type). */
+  private def attachmentContentType(file: LoadedFile, position: Int): String =
+    file.description.mediaType match {
+      case Some(declared) => Try(ContentType(declared).toString).toOption.flatMap(Option(_)).getOrElse(
+        throw IllegalArgumentException(s"Could not send email: attachment $position declares an invalid media type."))
+      case None => Option(URLConnection.guessContentTypeFromName(file.description.filenameWithExtension)).getOrElse("application/octet-stream")
+    }
 
   /** SMTP errors can contain recipients or message contents; only safe diagnostics cross the command boundary. */
   private[server] def withDeliveryContext[A](send: => A): A =
