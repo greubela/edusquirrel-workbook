@@ -187,7 +187,7 @@ object ProgrammingHintScaffolder {
         "source" -> ujson.Obj("language" -> sourceLanguage, "code" -> source,
           "lines" -> ujson.Arr.from(sourceLines.map { (id, text) => ujson.Obj("id" -> id, "text" -> text) })),
         "checks" -> ujson.Arr.from(localizedChecks(language).map(_.toJson))))
-      LLMCommands.FeedbackLlmRequest(prompt, systemPrompt)
+      LLMCommands.FeedbackLlmRequest(prompt, systemPrompt, programmingHint = true)
     }
   }
 

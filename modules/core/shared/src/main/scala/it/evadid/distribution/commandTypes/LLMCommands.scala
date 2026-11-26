@@ -17,7 +17,7 @@ object LLMCommands {
   )
 
   case class FeedbackLlmRequest(prompt: String, systemPrompt: String,
-      llmConfiguration: Option[LlmConfiguration] = None) derives ReadWriter
+      llmConfiguration: Option[LlmConfiguration] = None, programmingHint: Boolean = false) derives ReadWriter
 
   lazy val feedbackLlmCommandFactory: ExecutionCommandFactory[FeedbackLlmRequest, String] =
     ExecutionCommandFactory[FeedbackLlmRequest, String](
