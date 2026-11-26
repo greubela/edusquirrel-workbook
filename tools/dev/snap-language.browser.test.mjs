@@ -216,6 +216,8 @@ test('test workbook preserves edits across human languages, programming language
     const code = editor.locator('.cm-content');
     await code.waitFor();
     assert.match(await code.innerText(), /forward\(92\)/, 'tab conversion includes the pending Snap input');
+    // The whole program is replaced, so the Python tab shows it in full rather than its main function.
+    await editor.getByRole('tab', {name:/^(Full Mode|Gesamtmodus)$/}).click();
     await code.fill('forward(123)\nforward(17)\n');
     await page.locator('.select-language-line > div').first().evaluate(flag => flag.click());
     assert.match(await code.innerText(), /forward\(123\)\s+(?:turtle\.)?forward\(17\)/);
