@@ -38,7 +38,7 @@ test('Snap previews and editor wait for the runtime and ignore closed mounts', a
     assert.equal(await page.locator('script[src$="adjusted/adjustedMorphic.js"]').getAttribute('fetchpriority'), 'low');
     await page.locator('.section-register .login-area').nth(1).locator('button').click({timeout:60000});
     await page.locator('.section-block').first().click();
-    const previews = page.locator('.be-program-snap-renderer__canvas:not(dialog *)');
+    const previews = page.locator('.interaction-element-content:has(.prog-ex-stage-output) .be-program-snap-renderer__canvas');
     await previews.first().waitFor();
     assert.equal(await page.evaluate(() => typeof window.WorldMorph), 'undefined', 'runtime is deliberately incomplete');
     const open = page.getByRole('button',{name:/Editor.*öffnen|Open editor/i}).first();
@@ -156,17 +156,22 @@ test('unchanged Java block previews retain their canvas and changed or unfinishe
     await page.goto(origin + prefix + 'homepage/workbookDesign/');
     await page.locator('.section-register .login-area').nth(1).locator('button').click();
     await page.locator('.section-block').first().click();
-    await page.getByRole('button',{name:/Editor.*öffnen|Open editor/i}).first().click();
+    // The plain programming exercise previews every edit; turtle recreation previews follow the last run instead.
+    const exercise = page.locator('.interaction-element-content:has(.prog-ex-stage-output)');
+    await exercise.getByRole('button',{name:/Editor.*öffnen|Open editor/i}).click();
     const editor = page.locator('dialog[open] .eva-editor');
     await editor.getByRole('tab',{name:'Java',exact:true}).click();
-    await editor.getByRole('button',{name:'Full source',exact:true}).click();
+    await editor.locator('button[data-view="source"]').click();
     await editor.locator('.cm-content').waitFor();
-    const preview = page.locator('.be-program-snap-renderer:not(dialog *)').first();
+    const preview = exercise.locator('.be-program-snap-renderer');
     const source = 'public class Drawing {\n  public static void main(String[] args) {\n    Turtle.forward(20);\n  }\n}\n';
+    // Typed, then the editor is left: leaving writes the typed text to the answer at once, without the typing pause.
     async function writeSource(code) {
       await page.evaluate(code => {
         const view = EduSquirrelCodeMirrorLibraries.EditorView.findFromDOM(document.querySelector('dialog[open] .cm-editor'));
+        view.focus();
         view.dispatch({changes:{from:0,to:view.state.doc.length,insert:code}});
+        view.contentDOM.blur();
       }, code);
       await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))));
       assert.equal(await page.evaluate(() => EduSquirrelCodeMirrorLibraries.EditorView
@@ -174,12 +179,12 @@ test('unchanged Java block previews retain their canvas and changed or unfinishe
     }
     async function rememberPreview() {
       await page.waitForFunction(() => {
-        const canvas = document.querySelector('.be-program-snap-renderer__canvas:not(dialog *)');
+        const canvas = document.querySelector('.interaction-element-content:has(.prog-ex-stage-output) .be-program-snap-renderer__canvas');
         return canvas && canvas.width > 1 && canvas.height > 1;
       });
       await page.evaluate(() => {
         globalThis.previewReuseProbe = {
-          canvas:document.querySelector('.be-program-snap-renderer__canvas:not(dialog *)'),
+          canvas:document.querySelector('.interaction-element-content:has(.prog-ex-stage-output) .be-program-snap-renderer__canvas'),
           worlds:snapPreviewWorlds,pictures:snapPreviewPictures
         };
         previewReuseProbe.xml = snapPreviewLoadedXml;
@@ -190,13 +195,13 @@ test('unchanged Java block previews retain their canvas and changed or unfinishe
     for (const suffix of [' ', '\n\t', '\n\n']) {
       await writeSource(source + suffix);
       assert.deepEqual(await page.evaluate(() => ({
-        retained:previewReuseProbe.canvas === document.querySelector('.be-program-snap-renderer__canvas:not(dialog *)'),
+        retained:previewReuseProbe.canvas === document.querySelector('.interaction-element-content:has(.prog-ex-stage-output) .be-program-snap-renderer__canvas'),
         worlds:snapPreviewWorlds - previewReuseProbe.worlds,pictures:snapPreviewPictures - previewReuseProbe.pictures
       })), {retained:true,worlds:0,pictures:0});
     }
     const changed = source.replace('forward(20)', 'forward(30)');
     await writeSource(changed);
-    assert(await page.evaluate(() => previewReuseProbe.canvas !== document.querySelector('.be-program-snap-renderer__canvas:not(dialog *)') &&
+    assert(await page.evaluate(() => previewReuseProbe.canvas !== document.querySelector('.interaction-element-content:has(.prog-ex-stage-output) .be-program-snap-renderer__canvas') &&
       snapPreviewWorlds > previewReuseProbe.worlds && snapPreviewPictures > previewReuseProbe.pictures));
     assert(await page.evaluate(() => previewReuseProbe.xml !== snapPreviewLoadedXml &&
       new DOMParser().parseFromString(snapPreviewLoadedXml,'application/xml')
@@ -207,7 +212,7 @@ test('unchanged Java block previews retain their canvas and changed or unfinishe
     assert.equal(await preview.locator('canvas').count(), 0);
     assert.match(await preview.textContent(), /Preview unavailable for this draft/);
     await writeSource(changed);
-    assert(await page.evaluate(() => previewReuseProbe.canvas !== document.querySelector('.be-program-snap-renderer__canvas:not(dialog *)') &&
+    assert(await page.evaluate(() => previewReuseProbe.canvas !== document.querySelector('.interaction-element-content:has(.prog-ex-stage-output) .be-program-snap-renderer__canvas') &&
       snapPreviewWorlds > previewReuseProbe.worlds && snapPreviewPictures > previewReuseProbe.pictures));
     assert(await page.evaluate(() => previewReuseProbe.xml === snapPreviewLoadedXml),
       'restoring the same valid source reloads its complete block program');

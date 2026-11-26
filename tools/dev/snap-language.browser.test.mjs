@@ -171,7 +171,8 @@ test('test workbook preserves edits across human languages, programming language
     const code = editor.locator('.cm-content');
     await code.waitFor();
     assert.match(await code.innerText(), /forward\(92\)/, 'tab conversion includes the pending Snap input');
-    await code.fill('forward(123)\nforward(17)\n');
+    // The Python structure editor edits one function at a time; the text stays a valid program for the Snap switch.
+    await code.fill('def main():\n    forward(123)\n    forward(17)\n');
     await page.locator('.select-language-line > div').first().evaluate(flag => flag.click());
     assert.match(await code.innerText(), /forward\(123\)\s+(?:turtle\.)?forward\(17\)/);
     await editor.getByRole('tab',{name:'Snap!',exact:true}).click();
@@ -188,7 +189,7 @@ test('test workbook preserves edits across human languages, programming language
     await page.getByRole('button',{name:/Editor.*öffnen|Open editor/i}).first().click();
     assert.match(await code.innerText(), /forward\(123\)\s+(?:turtle\.)?forward\(17\)/);
     await editor.getByRole('tab',{name:'Java',exact:true}).click();
-    await editor.getByRole('button',{name:'Full source',exact:true}).click();
+    await editor.locator('button[data-view="source"]').click();
     await code.fill('public class Drawing {\n  static void line(int size) { Turtle.forward(size); }\n  public static void main(String[] args) { line(64); }\n}\n');
     await editor.getByRole('tab',{name:'Snap!',exact:true}).click();
     await page.waitForFunction(() => {
@@ -198,7 +199,7 @@ test('test workbook preserves edits across human languages, programming language
     await page.locator('.select-language-line > div').first().evaluate(flag => flag.click());
     await page.waitForFunction(() => SnapTranslator.language === 'en');
     await editor.getByRole('tab',{name:'Java',exact:true}).click();
-    await editor.getByRole('button',{name:'Full source',exact:true}).click();
+    await editor.locator('button[data-view="source"]').click();
     assert.match(await code.innerText(), /void line\((?:int|double) size\)/);
     assert.match(await code.innerText(), /line\(64\)/);
     await page.locator('.fullscreen-close-button').click();

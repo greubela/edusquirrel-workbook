@@ -68,7 +68,7 @@ test('Java hints retain in-flight feedback across editor close and display-langu
     await page.getByRole('button', {name: /Editor.*öffnen|Open editor/i}).last().click();
     const editor = page.locator('dialog[open] .eva-editor');
     await editor.getByRole('tab', {name:'Java',exact:true}).click();
-    await editor.getByRole('button', {name: 'Full source', exact: true}).click();
+    await editor.locator('button[data-view="source"]').click();
     const code = editor.locator('.cm-content');
     const draft = 'class Drawing {\n  static void square(int side) {';
     await code.click();
@@ -130,7 +130,7 @@ test('Java method editing and theme changes preserve source and undo history', a
     const editor = page.locator('dialog[open] .eva-editor');
     await editor.getByRole('tab', {name:'Java',exact:true}).click();
     await editor.locator('.cm-content').waitFor();
-    await editor.getByRole('button', {name: 'Full source', exact: true}).click();
+    await editor.locator('button[data-view="source"]').click();
     await page.waitForFunction(() => !!globalThis.EduSquirrelCodeMirrorLibraries?.EditorView);
     async function waitForDocumentPrefix(prefix) {
       await page.waitForFunction(prefix => {
@@ -150,14 +150,14 @@ test('Java method editing and theme changes preserve source and undo history', a
     const original = await page.evaluate(() => EduSquirrelCodeMirrorLibraries.EditorView
       .findFromDOM(document.querySelector('dialog[open] .cm-editor')).state.doc.toString());
     await checkFirstLine(1);
-    await editor.getByRole('button', {name: 'Method', exact: true}).click();
+    await editor.locator('button[data-view="diagram"]').click();
     await waitForDocumentPrefix('public static void main(String[] args)');
     const main = await page.evaluate(() => EduSquirrelCodeMirrorLibraries.EditorView
       .findFromDOM(document.querySelector('dialog[open] .cm-editor')).state.doc.toString());
     assert(original.includes(main), 'the method document remains an exact source fragment');
     const mainFirstLine = original.slice(0, original.indexOf(main)).split(/\r\n|\r|\n/).length;
     await checkFirstLine(mainFirstLine);
-    await editor.getByRole('button', {name: 'Full source', exact: true}).click();
+    await editor.locator('button[data-view="source"]').click();
     await waitForDocumentPrefix(original);
     await checkFirstLine(1);
     await page.evaluate(() => {
@@ -187,7 +187,7 @@ test('Java method editing and theme changes preserve source and undo history', a
     await editor.locator('.cm-content').click();
     await page.keyboard.press(process.platform === 'darwin' ? 'Meta+z' : 'Control+z');
     assert.equal(await page.evaluate(() => appearanceProbe.view.state.doc.toString()), original, 'undo survives theme changes');
-    await editor.getByRole('button', {name: 'Hide classes', exact: true}).click();
+    await editor.locator('button[data-action="toggle-diagram"]').click();
     await editor.getByRole('combobox', {name: 'Java method', exact: true})
       .selectOption({label: 'Drawing.square(int side)'});
     await waitForDocumentPrefix('static void square(int side)');
@@ -204,48 +204,53 @@ test('Java method editing and theme changes preserve source and undo history', a
     await checkFirstLine(mainFirstLine);
     assert(await page.evaluate(() => methodNumberingView === EduSquirrelCodeMirrorLibraries.EditorView
       .findFromDOM(document.querySelector('dialog[open] .cm-editor'))), 'method numbering reuses the mounted editor');
-    await editor.getByRole('button', {name: 'Full source', exact: true}).click();
+    await editor.locator('button[data-view="source"]').click();
     await waitForDocumentPrefix(original);
     assert.equal(await page.evaluate(() => EduSquirrelCodeMirrorLibraries.EditorView
       .findFromDOM(document.querySelector('dialog[open] .cm-editor')).state.doc.toString()), original,
     'compact method navigation preserves the full program');
     await page.locator('.fullscreen-close-button').click();
     await open.last().click();
-    await editor.getByRole('button', {name: 'Full source', exact: true}).click();
+    await editor.locator('button[data-view="source"]').click();
     await waitForDocumentPrefix(original);
     assert.equal(await page.evaluate(() => EduSquirrelCodeMirrorLibraries.EditorView
       .findFromDOM(document.querySelector('dialog[open] .cm-editor')).state.doc.toString()), original, 'source survives reopening');
     async function addMethod(name, parameters, isStatic) {
-      const showClasses = editor.getByRole('button', {name: 'Show classes', exact: true});
-      if (await showClasses.count()) await showClasses.click();
-      await editor.locator('.java-function-editor__class-header').getByRole('button', {name: 'Add function', exact: true}).click();
-      const dialog = page.getByRole('dialog', {name: 'Add function', exact: true});
-      const staticOption = dialog.getByRole('checkbox', {name: 'Static method', exact: true});
-      await staticOption.setChecked(isStatic);
-      await dialog.getByLabel('Function name', {exact: true}).fill(name);
-      await dialog.getByLabel('Parameters (for example: int count, String label)', {exact: true}).fill(parameters);
-      await dialog.getByRole('button', {name: 'Add function', exact: true}).click();
-      await waitForDocumentPrefix(`public ${isStatic ? 'static ' : ''}void ${name}(${parameters})`);
+      const diagram = editor.locator('button[data-action="toggle-diagram"]');
+      if (await diagram.getAttribute('aria-expanded') === 'false') await diagram.click();
+      await editor.locator('.java-uml__class[data-class-name="Drawing"]').getByRole('button', {name: /New method/}).click();
+      const dialog = page.getByRole('dialog', {name: 'New method', exact: true});
+      await dialog.getByRole('checkbox').setChecked(isStatic);
+      await dialog.locator('label.java-function-editor__field', {hasText: /^Name$/}).locator('input').fill(name);
+      for (const [javaType, parameter] of parameters.map(parameter => parameter.split(' '))) {
+        await dialog.getByRole('button', {name: 'Parameter', exact: true}).click();
+        await dialog.locator('.java-function-editor__parameter-type').last().fill(javaType);
+        await dialog.locator('.java-function-editor__parameter-name').last().fill(parameter);
+      }
+      await dialog.locator('button[data-action="submit"]').click();
+      await waitForDocumentPrefix(`public ${isStatic ? 'static ' : ''}void ${name}(${parameters.join(', ')})`);
       return page.evaluate(() => EduSquirrelCodeMirrorLibraries.EditorView
         .findFromDOM(document.querySelector('dialog[open] .cm-editor')).state.doc.toString());
     }
-    assert.match(await addMethod('drawLine', 'int distance', true), /^public static void drawLine\(int distance\)/);
-    assert.match(await addMethod('instanceMethod', '', false), /^public void instanceMethod\(\)/);
-    assert.match(await addMethod('staticAgain', '', true), /^public static void staticAgain\(\)/);
-    await editor.getByRole('button', {name: 'Full source', exact: true}).click();
+    assert.match(await addMethod('drawLine', ['int distance'], true), /^public static void drawLine\(int distance\)/);
+    assert.match(await addMethod('instanceMethod', [], false), /^public void instanceMethod\(\)/);
+    assert.match(await addMethod('staticAgain', [], true), /^public static void staticAgain\(\)/);
+    await editor.locator('button[data-view="source"]').click();
     await waitForDocumentPrefix('public class Drawing {');
     const withMethods = await page.evaluate(() => EduSquirrelCodeMirrorLibraries.EditorView
       .findFromDOM(document.querySelector('dialog[open] .cm-editor')).state.doc.toString());
     assert(withMethods.startsWith(original.slice(0, original.lastIndexOf('}'))), 'adding methods preserves the original class contents');
     assert.match(withMethods, /public static void drawLine\(int distance\)/);
     assert.match(withMethods, /public void instanceMethod\(\)/);
-    await editor.locator('.java-function-editor__function').filter({hasText: 'instanceMethod()'}).click();
+    await editor.locator('.java-uml__operation[data-member="instanceMethod"]').click();
     await waitForDocumentPrefix('public void instanceMethod()');
+    // Typed with focus, as a student does: leaving the editor for the view button writes the method.
     await page.evaluate(() => {
       const view = EduSquirrelCodeMirrorLibraries.EditorView.findFromDOM(document.querySelector('dialog[open] .cm-editor'));
+      view.focus();
       view.dispatch({changes: {from: view.state.doc.toString().indexOf('{') + 1, insert: '\n    Turtle.forward(7);'}});
     });
-    await editor.getByRole('button', {name: 'Full source', exact: true}).click();
+    await editor.locator('button[data-view="source"]').click();
     await waitForDocumentPrefix('public class Drawing {');
     await page.waitForFunction(() => {
       const node = document.querySelector('dialog[open] .cm-editor');
@@ -290,7 +295,7 @@ test('language tabs follow the current draft and commit converted representation
     const python = editor.getByRole('tab', {name: 'Python', exact: true});
     const snap = editor.getByRole('tab', {name: 'Snap!', exact: true});
     await java.click();
-    await editor.getByRole('button', {name: 'Full source', exact: true}).click();
+    await editor.locator('button[data-view="source"]').click();
     await editor.locator('.cm-content').waitFor();
     const readSource = () => page.evaluate(() => {
       const current = document.querySelector('dialog[open] .cm-editor');
@@ -298,15 +303,18 @@ test('language tabs follow the current draft and commit converted representation
       const fallback = document.querySelector('dialog[open] .code-mirror-editor__fallback:not([hidden])');
       return fallback?.value;
     });
+    // Typed with focus, as a student does: moving to a tab leaves the editor, which writes the typed text first.
     async function writeSource(code) {
       await page.evaluate(code => {
         const current = document.querySelector('dialog[open] .cm-editor');
         if (current) {
           const view = EduSquirrelCodeMirrorLibraries.EditorView.findFromDOM(current);
+          view.focus();
           view.dispatch({changes: {from: 0, to: view.state.doc.length, insert: code}});
         } else {
           const fallback = document.querySelector('dialog[open] .code-mirror-editor__fallback:not([hidden])');
           if (!fallback) throw new Error('The current draft must remain editable.');
+          fallback.focus();
           fallback.value = code;
           fallback.dispatchEvent(new Event('input', {bubbles: true}));
         }
@@ -372,7 +380,7 @@ test('language tabs follow the current draft and commit converted representation
     assert.equal(await python.getAttribute('aria-selected'), 'true');
     await java.click();
     await page.waitForFunction(() => document.querySelector('dialog[open] button[aria-label="Java"]')?.getAttribute('aria-selected') === 'true');
-    await editor.getByRole('button', {name: 'Full source', exact: true}).click();
+    await editor.locator('button[data-view="source"]').click();
     assert.match(await readSource(), /Turtle\.forward\(12\);/, 'returning to Java uses the converted program in the central answer');
     assert.match(await readSource(), /void main\s*\(/, "the entry point survives without replaying the original Java wrapper");
     await checkTabs(true);
