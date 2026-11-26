@@ -85,17 +85,22 @@ or source-code spelling in automated tests. Review those when editing content or
 presentation. `WorkbookDefinitionsSpec` checks the current catalogue factories
 for unique element IDs and serialization without fixing their lesson structure.
 
-CI caches incremental Scala output separately from downloaded dependencies, with
-build-definition changes starting a new cache family. Scala still checks the
+CI caches incremental Scala output separately from downloaded dependencies.
+Build-definition changes start a new cache family but still restore the newest
+older entry; Zinc recompiles what the change invalidates. Scala still checks the
 current sources and test discovery on every run. A cold cache requires a full
-compile; deleting fast domain assertions does little to reduce that cost.
+compile; deleting fast domain assertions does little to reduce that cost. Most
+of `core`'s compile time is uPickle codec derivation, paid once per platform.
 
-The `scala-tests` job runs Scala/static checks, builds the development browser
-bundles and saves the compiled output. `browser-tests` downloads those bundles;
-when called by the Pages workflow, `pages-build` restores the compiled output and
+The cross-built core compiles on two runners in parallel: `scala-jvm` tests
+core JVM, server and desktop, and `scala-js` tests core JS, client and worker,
+builds the development browser bundles and saves its compiled output. Each
+caches only its own `target/<project>` directories. `static-tests` runs the Node
+checks without a Scala build. `browser-tests` downloads the bundles; when called
+by the Pages workflow, `pages-build` restores the Scala.js output and
 release-links in parallel with browser checks. Publication waits for the entire
-reusable workflow. The required `tests` status also gates Scala, browser and MySQL
-checks, including failures or cancellations in upstream jobs.
+reusable workflow. The required `tests` status gates every job, including
+failures or cancellations in upstream jobs.
 
 The MySQL job owns the server assembly/startup check. Browser bundles and Pages
 artifacts use the producing build's attempt-specific name, so retries reuse the
