@@ -23,7 +23,7 @@ object FileFactory {
       //HomepageFileStore.fetchUrl(url.href).map(data => LoadedFile(this, data))(using ExecutionContext.global)
     }
 
-    override def getChildrenFile(childName: String, cCopyrightInfo: CopyrightInfo): Option[FileDescription] = if (structure.extension.nonEmpty) None else {
+    override def getChildrenFile(childName: String, cCopyrightInfo: CopyrightInfo): Option[FileDescription] = if (!isDirectory) None else {
       Some(InternetResourceFileDescription(URL(url.href + "/" + childName), cCopyrightInfo, downloader))
     }
 

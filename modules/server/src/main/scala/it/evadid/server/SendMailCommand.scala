@@ -57,29 +57,37 @@ object SendMailCommand {
         }
       )
 
-      val msg = MimeMessage(session)
-      msg.setFrom(InternetAddress(config.email))
-      msg.setRecipients(Message.RecipientType.TO, request.recipientMail)
-      msg.setSubject(request.subject)
-      if request.attachments.isEmpty then msg.setText(request.content, "UTF-8")
-      else msg.setContent(multipartContent(request))
-
-      Transport.send(msg)
+      Transport.send(mailMessage(session, config.email, request))
       logger.logInfo(s"mail sent to '${request.recipientMail}'")
       SendMailResponse(None, sent = true)
     }
   }
 
-  /** Text body followed by one MIME part per attachment. */
-  private[server] def multipartContent(request: SendMailRequest): MimeMultipart = {
+  /** UTF-8 message: plain text without attachments, otherwise the text body followed by one part per attachment. */
+  private[server] def mailMessage(session: Session, sender: String, request: SendMailRequest): MimeMessage = {
+    val message = MimeMessage(session)
+    message.setFrom(InternetAddress(sender))
+    message.setRecipients(Message.RecipientType.TO, request.recipientMail)
+    message.setSubject(request.subject, "UTF-8")
+    if request.attachments.isEmpty then message.setText(request.content, "UTF-8")
+    else message.setContent(multipartContent(request))
+    message
+  }
+
+  private def multipartContent(request: SendMailRequest): MimeMultipart = {
     val textPart = MimeBodyPart()
     textPart.setText(request.content, "UTF-8")
     MimeMultipart((textPart +: request.attachments.map(attachmentPart))*)
   }
 
+  /** Name for files without one, e.g. those located by a `data:` URL. */
+  private[server] val unnamedAttachmentName = "attachment"
+
+  /** The declared media type wins over a guess from the file name. */
   private def attachmentPart(file: LoadedFile): MimeBodyPart = {
-    val filename = file.description.filenameWithExtension
-    val contentType = Option(URLConnection.guessContentTypeFromName(filename)).getOrElse("application/octet-stream")
+    val filename = Some(file.description.filenameWithExtension).filter(_.nonEmpty).getOrElse(unnamedAttachmentName)
+    val contentType = file.description.mediaType.orElse(Option(URLConnection.guessContentTypeFromName(filename)))
+      .getOrElse("application/octet-stream")
     val part = MimeBodyPart()
     part.setDataHandler(DataHandler(ByteArrayDataSource(file.data, contentType)))
     part.setFileName(filename)

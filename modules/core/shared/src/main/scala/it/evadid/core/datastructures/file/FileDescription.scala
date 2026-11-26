@@ -9,7 +9,10 @@ import scala.concurrent.Future
 trait FileDescription {
   def copyrightInfo: CopyrightInfo
 
-  lazy val isDirectory: Boolean = structure.extension.isEmpty
+  /** Media type declared by the location itself; only `data:` URLs carry one. */
+  def mediaType: Option[String] = FileDescription.dataUrlMediaType(asUrlString)
+
+  lazy val isDirectory: Boolean = structure.extension.isEmpty && mediaType.isEmpty
 
   lazy val filenameWithExtension: String = structure.filenameWithoutExtension + structure.extension.map("." + _).getOrElse("")
 
@@ -55,7 +58,23 @@ object FileDescription {
     def dirElements: List[String] = locationStructure.dirElements
   }
 
-  def parsePathStructure(asUrl: String): PathStructure = {
+  private def isDataUrl(url: String): Boolean = url.trim.take(5).equalsIgnoreCase("data:")
+
+  /** Media type (with parameters, without the base64 marker) of an RFC 2397 `data:[<media-type>][;base64],<data>` URL. */
+  def dataUrlMediaType(url: String): Option[String] = Option.when(isDataUrl(url)) {
+    val parameters = url.trim.drop(5).takeWhile(_ != ',').split(';').map(_.trim).filter(_.nonEmpty)
+      .filterNot(_.equalsIgnoreCase("base64")).toList
+    parameters match {
+      case Nil => "text/plain;charset=US-ASCII"
+      case mediaType :: _ if mediaType.contains('/') => parameters.mkString(";")
+      case _ => ("text/plain" :: parameters).mkString(";")
+    }
+  }
+
+  /** Data URLs are nameless: their payload is never parsed as a path. */
+  def parsePathStructure(asUrl: String): PathStructure = if (isDataUrl(asUrl))
+    PathStructure(LocationStructure(Some("data"), Nil, None, Nil), FilenameStructure("", None))
+  else {
     val normalized = asUrl.trim.replace('\\', '/')
     val separator = normalized.indexOf("://")
     val protocol = if (separator >= 0) Some(normalized.take(separator)) else None
@@ -81,8 +100,9 @@ object FileDescription {
 
 }
 
-/** A named file that already holds its bytes, so it describes and loads itself (e.g. a file received over transport). */
-case class NamedDataFileDescription(url: String, data: Array[Byte], copyrightInfo: CopyrightInfo) extends FileDescription with LoadedFile {
+/** A file that already holds its bytes, so it describes and loads itself (e.g. a file received over transport). */
+case class NamedDataFileDescription(url: String, data: Array[Byte], copyrightInfo: CopyrightInfo, override val mediaType: Option[String])
+  extends FileDescription with LoadedFile {
 
   override def toString: String = "NamedDataFileDescription(" + asUrlString + ": " + data.length + " bytes)"
 

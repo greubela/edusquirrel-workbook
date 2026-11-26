@@ -377,9 +377,36 @@ class CommandPayloadCodecsSpec extends FunSuite {
     val attachment = { assertEquals(restored.attachments.size, 1); restored.attachments.head }
     assert(attachment.isInstanceOf[NamedDataFileDescription])
     assertEquals(attachment.description.filenameWithExtension, "report.pdf")
+    assertEquals(attachment.description.mediaType, None)
     assertEquals(attachment.description.copyrightInfo, CopyrightInfo.fromAi)
     assertEquals(attachment.data.toList, bytes.toList)
     assertEquals(read[MailCommands.SendMailRequest](write(MailCommands.SendMailRequest("a@example.org", "S", "B"))).attachments, Nil)
+  }
+
+  test("a data URL attachment crosses the transport nameless with its media type and without a duplicated payload") {
+    import it.evadid.core.datastructures.file.{CopyrightInfo, FileDescription, LoadedFile}
+    val bytes = "Grüße".getBytes("UTF-8")
+    val dataUrl = "data:text/plain;charset=utf-8;base64,R3LDvMOfZQ=="
+    val source = new FileDescription {
+      def copyrightInfo = CopyrightInfo.unknownCopyrightInfo
+      def asUrlString = dataUrl
+      def loadData(): Future[LoadedFile] = Future.successful(LoadedFile(this, bytes))
+      def getChildrenFile(name: String, copyright: CopyrightInfo): Option[FileDescription] = None
+    }
+    val json = write(MailCommands.SendMailRequest("a@example.org", "S", "B", List(LoadedFile(source, bytes))))
+    assert(!json.contains("data:"))
+    assertEquals(json.split("R3LDvMOfZQ==", -1).length, 2)
+    val attachment = read[MailCommands.SendMailRequest](json).attachments.head
+    assertEquals(attachment.description.filenameWithExtension, "")
+    assertEquals(attachment.description.mediaType, Some("text/plain;charset=utf-8"))
+    assertEquals(attachment.fileDataAsUtf8String, "Grüße")
+  }
+
+  test("an attachment with malformed Base64 data is rejected instead of silently altered") {
+    val json = write(MailCommands.SendMailRequest("a@example.org", "S", "B")).dropRight(1) +
+      ""","attachments":[{"filename":"a.txt","mediaType":null,"copyrightInfo":""" +
+      write(it.evadid.core.datastructures.file.CopyrightInfo.unknownCopyrightInfo) + ""","base64Data":"not base64!"}]}"""
+    intercept[Exception](read[MailCommands.SendMailRequest](json))
   }
 
   test("a typed mail command preserves the response through the serialized transport") {
