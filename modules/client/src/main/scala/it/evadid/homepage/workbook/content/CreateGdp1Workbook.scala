@@ -115,7 +115,7 @@ object CreateGdp1Workbook {
   private[content] def row(sides: Seq[Int], above: Set[Int] = Set.empty): TurtleGraphic = TurtleGraphic(
     sides.zipWithIndex.flatMap { (side, index) =>
       squareCommands(side, above(index)) ++ Option.when(index < sides.size - 1)(Seq(
-        PenUp(), Forward(side + 100.0), PenDown())).toSeq.flatten
+        PenUp, Forward(side + 100.0), PenDown)).toSeq.flatten
     })
 
   // Java section: the list and sudoku are provided implicitly; the static methods below are their interface.

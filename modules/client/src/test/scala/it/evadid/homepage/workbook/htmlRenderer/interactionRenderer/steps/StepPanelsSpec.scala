@@ -7,7 +7,7 @@ import it.evadid.vm.simulation.data.ListCommand
 import munit.FunSuite
 
 class StepPanelsSpec extends FunSuite {
-  private val commands = Seq(Forward(100.0), Right(90.0), PenUp[Double](), Forward(50.0), PenDown[Double](), Forward(20.0))
+  private val commands = Seq(Forward(100.0), Right(90.0), PenUp, Forward(50.0), PenDown, Forward(20.0))
 
   test("turtle steps draw earlier strokes, highlight the current one and keep later strokes faint") {
     val start = TurtleStepPanel.scene(commands, 0)

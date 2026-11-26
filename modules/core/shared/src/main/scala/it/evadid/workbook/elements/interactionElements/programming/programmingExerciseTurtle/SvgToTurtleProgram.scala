@@ -18,7 +18,7 @@ final class SvgToTurtleProgram {
 }
 
 object SvgToTurtleProgram {
-  private final case class Point(x: Double, y: Double) derives upickle.default.ReadWriter {
+  private final case class Point(x: Double, y: Double) {
     def +(other: Point): Point = Point(x + other.x, y + other.y)
     def -(other: Point): Point = Point(x - other.x, y - other.y)
   }
@@ -149,7 +149,7 @@ object SvgToTurtleProgram {
     val result = ListBuffer.empty[TurtleCommand[Double]]
     var current = Point(0, 0); var heading = 0.0; var penDown = true
     destinations.foreach { (next, draw) =>
-      if draw != penDown then { result += (if draw then TurtleCommand.PenDown() else TurtleCommand.PenUp()); penDown = draw }
+      if draw != penDown then { result += (if draw then TurtleCommand.PenDown else TurtleCommand.PenUp); penDown = draw }
       val dx = next.x - current.x; val dy = next.y - current.y
       val distance = math.hypot(dx, dy)
       if distance > 1e-12 then

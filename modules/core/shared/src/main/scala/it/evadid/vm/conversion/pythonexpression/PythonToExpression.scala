@@ -68,7 +68,7 @@ private final class PythonAstToParsed(syntax: PythonSyntax) {
     * statements; a final `main()` in it is then the usual entry point ([[PythonEntryPoint]]).
     */
   private def withoutMainGuard(statement: PyStatement): Seq[PyStatement] = statement match {
-    case PyIfStatement(PyOperationBinary(PyTarget("__name__", Nil, None, _), "==", PythonLiteral(raw, _: PYTHON_STRING)), thenBlock, elseBlock)
+    case PyIfStatement(PyOperationBinary(PyTarget("__name__", Nil, None, _), "==", PythonLiteral(raw, PYTHON_STRING)), thenBlock, elseBlock)
         if Set("\"__main__\"", "'__main__'")(raw) && elseBlock.statements.isEmpty => thenBlock.statements
     case other => Seq(other)
   }
@@ -310,7 +310,7 @@ private final class PythonAstToParsed(syntax: PythonSyntax) {
   }
 
   private def expressionValue(value: PyExpression): ParsedExpression = value match {
-    case PythonLiteral(_, _: PYTHON_NONE) => E.NoneValue
+    case PythonLiteral(_, PYTHON_NONE) => E.NoneValue
     case PythonLiteral(raw, _: (PYTHON_LIST[?] | PYTHON_SET[?] | PYTHON_DICT[?, ?] | PYTHON_ARRAY[?])) => E.Unsupported(raw)
     case PythonLiteral(raw, _) => E.Literal(raw)
     case target: PyTarget if target.sliceExpr.nonEmpty => E.Unsupported(s"${target.name}[...]")
@@ -363,10 +363,10 @@ private final class PythonAstToParsed(syntax: PythonSyntax) {
   }
 
   private def parsedType(value: PythonType[?]): ParsedType = value match {
-    case _: (PYTHON_INTEGER | PYTHON_INTEGER_HEX | PYTHON_INTEGER_OCT | PYTHON_INTEGER_BIN | PYTHON_FLOAT) => ParsedType.Numeric
-    case _: PYTHON_BOOL => ParsedType.Boolean
-    case _: PYTHON_STRING => ParsedType.Text
-    case _: PYTHON_NONE => ParsedType.Unit
+    case _: (PYTHON_INTEGER.type | PYTHON_INTEGER_HEX.type | PYTHON_INTEGER_OCT.type | PYTHON_INTEGER_BIN.type | PYTHON_FLOAT.type) => ParsedType.Numeric
+    case PYTHON_BOOL => ParsedType.Boolean
+    case PYTHON_STRING => ParsedType.Text
+    case PYTHON_NONE => ParsedType.Unit
     case PYTHON_UNION_TYPE(a, b) => ParsedType.Union(Seq(parsedType(a), parsedType(b)))
     case named: PYTHON_UNPARSABLE_TYPE => named.str.toLowerCase match {
       case "number" | "double" => ParsedType.Numeric

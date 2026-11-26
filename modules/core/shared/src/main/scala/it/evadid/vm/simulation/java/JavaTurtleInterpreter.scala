@@ -24,8 +24,8 @@ object JavaTurtleInterpreter {
       case R.TurtleCommand.Forward => TurtleCommand.Forward(value)
       case R.TurtleCommand.TurnRight => TurtleCommand.Right(value)
       case R.TurtleCommand.TurnLeft => TurtleCommand.Left(value)
-      case R.TurtleCommand.PenUp => TurtleCommand.PenUp()
-      case R.TurtleCommand.PenDown => TurtleCommand.PenDown()
+      case R.TurtleCommand.PenUp => TurtleCommand.PenUp
+      case R.TurtleCommand.PenDown => TurtleCommand.PenDown
     }
   }
   case class Execution(status: Status, commands: Vector[Command], steps: Int)

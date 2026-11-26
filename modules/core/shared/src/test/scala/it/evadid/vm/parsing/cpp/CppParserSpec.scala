@@ -81,7 +81,6 @@ final class CppParserSpec extends FunSuite {
     val result = CppParser.parseCppWithDiagnostics("x++; a();")
     assertEquals(result.unsupportedStatements, List("x++"))
     assertEquals(result.sequence.body.head, BeExpressionUnsupported("x++", Some(Cpp)))
-    assertEquals(read[CppParser.ParseResult](write(result)), result)
   }
 
   test("stray closing braces between Arduino functions are reported instead of hanging the parser") {

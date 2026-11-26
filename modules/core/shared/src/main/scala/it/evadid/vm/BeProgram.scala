@@ -2,7 +2,6 @@ package it.evadid.vm
 
 
 
-import upickle.default.ReadWriter
 
 import it.evadid.core.datastructures.language.AppLanguage.*
 import it.evadid.core.datastructures.language.{AppLanguage, LanguageMap}
@@ -14,7 +13,7 @@ import it.evadid.vm.code.others.BeStartProgram
 import it.evadid.vm.code.usage.{BeFunctionCall, BeUseValue}
 import it.evadid.vm.naming.BeEntityName
 
-case class BeProgram(fullProgram: BeExpression) derives ReadWriter {
+case class BeProgram(fullProgram: BeExpression) {
   override val toString: String = s"BeProgram($fullProgram)"
 }
 

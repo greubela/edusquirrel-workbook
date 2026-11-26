@@ -7,10 +7,9 @@ import it.evadid.vm.code.tree.{BeExpressionReference, BeExtensionPoint}
 import it.evadid.vm.types.BeChildRole.ExpressionInSequence
 import it.evadid.vm.types.BeScope.GlobalScope
 import it.evadid.vm.types.{BeChildRole, BeDataType}
-import upickle.default.ReadWriter
 
 /** A node's location: the child roles leading from the program root. Roles are unique among siblings. */
-final case class BeNodePath(roles: List[BeChildRole]) derives ReadWriter {
+final case class BeNodePath(roles: List[BeChildRole]) {
   def /(role: BeChildRole): BeNodePath = BeNodePath(roles :+ role)
 
   def parent: Option[BeNodePath] = Option.when(roles.nonEmpty)(BeNodePath(roles.init))
@@ -26,7 +25,7 @@ object BeNodePath {
 }
 
 /** The insertion point before the statement `index` of the sequence at `sequence`. */
-final case class BeSequenceSlot(sequence: BeNodePath, index: Int) derives ReadWriter
+final case class BeSequenceSlot(sequence: BeNodePath, index: Int)
 
 /** Immutable structural edits of a program, addressed by [[BeNodePath]].
   * Every operation returns the edited program or a reason why the edit is not possible.

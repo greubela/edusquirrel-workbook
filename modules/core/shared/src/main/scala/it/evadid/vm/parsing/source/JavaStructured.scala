@@ -1,7 +1,5 @@
 package it.evadid.vm.parsing.source
 
-import upickle.default.ReadWriter
-
 /** Step 1 for Java ([[SourceParsing]]): the declarations of any text, unfinished or invalid code included.
   *
   * `classes` lists every class declaration (nested ones too) in source order. Verbatim library definitions such
@@ -19,7 +17,7 @@ final case class JavaSourceStructured(
     trivia: Boolean,
     masked: String,
     codeMasked: String
-) derives ReadWriter {
+) {
   /** The classes the program defines itself. */
   def programClasses: Vector[JavaClassStructured] = classes.filterNot(_.library)
 
@@ -37,7 +35,7 @@ final case class JavaSourceStructured(
 }
 
 /** A `package` or `import` declaration outside classes; `text` runs to its `;`. */
-final case class JavaPreambleStructured(keyword: String, text: String, span: SourceSpan) derives ReadWriter
+final case class JavaPreambleStructured(keyword: String, text: String, span: SourceSpan)
 
 /** A class declaration: from its first modifier to its closing `}` (or the end of an unfinished text). `bodySpan` is
   * the text inside the braces; `outer` names the class it is nested in.
@@ -56,14 +54,14 @@ final case class JavaClassStructured(
     isInterface: Boolean = false,
     extendsNames: Vector[String] = Vector.empty,
     implementsNames: Vector[String] = Vector.empty
-) derives ReadWriter {
+) {
   def isAbstract: Boolean = isInterface || modifiers.contains("abstract")
   def functions: Vector[JavaFunctionStructured] = members.collect { case function: JavaFunctionStructured => function }
   def fields: Vector[JavaFieldStructured] = members.collect { case field: JavaFieldStructured => field }
 }
 
 /** A direct member of a class body, from its first code token (annotations included) to its `;` or `}`. */
-sealed trait JavaMemberStructured derives ReadWriter {
+sealed trait JavaMemberStructured {
   def span: SourceSpan
   def code: String
 }
@@ -82,14 +80,14 @@ final case class JavaFunctionStructured(
     closed: Boolean,
     span: SourceSpan,
     code: String
-) extends JavaMemberStructured derives ReadWriter {
+) extends JavaMemberStructured {
   def isStatic: Boolean = modifiers.contains("static")
   def isAbstract: Boolean = modifiers.contains("abstract")
   def isConstructor: Boolean = returnType.isEmpty
 }
 
 /** A parameter: `final int x` has the modifier `final`, the type `int` and the name `x`; varargs keep `...`. */
-final case class JavaParameterStructured(name: String, javaType: String, modifiers: Vector[String]) derives ReadWriter
+final case class JavaParameterStructured(name: String, javaType: String, modifiers: Vector[String])
 
 /** A field (or, in loose code, a local) declaration with its type and optional initializer. */
 final case class JavaFieldStructured(
@@ -102,9 +100,9 @@ final case class JavaFieldStructured(
     span: SourceSpan,
     code: String,
     typeNames: Vector[String] = Vector.empty
-) extends JavaMemberStructured derives ReadWriter {
+) extends JavaMemberStructured {
   def isStatic: Boolean = modifiers.contains("static")
 }
 
 /** Any other member: a statement of loose code, an initializer block, a nested type or unreadable text. */
-final case class JavaOtherMemberStructured(span: SourceSpan, code: String) extends JavaMemberStructured derives ReadWriter
+final case class JavaOtherMemberStructured(span: SourceSpan, code: String) extends JavaMemberStructured

@@ -1,16 +1,14 @@
 package it.evadid.workbook.elements.interactionElements.programming.state.snap
 
-import upickle.default.ReadWriter
-
 /** One top-level Snap `<script x y>` stack, including whether it starts with a green-flag hat. */
-final case class SnapCanvasScript(x: Int, y: Int, callCount: Int, hasReceiveGo: Boolean = true) derives ReadWriter
+final case class SnapCanvasScript(x: Int, y: Int, callCount: Int, hasReceiveGo: Boolean = true)
 
 /**
  * Derived Snap canvas layout (script positions / statement counts).
  * Positions live natively in Snap XML; this type is kept for XML→AST derivation
  * and Python-apply writeback.
  */
-final case class SnapCanvasLayout(scripts: Seq[SnapCanvasScript] = Nil) derives ReadWriter {
+final case class SnapCanvasLayout(scripts: Seq[SnapCanvasScript] = Nil) {
   def isEmpty: Boolean = scripts.isEmpty
 }
 

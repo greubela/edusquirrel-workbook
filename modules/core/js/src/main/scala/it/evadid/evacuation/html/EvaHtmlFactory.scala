@@ -26,7 +26,7 @@ object EvaHtmlFactory {
     curTab
   }
 
-  private case class RadioButtonConfig(idAndValue: String, description: String) derives upickle.default.ReadWriter
+  private case class RadioButtonConfig(idAndValue: String, description: String)
 
   private type RadioButtonChangeListener = (RadioButtonConfig, List[RadioButtonConfig]) => Any
 
@@ -151,7 +151,7 @@ object EvaHtmlFactory {
     field
   }
 
-  case class InputPropertyChangedEvent[T](inputComponentId: String, oldValue: T, newValue: T) derives upickle.default.ReadWriter
+  case class InputPropertyChangedEvent[T](inputComponentId: String, oldValue: T, newValue: T)
 
 
   def createNumberForm(observableConfigProperty: ObservableConfigProperty[Integer], stepSize: Option[Int] = None, minValue: Option[Int] = None, maxValue: Option[Int] = None, additionalListener: List[HtmlInputChangeListener[Int]] = List()): Element = {

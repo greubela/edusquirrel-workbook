@@ -1,11 +1,9 @@
 package it.evadid.core.datastructures.state.async
 
-import upickle.default.*
-
 import it.evadid.distribution.command.SerializedException
 import it.evadid.core.datastructures.state.async.AsyncDataState.*
 
-case class FailureInfo[F](error: SerializedException, data: Option[F]) derives ReadWriter {
+case class FailureInfo[F](error: SerializedException, data: Option[F]) {
   def map[F2](func: F => F2): FailureInfo[F2] = FailureInfo(error, data.map(func))
 }
 
@@ -35,5 +33,4 @@ object FailureInfo {
 
   def apply(error: SerializedException): FailureInfo[Nothing] = FailureInfo(error, None)
 }
-
 

@@ -80,29 +80,29 @@ object TurtleSingleton {
   @JSExport def seth(degrees: T): Unit = setheading(degrees)
 
   @JSExport def penup(): Unit = {
-    turtlePathBuilder = turtlePathBuilder.handleCommand(TurtleCommand.PenUp[T]())
+    turtlePathBuilder = turtlePathBuilder.handleCommand(TurtleCommand.PenUp)
   }
 
   @JSExport def pendown(): Unit = {
-    turtlePathBuilder = turtlePathBuilder.handleCommand(TurtleCommand.PenDown[T]())
+    turtlePathBuilder = turtlePathBuilder.handleCommand(TurtleCommand.PenDown)
   }
 
   @JSExport def home(): Unit = {
-    turtlePathBuilder = turtlePathBuilder.handleCommand(TurtleCommand.Home[T]())
+    turtlePathBuilder = turtlePathBuilder.handleCommand(TurtleCommand.Home)
   }
 
   @JSExport def clear(): Unit = {
-    turtlePathBuilder = turtlePathBuilder.handleCommand(TurtleCommand.Clear[T]())
+    turtlePathBuilder = turtlePathBuilder.handleCommand(TurtleCommand.Clear)
   }
 
   @JSExport def clearscreen(): Unit = clear()
 
   @JSExport def showturtle(): Unit = {
-    turtlePathBuilder = turtlePathBuilder.handleCommand(TurtleCommand.ShowTurtle[T]())
+    turtlePathBuilder = turtlePathBuilder.handleCommand(TurtleCommand.ShowTurtle)
   }
 
   @JSExport def hideturtle(): Unit = {
-    turtlePathBuilder = turtlePathBuilder.handleCommand(TurtleCommand.HideTurtle[T]())
+    turtlePathBuilder = turtlePathBuilder.handleCommand(TurtleCommand.HideTurtle)
   }
 
   @JSExport def dot(size: T): Unit = {

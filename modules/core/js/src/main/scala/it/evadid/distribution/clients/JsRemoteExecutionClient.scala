@@ -13,7 +13,7 @@ import scala.concurrent.Future
 import scala.scalajs.js
 import scala.util.control.NonFatal
 
-private case class JsRemoteExecutionClient(hostname: String, port: Int, token: Option[SignedToken]) extends RemoteExecutionClient derives ReadWriter {
+private case class JsRemoteExecutionClient(hostname: String, port: Int, token: Option[SignedToken]) extends RemoteExecutionClient {
 
   def sendCommand(logger: Logger, executionCommand: ExecutionCommand, pDest: String, pBody: String): Future[Response] = {
     logger.logInfo("JsRemoteExecutionClient: sent request and waiting for a response")

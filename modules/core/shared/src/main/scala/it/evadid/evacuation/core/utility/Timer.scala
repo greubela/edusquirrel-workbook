@@ -2,7 +2,7 @@ package it.evadid.evacuation.core.utility
 
 class Timer(name: String = "Timer") {
 
-  case class PointInTime(time: Long, description: String) derives upickle.default.ReadWriter
+  case class PointInTime(time: Long, description: String)
 
   val points: collection.mutable.ListBuffer[PointInTime] = collection.mutable.ListBuffer[PointInTime](PointInTime(System.currentTimeMillis(), "START"))
 

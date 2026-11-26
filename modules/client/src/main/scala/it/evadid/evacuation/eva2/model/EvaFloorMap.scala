@@ -7,7 +7,7 @@ import scala.collection.immutable.HashSet
 import scala.collection.mutable
 import scala.collection.mutable.ListBuffer
 
-case class EvaFloorMap(floorMatrix: Matrix[FloorSprite], persons: Set[Person]) derives upickle.default.ReadWriter {
+case class EvaFloorMap(floorMatrix: Matrix[FloorSprite], persons: Set[Person]) {
 
   def getPositionOfPerson(id: Integer): Option[PositionInMatrix] = persons.find(_.id == id).map(_.pos)
 

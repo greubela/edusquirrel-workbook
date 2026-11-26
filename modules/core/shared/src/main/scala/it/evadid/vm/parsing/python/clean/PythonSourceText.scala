@@ -1,7 +1,7 @@
 package it.evadid.vm.parsing.python.clean
 
 /** Parser normalization with an explicit map back to the original UTF-16 offsets. */
-private[clean] final case class PythonSourceText(text: String, offsets: Vector[Int], end: Int) derives upickle.default.ReadWriter {
+private[clean] final case class PythonSourceText(text: String, offsets: Vector[Int], end: Int) {
   def originalOffset(index: Int): Int = offsets.lift(index).getOrElse(end)
 }
 

@@ -39,8 +39,8 @@ class TypedPayloadCodecSpec extends FunSuite {
 
   test("unknown language literals preserve opaque source text with a String codec") {
     val source = "  customCall(\"quoted\", other)  "
-    val codecs = List(new JAVA_ANY().serializerScalaValue, new JAVA_UNPARSABLE_TYPE("Custom").serializerScalaValue,
-      new PYTHON_ANY().serializerScalaValue, new PYTHON_UNPARSABLE_TYPE("Custom").serializerScalaValue)
+    val codecs = List(JAVA_ANY.serializerScalaValue, JAVA_UNPARSABLE_TYPE("Custom").serializerScalaValue,
+      PYTHON_ANY.serializerScalaValue, PYTHON_UNPARSABLE_TYPE("Custom").serializerScalaValue)
     codecs.foreach { codec =>
       assertEquals(codec.serialize(source), source)
       assertEquals(codec.deserialize(source), source)

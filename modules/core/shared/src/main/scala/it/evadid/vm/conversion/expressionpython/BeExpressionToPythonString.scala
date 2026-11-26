@@ -14,7 +14,7 @@ case class BeExpressionToPythonString
 (language: HumanLanguage, skipUnparsable: Boolean)
   extends GenericJavaLikeStringPrinter(
     Python, language, PythonSeparation(), skipUnparsable
-  ) derives upickle.default.ReadWriter {
+  ) {
 
   override protected def currentInstanceName: String = "self"
   override protected def constructorCallPrefix: String = ""

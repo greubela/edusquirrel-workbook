@@ -11,8 +11,9 @@ class TurtleCommandSerializationSpec extends FunSuite:
     assertEquals(read[TurtleCommand[Double]](write(command)), command)
   }
 
-  test("zero-argument and numeric variants decode with the current schema") {
-    assertEquals(read[TurtleCommand[Double]]("{\"$type\":\"PenUp\"}"), TurtleCommand.PenUp[Double]())
+  test("zero-argument commands are singletons written by name; numeric variants decode with the current schema") {
+    assertEquals(writeJs[TurtleCommand[Double]](TurtleCommand.PenUp), ujson.Str("PenUp"))
+    assertEquals(read[TurtleCommand[Double]]("\"PenUp\""), TurtleCommand.PenUp)
     assertEquals(read[TurtleCommand[Double]]("{\"$type\":\"Right\",\"degrees\":90}"), TurtleCommand.Right[Double](90.0))
   }
 

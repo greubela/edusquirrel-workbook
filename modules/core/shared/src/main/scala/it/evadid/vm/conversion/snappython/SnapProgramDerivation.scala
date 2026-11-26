@@ -25,7 +25,7 @@ object SnapProgramDerivation {
       python: String,
       pythonCompatible: Boolean,
       unsupportedSelectors: List[String]
-  ) derives upickle.default.ReadWriter {
+  ) {
     def applyBlockedMessage: Option[String] =
       if pythonCompatible then None
       else
@@ -52,7 +52,7 @@ object SnapProgramDerivation {
     DerivedView(program, parsed.canvasLayout, python, pythonCompatible, unsupported)
   }
   /** One Snap top-level script rendered as Python (plus canvas position). */
-  final case class ScriptView(index: Int, x: Int, y: Int, python: String) derives upickle.default.ReadWriter
+  final case class ScriptView(index: Int, x: Int, y: Int, python: String)
 
   /** Partition top-level BeProgram statements by derived canvas layout. */
   def scriptsOf(state: ProgrammingStateRaw): List[ScriptView] = {

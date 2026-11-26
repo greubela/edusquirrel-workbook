@@ -7,7 +7,7 @@ import it.evadid.core.datastructures.vectorShapes.helper.AlignmentInParent
 import it.evadid.core.datastructures.vectorShapes.helper.AlignmentInParent.MiddleCenter
 
 /** How text is drawn into its bounds. */
-enum TextPlacement derives upickle.default.ReadWriter {
+enum TextPlacement {
   /** Top-left aligned and scaled with its bounds, keeping its aspect ratio. */
   case FitToBounds
   /** Centered in its bounds at the font's own size. */

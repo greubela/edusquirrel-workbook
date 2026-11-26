@@ -1,16 +1,14 @@
 package it.evadid.workbook.elements.interactionElements.codeTaskToggle
 
-import upickle.default.*
-
 import it.evadid.core.datastructures.language.LanguageMapContentId
 
-sealed trait AdvancedCodeCheckResult derives ReadWriter
+sealed trait AdvancedCodeCheckResult
 
 object AdvancedCodeCheckResult {
 
   case object Success extends AdvancedCodeCheckResult
 
-  case class Incomplete(missingHints: Seq[LanguageMapContentId]) extends AdvancedCodeCheckResult derives ReadWriter
+  case class Incomplete(missingHints: Seq[LanguageMapContentId]) extends AdvancedCodeCheckResult
 
   def evaluate(code: String, requirements: Seq[AdvancedCodeRequirement]): AdvancedCodeCheckResult = {
     val missing = requirements.collect {

@@ -25,7 +25,7 @@ case class BeExpressionToJavaStr(language: HumanLanguage, skipUnparsable: Boolea
     language,
     if (targetLanguage == JavaScript) JavaScriptSeparation() else JavaSeparation(),
     skipUnparsable
-  ) derives upickle.default.ReadWriter {
+  ) {
 
   // A printer owns one rendering. Declarations are tracked per function/class scope.
   private var declared = Set.empty[String]

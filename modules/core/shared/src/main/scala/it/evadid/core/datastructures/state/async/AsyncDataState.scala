@@ -1,6 +1,5 @@
 package it.evadid.core.datastructures.state.async
 
-import upickle.default.*
 import it.evadid.core.util.io.serializer.DefaultSerializer.given
 
 import it.evadid.distribution.command.SerializedException
@@ -10,7 +9,7 @@ import java.time.LocalDateTime
 import scala.util.Try
 
 
-sealed trait AsyncDataState[F, S] derives ReadWriter {
+sealed trait AsyncDataState[F, S] {
 
 
   val loadingSince: Option[LocalDateTime] = None
@@ -30,12 +29,12 @@ sealed trait AsyncDataState[F, S] derives ReadWriter {
 object AsyncDataState {
 
   @upickle.implicits.serializeDefaults(true)
-  case class AsyncDataLoading[F, S](startedAt: LocalDateTime = LocalDateTime.now()) extends AsyncDataState[F, S] derives ReadWriter {
+  case class AsyncDataLoading[F, S](startedAt: LocalDateTime = LocalDateTime.now()) extends AsyncDataState[F, S] {
     override val loadingSince: Option[LocalDateTime] = Some(startedAt)
     val isLoading: Boolean = true
   }
 
-  sealed trait AsyncDataStateFinished[F, S] extends AsyncDataState[F, S] derives ReadWriter {
+  sealed trait AsyncDataStateFinished[F, S] extends AsyncDataState[F, S] {
     val asEither: Either[FailureInfo[F], S]
     val isLoading: Boolean = false
 
@@ -43,7 +42,7 @@ object AsyncDataState {
 
   }
 
-  case class AsyncDataSuccess[F, S](dataValue: S) extends AsyncDataStateFinished[F, S] derives ReadWriter {
+  case class AsyncDataSuccess[F, S](dataValue: S) extends AsyncDataStateFinished[F, S] {
     override val asEither: Either[FailureInfo[F], S] = Right(dataValue)
     override val value: Option[S] = Some(dataValue)
 
@@ -60,7 +59,7 @@ object AsyncDataState {
 
   }
 
-  case class AsyncDataFailed[F, S](cause: SerializedException, additionalData: Option[F]) extends AsyncDataStateFinished[F, S] derives ReadWriter {
+  case class AsyncDataFailed[F, S](cause: SerializedException, additionalData: Option[F]) extends AsyncDataStateFinished[F, S] {
     private val failureInfo = FailureInfo(cause, additionalData)
     override val asEither: Either[FailureInfo[F], S] = Left(failureInfo)
     override val failure: Option[FailureInfo[F]] = Some(failureInfo)

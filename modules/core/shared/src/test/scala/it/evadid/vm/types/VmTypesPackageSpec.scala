@@ -111,17 +111,14 @@ class VmTypesPackageSpec extends FunSuite {
       MethodInClass(2) -> MethodInClass(3), FunctionParameter(2) -> FunctionParameter(3), ReturnValue(2) -> ReturnValue(3))
     numbered.foreach((before, after) => {
       assertEquals(before.withIncrementedNrOrThis, after)
-      assertEquals(read[BeChildRole](write[BeChildRole](before)), before)
     })
     val fixed = List(NoRole, ConditionInControlStructure, ValueInAssignment,
       ValueForVariable(variable), RecentlyInsertedInto(BodySequence(0)))
     fixed.foreach(role => {
       assertEquals(role.withIncrementedNrOrThis, role)
-      assertEquals(read[BeChildRole](write[BeChildRole](role)), role)
     })
     val info = BeChildInfo(BodySequence(1), BeScope.GlobalScope())
     assertEquals(info.toString, "BodySequence(1)")
-    assertEquals(read[BeChildInfo](write(info)), info)
   }
 
   test("scope classes retain ancestors from nearest to farthest") {
@@ -140,8 +137,6 @@ class VmTypesPackageSpec extends FunSuite {
     assert(sequenceScope.isSubScope(functionScope))
     assert(!global.isSubScope(sequenceScope))
     assert(!sequenceScope.isSubScope(sequenceScope))
-    List(global, classScope, functionScope, sequenceScope).foreach(scope =>
-      assertEquals(read[BeScope](write[BeScope](scope)), scope))
   }
 
   test("BeInfo produces errors and warnings only when the assignment requires them") {

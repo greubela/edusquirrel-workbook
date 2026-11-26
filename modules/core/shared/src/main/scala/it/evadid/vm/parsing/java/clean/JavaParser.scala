@@ -327,9 +327,9 @@ private class JavaGrammar(retainParentheses: Boolean, trackLocations: Boolean, r
 
   def literal[$: P]: P[Node[JavaLiteral[?]]] = leaf(P(
     // Literals keep their source spelling.
-    STRING_LITERAL.map(raw => JavaLiteral(raw, JAVA_STRING()): JavaLiteral[?]) |
-      NUMBER_LITERAL.map(raw => if (raw.contains('.')) JavaLiteral(raw, JAVA_FLOAT()) else JavaLiteral(raw, JAVA_INTEGER())) |
-      P(keyword("true").!.map(_ => "true") | keyword("false").!.map(_ => "false")).map(raw => JavaLiteral(raw, JAVA_BOOL())) |
+    STRING_LITERAL.map(raw => JavaLiteral(raw, JAVA_STRING): JavaLiteral[?]) |
+      NUMBER_LITERAL.map(raw => if (raw.contains('.')) JavaLiteral(raw, JAVA_FLOAT) else JavaLiteral(raw, JAVA_INTEGER)) |
+      P(keyword("true").!.map(_ => "true") | keyword("false").!.map(_ => "false")).map(raw => JavaLiteral(raw, JAVA_BOOL)) |
       P(keyword("null").!).map(raw => JAVA_UNPARSABLE_TYPE(raw).createLiteralUnsafe(raw): JavaLiteral[?])
   ))
 
@@ -348,19 +348,19 @@ private class JavaGrammar(retainParentheses: Boolean, trackLocations: Boolean, r
 
   private def baseJavaType[$: P]: P[JavaType[?]] = P(
     primitiveJavaType |
-      keyword("String").map(_ => JAVA_STRING()) |
+      keyword("String").map(_ => JAVA_STRING) |
       keyword("void").map(_ => JAVA_UNPARSABLE_TYPE("void")) |
       qualifiedName.map(JAVA_UNPARSABLE_TYPE(_))
   )
 
   private def primitiveJavaType[$: P]: P[JavaType[?]] = P(
-    keyword("boolean").map(_ => JAVA_BOOL()) |
-      keyword("byte").map(_ => JAVA_INTEGER()) |
-      keyword("short").map(_ => JAVA_INTEGER()) |
-      keyword("int").map(_ => JAVA_INTEGER()) |
-      keyword("long").map(_ => JAVA_INTEGER()) |
-      keyword("float").map(_ => JAVA_FLOAT()) |
-      keyword("double").map(_ => JAVA_FLOAT()) |
-      keyword("char").map(_ => JAVA_STRING())
+    keyword("boolean").map(_ => JAVA_BOOL) |
+      keyword("byte").map(_ => JAVA_INTEGER) |
+      keyword("short").map(_ => JAVA_INTEGER) |
+      keyword("int").map(_ => JAVA_INTEGER) |
+      keyword("long").map(_ => JAVA_INTEGER) |
+      keyword("float").map(_ => JAVA_FLOAT) |
+      keyword("double").map(_ => JAVA_FLOAT) |
+      keyword("char").map(_ => JAVA_STRING)
   )
 }

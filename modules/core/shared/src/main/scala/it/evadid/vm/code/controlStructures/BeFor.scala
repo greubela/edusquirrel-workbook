@@ -50,9 +50,9 @@ case class BeFor(
 
     override def toJavaStyleLines(myInfo: BeChildInfo): Seq[BeSegmentedCodeElement] =
       List(
-        BeControlFlowLine(RepeatBranch()),
-        getChildrenAsReference(myInfo.myScope).last.toSegment(Some(ControlFlowUp())),
-        BeControlFlowLine(RepeatUnion())
+        BeControlFlowLine(RepeatBranch),
+        getChildrenAsReference(myInfo.myScope).last.toSegment(Some(ControlFlowUp)),
+        BeControlFlowLine(RepeatUnion)
       )
   }
 }

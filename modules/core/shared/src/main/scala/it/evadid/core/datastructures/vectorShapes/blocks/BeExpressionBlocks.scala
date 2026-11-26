@@ -21,7 +21,7 @@ import it.evadid.vm.types.BeScope.GlobalScope
 import it.evadid.vm.types.{BeDataType, BeDataValueLiteral, BeDataValueUnit, BeUseValueReference}
 
 /** How much of the control flow is drawn next to the blocks. */
-enum ControlFlowDisplay derives upickle.default.ReadWriter {
+enum ControlFlowDisplay {
   /** Expressions only, one below the other. */
   case Hidden
   /** Nested blocks with their control-flow backgrounds. */
@@ -31,7 +31,6 @@ enum ControlFlowDisplay derives upickle.default.ReadWriter {
 }
 
 final case class BlockView(placeholders: Boolean = true, controlFlow: ControlFlowDisplay = ControlFlowDisplay.Full)
-  derives upickle.default.ReadWriter
 
 object BlockView {
   /** Library templates: expressions only, without slots. */

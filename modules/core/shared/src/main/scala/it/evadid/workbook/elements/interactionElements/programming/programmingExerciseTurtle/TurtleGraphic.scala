@@ -116,11 +116,11 @@ object TurtleGraphic {
         case SetX(x) => move(Point(x, position.y), jump = !penDown, isForward = false)
         case SetY(y) => move(Point(position.x, svgY(y)), jump = !penDown, isForward = false)
         case SetHeading(degrees) => heading = normal(degrees); pendingAngle = None; lastForwardLine = None
-        case PenUp() => penDown = false
-        case PenDown() => penDown = true
-        case Home() => move(Point(0.0, 0.0), jump = !penDown, isForward = false); heading = 0.0
-        case Clear() => movements.clear(); angles.clear(); lastForwardLine = None; pendingAngle = None
-        case Reset() => movements.clear(); angles.clear(); position = Point(0.0, 0.0); heading = 0.0; penDown = true; lastForwardLine = None; pendingAngle = None
+        case PenUp => penDown = false
+        case PenDown => penDown = true
+        case Home => move(Point(0.0, 0.0), jump = !penDown, isForward = false); heading = 0.0
+        case Clear => movements.clear(); angles.clear(); lastForwardLine = None; pendingAngle = None
+        case Reset => movements.clear(); angles.clear(); position = Point(0.0, 0.0); heading = 0.0; penDown = true; lastForwardLine = None; pendingAngle = None
         case Circle(radius, extent, _) => arc(radius, extent.getOrElse(360.0), left = true)
         case ArcLeft(radius, extent) => arc(radius, extent, left = true)
         case ArcRight(radius, extent) => arc(radius, extent, left = false)
@@ -200,7 +200,7 @@ object TurtleGraphic {
         // If we're not at the start of this line, we need to move there (pen up)
         if (current != start) {
           if (penDown) {
-            result += TurtleCommand.PenUp()
+            result += TurtleCommand.PenUp
             penDown = false
           }
           val dx = start.x - current.x
@@ -218,7 +218,7 @@ object TurtleGraphic {
 
         // Draw the line (pen down)
         if (!penDown) {
-          result += TurtleCommand.PenDown()
+          result += TurtleCommand.PenDown
           penDown = true
         }
 
@@ -237,7 +237,7 @@ object TurtleGraphic {
         current = end
       }
 
-      if (penDown) result += TurtleCommand.PenUp()
+      if (penDown) result += TurtleCommand.PenUp
       result.toList
     }
   }

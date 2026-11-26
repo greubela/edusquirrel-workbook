@@ -27,13 +27,13 @@ sealed trait TurtleCommand[+T] derives ReadWriter {
     case Towards(_, _) => TurtleCommand.canonicalNames("towards")
     case ArcLeft(_, _) => TurtleCommand.canonicalNames("arc_left")
     case ArcRight(_, _) => TurtleCommand.canonicalNames("arc_right")
-    case PenUp() => TurtleCommand.canonicalNames("pen_up")
-    case PenDown() => TurtleCommand.canonicalNames("pen_down")
-    case ShowTurtle() => TurtleCommand.canonicalNames("showturtle")
-    case HideTurtle() => TurtleCommand.canonicalNames("hideturtle")
-    case Home() => TurtleCommand.canonicalNames("home")
-    case Reset() => TurtleCommand.canonicalNames("reset")
-    case Clear() => TurtleCommand.canonicalNames("clear")
+    case PenUp => TurtleCommand.canonicalNames("pen_up")
+    case PenDown => TurtleCommand.canonicalNames("pen_down")
+    case ShowTurtle => TurtleCommand.canonicalNames("showturtle")
+    case HideTurtle => TurtleCommand.canonicalNames("hideturtle")
+    case Home => TurtleCommand.canonicalNames("home")
+    case Reset => TurtleCommand.canonicalNames("reset")
+    case Clear => TurtleCommand.canonicalNames("clear")
     case Circle(_, _, _) => TurtleCommand.canonicalNames("circle")
     case Color(_) => TurtleCommand.canonicalNames("color")
   }
@@ -84,13 +84,13 @@ sealed trait TurtleCommand[+T] derives ReadWriter {
     case Towards(x, y) => Towards(convert(x), convert(y))
     case ArcLeft(radius, extent) => ArcLeft(convert(radius), convert(extent))
     case ArcRight(radius, extent) => ArcRight(convert(radius), convert(extent))
-    case PenUp() => PenUp()
-    case PenDown() => PenDown()
-    case ShowTurtle() => ShowTurtle()
-    case HideTurtle() => HideTurtle()
-    case Home() => Home()
-    case Reset() => Reset()
-    case Clear() => Clear()
+    case PenUp => PenUp
+    case PenDown => PenDown
+    case ShowTurtle => ShowTurtle
+    case HideTurtle => HideTurtle
+    case Home => Home
+    case Reset => Reset
+    case Clear => Clear
     case Circle(radius, extent, steps) => Circle(convert(radius), extent.map(convert), steps.map(convert))
     case Color(color) => Color(color)
     case Stitch(mode, numeric, text) => Stitch(mode, numeric.map(convert), text)
@@ -131,13 +131,13 @@ object TurtleCommand {
   case class Towards[+T](x: T, y: T) extends TurtleCommand[T] derives ReadWriter
   case class ArcLeft[+T](radius: T, extent: T) extends TurtleCommand[T] derives ReadWriter
   case class ArcRight[+T](radius: T, extent: T) extends TurtleCommand[T] derives ReadWriter
-  case class PenUp[+T]() extends TurtleCommand[T] derives ReadWriter
-  case class PenDown[+T]() extends TurtleCommand[T] derives ReadWriter
-  case class ShowTurtle[+T]() extends TurtleCommand[T] derives ReadWriter
-  case class HideTurtle[+T]() extends TurtleCommand[T] derives ReadWriter
-  case class Home[+T]() extends TurtleCommand[T] derives ReadWriter
-  case class Reset[+T]() extends TurtleCommand[T] derives ReadWriter
-  case class Clear[+T]() extends TurtleCommand[T] derives ReadWriter
+  case object PenUp extends TurtleCommand[Nothing]
+  case object PenDown extends TurtleCommand[Nothing]
+  case object ShowTurtle extends TurtleCommand[Nothing]
+  case object HideTurtle extends TurtleCommand[Nothing]
+  case object Home extends TurtleCommand[Nothing]
+  case object Reset extends TurtleCommand[Nothing]
+  case object Clear extends TurtleCommand[Nothing]
   case class Circle[+T](radius: T, extent: Option[T] = None, steps: Option[T] = None) extends TurtleCommand[T] derives ReadWriter
   case class Color[+T](color: String) extends TurtleCommand[T] derives ReadWriter
   /** Parameters are retained verbatim; the preview currently applies only the stitch mode. */
@@ -299,13 +299,13 @@ object TurtleCommand {
       case "towards" => two(Towards(_, _))
       case "arc_left" => two(ArcLeft(_, _))
       case "arc_right" => two(ArcRight(_, _))
-      case "pen_up" => Option.when(args.isEmpty && stringArgs.isEmpty)(PenUp())
-      case "pen_down" => Option.when(args.isEmpty && stringArgs.isEmpty)(PenDown())
-      case "showturtle" => Option.when(args.isEmpty && stringArgs.isEmpty)(ShowTurtle())
-      case "hideturtle" => Option.when(args.isEmpty && stringArgs.isEmpty)(HideTurtle())
-      case "home" => Option.when(args.isEmpty && stringArgs.isEmpty)(Home())
-      case "reset" => Option.when(args.isEmpty && stringArgs.isEmpty)(Reset())
-      case "clear" => Option.when(args.isEmpty && stringArgs.isEmpty)(Clear())
+      case "pen_up" => Option.when(args.isEmpty && stringArgs.isEmpty)(PenUp)
+      case "pen_down" => Option.when(args.isEmpty && stringArgs.isEmpty)(PenDown)
+      case "showturtle" => Option.when(args.isEmpty && stringArgs.isEmpty)(ShowTurtle)
+      case "hideturtle" => Option.when(args.isEmpty && stringArgs.isEmpty)(HideTurtle)
+      case "home" => Option.when(args.isEmpty && stringArgs.isEmpty)(Home)
+      case "reset" => Option.when(args.isEmpty && stringArgs.isEmpty)(Reset)
+      case "clear" => Option.when(args.isEmpty && stringArgs.isEmpty)(Clear)
       case "circle" => if args.nonEmpty && args.size <= 3 && stringArgs.isEmpty then args.headOption.map(radius => Circle(radius, args.lift(1), args.lift(2))) else None
       case "color" =>
         stringArgs.headOption.orElse {

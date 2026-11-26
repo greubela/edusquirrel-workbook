@@ -39,12 +39,6 @@ case class DuckShape[T: Fractional]() extends DrawingRoutineRelativeToMaxDim[T] 
       .cubicBezierToRel(x(2), y(4), x(5), y(10), x(-5), y(10))
   }
 
-
-
   override def hasDesiredAspectRatio: Option[AspectRatio] = Some(AspectRatio(125, 50))
 }
 
-object DuckShape {
-  given [T: Fractional: upickle.default.ReadWriter]: upickle.default.ReadWriter[DuckShape[T]] =
-    upickle.default.readwriter[Unit].bimap(value => (), _ => DuckShape[T]())
-}

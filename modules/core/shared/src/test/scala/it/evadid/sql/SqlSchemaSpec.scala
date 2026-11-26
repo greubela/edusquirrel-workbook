@@ -23,7 +23,6 @@ class SqlSchemaSpec extends FunSuite {
     samples.foreach { sample =>
       assertEquals(sample.problem, None, sample.toString)
       assertEquals(MySqlType.fromSql(sample.sql), Some(sample), sample.sql)
-      assertEquals(read[MySqlType](write(sample)), sample)
       assertEquals(MySqlType.fromSql(sample.sql.toLowerCase), Some(sample).map {
         case EnumOf(values) => EnumOf(values.map(_.toLowerCase))
         case SetOf(values) => SetOf(values.map(_.toLowerCase))
@@ -67,7 +66,6 @@ class SqlSchemaSpec extends FunSuite {
     }
     assertEquals(DatabaseColumn("_ok9", Json).columnName, "_ok9")
     assertEquals(DatabaseTable("x" * 64).name.length, 64)
-    assertEquals(read[DatabaseTable](write(DatabaseTable.commandLog)), DatabaseTable.commandLog)
   }
 
   test("history formats keep their wire names, shared identity columns and unique tables") {

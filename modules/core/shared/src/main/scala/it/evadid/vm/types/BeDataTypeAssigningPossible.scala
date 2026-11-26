@@ -1,21 +1,19 @@
 package it.evadid.vm.types
 
-import upickle.default.ReadWriter
-
-sealed trait BeDataTypeAssigningPossible derives ReadWriter {
+sealed trait BeDataTypeAssigningPossible {
   def possibleWithoutSyntaxErrors: Boolean
   def resultingType: BeDataType 
 }
 
-case class AssigningPossibleWithSameType(override val resultingType: BeDataType) extends BeDataTypeAssigningPossible derives ReadWriter {
+case class AssigningPossibleWithSameType(override val resultingType: BeDataType) extends BeDataTypeAssigningPossible {
   val possibleWithoutSyntaxErrors: Boolean = true
 }
 
-case class AssigningPossibleWithImplicitCast(override val resultingType: BeDataType) extends BeDataTypeAssigningPossible derives ReadWriter {
+case class AssigningPossibleWithImplicitCast(override val resultingType: BeDataType) extends BeDataTypeAssigningPossible {
   val possibleWithoutSyntaxErrors: Boolean = true
 }
 
-case class AssigningNotPossible() extends BeDataTypeAssigningPossible derives ReadWriter {
+case class AssigningNotPossible() extends BeDataTypeAssigningPossible {
   val possibleWithoutSyntaxErrors: Boolean = false
   val resultingType: BeDataType = BeDataType.Error
 }

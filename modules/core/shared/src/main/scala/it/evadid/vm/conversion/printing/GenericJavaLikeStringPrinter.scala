@@ -19,11 +19,11 @@ abstract class GenericJavaLikeStringPrinter(
                                              sepLogic: SeparateStructures,
                                              skipUnparsable: Boolean
                                            ) {
-  private case class NameInfo(entityName: BeEntityName) derives upickle.default.ReadWriter {
+  private case class NameInfo(entityName: BeEntityName) {
     val inCurLanguage: String = GenericJavaLikeStringPrinter.identifier(entityName.getNameIn(humLang, sepLogic.preferedDisplayStyle), progLang)
   }
 
-  private case class TypeInfo(dataType: BeDataType) derives upickle.default.ReadWriter {
+  private case class TypeInfo(dataType: BeDataType) {
     val inCurLanguage: String = dataType.formatTypeForDisplay.getInLanguage(progLang)
   }
 
@@ -304,7 +304,7 @@ object GenericJavaLikeStringPrinter {
     if reservedWords.get(language).exists(_.contains(name)) then name + "_" else name
 
 
-  sealed trait SeparateStructures derives upickle.default.ReadWriter {
+  sealed trait SeparateStructures {
     def startBlockWith: String
 
     def endBlockWith: String
@@ -320,7 +320,7 @@ object GenericJavaLikeStringPrinter {
     def endLineWith: String
   }
 
-  case class JavaSeparation() extends SeparateStructures derives upickle.default.ReadWriter {
+  case class JavaSeparation() extends SeparateStructures {
 
     override def startBlockWith: String = "{"
 
@@ -337,7 +337,7 @@ object GenericJavaLikeStringPrinter {
     override def endLineWith: String = ";"
   }
 
-  case class JavaScriptSeparation() extends SeparateStructures derives upickle.default.ReadWriter {
+  case class JavaScriptSeparation() extends SeparateStructures {
     override def startBlockWith: String = "{"
     override def endBlockWith: String = "}"
     override def startSingleLineComment: String = "//"
@@ -347,7 +347,7 @@ object GenericJavaLikeStringPrinter {
     override def endLineWith: String = ";"
   }
 
-  case class PythonSeparation() extends SeparateStructures derives upickle.default.ReadWriter {
+  case class PythonSeparation() extends SeparateStructures {
 
     override def startBlockWith: String = ":"
 

@@ -8,8 +8,6 @@ import it.evadid.vm.conversion.snapexpression.SnapExpressionSupport
 import it.evadid.vm.conversion.snapexpression.SnapInputCodec
 import it.evadid.vm.conversion.snapmodelxml.SnapModelToXml.toXml
 
-import upickle.default.ReadWriter
-
 import it.evadid.vm.BeProgram
 import it.evadid.vm.code.defining.BeDefineFunction
 import it.evadid.workbook.elements.interactionElements.programming.*
@@ -50,7 +48,7 @@ object SnapCustomBlockMerge {
       scriptsXml: String,
       /** Python parameter name → slot name of this definition. */
       parameterSlots: Map[String, String]
-  ) derives ReadWriter {
+  ) {
 
     /** The `s` every `<custom-block>` calling this definition must carry. */
     def callSpec: String = SnapCustomBlockRules.blockSpec(spec, slotTypeOf)
@@ -82,8 +80,6 @@ object SnapCustomBlockMerge {
   }
 
   object CustomBlockPlans {
-    given upickle.default.ReadWriter[CustomBlockPlans] =
-      upickle.default.readwriter[List[CustomBlockPlan]].bimap(_.ordered, new CustomBlockPlans(_))
     val empty: CustomBlockPlans = new CustomBlockPlans(Nil)
   }
 

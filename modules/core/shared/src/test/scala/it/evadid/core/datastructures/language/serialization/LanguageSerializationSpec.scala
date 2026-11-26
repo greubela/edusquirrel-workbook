@@ -202,15 +202,6 @@ class LanguageSerializationSpec extends FunSuite {
       List(LanguageTripel(0, 0, "Hello"), LanguageTripel(5, 0, "bad")), List(LanguageTripel(0, 0, "fallback"), LanguageTripel(0, 5, "bad")))
     assertEquals(table.toTypedMainType, ParsedTriples(Set(regular), Set(universal)))
   }
-  test("triples and language entries expose default codecs without changing the triple wire format") {
-    val triple = LanguageTripel(0, 0, "\"Hello\"\n")
-    assertEquals(write(triple), ujson.write(LanguageMapEntry.tripSerializer.serialize(triple)))
-    assertEquals(read[LanguageTripel](write(triple)), triple)
-    assertEquals(read[LanguageMapEntry[HumanLanguage]](write(regular)), regular)
-    assertEquals(read[LanguageMapEntry[SpecialLanguage]](write(universal)), universal)
-    val map = LanguageMapWithId(id, LanguageMap.mapBasedLanguageMap(Map[HumanLanguage, String](English -> "Hello")))
-    assertEquals(read[LanguageMapWithId](write(map)).languageMap.getInLanguage(English), "Hello")
-  }
   test("serialized triple tables expose their existing codec as a default ReadWriter") {
     val table = ParsedTriples(Set(regular), Set(universal)).toSerializableSubType
     assertEquals(read[ParsedTriples.ParsedTriplesSerialized](write(table)), table)

@@ -167,9 +167,9 @@ object JavaTurtleSymbolResolver {
   )
 
   private def kind(javaType: JavaType[?]): Option[ValueType] = javaType match {
-    case _: JAVA_INTEGER => Some(ValueType.IntValue)
-    case _: JAVA_FLOAT => Some(ValueType.DoubleValue)
-    case _: JAVA_BOOL => Some(ValueType.BooleanValue)
+    case JAVA_INTEGER => Some(ValueType.IntValue)
+    case JAVA_FLOAT => Some(ValueType.DoubleValue)
+    case JAVA_BOOL => Some(ValueType.BooleanValue)
     case _ => None
   }
 
@@ -276,10 +276,10 @@ object JavaTurtleSymbolResolver {
             case _ => Left(unsupported)
           }
         } yield Update(variable, operation, prefix)
-      case JavaLiteral(raw, _: JAVA_INTEGER) => raw.toIntOption.toRight(unsupported).map(IntLiteral(_))
-      case JavaLiteral(raw, _: JAVA_FLOAT) => raw.toDoubleOption.filter(_.isFinite).toRight(unsupported).map(DoubleLiteral(_))
-      case JavaLiteral(raw, _: JAVA_BOOL) => Right(BooleanLiteral(raw == "true"))
-      case JavaOperationUnary("-", JavaLiteral("2147483648", _: JAVA_INTEGER)) => Right(IntLiteral(Int.MinValue))
+      case JavaLiteral(raw, JAVA_INTEGER) => raw.toIntOption.toRight(unsupported).map(IntLiteral(_))
+      case JavaLiteral(raw, JAVA_FLOAT) => raw.toDoubleOption.filter(_.isFinite).toRight(unsupported).map(DoubleLiteral(_))
+      case JavaLiteral(raw, JAVA_BOOL) => Right(BooleanLiteral(raw == "true"))
+      case JavaOperationUnary("-", JavaLiteral("2147483648", JAVA_INTEGER)) => Right(IntLiteral(Int.MinValue))
       case JavaOperationUnary(operator, operand) =>
         for {
           operation <- unaryOperators.get(operator).toRight(unsupported)

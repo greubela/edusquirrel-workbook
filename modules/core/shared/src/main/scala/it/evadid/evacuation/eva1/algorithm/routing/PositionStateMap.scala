@@ -12,7 +12,7 @@ import it.evadid.evacuation.eva1.model.evagraph.{ConnectionInfo, EvaGraphTypes, 
 
 import scala.collection.mutable
 
-case class PositionStateMap(graph: EvaGraph, positionStateMap: MultiHashMapList[RouterOrEdge, EvaPerson]) derives upickle.default.ReadWriter {
+case class PositionStateMap(graph: EvaGraph, positionStateMap: MultiHashMapList[RouterOrEdge, EvaPerson]) {
 
   def edgesMap(): MultiHashMapList[EvaEdge, EvaPerson] = positionStateMap.getCopyWithFilteredKeys(_.getEither().isRight).getCopyWithMappedKeys(_.getEither().getOrElse(throw new NoSuchElementException("Expected edge position")))
 

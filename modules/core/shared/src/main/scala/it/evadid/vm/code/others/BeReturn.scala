@@ -6,8 +6,7 @@ import it.evadid.vm.controlflow.ControlFlowType.ControlFlowJump
 import it.evadid.vm.io.{BeExpressionStructureInfo, BeSegmentedCodeElement}
 import it.evadid.vm.types.*
 import it.evadid.vm.types.BeChildRole.ReturnValue
-import upickle.default.*
-case class BeReturn(value: Option[BeExpression]) extends BeExpression derives ReadWriter{
+case class BeReturn(value: Option[BeExpression]) extends BeExpression{
 
   override lazy val structureInfo: BeExpressionStructureInfo[?] =
     new BeExpressionStructureInfo[BeReturn](this) {
@@ -18,7 +17,7 @@ case class BeReturn(value: Option[BeExpression]) extends BeExpression derives Re
       }
 
       override def toJavaStyleLines(myInfo: BeChildInfo): Seq[BeSegmentedCodeElement] = {
-        asExpressionLine(ControlFlowJump(), myInfo)
+        asExpressionLine(ControlFlowJump, myInfo)
       }
 
       override def getChildrenAndExtension(myScope: BeScope): Seq[BeExpressionNode] = {

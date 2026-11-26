@@ -2,8 +2,6 @@ package it.evadid.vm.conversion.snapexpression
 
 import it.evadid.workbook.elements.interactionElements.programming.state.snap.{SnapModuleBlocks, SnapTurtleCatalog, SnapVocabulary}
 
-import upickle.default.ReadWriter
-
 import it.evadid.core.datastructures.language.AppLanguage.English
 import it.evadid.vm.code.abstractions.BeExpression
 import it.evadid.vm.code.controlStructures.*
@@ -67,11 +65,10 @@ object SnapControlFlow {
     }
   }
 
-
-  enum SnapReporterKind derives ReadWriter:
+  enum SnapReporterKind:
     case Variadic, Binary, Unary, Literal
 
-  final case class SnapReporter(selector: String, kind: SnapReporterKind) derives ReadWriter
+  final case class SnapReporter(selector: String, kind: SnapReporterKind)
 
   val OperatorToSnapReporter: Map[String, SnapReporter] = Map(
     "<" -> SnapReporter("reportVariadicLessThan", SnapReporterKind.Variadic),

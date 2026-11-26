@@ -73,7 +73,7 @@ object JavaTurtleStructureValidator {
 
   private def isMainParameter(parameter: JavaVariableDeclaration): Boolean =
     parameter.javaType match {
-      case array: JAVA_ARRAY[?] => array.elementType.isInstanceOf[JAVA_STRING]
+      case array: JAVA_ARRAY[?] => array.elementType.isInstanceOf[JAVA_STRING.type]
       case _ => false
     }
 
@@ -100,9 +100,9 @@ object JavaTurtleStructureValidator {
         identifierProblem(parameter.name).orElse {
           if parameter.modifiers.nonEmpty || parameter.value.nonEmpty then
             Some(problem(Problem.UnsupportedStructure, "Parameter modifiers and initial values are not supported yet."))
-          else if method.name != "main" && !parameter.javaType.isInstanceOf[JAVA_INTEGER] &&
-              !parameter.javaType.isInstanceOf[JAVA_FLOAT] &&
-              !parameter.javaType.isInstanceOf[JAVA_BOOL] then
+          else if method.name != "main" && !parameter.javaType.isInstanceOf[JAVA_INTEGER.type] &&
+              !parameter.javaType.isInstanceOf[JAVA_FLOAT.type] &&
+              !parameter.javaType.isInstanceOf[JAVA_BOOL.type] then
             Some(problem(Problem.UnsupportedType, s"Use int, double or boolean for the parameters of ${method.name}."))
           else None
         }

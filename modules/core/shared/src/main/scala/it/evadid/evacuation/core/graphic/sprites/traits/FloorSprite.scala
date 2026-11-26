@@ -11,6 +11,3 @@ trait FloorSprite extends Sprite {
 
 }
 
-object FloorSprite {
-  given upickle.default.ReadWriter[FloorSprite] = Sprite.subtypeCodec
-}

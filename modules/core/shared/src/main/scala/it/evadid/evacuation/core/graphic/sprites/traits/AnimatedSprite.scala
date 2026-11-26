@@ -14,7 +14,5 @@ trait AnimatedSprite extends Sprite {
 }
 
 object AnimatedSprite{
-  given upickle.default.ReadWriter[AnimatedSprite] = Sprite.subtypeCodec
-
 
 }

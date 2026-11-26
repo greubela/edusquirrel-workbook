@@ -9,8 +9,7 @@ import it.evadid.vm.io.{BeExpressionStructureInfo, BeSegmentedCodeElement}
 import it.evadid.vm.naming.CodeRepresentationConfig
 import it.evadid.vm.static.BeExpressionStaticInformation
 import it.evadid.vm.types.*
-import upickle.default.*
-case class BeExpressionUnparsable(originalSource: String, message: String, parsedFromLanguage: Option[ProgrammingLanguage] = None) extends BeSourcePlaceholder derives ReadWriter{
+case class BeExpressionUnparsable(originalSource: String, message: String, parsedFromLanguage: Option[ProgrammingLanguage] = None) extends BeSourcePlaceholder{
 
   override lazy val staticInformationExpression: BeExpressionStaticInformation = new BeExpressionStaticInformation() {
 
@@ -21,7 +20,7 @@ case class BeExpressionUnparsable(originalSource: String, message: String, parse
 
   override lazy val structureInfo: BeExpressionStructureInfo[?] = new BeExpressionStructureInfo[BeExpressionUnparsable](this) {
     override def withReplacedChildren(newChildren: Map[BeChildRole, BeExpression]): BeExpressionUnparsable = BeExpressionUnparsable.this
-    override def toJavaStyleLines(myInfo: BeChildInfo): Seq[BeSegmentedCodeElement] = asExpressionLine(ControlFlowDown(), myInfo)
+    override def toJavaStyleLines(myInfo: BeChildInfo): Seq[BeSegmentedCodeElement] = asExpressionLine(ControlFlowDown, myInfo)
     override def getChildrenAndExtension(myScope: BeScope): Seq[BeExpressionNode] = Seq.empty
   }
 

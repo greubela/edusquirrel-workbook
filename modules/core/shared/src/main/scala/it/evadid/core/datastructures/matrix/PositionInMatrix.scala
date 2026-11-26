@@ -1,10 +1,8 @@
 package it.evadid.core.datastructures.matrix
 
-import upickle.default.*
-
 import MatrixPosition._
 
-case class PositionInMatrix(cPos: MatrixPosition, dim: MatrixDimension, unused: Boolean) derives ReadWriter {
+case class PositionInMatrix(cPos: MatrixPosition, dim: MatrixDimension, unused: Boolean) {
 
   override val hashCode: Int = {
     var hash: Int = 7;
@@ -32,7 +30,6 @@ case class PositionInMatrix(cPos: MatrixPosition, dim: MatrixDimension, unused: 
 }
 
 object PositionInMatrix {
-
 
   def apply(pos: MatrixPosition, dim: MatrixDimension): PositionInMatrix = {
     val canonical =

@@ -17,7 +17,7 @@ import scala.util.{Failure, Success}
 
 final case class SqlEditor(logger: Logger, state: Var[String], databaseConfig: SqlDatabaseConfig, backend: ExecutionClient,
     loadingLabel: Signal[String]) extends HtmlAppElement {
-  private case class Block(id: Int, text: String) derives upickle.default.ReadWriter
+  private case class Block(id: Int, text: String)
   private val blockMode = Var(false)
   private var nextId = 0
   private def block(text: String): Block = { nextId += 1; Block(nextId, text) }

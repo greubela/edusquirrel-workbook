@@ -58,9 +58,9 @@ object JavaTurtleSemanticValidator {
       }
 
     private def kind(javaType: it.evadid.vm.parsing.java.clean.model.JavaType[?]): Option[Kind] = javaType match {
-      case _: JAVA_INTEGER => Some(Kind.IntValue)
-      case _: JAVA_FLOAT => Some(Kind.DoubleValue)
-      case _: JAVA_BOOL => Some(Kind.BooleanValue)
+      case JAVA_INTEGER => Some(Kind.IntValue)
+      case JAVA_FLOAT => Some(Kind.DoubleValue)
+      case JAVA_BOOL => Some(Kind.BooleanValue)
       case _ => None
     }
 
@@ -225,19 +225,19 @@ object JavaTurtleSemanticValidator {
           actual <- local(target, env)
           _ <- initialized(target.name, env)
         } yield plain(actual, None, env)
-      case JavaLiteral(raw, _: JAVA_INTEGER) =>
+      case JavaLiteral(raw, JAVA_INTEGER) =>
         raw.toIntOption.toRight(problem(Problem.IntegerRange, "This integer literal is outside the int range."))
           .map(number => plain(Kind.IntValue, Some(Constant.Number(number)), env))
-      case JavaLiteral(raw, _: JAVA_FLOAT) =>
+      case JavaLiteral(raw, JAVA_FLOAT) =>
         raw.toDoubleOption.filter(_.isFinite)
           .toRight(problem(Problem.UnsupportedNumber, "Use a finite double literal."))
           .map(number => plain(Kind.DoubleValue, Some(Constant.Decimal(number)), env))
-      case JavaLiteral(raw, _: JAVA_BOOL) => Right(flag(raw == "true", env))
+      case JavaLiteral(raw, JAVA_BOOL) => Right(flag(raw == "true", env))
       case _: JavaLiteral[?] => Left(problem(Problem.UnsupportedType, "Use int, double or boolean values."))
       case call @ (_: JavaFunctionCall | _: JavaCallExpression) =>
         checkCall(call, env).flatMap(_ =>
           Left(problem(Problem.TypeMismatch, "A void method call does not produce a value.")))
-      case JavaOperationUnary("-", JavaLiteral("2147483648", _: JAVA_INTEGER)) =>
+      case JavaOperationUnary("-", JavaLiteral("2147483648", JAVA_INTEGER)) =>
         Right(plain(Kind.IntValue, Some(Constant.Number(Int.MinValue)), env))
       case JavaOperationUnary(operator, operand) =>
         value(operand, env).flatMap { result =>

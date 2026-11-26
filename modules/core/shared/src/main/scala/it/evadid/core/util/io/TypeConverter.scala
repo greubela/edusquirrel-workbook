@@ -2,8 +2,6 @@ package it.evadid.core.util.io
 
 import it.evadid.core.util.io.TypeConverter.ConverterResult
 import it.evadid.distribution.command.SerializedException
-import upickle.ReadWriter
-import upickle.default.*
 
 import scala.util.Try
 
@@ -74,7 +72,7 @@ object TypeConverter {
   }
 
 
-  case class ConverterResult[I, O](inputAfterOperation: Set[I], outputAfterOpteration: Set[O]) derives ReadWriter
+  case class ConverterResult[I, O](inputAfterOperation: Set[I], outputAfterOpteration: Set[O])
 
   lazy val singleValueMap: TypeConverter[Map[String, String], String] = new TypeConverter[Map[String, String], String] {
     def convertToO(in: Map[String, String]): String = in.values.head

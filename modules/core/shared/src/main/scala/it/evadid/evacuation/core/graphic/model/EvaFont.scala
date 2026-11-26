@@ -1,9 +1,6 @@
 package it.evadid.evacuation.core.graphic.model
 
-import upickle.default.ReadWriter
-
-case class EvaFont(sizeInPx: Double, name: String, bold: Boolean = false, italic: Boolean = false) derives ReadWriter {
-
+case class EvaFont(sizeInPx: Double, name: String, bold: Boolean = false, italic: Boolean = false) {
 
   def toCSSString: String = {
     var res = s"${sizeInPx}px \"$name\""

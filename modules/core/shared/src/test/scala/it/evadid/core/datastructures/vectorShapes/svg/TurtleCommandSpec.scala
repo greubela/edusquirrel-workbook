@@ -12,7 +12,7 @@ class TurtleCommandSpec extends FunSuite {
   private val commands: List[TurtleCommand[Double]] = List(
     Forward(5), Backward(4), Left(90), Right(45), SetHeading(180), SetX(2), SetY(3),
     Goto(1, 2), Towards(3, 4), ArcLeft(5, 90), ArcRight(6, 180), Dot(2), PenSize(3), Speed(4),
-    PenUp(), PenDown(), ShowTurtle(), HideTurtle(), Home(), Reset(), Clear(),
+    PenUp, PenDown, ShowTurtle, HideTurtle, Home, Reset, Clear,
     Circle(10), Circle(10, Some(90), Some(12)), Color("red"),
     Stitch(TurtleStitchMode.Cross, Seq(8, 13), Seq("False")),
     Unsupported(BeEntityName.fromCodeString("custom_command"), Seq(1), Seq("value")))
@@ -28,11 +28,11 @@ class TurtleCommandSpec extends FunSuite {
 
   test("names use the shared entity-name model and text aliases decode at the boundary") {
     assertEquals(Forward(2.0).name.getNameIn(English, NamingStyle.CamelCase), "forward")
-    assertEquals(PenUp[Double]().name.getNameIn(English, NamingStyle.CamelCase), "penUp")
+    assertEquals(PenUp.name.getNameIn(English, NamingStyle.CamelCase), "penUp")
     assertEquals(fromCall(BeEntityName.fromCodeString("turnRight"), Seq(90.0)), Right(90.0))
     assertEquals(fromText("fd", Seq(5.0)), Forward(5.0))
     assertEquals(fromText(" TURN-RIGHT ", Seq(90.0)), Right(90.0))
-    assertEquals(fromText[Double]("pu"), PenUp[Double]())
+    assertEquals(fromText[Double]("pu"), PenUp)
     assertEquals(fromText("color", Seq(255.0, 0.0, 10.0)), Color[Double]("rgb(255,0,10)"))
   }
 
@@ -59,7 +59,7 @@ class TurtleCommandSpec extends FunSuite {
   }
 
   test("typed path execution and text decoding produce the same geometry") {
-    val typed = List(Forward(10.0), Right(90.0), PenUp[Double](), Goto(3.0, 4.0), PenDown[Double](), Forward(2.0))
+    val typed = List(Forward(10.0), Right(90.0), PenUp, Goto(3.0, 4.0), PenDown, Forward(2.0))
     val decoded = List(fromText("fd", Seq(10.0)), fromText("rt", Seq(90.0)), fromText[Double]("pu"),
       fromText("setpos", Seq(3.0, 4.0)), fromText[Double]("pd"), fromText("forward", Seq(2.0)))
     assertEquals(TurtlePathBuilder(Point(0.0, 0.0), typed), TurtlePathBuilder(Point(0.0, 0.0), decoded))

@@ -270,7 +270,7 @@ private final class JavaAstToParsed(syntax: JavaSyntax) {
 
   private def expressionValue(value: JavaExpression, scope: Scope): ParsedExpression = value match {
     case JavaLiteral("null", _) => E.NoneValue
-    case JavaLiteral(raw, _: JAVA_BOOL) => E.Literal(raw.capitalize)
+    case JavaLiteral(raw, JAVA_BOOL) => E.Literal(raw.capitalize)
     case JavaLiteral(raw, _) => E.Literal(raw)
     case target: JavaTarget if target.sliceExpr.nonEmpty => E.Unsupported(s"${target.name}[...]")
     case target: JavaTarget => qualified(target, scope)
@@ -346,10 +346,10 @@ private final class JavaAstToParsed(syntax: JavaSyntax) {
   }
 
   private def parsedType(value: JavaType[?]): ParsedType = value match {
-    case _: (JAVA_INTEGER | JAVA_INTEGER_HEX | JAVA_INTEGER_OCT | JAVA_INTEGER_BIN | JAVA_FLOAT) => ParsedType.Numeric
-    case _: JAVA_BOOL => ParsedType.Boolean
-    case _: JAVA_STRING => ParsedType.Text
-    case _: JAVA_ANY => ParsedType.AnyValue
+    case _: (JAVA_INTEGER.type | JAVA_INTEGER_HEX.type | JAVA_INTEGER_OCT.type | JAVA_INTEGER_BIN.type | JAVA_FLOAT.type) => ParsedType.Numeric
+    case JAVA_BOOL => ParsedType.Boolean
+    case JAVA_STRING => ParsedType.Text
+    case JAVA_ANY => ParsedType.AnyValue
     case named: JAVA_UNPARSABLE_TYPE => named.str match {
       case "void" => ParsedType.Unit
       case "Object" => ParsedType.AnyValue

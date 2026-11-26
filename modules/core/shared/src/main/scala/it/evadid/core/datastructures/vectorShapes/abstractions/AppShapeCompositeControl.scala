@@ -21,7 +21,7 @@ trait AppShapeCompositeControl[T: Fractional] {
 
 object AppShapeCompositeControl {
 
-  case class ResizingBehavior() derives upickle.default.ReadWriter
+  case class ResizingBehavior()
 
   def zeroDimension[T: Fractional]: Dimension[T] = {
     val zero = summon[Fractional[T]].fromInt(0)

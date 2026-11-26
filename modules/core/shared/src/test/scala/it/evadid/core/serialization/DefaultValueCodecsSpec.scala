@@ -10,28 +10,6 @@ import it.evadid.workbook.abstractions.InteractionFormat.*
 
 class DefaultValueCodecsSpec extends FunSuite {
   private def roundTrip[T: ReadWriter](value: T): Unit = assertEquals(read[T](write(value)), value)
-  test("all matrix value classes have default codecs") {
-    val dim = MatrixDimension(2, 2, wrapAround = true)
-    roundTrip(dim)
-    roundTrip(MatrixPosition(-1, 2))
-    roundTrip(PositionInMatrix(MatrixPosition(0, 1), dim))
-    roundTrip(Direction.BOTTOM_RIGHT)
-    roundTrip(Neighbourhood.knight)
-    roundTrip(Matrix(dim, List(1, 2, 3, 4)))
-  }
-  test("geometry codecs reconstruct their numeric context and derived behavior") {
-    val dim = Dimension(4.0, 2.0)
-    val bounds = Bounds(Point(1.0, 2.0), dim)
-    val relative = RelativeBounds(Point(3.0, 4.0), dim)
-    roundTrip(dim)
-    roundTrip(bounds)
-    roundTrip(relative)
-    roundTrip(AspectRatio(2.0))
-    assertEquals(read[Bounds[Double]](write(bounds)).centerPoint, Point(3.0, 3.0))
-    assertEquals(read[RelativeBounds[Double]](write(relative)).toAbsoluteBounds(Point(1.0, 2.0)).startPoint, Point(4.0, 6.0))
-    val decimal = Dimension(BigDecimal("1.25"), BigDecimal("2.5"))
-    roundTrip(decimal)
-  }
   test("all built-in event sync strategy variants have default codecs") {
     List[EventSyncStrategy](EventSyncStrategy.SYNC_EVERYTHING, EventSyncStrategy.KEEP_LAST_MAJOR, EventSyncStrategy.KeepImportance(Set(UpdateImportance.MAJOR))).foreach(roundTrip(_))
   }
@@ -57,13 +35,6 @@ class DefaultValueCodecsSpec extends FunSuite {
     assertEquals(basic.toSerializable.abbreviation, basic.abbreviation)
     assertEquals(serializable.toBasic.abbreviation, Some("AI"))
   }
-  test("execution timing models preserve timestamps and fixed request times") {
-    import it.evadid.distribution.command.*
-    val time = java.time.LocalDateTime.of(2025, 1, 1, 12, 0)
-    val history = ExecutionHistory(time, time.plusSeconds(1), time.plusSeconds(2), time.plusSeconds(3))
-    roundTrip(history)
-    assertEquals(history.withFixedTime(time.minusSeconds(2), time.minusSeconds(1)).timestampExecutionFinished, time.plusSeconds(3))
-  }
   test("numeric constraint snapshots and Turtle project state have default codecs") {
     import it.evadid.core.datastructures.numbers.NumberConstraintImpl
     roundTrip(NumberConstraintImpl(Some(BigDecimal("1.5")), Some(BigDecimal("9.25"))))
@@ -71,13 +42,6 @@ class DefaultValueCodecsSpec extends FunSuite {
     import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseTurtle.TurtleStitchProjectState
     roundTrip(TurtleStitchProjectState.empty())
     roundTrip(TurtleStitchProjectState.parseFromStringOrEmpty("<project>Grüße</project>"))
-  }
-  test("sealed code-check results preserve success and missing hints") {
-    import it.evadid.workbook.elements.interactionElements.codeTaskToggle.AdvancedCodeCheckResult.*
-    import it.evadid.workbook.elements.interactionElements.codeTaskToggle.AdvancedCodeCheckResult
-    import it.evadid.core.datastructures.language.LanguageMapContentId
-    roundTrip[AdvancedCodeCheckResult](Success)
-    roundTrip[AdvancedCodeCheckResult](Incomplete(List(LanguageMapContentId("hint/missing"))))
   }
 
 }

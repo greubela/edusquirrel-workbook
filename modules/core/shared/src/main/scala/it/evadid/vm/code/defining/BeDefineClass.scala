@@ -46,7 +46,7 @@ case class BeDefineClass(
       )
     )
 
-    override def toJavaStyleLines(myInfo: BeChildInfo): Seq[BeSegmentedCodeElement] = asExpressionLine(ControlFlowDown(), myInfo)
+    override def toJavaStyleLines(myInfo: BeChildInfo): Seq[BeSegmentedCodeElement] = asExpressionLine(ControlFlowDown, myInfo)
 
     override def getChildrenAndExtension(myScope: BeScope): Seq[BeExpressionNode] =
       attributes.zipWithIndex.map((attribute, index) =>

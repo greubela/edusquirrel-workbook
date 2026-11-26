@@ -15,7 +15,3 @@ case class CircleShape[T: Fractional]() extends DrawingRoutineRelativeToMaxDim[T
   override def hasDesiredAspectRatio: Option[AspectRatio] = Some(AspectRatio(1,1))
 }
 
-object CircleShape {
-  given [T: Fractional: upickle.default.ReadWriter]: upickle.default.ReadWriter[CircleShape[T]] =
-    upickle.default.readwriter[Unit].bimap(value => (), _ => CircleShape[T]())
-}

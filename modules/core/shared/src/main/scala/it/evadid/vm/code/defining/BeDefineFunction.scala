@@ -50,7 +50,7 @@ case class BeDefineFunction(
     }
 
     override def toJavaStyleLines(myInfo: BeChildInfo): Seq[BeSegmentedCodeElement] =
-      asExpressionLine(ControlFlowDown(), myInfo)
+      asExpressionLine(ControlFlowDown, myInfo)
 
     override def getChildrenAndExtension(myScope: BeScope): Seq[BeExpressionNode] =
       List(BeExpressionReference(BeChildInfo(BeChildRole.BodySequence(0), InSequenceScope(body, myScope)), body))

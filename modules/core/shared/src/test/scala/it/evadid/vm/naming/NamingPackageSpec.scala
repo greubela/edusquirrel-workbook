@@ -26,14 +26,4 @@ class NamingPackageSpec extends FunSuite {
     assertEquals(BeEntityName.fromCodeString("drawCircle").universalInterpretation(), "draw_circle")
     assertEquals(BeEntityName.fromUniversalNameInParts("draw_circle").asLanguageMap(NamingStyle.CamelCase).getInLanguage(German), "drawCircle")
   }
-  test("configuration, styles and both entity name variants have default codecs") {
-    for (style <- List[NamingStyle](NamingStyle.CamelCase, NamingStyle.SnakeCase, NamingStyle.AllcapsSchool)) {
-      assertEquals(read[NamingStyle](write(style)), style)
-      val config = CodeRepresentationConfig(Python, German, style, skipUnparsable = true)
-      assertEquals(read[CodeRepresentationConfig](write(config)), config)
-    }
-    List(BeEntityName.fromLiteral("raw"), BeEntityName.fromCodeString("drawCircle")).foreach { name =>
-      assertEquals(read[BeEntityName](write(name)), name)
-    }
-  }
 }

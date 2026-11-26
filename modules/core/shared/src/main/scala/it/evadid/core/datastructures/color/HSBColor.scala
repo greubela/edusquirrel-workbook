@@ -1,9 +1,6 @@
 package it.evadid.core.datastructures.color
 
-import upickle.default.*
-
-case class HSBColor(hue: Double, saturation: Double, brightness: Double) extends AppColor derives ReadWriter {
-
+case class HSBColor(hue: Double, saturation: Double, brightness: Double) extends AppColor {
 
   override def toWebColor: WebColor = toRGB.toWebColor
   

@@ -27,7 +27,7 @@ class TurtleDrawingComparisonEdgeSpec extends FunSuite {
   }
 
   test("relative turtle moves and pen-up travel are converted to absolute drawn segments") {
-    val square = TurtlePathBuilder(Point(0.0, 0.0), List(TurtleCommand.PenUp[Double](), TurtleCommand.Forward(5.0), TurtleCommand.PenDown[Double](),
+    val square = TurtlePathBuilder(Point(0.0, 0.0), List(TurtleCommand.PenUp, TurtleCommand.Forward(5.0), TurtleCommand.PenDown,
       TurtleCommand.Forward(10.0), TurtleCommand.Right(90.0), TurtleCommand.Forward(10.0)))
     val segments = TurtleDrawingComparison.extractSegments(square)
     assertEquals(segments.size, 2)

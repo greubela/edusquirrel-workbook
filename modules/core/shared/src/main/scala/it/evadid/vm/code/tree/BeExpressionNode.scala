@@ -4,14 +4,13 @@ import it.evadid.vm.code.abstractions.BeExpression
 import it.evadid.vm.controlflow.ControlFlowType
 import it.evadid.vm.io.BeSegmentedCodeElement.BeSegment
 import it.evadid.vm.types.{BeChildInfo, BeDataType}
-import upickle.default.*
-sealed trait BeExpressionNode derives ReadWriter{
+sealed trait BeExpressionNode{
 
   def childInfo: BeChildInfo
 
 }
 
-case class BeExpressionReference(override val childInfo: BeChildInfo, expr: BeExpression) extends BeExpressionNode derives upickle.default.ReadWriter {
+case class BeExpressionReference(override val childInfo: BeChildInfo, expr: BeExpression) extends BeExpressionNode {
   def toSegment(addToCfStack: Option[ControlFlowType]): BeSegment = {
     BeSegment(
       addToCfStack,
@@ -21,6 +20,6 @@ case class BeExpressionReference(override val childInfo: BeChildInfo, expr: BeEx
   }
 }
 
-case class BeExtensionPoint(isRequired: Boolean, override val childInfo: BeChildInfo, extensionWillBeUsedAsType: BeDataType) extends BeExpressionNode derives upickle.default.ReadWriter {
+case class BeExtensionPoint(isRequired: Boolean, override val childInfo: BeChildInfo, extensionWillBeUsedAsType: BeDataType) extends BeExpressionNode {
 
 }

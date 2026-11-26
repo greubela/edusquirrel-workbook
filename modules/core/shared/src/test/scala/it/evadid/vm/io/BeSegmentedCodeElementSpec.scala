@@ -10,9 +10,9 @@ import upickle.default.{read, write}
 
 class BeSegmentedCodeElementSpec extends FunSuite {
   private val info = BeChildInfo(BeChildRole.NoRole, BeScope.GlobalScope())
-  private val expression = BeExpressionLine(ControlFlowDown(), BeExpressionReference(info, BeUseValue(BeDataValueLiteral("1"), None)))
-  private val control = BeControlFlowLine(RepeatBranch())
-  private val segment = BeSegment(Some(RepeatBranch()), info, Seq(control, BeSegment(None, info, Seq(expression))))
+  private val expression = BeExpressionLine(ControlFlowDown, BeExpressionReference(info, BeUseValue(BeDataValueLiteral("1"), None)))
+  private val control = BeControlFlowLine(RepeatBranch)
+  private val segment = BeSegment(Some(RepeatBranch), info, Seq(control, BeSegment(None, info, Seq(expression))))
 
   test("segments flatten nested lines and keep only expression lines as expressions") {
     assertEquals(segment.allLines(), Seq(control, expression))
@@ -20,15 +20,6 @@ class BeSegmentedCodeElementSpec extends FunSuite {
     assertEquals(control.getExpression, None)
     assertEquals(expression.getExpression.map(_.expr), Some(BeUseValue(BeDataValueLiteral("1"), None)))
     assertEquals(control.allLinesWithExpressions, Seq.empty)
-  }
-
-  test("every segment kind survives the tagged codec") {
-    List[BeSegmentedCodeElement](control, expression, segment).foreach { value =>
-      assertEquals(read[BeSegmentedCodeElement](write(value)), value)
-    }
-    val unknown = write[BeSegmentedCodeElement](control).replace("control-flow", "unknown")
-    val error = intercept[Exception](read[BeSegmentedCodeElement](unknown))
-    assert(Iterator.iterate[Throwable](error)(_.getCause).takeWhile(_ != null).exists(_.getMessage == "Unknown code segment: unknown"))
   }
 
   test("rendering lines expose the static information of their expression") {

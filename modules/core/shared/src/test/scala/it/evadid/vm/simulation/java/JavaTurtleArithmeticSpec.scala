@@ -40,7 +40,7 @@ class JavaTurtleArithmeticSpec extends FunSuite {
     assertEquals(execution.status, JavaTurtleInterpreter.Status.Completed)
     import it.evadid.core.datastructures.vectorShapes.svg.TurtleCommand
     assertEquals(execution.commands.map(_.toDrawingCommand), Vector[TurtleCommand[Double]](
-      TurtleCommand.PenUp(), TurtleCommand.Left(90), TurtleCommand.Forward(20), TurtleCommand.Right(90), TurtleCommand.PenDown()))
+      TurtleCommand.PenUp, TurtleCommand.Left(90), TurtleCommand.Forward(20), TurtleCommand.Right(90), TurtleCommand.PenDown))
     val exported = JavaTurtlePythonExport.render(compiled).source
     assert(exported.contains("_command(\"penup\", 0)"))
     assert(exported.contains("_command(\"pendown\", 0)"))

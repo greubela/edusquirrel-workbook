@@ -1,8 +1,6 @@
 package it.evadid.evacuation.core.graphic.model
 
-import upickle.default.ReadWriter
-
-case class HSBColor(hue: Double, saturation: Double, brightness: Double) derives ReadWriter {
+case class HSBColor(hue: Double, saturation: Double, brightness: Double) {
 
   def toRGB: EvaColor = {
 

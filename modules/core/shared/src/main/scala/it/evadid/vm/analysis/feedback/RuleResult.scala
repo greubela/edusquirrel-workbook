@@ -4,7 +4,7 @@ package it.evadid.vm.analysis.feedback
  * Severity level of a rule violation.
  * Can be used later for scoring/aggregation.
  */
-sealed trait RuleSeverity derives upickle.default.ReadWriter {
+sealed trait RuleSeverity {
   def weight: Int
 }
 
@@ -25,4 +25,4 @@ final case class RuleResult(
   passed: Boolean,
   message: String,
   details: Option[String] = None
-) derives upickle.default.ReadWriter
+)

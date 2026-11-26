@@ -3,10 +3,7 @@ package it.evadid.core.datastructures.vectorShapes.svg
 import it.evadid.core.datastructures.geometry.{Bounds, Dimension, Point}
 import it.evadid.core.datastructures.vectorShapes.svg.SvgPathBuilderCommand.*
 
-
 object SvgPathBuilderImmutable {
-  given [T: Fractional: upickle.default.ReadWriter]: upickle.default.ReadWriter[SvgPathBuilderImmutable[T]] =
-    upickle.default.readwriter[(StartPathCommand[T], List[SvgPathBuilderCommand[T]])].bimap(value => (value.startCommand, value.furtherCommands), value => SvgPathBuilderImmutable[T](value._1, value._2))
 
   
   def apply[T: Fractional](start: Point[T]): SvgPathBuilderImmutable[T] = SvgPathBuilderImmutable[T](StartPathCommand(start), List())
@@ -172,7 +169,6 @@ case class SvgPathBuilderImmutable[T: Fractional](
       furtherCommands = shifted
     )
   }
-
 
   private def num(x: Double): String =
     BigDecimal(x).bigDecimal.stripTrailingZeros.toPlainString

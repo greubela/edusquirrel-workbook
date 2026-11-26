@@ -15,13 +15,12 @@ import it.evadid.vm.simulation.data.{DataLibraries, DataWorld, ListCommand, Sudo
 import it.evadid.vm.simulation.turtle.{TurtleCommandSites, TurtleExecutionLimits, TurtleExecutionStatus}
 import it.evadid.vm.types.{BeDataValueLiteral, BeUseValueReference}
 import it.evadid.workbook.elements.interactionElements.programming.state.snap.SnapTurtleCatalog
-import upickle.default.ReadWriter
 
 import scala.annotation.tailrec
 import scala.util.control.NonFatal
 
 /** Where execution starts: the program's startup code, or one function called with numeric arguments. */
-enum ProgramEntry derives ReadWriter {
+enum ProgramEntry {
   case Startup
   case Call(function: String, arguments: Seq[Double] = Nil)
 }
@@ -35,7 +34,7 @@ final case class ProgramExecution(
     recorded: List[ModuleCommand],
     world: DataWorld,
     returnValue: Option[Double],
-    status: TurtleExecutionStatus) derives ReadWriter {
+    status: TurtleExecutionStatus) {
   def stdout: String = moduleCommands(BeModules.System).collect { case it.evadid.vm.modules.SystemCommand.PrintToOut(text) => text }.mkString
   def stderr: String = moduleCommands(BeModules.System).collect { case it.evadid.vm.modules.SystemCommand.PrintToErr(text) => text }.mkString
   def completed: Boolean = status == TurtleExecutionStatus.Completed

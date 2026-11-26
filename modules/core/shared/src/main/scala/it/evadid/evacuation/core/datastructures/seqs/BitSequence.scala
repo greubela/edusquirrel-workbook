@@ -2,11 +2,10 @@ package it.evadid.evacuation.core.datastructures.seqs
 
 
 import it.evadid.evacuation.core.utility.BinaryUtility
-import upickle.default.ReadWriter
 
 import scala.collection.mutable.ListBuffer
 
-case class BitSequence(seq: List[Boolean]) derives ReadWriter {
+case class BitSequence(seq: List[Boolean]) {
 
 
   def head(headSize: Int): BitSequence = {

@@ -10,12 +10,11 @@ import it.evadid.vm.io.{BeExpressionStructureInfo, BeSegmentedCodeElement}
 import it.evadid.vm.static.BeExpressionStaticInformation
 import it.evadid.vm.types.*
 import it.evadid.vm.types.BeScope.InSequenceScope
-import upickle.default.*
 
 /** Repeats `body` `amount` times, where the amount is any numeric expression: Snap's `repeat (n)`,
   * Python's `for _ in range(n)` and a Java counting `for` whose body does not use the counter.
   */
-case class BeRepeatNr(amount: BeExpression, body: BeSequence) extends BeControlStructure derives ReadWriter{
+case class BeRepeatNr(amount: BeExpression, body: BeSequence) extends BeControlStructure{
 
   /** The amount when it is a whole-number literal. */
   def fixedAmount: Option[Int] = amount match {
@@ -49,9 +48,9 @@ case class BeRepeatNr(amount: BeExpression, body: BeSequence) extends BeControlS
 
     override def toJavaStyleLines(myInfo: BeChildInfo): Seq[BeSegmentedCodeElement] = {
       List(
-        BeControlFlowLine(RepeatBranch()),
-        getChildrenAsReference(myInfo.myScope).last.toSegment(Some(ControlFlowUp())),
-        BeControlFlowLine(RepeatUnion())
+        BeControlFlowLine(RepeatBranch),
+        getChildrenAsReference(myInfo.myScope).last.toSegment(Some(ControlFlowUp)),
+        BeControlFlowLine(RepeatUnion)
       )
     }
 

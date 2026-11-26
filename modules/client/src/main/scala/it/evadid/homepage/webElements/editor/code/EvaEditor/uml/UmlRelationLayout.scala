@@ -4,13 +4,13 @@ import it.evadid.core.datastructures.uml.UmlRelation
 
 /** Routes orthogonal relationships between the measured class boxes. */
 object UmlRelationLayout {
-  final case class Box(left: Double, top: Double, width: Double, height: Double) derives upickle.default.ReadWriter {
+  final case class Box(left: Double, top: Double, width: Double, height: Double) {
     def right: Double = left + width
     def bottom: Double = top + height
     def x: Double = left + width / 2
     def y: Double = top + height / 2
   }
-  final case class Arrow(relation: UmlRelation, path: String, labelX: Double, labelY: Double) derives upickle.default.ReadWriter
+  final case class Arrow(relation: UmlRelation, path: String, labelX: Double, labelY: Double)
 
   def route(relation: UmlRelation, from: Box, to: Box): Option[Arrow] = {
     def vertical(start: Double, end: Double) = Arrow(relation,

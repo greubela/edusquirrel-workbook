@@ -127,11 +127,11 @@ private[java] object JavaTurtleTraceSources {
   private def expression(value: R.Expression, syntax: Syntax, node: SourceNode): Option[Entries] = {
     val children: Option[Entries] = (value, syntax.value) match {
       case (R.Widen(inner), _) => expression(inner, syntax, node.child("0"))
-      case (R.IntLiteral(_), JavaLiteral(_, _: JAVA_INTEGER)) |
-          (R.DoubleLiteral(_), JavaLiteral(_, _: JAVA_FLOAT)) |
-          (R.BooleanLiteral(_), JavaLiteral(_, _: JAVA_BOOL)) |
+      case (R.IntLiteral(_), JavaLiteral(_, JAVA_INTEGER)) |
+          (R.DoubleLiteral(_), JavaLiteral(_, JAVA_FLOAT)) |
+          (R.BooleanLiteral(_), JavaLiteral(_, JAVA_BOOL)) |
           (_: R.Read, _: JavaTarget) | (_: R.Update, _: JavaUpdateExpression) => Some(Vector.empty)
-      case (R.IntLiteral(Int.MinValue), JavaOperationUnary("-", JavaLiteral("2147483648", _: JAVA_INTEGER))) =>
+      case (R.IntLiteral(Int.MinValue), JavaOperationUnary("-", JavaLiteral("2147483648", JAVA_INTEGER))) =>
         Some(Vector.empty)
       case (R.Group(inner), _: JavaParenthesizedExpression) =>
         only(syntax.children).flatMap(expression(inner, _, node.child("0")))

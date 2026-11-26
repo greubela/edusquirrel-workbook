@@ -14,8 +14,8 @@ object EmbroideryPreviewTargets {
     val commands = ListBuffer.empty[TurtleCommand[Double]]
     def forward(length: Double): Unit = commands += TurtleCommand.Forward(length)
     def turn(degrees: Double): Unit = commands += TurtleCommand.Right(degrees)
-    def up(): Unit = commands += TurtleCommand.PenUp()
-    def down(): Unit = commands += TurtleCommand.PenDown()
+    def up(): Unit = commands += TurtleCommand.PenUp
+    def down(): Unit = commands += TurtleCommand.PenDown
     def move(x: Double, y: Double, heading: Double = 0): Unit = {
       up()
       commands += TurtleCommand.Goto(x, y)

@@ -17,7 +17,7 @@ import java.time.LocalDateTime
  * @param wrongParts    the parts that a failed check found wrong in the current answer, see
  *                     [[WorkbookInteractionElement.wrongParts]]; empty as soon as the answer changed
  */
-final case class CheckReport(tracked: Boolean, failedChecks: Int, wrongParts: Set[Int]) derives upickle.default.ReadWriter
+final case class CheckReport(tracked: Boolean, failedChecks: Int, wrongParts: Set[Int])
 
 object CheckReport {
   val untracked: CheckReport = CheckReport(tracked = false, 0, Set.empty)

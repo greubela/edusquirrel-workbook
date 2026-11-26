@@ -65,7 +65,7 @@ class TurtleCommandExecutionInfoSpec extends FunSuite {
   test("aliases share canonical identities in source and execution") {
     val result = analyze("turn(90)\nright(45)\npenup()\nup()\npendown()")
     val right: TurtleCommand[Double] = TurtleCommand.Right(0.0)
-    val penUp: TurtleCommand[Double] = TurtleCommand.PenUp()
+    val penUp: TurtleCommand[Double] = TurtleCommand.PenUp
     assertEquals(result.nrOfCommandExecutedIgnoreParameter(right), 2)
     assertEquals(result.nrOfCommandInCodeIgnoreParameter(right), 2)
     assertEquals(result.nrOfCommandInCodeIgnoreParameter(penUp), 2)
@@ -85,7 +85,7 @@ class TurtleCommandExecutionInfoSpec extends FunSuite {
 
   test("canonical alias values retain entity-name formatting and language-map transformations") {
     val name = TurtleCommand.canonicalName(BeEntityName.fromLiteral(" PU "))
-    assertEquals(name, TurtleCommand.PenUp[Double]().name)
+    assertEquals(name, TurtleCommand.PenUp.name)
     assertEquals(name.getNameIn(English, NamingStyle.CamelCase), "penUp")
     assertEquals(name.getNameIn(German, NamingStyle.SnakeCase), "pen_up")
     assertEquals(name.asLanguageMap(NamingStyle.CamelCase).getInLanguage(German), "penUp")

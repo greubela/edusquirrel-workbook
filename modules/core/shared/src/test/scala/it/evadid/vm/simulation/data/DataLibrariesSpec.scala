@@ -69,13 +69,4 @@ class DataLibrariesSpec extends FunSuite {
     val otherGiven = SudokuGrid(SudokuGrid.default.cells.updated(1, 9), SudokuGrid.default.givens)
     assert(!solved.solves(otherGiven), "a given differs from the solution")
   }
-
-  test("the default data and commands serialize and round-trip") {
-    assertEquals(DataWorld().list, DataWorld.defaultList)
-    assertEquals(DataWorld().sudoku.cells.count(_ == 0), 3)
-    val execution = ProgramExecution(List(ModuleCommand.NumberList(ListCommand.Swap(0, 1)), ModuleCommand.Sudoku(SudokuCommand.Remove(0, 2)),
-      ModuleCommand.NumberList(ListCommand.Length(2))), DataWorld(), Some(1.0), it.evadid.vm.simulation.turtle.TurtleExecutionStatus.Completed)
-    assertEquals(read[ProgramExecution](write(execution)), execution)
-    assertEquals(read[ProgramEntry](write[ProgramEntry](ProgramEntry.Call("f", Seq(1.0)))), ProgramEntry.Call("f", Seq(1.0)))
-  }
 }

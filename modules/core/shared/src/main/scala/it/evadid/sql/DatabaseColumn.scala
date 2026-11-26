@@ -1,12 +1,10 @@
 package it.evadid.sql
 
-import upickle.default.*
-
 /** MySQL 8 column types with their canonical DDL spelling ([[sql]]) and limits ([[problem]]).
   * [[MySqlType.fromSql]] reads a column declaration's type, including MySQL's synonyms.
   * Spatial types are not supported.
   */
-enum MySqlType derives ReadWriter {
+enum MySqlType {
   case TinyInt(unsigned: Boolean = false)
   case SmallInt(unsigned: Boolean = false)
   case MediumInt(unsigned: Boolean = false)
@@ -190,7 +188,7 @@ object MySqlType {
   }
 }
 
-case class DatabaseColumn(columnName: String, mySqlType: MySqlType) derives ReadWriter {
+case class DatabaseColumn(columnName: String, mySqlType: MySqlType) {
   require(columnName.matches("[A-Za-z_][A-Za-z0-9_]{0,63}"), "Invalid database column identifier")
   mySqlType.problem.foreach(problem => throw IllegalArgumentException(s"Invalid type of column $columnName: $problem"))
 }

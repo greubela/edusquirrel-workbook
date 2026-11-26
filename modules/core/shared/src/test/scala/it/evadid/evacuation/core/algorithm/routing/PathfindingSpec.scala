@@ -5,15 +5,6 @@ import it.evadid.evacuation.core.algorithm.routing.model.SearchNode
 import munit.FunSuite
 
 class PathfindingSpec extends FunSuite {
-  test("algorithm codecs preserve runnable BFS, Dijkstra and A-star policies") {
-    import upickle.default.*
-    val bfs = read[BFS[Int]](write(BFS[Int]()))
-    assertEquals(bfs.initStartNode(4), SearchNode(4, None, BFS.BFSInformation(0)))
-    val dijkstra = readBinary[Dijkstra[Int]](writeBinary(Dijkstra[Int]()))
-    assertEquals(dijkstra.shortestPath(access(wiki), 1, 5), List(1, 3, 6, 5))
-    val astar = read[AStar[Int]](write(AStar[Int](12.5)))
-    assertEquals(astar.initStartNode(4).info, AStar.AStarInformation(0, 12.5))
-  }
   test("cached long paths populate suffixes without stack overflow") {
     var queries = 0
     val graph = GraphAccess.fromFunction[Int, DijkstraInformation] { n =>

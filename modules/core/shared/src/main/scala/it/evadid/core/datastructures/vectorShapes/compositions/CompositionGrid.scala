@@ -52,7 +52,3 @@ case class CompositionGrid[T: Fractional](alignments: Matrix[AlignmentInParent])
   override def desiredAspectRatioAndAlignment: Option[(AspectRatio, AlignmentInParent)] = None
 }
 
-object CompositionGrid {
-  given [T: Fractional: upickle.default.ReadWriter]: upickle.default.ReadWriter[CompositionGrid[T]] =
-    upickle.default.readwriter[Matrix[AlignmentInParent]].bimap(value => value.alignments, value => CompositionGrid[T](value))
-}

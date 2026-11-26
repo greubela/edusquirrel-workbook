@@ -1,8 +1,6 @@
 package it.evadid.core.datastructures.color
 
-import upickle.default.*
-
-case class RGBColor(red: Int, green: Int, blue: Int, alpha: Int = 255) extends AppColor derives ReadWriter {
+case class RGBColor(red: Int, green: Int, blue: Int, alpha: Int = 255) extends AppColor {
 
   def toRGB: RGBColor = this
 
@@ -50,7 +48,6 @@ case class RGBColor(red: Int, green: Int, blue: Int, alpha: Int = 255) extends A
 
 }
 
-
 object RGBColor {
   
   def fromPureSixDigitHex(sixDigitHex: String): RGBColor = {
@@ -97,7 +94,6 @@ object RGBColor {
     val res = getColorGradientHSB(startColor.toHSB, destColor.toHSB, percent, incHue)
     res.toRGB
   }
-
 
 }
 

@@ -1,7 +1,5 @@
 package it.evadid.core.datastructures.file
 
-import upickle.default.*
-
 import it.evadid.core.datastructures.file.FileDescription.PathStructure
 
 import scala.concurrent.Future
@@ -25,17 +23,17 @@ trait FileDescription {
 
 object FileDescription {
 
-  case class FilenameStructure(filenameWithoutExtension: String, extension: Option[String]) derives ReadWriter {
+  case class FilenameStructure(filenameWithoutExtension: String, extension: Option[String]) {
     lazy val extensionOrEmpty: String = extension.getOrElse("")
     lazy val extensionWithPointOrEmpty: String = extension.map("." + _).getOrElse("")
     lazy val filenameWithExtension: String = filenameWithoutExtension + extensionWithPointOrEmpty
   }
 
-  case class LocationStructure(protocol: Option[String], domainElements: List[String], port: Option[Int], dirElements: List[String]) derives ReadWriter {
+  case class LocationStructure(protocol: Option[String], domainElements: List[String], port: Option[Int], dirElements: List[String]) {
 
   }
 
-  case class PathStructure(locationStructure: LocationStructure, nameStructure: FilenameStructure) derives ReadWriter {
+  case class PathStructure(locationStructure: LocationStructure, nameStructure: FilenameStructure) {
     def filenameWithoutExtension: String = nameStructure.filenameWithoutExtension
 
     def extension: Option[String] = nameStructure.extension
@@ -87,12 +85,8 @@ object FileDescription {
     val withoutProtocol: String = if (fullPath.contains("://")) fullPath.split("://").last else fullPath
     val splitted: Array[String] = withoutProtocol.split("/\\\\").filter(_.nonEmpty)
 
-
     (domain.toList, dirHierarchy.toList)
   }
-
-
-
 
 case class NamedDataFileDescription(url: String, override val data: Array[Byte], copyrightInfo: CopyrightInfo) extends FileDescription with LoadedFile {
 
@@ -133,6 +127,5 @@ def apply(filename: String, data: Array[Byte], copyrightInfo: CopyrightInfo) = {
   val parts = FileDescription.parseUrlStructure(filename)
   NamedDataFileDescription(parts.filenameWithoutExtension, data, copyrightInfo)
 }
-
 
 }*/

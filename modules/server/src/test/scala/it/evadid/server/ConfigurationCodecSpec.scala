@@ -62,10 +62,4 @@ class ConfigurationCodecSpec extends FunSuite {
     assertEquals(settings.port, "587")
   }
 
-  test("mail settings have their own default codec") {
-    val value = SendMailCommand.MailConfig("fixture@example.com", "fixture-password", "localhost", "587")
-    assertEquals(read[SendMailCommand.MailConfig](write(value)), value)
-    assertEquals(readBinary[SendMailCommand.MailConfig](writeBinary(value)), value)
-  }
-
 }

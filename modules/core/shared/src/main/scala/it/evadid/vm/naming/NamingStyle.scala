@@ -1,13 +1,10 @@
 package it.evadid.vm.naming
 
-import upickle.default.*
-
-sealed trait NamingStyle derives ReadWriter {
+sealed trait NamingStyle {
   def applyStyle(parts: List[String]): String
 
   def stringToParts(string: String): List[String]
 }
-
 
 object NamingStyle {
 
