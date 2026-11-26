@@ -47,8 +47,18 @@ object PythonEntryPoint {
     case None => program
   }
 
-  /** Move the main sequence into `def main():`, called at the end of the module; see [[ModuleLayout]]. */
-  def wrap(program: BeStartProgram): BeStartProgram = {
+  /** Move the main sequence into `def main():`, called at the end of the module; see [[ModuleLayout]].
+    * A program that defines a `main` of its own keeps its main sequence at module level, so the entry
+    * point cannot replace that function.
+    */
+  def wrap(program: BeStartProgram): BeStartProgram =
+    if program.startSequence.exists(_.body.exists {
+      case definition: BeDefineFunction => definition.functionTypeInfo.displayName.universalInterpretation() == mainName.universalInterpretation()
+      case _ => false
+    }) then program
+    else wrapped(program)
+
+  private def wrapped(program: BeStartProgram): BeStartProgram = {
     val layout = ModuleLayout.of(program)
     // The Python printer declares the module variables that `main` assigns `global`.
     val entry = BeDefineFunction(Nil, None, BeSequence.optionalBody(layout.main.toList),

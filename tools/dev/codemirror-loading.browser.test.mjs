@@ -50,7 +50,8 @@ test('slow CodeMirror loading leaves the app usable, shares one load and ignores
     const dialog = page.locator('dialog[open]');
     await dialog.getByRole('tab', {name:'Python',exact:true}).click();
     const fallback = dialog.locator('.code-mirror-editor__fallback');
-    await fallback.fill('forward(77)\n');
+    // The Python structure editor edits one function at a time; the text stays a valid program for the Snap switch.
+    await fallback.fill('def main():\n    forward(77)\n');
     assert.equal(requests(), 1, 'opening and editing share the pending startup load');
     assert.equal(await page.evaluate(() => !!window.EduSquirrelCodeMirror), false,
       'the native editor stays pending until the module gate is released');
@@ -64,27 +65,10 @@ test('slow CodeMirror loading leaves the app usable, shares one load and ignores
     await dialog.getByRole('tab', {name:'Python',exact:true}).click();
     await dialog.locator('.cm-editor').waitFor();
     assert.match(await dialog.locator('.cm-content').innerText(), /forward\(77\)/, 'text entered while loading survives enhancement');
-    assert.equal(await dialog.locator('.cm-flowchart-gutter').count(), 1, 'Eva enables the configured Python gutter');
-    await dialog.locator('.cm-flowchart-row image').first().waitFor();
-    const overlay = await dialog.locator('.cm-flowchart-row image').first().evaluate(image => {
-      const uri = image.getAttribute('href');
-      const svg = new DOMParser().parseFromString(decodeURIComponent(uri.slice(uri.indexOf(',') + 1)), 'image/svg+xml');
-      return {paths:svg.querySelectorAll('path').length, text:svg.querySelectorAll('text').length,
-        errors:svg.querySelectorAll('parsererror').length};
-    });
-    assert(overlay.paths > 0, 'the nested block renderer supplies real flow paths');
-    assert.equal(overlay.text, 0, 'only CodeMirror supplies source content');
-    assert.equal(overlay.errors, 0, 'the flow image is valid SVG');
-    assert.match(await dialog.locator('.cm-content').innerText(), /forward\(77\)/);
-    const source = 'while True:\n    if True:\n        print(1)\n    else:\n        print(2)\nprint(3)';
-    await dialog.locator('.cm-content').click();
-    await page.keyboard.press('Control+Home');
-    await page.keyboard.press('Control+a');
-    await page.keyboard.insertText(source);
-    await dialog.locator('.cm-flowchart-row[title^="decision:"]').waitFor();
-    assert.equal(await dialog.locator('.cm-line').count(), source.split('\n').length,
-      'synthetic branch and closing rows do not add content lines');
-    assert.equal(await dialog.locator('.cm-content').innerText(), source);
+    // Eva's Python edits like Java: foldable blocks, no flowchart gutter (codemirror-flowchart.test.mjs covers the gutter).
+    assert.equal(await dialog.locator('.cm-flowchart-gutter').count(), 0, 'Eva shows no flowchart gutter by default');
+    assert.equal(await dialog.locator('.cm-foldGutter').count(), 1, 'Python blocks can be folded');
+    const source = await dialog.locator('.cm-content').innerText();
     await page.evaluate(() => {
       const node = document.querySelector('dialog[open] .cm-editor');
       window.loadingAppearanceProbe = {node, view: EduSquirrelCodeMirrorLibraries.EditorView.findFromDOM(node)};
@@ -93,9 +77,7 @@ test('slow CodeMirror loading leaves the app usable, shares one load and ignores
       await page.evaluate(theme => document.documentElement.setAttribute('data-theme', theme), theme);
       await page.waitForFunction(theme => {
         const editor = document.querySelector('dialog[open] .eva-editor');
-        const svg = editor?.querySelector('.cm-flowchart-row > svg');
-        return editor?.getAttribute('data-editor-theme') === theme && svg &&
-          (getComputedStyle(svg).filter !== 'none') === (theme === 'dark') &&
+        return editor?.getAttribute('data-editor-theme') === theme &&
           loadingAppearanceProbe.view.state.facet(EduSquirrelCodeMirrorLibraries.EditorView.darkTheme) === (theme === 'dark');
       }, theme);
       assert(await page.evaluate(() => {
@@ -107,7 +89,6 @@ test('slow CodeMirror loading leaves the app usable, shares one load and ignores
     }
     await dialog.getByRole('tab', {name:'Java',exact:true}).click();
     await dialog.locator('.cm-editor').waitFor();
-    assert.equal(await dialog.locator('.cm-flowchart-gutter').count(), 0, 'Python gutter does not appear for Java');
     assert.equal(requests(), 1, 'all tabs reuse the same module load');
     assert.deepEqual(errors, []);
   } finally { await browser.close(); }
@@ -121,7 +102,7 @@ test('a failed CodeMirror request leaves the fallback editable and other tabs us
     await dialog.getByRole('tab', {name:'Python',exact:true}).click();
     release();
     const fallback = dialog.locator('.code-mirror-editor__fallback');
-    await fallback.fill('forward(88)\n');
+    await fallback.fill('def main():\n    forward(88)\n');
     await dialog.getByRole('tab', {name:'Snap!',exact:true}).click();
     await dialog.getByRole('tab', {name:'Python',exact:true}).click();
     assert.match(await fallback.inputValue(), /forward\(88\)/);

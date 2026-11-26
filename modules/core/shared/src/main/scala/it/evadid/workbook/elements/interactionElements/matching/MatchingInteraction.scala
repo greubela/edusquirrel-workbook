@@ -29,6 +29,10 @@ case class MatchingInteraction(override val elementId: String, instruction: Opti
   override def validateState(state: MatchingInteractionState): Unit =
     require(state == state.sanitized(left.size, right.size), "Stored matching does not belong to this exercise")
 
+  /** Indices of the left items connected with a wrong category, as the grader judges them. */
+  override def wrongParts(state: MatchingInteractionState): Set[Int] =
+    expected.fold(Set.empty[Int])(MatchingGrader.wrongConnections(_, right.size, state))
+
   def connect(state: MatchingInteractionState, leftIndex: Int, rightIndex: Option[Int]): MatchingInteractionState =
     state.withMatch(leftIndex, rightIndex, left.size, right.size)
 }

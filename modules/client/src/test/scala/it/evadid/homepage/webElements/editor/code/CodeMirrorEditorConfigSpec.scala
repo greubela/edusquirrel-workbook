@@ -74,9 +74,9 @@ class CodeMirrorEditorConfigSpec extends FunSuite {
   }
 
   test("Eva propagates its editor settings and omitted fields use current defaults") {
-    val configured = EvaEditorConfig(codeMirrorConfig = CodeMirrorEditorConfig.Default)
+    val configured = EvaEditorConfig(codeMirrorConfig = CodeMirrorEditorConfig.Flowchart)
     assertEquals(read[EvaEditorConfig](write(configured)), configured)
-    assertEquals(read[EvaEditorConfig]("{}").codeMirrorConfig, CodeMirrorEditorConfig.Flowchart)
+    assertEquals(read[EvaEditorConfig]("{}").codeMirrorConfig, CodeMirrorEditorConfig.Default)
   }
 
   test("the flowchart cache retains only the latest exact source") {

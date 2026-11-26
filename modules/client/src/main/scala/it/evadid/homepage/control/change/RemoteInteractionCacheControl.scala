@@ -2,6 +2,7 @@ package it.evadid.homepage.control.change
 
 import com.raquo.laminar.api.L.*
 import com.raquo.airstream.ownership.ManualOwner
+import com.raquo.laminar.keys.EventProp
 import it.evadid.core.datastructures.state.StateHelper.*
 import it.evadid.core.datastructures.storage.remote.{RemoteHistoryCache, WorkbookSyncEnvironment}
 import it.evadid.homepage.control.model.FullInfo
@@ -10,6 +11,7 @@ import it.evadid.workbook.abstractions.{InteractionFormat, WorkbookInteractionEl
 import it.evadid.workbook.interaction.sync.*
 import it.evadid.workbook.interaction.variable.{InteractionVariable, InteractionVariableHistory}
 import it.evadid.workbook.meta.{ExecutionContextInformation, InteractionVariableSyncReport}
+import org.scalajs.dom
 import java.time.LocalDateTime
 import scala.concurrent.{ExecutionContext, Future, Promise}
 import scala.util.{Success, Try}
@@ -135,6 +137,19 @@ case class RemoteInteractionCacheControl(fullInfo: FullInfo) extends SyncControl
         syncLogger.logExceptionWarn("Could not restore an interaction history", error)))
     }(using unsafeWindowOwner)
 
+  /** A hidden page may be closed without running another task: deferred stores would never start and buffered
+    * destinations never send. So when the page is hidden or left, pending stores run at once and every destination
+    * sends its buffer. The listeners sit on the window: `visibilitychange` is fired at the document and bubbles to
+    * the window, so in the same dispatch they follow the editors, which write their typed text at the document.
+    */
+  private def storePendingNow(): Unit = {
+    deferredStores.now().keys.foreach(runDeferred)
+    Try(binding.now().flush()).failed.foreach(error => syncLogger.logExceptionWarn("Could not send buffered histories", error))
+  }
+  windowEvents(_ => RemoteInteractionCacheControl.onVisibilityChange).filter(_ => dom.document.hidden)
+    .foreach(_ => storePendingNow())(using unsafeWindowOwner)
+  windowEvents(_.onPageHide).foreach(_ => storePendingNow())(using unsafeWindowOwner)
+
   override def storeAll(forceFlush: Boolean): Future[Unit] = {
     val current = binding.now()
     current.batch(current.interactions.map(_.snapshot), forceFlush)(_.store())
@@ -225,4 +240,9 @@ case class RemoteInteractionCacheControl(fullInfo: FullInfo) extends SyncControl
       .fold(Signal.fromValue(Option.empty[InteractionVariableSyncReport[SyncInformationWithContext]]))(_.report))
       .combineWith(resetState).map((report, reset) => report.map(current =>
         if reset == SyncResetState.Idle then current else current.copy(destinationsWithSufficientWrites = Set.empty)))
+}
+
+object RemoteInteractionCacheControl {
+  /** `visibilitychange` on the window, where it arrives after the document's listeners. */
+  private val onVisibilityChange = new EventProp[dom.Event]("visibilitychange")
 }

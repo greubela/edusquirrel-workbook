@@ -60,7 +60,7 @@ class PythonTypeHintConversionSpec extends FunSuite {
         |advance(3, True)
         |""".stripMargin
     )
-    assert(python.code.contains("def advance(distance: float, enabled: bool) -> None:"), clue = python.code)
+    assert(python.code.contains("def advance(distance: float, enabled: bool):"), clue = python.code)
     assert(python.code.contains("remaining: float = distance"), clue = python.code)
     assert(python.code.contains("remaining = remaining - 1"), clue = python.code)
     assertEquals(python.toJava.toPython.code.trim, python.code.trim)

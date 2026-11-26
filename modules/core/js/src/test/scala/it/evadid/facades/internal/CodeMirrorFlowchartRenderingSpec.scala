@@ -110,6 +110,36 @@ class CodeMirrorFlowchartRenderingSpec extends CodeMirrorSuite {
     }
   }
 
+  test("the chart of a line being written waits until the cursor leaves the line") {
+    withEditor("x\ny") { (view, parent, analysis) =>
+      waitUntil(analysis.requests.length == 1).flatMap { _ =>
+        analysis.answer(0, chart)
+        waitUntil(rows(parent).nonEmpty)
+      }.flatMap { _ =>
+        view.focus()
+        assert(view.hasFocus.asInstanceOf[Boolean], "the editor has focus while typing")
+        view.dispatch(js.Dynamic.literal(changes = js.Dynamic.literal(from = 1, insert = " = 1"), selection = js.Dynamic.literal(anchor = 5),
+          userEvent = "input.type"))
+        waitUntil(analysis.requests.length == 2)
+      }.flatMap { _ =>
+        analysis.answer(1, Flowchart(5, Map(1 -> FlowchartRow(Nil, "Assign"))))
+        tick(20).map(_ => assertEquals(rows(parent).map(_._1).head, "Start", "the gutter keeps its chart while the line is written"))
+      }.flatMap { _ =>
+        view.dispatch(js.Dynamic.literal(selection = js.Dynamic.literal(anchor = view.state.doc.length)))
+        waitUntil(rows(parent).exists(_._1 == "Assign"))
+      }.flatMap { _ =>
+        assertEquals(rows(parent).map(_._1).head, "Assign", "leaving the line shows the held chart")
+        // A document set from outside, e.g. a restoration, is no typing: its chart shows although the editor has focus.
+        view.dispatch(js.Dynamic.literal(changes = js.Dynamic.literal(from = 0, to = view.state.doc.length, insert = "z = 2\ny"),
+          selection = js.Dynamic.literal(anchor = 1)))
+        waitUntil(analysis.requests.length == 3)
+      }.flatMap { _ =>
+        analysis.answer(2, Flowchart(5, Map(1 -> FlowchartRow(Nil, "Restored"))))
+        waitUntil(rows(parent).exists(_._1 == "Restored"))
+      }.map(_ => assertEquals(rows(parent).map(_._1).head, "Restored"))
+    }
+  }
+
   test("destroyed editors cancel pending analysis and ignore late results") {
     withEditor("x") { (view, _, analysis) =>
       waitUntil(analysis.requests.length == 1).flatMap { _ =>

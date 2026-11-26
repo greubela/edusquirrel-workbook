@@ -68,6 +68,11 @@ trait WorkbookInteractionElement[F <: InteractionFormat](using v: ValueOf[F]) ex
 
   def validateState(value: InteractionStateType): Unit = ()
 
+  /** Wrong parts of an answer, as indices whose meaning the interaction defines (an option, an editable cell, ...).
+   * Parts left unanswered are not wrong. Renderers permanently mark the parts that a failed check found wrong, see
+   * [[it.evadid.workbook.meta.CheckReport]]; interactions without such parts, like programming tasks, keep the default. */
+  def wrongParts(answer: InteractionStateType): Set[Int] = Set.empty
+
   val defaultValue: InteractionStateType
 
   val gradingElements: Seq[WorkbookInteractionGrader[InteractionStateType, GradingInfoType]] = List()

@@ -32,8 +32,9 @@ final class ProgrammingStateDerivations private[evadid](source: ProgrammingState
   lazy val expression: ProgrammingStateBeExpression = source match {
     case value: ProgrammingStateBeExpression => value
     case ProgrammingStateRaw(Java, _) | _: ProgrammingStateJavaStructured => javaFrontend.convert
-    case ProgrammingStateRaw(Python, code) => ProgrammingStateBeExpression(PythonToExpression.program(preparedSource.code).fullProgram)
-    case value: ProgrammingStatePythonStructured => ProgrammingStateBeExpression(PythonToExpression.program(preparedSource.code).fullProgram)
+    // Blocks being typed have no body yet; the parser reads them as empty.
+    case ProgrammingStateRaw(Python, _) | _: ProgrammingStatePythonStructured => ProgrammingStateBeExpression(
+      PythonToExpression.program(it.evadid.vm.conversion.structured.SourceStructure.withEmptyBodies(preparedSource.code)).fullProgram)
     case ProgrammingStateRaw(SnapLanguage, xml) =>
       // Malformed XML has no blocks to read; the lossless Snap codec reports why.
       if xml.trim.nonEmpty then snapModel.left.foreach(message => throw ProgrammingConversionException.unparsable(message))

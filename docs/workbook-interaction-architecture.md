@@ -75,8 +75,17 @@ a translated map, or literal content); `LaminarRenderHelper.workbookContentSigna
 resolves these without flattening the saved model to strings. `WorkbookContentChoiceInteraction`,
 slideshow completion, reorder constraints and answer-table cells attach serializable
 graders registered in their `InteractionFormat`. Renderers update answers; the shared
-grading panel reports correctness. Reorder checks run on request, while choices,
-table cells and slideshow visits are graded automatically.
+grading panel reports correctness. Choices, table cells, matchings and reorder tasks
+are graded only when the learner checks them; slideshow visits are graded automatically.
+
+[`CheckReport`](../modules/core/shared/src/main/scala/it/evadid/workbook/meta/CheckReport.scala)
+derives the learner's checks from the grading history, without separate state: a check is
+an answer every grader assessed, counted only for interactions with a grader that runs on
+request only. Its `wrongParts` holds `WorkbookInteractionElement.wrongParts` of the failed
+check of the current answer; renderers mark these parts (`answer-part--wrong`) until the next
+change of the answer. Programming tasks keep the empty default and are not marked. Once the current
+answer is correct, the green info strip shows the attempts: the failed checks before the first passed one, plus that one.
+`GradingReporter.Report.checks` shares one report per history update.
 
 Pending and completed computations are cached by answer, independently of display
 language. A language change reuses them; result merges retain available feedback

@@ -25,7 +25,7 @@ class SemanticConsistencySpec extends FunSuite {
     val fromJava = java("    static double count = 0;\n    static void step() {\n        count = count + 1;\n        Turtle.forward(count);\n    }",
       "        step();\n        step();")
     val python = converted(fromJava, Python)
-    assert(text(python).contains("def step() -> None:\n    global count\n    count = count + 1"), text(python))
+    assert(text(python).contains("def step():\n    global count\n    count = count + 1"), text(python))
     val fromPython = ProgrammingStateRaw(Python, "count = 0\ndef step():\n    global count\n    count = count + 1\n    forward(count)\nstep()\nstep()\n")
     Seq(fromJava, fromPython).foreach { source =>
       assertEquals(drawing(source), List(1.0, 2.0))

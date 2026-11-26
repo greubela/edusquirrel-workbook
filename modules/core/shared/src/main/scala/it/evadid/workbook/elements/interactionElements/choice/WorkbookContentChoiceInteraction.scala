@@ -25,6 +25,9 @@ case class WorkbookContentChoiceInteraction(elementId: String, config: ChoiceCon
     require(config.allowMultipleSelected.contains(true) || state.selectedOptions.size <= 1, "Only one choice may be selected")
   }
 
+  /** Indices of the selected options that are graded incorrect. */
+  override def wrongParts(state: ChoiceState): Set[Int] = ChoiceGrader.wrongSelections(options, state)
+
   def select(state: ChoiceState, index: Int, selected: Boolean, timestamp: LocalDateTime = LocalDateTime.now()): ChoiceState = {
     validateState(state)
     require(options.indices.contains(index), "Choice index is outside the exercise")

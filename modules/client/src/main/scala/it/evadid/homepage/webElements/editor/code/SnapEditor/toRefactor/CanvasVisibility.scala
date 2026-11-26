@@ -2,7 +2,7 @@ package it.evadid.homepage.webElements.editor.code.SnapEditor.toRefactor
 
 import it.evadid.homepage.control.info.HomepageLoggerInfo
 import it.evadid.homepage.webElements.editor.code.SnapEditor.SnapCodeEditor.*
-import it.evadid.homepage.webElements.editor.code.SnapEditor.SnapCodeEditorImpl
+import it.evadid.homepage.webElements.editor.code.SnapEditor.{CanvasSize, SnapCodeEditorImpl}
 import org.scalajs.dom.CanvasRenderingContext2D
 import org.scalajs.dom.html.Canvas
 
@@ -28,7 +28,7 @@ private[SnapEditor] object CanvasVisibility:
 
   private def uniqueColorCount(canvas: Canvas, stopAfter: Int): Int =
     val context = canvas.getContext("2d").asInstanceOf[CanvasRenderingContext2D]
-    val pixels = context.getImageData(0, 0, canvas.width, canvas.height).data
+    val pixels = context.getImageData(0, 0, CanvasSize.roundedWidth(canvas), CanvasSize.roundedHeight(canvas)).data
     val colors = mutable.HashSet.empty[Int]
     var index = 0
     while index < pixels.length && colors.size < stopAfter do

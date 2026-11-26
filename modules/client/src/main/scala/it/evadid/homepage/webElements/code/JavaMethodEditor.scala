@@ -38,7 +38,8 @@ final class JavaMethodEditor
   requirePublicMain: Boolean = true,
   sameSource: (String, String) => Boolean = _ == _,
   labels: JavaEditorLabels = JavaEditorLabels.keys,
-  features: JavaStructureFeatures = JavaStructureFeatures.Full
+  features: JavaStructureFeatures = JavaStructureFeatures.Full,
+  dialect: StructureDialect = StructureDialect.JavaDialect
 ) extends HtmlAppElement {
 
   import JavaMethodSource.*
@@ -58,21 +59,13 @@ final class JavaMethodEditor
 
   private final case class ParameterRow(id: String, javaType: String, name: String)
 
-  private val sourceDraft = state.bimap {
-    case ProgrammingStateRaw(Java, code) => code
-    case value: ProgrammingStateJavaStructured => value.toString
-    case _ => ""
-  }(ProgrammingStateRaw(Java, _)).distinct
-  private def sourceCode: String = state.now() match {
-    case ProgrammingStateRaw(Java, code) => code
-    case value: ProgrammingStateJavaStructured => value.toString
-    case _ => ""
-  }
-  private val sourceAnalysis = Var(JavaMethodSource(sourceCode))
+  private val sourceDraft = state.bimap(value => dialect.sourceOf(value).getOrElse(""))(ProgrammingStateRaw(dialect.language, _)).distinct
+  private def sourceCode: String = dialect.sourceOf(state.now()).getOrElse("")
+  private val sourceAnalysis = Var(JavaMethodSource(sourceCode, dialect))
   private def analysis(code: String = sourceCode): JavaMethodSource = {
     val current = sourceAnalysis.now()
     if current.code == code then current else {
-      val next = JavaMethodSource(code)
+      val next = JavaMethodSource(code, dialect)
       sourceAnalysis.set(next)
       next
     }
@@ -106,7 +99,7 @@ final class JavaMethodEditor
   private lazy val methodEditor = CodeMirrorEditor(
     logger,
     methodDraft,
-    language = it.evadid.core.datastructures.language.AppLanguage.Java,
+    language = dialect.language,
     config = Var(editorConfig),
     loadingLabel = loadingLabel,
     firstLineNumber = sourceDraft.signal.combineWith(editingRange.signal).map { (source, range) =>
@@ -117,17 +110,14 @@ final class JavaMethodEditor
   private lazy val sourceEditor = CodeMirrorEditor(
     logger,
     sourceDraft,
-    language = it.evadid.core.datastructures.language.AppLanguage.Java,
+    language = dialect.language,
     config = Var(editorConfig),
     diagnostics = CodeMirrorEditor.marks(conversionMarker),
     loadingLabel = loadingLabel,
     sameSource = sameSource
   )
 
-  private def isJavaSource(value: ProgrammingState): Boolean = value match {
-    case ProgrammingStateRaw(Java, _) | _: ProgrammingStateJavaStructured => true
-    case _ => false
-  }
+  private def isJavaSource(value: ProgrammingState): Boolean = dialect.sourceOf(value).nonEmpty
   private def currentSourceAvailable(): Boolean = isJavaSource(state.now())
 
   private def refreshSource(code: String): List[JavaClass] = {
@@ -150,7 +140,7 @@ final class JavaMethodEditor
               editingRange.set(Some(nextRange))
               val refreshedClasses = refreshSource(merged)
               if analysis(merged).balanced then
-                findEditedMethod(merged, refreshedClasses, selected, nextRange) match
+                findEditedMethod(merged, refreshedClasses, selected, nextRange, dialect.python) match
                   case Some(refreshedSelection) => selectedMethod.set(Some(refreshedSelection))
                   case None =>
                     selectedMethod.set(None)
@@ -181,11 +171,7 @@ final class JavaMethodEditor
           sourceView.set(false)
 
   private def observeProgram(next: ProgrammingState): Unit = {
-    val code = next match {
-      case ProgrammingStateRaw(Java, value) => value
-      case value: ProgrammingStateJavaStructured => value.toString
-      case _ => ""
-    }
+    val code = dialect.sourceOf(next).getOrElse("")
     val refreshedClasses = analysis(code).classes
     if !sourceView.now() then {
       val range = editingRange.now()
@@ -217,15 +203,16 @@ final class JavaMethodEditor
       dialogError.set(None)
       mode match {
         case DialogMode.AddClass => reset("", "", Visibility.Public, isStatic = false)
-        case DialogMode.AddField(_) => reset("", "int", Visibility.Private, isStatic = false)
+        case DialogMode.AddField(_) => reset("", dialect.defaultType, Visibility.Private, isStatic = false)
         case DialogMode.EditField(field) =>
-          reset(field.name, field.javaType, field.visibility, field.isStatic, field.initializer.getOrElse(""))
+          reset(dialect.bareName(field.name), field.javaType, field.visibility, field.isStatic, field.initializer.getOrElse(""))
         case DialogMode.AddConstructor(_) => reset("", "", Visibility.Public, isStatic = false)
         case DialogMode.AddMethod(className) =>
-          // Classes without object state or constructors keep to static methods, as in procedural programs.
+          // Classes without object state or constructors keep to static methods, as in procedural programs;
+          // Python's module functions are not static.
           val procedural = analysis().classes.find(_.name == className).forall(clazz =>
-            clazz.fields.forall(_.isStatic) && clazz.methods.forall(_.isStatic))
-          reset("", "void", Visibility.Public, isStatic = procedural)
+            !clazz.isModule && clazz.fields.forall(_.isStatic) && clazz.methods.forall(_.isStatic))
+          reset("", dialect.noResult, Visibility.Public, isStatic = procedural)
         case _: DialogMode.ConfirmDelete => ()
       }
       dialogMode.set(Some(mode))
@@ -235,7 +222,7 @@ final class JavaMethodEditor
 
   private def accept(candidate: String, accepted: JavaMethodSource => Boolean, selection: JavaMethodSource => Option[JavaMethod],
       keepDiagramView: Boolean = false): Unit = {
-    val next = JavaMethodSource(candidate)
+    val next = JavaMethodSource(candidate, dialect)
     if next.balanced && accepted(next) then {
       commit(candidate, selection(next), keepDiagramView)
       dialogMode.set(None)
@@ -246,32 +233,28 @@ final class JavaMethodEditor
   private def parameters(): Either[DialogError, List[Param]] = {
     val rows = parameterRows.now().toList.map(row => Param(row.javaType.trim, row.name.trim))
     rows.collectFirst {
-      case param if !validType(param.javaType) => DialogError.Type
-      case param if !validName(param.name) => DialogError.Name
+      case param if !dialect.validType(param.javaType) => DialogError.Type
+      case param if !dialect.validName(param.name) => DialogError.Name
     }.orElse(Option.when(rows.map(_.name).distinct.size != rows.size)(DialogError.Duplicate)).toLeft(rows)
   }
 
   private def addClass(): Unit = {
     val name = nameDraft.now().trim
-    if !validName(name) then dialogError.set(Some(DialogError.ClassName))
+    if !dialect.validName(name) then dialogError.set(Some(DialogError.ClassName))
     else if analysis().classes.exists(_.name == name) then dialogError.set(Some(DialogError.Duplicate))
-    else {
-      val newline = lineSeparator(sourceCode)
-      val separator = if sourceCode.isEmpty then "" else newline + newline
-      accept(sourceCode + separator + s"class $name {$newline}$newline", _.classes.exists(_.name == name),
-        _ => selectedMethod.now(), keepDiagramView = true)
-    }
+    else accept(dialect.addClass(sourceCode, name), _.classes.exists(_.name == name), _ => selectedMethod.now(), keepDiagramView = true)
   }
 
   private def saveField(className: String, edited: Option[JavaField]): Unit = targetClass(className).foreach { clazz =>
-    val name = nameDraft.now().trim
+    val bare = nameDraft.now().trim
+    val name = dialect.memberName(bare, visibilityDraft.now())
     val javaType = typeDraft.now().trim
-    if !validName(name) then dialogError.set(Some(DialogError.Name))
-    else if !validType(javaType) then dialogError.set(Some(DialogError.Type))
+    if !dialect.validName(bare) then dialogError.set(Some(DialogError.Name))
+    else if !dialect.validType(javaType) then dialogError.set(Some(DialogError.Type))
     else if clazz.fields.exists(field => field.name == name && !edited.exists(_.name == name)) then dialogError.set(Some(DialogError.Duplicate))
     else {
-      val declaration = fieldDeclaration(visibilityDraft.now(), staticDraft.now(), javaType, name, initializerDraft.now())
-      val candidate = edited.fold(insertField(sourceCode, clazz, declaration))(field => replaceRange(sourceCode, field.start, field.end, declaration))
+      val declaration = dialect.fieldDeclaration(visibilityDraft.now(), staticDraft.now(), javaType, name, initializerDraft.now())
+      val candidate = dialect.saveField(sourceCode, clazz, edited, staticDraft.now(), declaration)
       accept(candidate, _.classes.find(_.name == className).exists(_.fields.exists(_.name == name)), _ => selectedMethod.now(),
         keepDiagramView = true)
     }
@@ -280,29 +263,27 @@ final class JavaMethodEditor
   private def addConstructor(className: String): Unit = targetClass(className).foreach { clazz =>
     parameters() match {
       case Left(error) => dialogError.set(Some(error))
-      case Right(params) if clazz.methods.exists(method => method.isConstructor && method.params.map(_.javaType) == params.map(_.javaType)) =>
-        dialogError.set(Some(DialogError.Duplicate))
+      case Right(params) if dialect.duplicateConstructor(clazz, params) => dialogError.set(Some(DialogError.Duplicate))
       case Right(params) =>
-        val fieldNames = clazz.fields.filterNot(_.isStatic).map(_.name).toSet
-        val assigned = if assignDraft.now() then params.map(_.name).filter(fieldNames) else Nil
-        val candidate = insertConstructor(sourceCode, clazz, constructorDeclaration(className, visibilityDraft.now(), params, assigned))
+        val assigned = dialect.assignedParameters(clazz, params, assignDraft.now())
+        val candidate = dialect.addConstructor(sourceCode, clazz, dialect.constructorDeclaration(clazz, visibilityDraft.now(), params, assigned))
         accept(candidate, _.classes.find(_.name == className).exists(_.methods.count(_.isConstructor) > clazz.methods.count(_.isConstructor)),
-          added(className, className, clazz))
+          added(className, dialect.constructorName(className), clazz))
     }
   }
 
   private def addMethod(className: String): Unit = targetClass(className).foreach { clazz =>
-    val name = nameDraft.now().trim
+    val bare = nameDraft.now().trim
+    val name = dialect.memberName(bare, visibilityDraft.now())
     val returnType = typeDraft.now().trim
-    if !validName(name) then dialogError.set(Some(DialogError.Name))
-    else if returnType != "void" && !validType(returnType) then dialogError.set(Some(DialogError.Type))
+    if !dialect.validName(bare) then dialogError.set(Some(DialogError.Name))
+    else if returnType != dialect.noResult && !dialect.validType(returnType) then dialogError.set(Some(DialogError.Type))
     else parameters() match {
       case Left(error) => dialogError.set(Some(error))
-      case Right(params) if clazz.methods.exists(method => method.name == name && method.params.map(_.javaType) == params.map(_.javaType)) =>
-        dialogError.set(Some(DialogError.Duplicate))
+      case Right(params) if dialect.duplicateMethod(clazz, name, params) => dialogError.set(Some(DialogError.Duplicate))
       case Right(params) =>
-        val declaration = methodDeclaration(returnType, name, javaParameters(params), staticDraft.now(), visibilityDraft.now())
-        accept(insertMethod(sourceCode, clazz, declaration), _.classes.find(_.name == className).exists(_.methods.exists(_.name == name)),
+        val declaration = dialect.methodDeclaration(clazz, returnType, name, params, staticDraft.now(), visibilityDraft.now())
+        accept(dialect.addMethod(sourceCode, clazz, declaration), _.classes.find(_.name == className).exists(_.methods.exists(_.name == name)),
           added(className, name, clazz))
     }
   }
@@ -313,7 +294,7 @@ final class JavaMethodEditor
 
   private def deleteMember(className: String, start: Int, end: Int, operation: Boolean): Unit = {
     val deletedSelection = operation && selectedMethod.now().exists(method => method.start == start && method.className == className)
-    val candidate = removeMember(sourceCode, start, end)
+    val candidate = dialect.removeMember(sourceCode, start, end)
     accept(candidate, _.classes.exists(_.name == className), _ => if deletedSelection then None else selectedMethod.now(),
       keepDiagramView = true)
   }
@@ -351,8 +332,7 @@ final class JavaMethodEditor
     dataList(
       idAttr := listId,
       children <-- classes.map { current =>
-        ((if withVoid then List("void") else Nil) ++ List("int", "double", "boolean", "char", "long", "String") ++
-          current.map(_.name) ++ List("int[]", "String[]", "List<String>", "List<Integer>")).distinct.map(suggestion => option(value := suggestion))
+        dialect.typeSuggestions(current.filterNot(_.isModule).map(_.name), withVoid).map(suggestion => option(value := suggestion))
       }
     )
 
@@ -377,9 +357,7 @@ final class JavaMethodEditor
       span(child.text <-- labels.visibility),
       select(
         value <-- visibilityDraft.signal.map(_.toString),
-        Visibility.values.toList.map { visibility =>
-          option(value := visibility.toString, s"${visibility.symbol} ${javaModifier(visibility).getOrElse("package")}")
-        },
+        dialect.visibilities.map(visibility => option(value := visibility.toString, dialect.visibilityText(visibility))),
         onChange.mapToValue --> (value => visibilityDraft.set(Visibility.valueOf(value)))
       )
     )
@@ -414,30 +392,37 @@ final class JavaMethodEditor
         cls := "java-function-editor__button java-function-editor__button--small",
         span(aria.hidden := true, "+ "),
         child.text <-- labels.addParameter,
-        onClick --> (_ => parameterRows.update(_ :+ ParameterRow(UUID.randomUUID().toString, "int", "")))
+        onClick --> (_ => parameterRows.update(_ :+ ParameterRow(UUID.randomUUID().toString, dialect.defaultType, "")))
       )
     )
 
-  /** The member as it will appear in the diagram and in Java, updated while typing. */
+  /** The class a dialog edits; a placeholder while the analysis no longer lists it. */
+  private def dialogClass(className: String): JavaClass = targetClass(className).getOrElse(JavaClass(className, 0, 0, Nil))
+
+  /** The member as it will appear in the diagram and in the code, updated while typing. */
   private def preview(mode: DialogMode): Element = {
     val texts: Signal[(String, String)] = mode match {
       case DialogMode.AddField(_) | DialogMode.EditField(_) =>
         nameDraft.signal.combineWith(typeDraft.signal, visibilityDraft.signal, staticDraft.signal, initializerDraft.signal).map {
-          (name, javaType, visibility, isStatic, initializer) =>
-            (s"${visibility.symbol} ${name.trim}: ${javaType.trim}", fieldDeclaration(visibility, isStatic, javaType.trim, name.trim, initializer))
+          (bare, javaType, visibility, isStatic, initializer) =>
+            val name = dialect.memberName(bare.trim, visibility)
+            val field = JavaField("", visibility, isStatic, isFinal = false, javaType.trim, name, None, 0, 0, shared = false)
+            (umlAttribute(field), dialect.fieldDeclaration(visibility, isStatic, javaType.trim, name, initializer))
         }
       case DialogMode.AddConstructor(className) =>
         parameterRows.signal.combineWith(visibilityDraft.signal).map { (rows, visibility) =>
           val params = rows.toList.map(row => Param(row.javaType.trim, row.name.trim))
-          val method = JavaMethod(className, className, "", javaParameters(params), 0, 0, visibility, isConstructor = true, params = params)
-          (umlOperation(method), constructorDeclaration(className, visibility, params, Nil).takeWhile(_ != '{').trim)
+          val method = JavaMethod(className, dialect.constructorName(className), "", javaParameters(params), 0, 0, visibility,
+            isConstructor = true, params = params)
+          (umlOperation(method), dialect.head(dialect.constructorDeclaration(dialogClass(className), visibility, params, Nil)))
         }
       case DialogMode.AddMethod(className) =>
         nameDraft.signal.combineWith(typeDraft.signal, visibilityDraft.signal, staticDraft.signal, parameterRows.signal).map {
-          (name, returnType, visibility, isStatic, rows) =>
+          (bare, returnType, visibility, isStatic, rows) =>
             val params = rows.toList.map(row => Param(row.javaType.trim, row.name.trim))
-            val method = JavaMethod(className, name.trim, returnType.trim, javaParameters(params), 0, 0, visibility, isStatic, params = params)
-            (umlOperation(method), methodDeclaration(returnType.trim, name.trim, javaParameters(params), isStatic, visibility).takeWhile(_ != '{').trim)
+            val name = dialect.memberName(bare.trim, visibility)
+            val method = JavaMethod(className, name, returnType.trim, javaParameters(params), 0, 0, visibility, isStatic, params = params)
+            (umlOperation(method), dialect.head(dialect.methodDeclaration(dialogClass(className), returnType.trim, name, params, isStatic, visibility)))
         }
       case _ => Val(("", ""))
     }
@@ -466,7 +451,7 @@ final class JavaMethodEditor
     case DialogMode.AddField(_) => labels.addField
     case DialogMode.EditField(_) => labels.editField
     case DialogMode.AddConstructor(_) => labels.addConstructor
-    case DialogMode.AddMethod(_) => labels.addMethod
+    case DialogMode.AddMethod(className) => if dialogClass(className).isModule then labels.addFunction else labels.addMethod
     case _: DialogMode.ConfirmDelete => labels.delete
   }
 
@@ -489,13 +474,13 @@ final class JavaMethodEditor
         if features.addField then checkboxField(labels.assignFields, assignDraft) else emptyMod,
         preview(mode)
       )
-      case DialogMode.AddMethod(_) => div(
+      case DialogMode.AddMethod(className) => div(
         cls := "java-function-editor__dialog-fields",
         visibilityField(),
         textField(labels.name, nameDraft),
         parameterFields(),
         textField(labels.returnType, typeDraft, Some(returnTypeListId)),
-        checkboxField(labels.isStatic, staticDraft),
+        if dialogClass(className).isModule then emptyMod else checkboxField(labels.isStatic, staticDraft),
         preview(mode)
       )
       case DialogMode.ConfirmDelete(_, member, _, _, _) => div(
@@ -580,12 +565,6 @@ final class JavaMethodEditor
           aria.expanded <-- structureOpen.signal,
           child.text <-- structureOpen.signal.flatMapSwitch(if _ then labels.hideDiagram else labels.showDiagram),
           onClick --> (_ => structureOpen.update(!_))
-        ),
-        span(
-          cls := "java-function-editor__sync",
-          role := "status",
-          aria.live := "polite",
-          child.text <-- sourceView.signal.flatMapSwitch(if _ then labels.sourceView else labels.diagramView)
         )
       )
     )
@@ -613,7 +592,7 @@ final class JavaMethodEditor
     div(
       child <-- sourceView.signal.combineWith(selectedMethod.signal).map {
         case (false, Some(method)) => div(
-          h3(cls := "java-function-editor__section-title", s"${method.className}.${method.name}"),
+          h3(cls := "java-function-editor__section-title", qualifiedName(method)),
           code(cls := (if method.isStatic then "java-uml-line java-uml__member--static" else "java-uml-line"), umlOperation(method))
         )
         case (fullSource, _) => div(
@@ -671,7 +650,7 @@ final class JavaMethodEditor
           disabled <-- structureLocked,
           children <-- classes.combineWith(labels.chooseMethod).map { (current, choose) =>
             option(value := "", choose) :: current.flatMap(_.methods).map { fn =>
-              option(value := methodKey(fn), s"${fn.className}.${fn.name}(${fn.parameters})")
+              option(value := methodKey(fn), s"${qualifiedName(fn)}(${fn.parameters})")
             }
           },
           value <-- selectedMethod.signal.combineWith(classes).map { (selected, _) => selected.fold("")(methodKey) },

@@ -55,6 +55,17 @@ private[evadid] object CodeMirrorFlowchartRendering {
       val timer = Var(Option.empty[SetTimeoutHandle])
       val generation = Var(0)
       val destroyed = Var(false)
+      // A new chart may change the gutter's width, which shifts the text under the cursor. While a line is being
+      // written, its chart is held back and shown once the cursor leaves that line, a new line starts or focus leaves.
+      val editedLine = Var(Option.empty[Int])
+      val held = Var(Option.empty[(String, Flowchart)])
+      def writing(state: State, focused: Boolean): Boolean = focused && {
+        val line = state.doc.lineAt(state.selection.main.head)
+        editedLine.now().contains(line.number) && state.doc.sliceString(line.from, line.to).trim.nonEmpty
+      }
+      def show(source: String, next: Flowchart): Unit =
+        if !destroyed.now() && view.state.doc.toString() == source && next != view.state.field(field) then
+          view.dispatch(js.Dynamic.literal(effects = ready.of(next)))
       def schedule(delay: Int): Unit = {
         timer.now().foreach(clearTimeout)
         generation.update(_ + 1)
@@ -64,15 +75,27 @@ private[evadid] object CodeMirrorFlowchartRendering {
           Future(chartForDoc(source)).flatten
             .recover { case _ => empty }
             .foreach { next =>
-              if !destroyed.now() && generation.now() == current && view.state.doc.toString() == source &&
-                next != view.state.field(field) then
-                view.dispatch(js.Dynamic.literal(effects = ready.of(next)))
+              if !destroyed.now() && generation.now() == current then
+                if writing(view.state, view.hasFocus) then held.set(Some(source -> next)) else show(source, next)
             }
         }))
       }
       schedule(0)
       new js.Object {
-        def update(event: ViewUpdate): Unit = if event.docChanged then schedule(150)
+        def update(event: ViewUpdate): Unit =
+          if event.docChanged then {
+            held.set(None)
+            // Only typing holds the chart back; a document set from outside (restoration, conversion) shows it at once.
+            val typed = event.transactions.exists(tr => tr.isUserEvent("input") || tr.isUserEvent("delete"))
+            editedLine.set(Option.when(typed)(event.state.doc.lineAt(event.state.selection.main.head).number))
+            schedule(150)
+          } else if (event.selectionSet || event.focusChanged) && held.now().nonEmpty &&
+            !writing(event.state, event.view.hasFocus) then {
+            val chart = held.now()
+            held.set(None)
+            // A view cannot dispatch while it applies an update; the held chart follows right after it.
+            Future.unit.foreach(_ => chart.foreach(show.tupled))
+          }
         def destroy(): Unit = {
           destroyed.set(true); generation.update(_ + 1); timer.now().foreach(clearTimeout)
         }

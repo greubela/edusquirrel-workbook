@@ -17,6 +17,10 @@
   "fileimage16": "monks/Image16.png",
   "fileimage17": "monks/Image17.png",
   "fileimage18": "monks/Image18.png",
+  "filetower01": "monks/theater2/monks-tower-01.jpg",
+  "filetower02": "monks/theater2/monks-tower-02.jpg",
+  "filetower03": "monks/theater2/monks-tower-03.jpg",
+  "filetower04": "monks/theater2/monks-tower-04.jpg",
   "filetheater01": "monks/theater/monks-theater-01.jpg",
   "filetheater02": "monks/theater/monks-theater-02.jpg",
   "filetheater03": "monks/theater/monks-theater-03.jpg",
@@ -105,6 +109,7 @@
   "filebeatcounttallythree": "monks/beats/count-tally-three.jpg",
   "filebeatcountempty": "monks/beats/count-empty.jpg",
   "filebeatemptywait": "monks/beats/empty-wait.jpg",
+  "filekoch0": "monks/koch/koch-0.svg",
   "filekoch1": "monks/koch/koch-1.svg",
   "filekoch2": "monks/koch/koch-2.svg"
 }

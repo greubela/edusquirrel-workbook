@@ -58,4 +58,42 @@ class ContentChoiceRendererSpec extends EditorDomSuite {
       }
     }.andThen { case _ => close() }
   }
+
+  test("only a check grades; a failed check marks the wrong option until the next change and the solved strip counts the attempts") {
+    val options = Seq(true, false).zipWithIndex.map { (correct, index) =>
+      ChoiceOptionWorkbookContent(WorkbookContent(LanguageMap.universalMap[HumanLanguage](s"Option $index")),
+        Some(GradingForChoice(if correct then GradingStatus.Correct() else GradingStatus.Incorrect(), LanguageMapContentId("digitalWorkbooks/correct"))))
+    }
+    val exercise = WorkbookContentChoiceInteraction("checked-choice", ChoiceConfig(LanguageMapContentId("test/prompt"), Some(false), GraderRunningBehavior.RUN_ONLY_MANUALLY), options)
+    load(exercise)
+    val element = WorkbookContentChoiceInteractionRenderer.renderAppElement(exercise).getDomElement()
+    val close = mount(element)
+    val control = exercise.interactionVariable.control
+    val context = fullInfo.workbookContextInformation
+    // Selecting starts an automatic grading that skips the manual grader; the check runs it afterwards.
+    def check() = control.getOrCalculateGrading(context).flatMap(_ => control.getOrCalculateGrading(context, forceGrading = true))
+    def option(index: Int) = element.ref.querySelectorAll(".choice-interaction label")(index)
+    def marked(index: Int) = option(index).classList.contains("answer-part--wrong")
+    def tracker = Option(element.ref.querySelector(".interaction-info__attempts"))
+    def select(index: Int) = option(index).querySelector("input").asInstanceOf[dom.html.Input].click()
+    Future.unit.flatMap { _ =>
+      select(1)
+      control.getOrCalculateGrading(context)
+    }.flatMap { unchecked =>
+      assertEquals(unchecked.totalEvaluation(), GradingStatus.NotRequested())
+      assert(!marked(1))
+      check()
+    }.flatMap { failed =>
+      assertEquals(failed.totalEvaluation(), GradingStatus.Incorrect())
+      assert(marked(1))
+      assert(tracker.isEmpty)
+      select(0)
+      assert(!marked(1), "the mark ends with the next interaction")
+      check()
+    }.map { solved =>
+      assertEquals(solved.totalEvaluation(), GradingStatus.Correct())
+      assert(!marked(0) && !marked(1))
+      assertEquals(tracker.map(_.querySelector(".interaction-info__attempts-count").textContent), Some("2"))
+    }.andThen { case _ => close() }
+  }
 }

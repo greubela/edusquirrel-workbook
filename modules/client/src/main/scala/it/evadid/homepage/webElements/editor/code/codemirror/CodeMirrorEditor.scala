@@ -38,23 +38,23 @@ case class CodeMirrorEditor(
   private val handle = Var(Option.empty[CodeMirrorHandle])
   private val loadFailed = Var(false)
   /** Typed text not yet in `underlyingVar`: the answer (history, sync, grading) follows after a typing pause,
-    * on blur or on unmount, so these reactions never delay a keystroke.
+    * on blur, when the page is hidden or on unmount, so these reactions never delay a keystroke. An answer
+    * change that replaces the document also drops it, so a restoration, synchronization or conversion is
+    * never overwritten.
     */
-  private val unwrittenText = Var(Option.empty[UnwrittenText])
+  private val unwrittenText = Var(Option.empty[String])
 
-  /** Writes typed text only onto the answer it was typed over: a restoration, synchronization or language
-    * conversion that arrived meanwhile is newer and stays.
-    */
-  private def writeTypedText(): Unit = unwrittenText.now().foreach { pending =>
+  private def writeTypedText(): Unit = unwrittenText.now().foreach { typed =>
     unwrittenText.set(None)
-    val current = underlyingVar.now()
-    if current == pending.base && !sameSource(current, pending.text) then underlyingVar.set(pending.text)
+    if !sameSource(underlyingVar.now(), typed) then underlyingVar.set(typed)
   }
 
   override def getDomElement(): L.Element = div(
     cls := "code-mirror-editor-host",
     // blur does not bubble, so it is captured from CodeMirror's content: clicking a button or tab writes the typed text first.
     onBlur.useCapture --> (_ => writeTypedText()),
+    // A hidden page may be closed before the typing pause ends (see RemoteInteractionCacheControl).
+    documentEvents(_.onVisibilityChange).filter(_ => dom.document.hidden) --> (_ => writeTypedText()),
     child <-- config.signal.map(_.showFlowchartGutter).distinct.map { showFlowchart =>
       div(
         cls := ("code-editor code-mirror-editor" + (if showFlowchart && language == Python then " code-mirror-editor-flowchart" else "")),
@@ -76,8 +76,7 @@ case class CodeMirrorEditor(
                 new CodeMirrorFlowchartGutter.Analysis(new CodeMirrorFlowchartGutter.Cache))
               // The callback is required by the native CodeMirror API; Scala consumers observe the Var.
               val created = createEditor(EditorConfig(ctx.thisNode.ref, underlyingVar.now(),
-                value => if !lifetime.isKilled then
-                  unwrittenText.update(pending => Some(UnwrittenText(pending.fold(underlyingVar.now())(_.base), value))),
+                value => if !lifetime.isKilled then unwrittenText.set(Some(value)),
                 languageToJs(language), analysis.map(current => source => current.chartForDoc(source).map(CodeMirrorFlowchartGutter.render)),
                 firstLineNumber = lineNumbers.now()))
               created.foreach { native =>
@@ -116,9 +115,6 @@ case class CodeMirrorEditor(
 object CodeMirrorEditor {
   /** Typing pause after which the typed text becomes the bound answer. */
   val typingWriteDelayMillis: Int = 400
-
-  /** Typed `text` and the answer `base` it was typed over. */
-  private final case class UnwrittenText(base: String, text: String)
 
   def languageToJs(language: ProgrammingLanguage): String = language.asJsLanguage.getOrElse("python")
 

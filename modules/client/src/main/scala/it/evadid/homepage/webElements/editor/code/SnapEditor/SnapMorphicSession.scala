@@ -81,6 +81,7 @@ final class SnapMorphicSession() extends SnapCodeEditorImpl:
     sizeEditorCanvas(canvas, config)
 
     val world = Snap.world(canvas).createLoadedInstance()
+    releaseRetinaCssSize(canvas)
     require(
       world.worldCanvas eq canvas,
       "WorldMorph did not retain the mounted editor canvas used to register input listeners"
@@ -226,16 +227,25 @@ final class SnapMorphicSession() extends SnapCodeEditorImpl:
     val height = math.max(1, if parentHeight > 0 then parentHeight else config.visuals.CanvasHeight)
     // Assigning canvas.width/height always clears the bitmap — even when the
     // numeric value is unchanged — which left a blank IDE until the next click.
-    val bitmapChanged = canvas.width != width || canvas.height != height
+    val bitmapChanged = CanvasSize.differs(canvas, width, height)
     if bitmapChanged then
       canvas.width = width
       canvas.height = height
+    releaseRetinaCssSize(canvas)
     // WorldMorph registers mouse/touch listeners synchronously in its
     // constructor. Make this exact mounted canvas an explicit input target;
     // creating or copying a second canvas would only copy pixels, not those
     // listeners or the Morphic world behind them.
     canvas.tabIndex = 0
     bitmapChanged
+
+  /** On displays with a device pixel ratio other than 1, WorldMorph's initRetina pins the canvas to its
+    * first size with inline pixel styles. Later bitmap fits would then be stretched into that old size;
+    * without them the stylesheet's 100% applies, and the retina backing store still follows the bitmap.
+    */
+  private def releaseRetinaCssSize(canvas: Canvas): Unit =
+    canvas.style.removeProperty("width")
+    canvas.style.removeProperty("height")
 
   override def fitEditorToContainer(): Unit =
     applyContainerSize(relayoutIfChanged = true)
@@ -294,6 +304,7 @@ final class SnapMorphicSession() extends SnapCodeEditorImpl:
     // mouse events still reach the canvas but the textarea cannot receive keys.
     // Moving the shared handler below the mounted canvas keeps it in the same
     // focus scope without changing Morphic's keyboard/IME event pipeline.
+    SnapKeyboardHandlerPosition.install()
     Option(canvas.parentElement).foreach(_.appendChild(world.keyboardHandler))
     world.keyboardHandler.setAttribute("aria-hidden", "true")
     world.keyboardHandler.tabIndex = -1
@@ -406,10 +417,13 @@ final class SnapMorphicSession() extends SnapCodeEditorImpl:
       if !force && mirrorPenTrails(stage, target) then return
       val src = stage.fullImage()
       if src == null then return
-      if target.width != src.width then target.width = src.width
-      if target.height != src.height then target.height = src.height
+      val w = CanvasSize.roundedWidth(src)
+      val h = CanvasSize.roundedHeight(src)
+      if CanvasSize.differs(target, w, h) then
+        target.width = w
+        target.height = h
       val ctx = target.getContext("2d").asInstanceOf[CanvasRenderingContext2D]
-      ctx.clearRect(0, 0, target.width.toDouble, target.height.toDouble)
+      ctx.clearRect(0, 0, CanvasSize.width(target), CanvasSize.height(target))
       ctx.drawImage(src, 0, 0)
     catch
       case error: Throwable =>
@@ -420,11 +434,12 @@ final class SnapMorphicSession() extends SnapCodeEditorImpl:
     try
       val trails = stage.penTrails()
       if trails == null then return false
-      val w = trails.width
-      val h = trails.height
+      val w = CanvasSize.roundedWidth(trails)
+      val h = CanvasSize.roundedHeight(trails)
       if w <= 0 || h <= 0 then return false
-      if target.width != w then target.width = w
-      if target.height != h then target.height = h
+      if CanvasSize.differs(target, w, h) then
+        target.width = w
+        target.height = h
       val ctx = target.getContext("2d").asInstanceOf[CanvasRenderingContext2D]
       ctx.fillStyle = "#ffffff"
       ctx.fillRect(0, 0, w.toDouble, h.toDouble)

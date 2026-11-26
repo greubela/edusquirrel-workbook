@@ -55,7 +55,9 @@
 
 .client-todo, .client-stderr { color: var(--color-accent-error); }
 .client-todo { font-weight: 700; }
-.fullscreen-overlay-dialog { position: relative; }
+/* Fixed like any modal dialog, which also positions the close button. A relative dialog would sit at the top of the
+   page, and opening it would scroll the page there, so the reader lost their place after closing the editor. */
+.fullscreen-overlay-dialog { position: fixed; }
 .turtle-stitch-editor { width: 100%; min-height: min(620px, 75vh); height: 75vh; }
 .be-program-snap-fullscreen__turtle-stage { display: block; max-width: 100%; height: auto; }
 

@@ -12,7 +12,8 @@ final case class EvaEditorLabels(
     switchFailed: Signal[String],
     loading: Signal[String],
     blocks: BlockEditorLabels,
-    java: JavaEditorLabels = JavaEditorLabels.keys
+    java: JavaEditorLabels = JavaEditorLabels.keys,
+    python: JavaEditorLabels = JavaEditorLabels.keys
 )
 
 object EvaEditorLabels {
@@ -22,6 +23,7 @@ object EvaEditorLabels {
     switchFailed = text(LanguageMapContentId("basic/editorSwitchFailed")),
     loading = text(LanguageMapContentId("basic/editorLoading")),
     blocks = BlockEditorLabels.fromContent(text),
-    java = JavaEditorLabels.fromContent(text)
+    java = JavaEditorLabels.fromContent(text),
+    python = JavaEditorLabels.fromContent(text, python = true)
   )
 }

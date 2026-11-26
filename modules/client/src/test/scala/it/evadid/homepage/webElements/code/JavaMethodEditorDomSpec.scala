@@ -20,17 +20,6 @@ class JavaMethodEditorDomSpec extends UiDomSuite {
   private val logger = Logger.withNameAndPrefixes(Some("java-editor-test"), PrintToStdLogger.printNothing)
   private val source = "public class Main {\n  public static void main(String[] args) {\n    forward(10);\n  }\n\n" +
     "  static int twice(int x) {\n    return x * 2;\n  }\n}\n"
-  private val dialogs = EditorDomSuite.window.HTMLDialogElement.prototype
-  /** jsdom has no modal dialogs; opening and closing toggle the `open` attribute as browsers do. */
-  override def beforeAll(): Unit = {
-    super.beforeAll()
-    dialogs.updateDynamic("showModal")(((self: js.Dynamic) => self.setAttribute("open", "")): js.ThisFunction0[js.Dynamic, Unit])
-    dialogs.updateDynamic("close")(((self: js.Dynamic) => self.removeAttribute("open")): js.ThisFunction0[js.Dynamic, Unit])
-  }
-  override def afterAll(): Unit = {
-    js.special.delete(dialogs, "showModal"); js.special.delete(dialogs, "close")
-    super.afterAll()
-  }
 
   private def code(state: Var[ProgrammingState]): String = state.now() match {
     case ProgrammingStateRaw(Java, value) => value
@@ -39,7 +28,7 @@ class JavaMethodEditorDomSpec extends UiDomSuite {
   private def field(root: dom.Element) = all(root, "textarea.code-mirror-editor__fallback").head
   private def heading(root: dom.Element) = one(root, ".java-function-editor__workspace-heading h3").textContent
   private def umlLine(root: dom.Element) = one(root, ".java-function-editor__workspace-heading .java-uml-line")
-  private def viewStatus(root: dom.Element) = one(root, ".java-function-editor__sync").textContent
+  private def viewStatus(root: dom.Element) = one(root, ".java-function-editor__view-toggle button[aria-pressed='true']").textContent
   private def classBox(root: dom.Element, name: String) = one(root, s".java-uml__class[data-class-name='$name']")
   private def operation(root: dom.Element, name: String) = one(root, s"button.java-uml__operation[data-member='$name']")
   private def addButton(box: dom.Element, label: String) =

@@ -28,18 +28,20 @@ to observe it. Do not add `onStateEdited`, input-listener constructor arguments,
 or separate stores such as `synchronizedValue` alongside a bound Var. Project
 views with `bimap` where appropriate; for example the Python editor shows the text of
 the central Python state and writes `ProgrammingStatePythonStructured`, so typed text
-that the structured state represents (classes first, completed empty blocks) stays as typed.
-Typed text is written only onto the answer it was typed over; an answer change that
-arrives meanwhile (restoration, synchronization, conversion) replaces it. Java's method fragment is a view of
+that the structured state represents stays as typed. A freshly typed `if x:` keeps its empty body in the
+answer: the parser reads empty blocks with a `pass`
+(`SourceStructure.withEmptyBodies`), whereas printed Python always writes it, so generated code stays valid.
+An answer change that arrives while typed text is still pending (restoration,
+synchronization, conversion) replaces it. Java's method fragment is a view of
 the current source, not a separately saved program.
 
-Keystrokes stay in the editor: Eva's language views edit the draft of a
-[`TypingDraftBinding`](../modules/client/src/main/scala/it/evadid/homepage/webElements/editor/abstractions/TypingDraftBinding.scala)
-over the central Var, an immutable core `TypingDraft` holding the last committed answer
-and the TEMPORARY edits typed since. A token-ending key, a five-second interval, a
-change without a key (blocks), a language switch, a one-second quiet period, leaving
-the editor and unmounting commit the draft to the central Var; panels, grading and
-storage see only commits. Any other change of the central Var replaces the draft.
+Keystrokes stay in the editor that receives them: Eva's language views edit the central Var
+itself, and only the typing editors buffer. CodeMirror writes its text after a 400 ms typing
+pause, Snap its project after a 400 ms input pause; both also write at once when focus leaves
+them, when the page is hidden and when they unmount, so panels, grading and storage never run
+per keystroke. Block edits, dialog actions and language switches write at once. When the page
+is hidden or left, `RemoteInteractionCacheControl` runs the stores these writes scheduled at
+once and sends its buffered destinations, because a closing page runs no further task.
 
 Conversions and their availability checks execute in `Future`s. A successful
 language switch writes the converted representation to the central Var and thus
@@ -78,7 +80,8 @@ mount. Panels never obtain state by reaching into an editor or calling
 CodeMirror keeps one optional native handle. The fallback textarea's visibility
 is derived from that handle. Diagnostics arrive as a signal; there is no pending
 diagnostic store or copied current-document state. The mount owns the optional
-flowchart analysis and releases it with the native handle. The gutter reuses
+flowchart analysis and releases it with the native handle. Eva leaves the flowchart
+gutter off by default, so Python, like Java, shows only the fold gutter. The gutter reuses
 the block editor's `FlowLayout` overlay, mapped to physical source rows; CodeMirror
 alone renders the editable content. Parsing stays in the worker. The library loader
 shares one asynchronous module request between startup warmup and editors;

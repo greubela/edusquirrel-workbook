@@ -13,7 +13,7 @@ import scala.concurrent.{ExecutionContext, Future}
 class AnswerTableInteractionSpec extends FunSuite {
   private given ExecutionContext = ExecutionContext.global
   private def correctCells(answer: TableAnswer): Future[Int] = Future.traverse(table.gradingElements)(
-    _.gradeStateSafe(answer, false, UpdateImportance.MAJOR, TestExecutionContext())).map(_.count(_.gradingStatus.isCorrect))
+    _.gradeStateSafe(answer, true, UpdateImportance.MAJOR, TestExecutionContext())).map(_.count(_.gradingStatus.isCorrect))
   private def id(s: String) = LanguageMapContentId(s"test/$s")
   private val binary = EditableTableCell(Some(List("1")), List("0", "1"))
   private val table = AnswerTableInteraction("table", id("caption"), List(id("row1"), id("row2")),
@@ -88,7 +88,9 @@ class AnswerTableInteractionSpec extends FunSuite {
     val answer = TableAnswer(Seq("1", "hello", "reflection"))
     val context = TestExecutionContext()
     table.interactionVariable.setStateFromUserInteraction(answer, it.evadid.workbook.interaction.sync.UpdateImportance.MAJOR, context = context)
-    table.interactionVariable.control.getOrCalculateGrading(context).map { result =>
+    val control = table.interactionVariable.control
+    // Saving starts an automatic grading, which skips the cells; the check runs them once it finished.
+    control.getOrCalculateGrading(context).flatMap(_ => control.getOrCalculateGrading(context, forceGrading = true)).map { result =>
       assertEquals(result.testsWithResults.size, 2)
       assert(result.testsWithResults.forall(_.gradingStatus.isCorrect))
       val history = table.interactionVariable.currentHistory

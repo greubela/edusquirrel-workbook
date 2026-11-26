@@ -239,3 +239,29 @@ details[open] > .feedback-summary { border-bottom: 1px solid var(--color-border-
     .feedback-actions { flex: 1 1 100%; }
     .feedback-panel button.feedback-action { flex: 1 1 0; justify-content: center; }
 }
+
+/* Answer parts (options, table cells, statements, items) that a failed check found wrong. The mark ends
+   with the next change of the answer (CheckReport.wrongParts). */
+.answer-part--wrong {
+    outline: 2px solid var(--feedback-incorrect);
+    outline-offset: -2px;
+    background-color: var(--feedback-incorrect-surface);
+    border-radius: var(--radius-sm);
+}
+
+/* Attempts (checked answers) until the exercise was solved, on the green strip beside the exercise. */
+.interaction-info__attempts {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    min-width: 44px;
+    color: var(--color-text-primary);
+    font-size: 0.625rem;
+    line-height: 1.3;
+    text-align: center;
+}
+
+.interaction-info__attempts-count {
+    font-size: 1rem;
+    font-weight: 700;
+}

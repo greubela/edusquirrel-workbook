@@ -43,7 +43,9 @@ case class HtmlImageElement(imageSignal: AsyncData[Nothing, FullImage], underlyi
   private val domSignal: Signal[Element] = imageSignal.toStateSignal.map(render)
   def getDomSignal: Signal[Element] = domSignal
 
-  override def getDomElement(): Element = div(child <-- domSignal)
+  /** The element ID lets workbook styles address a single figure. */
+  override def getDomElement(): Element = div(cls := "workbook-image",
+    underlyingImage.map(image => dataAttr("element-id") := image.elementId), child <-- domSignal)
 }
 
 object HtmlImageElement {

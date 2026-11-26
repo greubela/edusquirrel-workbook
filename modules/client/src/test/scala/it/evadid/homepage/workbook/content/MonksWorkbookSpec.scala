@@ -45,13 +45,13 @@ class MonksWorkbookSpec extends FunSuite {
   private def checked(code: String): JavaTurtleInterpreter.Execution =
     JavaTurtleInterpreter.runVm(JavaTurtleCompiler.compile(code).fold(problem => fail(problem.message), identity))
 
-  test("all drawing tasks retain the workbook's Snap and Java editor choices") {
+  test("all drawing tasks retain the workbook's Snap, Python and Java editor choices") {
     val tasks = CreateMonksWorkbook(null).createWorkbook.allChildrenFullSubtree.collect {
       case task: TurtleRecreateShapeInteraction => task
     }
     assertEquals(tasks.size, editorIds.size)
     tasks.foreach { task =>
-      assertEquals(task.exerciseConfig.allowedEditorLanguages, Seq(SnapLanguage, Java), task.elementId)
+      assertEquals(task.exerciseConfig.allowedEditorLanguages, Seq(SnapLanguage, Python, Java), task.elementId)
       assert(task.desiredResult.renderLines.nonEmpty, task.elementId)
       assert(task.initProgram.isInstanceOf[ProgrammingStateJavaStructured], task.elementId)
     }

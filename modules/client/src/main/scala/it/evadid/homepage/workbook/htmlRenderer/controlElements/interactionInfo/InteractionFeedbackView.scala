@@ -62,7 +62,7 @@ private[interactionInfo] final class InteractionFeedbackView[F <: InteractionFor
   def feedback(entry: GradingSummary.Entry): Option[Signal[String]] =
     if entry.hidden then None
     else (entry.grader, entry.result.flatMap(_.additionalData)) match {
-      // Only the number of correct connections is shown, not which ones are wrong.
+      // The text names the number of correct connections; the matching renderer marks the wrong ones.
       case (grader: MatchingGrader, Some(correct: Int)) => Some(label("gradingMatchingCount")
         .map(_.replace("{correct}", correct.toString).replace("{total}", grader.expected.size.toString)))
       case _ => entry.result.flatMap(_.feedbackInformation).map(helper.workbookContentSignal)
