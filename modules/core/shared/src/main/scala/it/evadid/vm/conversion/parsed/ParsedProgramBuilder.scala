@@ -21,7 +21,8 @@ import it.evadid.vm.types.BeDataType.BeUnionAllowedTypes
   *
   * Classes are declared (signatures first) before any body is read, and each block reserves the
   * names of the functions and classes it declares, so calls bind to user definitions before falling
-  * back to known names such as turtle commands or `print`.
+  * back to known names such as turtle commands or `print`. Each step reads the immutable
+  * [[ParseContext]] and passes on what it learned ([[ParseStep]]), in source order.
   */
 final class ParsedProgramBuilder(language: ProgrammingLanguage,
     knownStructures: Seq[KnownStructure] = SymbolTable.defaultKnownStructures) {
@@ -30,14 +31,13 @@ final class ParsedProgramBuilder(language: ProgrammingLanguage,
 
   def build(source: ParsedProgram): Result = {
     val program = ParsedTypeInference.infer(source)
-    val context = new ParseContext(CurrentlyKnownStructures.fromKnown(knownStructures))
-    program.statements.collect { case definition: S.ClassDef => definition }.foreach { definition =>
+    val classes = program.statements.collect { case definition: S.ClassDef => definition }
+    val named = classes.foldLeft(ParseContext.initial(CurrentlyKnownStructures.fromKnown(knownStructures))) { (context, definition) =>
       context.registerClass(definition.name, BeDefineClass(BeEntityName.fromCodeString(definition.name), Nil, Nil))
     }
-    program.statements.collect { case definition: S.ClassDef => definition }.foreach { definition =>
-      context.registerClass(definition.name, classSignatures(definition, context))
-    }
-    Result(BeSequence.optionalBody(block(program.statements, context)), context)
+    val declared = classes.foldLeft(named)((context, definition) => context.registerClass(definition.name, classSignatures(definition, context)))
+    val (statements, context) = block(program.statements).run(declared)
+    Result(BeSequence.optionalBody(statements), context)
   }
 
   private def keep(expression: BeExpression): Boolean = expression match {
@@ -45,71 +45,84 @@ final class ParsedProgramBuilder(language: ProgrammingLanguage,
     case _ => true
   }
 
-  private def block(statements: Seq[ParsedStatement], context: ParseContext): List[BeExpression] = {
-    context.reserveCallableNames(statements.collect {
+  private def block(statements: Seq[ParsedStatement]): ParseStep[List[BeExpression]] = for {
+    _ <- ParseStep.update(_.reserveCallableNames(statements.collect {
       case definition: S.FunctionDef => definition.name
       case definition: S.ClassDef => definition.name
-    }.toSet)
-    statements.toList.map(statement(_, context)).filter(keep)
-  }
+    }.toSet))
+    built <- ParseStep.traverse(statements)(statement)
+  } yield built.filter(keep)
 
-  private def body(statements: Seq[ParsedStatement], context: ParseContext): BeSequence =
-    BeSequence.optionalBody(block(statements, context))
+  private def body(statements: Seq[ParsedStatement]): ParseStep[BeSequence] = block(statements).map(BeSequence.optionalBody)
 
-  private def statement(parsed: ParsedStatement, context: ParseContext): BeExpression = parsed match {
-    case definition: S.ClassDef => buildClass(definition, context)
-    case definition: S.FunctionDef => buildFunction(definition, context)
-    case S.Declare(name, typeHint) => context.defineVariable(name, dataType(typeHint))
+  private def defineVariable(name: String, dataType: BeDataType): ParseStep[BeDefineVariable] = ParseStep(_.defineVariable(name, dataType))
+
+  private def defineParameter(parameter: ParsedParameter): ParseStep[BeDefineVariable] = defineVariable(parameter.name, dataType(parameter.typeHint))
+
+  private def statement(parsed: ParsedStatement): ParseStep[BeExpression] = parsed match {
+    case definition: S.ClassDef => buildClass(definition)
+    case definition: S.FunctionDef => buildFunction(definition)
+    case S.Declare(name, typeHint) => defineVariable(name, dataType(typeHint))
     // Assignments bind to module variables already; `global` makes sure the module variable exists.
     case S.Global(names) =>
-      names.foreach(context.moduleVariable(_, BeDataType.AnyType))
-      BeExpression.pass
-    case S.Assign(name, Some(typeHint), value) =>
-      val variable = context.defineVariable(name, dataType(typeHint))
-      BeAssignVariable(variable, expression(value, context))
-    case S.Assign(name, None, value) =>
-      val built = expression(value, context)
-      BeAssignVariable(context.assignVariable(name, inferredType(built)), built)
+      ParseStep.traverse(names)(name => ParseStep(_.moduleVariable(name, BeDataType.AnyType))).map(_ => BeExpression.pass)
+    case S.Assign(name, Some(typeHint), value) => for {
+      variable <- defineVariable(name, dataType(typeHint))
+      built <- expression(value)
+    } yield BeAssignVariable(variable, built)
+    case S.Assign(name, None, value) => for {
+      built <- expression(value)
+      variable <- ParseStep(_.assignVariable(name, inferredType(built)))
+    } yield BeAssignVariable(variable, built)
     case S.AssignMember(receiver, member, value) =>
-      expression(E.Member(receiver, member), context) match {
-        case BeMemberAccess(instance, field) => BeAssignMember(instance, field, expression(value, context))
+      expression(E.Member(receiver, member)).flatMap {
+        case BeMemberAccess(instance, field) => expression(value).map(BeAssignMember(instance, field, _))
         case _ => throw IllegalArgumentException(s"Cannot resolve the member assignment to '$member'.")
       }
-    case S.If(condition, thenBody, elseBody) =>
-      BeIfElse(BeSequence.conditionalBody(List(expression(condition, context))), body(thenBody, context), body(elseBody, context))
-    case S.While(condition, loopBody) =>
-      BeWhile(BeSequence.conditionalBody(List(expression(condition, context))), body(loopBody, context))
-    case S.Repeat(times, loopBody) => BeRepeatNr(expression(times, context), body(loopBody, context))
-    case S.For(variable, start, end, loopBody, up) =>
-      val (first, last) = (expression(start, context), expression(end, context))
-      val counter = context.defineVariable(variable, BeDataType.Numeric)
-      BeFor(counter, first, last, body(loopBody, context), if up then BeFor.Direction.Up else BeFor.Direction.Down)
-    case S.Return(value) => BeReturn(value.map(expression(_, context)))
-    case S.Evaluate(value) => expression(value, context)
-    case S.Comment(text) => BeSingleLineComment(LanguageMap.universalMap(text))
-    case S.Pass => BeExpression.pass
-    case S.Unsupported(source, reason, true) => BeExpressionUnparsable(source, reason, Some(language))
-    case S.Unsupported(source, reason, false) => BeExpressionUnsupported(source, Some(language), reason)
+    case S.If(condition, thenBody, elseBody) => for {
+      test <- expression(condition)
+      thenBranch <- body(thenBody)
+      elseBranch <- body(elseBody)
+    } yield BeIfElse(BeSequence.conditionalBody(List(test)), thenBranch, elseBranch)
+    case S.While(condition, loopBody) => for {
+      test <- expression(condition)
+      repeated <- body(loopBody)
+    } yield BeWhile(BeSequence.conditionalBody(List(test)), repeated)
+    case S.Repeat(times, loopBody) => for {
+      count <- expression(times)
+      repeated <- body(loopBody)
+    } yield BeRepeatNr(count, repeated)
+    case S.For(variable, start, end, loopBody, up) => for {
+      first <- expression(start)
+      last <- expression(end)
+      counter <- defineVariable(variable, BeDataType.Numeric)
+      repeated <- body(loopBody)
+    } yield BeFor(counter, first, last, repeated, if up then BeFor.Direction.Up else BeFor.Direction.Down)
+    case S.Return(value) => ParseStep.traverse(value.toList)(expression).map(values => BeReturn(values.headOption))
+    case S.Evaluate(value) => expression(value)
+    case S.Comment(text) => ParseStep.pure(BeSingleLineComment(LanguageMap.universalMap(text)))
+    case S.Pass => ParseStep.pure(BeExpression.pass)
+    case S.Unsupported(source, reason, true) => ParseStep.pure(BeExpressionUnparsable(source, reason, Some(language)))
+    case S.Unsupported(source, reason, false) => ParseStep.pure(BeExpressionUnsupported(source, Some(language), reason))
   }
 
-  private def buildFunction(definition: S.FunctionDef, context: ParseContext): BeDefineFunction = {
-    context.pushScope()
-    val built = try {
-      val parameters = definition.parameters.map(parameter => context.defineVariable(parameter.name, dataType(parameter.typeHint))).toList
-      val signature = BeDefineFunction(parameters, result(definition.returnType), BeExpression.pass,
-        BeDefineFunction.functionInfo(BeEntityName.fromUniversalNameInParts(definition.name)))
-      context.declareFunction(definition.name, signature)
-      signature.copy(body = body(definition.body, context))
-    } finally context.popScope()
-    context.registerFunction(definition.name, built)
-    built
-  }
+  /** Parameters and locals live in the function's own scope; its signature is known to its body for recursion. */
+  private def buildFunction(definition: S.FunctionDef): ParseStep[BeDefineFunction] = for {
+    _ <- ParseStep.update(_.pushScope)
+    parameters <- ParseStep.traverse(definition.parameters)(defineParameter)
+    signature = BeDefineFunction(parameters, result(definition.returnType), BeExpression.pass,
+      BeDefineFunction.functionInfo(BeEntityName.fromUniversalNameInParts(definition.name)))
+    _ <- ParseStep.update(_.declareFunction(definition.name, signature))
+    built <- body(definition.body).map(code => signature.copy(body = code))
+    _ <- ParseStep.update(_.popScope.registerFunction(definition.name, built))
+  } yield built
 
   /** A function's result; `None`/`void` and a missing hint both mean that it returns nothing. */
   private def result(returnType: Option[ParsedType]): Option[BeDefineVariable] =
     returnType.filterNot(_ == ParsedType.Unit).map(typeHint => BeDefineVariable(BeEntityName.fromUniversalNameInParts("result"), dataType(typeHint)))
 
   // Classes: signatures are bound before bodies; definitions never contain a receiver parameter.
+  // Field values and method bodies are read in child contexts, so their names stay local to them.
 
   private def kind(definition: S.FunctionDef): BeDefineFunction.BeFunctionType = definition.kind match {
     case ParsedFunctionKind.StaticMethod => StaticMethod()
@@ -124,12 +137,14 @@ final class ParsedProgramBuilder(language: ProgrammingLanguage,
       BeExpression.pass,
       BeFunctionTypeInfo(Some(owner), Option.when(kind(method) != Constructor())(BeEntityName.fromCodeString(method.name)), kind(method)))
 
+  private def withParameters(context: ParseContext, parameters: Seq[ParsedParameter]): ParseContext =
+    ParseStep.traverse(parameters)(defineParameter).run(context)._2
+
   private def fields(definition: S.ClassDef, context: ParseContext): List[BeDefineVariable] =
     definition.fields.map { field =>
-      val fieldContext = new ParseContext(context.snapshotStructures, context.sourceCallableNames)
-      field.assigned.toSeq.flatMap(_._2).foreach(parameter => fieldContext.defineVariable(parameter.name, dataType(parameter.typeHint)))
+      val fieldContext = withParameters(context.child(), field.assigned.toSeq.flatMap(_._2))
       val source = field.initial.orElse(field.assigned.map(_._1))
-      lazy val value = source.map(expression(_, fieldContext))
+      lazy val value = source.map(expression(_).run(fieldContext)._1)
       val constructed = source.collect {
         case E.Call(Seq(name), _) => name
         case E.Construct(name, _) => name
@@ -143,54 +158,57 @@ final class ParsedProgramBuilder(language: ProgrammingLanguage,
     owner.copy(methods = definition.methods.map(methodSignature(owner, _)).toList)
   }
 
-  private def buildClass(definition: S.ClassDef, context: ParseContext): BeDefineClass = {
+  private def buildClass(definition: S.ClassDef): ParseStep[BeDefineClass] = ParseStep { context =>
     val signatures = classSignatures(definition, context)
     val owner = signatures.copy(methods = Nil)
-    val classContext = new ParseContext(context.snapshotStructures, context.sourceCallableNames)
-    classContext.registerClass(definition.name, signatures)
+    val classContext = context.child().registerClass(definition.name, signatures)
     val methods = definition.methods.map { method =>
-      val methodContext = new ParseContext(classContext.snapshotStructures, context.sourceCallableNames,
-        Option.when(kind(method) != StaticMethod())(owner))
-      method.parameters.foreach(parameter => methodContext.defineVariable(parameter.name, dataType(parameter.typeHint)))
-      methodSignature(owner, method).copy(body = body(method.body, methodContext))
+      val methodContext = withParameters(classContext.child(Option.when(kind(method) != StaticMethod())(owner)), method.parameters)
+      methodSignature(owner, method).copy(body = body(method.body).run(methodContext)._1)
     }.toList
     val built = owner.copy(methods = methods)
-    context.registerClass(definition.name, built)
-    built
+    (built, context.registerClass(definition.name, built))
   }
 
   // Expressions
 
-  private def expression(parsed: ParsedExpression, context: ParseContext): BeExpression = parsed match {
-    case E.Literal(raw) => BeUseValue(BeDataValueLiteral(raw), None)
-    case E.NoneValue => BeUseValue(BeDataValueUnit(), None)
-    case E.Self => context.currentClass.map(owner => BeCurrentInstance(owner.name))
-      .getOrElse(BeExpressionUnsupported(if language.name == "Java" then "this" else "self", Some(language)))
+  private def arguments(parsed: Seq[ParsedExpression]): ParseStep[List[BeExpression]] = ParseStep.traverse(parsed)(expression)
+
+  private def expression(parsed: ParsedExpression): ParseStep[BeExpression] = parsed match {
+    case E.Literal(raw) => ParseStep.pure(BeUseValue(BeDataValueLiteral(raw), None))
+    case E.NoneValue => ParseStep.pure(BeUseValue(BeDataValueUnit(), None))
+    case E.Self => ParseStep.inspect(_.currentClass.map(owner => BeCurrentInstance(owner.name))
+      .getOrElse(BeExpressionUnsupported(if language.name == "Java" then "this" else "self", Some(language))))
     case E.Name(name) =>
-      val variable = context.lookupVariable(name).getOrElse(context.assignVariable(name, BeDataType.AnyType))
-      BeUseValue(BeUseValueReference(variable), Some(variable))
-    case E.Unary(operator, operand) =>
-      val value = expression(operand, context)
-      val function = context.resolveOperator(operator, 1, List(value))
-      BeFunctionCall.fromDefinition(function, Map(function.inputs.head -> value))
-    case E.Binary(operator, left, right) =>
-      val (first, second) = (expression(left, context), expression(right, context))
-      val function = context.resolveOperator(operator, 2, List(first, second))
-      BeFunctionCall.fromDefinition(function, Map(function.inputs.head -> first, function.inputs(1) -> second))
-    case E.Call(path, arguments) => call(path, arguments.map(expression(_, context)).toList, context)
-    case E.MethodCall(receiver, name, arguments) =>
-      instanceCall(expression(receiver, context), name, name, arguments.map(expression(_, context)).toList, context)
-    case E.Member(receiver, name) =>
-      val instance = expression(receiver, context)
-      context.classForType(instance.staticInformationExpression.staticType).flatMap { owner =>
+      ParseStep(_.assignVariable(name, BeDataType.AnyType)).map(variable => BeUseValue(BeUseValueReference(variable), Some(variable)))
+    case E.Unary(operator, operand) => for {
+      value <- expression(operand)
+      function <- ParseStep(_.resolveOperator(operator, 1, List(value)))
+    } yield BeFunctionCall.fromDefinition(function, Map(function.inputs.head -> value))
+    case E.Binary(operator, left, right) => for {
+      first <- expression(left)
+      second <- expression(right)
+      function <- ParseStep(_.resolveOperator(operator, 2, List(first, second)))
+    } yield BeFunctionCall.fromDefinition(function, Map(function.inputs.head -> first, function.inputs(1) -> second))
+    case E.Call(path, values) => arguments(values).flatMap(call(path, _))
+    case E.MethodCall(receiver, name, values) => for {
+      instance <- expression(receiver)
+      bound <- arguments(values)
+      call <- ParseStep.inspect(instanceCall(instance, name, name, bound, _))
+    } yield call
+    case E.Member(receiver, name) => for {
+      instance <- expression(receiver)
+      access <- ParseStep.inspect(_.classForType(instance.staticInformationExpression.staticType).flatMap { owner =>
         owner.attributes.find(_.name.universalInterpretation() == BeEntityName.fromCodeString(name).universalInterpretation())
           .map(member => BeMemberAccess(instance, member))
-      }.getOrElse(BeExpressionUnsupported(s"${describe(receiver)}.$name", Some(language)))
-    case E.Construct(className, arguments) =>
-      val owner = context.lookupClass(className)
-        .getOrElse(throw IllegalArgumentException(s"Cannot convert construction of unknown class '$className'."))
-      bind(className, BeCallTarget.Constructor(constructor(owner)), arguments.map(expression(_, context)).toList)
-    case E.Unsupported(source) => BeExpressionUnsupported(source, Some(language))
+      }.getOrElse(BeExpressionUnsupported(s"${describe(receiver)}.$name", Some(language))))
+    } yield access
+    case E.Construct(className, values) => for {
+      owner <- ParseStep.inspect(_.lookupClass(className)
+        .getOrElse(throw IllegalArgumentException(s"Cannot convert construction of unknown class '$className'.")))
+      bound <- arguments(values)
+    } yield bind(className, BeCallTarget.Constructor(constructor(owner)), bound)
+    case E.Unsupported(source) => ParseStep.pure(BeExpressionUnsupported(source, Some(language)))
   }
 
   private def describe(parsed: ParsedExpression): String = parsed match {
@@ -214,11 +232,11 @@ final class ParsedProgramBuilder(language: ProgrammingLanguage,
     owner.methods.find(_.functionTypeInfo.displayName.universalInterpretation() == BeEntityName.fromCodeString(sourceName).universalInterpretation())
       .getOrElse(throw IllegalArgumentException(s"Class '${owner.name.universalInterpretation()}' has no method '$sourceName'."))
 
-  private def call(path: Seq[String], arguments: List[BeExpression], context: ParseContext): BeExpression = {
+  private def call(path: Seq[String], arguments: List[BeExpression]): ParseStep[BeExpression] = ParseStep.context.flatMap { context =>
     val name = path.mkString(".")
     def isVariable(source: String) = context.lookupVariable(source).nonEmpty
     context.lookupClass(name).filter(_ => !isVariable(name)) match {
-      case Some(owner) => bind(name, BeCallTarget.Constructor(constructor(owner)), arguments)
+      case Some(owner) => ParseStep.pure(bind(name, BeCallTarget.Constructor(constructor(owner)), arguments))
       case None if path.size > 1 =>
         val receiverSource = path.init.mkString(".")
         val methodName = path.last
@@ -226,16 +244,16 @@ final class ParsedProgramBuilder(language: ProgrammingLanguage,
           case Some(owner) =>
             val method = findMethod(owner, methodName)
             require(method.functionTypeInfo.funcType == StaticMethod(), s"Instance method '$name' needs an object.")
-            bind(name, BeCallTarget.StaticMethod(method), arguments)
+            ParseStep.pure(bind(name, BeCallTarget.StaticMethod(method), arguments))
           case None if path.head == "self" || path.head == "this" ||
               context.lookupVariable(path.head).exists(variable => context.classForType(variable.variableType).nonEmpty) =>
             val receiverPath = path.init
             val receiver = receiverPath.tail.foldLeft[ParsedExpression](
               if receiverPath.head == "self" || receiverPath.head == "this" then E.Self else E.Name(receiverPath.head))(E.Member(_, _))
-            instanceCall(expression(receiver, context), name, methodName, arguments, context)
-          case None => moduleFunction(name, arguments, context)
+            expression(receiver).map(instanceCall(_, name, methodName, arguments, context))
+          case None => moduleFunction(name, arguments)
         }
-      case None => moduleFunction(name, arguments, context)
+      case None => moduleFunction(name, arguments)
     }
   }
 
@@ -247,10 +265,10 @@ final class ParsedProgramBuilder(language: ProgrammingLanguage,
     bind(name, BeCallTarget.InstanceMethod(instance, method), arguments)
   }
 
-  private def moduleFunction(name: String, arguments: List[BeExpression], context: ParseContext): BeFunctionCall = {
-    val function = context.ensureFunctionArity(name, context.resolveFunction(name, arguments.length), arguments.length)
-    BeFunctionCall.fromDefinition(function, function.inputs.zip(arguments).toMap)
-  }
+  private def moduleFunction(name: String, arguments: List[BeExpression]): ParseStep[BeFunctionCall] = for {
+    resolved <- ParseStep(_.resolveFunction(name, arguments.length))
+    function <- ParseStep(_.ensureFunctionArity(name, resolved, arguments.length))
+  } yield BeFunctionCall.fromDefinition(function, function.inputs.zip(arguments).toMap)
 
   private def inferredType(value: BeExpression): BeDataType = value.staticInformationExpression.staticType match {
     case BeDataType.Error => BeDataType.AnyType
@@ -269,4 +287,40 @@ final class ParsedProgramBuilder(language: ProgrammingLanguage,
   }
 
   private def dataType(parsed: Option[ParsedType]): BeDataType = parsed.map(dataType).getOrElse(BeDataType.AnyType)
+}
+
+
+/** A building step: reads the [[ParseContext]] and returns its result with the context extended by what it learned.
+  * Steps compose in source order with `for` comprehensions.
+  */
+private final case class ParseStep[+A](run: ParseContext => (A, ParseContext)) {
+  def map[B](f: A => B): ParseStep[B] = ParseStep { context =>
+    val (value, next) = run(context)
+    (f(value), next)
+  }
+
+  def flatMap[B](f: A => ParseStep[B]): ParseStep[B] = ParseStep { context =>
+    val (value, next) = run(context)
+    f(value).run(next)
+  }
+}
+
+private object ParseStep {
+  def pure[A](value: A): ParseStep[A] = ParseStep(context => (value, context))
+
+  val context: ParseStep[ParseContext] = ParseStep(context => (context, context))
+
+  /** Reads the context without changing it. */
+  def inspect[A](f: ParseContext => A): ParseStep[A] = ParseStep(context => (f(context), context))
+
+  def update(f: ParseContext => ParseContext): ParseStep[Unit] = ParseStep(context => ((), f(context)))
+
+  /** Runs `f` for each item in order, each step seeing what the previous ones learned. */
+  def traverse[A, B](items: Seq[A])(f: A => ParseStep[B]): ParseStep[List[B]] = ParseStep { context =>
+    val (reversed, last) = items.foldLeft((List.empty[B], context)) { case ((built, current), item) =>
+      val (value, next) = f(item).run(current)
+      (value :: built, next)
+    }
+    (reversed.reverse, last)
+  }
 }
