@@ -92,9 +92,11 @@ test('native Snap exports retain execution behavior through shared parsing and P
         const hat = sprite.scripts.children.find(child => child.selector === 'receiveGo');
         const threads = nativeCorpusIde.stage.threads;
         const process = threads.startProcess(hat,sprite);
-        for (let tick=0;tick<500 && threads.processes.includes(process);tick++) {
-          threads.step(); await new Promise(resolve => setTimeout(resolve,0));
-        }
+        try {
+          for (let tick=0;tick<500 && threads.processes.includes(process);tick++) {
+            threads.step(); await new Promise(resolve => setTimeout(resolve,0));
+          }
+        } finally { Process.prototype.handleError = handleError; }
         if (process.errorFlag || threads.processes.includes(process))
           throw new Error(`Native Snap did not complete '${name}': ${process.errorFlag ? `the script raised ${JSON.stringify(errors)}` : 'still running after 500 steps'}; trace ${JSON.stringify(trace)}`);
         return {xml:exported,trace};
