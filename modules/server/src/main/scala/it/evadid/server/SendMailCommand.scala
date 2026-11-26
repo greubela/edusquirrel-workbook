@@ -1,15 +1,19 @@
 package it.evadid.server
 
+import it.evadid.core.datastructures.file.LoadedFile
 import it.evadid.distribution.commandTypes.MailCommands.{SendMailRequest, SendMailResponse}
 import it.evadid.util.JvmUtils
 import it.evadid.util.logging.Logger
 import jakarta.mail.*
-import jakarta.mail.internet.{AddressException, InternetAddress, MimeMessage}
+import jakarta.mail.internet.{AddressException, ContentType, InternetAddress, MimeBodyPart, MimeMessage, MimeMultipart}
+import jakarta.mail.util.ByteArrayDataSource
+import jakarta.activation.DataHandler
 
 import java.util.Properties
-import java.net.{ConnectException, SocketTimeoutException, UnknownHostException}
+import java.net.{ConnectException, SocketTimeoutException, URLConnection, UnknownHostException}
 import javax.net.ssl.SSLException
 import scala.concurrent.{ExecutionContext, Future}
+import scala.util.Try
 
 object SendMailCommand {
 
@@ -33,7 +37,7 @@ object SendMailCommand {
 
   private[server] def sendMail(request: SendMailRequest, logger: Logger, envProvider: String => Option[String]): SendMailResponse = {
     val config = readMailConfig(envProvider)
-    logger.logInfo(s"sending mail to '${request.recipientMail}'")// with subject '${request.subject}' via ${config.host}:${config.port}")
+    logger.logInfo(s"sending mail with ${request.attachments.size} attachment(s) to '${request.recipientMail}'")
 
     withDeliveryContext {
       val props = new Properties()
@@ -54,17 +58,46 @@ object SendMailCommand {
         }
       )
 
-      val msg = MimeMessage(session)
-      msg.setFrom(InternetAddress(config.email))
-      msg.setRecipients(Message.RecipientType.TO, request.recipientMail)
-      msg.setSubject(request.subject)
-      msg.setText(request.content)
-
-      Transport.send(msg)
+      Transport.send(mailMessage(session, config.email, request))
       logger.logInfo(s"mail sent to '${request.recipientMail}'")
       SendMailResponse(None, sent = true)
     }
   }
+
+  /** UTF-8 message: plain text without attachments, otherwise the text body followed by one part per attachment. */
+  private[server] def mailMessage(session: Session, sender: String, request: SendMailRequest): MimeMessage = {
+    val message = MimeMessage(session)
+    message.setFrom(InternetAddress(sender))
+    message.setRecipients(Message.RecipientType.TO, request.recipientMail)
+    message.setSubject(request.subject, "UTF-8")
+    if request.attachments.isEmpty then message.setText(request.content, "UTF-8")
+    else message.setContent(multipartContent(request))
+    message
+  }
+
+  private def multipartContent(request: SendMailRequest): MimeMultipart = {
+    val textPart = MimeBodyPart()
+    textPart.setText(request.content, "UTF-8")
+    val attachmentParts = request.attachments.zipWithIndex.map((file, index) => attachmentPart(file, index + 1))
+    MimeMultipart((textPart +: attachmentParts)*)
+  }
+
+  /** Names are validated by [[SendMailRequest]]; client metadata is used as given or rejected, never altered. */
+  private def attachmentPart(file: LoadedFile, position: Int): MimeBodyPart = {
+    val part = MimeBodyPart()
+    part.setDataHandler(DataHandler(ByteArrayDataSource(file.data, attachmentContentType(file, position))))
+    part.setFileName(file.description.filenameWithExtension)
+    part
+  }
+
+  /** The declared media type must be valid; without one, the type follows from the file name (RFC 2046 binary data
+   * when the name does not identify a type). */
+  private def attachmentContentType(file: LoadedFile, position: Int): String =
+    file.description.mediaType match {
+      case Some(declared) => Try(ContentType(declared).toString).toOption.flatMap(Option(_)).getOrElse(
+        throw IllegalArgumentException(s"Could not send email: attachment $position declares an invalid media type."))
+      case None => Option(URLConnection.guessContentTypeFromName(file.description.filenameWithExtension)).getOrElse("application/octet-stream")
+    }
 
   /** SMTP errors can contain recipients or message contents; only safe diagnostics cross the command boundary. */
   private[server] def withDeliveryContext[A](send: => A): A =

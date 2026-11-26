@@ -23,7 +23,7 @@ class SystematicDerivedCodecSpec extends FunSuite {
     List(read[T](write(value)), readBinary[T](writeBinary(value)))
   private def roundTrip[T: ReadWriter](value: T): Unit = copies(value).foreach(assertEquals(_, value))
   test("protocol request records expose their own derived codec") {
-    roundTrip(SendMailRequest("a@example.com", "学校", "body\nline two"))
+    roundTrip(SendMailRequest("a@example.com", "学校", "body\nline two", Nil))
   }
   test("derived workbook containers resolve nested registered element interfaces") {
     val panel = TwoColumnPanel("panel", TextInteraction("left"), TextInteraction("right"))

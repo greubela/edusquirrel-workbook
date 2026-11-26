@@ -62,4 +62,50 @@ class FilePackageSpec extends FunSuite {
       assert(loaded.toString.contains(s"${loaded.data.length} bytes"))
     }
   }
+
+  test("data URLs are nameless, never parse their payload as a path and declare their RFC 2397 media type") {
+    val png = "data:image/png;base64,iVBORw0KGgo/AAA+b.c/d.e"
+    assertEquals(parsePathStructure(png), PathStructure(LocationStructure(Some("data"), Nil, None, Nil), FilenameStructure("", None)))
+    assertEquals(parsePathStructure("  DATA:text/csv,a/b.c").filenameWithExtension, "")
+    assertEquals(dataUrlMediaType(png), Some("image/png"))
+    assertEquals(dataUrlMediaType(" Data:text/plain; charset=UTF-8 ;base64,SGk="), Some("text/plain;charset=UTF-8"))
+    assertEquals(dataUrlMediaType("data:image/svg+xml;charset=utf-8,%3Csvg%2F%3E"), Some("image/svg+xml;charset=utf-8"))
+    assertEquals(dataUrlMediaType("data:,Hello"), Some("text/plain;charset=US-ASCII"))
+    assertEquals(dataUrlMediaType("data:;base64,SGk="), Some("text/plain;charset=US-ASCII"))
+    assertEquals(dataUrlMediaType("data:;charset=utf-8,Hi"), Some("text/plain;charset=utf-8"))
+    for (other <- List("https://example.org/data:x", "report.pdf", "", "dat:a")) assertEquals(dataUrlMediaType(other), None)
+  }
+
+  test("a data URL description is a nameless file rather than a directory; other locations declare no media type") {
+    def description(url: String): FileDescription = new FileDescription {
+      def copyrightInfo = unknownCopyrightInfo
+      def asUrlString = url
+      def loadData(): Future[LoadedFile] = Future.failed(UnsupportedOperationException())
+      def getChildrenFile(name: String, copyright: CopyrightInfo): Option[FileDescription] = None
+    }
+    val inline = description("data:application/pdf;base64,JVBERg==")
+    assertEquals(inline.mediaType, Some("application/pdf"))
+    assertEquals(inline.filenameWithExtension, "")
+    assert(!inline.isDirectory)
+    assertEquals(description("https://example.org/assets").mediaType, None)
+    assert(description("https://example.org/assets").isDirectory)
+    assert(!description("assets/logo.png").isDirectory)
+  }
+
+  test("a named data file describes and loads itself with its declared media type") {
+    val bytes = Array[Byte](1, 2, 3)
+    val file = NamedDataFileDescription("dir/report.pdf", bytes, CopyrightInfo.fromAi, Some("application/pdf"))
+    assert(file.description eq file)
+    assertEquals(file.filenameWithExtension, "report.pdf")
+    assertEquals(file.asUrlString, "dir/report.pdf")
+    assertEquals(file.mediaType, Some("application/pdf"))
+    assertEquals(file.copyrightInfo, CopyrightInfo.fromAi)
+    assertEquals(file.getChildrenFile("child"), None)
+    assertEquals(file.toString, "NamedDataFileDescription(dir/report.pdf: 3 bytes)")
+    val nameless = NamedDataFileDescription("", bytes, unknownCopyrightInfo, Some("image/png"))
+    assert(!nameless.isDirectory)
+    assertEquals(nameless.mediaType, Some("image/png"))
+    import scala.concurrent.ExecutionContext.Implicits.global
+    file.loadData().map(loaded => assert(loaded eq file))
+  }
 }

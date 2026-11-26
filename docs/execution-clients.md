@@ -59,6 +59,39 @@ public server command pool. For generic worker execution, register it in
 `WorkerCommandHandler` and advertise the name in `WorkerCommands.supportedCommands`.
 Declaring a factory alone does not register a remote handler.
 
+## Call a backend command
+
+Server-only services use `fullInfo.defaults.backendExecutor`. Example: mail the
+logged-in user a generated file and an uploaded one (`SendMailRequest` in
+[`MailCommands`](../modules/core/shared/src/main/scala/it/evadid/distribution/commandTypes/MailCommands.scala)):
+
+```scala
+import it.evadid.core.datastructures.file.{CopyrightInfo, NamedDataFileDescription}
+import it.evadid.distribution.commandTypes.MailCommands.{SendMailRequest, SendMailResponse, sendMailCommand}
+import it.evadid.homepage.control.model.FullInfo
+import org.scalajs.dom
+import scala.concurrent.Future
+import scala.concurrent.ExecutionContext.Implicits.global
+
+def mailAnswersToMe(fullInfo: FullInfo, answersCsv: String, picked: dom.File): Future[SendMailResponse] =
+  fullInfo.current.userInfo.map(_.user.mail) match {
+    case None => Future.failed(IllegalStateException("Log in to receive the mail."))
+    case Some(ownMail) =>
+      val answers = NamedDataFileDescription("answers.csv", answersCsv.getBytes("UTF-8"),
+        CopyrightInfo.unknownCopyrightInfo, Some("text/csv;charset=utf-8"))
+      val request = fullInfo.contentControl.fileFactory.fromFile(picked).loadData()
+        .map(upload => SendMailRequest(ownMail, "Meine Antworten", "Im Anhang meine Antworten.", List(answers, upload)))
+      sendMailCommand.waitAndSendCommandTo(fullInfo.defaults.backendExecutor, request).map(_.result)
+  }
+```
+
+Mail requests are delivered only to the requester's own address, and the command
+body is limited to 16 MB. Each attachment travels as file name, declared media type,
+copyright and Base64 bytes, never its source location. Requests fail with an
+explicit message instead of falling back: nameless attachments (name `data:` URL
+content explicitly), names with control characters and invalid declared media
+types are rejected. Without a declared type, the type follows from the file name.
+
 ## Call an existing worker job
 
 Inside a client component that is supplied a `FullInfo` context:

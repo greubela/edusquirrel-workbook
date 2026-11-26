@@ -75,7 +75,7 @@ class ExecutionCommandRoundTripSpec extends FunSuite {
       DatabaseHistoryFormat.BlobFormat), synced),
     Sample(SQLCommands.resetUserHistoriesDbCommand, SQLCommands.DeleteInDbRequest(usage, None, BackendDatabase,
       DatabaseHistoryFormat.RelationalFormat, allWorkbooks = true), synced),
-    Sample(MailCommands.sendMailCommand, MailCommands.SendMailRequest("teacher@example.invalid", "Subject: Grüße", "Line 1\nLine 2"),
+    Sample(MailCommands.sendMailCommand, MailCommands.SendMailRequest("teacher@example.invalid", "Subject: Grüße", "Line 1\nLine 2", Nil),
       MailCommands.SendMailResponse(None, sent = true)),
     Sample(LLMCommands.completeLLMCommandFactory, LLMCommands.MessengerChatCompletionRequest("system",
       MessengerModel(Seq(Message("question?", MessengerModel.pAgent, at))), Some(LlmConfiguration("https://llm.example", "model", None))),
