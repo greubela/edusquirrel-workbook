@@ -45,6 +45,21 @@ class SqlEditorResultSpec extends munit.FunSuite {
     connection -> writes
   }
 
+  /** Logs `command` through a connection whose update reports `rows` changed rows; returns the writes and the logger. */
+  private def logged(command: ExecutionCommand, rows: Int): (Vector[Map[Int, String]], BasicLogger) = {
+    val (connection, writes) = logConnection(rows)
+    val logger = BasicLogger()
+    SqlLogCommands.handleLog(LocalDateTime.of(2026, 10, 17, 10, 0), command, None,
+      InetAddress.getLoopbackAddress, logger, connection)
+    writes.now() -> logger
+  }
+
+  private def metadata(columns: Int, label: String): ResultSetMetaData = fake(classOf[ResultSetMetaData]) { (name, _) => name match {
+    case "getColumnCount" => Int.box(columns)
+    case "getColumnLabel" => label
+    case other => throw new UnsupportedOperationException(other)
+  }}
+
   test("feedback command logs store only allowlisted metadata without changing the request") {
     val prompt = "private learner source Grüße\nreturn a + b;"
     val system = "private feedback instructions"
@@ -53,11 +68,8 @@ class SqlEditorResultSpec extends munit.FunSuite {
     val original = ujson.write(command.json)
     val expected = ujson.Obj("name" -> command.name, "json" -> ujson.Obj("redacted" -> true,
       "promptLength" -> prompt.length, "systemPromptLength" -> system.length))
-    val (connection, writes) = logConnection(1)
-    val logger = BasicLogger()
-    SqlLogCommands.handleLog(LocalDateTime.of(2026, 10, 17, 10, 0), command, None,
-      InetAddress.getLoopbackAddress, logger, connection)
-    val stored = writes.now().head
+    val (writes, logger) = logged(command, 1)
+    val stored = writes.head
     assertEquals(ujson.read(stored(4)), expected)
     assertEquals(stored(3), command.name)
     assertEquals(stored(5), "user-unknown")
@@ -78,13 +90,10 @@ class SqlEditorResultSpec extends munit.FunSuite {
     payloads.foreach { payload =>
       val command = ExecutionCommand(LLMCommands.feedbackLlmCommandFactory.name, payload)
       val original = ujson.write(payload)
-      val (connection, writes) = logConnection(0)
-      val logger = BasicLogger()
-      SqlLogCommands.handleLog(LocalDateTime.of(2026, 10, 17, 10, 0), command, None,
-        InetAddress.getLoopbackAddress, logger, connection)
+      val (writes, logger) = logged(command, 0)
       val expected = ujson.Obj("name" -> command.name, "json" -> ujson.Obj("redacted" -> true,
         "promptLength" -> ujson.Null, "systemPromptLength" -> ujson.Null))
-      assertEquals(ujson.read(writes.now().head(4)), expected)
+      assertEquals(ujson.read(writes.head(4)), expected)
       assert(logger.getOut().contains("Failed db logging for command:"))
       assert(!logger.getOut().contains("private"))
       assert(!logger.getErr().contains("private"))
@@ -94,11 +103,8 @@ class SqlEditorResultSpec extends munit.FunSuite {
 
   test("logging retains the original payload and failure warning for other commands") {
     val command = ExecutionCommand("another-command", ujson.Obj("prompt" -> "unchanged payload 学校"))
-    val (connection, writes) = logConnection(0)
-    val logger = BasicLogger()
-    SqlLogCommands.handleLog(LocalDateTime.of(2026, 10, 17, 10, 0), command, None,
-      InetAddress.getLoopbackAddress, logger, connection)
-    assertEquals(writes.now().head(4), command.toJson)
+    val (writes, logger) = logged(command, 0)
+    assertEquals(writes.head(4), command.toJson)
     assertEquals(SqlLogCommands.payloadForLog(command), command.toJson)
     assert(logger.getOut().contains("Failed db logging for command: " + command.name + " (" + command.toJson + ")"))
   }
@@ -106,14 +112,10 @@ class SqlEditorResultSpec extends munit.FunSuite {
   test("results include duplicate labels, SQL NULL, update counts and closed result sets") {
     var row = -1
     var closed = false
-    val metadata = fake(classOf[ResultSetMetaData]) { (name, args) => name match {
-      case "getColumnCount" => Int.box(2)
-      case "getColumnLabel" => "value"
-      case other => throw new UnsupportedOperationException(other)
-    }}
+    val columns = metadata(2, "value")
     val data = Vector(Vector(null, "NULL"), Vector("1", "two"))
     val resultSet = fake(classOf[ResultSet]) { (name, args) => name match {
-      case "getMetaData" => metadata
+      case "getMetaData" => columns
       case "next" => row += 1; Boolean.box(row < data.size)
       case "getString" => data(row)(args(0).asInstanceOf[Integer].intValue - 1)
       case "close" => closed = true; null
@@ -136,13 +138,9 @@ class SqlEditorResultSpec extends munit.FunSuite {
 
   test("large query results are bounded and marked as truncated") {
     var row = 0
-    val metadata = fake(classOf[ResultSetMetaData]) { (name, args) => name match {
-      case "getColumnCount" => Int.box(1)
-      case "getColumnLabel" => "id"
-      case other => throw new UnsupportedOperationException(other)
-    }}
+    val columns = metadata(1, "id")
     val rs = fake(classOf[ResultSet]) { (name, args) => name match {
-      case "getMetaData" => metadata
+      case "getMetaData" => columns
       case "next" => row += 1; Boolean.box(row <= 501)
       case "getString" => row.toString
       case "close" => null

@@ -28,6 +28,16 @@ class LoginTokenTimestampSpec extends FunSuite {
         handle(method.getName, Option(args).getOrElse(Array.empty[AnyRef]))
     }).asInstanceOf[T]
 
+  /** A connection whose prepared statements, described by `query`, answer every query with `result`. */
+  private def answering(result: ResultSet, query: String): Connection = {
+    val statement = stub(classOf[PreparedStatement]) { (method, _) =>
+      if (method == "executeQuery") result else if (method == "toString") query else null
+    }
+    stub(classOf[Connection]) { (method, _) =>
+      if (method == "prepareStatement") statement else null
+    }
+  }
+
   for ((code, expiry) <- List("secret" -> "2026-10-13 01:40:00.123456", "" -> "2026-10-13 01:40:00.123456",
       "secret" -> "invalid expiry", "secret" -> "2026-10-13T01:40:00", "secret" -> null)) {
   test(s"stored token with blank code=${code.isEmpty} and expiry=$expiry is read or safely discarded") {
@@ -40,13 +50,7 @@ class LoginTokenTimestampSpec extends FunSuite {
         fields(args(0).toString)
       case _ => null
     }}
-    val statement = stub(classOf[PreparedStatement]) { (method, _) =>
-      if (method == "executeQuery") result else if (method == "toString") "test token query" else null
-    }
-    val connection = stub(classOf[Connection]) { (method, _) =>
-      if (method == "prepareStatement") statement else null
-    }
-    val token = SqlUserCommands(connection, BasicLogger()).findAccessTokens("user-1")
+    val token = SqlUserCommands(answering(result, "test token query"), BasicLogger()).findAccessTokens("user-1")
     if code.nonEmpty && expiry == "2026-10-13 01:40:00.123456" then {
       assertEquals(token.map(_.token), Some("secret"))
       assertEquals(token.map(_.expires), Some(LocalDateTime.parse("2026-10-13T01:40:00.123456")))
@@ -71,13 +75,7 @@ class LoginTokenTimestampSpec extends FunSuite {
         rows(row)(args(0).toString)
       case _ => null
     }}
-    val statement = stub(classOf[PreparedStatement]) { (method, _) =>
-      if (method == "executeQuery") result else if (method == "toString") "user query" else null
-    }
-    val connection = stub(classOf[Connection]) { (method, _) =>
-      if (method == "prepareStatement") statement else null
-    }
-    val accounts = SqlUserCommands(connection, BasicLogger()).findUserWithMail("fixture@example.org")
+    val accounts = SqlUserCommands(answering(result, "user query"), BasicLogger()).findUserWithMail("fixture@example.org")
     assertEquals(accounts.map(_.user.id), List("one", "two"))
     assertEquals(accounts.head.config, configured)
     assertEquals(accounts.last.config, UserConfig.defaults(isLocalAccount = false))

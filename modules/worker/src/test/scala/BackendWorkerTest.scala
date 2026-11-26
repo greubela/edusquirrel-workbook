@@ -25,29 +25,33 @@ class BackendWorkerTest extends FunSuite {
   }
 
   private def send(id: String, name: String, data: ujson.Value) =
-    WebWorkerBackendServer.handleMessage(write(Request(id, ExecutionCommand(name, data)))).map(read[Response](_))(using scala.concurrent.ExecutionContext.global)
+    WebWorkerBackendServer.handleMessage(write(Request(id, ExecutionCommand(name, data)))).map(read[Response](_))
+
+  /** The decoded value of a successful reply. */
+  private def success[T: ReadWriter](reply: Response): T = reply.response.result.toOption.get.getAs[T]
+  private def chartLines(reply: Response): List[Int] = success[FlowchartGutter.Chart](reply).nodes.map(_.line)
 
   test("health uses the framework response and preserves correlation and timestamps") {
     send("health", health.name, writeJs(HealthRequest())).map { reply =>
       assertEquals(reply.requestId, "health")
-      assertEquals(reply.response.result.toOption.get.getAs[HealthResult].commands.toSet, supportedCommands)
+      assertEquals(success[HealthResult](reply).commands.toSet, supportedCommands)
       assert(!reply.response.timestamps.timestampFinished.isBefore(reply.response.timestamps.timestampReceived))
-    }(using scala.concurrent.ExecutionContext.global)
+    }
   }
   test("Snap XML parsing preserves nested elements, Unicode and attributes") {
     val xml = "<project><block s=\"外\"><block s=\"inner\"/></block></project>"
     send("xml", parseSnapXml.name, writeJs(ParseSnapXmlRequest(xml, "block"))).map { reply =>
-      val result = reply.response.result.toOption.get.getAs[List[it.evadid.workbook.elements.interactionElements.programming.state.snap.SnapScalaModel.Element]]
+      val result = success[List[it.evadid.workbook.elements.interactionElements.programming.state.snap.SnapScalaModel.Element]](reply)
       assertEquals(result.map(_.attribute("s").getOrElse("")), List("外", "inner"))
-    }(using scala.concurrent.ExecutionContext.global)
+    }
   }
   test("QR worker computes a full symbol with the same result as the shared model") {
     send("qr", calculateQrCode.name, writeJs(CalculateQrCodeRequest("Grüße\nQR", version = Some(2), mask = Some(3)))).map { reply =>
-      val result = reply.response.result.toOption.get.getAs[CalculateQrCodeResult]
+      val result = success[CalculateQrCodeResult](reply)
       assertEquals(result.code.text, "Grüße\nQR")
       assertEquals(result.code.config.version, 2)
       assertEquals(result.modules, result.code.modules)
-    }(using scala.concurrent.ExecutionContext.global)
+    }
   }
   test("Python flowchart requests and results preserve source and the shared chart") {
     val source = "# Grüße 外\r\nx = 1\r\nif x > 0:\r\n\tprint(x)\r\nprint(2)\r\n"
@@ -58,41 +62,41 @@ class BackendWorkerTest extends FunSuite {
     assertEquals(expected.nodes.map(_.line), List(2, 3, 4, 5))
     send("flowchart", flowchart.name, writeJs(request)).map { reply =>
       assertEquals(reply.requestId, "flowchart")
-      val result = reply.response.result.toOption.get.getAs[FlowchartGutter.Chart]
+      val result = success[FlowchartGutter.Chart](reply)
       assertEquals(result, expected)
       assertEquals(read[FlowchartGutter.Chart](write(result)), result)
       assertEquals(readBinary[FlowchartGutter.Chart](writeBinary(result)), result)
-    }(using scala.concurrent.ExecutionContext.global)
+    }
   }
   test("unsupported Python clears the chart and the next request can succeed") {
     send("incomplete-flowchart", flowchart.name, writeJs(FlowchartRequest(Python, "break"))).flatMap { reply =>
-      assertEquals(reply.response.result.toOption.get.getAs[FlowchartGutter.Chart], FlowchartGutter.empty)
+      assertEquals(success[FlowchartGutter.Chart](reply), FlowchartGutter.empty)
       send("valid-flowchart", flowchart.name, writeJs(FlowchartRequest(Python, "print(1)")))
-    }(using scala.concurrent.ExecutionContext.global).map { reply =>
-      assertEquals(reply.response.result.toOption.get.getAs[FlowchartGutter.Chart].nodes.map(_.line), List(1))
-    }(using scala.concurrent.ExecutionContext.global)
+    }.map { reply =>
+      assertEquals(chartLines(reply), List(1))
+    }
   }
   test("invalid flowchart requests return an error without preventing later requests") {
     send("bad-flowchart", flowchart.name, ujson.Obj("source" -> ujson.Arr())).flatMap { reply =>
       assertEquals(reply.requestId, "bad-flowchart")
       assert(reply.response.result.isLeft)
       send("recovered-flowchart", flowchart.name, writeJs(FlowchartRequest(Python, "print(2)")))
-    }(using scala.concurrent.ExecutionContext.global).map { reply =>
-      assertEquals(reply.response.result.toOption.get.getAs[FlowchartGutter.Chart].nodes.map(_.line), List(1))
-    }(using scala.concurrent.ExecutionContext.global)
+    }.map { reply =>
+      assertEquals(chartLines(reply), List(1))
+    }
   }
   test("unsupported commands and invalid inputs produce serialized errors rather than hanging") {
     send("unsupported", "server-only", ujson.Obj()).flatMap { reply =>
       assert(reply.response.result.isLeft)
       send("bad-qr", calculateQrCode.name, writeJs(CalculateQrCodeRequest("x", version = Some(0))))
-    }(using scala.concurrent.ExecutionContext.global).map(reply => assert(reply.response.result.isLeft))(using scala.concurrent.ExecutionContext.global)
+    }.map(reply => assert(reply.response.result.isLeft))
   }
   test("malformed commands retain a recoverable request ID and return an error") {
     WebWorkerBackendServer.handleMessage("{\"requestId\":\"broken\",\"command\":12}").map { raw =>
       val reply = read[Response](raw)
       assertEquals(reply.requestId, "broken")
       assert(reply.response.result.isLeft)
-    }(using scala.concurrent.ExecutionContext.global)
+    }
   }
 
   test("Java evidence jobs verify Python observations before exposing source locations") {
@@ -183,7 +187,7 @@ class BackendWorkerTest extends FunSuite {
         send("health-after-java", health.name, writeJs(HealthRequest()))
       }.map { reply =>
         assertEquals(reply.requestId, "health-after-java")
-        assert(reply.response.result.toOption.get.getAs[HealthResult].commands.contains(javaExecutionEvidence.name))
+        assert(success[HealthResult](reply).commands.contains(javaExecutionEvidence.name))
       }
   }
 }
