@@ -184,7 +184,8 @@ bindings, event cursors, bulk requests and reset behavior are documented in
 
 ## Codecs and element definitions
 
-Use concrete models and derived uPickle codecs; do not add `ReadWriter[Any]` or
+Types that cross a [serialization boundary](serialization-boundaries.md) use
+concrete models and derived uPickle codecs; other types have none. Do not add `ReadWriter[Any]` or
 serialize arbitrary values with `toString`. A genuinely dynamic payload may use
 `ujson.Value`, but history logic operates on typed events, not JSON fields.
 Formats without additional grading/scaffolding data use `Unit`.

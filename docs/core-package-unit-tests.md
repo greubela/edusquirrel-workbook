@@ -61,11 +61,10 @@ cancel owned subscriptions/timers so one suite cannot alter another's environmen
 
 ## Coverage and serialization are different checks
 
-[The serialization inventory](testing-and-serialization-audit.md) accounts for
-production declarations and explicit exceptions. Behavioral tests must also check
-what a decoded model can do, validation failures and protocol compatibility. A
-runtime callback or live controller should have an explicit snapshot contract,
-not a derived codec added just to satisfy the scanner.
+Only types crossing a [serialization boundary](serialization-boundaries.md) have
+codecs, and the compiler rejects a boundary type without one. Round-trip tests
+show that a codec encodes; behavioral tests must also check what a decoded model
+can do, validation failures and protocol compatibility.
 
 When measuring coverage, report the tool, platform, source scope and current
 revision. Line/branch measurements, class inventories and test totals answer
