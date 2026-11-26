@@ -82,6 +82,12 @@ test('native Snap exports retain execution behavior through shared parsing and P
           const original = sprite[method];
           sprite[method] = function(value) {trace.push([command, Number(value)]); return original.call(this,value);};
         }
+        const errors = [];
+        const handleError = Process.prototype.handleError;
+        Process.prototype.handleError = function(error, element) {
+          errors.push(`${error?.message ?? error} (in ${element?.selector ?? 'block'})`);
+          return handleError.call(this, error, element);
+        };
         const exported = nativeCorpusIde.getProjectXML();
         const hat = sprite.scripts.children.find(child => child.selector === 'receiveGo');
         const threads = nativeCorpusIde.stage.threads;
@@ -90,7 +96,7 @@ test('native Snap exports retain execution behavior through shared parsing and P
           threads.step(); await new Promise(resolve => setTimeout(resolve,0));
         }
         if (process.errorFlag || threads.processes.includes(process))
-          throw new Error(`Native Snap did not complete '${name}': ${process.errorFlag ? 'the script raised an error' : 'still running after 500 steps'}; trace ${JSON.stringify(trace)}`);
+          throw new Error(`Native Snap did not complete '${name}': ${process.errorFlag ? `the script raised ${JSON.stringify(errors)}` : 'still running after 500 steps'}; trace ${JSON.stringify(trace)}`);
         return {xml:exported,trace};
       }, fixture);
       const snap = result(await page.evaluate(({id,code}) => corpusRequest(id,{$type:'Raw',value:{$type:'ProgrammingStateRaw',language:'Snap',code}}), {id:fixture.name,code:native.xml}));
