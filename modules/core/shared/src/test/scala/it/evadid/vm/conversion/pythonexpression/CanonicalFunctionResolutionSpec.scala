@@ -77,9 +77,9 @@ class CanonicalFunctionResolutionSpec extends FunSuite {
   test("explicit supplied definitions retain their multilingual names") {
     val translated = BeEntityName.fromMapInCodeNotation(Map(English -> "advance", German -> "vorwärts"))
     val definition = BeDefineFunction(Nil, None, BeExpression.pass, BeDefineFunction.functionInfo(translated))
-    val context = new SymbolTable.ParseContext(SymbolTable.CurrentlyKnownStructures.fromKnown(
-      Seq(SymbolTable.KnownStructure.Function("fd", definition))))
-    val resolved = context.resolveFunction("fd", 0)
+    val context = SymbolTable.ParseContext.initial(SymbolTable.CurrentlyKnownStructures.fromKnown(
+      Seq(SymbolTable.KnownStructure.Function("fd", definition))), it.evadid.vm.conversion.dependencies.ProgrammingEnvironment.all)
+    val (resolved, _) = context.resolveFunction("fd", 0)
     assert(resolved eq definition)
     assertEquals(resolved.functionTypeInfo.displayName.getNameIn(German, NamingStyle.SnakeCase), "vorwärts")
   }

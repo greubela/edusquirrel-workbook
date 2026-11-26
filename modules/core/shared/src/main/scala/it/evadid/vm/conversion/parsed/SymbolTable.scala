@@ -2,13 +2,13 @@ package it.evadid.vm.conversion.parsed
 
 import it.evadid.vm.types.BeDataType.AnyType
 
-import scala.collection.mutable
-
 import it.evadid.core.datastructures.language.*
 import it.evadid.core.datastructures.language.AppLanguage.*
 import it.evadid.vm.code.abstractions.BeExpression
 import it.evadid.vm.code.controlStructures.BeSequence
-import it.evadid.vm.code.defining.{BeDefineClass, BeDefineFunction, BeDefineVariable}
+import it.evadid.vm.code.defining.{BeDefineClass, BeDefineFunction, BeDefineVariable, BeIntrinsic}
+import it.evadid.vm.conversion.dependencies.ProgrammingEnvironment
+import it.evadid.vm.parsing.source.{SourceIdentity, SourceSpan}
 import it.evadid.vm.naming.{BeEntityName, KnownBeEntityNames}
 import it.evadid.core.datastructures.vectorShapes.svg.TurtleCommand
 import it.evadid.vm.types.{AssigningNotPossible, AssigningPossibleWithImplicitCast, AssigningPossibleWithSameType, BeDataType}
@@ -81,236 +81,236 @@ object SymbolTable {
       structures.foldLeft(empty)(_ + _)
   }
 
-  /** Binding scope of one block. Library calls bind only to the libraries `environment` provides; any other
-    * call binds like undefined code.
+  /** What is known while a parsed program is bound to definitions. A context is an immutable value: each operation
+    * that learns something returns the extended context together with its result, and the builder passes it on.
+    *
+    * @param structures            definitions that names, operators and class types resolve against
+    * @param scopes                variable scopes, innermost first; the last one is the module scope
+    * @param functionsByName       call-resolution cache: known functions, declared signatures and the definitions
+    *                              made for unknown names
+    * @param declaredCallableNames functions and classes declared in the source; they shadow known names
+    * @param definedVariables      every variable defined so far, in order, including those of closed scopes
+    * @param definedFunctions      every registered function and operator, in order
+    * @param definedClasses        every class, replaced in place when it is registered again
+    * @param currentClass          the class whose method body is read, for `self`/`this`
+    * @param environment           the libraries calls may bind to; any other library call binds like undefined code
+    * @param sources               where built definitions and placeholders came from in the source
     */
-  final class ParseContext(initialKnownStructures: CurrentlyKnownStructures, initialDeclaredNames: Set[String] = Set.empty,
-      val currentClass: Option[BeDefineClass] = None,
-      val environment: it.evadid.vm.conversion.dependencies.ProgrammingEnvironment = it.evadid.vm.conversion.dependencies.ProgrammingEnvironment.all) {
-    private var currentlyKnownStructures: CurrentlyKnownStructures = initialKnownStructures
-    private var scopes: List[mutable.LinkedHashMap[String, BeDefineVariable]] = {
-      val baseScope = mutable.LinkedHashMap[String, BeDefineVariable]()
-      baseScope ++= initialKnownStructures.variables
-      List(baseScope)
-    }
-    private val variablesBuffer = mutable.ListBuffer[BeDefineVariable]()
-    variablesBuffer ++= initialKnownStructures.variables.values
-    private val functionsBuffer = mutable.ListBuffer[BeDefineFunction]()
-    private val classesBuffer = mutable.ListBuffer[BeDefineClass]()
-    classesBuffer ++= initialKnownStructures.classes.values
-    private val functionsByName = mutable.LinkedHashMap[String, BeDefineFunction]()
-    functionsByName ++= initialKnownStructures.functions
-    private val operatorFunctions = mutable.LinkedHashMap[(String, Int), List[BeDefineFunction]]()
-    operatorFunctions ++= initialKnownStructures.operators
+  final case class ParseContext(
+      structures: CurrentlyKnownStructures,
+      scopes: List[Map[String, BeDefineVariable]],
+      functionsByName: Map[String, BeDefineFunction],
+      declaredCallableNames: Set[String],
+      definedVariables: List[BeDefineVariable],
+      definedFunctions: List[BeDefineFunction],
+      definedClasses: List[BeDefineClass],
+      currentClass: Option[BeDefineClass],
+      environment: ProgrammingEnvironment,
+      sources: ParsedSources) {
 
-    initialKnownStructures.operators.foreach { case ((symbol, _), functions) =>
-      functions.foreach { function =>
-        if (!functionsByName.contains(symbol)) functionsByName.update(symbol, function)
-        if (!functionsBuffer.exists(_ eq function)) functionsBuffer += function
-      }
-    }
-    initialKnownStructures.functions.foreach { case (_, function) =>
-      if (!functionsBuffer.exists(_ eq function)) functionsBuffer += function
-    }
+    /** A fresh context on what this one knows so far, with the same declared names, environment and recorded
+      * sources, e.g. for a class or method body.
+      */
+    def child(currentClass: Option[BeDefineClass] = None): ParseContext =
+      ParseContext.initial(structures, environment, declaredCallableNames, currentClass, sources)
 
-    def pushScope(): Unit = scopes = mutable.LinkedHashMap[String, BeDefineVariable]() :: scopes
+    def withSources(update: ParsedSources => ParsedSources): ParseContext = copy(sources = update(sources))
 
-    def popScope(): Unit = scopes = scopes.tail
+    // Variables
 
-    def assignVariable(name: String, dataType: BeDataType): BeDefineVariable = {
-      lookupVariable(name).getOrElse {
-        val variable = BeDefineVariable(BeEntityName.fromUniversalNameInParts(name), dataType)
-        currentScope.update(name, variable)
-        registerVariable(name, variable)
-        variable
-      }
-    }
+    def pushScope: ParseContext = copy(scopes = Map.empty :: scopes)
 
-    def defineVariable(name: String, dataType: BeDataType): BeDefineVariable = {
-      val variable = BeDefineVariable(BeEntityName.fromUniversalNameInParts(name), dataType)
-      currentScope.update(name, variable)
-      registerVariable(name, variable)
-      variable
-    }
-
-    /** The module-level variable `name`, defined there if no module code has assigned it yet. */
-    def moduleVariable(name: String, dataType: BeDataType): BeDefineVariable =
-      scopes.last.getOrElse(name, {
-        val variable = BeDefineVariable(BeEntityName.fromUniversalNameInParts(name), dataType)
-        scopes.last.update(name, variable)
-        registerVariable(name, variable)
-        variable
-      })
+    def popScope: ParseContext = copy(scopes = scopes.tail)
 
     def lookupVariable(name: String): Option[BeDefineVariable] = scopes.collectFirst { case scope if scope.contains(name) => scope(name) }
 
-    private def currentScope: mutable.LinkedHashMap[String, BeDefineVariable] = scopes.head
+    /** The visible variable `name`, defined in the innermost scope if there is none. */
+    def assignVariable(name: String, dataType: BeDataType): (BeDefineVariable, ParseContext) =
+      lookupVariable(name).map(_ -> this).getOrElse(defineVariable(name, dataType))
 
-    def registerVariable(name: String, variable: BeDefineVariable): Unit = {
-      if (!variablesBuffer.exists(_ eq variable)) variablesBuffer += variable
-      currentlyKnownStructures = currentlyKnownStructures.addVariable(name, variable)
+    /** A new variable `name` in the innermost scope, hiding outer ones. */
+    def defineVariable(name: String, dataType: BeDataType): (BeDefineVariable, ParseContext) = {
+      val variable = newVariable(name, dataType)
+      (variable, copy(scopes = scopes.head.updated(name, variable) :: scopes.tail).registerVariable(name, variable))
     }
+
+    /** The module-level variable `name`, defined there if no module code has assigned it yet. */
+    def moduleVariable(name: String, dataType: BeDataType): (BeDefineVariable, ParseContext) =
+      scopes.last.get(name).map(_ -> this).getOrElse {
+        val variable = newVariable(name, dataType)
+        (variable, copy(scopes = scopes.init :+ scopes.last.updated(name, variable)).registerVariable(name, variable))
+      }
+
+    def registerVariable(name: String, variable: BeDefineVariable): ParseContext =
+      copy(definedVariables = withAdded(definedVariables, variable), structures = structures.addVariable(name, variable))
+
+    private def newVariable(name: String, dataType: BeDataType) = BeDefineVariable(BeEntityName.fromUniversalNameInParts(name), dataType)
+
+    // Functions
 
     /** Binds a function's signature before its body is read, so recursive calls know its parameters and
       * result; [[registerFunction]] then replaces it with the built definition.
       */
-    def declareFunction(name: String, signature: BeDefineFunction): Unit = {
-      functionsByName.update(name, signature)
-      currentlyKnownStructures = currentlyKnownStructures.addFunction(name, signature)
-    }
+    def declareFunction(name: String, signature: BeDefineFunction): ParseContext =
+      copy(functionsByName = functionsByName.updated(name, signature), structures = structures.addFunction(name, signature))
 
-    def registerFunction(name: String, function: BeDefineFunction, isOperator: Boolean = false): Unit = {
-      functionsByName.update(name, function)
-      if (!functionsBuffer.exists(_ eq function)) functionsBuffer += function
-      currentlyKnownStructures =
-        if (isOperator) currentlyKnownStructures.addOperator(name, function)
-        else currentlyKnownStructures.addFunction(name, function)
-    }
-
-    def registerClass(name: String, clazz: BeDefineClass): Unit = {
-      val existing = classesBuffer.indexWhere(_.name.universalInterpretation() == clazz.name.universalInterpretation())
-      if existing < 0 then classesBuffer += clazz else classesBuffer.update(existing, clazz)
-      currentlyKnownStructures = currentlyKnownStructures.addClass(name, clazz)
-    }
-
-    def lookupClass(name: String): Option[BeDefineClass] =
-      currentlyKnownStructures.classes.get(name).orElse(currentlyKnownStructures.classes.values.find(_.name.universalInterpretation() == BeEntityName.fromCodeString(name).universalInterpretation()))
-
-    def classForType(dataType: BeDataType): Option[BeDefineClass] = dataType match {
-      case BeDataType.ClassType(name) => currentlyKnownStructures.classes.values.find(_.name.universalInterpretation() == name.universalInterpretation())
-      case _ => None
-    }
-
-    def snapshotStructures: CurrentlyKnownStructures = currentlyKnownStructures
-
-    private val declaredCallableNames = mutable.Set.from(initialDeclaredNames)
-
-    private[conversion] def sourceCallableNames: Set[String] = declaredCallableNames.toSet
+    def registerFunction(name: String, function: BeDefineFunction, isOperator: Boolean = false): ParseContext =
+      copy(functionsByName = functionsByName.updated(name, function), definedFunctions = withAdded(definedFunctions, function),
+        structures = if isOperator then structures.addOperator(name, function) else structures.addFunction(name, function))
 
     /** Reserve declarations before reading their bodies or any calls in the block. */
-    def reserveCallableNames(names: Set[String]): Unit = names.foreach { name =>
-      if declaredCallableNames.add(name) then functionsByName.remove(name)
+    def reserveCallableNames(names: Set[String]): ParseContext = {
+      val added = names -- declaredCallableNames
+      copy(declaredCallableNames = declaredCallableNames ++ added, functionsByName = functionsByName -- added)
     }
 
     private def hasSourceBinding(name: String): Boolean = {
       val owner = name.takeWhile(_ != '.')
-      declaredCallableNames.contains(owner) || lookupVariable(owner).nonEmpty ||
-        currentlyKnownStructures.classes.contains(owner)
+      declaredCallableNames.contains(owner) || lookupVariable(owner).nonEmpty || structures.classes.contains(owner)
     }
 
-    def resolveFunction(name: String, arity: Int): BeDefineFunction = {
-      def definition(): BeDefineFunction = {
-        val sourceBinding = hasSourceBinding(name)
-        def libraryMethod(written: String) =
-          TurtleCommand.resolveTurtleMethod(written).orElse(it.evadid.vm.simulation.data.DataLibraries.resolveMethod(written))
-        val turtleMethod = if sourceBinding then None else libraryMethod(name).filter(environment.provides)
-        turtleMethod.map { method =>
-          // Preserve the class signature while binding only the arguments supplied by this call.
-          if arity < method.inputs.size then method.copy(inputs = method.inputs.take(arity)) else method
-        }.getOrElse {
-          def intrinsicOf(canonical: BeEntityName) =
-            if canonical == KnownBeEntityNames.resolveSystemMethods("print").get then Some(it.evadid.vm.code.defining.BeIntrinsic.Print)
-            else if canonical == KnownBeEntityNames.resolveSystemMethods("print_to_err").get then Some(it.evadid.vm.code.defining.BeIntrinsic.PrintErr)
-            else None
-          // A canonical name of a library the environment does not provide stays the written, undefined name.
-          val canonical = (if sourceBinding then None else KnownBeEntityNames.resolveCanonicalNames(name))
-            .filter(canonical => intrinsicOf(canonical).forall(environment.provides) &&
-              libraryMethod(canonical.universalInterpretation()).forall(environment.provides))
-          val params = (0 until arity).map(index => BeDefineVariable(BeEntityName.fromUniversalNameInParts(s"arg$index"), AnyType)).toList
-          BeDefineFunction(params, None, BeSequence.optionalBody(Nil),
-            BeDefineFunction.functionInfo(canonical.getOrElse(BeEntityName.fromUniversalNameInParts(name))), canonical.flatMap(intrinsicOf))
+    /** The definition a call of `name` binds to: a cached one, or one made for a turtle command, a data library
+      * method, a known name such as `print`, or else an unknown function with `arity` untyped parameters.
+      * A callable parameter/local shadows a cached builtin or turtle alias in this scope and is not cached.
+      */
+    def resolveFunction(name: String, arity: Int): (BeDefineFunction, ParseContext) = {
+      val (resolved, next) =
+        if lookupVariable(name.takeWhile(_ != '.')).nonEmpty then (newFunction(name, arity), this)
+        else functionsByName.get(name).map(_ -> this).getOrElse {
+          val function = newFunction(name, arity)
+          (function, copy(functionsByName = functionsByName.updated(name, function)))
         }
-      }
-      // A callable parameter/local shadows a cached builtin or turtle alias in this scope.
-      if lookupVariable(name.takeWhile(_ != '.')).nonEmpty then definition()
-      else {
-        val resolved = functionsByName.getOrElseUpdate(name, definition())
-        // print/println accepts zero or several arguments; one call must not fix later calls' arity.
-        resolved.intrinsic match {
-          case Some(value @ (it.evadid.vm.code.defining.BeIntrinsic.Print | it.evadid.vm.code.defining.BeIntrinsic.PrintErr)) =>
-            it.evadid.vm.modules.SystemFunctionality.function(value, arity)
-          case _ => resolved
-        }
+      // print/println accepts zero or several arguments; one call must not fix later calls' arity.
+      resolved.intrinsic match {
+        case Some(value @ (BeIntrinsic.Print | BeIntrinsic.PrintErr)) => (it.evadid.vm.modules.SystemFunctionality.function(value, arity), next)
+        case _ => (resolved, next)
       }
     }
 
-    def ensureFunctionArity(name: String, function: BeDefineFunction, arity: Int): BeDefineFunction = {
-      if (arity <= function.inputs.length) function
+    private def newFunction(name: String, arity: Int): BeDefineFunction = {
+      val sourceBinding = hasSourceBinding(name)
+      def libraryMethod(written: String) =
+        TurtleCommand.resolveTurtleMethod(written).orElse(it.evadid.vm.simulation.data.DataLibraries.resolveMethod(written))
+      (if sourceBinding then None else libraryMethod(name).filter(environment.provides)).map { method =>
+        // Preserve the class signature while binding only the arguments supplied by this call.
+        if arity < method.inputs.size then method.copy(inputs = method.inputs.take(arity)) else method
+      }.getOrElse {
+        def intrinsicOf(canonical: BeEntityName) =
+          if canonical == KnownBeEntityNames.resolveSystemMethods("print").get then Some(BeIntrinsic.Print)
+          else if canonical == KnownBeEntityNames.resolveSystemMethods("print_to_err").get then Some(BeIntrinsic.PrintErr)
+          else None
+        // A canonical name of a library the environment does not provide stays the written, undefined name.
+        val canonical = (if sourceBinding then None else KnownBeEntityNames.resolveCanonicalNames(name))
+          .filter(canonical => intrinsicOf(canonical).forall(environment.provides) &&
+            libraryMethod(canonical.universalInterpretation()).forall(environment.provides))
+        BeDefineFunction(positionalParameters(0, arity), None, BeSequence.optionalBody(Nil),
+          BeDefineFunction.functionInfo(canonical.getOrElse(BeEntityName.fromUniversalNameInParts(name))), canonical.flatMap(intrinsicOf))
+      }
+    }
+
+    /** `function`, widened with untyped parameters when a call passes more than `arity` arguments. A widened
+      * operator moves from its old arity to the new one.
+      */
+    def ensureFunctionArity(name: String, function: BeDefineFunction, arity: Int): (BeDefineFunction, ParseContext) =
+      if arity <= function.inputs.length then (function, this)
       else {
-        val additional = (function.inputs.length until arity).map { index =>
-          BeDefineVariable(BeEntityName.fromUniversalNameInParts(s"arg$index"), AnyType)
-        }.toList
-        val updated = function.copy(inputs = function.inputs ++ additional)
-        functionsByName.update(name, updated)
-        val idx = functionsBuffer.indexWhere(_ eq function)
-        if (idx >= 0) functionsBuffer.update(idx, updated)
-        // Operators are registered by arity: a widened operator moves from its old key to the new one.
+        val updated = function.copy(inputs = function.inputs ++ positionalParameters(function.inputs.length, arity))
         val previousKey = name -> function.inputs.length
-        if (operatorFunctions.get(previousKey).exists(_.exists(_ eq function))) {
-          operatorFunctions.update(previousKey, operatorFunctions(previousKey).filterNot(_ eq function))
-          val widenedKey = name -> updated.inputs.length
-          operatorFunctions.update(widenedKey, operatorFunctions.getOrElse(widenedKey, Nil) :+ updated)
-          currentlyKnownStructures = currentlyKnownStructures.removeOperator(previousKey, function).addOperator(name, updated)
-        } else {
-          currentlyKnownStructures = currentlyKnownStructures.addFunction(name, updated)
+        val isOperator = structures.operators.get(previousKey).exists(_.exists(_ eq function))
+        (updated, copy(
+          functionsByName = functionsByName.updated(name, updated),
+          definedFunctions = definedFunctions.map(existing => if existing eq function then updated else existing),
+          structures = if isOperator then structures.removeOperator(previousKey, function).addOperator(name, updated)
+            else structures.addFunction(name, updated)))
+      }
+
+    private def positionalParameters(from: Int, until: Int): List[BeDefineVariable] =
+      (from until until).map(index => newVariable(s"arg$index", AnyType)).toList
+
+    // Operators
+
+    /** The operator overload whose parameters fit the arguments best; an untyped operator is made for unknown ones. */
+    def resolveOperator(symbol: String, arity: Int, arguments: List[BeExpression]): (BeDefineFunction, ParseContext) =
+      structures.operators.get(symbol -> arity).filter(_.nonEmpty) match {
+        case Some(candidates) => (bestCandidate(candidates, arguments), this)
+        case None =>
+          val parameters = (0 until arity).map {
+            case 0 => "left"
+            case 1 => "right"
+            case other => s"arg$other"
+          }.map(newVariable(_, AnyType)).toList
+          val function = BeDefineFunction(parameters, Some(newVariable("result", AnyType)), BeExpression.pass, BeDefineFunction.operatorInfo(symbol, 1))
+          (function, registerFunction(symbol, function, isOperator = true))
+      }
+
+    private def bestCandidate(candidates: List[BeDefineFunction], arguments: List[BeExpression]): BeDefineFunction = {
+      val scored = candidates.zipWithIndex.flatMap { case (candidate, index) =>
+        val assignmentResults = candidate.inputs.zip(arguments).map { case (param, argument) =>
+          param.variableType.canTakeValuesFrom(argument.staticInformationExpression.staticType)
         }
-        updated
+        Option.when(!assignmentResults.exists(_.isInstanceOf[AssigningNotPossible])) {
+          val score = assignmentResults.map {
+            case _: AssigningPossibleWithSameType => 0
+            case _: AssigningPossibleWithImplicitCast => 1
+            case _ => 2
+          }.sum
+          (candidate, score, index)
+        }
       }
+      scored.sortBy { case (_, score, index) => (score, index) }.headOption.map(_._1).getOrElse(candidates.head)
     }
 
-    def resolveOperator(symbol: String, arity: Int, arguments: List[BeExpression]): BeDefineFunction = {
-      val key = symbol -> arity
-      operatorFunctions.get(key) match {
-        case Some(candidates) if candidates.nonEmpty =>
-          val scored = candidates.zipWithIndex.flatMap { case (candidate, index) =>
-            val assignmentResults = candidate.inputs.zip(arguments).map { case (param, argument) =>
-              param.variableType.canTakeValuesFrom(argument.staticInformationExpression.staticType)
-            }
+    // Classes
 
-            if (assignmentResults.exists(_.isInstanceOf[AssigningNotPossible])) None
-            else {
-              val score = assignmentResults.map {
-                case _: AssigningPossibleWithSameType => 0
-                case _: AssigningPossibleWithImplicitCast => 1
-                case _ => 2
-              }.sum
-              Some((candidate, score, index))
-            }
-          }
-
-          scored.sortBy { case (_, score, index) => (score, index) }.headOption.map(_._1).getOrElse(candidates.head)
-        case _ =>
-          val params = (0 until arity).map { index =>
-            val paramName = index match {
-              case 0 => "left"
-              case 1 => "right"
-              case other => s"arg$other"
-            }
-            BeDefineVariable(BeEntityName.fromUniversalNameInParts(paramName), AnyType)
-          }.toList
-          val outputVar = Some(BeDefineVariable(BeEntityName.fromUniversalNameInParts("result"), AnyType))
-          val function = BeDefineFunction(params, outputVar, BeExpression.pass, BeDefineFunction.operatorInfo(symbol, 1))
-          registerOperator(symbol, function)
-          function
-      }
+    def registerClass(name: String, clazz: BeDefineClass): ParseContext = {
+      val existing = definedClasses.indexWhere(_.name.universalInterpretation() == clazz.name.universalInterpretation())
+      copy(definedClasses = if existing < 0 then definedClasses :+ clazz else definedClasses.updated(existing, clazz),
+        structures = structures.addClass(name, clazz))
     }
 
-    private def registerOperator(symbol: String, function: BeDefineFunction): Unit = {
-      val key = symbol -> function.inputs.length
-      val existing = operatorFunctions.getOrElse(key, List.empty)
-      val updatedList =
-        if (existing.exists(_ eq function)) existing.map(cur => if (cur eq function) function else cur)
-        else existing :+ function
-      operatorFunctions.update(key, updatedList)
-      registerFunction(symbol, function, isOperator = true)
+    def lookupClass(name: String): Option[BeDefineClass] =
+      structures.classes.get(name).orElse(structures.classes.values.find(_.name.universalInterpretation() == BeEntityName.fromCodeString(name).universalInterpretation()))
+
+    def classForType(dataType: BeDataType): Option[BeDefineClass] = dataType match {
+      case BeDataType.ClassType(name) => structures.classes.values.find(_.name.universalInterpretation() == name.universalInterpretation())
+      case _ => None
     }
 
-    def definedClasses: List[BeDefineClass] = classesBuffer.toList
+    /** `items` with `item` appended unless that very instance is already present. */
+    private def withAdded[T <: AnyRef](items: List[T], item: T): List[T] = if items.exists(_ eq item) then items else items :+ item
+  }
 
-    def definedFunctions: List[BeDefineFunction] = functionsBuffer.toList
+  object ParseContext {
+    /** A context that knows `known`; known operators also answer calls by their symbol. */
+    def initial(known: CurrentlyKnownStructures, environment: ProgrammingEnvironment, declaredNames: Set[String] = Set.empty,
+        currentClass: Option[BeDefineClass] = None, sources: ParsedSources = ParsedSources.empty): ParseContext = {
+      val operators = known.operators.toList.flatMap { case ((symbol, _), functions) => functions.map(symbol -> _) }
+      val functions = operators.map(_._2) ++ known.functions.values
+      ParseContext(
+        structures = known,
+        scopes = List(known.variables),
+        functionsByName = operators.foldLeft(known.functions) { case (cache, (symbol, function)) =>
+          if cache.contains(symbol) then cache else cache.updated(symbol, function) },
+        declaredCallableNames = declaredNames,
+        definedVariables = known.variables.values.toList,
+        definedFunctions = functions.foldLeft(List.empty[BeDefineFunction])((defined, function) =>
+          if defined.exists(_ eq function) then defined else defined :+ function),
+        definedClasses = known.classes.values.toList,
+        currentClass = currentClass,
+        environment = environment,
+        sources = sources)
+    }
+  }
 
-    def definedVariables: List[BeDefineVariable] = variablesBuffer.toList
+  /** Where built definitions and placeholders came from: functions by the span of their declaration, and
+    * placeholders (unsupported or unreadable code) by identity, for located diagnostics.
+    */
+  final case class ParsedSources(functions: Map[SourceSpan, BeDefineFunction], origins: Map[SourceIdentity[BeExpression], SourceSpan]) {
+    def function(origin: SourceSpan, function: BeDefineFunction): ParsedSources = copy(functions = functions.updated(origin, function))
+    def origin(value: BeExpression, origin: SourceSpan): ParsedSources = copy(origins = origins.updated(SourceIdentity(value), origin))
+  }
 
-    def currentStructures: CurrentlyKnownStructures = currentlyKnownStructures
+  object ParsedSources {
+    val empty: ParsedSources = ParsedSources(Map.empty, Map.empty)
   }
 }

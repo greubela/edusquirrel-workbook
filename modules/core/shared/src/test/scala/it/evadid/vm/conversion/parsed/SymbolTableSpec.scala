@@ -15,7 +15,7 @@ class SymbolTableSpec extends FunSuite {
   private def function(text: String, inputs: Int = 0) =
     BeDefineFunction((0 until inputs).map(i => variable(s"p$i")).toList, None, BeSequence.optionalBody(Nil), BeDefineFunction.functionInfo(name(text)))
   private def clazz(text: String) = BeDefineClass(name(text), Nil, Nil)
-  private def context(known: Seq[KnownStructure] = Nil) = new ParseContext(CurrentlyKnownStructures.fromKnown(known))
+  private def context(known: Seq[KnownStructure] = Nil) = ParseContext.initial(CurrentlyKnownStructures.fromKnown(known), it.evadid.vm.conversion.dependencies.ProgrammingEnvironment.all)
   private def literal(text: String) = BeUseValue(BeDataValueLiteral(text), None)
 
   test("known structures accumulate by kind and operators are grouped by symbol and arity") {
@@ -35,24 +35,24 @@ class SymbolTableSpec extends FunSuite {
   }
 
   test("variables are scoped while the defined-variable list keeps every definition") {
-    val ctx = context(Seq(KnownStructure.Variable("global", variable("global"))))
-    val outer = ctx.assignVariable("x", BeDataType.Numeric)
-    ctx.pushScope()
-    assert(ctx.assignVariable("x", BeDataType.String) eq outer)
-    val inner = ctx.defineVariable("y", BeDataType.Boolean)
-    assertEquals(ctx.lookupVariable("y"), Some(inner))
-    ctx.popScope()
-    assertEquals(ctx.lookupVariable("y"), None)
-    assertEquals(ctx.lookupVariable("global"), Some(variable("global")))
-    assertEquals(ctx.definedVariables, List(variable("global"), outer, inner))
-    assertEquals(ctx.snapshotStructures.variables.keySet, Set("global", "x", "y"))
+    val start = context(Seq(KnownStructure.Variable("global", variable("global"))))
+    val (outer, withOuter) = start.assignVariable("x", BeDataType.Numeric)
+    val nested = withOuter.pushScope
+    val (assigned, _) = nested.assignVariable("x", BeDataType.String)
+    assert(assigned eq outer)
+    val (inner, withInner) = nested.defineVariable("y", BeDataType.Boolean)
+    assertEquals(withInner.lookupVariable("y"), Some(inner))
+    val closed = withInner.popScope
+    assertEquals(closed.lookupVariable("y"), None)
+    assertEquals(closed.lookupVariable("global"), Some(variable("global")))
+    assertEquals(closed.definedVariables, List(variable("global"), outer, inner))
+    assertEquals(closed.structures.variables.keySet, Set("global", "x", "y"))
+    assertEquals(start.definedVariables, List(variable("global")), "earlier contexts are unchanged")
   }
 
   test("classes are replaced by name and resolved from names or class types") {
-    val ctx = context()
-    ctx.registerClass("Box", clazz("Box"))
     val replacement = BeDefineClass(name("Box"), List(variable("size")), Nil)
-    ctx.registerClass("Box", replacement)
+    val ctx = context().registerClass("Box", clazz("Box")).registerClass("Box", replacement)
     assertEquals(ctx.definedClasses, List(replacement))
     assertEquals(ctx.lookupClass("Box"), Some(replacement))
     assertEquals(ctx.lookupClass("box"), Some(replacement))
@@ -62,58 +62,56 @@ class SymbolTableSpec extends FunSuite {
   }
 
   test("unknown functions are created once with positional parameters and cached by name") {
-    val ctx = context()
-    val first = ctx.resolveFunction("helper", 2)
+    val (first, ctx) = context().resolveFunction("helper", 2)
     assertEquals(first.inputs.map(_.name), List(name("arg0"), name("arg1")))
     assertEquals(first.functionTypeInfo.isNamed, Some(name("helper")))
-    assert(ctx.resolveFunction("helper", 2) eq first)
+    assert(ctx.resolveFunction("helper", 2)._1 eq first)
     assertEquals(ctx.definedFunctions, Nil)
   }
 
   test("source bindings shadow cached functions and turtle aliases") {
     val ctx = context(Seq(KnownStructure.Function("forward", function("forward", 1))))
-    assertEquals(ctx.resolveFunction("forward", 1), function("forward", 1))
-    ctx.reserveCallableNames(Set("forward"))
-    assertEquals(ctx.sourceCallableNames, Set("forward"))
-    val reserved = ctx.resolveFunction("forward", 1)
+    assertEquals(ctx.resolveFunction("forward", 1)._1, function("forward", 1))
+    val reserving = ctx.reserveCallableNames(Set("forward"))
+    assertEquals(reserving.declaredCallableNames, Set("forward"))
+    val (reserved, _) = reserving.resolveFunction("forward", 1)
     assertEquals(reserved.functionTypeInfo.isNamed, Some(name("forward")))
     assertEquals(reserved.inputs.map(_.name), List(name("arg0")))
 
-    ctx.defineVariable("callback", BeDataType.AnyType)
-    val fresh = ctx.resolveFunction("callback", 0)
-    assert(!(ctx.resolveFunction("callback", 0) eq fresh), "a callable variable must not be cached as a function")
+    val (_, withCallback) = reserving.defineVariable("callback", BeDataType.AnyType)
+    val (fresh, afterCall) = withCallback.resolveFunction("callback", 0)
+    assert(!(afterCall.resolveFunction("callback", 0)._1 eq fresh), "a callable variable must not be cached as a function")
   }
 
   test("registered functions can be widened to the arity used by a call") {
-    val ctx = context()
     val draw = function("draw", 1)
-    ctx.registerFunction("draw", draw)
+    val ctx = context().registerFunction("draw", draw)
     assertEquals(ctx.definedFunctions, List(draw))
-    assert(ctx.ensureFunctionArity("draw", draw, 1) eq draw)
-    val widened = ctx.ensureFunctionArity("draw", draw, 3)
+    assert(ctx.ensureFunctionArity("draw", draw, 1)._1 eq draw)
+    val (widened, afterWidening) = ctx.ensureFunctionArity("draw", draw, 3)
     assertEquals(widened.inputs.size, 3)
     assertEquals(widened.inputs.drop(1).map(_.name), List(name("arg1"), name("arg2")))
-    assertEquals(ctx.definedFunctions, List(widened))
-    assert(ctx.resolveFunction("draw", 3) eq widened)
-    assertEquals(ctx.currentStructures.functions("draw"), widened)
+    assertEquals(afterWidening.definedFunctions, List(widened))
+    assert(afterWidening.resolveFunction("draw", 3)._1 eq widened)
+    assertEquals(afterWidening.structures.functions("draw"), widened)
   }
 
   test("operators choose the best-typed candidate and create untyped operators for unknown symbols") {
-    val ctx = new ParseContext(CurrentlyKnownStructures.fromKnown(SymbolTable.defaultKnownStructures))
-    val numeric = ctx.resolveOperator("+", 2, List(literal("1"), literal("2")))
+    val ctx = ParseContext.initial(CurrentlyKnownStructures.fromKnown(SymbolTable.defaultKnownStructures), it.evadid.vm.conversion.dependencies.ProgrammingEnvironment.all)
+    val (numeric, _) = ctx.resolveOperator("+", 2, List(literal("1"), literal("2")))
     assertEquals(numeric.outputs.map(_.variableType), Some(BeDataType.Numeric))
-    val text = ctx.resolveOperator("+", 2, List(literal("\"a\""), literal("\"b\"")))
+    val (text, _) = ctx.resolveOperator("+", 2, List(literal("\"a\""), literal("\"b\"")))
     assertEquals(text.outputs.map(_.variableType), Some(BeDataType.String))
 
-    val custom = ctx.resolveOperator("<=>", 3, List(literal("1"), literal("2"), literal("3")))
+    val (custom, withCustom) = ctx.resolveOperator("<=>", 3, List(literal("1"), literal("2"), literal("3")))
     assertEquals(custom.inputs.map(_.name), List(name("left"), name("right"), name("arg2")))
-    assert(ctx.resolveOperator("<=>", 3, Nil) eq custom)
-    assertEquals(ctx.currentStructures.operators(("<=>", 3)), List(custom))
-    val widened = ctx.ensureFunctionArity("<=>", custom, 4)
+    assert(withCustom.resolveOperator("<=>", 3, Nil)._1 eq custom)
+    assertEquals(withCustom.structures.operators(("<=>", 3)), List(custom))
+    val (widened, afterWidening) = withCustom.ensureFunctionArity("<=>", custom, 4)
     assertEquals(widened.inputs.size, 4)
-    assertEquals(ctx.currentStructures.functions("<=>"), widened)
-    assertEquals(ctx.currentStructures.operators(("<=>", 4)), List(widened))
-    assertEquals(ctx.currentStructures.operators(("<=>", 3)), Nil)
-    assert(ctx.resolveOperator("<=>", 4, Nil) eq widened, "the widened operator is found under its new arity")
+    assertEquals(afterWidening.structures.functions("<=>"), widened)
+    assertEquals(afterWidening.structures.operators(("<=>", 4)), List(widened))
+    assertEquals(afterWidening.structures.operators(("<=>", 3)), Nil)
+    assert(afterWidening.resolveOperator("<=>", 4, Nil)._1 eq widened, "the widened operator is found under its new arity")
   }
 }

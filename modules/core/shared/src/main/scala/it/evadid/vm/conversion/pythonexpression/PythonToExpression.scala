@@ -43,7 +43,7 @@ object PythonToExpression {
     val live = start.subtree.collect { case function: BeDefineFunction =>
       it.evadid.vm.parsing.source.SourceIdentity(function) }.toSet
     (BeProgram(start), Details(built.context.definedClasses, built.context.definedFunctions, built.context.definedVariables,
-      built.context.currentStructures, start.startSequence.getOrElse(built.expression),
+      built.context.structures, start.startSequence.getOrElse(built.expression),
       built.sourceFunctions.filter((_, definition) => live(it.evadid.vm.parsing.source.SourceIdentity(definition))), built.sourceOrigins))
   }
 
