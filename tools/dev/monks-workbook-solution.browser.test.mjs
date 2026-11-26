@@ -141,8 +141,8 @@ test('the monk workbook can be solved section by section with every interaction 
       const dialog = page.locator('dialog[open]');
       await dialog.getByRole('tab', {name: 'Java', exact: true}).click();
       await dialog.getByRole('tab', {name: editor.javaModeClass, exact: true}).click();
-      // Until CodeMirror has loaded, the plain text fallback edits the same answer.
-      const code = dialog.locator('.java-function-editor__class').locator('.cm-content, textarea.code-mirror-editor__fallback:visible').first();
+      // This walkthrough loads native CodeMirror; its temporary fallback can disappear during fill.
+      const code = dialog.locator('.java-function-editor__class .cm-content:visible');
       await code.fill(editorSolutions[task]);
       await dialog.locator('button.feedback-action--primary').first().click();
       await dialog.locator('.feedback-score-chip.feedback-status--correct').first().waitFor();
