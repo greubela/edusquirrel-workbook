@@ -140,10 +140,18 @@ test('the monk workbook can be solved section by section with every interaction 
       await interaction(id).getByRole('button', {name: basic.openEditor, exact: true}).click();
       const dialog = page.locator('dialog[open]');
       await dialog.getByRole('tab', {name: 'Java', exact: true}).click();
-      await dialog.getByRole('tab', {name: editor.javaModeClass, exact: true}).click();
-      // Until CodeMirror has loaded, the plain text fallback edits the same answer.
-      const code = dialog.locator('.java-function-editor__class').locator('.cm-content, textarea.code-mirror-editor__fallback:visible').first();
+      // These fixtures replace the whole program, rather than a class or method fragment.
+      await dialog.getByRole('tab', {name: editor.javaModeFull, exact: true}).click();
+      // Wait for native CodeMirror; its temporary fallback can disappear during fill.
+      const code = dialog.locator('.java-function-editor__source .cm-content:visible');
       await code.fill(editorSolutions[task]);
+      await page.waitForFunction(source => {
+        const node = document.querySelector('dialog[open] .java-function-editor__source .cm-editor');
+        const view = node && EduSquirrelCodeMirrorLibraries.EditorView.findFromDOM(node);
+        return view?.state.doc.toString() === source;
+      }, editorSolutions[task]);
+      // Finish the edit: the answer is buffered while typing and committed on blur.
+      await code.blur();
       await dialog.locator('button.feedback-action--primary').first().click();
       await dialog.locator('.feedback-score-chip.feedback-status--correct').first().waitFor();
       await page.locator('.fullscreen-close-button').click();
