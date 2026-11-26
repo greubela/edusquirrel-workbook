@@ -49,6 +49,11 @@ class TurtleStitchToBeExpressionParserSpec extends FunSuite {
     val drawn = state.toBeExpression.turtleCommandExecutionInfo.completedCommands.map(_.args.head)
     assertEquals(drawn, List(1.0, -2.0))
     assertEquals(ProgrammingStateRaw(Python, python).toBeExpression.turtleCommandExecutionInfo.completedCommands.map(_.args.head), drawn)
+    // Primitive number slots too: native Snap moves 0 steps for `forward ()`.
+    val empty = ProgrammingStateRaw(SnapLanguage, xml.replace(
+      """<block s="forward"><block s="reportPower"><l>3</l><l></l></block></block>""", """<block s="forward"><l></l></block>"""))
+    assertEquals(empty.toBeExpression.turtleCommandExecutionInfo.completedCommands.map(_.args.head), List(0.0, -2.0))
+    assert(empty.toPython.code.contains("forward(0)"), empty.toPython.code)
   }
 
   test("gotoXY with mixed literal and variable reporter keeps both arguments") {

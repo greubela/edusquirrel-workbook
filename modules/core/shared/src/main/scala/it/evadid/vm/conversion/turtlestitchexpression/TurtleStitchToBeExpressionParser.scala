@@ -373,10 +373,20 @@ object TurtleStitchToBeExpressionParser {
     definition.map { defn =>
       val params = defn.inputs
       val values = block.inputs.toList
+      // A primitive's slot kinds come from the catalog: an empty number slot (`forward ()`) is 0, as in Snap.
+      val kinds = block match {
+        case PrimitiveBlock(Some(selector), _, _, _) => SnapTurtleCatalog.inputKindsForSelector(selector)
+        case _ => Nil
+      }
       val mapped = params.zipAll(values, null, Literal(""))
         .filter(_._1 != null)
-        .map { case (parameter, input) =>
-          parameter -> parseInputValue(input, Some(parameter), phaseOne)
+        .zipWithIndex
+        .map { case ((parameter, input), index) =>
+          parameter -> (input match {
+            case Literal(value) if kinds.lift(index).contains(SnapTurtleCatalog.SnapInputKind.Numeric) =>
+              slotLiteral(value, numeric = true)
+            case other => parseInputValue(other, Some(parameter), phaseOne)
+          })
         }.toMap
       BeFunctionCall.fromDefinition(defn, mapped)
     }
