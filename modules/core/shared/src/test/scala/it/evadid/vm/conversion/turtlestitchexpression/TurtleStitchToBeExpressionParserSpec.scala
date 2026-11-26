@@ -39,6 +39,18 @@ class TurtleStitchToBeExpressionParserSpec extends FunSuite {
       }
   }
 
+  test("an empty number slot is 0 in its place, not a missing operand") {
+    val xml = """<project><scenes><scene><stage><sprites><sprite><scripts><script><block s="receiveGo"/>""" +
+      """<block s="forward"><block s="reportPower"><l>3</l><l></l></block></block>""" +
+      """<block s="forward"><block s="reportDifference"><l></l><l>2</l></block></block></script></scripts></sprite></sprites></stage></scene></scenes></project>"""
+    val state = ProgrammingStateRaw(SnapLanguage, xml)
+    val python = state.toPython.code
+    assert(python.contains("3 ** 0") && python.contains("0 - 2"), python)
+    val drawn = state.toBeExpression.turtleCommandExecutionInfo.completedCommands.map(_.args.head)
+    assertEquals(drawn, List(1.0, -2.0))
+    assertEquals(ProgrammingStateRaw(Python, python).toBeExpression.turtleCommandExecutionInfo.completedCommands.map(_.args.head), drawn)
+  }
+
   test("gotoXY with mixed literal and variable reporter keeps both arguments") {
     val xml =
       """<project><scenes select="1"><scene><stage><sprites select="1"><sprite><scripts><script><block s="receiveGo"></block><block s="gotoXY"><l>10</l><block var="x"/></block></script></scripts></sprite></sprites></stage><variables><variable name="x"></variable></variables></scene></scenes></project>"""

@@ -233,14 +233,17 @@ private final class PythonAstToParsed(syntax: PythonSyntax) {
       val body = block(loop.bodyBlock)
       // range(...) is evaluated once in Python, while the counting loops of Java compare against the bound on each pass.
       val changedBound = arguments.flatMap(usedNames).distinct.sorted.find(assigns(loop.bodyBlock, _))
+      val counterObserved = used.names(name) || usedNames(loop.bodyBlock)(name)
       arguments.lift(2).fold(Some(1))(step => E.wholeNumber(expression(step))) match {
-        case _ if assigns(loop.bodyBlock, name) =>
+        // Python rebinding its counter never changes how often range(...) iterates. Only a translation that keeps the
+        // counter (an observed one) would; an unobserved counter, e.g. `_` reused by nested loops, becomes a repeat.
+        case _ if counterObserved && assigns(loop.bodyBlock, name) =>
           Seq(S.Unsupported(s"for $name in range(...)", s"Assigning the loop counter $name inside its loop is not supported", unparsable = false))
         case _ if changedBound.nonEmpty =>
           Seq(S.Unsupported(s"for $name in range(", s"Assigning ${changedBound.get} inside the loop that uses it in range(...) is not supported; " +
             "store the bound in another variable before the loop", unparsable = false))
         case Some(step) if step != 0 =>
-          S.countingLoop(name, start, stop, step, body, counterObserved = used.names(name) || usedNames(loop.bodyBlock)(name))
+          S.countingLoop(name, start, stop, step, body, counterObserved = counterObserved)
         case _ => Seq(S.Unsupported("for ... in range(...)", "The step of range(...) must be a nonzero whole number", unparsable = false))
       }
     case _ => Seq(S.Unsupported("for ...", "For statements must use range(...)", unparsable = true))

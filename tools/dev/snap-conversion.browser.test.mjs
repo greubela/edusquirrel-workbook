@@ -103,7 +103,7 @@ test('native Snap exports retain execution behavior through shared parsing and P
       assert.deepEqual(commands(snap),native.trace,fixture.name);
       assert.equal(snap.python[0],1, JSON.stringify(snap));
       const python = result(await page.evaluate(({id,code}) => corpusRequest(id,{$type:'Raw',value:{$type:'ProgrammingStateRaw',language:'Python',code}}), {id:fixture.name+'-python',code:snap.python[1]}));
-      assert.deepEqual(commands(python),native.trace,fixture.name+' via Python');
+      assert.deepEqual(commands(python),native.trace,`${fixture.name} via Python:\n${snap.python[1]}\nnative export:\n${native.xml}`);
     }
     await page.evaluate(() => corpusWorker.terminate());
   } finally {await browser.close();}

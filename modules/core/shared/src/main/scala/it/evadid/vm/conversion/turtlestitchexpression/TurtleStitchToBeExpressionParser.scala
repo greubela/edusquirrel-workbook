@@ -113,8 +113,8 @@ object TurtleStitchToBeExpressionParser {
 
   private def expandModelInputsToExpressions(inputs: List[InputValue], phaseOne: PhaseOneResult): List[BeExpression] =
     inputs.flatMap {
-      case Literal(value) =>
-        if value.trim.isEmpty then Nil else List(slotLiteral(value, numeric = true))
+      // An empty slot keeps its position: it is 0 in a number slot (see slotLiteral), not a missing argument.
+      case Literal(value) => List(slotLiteral(value, numeric = true))
       case BoolLiteral(value) => List(BeUseValue(BeDataValueLiteral(booleanRaw(value)), None))
       case ListLiteral(items) => expandModelInputsToExpressions(items.toList, phaseOne)
       case NestedBlock(block) => parseBlock(block, phaseOne).toList

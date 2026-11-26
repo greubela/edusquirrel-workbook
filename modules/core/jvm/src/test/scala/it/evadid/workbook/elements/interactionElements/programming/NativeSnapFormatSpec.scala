@@ -1,6 +1,8 @@
 package it.evadid.workbook.elements.interactionElements.programming
 
-import it.evadid.core.datastructures.language.AppLanguage.SnapLanguage
+import it.evadid.core.datastructures.language.AppLanguage.{Python, SnapLanguage}
+import it.evadid.vm.analysis.ProgramAnalysis
+import it.evadid.vm.conversion.dependencies.ProgrammingEnvironment
 import it.evadid.vm.conversion.snapexpression.SnapCustomBlockRules
 import it.evadid.vm.conversion.snapmodelxml.SnapModelToXml.*
 import it.evadid.workbook.elements.interactionElements.programming.state.*
@@ -65,6 +67,18 @@ class NativeSnapFormatSpec extends FunSuite {
       val native = ProgrammingStateRaw(SnapLanguage, NativeSnapFixtures.read(s"$name.xml"))
       assertEquals(python(native), python(ours), name)
       assertEquals(SnapCustomBlockRules.obsoleteCalls(native.code), Nil, s"$name: every call resolves natively")
+    }
+  }
+
+  test("every native export draws the same turtle commands through its Python conversion") {
+    def commands(state: ProgrammingStateRaw) =
+      ProgramAnalysis.of(state, ProgrammingEnvironment.all).turtle.map(_.commands)
+    NativeSnapFixtures.all.foreach { name =>
+      val native = ProgrammingStateRaw(SnapLanguage, NativeSnapFixtures.read(name))
+      val analysis = ProgramAnalysis.of(native, ProgrammingEnvironment.all)
+      analysis.python.foreach { code =>
+        assertEquals(commands(ProgrammingStateRaw(Python, code)), analysis.turtle.map(_.commands), s"$name via Python:\n$code")
+      }
     }
   }
 

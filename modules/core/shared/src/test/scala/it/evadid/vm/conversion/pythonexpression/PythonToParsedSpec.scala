@@ -47,10 +47,12 @@ class PythonToParsedSpec extends FunSuite {
       case Seq(S.Unsupported(_, reason, false, _)) => assert(reason.contains("nonzero whole number"), reason)
       case other => fail(s"Unexpected $other")
     }
-    parse("for i in range(3):\n    i = 1\n") match {
+    parse("for i in range(3):\n    i = 1\n    forward(i)\n") match {
       case Seq(S.Unsupported(_, reason, false, _)) => assert(reason.contains("Assigning the loop counter"), reason)
       case other => fail(s"Unexpected $other")
     }
+    // Rebinding an unread counter does not change how often range(...) iterates: nested loops may reuse `_`.
+    assertEquals(drawn("for _ in range(2):\n    for _ in range(3):\n        forward(5)\n"), List.fill(6)(5.0))
   }
 
   test("control flow and returns keep their bodies") {
