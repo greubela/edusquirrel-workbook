@@ -15,17 +15,25 @@ private[java] object JavaTurtleTraceSources {
   def build(source: R.ResolvedSource): Option[Map[SourceNode, Entry]] = {
     val root = source.typedSource.structure.parsedSource.sourceMap.root
     for {
-      wrapper <- only(root.children)
+      wrapper <- only(withoutComments(root.children))
       clazz <- only(wrapper.children)
       if clazz.value.isInstanceOf[JavaClassDef]
       body <- only(clazz.children)
       if body.value.isInstanceOf[JavaExecutionBlock]
-      if body.children.size == source.methods.size
-      entries <- collect(source.methods.zip(body.children)) { (method, syntax) => methodEntries(method, syntax) }
+      methods = withoutComments(body.children)
+      if methods.size == source.methods.size
+      entries <- collect(source.methods.zip(methods)) { (method, syntax) => methodEntries(method, syntax) }
       indexed = entries.toMap
       if indexed.size == entries.size
     } yield indexed
   }
+
+  /** `//` comments are syntax nodes outside methods too; the resolved program has no counterpart for them there. */
+  private def withoutComments(nodes: Vector[Syntax]): Vector[Syntax] = nodes.filterNot(node => node.value match {
+    case _: JavaCommentStatement => true
+    case StatementWithLineNumber(_: JavaCommentStatement, _) => true
+    case _ => false
+  })
 
   private def only(nodes: Vector[Syntax]): Option[Syntax] = nodes match {
     case Vector(node) => Some(node)
@@ -70,7 +78,7 @@ private[java] object JavaTurtleTraceSources {
 
   private def statement(value: R.Statement, syntax: Syntax, node: SourceNode): Option[Entries] = {
     val children: Option[Entries] = (value, syntax.value) match {
-      case (R.Empty, JavaEmptyStatement) | (R.Return, JavaReturnStatement(None)) => Some(Vector.empty)
+      case (R.Empty, JavaEmptyStatement | _: JavaCommentStatement) | (R.Return, JavaReturnStatement(None)) => Some(Vector.empty)
       case (R.Declare(_, initial), _: JavaVariableDeclaration) if syntax.children.size == initial.size =>
         optional(initial, syntax.children.headOption)((value, syntax) => expression(value, syntax, node.child("initial")))
       case (R.Assign(_, _, value), _: JavaAssignment | _: JavaAugAssignment | _: JavaAssignmentExpression) =>

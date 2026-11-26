@@ -1,20 +1,24 @@
 package it.evadid.vm.conversion.javaexpression
 
+import it.evadid.vm.parsing.source.SourceParsing
+import it.evadid.vm.parsing.source.SourceParsing.SourceLanguage
+
+import it.evadid.core.datastructures.language.AppLanguage.Java
 import it.evadid.vm.code.errors.{ProgrammingConversionException, ProgrammingConversionKind}
-import it.evadid.workbook.elements.interactionElements.programming.state.ProgrammingStateBeExpression
+import it.evadid.workbook.elements.interactionElements.programming.state.{ProgrammingStateBeExpression, ProgrammingStateRaw}
 import munit.FunSuite
 
 class JavaToExpressionSpec extends FunSuite {
-  private def python(java: String): String = new JavaToExpression(java).convert.toPython.code
+  private def python(java: String): String = SourceParsing.parse(java, SourceLanguage.Java).parsed().fold(error => throw error, _.expression).toPython.code
 
   private def program(body: String, members: String = ""): String =
     s"class Main {\n$members\n    public static void main(String[] args) {\n$body\n    }\n}\n"
 
   private def rejected(java: String): ProgrammingConversionException =
-    intercept[ProgrammingConversionException](new JavaToExpression(java).convert)
+    intercept[ProgrammingConversionException](SourceParsing.parse(java, SourceLanguage.Java).parsed().fold(error => throw error, _.expression))
 
   private def drawn(java: String): List[Double] =
-    new JavaToExpression(java).convert.turtleCommandExecutionInfo.completedCommands.map(_.args.head)
+    SourceParsing.parse(java, SourceLanguage.Java).parsed().fold(error => throw error, _.expression).turtleCommandExecutionInfo.completedCommands.map(_.args.head)
 
   test("counting for loops run like Java, including steps, downward counts and empty ranges") {
     assert(python(program("for (int i = 0; i < 3; i++) { Turtle.forward(10); }")).contains("for _ in range(3)"))
@@ -83,14 +87,14 @@ class JavaToExpressionSpec extends FunSuite {
       program("double[] values = new double[3];\nvalues[0] = 1;") -> "",
       program("Turtle.forward(1") -> "")
     val outcomes = cases.map { (source, expected) =>
-      scala.util.Try(new JavaToExpression(source).convert).failed.toOption match {
+      scala.util.Try(SourceParsing.parse(source, SourceLanguage.Java).parsed().fold(error => throw error, _.expression)).failed.toOption match {
         case Some(error) => Option.when(!error.getMessage.contains(expected))(s"$source -> ${error.getMessage}")
         case None => Some(s"$source was accepted")
       }
     }
     assertEquals(outcomes.flatten.toList, Nil)
-    assert(python(program("char letter = 'a';")).contains("letter: str = 'a'"))
-    val inheritance = new JavaToExpression("class Box extends Base { }").convert.expression.toString
+    assert(python(program("char letter = 'a';")).contains("letter: str = \"a\""))
+    val inheritance = SourceParsing.parse("class Box extends Base { }", SourceLanguage.Java).parsed().fold(error => throw error, _.expression).expression.toString
     assert(inheritance.contains("BeExpressionUnsupported(class Box") && inheritance.contains("Inheritance"), inheritance)
     assertEquals(rejected(program("Turtle.forward(1")).error.kind, ProgrammingConversionKind.Unparsable)
   }
@@ -103,14 +107,13 @@ class JavaToExpressionSpec extends FunSuite {
   }
 
   test("full class programs are detected and need the checked runner for turtle commands") {
-    val classProgram = new JavaToExpression("class Main { public static void main(String[] args) { Turtle.forward(5); } }")
+    val classProgram = ProgrammingStateRaw(Java, "class Main { public static void main(String[] args) { Turtle.forward(5); } }")
     assert(classProgram.isClassProgram)
     intercept[IllegalArgumentException](classProgram.toLegacyTurtleCommands)
     assert(classProgram.compileForExecution.isRight)
-    val fragment = new JavaToExpression("Turtle.forward(5);\nTurtle.turnLeft(90);")
+    val fragment = ProgrammingStateRaw(Java, "Turtle.forward(5);\nTurtle.turnLeft(90);")
     assert(!fragment.isClassProgram)
     assertEquals(fragment.toLegacyTurtleCommands.size, 2)
-    assertEquals(fragment.preparedSource.code, "Turtle.forward(5);\nTurtle.turnLeft(90);")
   }
 
   test("array reads, chained calls and parenthesised values translate or are rejected explicitly") {
@@ -132,12 +135,12 @@ class JavaToExpressionSpec extends FunSuite {
   }
 
   test("Math methods map to Python built-ins or stay explicit placeholders instead of unimported math calls") {
-    val code = python(program("Turtle.forward(Math.abs(-3) + Math.max(1, 2) + Math.min(4, 5) + java.lang.Math.abs(-1));\nTurtle.forward(Math.pow(2, 3) + Math.floor(7.0 / 2));"))
-    Seq("abs(-3)", "max(1, 2)", "min(4, 5)", "abs(-1)", "2 ** 3", "7.0 // 2").foreach(part => assert(code.contains(part), s"'$part' missing in\n$code"))
-    assert(!code.contains("math."), code)
+    val code = python(program("Turtle.forward(Math.abs(-3) + Math.max(1, 2) + Math.min(4, 5) + java.lang.Math.abs(-1));\nTurtle.forward(Math.pow(2, 3) + Math.floor(7.0 / 2) + Math.sqrt(16) + Math.random());"))
+    Seq("abs(-3)", "max(1, 2)", "min(4, 5)", "abs(-1)", "2 ** 3", "7 // 2", "sqrt(16)", "random()").foreach(part => assert(code.contains(part), s"'$part' missing in\n$code"))
+    assert(!code.contains("math.") && code.contains("from math import sqrt") && code.contains("from random import random"), code)
     assertEquals(drawn(program("Turtle.forward(Math.abs(-3) + Math.max(1, 2));")), List(5.0))
-    for method <- Seq("sqrt(16)", "round(2.5)", "ceil(2.1)", "sin(0)") do {
-      val tree = new JavaToExpression(program(s"Turtle.forward(Math.$method);")).convert.expression.toString
+    for method <- Seq("round(2.5)", "ceil(2.1)", "sin(0)") do {
+      val tree = SourceParsing.parse(program(s"Turtle.forward(Math.$method);"), SourceLanguage.Java).parsed().fold(error => throw error, _.expression).expression.toString
       assert(tree.contains(s"BeExpressionUnsupported(Math.${method.takeWhile(_ != '(')}(...)"), tree)
     }
   }

@@ -1,0 +1,51 @@
+# Source parsing
+
+All textual `ProgrammingState` parsing enters through
+[`SourceParsing.parse(source, language)`](../modules/core/shared/src/main/scala/it/evadid/vm/parsing/source/SourceParsing.scala).
+Java, Python and Snap own separate, lazy stages behind this entry point. Recent small
+sources are reused globally; large projects stay with their owner. Java/Python binding
+results are cached per `ProgrammingEnvironment`.
+Editors and analyses read these stages instead of invoking grammars themselves.
+
+| Stage | Java / Python | Snap |
+| --- | --- | --- |
+| `structured` | Tolerant FastParse tokens and declarations with source spans (classes, members, loose code, comments) | Tolerant FastParse XML tokens with spans and completion flags |
+| `syntax` | Located syntax tree, or a located `SyntaxFailure` | FastParse XML grammar: a lossless `SnapScalaModel.Document`, or a located `SyntaxFailure` |
+| Conversion | `neutral` produces `ParsedProgram`; `parsed(environment)` binds it to `BeExpression` | `project`, `unsupportedSelectors` and `parsed` (blocks and startup scripts as `BeExpression`), each an `Either` with a located conversion error |
+
+Unfinished or invalid text remains inspectable in `structured`. Later stages may fail
+or preserve unreadable statements as explicit source placeholders; they must not
+silently discard them. Java/Python library definitions are masked with spaces before
+syntax parsing, preserving source offsets.
+
+```scala
+val source = SourceParsing.parse(code, SourceLanguage.Java)
+val declarations = source.structured.functions // available while typing
+val program = source.parsed(environment)        // may report a conversion failure
+```
+
+Typed models enter converters directly: a `SnapScalaModel.Document` must not be
+serialized to XML and parsed again to obtain expressions. Snap XML retains lexical
+spelling and unknown extensions; DTDs are never resolved or fetched. Bare block
+fragments are grouped into a script from the decoded nodes, without reparsing.
+
+Java/Python adapters produce the shared `ParsedProgram`; its builder reserves
+class/function signatures before binding bodies. User declarations and local names
+shadow built-in aliases. `TurtleCommand` and `KnownBeEntityNames` own canonical
+library names; printers choose language-specific spellings independently of identity.
+
+Step-1 values answer editor questions without parsing derived text again: for example
+`onlyTrivia(start, end)` checks a range against the source's comments, and
+`looseMembers` splits code outside classes like class members.
+[`JavaMethodEditing`](../modules/core/shared/src/main/scala/it/evadid/vm/editing/JavaMethodEditing.scala)
+edits one Java method at a time on these declarations for the Java editors.
+
+Function definitions carry source spans into binding; the binder returns their exact
+source-to-definition associations. Diagnostics retain those same occurrences. Python's
+normalization maps tabs, dedenting and line endings back to original UTF-16 offsets;
+positions are never recovered by searching for source fragments. Bound placeholders
+retain their syntax identity; preparation carries offsets through class hoisting.
+
+Tests: `SourceBindingSpec`, `LocatedSourceWarningsSpec`, `JavaStructuredSpec`, `PythonStructuredSpec`, `SnapSourceSpec` and
+`SourceParsingSpec`. See [programming conversions](programming-conversions.md)
+for state formats, environments and conversion semantics.

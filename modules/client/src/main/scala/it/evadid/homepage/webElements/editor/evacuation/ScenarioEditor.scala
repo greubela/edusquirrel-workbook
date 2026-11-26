@@ -13,7 +13,7 @@ case class ScenarioEditor(answer: Var[EvacuationFloorPlan], initial: EvacuationF
     extends HtmlAppElement {
   val floorMap: Var[EvaFloorMap] = Var(EvacuationFloorAdapter.decode(answer.now()))
   private val selected = Var(0)
-  private var isLocked = false
+  private val isLocked = Var(false)
   private def textFor(key: String): Signal[String] = laminarHelper.plaintextStringSignal(s"digitalWorkbooks/$key")
   private val mode = ScenarioEditorMode(
     () => floorMap.now(),
@@ -21,7 +21,7 @@ case class ScenarioEditor(answer: Var[EvacuationFloorPlan], initial: EvacuationF
       floorMap.set(EvacuationFloorAdapter.decode(normalized))
       answer.set(normalized)
     },
-    () => EvacuationFloorAdapter.sprites, () => (), () => !isLocked,
+    () => EvacuationFloorAdapter.sprites, () => (), () => !isLocked.now(),
     Some(EvacuationFloorPlan.maxDimension))
   mode.selectSprite(EvacuationFloorAdapter.floor)
 
@@ -34,8 +34,7 @@ case class ScenarioEditor(answer: Var[EvacuationFloorPlan], initial: EvacuationF
 
   override def getDomElement(): Element = div(onUnmountCallback(_ => unmount()),cls := "evacuation-editor",
     onMountCallback(ctx => {
-      isLocked = locked.observe(using ctx.owner).now()
-      locked.changes.foreach(value => isLocked = value)(using ctx.owner)
+      locked.foreach(isLocked.set)(using ctx.owner)
       answer.signal.changes.foreach(plan => {
         if (EvacuationFloorAdapter.encode(floorMap.now()) != plan) floorMap.set(EvacuationFloorAdapter.decode(plan))
       })(using ctx.owner)

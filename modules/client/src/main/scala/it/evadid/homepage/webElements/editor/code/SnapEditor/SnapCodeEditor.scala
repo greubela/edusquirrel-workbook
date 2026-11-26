@@ -8,10 +8,9 @@ import com.raquo.laminar.api.L
 import com.raquo.laminar.api.L.*
 import it.evadid.core.datastructures.language.AppLanguage.{English, HumanLanguage, SnapLanguage}
 import it.evadid.homepage.webElements.HtmlAppElement
-import it.evadid.homepage.webElements.editor.code.EvaEditor.EvaEditorTab
-import it.evadid.vm.code.errors.ProgrammingConversionError
+import it.evadid.homepage.webElements.editor.code.EvaEditor.{EvaEditorContext, EvaEditorLabels, EvaEditorTab}
 import it.evadid.homepage.webElements.editor.code.SnapEditor.execution.JavaTurtleSnapPrimitives
-import it.evadid.homepage.webElements.editor.code.SnapEditor.toRefactor.SnapCodeEditorConfig
+import it.evadid.homepage.webElements.editor.code.SnapEditor.SnapCodeEditorConfig
 import it.evadid.util.logging.Logger
 import it.evadid.workbook.elements.interactionElements.programming.state.*
 import org.scalajs.dom
@@ -22,39 +21,20 @@ case class SnapCodeEditor(
                            state: Var[ProgrammingState],
                            config: SnapCodeEditorConfig,
                            impl: SnapCodeEditorImpl,
+                           loadingLabel: Signal[String],
                            humanLanguage: Signal[HumanLanguage] = Val(English),
-                           conversionMarker: Signal[Option[ProgrammingConversionError]] = Val(None),
-                           loadingLabel: Signal[String] = Val("Loading editor…")
+                           conversionMarked: Signal[Boolean] = Val(false)
                          ) extends HtmlAppElement {
 
-  // A typed view of the interaction Var: no second answer or synchronization store.
-  private[SnapEditor] val snapState: Var[ProgrammingStateSnapScalaModel] = state.bimap {
-    case model: ProgrammingStateSnapScalaModel => model.persistent
-    case xml @ ProgrammingStateRaw(SnapLanguage, _) => SnapCodeEditor.typed(xml)
-    case other if SnapCodeEditor.shownAsSnap(other) => SnapCodeEditor.typed(other.toSnapXml)
-    case _ => SnapCodeEditor.empty // inactive while Eva switches to another language
-  }(identity)
-
-  private def publishProgramFromSnapXml(xml: String): Unit = {
-    if SnapCodeEditor.shownAsSnap(state.now()) then {
-      val current = snapState.now()
-      val next = SnapCodeEditor.typed(ProgrammingStateRaw(SnapLanguage, xml))
-      impl.acknowledgeProgramFromEditor(next.toSnapXml)
-      if !current.meaningfullyEquals(next) then snapState.set(next)
-    }
-  }
+  /** The answer as the Snap project this editor shows; `None` while the answer is not shown as Snap (e.g. after a
+    * language switch, before Laminar unmounts this editor), and writes are then dropped.
+    */
+  private[SnapEditor] val project: Var[Option[ProgrammingStateSnapScalaModel]] =
+    state.zoomLazy(SnapCodeEditor.shown)((current, value) => value.filter(_ => SnapCodeEditor.shownAsSnap(current)).getOrElse(current))
 
   private[SnapEditor] def mountEditorInto(canvas: Canvas, owner: Owner): Unit = {
     JavaTurtleSnapPrimitives.install()
-    impl.mount(owner)
-    impl.setOnProjectXmlChangedListener(publishProgramFromSnapXml)
-    impl.renderEditorInto(snapState.now().toSnapXml, canvas, config)
-    // Mount once. Later updates only synchronize the retained project;
-    // acknowledgeProgramFromEditor makes Snap-originated echoes no-ops.
-    state.signal.changes.filter(SnapCodeEditor.shownAsSnap).map {
-      case model: ProgrammingStateSnapScalaModel => model.persistent
-      case other => SnapCodeEditor.typed(other.toSnapXml)
-    }.distinctByFn((previous, next) => previous.meaningfullyEquals(next)).foreach(model => impl.loadProgramIfChanged(model.toSnapXml))(using owner)
+    impl.renderEditorInto(project, canvas, config)(using owner)
   }
 
   lazy val editorCanvas: Element = {
@@ -95,9 +75,9 @@ case class SnapCodeEditor(
 
   lazy val editorDom: L.Element = {
     div(
-      cls <-- conversionMarker.map(mark =>
+      cls <-- conversionMarked.map(mark =>
         "code-editor be-program-snap-renderer be-program-snap-renderer--editor" +
-          (if mark.isDefined then " is-conversion-marked" else "")),
+          (if mark then " is-conversion-marked" else "")),
       child.maybe <-- renderingError.signal.map(_.map(message => p(role := "alert", message))),
       child <-- editorReady.signal.combineWith(renderingError.signal, loadingLabel).map { (ready, error, label) =>
         if !ready && error.isEmpty then p(cls := "code-editor__loading", role := "status", label) else emptyNode
@@ -112,15 +92,14 @@ case class SnapCodeEditor(
       // Morphic's shared textarea lives inside this element. Commit before an
       // outside control (especially a language tab) reads the central answer.
       onBlur.useCapture.filter(_.target == dom.document.getElementById("morphic_keyboard")) --> { _ =>
-        if SnapCodeEditor.shownAsSnap(state.now()) then impl.flushPendingProjectChanges()
+        impl.flushPendingProjectChanges()
       },
       // A hidden page may be closed before the input pause ends (see RemoteInteractionCacheControl).
       documentEvents(_.onVisibilityChange).filter(_ => dom.document.hidden) --> { _ =>
         if SnapCodeEditor.shownAsSnap(state.now()) then impl.flushPendingProjectChanges()
       },
       onUnmountCallback { _ =>
-        if SnapCodeEditor.shownAsSnap(state.now()) then impl.flushPendingProjectChanges()
-        impl.setOnProjectXmlChangedListener(_ => ())
+        impl.flushPendingProjectChanges()
         impl.destroy()
       }
     )
@@ -148,26 +127,18 @@ object SnapCodeEditor {
   /** Snap projects, and expression answers whose Snap view the editor shows (e.g. in previews). */
   private[SnapEditor] def shownAsSnap(state: ProgrammingState): Boolean =
     state.associatedLanguage == SnapLanguage || state.isInstanceOf[ProgrammingStateBeExpression]
-  private def typed(xml: ProgrammingStateRaw): ProgrammingStateSnapScalaModel =
-    xml.toSnapScalaModel.fold(message => throw IllegalArgumentException(message), _.persistent)
-  private lazy val empty = typed(ProgrammingStateSnapScalaModel.empty.toSnapXml)
+  private def shown(state: ProgrammingState): Option[ProgrammingStateSnapScalaModel] = state match {
+    case model: ProgrammingStateSnapScalaModel => Some(model.persistent)
+    case other if shownAsSnap(other) => Some(SnapProjectBinding.typed(other.toSnapXml.code))
+    case _ => None
+  }
 
-  def apply(logger: Logger, state: Var[ProgrammingState], config: SnapCodeEditorConfig,
-            humanLanguage: Signal[HumanLanguage]): SnapCodeEditor =
-    SnapCodeEditor(logger, state, config, SnapMorphicSession(), humanLanguage)
-
-  def apply(logger: Logger,state: Var[ProgrammingState], config: SnapCodeEditorConfig): SnapCodeEditor =
-    apply(logger, state, config, Val(English))
-
-  def apply(logger: Logger,state: Var[ProgrammingState]): SnapCodeEditor =
-    SnapCodeEditor(logger, state, SnapCodeEditorConfig.Testing, SnapMorphicSession())
-
-  def forEvaTab(tabLogger: Logger, config: SnapCodeEditorConfig, humanLanguage: Signal[HumanLanguage],
-      tabLabel: String = "Snap!"): EvaEditorTab = new EvaEditorTab {
+  def forEvaTab(config: SnapCodeEditorConfig): EvaEditorTab = new EvaEditorTab {
     override val language = SnapLanguage
-    override val label = tabLabel
-    override def create(state: Var[ProgrammingState], appearance: it.evadid.homepage.webElements.editor.code.EditorAppearance,
-        marker: Signal[Option[ProgrammingConversionError]], loading: Signal[String]): HtmlAppElement =
-      SnapCodeEditor(tabLogger, state, config, SnapMorphicSession(), humanLanguage, marker, loading)
+    override def icon = Some(it.evadid.homepage.webElements.editor.code.EvaEditor.EvaLanguageIcons.snap)
+    override def label(labels: EvaEditorLabels): Signal[String] = Val("Snap!")
+    override def create(state: Var[ProgrammingState], context: EvaEditorContext): HtmlAppElement =
+      SnapCodeEditor(context.logger, state, config, SnapMorphicSession(), context.loading,
+        context.environment.humanLanguage, context.conversionMarker.map(_.isDefined))
   }
 }

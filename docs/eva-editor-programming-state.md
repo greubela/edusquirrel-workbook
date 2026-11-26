@@ -1,125 +1,84 @@
 # Eva: one editor and downstream panels
 
-`EvaEditor` displays one language editor bound to the supplied central
-`Var[ProgrammingState]`. `EvaEditorTab` describes a language choice: its label,
-conversion and editor factory. It contains no editor instance, private answer,
-synchronization baseline, or edit event channel. Eva constructs only the selected
-editor. Ordinary state updates reach that editor through its bound Var; they do
-not construct another editor. A language/task switch unmounts the old editor and
-mounts a fresh one. Returning to a language creates a fresh editor from the current
-answer, rather than resuming an inactive editor with a stale draft.
+`EvaEditor` mounts one language editor bound to the central `Var[ProgrammingState]`.
+The active tab follows the answer's representation; mounting never converts it
+implicitly. Ordinary edits update the mounted editor. Language/task switches replace
+it, and unmount releases its native handles, workers and subscriptions.
 
 ## State and conversion
 
-Language transformations live in shared core under [`vm.conversion`](programming-conversions.md).
-Use the direct conversion methods on `ProgrammingState`; its owned derivations cache parsing and target projections.
+Prefer `ProgrammingStateJavaStructured`, `ProgrammingStatePythonStructured` and
+`ProgrammingStateSnapScalaModel` for answers. `ProgrammingStateRaw` is for text/XML
+boundaries; unfinished Java/Python can remain in structured states. Expression states
+use `BlockDisplay`. See [programming conversions](programming-conversions.md) and
+[source parsing](source-parsing.md).
 
-Exercise and panel interfaces accept `ProgrammingState`; authored starter programs
-and language editors use its typed representations wherever possible:
-`ProgrammingStateJavaStructured`, `ProgrammingStatePythonStructured` and
-`ProgrammingStateSnapScalaModel`. Reserve `ProgrammingStateRaw` for boundaries
-that strictly require source text or XML, rather than using it as the default
-answer representation. An unfinished method can remain in a structured Java
-class; incomplete text alone does not require a raw state.
+The central Var is authoritative. Restoration, conversion and user changes use the
+same binding; components observe signals rather than editor callbacks or separate
+synchronization stores. All changing client state uses `val`-bound `Var[T]` values.
 
-The central Var is the answer. A change is a change, regardless of whether it
-comes from an editor, restoration, conversion or another component. Use signals
-to observe it. Do not add `onStateEdited`, input-listener constructor arguments,
-or separate stores such as `synchronizedValue` alongside a bound Var. Project
-views with `bimap` where appropriate; for example the Python editor shows the text of
-the central Python state and writes `ProgrammingStatePythonStructured`, so typed text
-that the structured state represents stays as typed. A freshly typed `if x:` keeps its empty body in the
-answer: the parser reads empty blocks with a `pass`
-(`SourceStructure.withEmptyBodies`), whereas printed Python always writes it, so generated code stays valid.
-An answer change that arrives while typed text is still pending (restoration,
-synchronization, conversion) replaces it. Java's method fragment is a view of
-the current source, not a separately saved program.
+CodeMirror and Snap buffer typing locally and publish after a pause, focus loss,
+page hiding or unmount. Eva binds directly to the answer; there is no second buffer.
+External answer changes replace pending local text.
 
-Keystrokes stay in the editor that receives them: Eva's language views edit the central Var
-itself, and only the typing editors buffer. CodeMirror writes its text after a 400 ms typing
-pause, Snap its project after a 400 ms input pause; both also write at once when focus leaves
-them, when the page is hidden and when they unmount, so panels, grading and storage never run
-per keystroke. Block edits, dialog actions and language switches write at once. When the page
-is hidden or left, `RemoteInteractionCacheControl` runs the stores these writes scheduled at
-once and sends its buffered destinations, because a closing page runs no further task.
+Conversions run asynchronously. Success commits the target representation; failure
+keeps the draft/editor. Source changes, newer requests and unmount invalidate stale
+conversion completions. `setActiveTab(language)` exposes this awaitable operation.
+Expensive work runs in workers: a Scala.js `Future` alone does not create a CPU thread.
 
-Conversions and their availability checks execute in `Future`s. A successful
-language switch writes the converted representation to the central Var and thus
-replaces the editor. A failed conversion leaves the current draft and editor in
-place. Newer requests, source changes and unmount invalidate pending conversions;
-late results cannot overwrite a newer answer. The generic Eva component contains
-no concrete language editor or runtime branches. Concrete factories live beside
-the standalone editors and are selected by `EvaEditorConfig`.
+## Ownership and key locations
 
-A Future on Scala.js schedules work on the browser thread; it does not provide a
-separate CPU thread. Use a WebWorker for expensive execution where available,
-including Pyodide and the checked Java runtime. Native libraries still need
-callbacks at their JavaScript boundary. Keep those callbacks inside the adapter;
-Scala consumers observe the bound Var or a supplied diagnostic signal.
+| Component | Responsibility |
+| --- | --- |
+| `EvaEditorTab`, `EvaEditorConfig` | Language metadata and factories; only the selected editor is created |
+| `EvaConversionController` | Availability checks, requested switches and outcomes; no DOM |
+| `EvaLanguageTabs` | Accessible, localized tab list |
+| `EvaEditorContext`, `EvaEditorEnvironment` | Logger, labels, exercise environment, appearance and diagnostics |
+| `WorkbookEvaEditor` | Workbook renderer's construction boundary |
+| `EditorWithWorkbookPanel` | Task instructions, grading, hints and drawing previews |
+| `ProgrammingExecutionPanel` | Console below Eva, observing the committed answer |
 
-Language switching uses the shared, language-neutral expression pipeline described in
-[programming conversions](programming-conversions.md). Checked Java execution is separate.
+Panels receive the central answer and task configuration directly. They do not read
+state back from editors or use an activation protocol. Drawings follow the explicitly run answer and use shared
+BeExpression turtle commands; the console runs the Python form in Pyodide.
+See [program analysis and execution](program-analysis-and-execution.md).
 
-## Mounting and panels
+CodeMirror derives fallback visibility from its native handle. Startup and mounted
+editors share the library load; failure leaves an editable fallback and permits retry.
+Diagnostics and worker-generated flowcharts arrive through signals. The gutter reuses
+`FlowLayout` on physical source lines; CodeMirror alone renders source text.
 
-Laminar owns lifetime. Closing the workbook dialog removes its child; it does not
-retain an invisible editor. There is no `FullscreenLifecycle`, open/close event
-interface, or editor/module activation protocol. Mount-owned subscriptions stop
-on unmount. Native CodeMirror handles, Snap worlds, workers, resize observers and
-other resources are released by the DOM that owns them. `dismissOnOutsideClick`
-is a dialog policy on `HtmlAppElement`, not a resource-lifecycle hook.
+## Structure editors
 
-Optional panels are ordinary `HtmlAppElement`s supplied to Eva. They receive the
-same central Var and their own necessary task configuration. They observe the
-answer downstream; Eva neither binds a context into them nor activates their
-execution services. The turtle panel owns its execution service, cancellation,
-drawing assessment and target. Its subscriptions and worker cleanup follow its
-mount. Panels never obtain state by reaching into an editor or calling
-`captureSource()`.
+`JavaComponentEditor` (`editor/code/JavaEditor`) offers Class, Function and Full modes. `JavaEditorNavigation`
+owns mode/selection; core `JavaMethodEditing` locates, replaces and inserts methods on step-1
+declarations.
 
-CodeMirror keeps one optional native handle. The fallback textarea's visibility
-is derived from that handle. Diagnostics arrive as a signal; there is no pending
-diagnostic store or copied current-document state. The mount owns the optional
-flowchart analysis and releases it with the native handle. Eva leaves the flowchart
-gutter off by default, so Python, like Java, shows only the fold gutter. The gutter reuses
-the block editor's `FlowLayout` overlay, mapped to physical source rows; CodeMirror
-alone renders the editable content. Parsing stays in the worker. The library loader
-shares one asynchronous module request between startup warmup and editors;
-failure/timeout leaves the fallback usable and allows a later retry.
+Class and function views of both languages are `FragmentCodeEditor[S, I]`s (`editor/code/fragment`):
+one update logic splices partial drafts into a `FragmentRange` of the structured answer `S`, with
+`FragmentSource[S]` describing its named sources (Java classes; Python classes and module). Subclasses
+only locate and identify their fragment, and may present it differently (Python methods dedented).
+Adding a declaration in Function Mode selects only the new function.
+Attribute and constructor dialogs, deletion and relationship arrows (inheritance, realization,
+association; no usage arrows) use the same shared UML model. All classes share one row, which
+scrolls horizontally when needed.
 
-All changing client state must remain in `val`-bound `Var[T]` values. Prefer
-immutable calculations and derived signals to additional stores. See
-[state and serialization](state-and-serialization.md).
+`PythonComponentEditor` uses the same UML renderer, source stages and fragment editors
+(`PythonFunctionEditor`, `PythonClassEditor`) for module, class and function views, creating only
+the selected one. `PythonMethodEditing` owns its source ranges and edits.
 
-`ProgrammingState` and its concrete representations live directly in the `programming.state`
-package. Use `toBeExpression`, `toJava`, `toPython`, `toSnapXml` and instance `fingerprint()`;
-there are no nested type aliases or alternate conversion names.
+Shared UML data lives in `core.datastructures.uml`; `JavaUmlDiagram` and `PythonUmlDiagram`
+derive it from the parsing stages and `UmlStructureSelector` renders it. Program classes are
+editable. `ExternalUmlClasses` adds read-only boxes from the worker analysis (kept while the
+next analysis is pending): recognized libraries are «library» boxes (Java classes, Python
+modules such as `turtle`); what the program uses but nothing defines is *implied*: an
+implied member of a library box (`turtle.spin`) or an «unknown» box, marked dashed. An edited library definition becomes program code. UML classes use
+square corners and stable hover geometry.
 
-Expression states (`ProgrammingStateBeExpression`) belong to the `BlockDisplay` language and open in
-the [block editor](block-editor.md) tab; the Snap editor still shows them in previews.
+Labels come from `blockeditor` language maps. Use `LabelSelection` or
+`JavaEditorLabels.select` for reactive text selection. Styles belong in dedicated CSS.
 
-Workbook initial programs can use any supported representation. Language conversion
-uses `BeExpression`; generated Snap is an ordinary project without Java metadata.
-Unsupported constructs are rejected, including class declarations that Snap cannot represent.
-
-## Persistence and verification
-
-Interactions use the current implicit `ProgrammingState` codec. JSON and
-MessagePack preserve source text and full Snap projects. Expression
-states serialize their language-neutral tree. This is a development schema;
-historical readers and migration aliases are deliberately unsupported.
-
-Tests cover single-editor construction and mounting, direct state observation,
-conversion failure/cancellation, unmount cleanup and the owning execution
-services. Browser checks cover real input, delayed library loading, native editor
-replacement, draft restoration and panel geometry.
-
-The active tab is derived from the current `ProgrammingState`, including the Blocks tab for a `ProgrammingStateBeExpression`. Mounting the editor does not select the first configured tab or convert the answer implicitly. If the native tab is unavailable, the answer remains intact. External controls and Scala tests can await `EvaEditor.setActiveTab(language)` to convert the bound answer and activate that representation. Browser tests select the intended tab explicitly before testing its behavior.
-
-## Java method editing
-
-`webElements/code/JavaMethodEditor` owns method selection and drafts, with separate
-rendering helpers for its toolbar, navigation and workspace. `JavaMethodSource`
-provides one immutable analysis per source value, shared by method selection and
-class navigation. `JavaStructuredMethodEditor` binds this view to structured Java
-states; it does not own a second answer.
+Current codecs preserve structured answers and lossless Snap models; no historical
+schema aliases are supported. Scala tests cover state/conversion/lifetime contracts;
+browser tests cover native editing, language switching, loading failures and layout.
+Pending editor work is tracked in [editor-todos.md](editor-todos.md).

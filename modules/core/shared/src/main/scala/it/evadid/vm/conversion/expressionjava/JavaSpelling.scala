@@ -27,7 +27,9 @@ object JavaSpelling {
     Seq("String", "valueOf") -> "str",
     Seq("Math", "abs") -> "abs",
     Seq("Math", "max") -> "max",
-    Seq("Math", "min") -> "min")
+    Seq("Math", "min") -> "min",
+    Seq("Math", "sqrt") -> "sqrt",
+    Seq("Math", "random") -> "random")
 
   /** The built-in a primitive cast means: `(int)` truncates like `int`, `(double)` converts like `float`. */
   def cast(javaTypeName: String): Option[String] = javaTypeName match {
@@ -49,7 +51,7 @@ object JavaSpelling {
 
   def handles(intrinsic: BeIntrinsic): Boolean = intrinsic match {
     case BeIntrinsic.ToInteger | BeIntrinsic.ToNumber | BeIntrinsic.ToText | BeIntrinsic.ToBoolean | BeIntrinsic.Absolute |
-        BeIntrinsic.Maximum | BeIntrinsic.Minimum => true
+        BeIntrinsic.Maximum | BeIntrinsic.Minimum | BeIntrinsic.SquareRoot | BeIntrinsic.Random => true
     case _ => false
   }
 
@@ -61,6 +63,7 @@ object JavaSpelling {
   def spell(intrinsic: BeIntrinsic, arguments: Seq[Argument]): String = (intrinsic, arguments) match {
     case (BeIntrinsic.Maximum, Seq(first, second)) => s"Math.max(${first.printed}, ${second.printed})"
     case (BeIntrinsic.Minimum, Seq(first, second)) => s"Math.min(${first.printed}, ${second.printed})"
+    case (BeIntrinsic.Random, Seq()) => "Math.random()"
     case (_, Seq(Argument(value, argument, operand))) =>
       val valueType = value.staticInformationExpression.staticType
       val isText = valueType == BeDataType.String
@@ -69,6 +72,7 @@ object JavaSpelling {
         case BeIntrinsic.ToNumber => if isText then s"Double.parseDouble($argument)" else s"(double) $operand"
         case BeIntrinsic.ToText => s"String.valueOf($argument)"
         case BeIntrinsic.Absolute => s"Math.abs($argument)"
+        case BeIntrinsic.SquareRoot => s"Math.sqrt($argument)"
         case BeIntrinsic.ToBoolean if valueType == BeDataType.Boolean => argument
         case BeIntrinsic.ToBoolean if valueType == BeDataType.Numeric => s"($operand != 0)"
         case BeIntrinsic.ToBoolean => throw ProgrammingConversionException.unsupported(

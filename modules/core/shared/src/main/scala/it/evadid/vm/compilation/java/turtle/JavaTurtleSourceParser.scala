@@ -1,8 +1,9 @@
 package it.evadid.vm.compilation.java.turtle
 
 import it.evadid.core.datastructures.language.AppLanguage.Java
-import it.evadid.vm.conversion.dependencies.KnownDependencies
-import it.evadid.vm.parsing.java.clean.{JavaParser, JavaSourceMap}
+import it.evadid.vm.parsing.java.clean.JavaSourceMap
+import it.evadid.vm.parsing.source.SourceParsing
+import it.evadid.vm.parsing.source.SourceParsing.SourceLanguage
 import it.evadid.vm.parsing.java.clean.model.JavaAST.*
 
 object JavaTurtleSourceParser {
@@ -23,31 +24,22 @@ object JavaTurtleSourceParser {
     def program: JavaProgram = sourceMap.program
   }
 
-  private val parser = new JavaParser(retainParentheses = true)
-
-  /** Known library classes, such as the generated `Turtle`, are masked after the length check: they
-    * belong to the runtime rather than to the program, and masking keeps every program offset valid.
+  /** Reads the syntax tree of [[SourceParsing]], in which known library classes, such as the generated `Turtle`,
+    * are masked: they belong to the runtime rather than to the program, and masking keeps every offset valid. The
+    * checked runner's own limits apply before and after.
     */
-  def parse(rawSource: String): Either[Diagnostic, ParsedSource] =
+  def parse(rawSource: String): Either[Diagnostic, ParsedSource] = {
+    val parsed = SourceParsing.parse(rawSource, SourceLanguage.Java)
     for {
       _ <- JavaTurtleInputLimits.checkLength(rawSource)
-      source = KnownDependencies.maskDefinitions(rawSource, Java)
+      source = parsed.structured.masked
       _ <- checkSource(source)
       _ <- JavaTurtleInputLimits.checkTokens(source)
-      parsed <- parseAst(source)
-    } yield parsed
-
-  private def parseAst(source: String): Either[Diagnostic, ParsedSource] =
-    parser.parseWithLocations(source) match {
-      case Right(sourceMap) =>
-        JavaTurtleInputLimits.checkAst(sourceMap.program).map(_ => new ParsedSource(sourceMap))
-      case Left(failure) =>
-        Left(Diagnostic(
-          Problem.ParseFailure,
-          "This source could not be read as a supported Java program.",
-          Some(SourceRange(failure.index, math.min(failure.index + 1, source.length)))
-        ))
-    }
+      syntax <- parsed.syntax.left.map(failure => Diagnostic(Problem.ParseFailure, "This source could not be read as a supported Java program.",
+        Some(SourceRange(failure.offset, math.min(failure.offset + 1, source.length)))))
+      _ <- JavaTurtleInputLimits.checkAst(syntax.program)
+    } yield new ParsedSource(syntax.sourceMap)
+  }
 
   private val unsupportedTypes = Set("byte", "short", "long", "float")
 

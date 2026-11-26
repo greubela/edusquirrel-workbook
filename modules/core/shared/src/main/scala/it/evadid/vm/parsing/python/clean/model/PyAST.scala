@@ -65,6 +65,7 @@ object PyAST {
     case PyEmptyStatement => StoredAst("PyEmptyStatement", ujson.Null)
     case node: PyCommentStatement => StoredAst("PyCommentStatement", upickle.default.writeJs(node))
     case node: PyRawExpression => StoredAst("PyRawExpression", upickle.default.writeJs(node))
+    case node: PyKeywordArgument => StoredAst("PyKeywordArgument", upickle.default.writeJs(node))
     case other => throw new IllegalArgumentException(s"Unsupported Python AST node: ${other.getClass.getName}")
   }
 
@@ -105,6 +106,7 @@ object PyAST {
     case "PyEmptyStatement" => PyEmptyStatement
     case "PyCommentStatement" => upickle.default.read[PyCommentStatement](value.payload)
     case "PyRawExpression" => upickle.default.read[PyRawExpression](value.payload)
+    case "PyKeywordArgument" => upickle.default.read[PyKeywordArgument](value.payload)
     case other => throw new IllegalArgumentException(s"Unknown Python AST node: $other")
   }
 
@@ -156,6 +158,11 @@ object PyAST {
 
   /** An expression kept as source text because it has no structured form here, such as a lambda. */
   case class PyRawExpression(source: String) extends PyExpression derives upickle.default.ReadWriter
+
+  /** A keyword argument of a call, e.g. `file=sys.stderr` in `print("x", file=sys.stderr)`. */
+  case class PyKeywordArgument(name: String, value: PyExpression) extends PyExpression derives upickle.default.ReadWriter {
+    override def getChildren(): Seq[GenericAST] = List(value)
+  }
 
   /** A `#` comment on its own line or after a statement, without the `#`. */
   case class PyCommentStatement(text: String) extends PyStatement derives upickle.default.ReadWriter
@@ -331,72 +338,4 @@ object PyAST {
   case class PythonLiteral[ScalaType](val literalValue: String, literalType: PythonType[ScalaType]) extends GenericAstLiteral[ScalaType, PythonType[ScalaType], PythonLiteral[ScalaType]] with PyAtomar derives upickle.default.ReadWriter {
 
   }
-
-
-  def main(args: Array[String]): Unit = {
-    println("hai!")
-    val example1: String = {
-      """
-        |import turtle
-        |import turtle2
-        |from aturtle3 import *
-        |from bturtle4 import turtle1
-        |from cturtle5 import turtle2, turtle3,t4,t5     , t7
-        |
-        |a1 = 1
-        |a2:int=1
-        |a3 :int=1
-        |a4: int=1
-        |a5 : int=1
-        |a6 : int =1
-        |a7 : int = 1
-        |x:int=1
-        |x[0] = 1
-        |x[0]
-        |a.x = 1
-        |a.x : int = 2
-        |a.x[3] = 3
-        |a.x[4]: int = 5
-        |x = 50
-        |y: str = "30"
-        |x: int = 20
-        |
-        |x += 1
-        |x+=1
-        |x=+1
-        |x=-1
-        |
-        |(abc: int) = 3
-        |
-        |a.func(b)
-        |
-        |func(hai)
-        |
-        |str(3)
-        |int("4")
-        |
-        |
-        |turtle.forward(100   + 50 )
-        |turtle.left(120)
-        |turtle.forward(x - int(y) )
-        |turtle.right(50)
-        |
-        |""".stripMargin
-    }
-
-    val example2: String =
-      """
-        |turtle.forward( int(y) + 1 )
-        |func( int (2) )
-        |
-        |""".stripMargin
-
-    val res = PythonAstParserSimple.parse(example1)
-
-    println(res)
-
-    println(res.fold(error => throw new IllegalArgumentException(error.toString), _.statements.mkString("\n")))
-
-  }
-
 }

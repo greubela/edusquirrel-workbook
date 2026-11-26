@@ -1,10 +1,12 @@
 package it.evadid.vm.conversion.pythonsnap
 
+import it.evadid.vm.parsing.source.SourceParsing
+import it.evadid.vm.parsing.source.SourceParsing.SourceLanguage
+
 import it.evadid.workbook.elements.interactionElements.programming.state.ProgrammingStateSnapScalaModel
 import it.evadid.workbook.elements.interactionElements.programming.state.snap.SnapCanvasLayout
 
 import it.evadid.vm.conversion.expressionsnap.ExpressionToSnap
-import it.evadid.vm.conversion.pythonexpression.PythonToExpression
 
 import it.evadid.core.datastructures.language.AppLanguage.Python
 import it.evadid.workbook.elements.interactionElements.programming.state.ProgrammingStateRaw
@@ -31,7 +33,7 @@ object PythonToSnap {
       previousXml: String = ""
   ): Either[String, ProgrammingStateRaw] =
     try
-      val program = PythonToExpression.program(source)
+      val program = SourceParsing.parse(source, SourceLanguage.Python).parsed().program
       validateSubset(program.fullProgram) match
         case Left(message) => Left(message)
         case Right(statements) =>

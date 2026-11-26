@@ -111,7 +111,7 @@ test('Snap finishes startup preheating without creating a Morphic world or openi
   } finally {await browser.close();}
 });
 
-test('unchanged Java block previews retain their canvas and changed or unfinished drafts replace it', async () => {
+test('running Java updates block previews, retaining equivalent sources and replacing changed or unfinished drafts', async () => {
   const browser = await chromium.launch({executablePath:process.env.CHROMIUM_PATH || chromium.executablePath(),chromiumSandbox:true});
   try {
     const page = await browser.newPage();
@@ -159,15 +159,18 @@ test('unchanged Java block previews retain their canvas and changed or unfinishe
     await page.getByRole('button',{name:/Editor.*öffnen|Open editor/i}).first().click();
     const editor = page.locator('dialog[open] .eva-editor');
     await editor.getByRole('tab',{name:'Java',exact:true}).click();
-    await editor.getByRole('button',{name:'Full source',exact:true}).click();
+    await editor.getByRole('tab', {name: 'Full Mode',exact:true}).click();
     await editor.locator('.cm-content').waitFor();
     const preview = page.locator('.be-program-snap-renderer:not(dialog *)').first();
     const source = 'public class Drawing {\n  public static void main(String[] args) {\n    Turtle.forward(20);\n  }\n}\n';
     async function writeSource(code) {
       await page.evaluate(code => {
         const view = EduSquirrelCodeMirrorLibraries.EditorView.findFromDOM(document.querySelector('dialog[open] .cm-editor'));
+        view.focus();
         view.dispatch({changes:{from:0,to:view.state.doc.length,insert:code}});
       }, code);
+      await editor.getByRole('tab', {name:'Full Mode',exact:true}).focus();
+      await page.locator('dialog[open] .turtle-run button').click();
       await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))));
       assert.equal(await page.evaluate(() => EduSquirrelCodeMirrorLibraries.EditorView
         .findFromDOM(document.querySelector('dialog[open] .cm-editor')).state.doc.toString()), code);
@@ -186,6 +189,8 @@ test('unchanged Java block previews retain their canvas and changed or unfinishe
       });
     }
     await writeSource(source);
+    await page.waitForFunction(() => new DOMParser().parseFromString(snapPreviewLoadedXml,'application/xml')
+      .querySelector('script > block[s="receiveGo"] + block[s="forward"] > l')?.textContent === '20');
     await rememberPreview();
     for (const suffix of [' ', '\n\t', '\n\n']) {
       await writeSource(source + suffix);
@@ -196,19 +201,20 @@ test('unchanged Java block previews retain their canvas and changed or unfinishe
     }
     const changed = source.replace('forward(20)', 'forward(30)');
     await writeSource(changed);
-    assert(await page.evaluate(() => previewReuseProbe.canvas !== document.querySelector('.be-program-snap-renderer__canvas:not(dialog *)') &&
-      snapPreviewWorlds > previewReuseProbe.worlds && snapPreviewPictures > previewReuseProbe.pictures));
+    await page.waitForFunction(() => previewReuseProbe.canvas !== document.querySelector('.be-program-snap-renderer__canvas:not(dialog *)') &&
+      snapPreviewWorlds > previewReuseProbe.worlds && snapPreviewPictures > previewReuseProbe.pictures);
     assert(await page.evaluate(() => previewReuseProbe.xml !== snapPreviewLoadedXml &&
       new DOMParser().parseFromString(snapPreviewLoadedXml,'application/xml')
         .querySelector('script > block[s="receiveGo"] + block[s="forward"] > l')?.textContent === '30'),
       'the regenerated preview loads the changed startup command');
     await rememberPreview();
     await writeSource(changed.slice(0, changed.lastIndexOf('}')));
+    await preview.getByText(/Preview unavailable for this draft/).waitFor();
     assert.equal(await preview.locator('canvas').count(), 0);
     assert.match(await preview.textContent(), /Preview unavailable for this draft/);
     await writeSource(changed);
-    assert(await page.evaluate(() => previewReuseProbe.canvas !== document.querySelector('.be-program-snap-renderer__canvas:not(dialog *)') &&
-      snapPreviewWorlds > previewReuseProbe.worlds && snapPreviewPictures > previewReuseProbe.pictures));
+    await page.waitForFunction(() => previewReuseProbe.canvas !== document.querySelector('.be-program-snap-renderer__canvas:not(dialog *)') &&
+      snapPreviewWorlds > previewReuseProbe.worlds && snapPreviewPictures > previewReuseProbe.pictures);
     assert(await page.evaluate(() => previewReuseProbe.xml === snapPreviewLoadedXml),
       'restoring the same valid source reloads its complete block program');
     await rememberPreview();

@@ -42,3 +42,9 @@ class MailEditorState(val state: Var[InboxStateScaffolding], val allowCompose: B
     }
   }
 }
+
+object MailEditorState {
+  /** The label keys `notice` takes besides the empty default; draft validation adds its errors. */
+  val notices: Seq[String] = Seq("attachmentSimulated", "linkSimulated", "sentLocally", "duplicateId",
+    "invalidRecipient", "missingSubject", "missingBody")
+}

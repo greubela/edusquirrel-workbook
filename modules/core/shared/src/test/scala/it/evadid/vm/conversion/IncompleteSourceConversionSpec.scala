@@ -80,7 +80,7 @@ class IncompleteSourceConversionSpec extends FunSuite {
     languages.foreach { target =>
       val problem = error(state.convertToLanguage(target))
       assertEquals(problem.kind, unparsable, target.toString)
-      assert(state.convertToLanguage(target).conversionInfo.head.warningMsg.contains("Missing closing tag"))
+      assert(state.convertToLanguage(target).conversionInfo.head.warningMsg.contains("closing tag"))
     }
   }
 

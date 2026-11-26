@@ -29,7 +29,7 @@ output.write(json.dumps({"value": value, "stdout": stdout.getvalue(), "stderr": 
   lazy val available: Boolean = scala.util.Try(new ProcessBuilder("python3", "--version").start().waitFor() == 0).getOrElse(false)
 
   def run(request: RunPythonRequest): RunPythonResult = {
-    require(request.callbacks.isEmpty && request.packages.isEmpty && !request.logTurtleCalls, "Unsupported worker request")
+    require(request.callbacks.isEmpty && request.packages.isEmpty && request.turtleCalls == it.evadid.vm.simulation.python.PythonTurtleCalls.Native, "Unsupported worker request")
     val script = Files.createTempFile("worker-harness", ".py")
     try {
       Files.writeString(script, harness)

@@ -1,6 +1,8 @@
 package it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.feedback.ui
 
 import com.raquo.laminar.api.L.*
+import it.evadid.core.datastructures.language.LanguageMapContentId
+import it.evadid.homepage.workbook.htmlRenderer.LaminarRenderHelper
 import it.evadid.core.datastructures.language.AppLanguage
 import it.evadid.core.datastructures.language.AppLanguage.*
 import it.evadid.homepage.control.singletons.*
@@ -328,7 +330,8 @@ object FeedbackDemoElement:
       HtmlFullWorkbookApp.fullInfo.loggerSystemInfo.uiAndDomLogger,
       pythonCodeVar,
       language = Python,
-      Var(CodeMirrorEditorConfig.Default), diagnostics = editorDiagnostics.signal
+      Var(CodeMirrorEditorConfig.Default), LaminarRenderHelper.singleton.plaintextStringSignal(LanguageMapContentId("blockeditor/loading")),
+      diagnostics = editorDiagnostics.signal
     )
 
     def tx(lang: HumanLanguage, en: String, de: String): String =

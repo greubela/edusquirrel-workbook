@@ -275,4 +275,34 @@ class CrossLanguageRoundTripSpec extends FunSuite {
     assertEquals(commands(back), commands(python))
     assertEquals(commands(back), List(forward(3)))
   }
+
+  /** Quotes inside strings, math functions and operator precedence; `main` is defined but not called. */
+  private val mathPython =
+    """from math import sqrt
+      |from random import random
+      |
+      |def main():
+      |    print("hai'")
+      |    print('"hai"')
+      |    x = random()*10 + 5
+      |    print(3+pow(x,2)*2-2 > 23+56/8 * sqrt(64))
+      |    y = True or False and True
+      |""".stripMargin
+
+  test("strings with quotes, math functions and precedence survive every language pair, starting in Python") {
+    assertRoundTrips(ProgrammingStateRaw(Python, mathPython), all, None)
+    val python = rendered(converted(ProgrammingStateRaw(Python, mathPython).toBeExpression, Python), Python)
+    assert(python.contains("print(\"hai'\")") && python.contains("print(\"\\\"hai\\\"\")"), python)
+    assert(python.contains("random() * 10") && python.contains("x ** 2") && python.contains("sqrt(64)"), python)
+    val java = rendered(converted(ProgrammingStateRaw(Python, mathPython).toBeExpression, Java), Java)
+    assert(java.contains("System.out.println(\"\\\"hai\\\"\");"), s"Java strings are double-quoted:\n$java")
+    assert(java.contains("Math.random() * 10") && java.contains("Math.pow(x, 2)") && java.contains("Math.sqrt(64)"), java)
+    assert(java.contains("56.0 / 8"), s"Python's exact division stays exact in Java:\n$java")
+    assert(java.contains("true || (false && true)"), java)
+    val snap = rendered(converted(ProgrammingStateRaw(Python, mathPython).toBeExpression, SnapLanguage), SnapLanguage)
+    assert(snap.contains("<block s=\"reportMonadic\"><l><option>sqrt</option></l><l>64</l></block>"), snap)
+    assert(snap.contains("<block s=\"reportRandom\"><l>0</l><l>0.9999999999999999</l></block>"), snap)
+    assert(snap.contains("<l>&quot;hai&quot;</l>") && (snap.contains("<l>hai&apos;</l>") || snap.contains("<l>hai'</l>")), snap)
+    assert(!snap.contains("<l>True</l>"), s"truth values are not text in Snap:\n$snap")
+  }
 }

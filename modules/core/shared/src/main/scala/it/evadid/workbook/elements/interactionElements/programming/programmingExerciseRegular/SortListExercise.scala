@@ -1,5 +1,7 @@
 package it.evadid.workbook.elements.interactionElements.programming.programmingExerciseRegular
 
+import it.evadid.vm.conversion.dependencies.{ProgrammingEnvironment, ProgrammingLibrary}
+import it.evadid.workbook.elements.interactionElements.programming.{ProgrammingExerciseEnvironment, ProgrammingTestGrader}
 import it.evadid.core.datastructures.language.AppLanguage.{Java, ProgrammingLanguage, Python}
 import it.evadid.core.datastructures.language.LanguageMapContentId
 import it.evadid.vm.simulation.data.DataWorld
@@ -37,8 +39,9 @@ case class SortListExercise(
     method: SortingMethod = SortingMethod.AnyMethod,
     allowedLanguages: Seq[ProgrammingLanguage] = SortListExercise.defaultLanguages,
     structureTests: Seq[ProgramStructureGrader] = Seq.empty,
-    instructionText: Option[LanguageMapContentId] = None
-) extends WorkbookInteractionElement[SortListExerciseFormat.type] {
+    instructionText: Option[LanguageMapContentId] = None,
+    environment: ProgrammingEnvironment = SortListExercise.defaultEnvironment
+) extends WorkbookInteractionElement[SortListExerciseFormat.type] with ProgrammingExerciseEnvironment {
   require(sortFunction.nonEmpty && sortFunction == sortFunction.trim, "A sorting exercise needs the name of its sort function.")
   require(testLists.nonEmpty, "A sorting exercise needs at least one test list.")
   require(allowedLanguages.nonEmpty, "A sorting exercise needs at least one language.")
@@ -63,7 +66,7 @@ case class SortListExercise(
   }
 
   override val gradingElements: Seq[WorkbookInteractionGrader[ProgrammingState, AdditionalProgrammingTestInfo]] =
-    sortTests ++ structureTests
+    ProgrammingTestGrader.inEnvironment(sortTests ++ structureTests, environment)
 }
 
 object SortListExercise {
@@ -71,13 +74,15 @@ object SortListExercise {
   /** Typical and edge cases: unsorted, reversed, already sorted, duplicates, one value, empty. */
   val defaultTestLists: Seq[Seq[Int]] = Seq(Seq(5, 1, 4, 2, 8), Seq(6, 5, 4, 3, 2, 1), Seq(1, 2, 3, 4), Seq(3, 1, 3, 2, 1), Seq(42), Seq())
   val defaultLanguages: Seq[ProgrammingLanguage] = Seq(Python, Java)
+  /** The number list and console output. */
+  val defaultEnvironment: ProgrammingEnvironment = ProgrammingEnvironment.of(ProgrammingLibrary.NumberList, ProgrammingLibrary.System)
 
   val factory: WorkbookElementFactory[SortListExercise] = new SimpleWorkbookElementFactory[SortListExercise]() {
     override protected val constructorFieldOrder = List("elementId", "initProgram", "sortFunction", "exampleList", "testLists",
-      "method", "allowedLanguages", "structureTests", "instructionText")
+      "method", "allowedLanguages", "structureTests", "instructionText", "environment")
 
     override def finishSerialization(baseElement: WorkbookElementSerializable, element: SortListExercise): WorkbookElementSerializable =
-      baseElement
+      val serialized = baseElement
         .withElementAddedAs("initProgram", element.initProgram)
         .withElementAdded("sortFunction", element.sortFunction)
         .withElementAddedAs("exampleList", element.exampleList)
@@ -86,6 +91,7 @@ object SortListExercise {
         .withElementAddedAs("allowedLanguages", element.allowedLanguages)
         .withElementAddedAs("structureTests", element.structureTests)
         .withElementAddedAs("instructionText", element.instructionText)
+      if element.environment == defaultEnvironment then serialized else serialized.withElementAddedAs("environment", element.environment)
 
     override def finishDeserialization(serialized: WorkbookElementSerializable): SortListExercise =
       SortListExercise(
@@ -97,6 +103,7 @@ object SortListExercise {
         serialized.getElementAs[SortingMethod]("method"),
         serialized.getElementAs[Seq[ProgrammingLanguage]]("allowedLanguages"),
         serialized.getElementAs[Seq[ProgramStructureGrader]]("structureTests"),
-        serialized.getElementAs[Option[LanguageMapContentId]]("instructionText"))
+        serialized.getElementAs[Option[LanguageMapContentId]]("instructionText"),
+        serialized.getOptionalElementAs[ProgrammingEnvironment]("environment", defaultEnvironment))
   }
 }

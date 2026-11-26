@@ -4,7 +4,9 @@ import it.evadid.workbook.elements.interactionElements.programming.state.snap.Sn
 
 /** Runs a Python file with console-only turtle methods, restoring the interpreter's module afterward. */
 object PythonConsoleProgram {
-  def wrap(source: String): String = {
+  /** `source` with a stub `turtle` module whose calls print themselves (`log`) or do nothing. */
+  def wrap(source: String, log: Boolean = true): String = {
+    val printCalls = if log then "True" else "False"
     val names = ujson.Arr.from(SnapTurtleCatalog.AllowedPythonNames.toSeq.sorted).render()
     val literal = ujson.Str(source).render()
     s"""def __edusquirrel_run_program():
@@ -16,7 +18,8 @@ object PythonConsoleProgram {
        |        def call(*args, **kwargs):
        |            values = [builtins.repr(value) for value in args]
        |            values.extend(key + "=" + builtins.repr(value) for key, value in kwargs.items())
-       |            builtins.print(name + "(" + ", ".join(values) + ")")
+       |            if $printCalls:
+       |                builtins.print(name + "(" + ", ".join(values) + ")")
        |        return call
        |    turtle.__all__ = $names
        |    for name in turtle.__all__:

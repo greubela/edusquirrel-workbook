@@ -1,5 +1,6 @@
 package it.evadid.workbook.elements.interactionElements.programming.programmingExerciseRegular
 
+import it.evadid.vm.conversion.dependencies.ProgrammingEnvironment
 import it.evadid.core.datastructures.language.AppLanguage.{English, German, HumanLanguage}
 import it.evadid.core.datastructures.language.{LanguageMap, LanguageMapContentId, WorkbookContent}
 import it.evadid.vm.modules.BeModules
@@ -59,8 +60,11 @@ case class ProgramDataTestGrader(
                                   limits: TurtleExecutionLimits = ProgramDataTestGrader.defaultLimits,
 
                                   /** Values for `{name}` placeholders in the description, e.g. the list a generated test sorts. */
-                                  publicDescriptionArguments: Map[String, String] = Map.empty
+                                  publicDescriptionArguments: Map[String, String] = Map.empty,
+    /** The libraries the exercise provides; its exercise sets it ([[ProgrammingTestGrader.inEnvironment]]). */
+    environment: ProgrammingEnvironment = ProgrammingEnvironment.all
                                 ) extends ProgrammingTestGrader derives ReadWriter {
+  override def inEnvironment(environment: ProgrammingEnvironment): ProgramDataTestGrader = copy(environment = environment)
   require(testId.nonEmpty && testId == testId.trim, "A data test needs a nonempty ID.")
   require(expectations.nonEmpty, "A data test needs at least one expectation.")
   override val runningBehavior = GraderRunningBehavior.RUN_ONLY_MANUALLY
@@ -81,7 +85,7 @@ case class ProgramDataTestGrader(
   /** Status plus an optional explanation; exposed for authoring checks. */
   def evaluate(state: ProgrammingState): (GradingStatus, Option[LanguageMap[HumanLanguage]]) = {
     import ProgramDataTestGrader.text
-    val execution = try Right(state.toBeExpression.execute(world, ProgramEntry.Call(function, arguments), limits))
+    val execution = try Right(state.inEnvironment(environment).expression.execute(world, ProgramEntry.Call(function, arguments), limits))
     catch {
       case NonFatal(error) => Left(Option(error.getMessage).getOrElse(error.getClass.getSimpleName))
     }

@@ -93,7 +93,9 @@ test('2026GdP1 sorting offers Snap number-list blocks that run in Snap and read 
       return gdpIde.globalVariables.vars['number list'].value.itemsArray().map(Number);
     });
     assert.deepEqual(list, [9, 3, 7, 3, 5]);
-    // The editor publishes the project to the answer state, whose source the overview shows in Python.
+    // The scripted block drop ends with pointer-up, as a real edit does. Snap publishes after input pauses.
+    await page.locator('dialog[open] .be-program-snap-renderer--editor').dispatchEvent('pointerup');
+    // The bound answer is also shown as Python in the overview.
     await page.waitForFunction(() => [...document.querySelectorAll('.java-full-editor-preview')]
       .some(preview => preview.innerText.includes('NumberList.swap(0, 2)')));
     await page.locator('dialog[open]').getByRole('tab', {name:'Python',exact:true}).click();

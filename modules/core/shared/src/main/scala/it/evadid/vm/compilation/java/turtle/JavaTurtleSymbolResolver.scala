@@ -209,7 +209,7 @@ object JavaTurtleSymbolResolver {
       }
 
     private def statement(node: JavaStatement, env: Env): Result[(Statement, Env)] = node match {
-      case JavaEmptyStatement => Right(Empty -> env)
+      case JavaEmptyStatement | _: JavaCommentStatement => Right(Empty -> env)
       case JavaReturnStatement(None) => Right(Return -> env)
       case declaration: JavaVariableDeclaration =>
         for {

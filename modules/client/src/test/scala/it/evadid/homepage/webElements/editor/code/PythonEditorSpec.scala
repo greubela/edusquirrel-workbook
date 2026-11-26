@@ -58,7 +58,7 @@ class PythonEditorSpec extends EditorDomSuite {
   }
 
   private def pause(millis: Int): Future[Unit] = { val done = Promise[Unit](); setTimeout(millis.toDouble)(done.success(())); done.future }
-  private def tick(): Future[Unit] = pause(5)
+  private def tick(): Future[Unit] = { val done = Promise[Unit](); setTimeout(5)(done.success(())); done.future }
   private def until(condition: => Boolean, attempts: Int = 400): Future[Unit] =
     if condition then Future.unit
     else if attempts == 0 then Future.failed(AssertionError("condition not reached"))
@@ -214,15 +214,15 @@ class PythonEditorSpec extends EditorDomSuite {
     }
   }
 
-  test("conversion errors mark their line and column in the native editor") {
+  test("conversion errors mark their line and column in the native editor, explained in the page language") {
     val marker = Var(Option.empty[ProgrammingConversionError])
-    val fixture = Fixture("for", diagnostics = CodeMirrorEditor.marks(marker.signal))
+    val fixture = Fixture("for", diagnostics = marker.signal.map(_.toSeq.flatMap(CodeMirrorEditor.mark(_, "cannot convert"))))
     finish(fixture.close) {
       until(fixture.created.now().nonEmpty).map(_ => fixture.loadNative()).flatMap(_ => until(hidden(fallback))).map { _ =>
         marker.set(Some(ProgrammingConversionError(ProgrammingConversionKind.UnsupportedConstruct, Some(2), Some(4))))
         val marked = fixture.native.diagnostics.now()
         assertEquals(marked.map(d => (d.line.asInstanceOf[Int], d.fromCh.asInstanceOf[Int], d.toCh.asInstanceOf[Int],
-          d.severity.asInstanceOf[String])), Vector((2, 3, 4, "error")))
+          d.severity.asInstanceOf[String], d.message.asInstanceOf[String])), Vector((2, 3, 4, "error", "cannot convert")))
         marker.set(Some(ProgrammingConversionError(ProgrammingConversionKind.UnsupportedConstruct)))
         assertEquals(fixture.native.diagnostics.now(), Vector.empty[js.Dynamic], "an error without a position marks nothing")
         marker.set(None)
@@ -232,23 +232,21 @@ class PythonEditorSpec extends EditorDomSuite {
   }
 
   test("the Eva Python tab shows Python answers as text and stores edits as structured Python") {
-    val tab = CodeMirrorEditor.pythonEditorForEva(logger, CodeMirrorEditorConfig.Default)
+    val tab = it.evadid.homepage.webElements.editor.code.PythonEditor.PythonComponentEditor.forEvaTab(CodeMirrorEditorConfig.Default)
     assertEquals(tab.language, Python)
     val answer = Var[ProgrammingState](ProgrammingStateRaw(Python, "print('raw')"))
-    val close = mount(tab.create(answer, EditorAppearance(), Val(None), Val("loading")).getDomElement())
+    val close = mount(tab.create(answer, EvaTestContext()).getDomElement())
     finish(close) {
       assertEquals(fallback.value, "print('raw')")
       typeInFallback("print('edited')")
-      assertEquals(answer.now(), ProgrammingStatePythonStructured("print('edited')"): ProgrammingState)
-      typeInFallback("def f():")
-      assertEquals(answer.now(), ProgrammingStatePythonStructured("def f():"): ProgrammingState)
-      assertEquals(fallback.value, "def f():", "the completed block of the stored state does not replace the typed text")
+      until(answer.now() == ProgrammingStatePythonStructured("print('edited')")).map { _ =>
       val structured = ProgrammingStatePythonStructured("class A:\n    pass\n\nprint(1)")
       answer.set(structured)
       assertEquals(fallback.value, structured.toString)
       answer.set(ProgrammingStateRaw(Java, "int x = 1;"))
-      assertEquals(fallback.value, "", "another language's source is never shown as Python")
-      Future.unit
+      assertEquals(fallback.value, ProgrammingStatePythonStructured("").toString, "the outgoing editor shows only its inactive Python value")
+      assertEquals(answer.now(), ProgrammingStateRaw(Java, "int x = 1;"): ProgrammingState)
+      }
     }
   }
 

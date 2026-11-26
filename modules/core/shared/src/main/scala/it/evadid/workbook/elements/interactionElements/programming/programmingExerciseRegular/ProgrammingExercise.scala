@@ -1,4 +1,6 @@
 package it.evadid.workbook.elements.interactionElements.programming.programmingExerciseRegular
+import it.evadid.vm.conversion.dependencies.{ProgrammingEnvironment, ProgrammingLibrary}
+import it.evadid.workbook.elements.interactionElements.programming.{ProgrammingExerciseEnvironment, ProgrammingTestGrader}
 import it.evadid.workbook.elements.interactionElements.programming.state.{ProgrammingState, ProgrammingStateRaw}
 import it.evadid.core.util.io.Serializer
 import it.evadid.vm.BeProgram
@@ -22,12 +24,14 @@ case class ProgrammingExercise(
                                 editorPalette: ProgrammingEditorPalette = ProgrammingEditorPalette.Default,
 
                                 /** Optional Python turtle program whose drawing is the target for geometric matching. */
-                                referencePython: Option[String] = None
-                              ) extends WorkbookInteractionElement[ProgrammingExerciseFormat.type] derives upickle.default.ReadWriter {
+                                referencePython: Option[String] = None,
+                                environment: ProgrammingEnvironment = ProgrammingEnvironment.all
+                              ) extends WorkbookInteractionElement[ProgrammingExerciseFormat.type] with ProgrammingExerciseEnvironment
+    derives upickle.default.ReadWriter {
   override val associatedFactory = ProgrammingExercise.factory
 
   override val defaultValue: ProgrammingState = ProgrammingStateSnapScalaModel.mini
-  override val gradingElements = testSuite.toList.flatMap(_.graders)
+  override val gradingElements = ProgrammingTestGrader.inEnvironment(testSuite.toList.flatMap(_.graders), environment)
 
   override lazy val childrenOfThisElement: Seq[WorkbookElement] = List()
 
@@ -43,15 +47,17 @@ object ProgrammingExercise {
         element.elementId,
         element.getOptionalElementAs[Option[BeTestSuite]]("testSuite", None),
         element.getOptionalElementAs[ProgrammingEditorPalette]("editorPalette", ProgrammingEditorPalette.Default),
-        element.getOptionalElementAs[Option[String]]("referencePython", None)
+        element.getOptionalElementAs[Option[String]]("referencePython", None),
+        element.getOptionalElementAs[ProgrammingEnvironment]("environment", ProgrammingEnvironment.all)
       )
     }
 
     override def toSerializableElement(element: ProgrammingExercise): WorkbookElementSerializable =
-      toFactoryBase(element)
+      val serialized = toFactoryBase(element)
         .withElementAddedAs("testSuite", element.testSuite)
         .withElementAddedAs("editorPalette", element.editorPalette)
         .withElementAddedAs("referencePython", element.referencePython)
+      if element.environment == ProgrammingEnvironment.all then serialized else serialized.withElementAddedAs("environment", element.environment)
 
     lazy override val writerJsonRegularRefBased: Writer[ProgrammingExercise] = macroRW
   }

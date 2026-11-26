@@ -13,7 +13,8 @@ enum ProgrammingConversionKind {
 final case class ProgrammingConversionError(
     kind: ProgrammingConversionKind,
     line: Option[Int] = None,
-    column: Option[Int] = None
+    column: Option[Int] = None,
+    span: Option[it.evadid.vm.parsing.source.SourceSpan] = None
 )
 
 /** Conversion failure that remains an [[IllegalArgumentException]] for existing callers. */

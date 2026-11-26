@@ -1,28 +1,32 @@
 package it.evadid.homepage.webElements.editor.code
 
+import it.evadid.core.datastructures.language.AppLanguage.Python
 import com.raquo.laminar.api.L.*
-import it.evadid.core.datastructures.vectorShapes.renderer.PythonFlowchartGutter
+import it.evadid.core.datastructures.vectorShapes.renderer.FlowchartGutter
 import it.evadid.distribution.clients.WebWorkerExecutionClient
 import it.evadid.distribution.command.SerializedException
 import it.evadid.distribution.formats.{ExecutionClientResponse, WorkerExecutionProtocol}
 import it.evadid.distribution.formats.ExecutionClientResponse.ExecutionClientResponseTimestamps
 import it.evadid.homepage.webElements.editor.config.CodeMirrorEditorConfig
 import it.evadid.homepage.webElements.editor.code.EvaEditor.EvaEditorConfig
-import it.evadid.homepage.webElements.editor.code.codemirror.{CodeMirrorEditor, CodeMirrorFlowchartGutter}
+import it.evadid.homepage.webElements.editor.code.codemirror.CodeMirrorEditor
+import it.evadid.homepage.webElements.editor.code.worker.{SharedWorker, SharedWorkerCache}
+import it.evadid.distribution.commandTypes.WorkerCommands
 import munit.FunSuite
 import org.scalajs.dom
 import upickle.default.*
 
 import java.time.LocalDateTime
 import scala.collection.mutable.ListBuffer
+import scala.concurrent.Future
 import scala.scalajs.js
 import scala.scalajs.js.JSConverters.*
 import scala.scalajs.concurrent.JSExecutionContext.Implicits.queue
 
 class CodeMirrorEditorConfigSpec extends FunSuite {
   private val logger = it.evadid.util.logging.Logger.withNameAndPrefixes(Some("test"), it.evadid.util.logging.derived.PrintToStdLogger.printNothing)
-  private def chart(label: String) = PythonFlowchartGutter.Chart(
-    List(PythonFlowchartGutter.Node(1, "process", 0, label)), Nil, List(1))
+  private def chart(label: String) = FlowchartGutter.Chart(
+    List(FlowchartGutter.Node(1, "process", 0, label)), Nil, List(1))
 
   private class FakeWorker {
     val sent = ListBuffer.empty[String]
@@ -31,23 +35,27 @@ class CodeMirrorEditorConfigSpec extends FunSuite {
       postMessage = ((message: String) => { sent += message; () }): js.Function1[String, Unit],
       terminate = (() => { terminated = true }): js.Function0[Unit])
     val client = WebWorkerExecutionClient.fromWorker(raw.asInstanceOf[dom.Worker], timeoutMilliseconds = 1000)
-    private def receive(response: ExecutionClientResponse): Unit = {
-      val request = read[WorkerExecutionProtocol.Request](sent.head)
+    private def receive(response: ExecutionClientResponse, index: Int): Unit = {
+      val request = read[WorkerExecutionProtocol.Request](sent(index))
       raw.selectDynamic("onmessage").asInstanceOf[js.Function1[dom.MessageEvent, Unit]](
         js.Dynamic.literal(data = write(WorkerExecutionProtocol.Response(request.requestId, response))).asInstanceOf[dom.MessageEvent])
     }
-    def reply(result: PythonFlowchartGutter.Chart): Unit = {
-      val request = read[WorkerExecutionProtocol.Request](sent.head)
+    def reply(result: FlowchartGutter.Chart, index: Int = 0): Unit = {
+      val request = read[WorkerExecutionProtocol.Request](sent(index))
       val now = LocalDateTime.now()
-      receive(ExecutionClientResponse.forValue(ExecutionClientResponseTimestamps(now, now, now), result, request.command))
+      receive(ExecutionClientResponse.forValue(ExecutionClientResponseTimestamps(now, now, now), result, request.command), index)
     }
-    def fail(): Unit = {
-      val request = read[WorkerExecutionProtocol.Request](sent.head)
+    def fail(index: Int = 0): Unit = {
+      val request = read[WorkerExecutionProtocol.Request](sent(index))
       val now = LocalDateTime.now()
       receive(ExecutionClientResponse.forError(ExecutionClientResponseTimestamps(now, now, now),
-        SerializedException("chart failed"), request.command))
+        SerializedException("chart failed"), request.command), index)
     }
   }
+
+  private def charts(workers: Workers, capacity: Int = 32) =
+    SharedWorkerCache(WorkerCommands.flowchart, WorkerCommands.FlowchartRequest(Python, _: String),
+      SharedWorker(() => workers.create()), capacity)
 
   private class Workers {
     val created = ListBuffer.empty[FakeWorker]
@@ -58,10 +66,19 @@ class CodeMirrorEditorConfigSpec extends FunSuite {
     }
   }
 
+  test("only languages with a flowchart source get a gutter") {
+    import it.evadid.core.datastructures.language.AppLanguage.{Java, Python, SQL}
+    import it.evadid.homepage.webElements.editor.code.codemirror.CodeMirrorFlowchartSource
+    assertEquals(CodeMirrorFlowchartSource.forLanguage(Python), Some(CodeMirrorFlowchartSource.python))
+    assertEquals(CodeMirrorFlowchartSource.forLanguage(Java), Some(CodeMirrorFlowchartSource.java))
+    assertEquals(CodeMirrorFlowchartSource.forLanguage(SQL), None)
+  }
+
   test("the regular editor accepts both gutter settings and exposes the passed configuration") {
     for (enabled <- List(false, true)) {
       val settings = CodeMirrorEditorConfig(showFlowchartGutter = enabled)
-      val editor = CodeMirrorEditor(logger, Var("print(1)"), language = it.evadid.core.datastructures.language.AppLanguage.Python, config = Var(settings))
+      val editor = CodeMirrorEditor(logger, Var("print(1)"), language = it.evadid.core.datastructures.language.AppLanguage.Python, config = Var(settings),
+        loadingLabel = Val("loading"))
       assertEquals(editor.config.now(), settings)
       assertEquals(read[CodeMirrorEditorConfig](write(settings)), settings)
       assertEquals(readBinary[CodeMirrorEditorConfig](writeBinary(settings)), settings)
@@ -79,92 +96,72 @@ class CodeMirrorEditorConfigSpec extends FunSuite {
     assertEquals(read[EvaEditorConfig]("{}").codeMirrorConfig, CodeMirrorEditorConfig.Default)
   }
 
-  test("the flowchart cache retains only the latest exact source") {
-    val cache = new CodeMirrorFlowchartGutter.Cache
-    val first = "print(1)\r\n"
-    cache.put(first, chart("first"))
-    assertEquals(cache.get(first), Some(chart("first")))
-    assertEquals(cache.get("print(1)\n"), None)
-    assertEquals(cache.get("print(1)\r\n "), None)
-    cache.put("print(2)", chart("second"))
-    assertEquals(cache.get(first), None)
-    assertEquals(cache.get("print(2)"), Some(chart("second")))
-  }
-
-  test("closed flowchart analysis rejects even a cached source") {
-    val cache = new CodeMirrorFlowchartGutter.Cache
+  test("identical requests share one worker request and are answered from the cache afterwards") {
     val workers = new Workers
-    cache.put("print(1)", chart("cached"))
-    val analysis = new CodeMirrorFlowchartGutter.Analysis(cache, workers.create)
-    analysis.close()
-    analysis.chartForDoc("print(1)").failed.map { error =>
-      assert(error.getMessage.contains("closed"))
-      assertEquals(workers.created.size, 0)
-    }
-  }
-
-  test("concurrent analysis of the same source shares one worker request") {
-    val cache = new CodeMirrorFlowchartGutter.Cache
-    val workers = new Workers
-    val analysis = new CodeMirrorFlowchartGutter.Analysis(cache, workers.create)
-    val first = analysis.chartForDoc("print(1)")
-    val second = analysis.chartForDoc("print(1)")
+    val cache = charts(workers)
+    val first = cache("print(1)")
+    val second = cache("print(1)")
     assertEquals(workers.created.size, 1)
     assertEquals(workers.created.head.sent.size, 1)
     workers.created.head.reply(chart("shared"))
     first.zip(second).map { (a, b) =>
       assertEquals(a, b)
-      assertEquals(cache.get("print(1)"), Some(chart("shared")))
-    }.andThen { case _ => analysis.close() }
+      assertEquals(cache("print(1)").value.flatMap(_.toOption), Some(chart("shared")))
+      assertEquals(workers.created.head.sent.size, 1, "a remembered result needs no request")
+    }
   }
 
-  test("a different source cancels its previous worker and ignores late replies") {
-    val cache = new CodeMirrorFlowchartGutter.Cache
+  test("all requests of the page share one worker and all complete") {
     val workers = new Workers
-    val analysis = new CodeMirrorFlowchartGutter.Analysis(cache, workers.create)
-    val cancelled = analysis.chartForDoc("print(1)").failed
-    val next = analysis.chartForDoc("print(2)")
-    assert(workers.created.head.terminated)
-    assertEquals(workers.created.size, 2)
-    workers.created.head.reply(chart("old"))
-    workers.created.last.reply(chart("new"))
-    cancelled.zip(next).map { (error, _) =>
-      assert(error.getMessage.contains("closed"))
-      assertEquals(cache.get("print(1)"), None)
-      assertEquals(cache.get("print(2)"), Some(chart("new")))
-    }.andThen { case _ => analysis.close() }
+    val cache = charts(workers)
+    val first = cache("print(1)")
+    val second = cache("print(2)")
+    assertEquals(workers.created.size, 1)
+    assertEquals(workers.created.head.sent.size, 2)
+    assert(!workers.created.head.terminated, "a newer request never cancels another consumer's request")
+    workers.created.head.reply(chart("second"), 1)
+    workers.created.head.reply(chart("first"), 0)
+    first.zip(second).map((a, b) => assertEquals((a, b), (chart("first"), chart("second"))))
   }
 
-  test("failed analysis retries with a new worker") {
-    val cache = new CodeMirrorFlowchartGutter.Cache
+  test("a failed request is forgotten and retried on the same worker") {
     val workers = new Workers
-    val analysis = new CodeMirrorFlowchartGutter.Analysis(cache, workers.create)
-    val failed = analysis.chartForDoc("print(1)").failed
+    val cache = charts(workers)
+    val failed = cache("print(1)").failed
     workers.created.head.fail()
     failed.flatMap { error =>
       assert(error.getMessage.contains("chart failed"))
-      assert(workers.created.head.terminated)
-      assertEquals(cache.get("print(1)"), None)
-      val retry = analysis.chartForDoc("print(1)")
-      assertEquals(workers.created.size, 2)
-      workers.created.last.reply(chart("retried"))
+      val retry = cache("print(1)")
+      assertEquals(workers.created.size, 1)
+      assertEquals(workers.created.head.sent.size, 2)
+      workers.created.head.reply(chart("retried"), 1)
       retry
-    }.map { _ => assertEquals(cache.get("print(1)"), Some(chart("retried"))) }
-      .andThen { case _ => analysis.close() }
+    }.map(result => assertEquals(result, chart("retried")))
   }
 
-  test("a completed but superseded request cannot replace the latest cache") {
-    val cache = new CodeMirrorFlowchartGutter.Cache
+  test("a stopped worker is replaced by the next request") {
     val workers = new Workers
-    val analysis = new CodeMirrorFlowchartGutter.Analysis(cache, workers.create)
-    val first = analysis.chartForDoc("print(1)")
-    workers.created.head.reply(chart("superseded"))
-    val next = analysis.chartForDoc("print(2)")
-    assert(workers.created.head.terminated)
-    workers.created.last.reply(chart("current"))
-    first.zip(next).map { (_, _) =>
-      assertEquals(cache.get("print(1)"), None)
-      assertEquals(cache.get("print(2)"), Some(chart("current")))
-    }.andThen { case _ => analysis.close() }
+    val worker = SharedWorker(() => workers.create())
+    val stopped = worker.send(WorkerCommands.flowchart, WorkerCommands.FlowchartRequest(Python, "print(1)")).failed
+    workers.created.head.client.close()
+    stopped.flatMap { _ =>
+      val next = worker.send(WorkerCommands.flowchart, WorkerCommands.FlowchartRequest(Python, "print(2)"))
+      assertEquals(workers.created.size, 2)
+      workers.created.last.reply(chart("fresh"))
+      next
+    }.map(result => assertEquals(result, chart("fresh")))
+  }
+
+  test("only the latest keys up to the capacity are remembered") {
+    val workers = new Workers
+    val cache = charts(workers, capacity = 1)
+    val first = cache("print(1)")
+    workers.created.head.reply(chart("first"))
+    first.flatMap { _ =>
+      cache("print(2)")
+      cache("print(1)")
+      assertEquals(workers.created.head.sent.size, 3, "the evicted key is requested again")
+      Future.unit
+    }
   }
 }

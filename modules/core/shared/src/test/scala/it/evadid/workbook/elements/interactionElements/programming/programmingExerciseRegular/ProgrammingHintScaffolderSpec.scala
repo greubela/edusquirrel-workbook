@@ -72,19 +72,17 @@ class ProgrammingHintScaffolderSpec extends FunSuite {
     }
   }
 
-  test("hints need a resolver, an LLM client, a supported language and a usable task") {
+  test("hints need a resolver, an LLM client, the current answer and a usable task") {
     val f = new Fixture(reply("Why?", "task"))
     for {
       noResolver <- f.scaffolder.handleFeedbackGeneration(f.exercise.defaultValue, TestExecutionContext(List(f.client))).failed
       noClient <- f.scaffolder.handleFeedbackGeneration(f.exercise.defaultValue, f.context(Nil)).failed
-      snap <- f.hint(ProgrammingStateRaw(SnapLanguage, "<project/>")).failed
       changed <- f.hint(ProgrammingStateRaw(Java, "Turtle.forward(99);")).failed
       noTask <- new Fixture(reply("Why?", "task"), taskText = None).hint().failed
       tooLong <- new Fixture(reply("Why?", "task"), startingProgram = Seq.fill(401)("x();").mkString("\n")).hint().failed
     } yield {
       assert(noResolver.getMessage.contains("LanguageMapIdResolver"), noResolver.getMessage)
       assert(noClient.getMessage.contains("No execution client"), noClient.getMessage)
-      assert(snap.getMessage.contains("Java or Python"), snap.getMessage)
       assert(changed.getMessage.contains("answer changed"), changed.getMessage)
       assert(noTask.getMessage.contains("instructions are missing"), noTask.getMessage)
       assert(tooLong.getMessage.contains("too many lines"), tooLong.getMessage)

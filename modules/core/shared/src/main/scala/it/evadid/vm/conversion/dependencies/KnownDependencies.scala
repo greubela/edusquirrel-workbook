@@ -5,19 +5,18 @@ import it.evadid.vm.code.abstractions.BeExpression
 import it.evadid.vm.code.defining.{BeDependency, BeIntrinsic}
 import it.evadid.vm.code.usage.BeFunctionCall
 import it.evadid.vm.conversion.printing.ModuleLayout
-import it.evadid.vm.conversion.structured.SourceStructure
 import it.evadid.vm.naming.BeEntityName
 
 /** The libraries printed programs may need, and how printers and parsers treat their definitions.
   *
   * A dependency is required when the program calls a function with its intrinsic. Printers add the
-  * required definitions; parsers remove a definition only when it matches exactly (ignoring layout),
-  * so an edited copy stays an ordinary user definition.
+  * required definitions; the parsing pipeline's first step masks a definition only when it matches exactly
+  * (ignoring layout), so an edited copy stays an ordinary user definition.
   */
 object KnownDependencies {
   /** Python's `turtle` module; Java gets a generated class with the same static methods. */
   val turtle: BeDependency = BeDependency(BeEntityName.fromCodeString("Turtle"),
-    Map(Python -> "import turtle", Java -> JavaTurtleLibrary.source))
+    Map(Python -> "import turtle", Java -> JavaTurtleLibrary.source), definedClasses = List(it.evadid.core.datastructures.vectorShapes.svg.TurtleCommand.turtleClass))
 
   /** Reading the text behind a URL; Snap's `url` reporter provides it natively. */
   val fetchText: BeDependency = BeDependency(BeEntityName.fromUniversalNameInParts("fetch_text"), Map(
@@ -40,12 +39,23 @@ object KnownDependencies {
         |    }
         |}""".stripMargin))
 
-  private val byIntrinsic: Seq[(BeIntrinsic, BeDependency)] = Seq(BeIntrinsic.Turtle -> turtle, BeIntrinsic.FetchText -> fetchText)
+  val system: BeDependency = BeDependency(BeEntityName.fromLiteral("SystemFunctionality"), Map.empty,
+    definedClasses = List(it.evadid.vm.modules.SystemFunctionality.library))
+
+  /** Python prints to the error stream with `print(..., file=sys.stderr)`. */
+  val systemErrors: BeDependency = system.copy(addDefinitions = Map(Python -> "import sys"))
+
+  /** Python imports `sqrt` and `random`; Java has them in `java.lang.Math`, Snap as reporters. */
+  val squareRoot: BeDependency = BeDependency(BeEntityName.fromUniversalNameInParts("sqrt"), Map(Python -> "from math import sqrt"))
+  val random: BeDependency = BeDependency(BeEntityName.fromUniversalNameInParts("random"), Map(Python -> "from random import random"))
+
+  private val byIntrinsic: Seq[(BeIntrinsic, BeDependency)] = Seq(BeIntrinsic.Turtle -> turtle, BeIntrinsic.FetchText -> fetchText,
+    BeIntrinsic.Print -> system, BeIntrinsic.PrintErr -> systemErrors, BeIntrinsic.SquareRoot -> squareRoot, BeIntrinsic.Random -> random)
 
   /** Python modules that provide a dependency: importing one in any form (`import turtle`,
     * `from turtle import *`, `from turtle import forward`) means that library, not user code.
     */
-  private val pythonModules: Map[String, BeDependency] = Map("turtle" -> turtle)
+  private val pythonModules: Map[String, BeDependency] = Map("turtle" -> turtle, "math" -> squareRoot, "random" -> random)
 
   def providedByPythonModule(module: String): Option[BeDependency] = pythonModules.get(module)
 
@@ -59,46 +69,22 @@ object KnownDependencies {
     case (intrinsic, `path`) => byIntrinsic.collectFirst { case (`intrinsic`, dependency) => dependency.structureName.universalInterpretation() }.get
   }
 
-  val all: Seq[BeDependency] = byIntrinsic.map(_._2)
+  val all: Seq[BeDependency] = byIntrinsic.map(_._2).distinct
 
   /** The dependencies a program calls into, in registry order. */
   def requiredBy(expression: BeExpression): Seq[BeDependency] = {
     val used = expression.subtree.collect { case call: BeFunctionCall => call.funcDef.intrinsic }.flatten.toSet
-    byIntrinsic.collect { case (intrinsic, dependency) if used(intrinsic) => dependency }
+    byIntrinsic.collect { case (intrinsic, dependency) if used(intrinsic) => dependency }.distinct
   }
 
   def definitionsFor(expression: BeExpression, language: ProgrammingLanguage): Seq[String] =
     requiredBy(expression).flatMap(_.definition(language))
 
-  private def compact(text: String): String = text.filterNot(_.isWhitespace)
 
-  /** Where `source` contains a dependency definition verbatim, ignoring layout, as `(start, end)` offsets. */
-  def definitionRanges(source: String, language: ProgrammingLanguage): Seq[(Int, Int)] = language match {
-    case Java =>
-      val definitions = all.flatMap(_.definition(Java)).map(compact).toSet
-      SourceStructure.javaClasses(source).filter(block => definitions(compact(block.source))).map(block => block.start -> block.end)
-    case Python => all.flatMap(_.definition(Python)).flatMap(lineRun(source, _))
-    case _ => Nil
-  }
+  def named(name: BeEntityName): Option[BeDependency] = all.find(_.structureName == name)
 
-  /** Source with its dependency definitions blanked out, keeping line breaks, so that offsets in the
-    * remaining code stay valid for diagnostics and tracing. Parsers and the checked Java runner read
-    * this instead of the definitions.
-    */
-  def maskDefinitions(source: String, language: ProgrammingLanguage): String =
-    definitionRanges(source, language).foldLeft(source) { case (text, (start, end)) =>
-      text.take(start) + text.slice(start, end).map(char => if char == '\n' || char == '\r' then char else ' ') + text.drop(end)
-    }
+  /** Whether `classSource` is a dependency's Java definition verbatim, ignoring layout. */
+  def isJavaDefinition(classSource: String): Boolean = javaDefinitions(it.evadid.vm.parsing.source.SourceText.compact(classSource))
 
-  /** The first run of whole lines equal to `definition`, ignoring indentation and blank lines. */
-  private def lineRun(source: String, definition: String): Option[(Int, Int)] = {
-    val wanted = definition.linesIterator.map(_.trim).filter(_.nonEmpty).toVector
-    val lines = (0 +: source.indices.filter(source(_) == '\n').map(_ + 1)).map { start =>
-      val end = source.indexOf('\n', start)
-      start -> (if end < 0 then source.length else end)
-    }
-    val code = lines.filter((start, end) => source.substring(start, end).trim.nonEmpty)
-    code.indices.find(first => code.slice(first, first + wanted.size).map((start, end) => source.substring(start, end).trim) == wanted)
-      .map(first => code(first)._1 -> math.min(source.length, code(first + wanted.size - 1)._2 + 1))
-  }
+  private lazy val javaDefinitions: Set[String] = all.flatMap(_.definition(Java)).map(it.evadid.vm.parsing.source.SourceText.compact).toSet
 }

@@ -76,7 +76,7 @@ object JavaTurtleSemanticValidator {
       }
 
     private def statement(node: JavaStatement, env: Env): Result[Flow] = node match {
-      case JavaEmptyStatement => Right(Some(env))
+      case JavaEmptyStatement | _: JavaCommentStatement => Right(Some(env))
       case declaration: JavaVariableDeclaration => declare(declaration, env).map(Some(_))
       case JavaAssignment(target, value) => assign(target, "=", value, env).map(Some(_))
       case JavaAugAssignment(target, operator, value) => assign(target, operator, value, env).map(Some(_))

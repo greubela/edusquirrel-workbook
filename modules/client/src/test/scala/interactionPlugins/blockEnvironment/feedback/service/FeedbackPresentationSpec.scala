@@ -1,5 +1,8 @@
 package interactionPlugins.blockEnvironment.feedback.service
 
+import it.evadid.vm.parsing.source.SourceParsing
+import it.evadid.vm.parsing.source.SourceParsing.SourceLanguage
+
 import it.evadid.core.datastructures.language.{AppLanguage, LanguageMap}
 import it.evadid.core.datastructures.language.AppLanguage.HumanLanguage
 import it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.feedback.config.BlockFeedbackConfig
@@ -9,7 +12,6 @@ import it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.fe
 import it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.feedback.service.{BlockFeedbackFeedbackBuilder, BlockFeedbackTestPlan}
 import it.evadid.homepage.workbook.legacy.model.feedback.FeedbackStatus
 import it.evadid.vm.code.others.BeStartProgram
-import it.evadid.vm.conversion.pythonexpression.PythonToExpression
 import munit.FunSuite
 
 final class FeedbackPresentationSpec extends FunSuite:
@@ -28,7 +30,7 @@ final class FeedbackPresentationSpec extends FunSuite:
         AppLanguage.English -> "Return the maximum value in the list.",
         AppLanguage.German -> "Gib den größten Wert der Liste zurück."
       )),
-      studentCodePython = BeStartProgram(PythonToExpression.parseWithDetails(maximumSource).codeExpression),
+      studentCodePython = BeStartProgram(SourceParsing.parse(maximumSource, SourceLanguage.Python).parsed().details.codeExpression),
       pythonSourceOverride = Some(maximumSource),
       submissionNr = 1,
       config = BlockFeedbackConfig(enableUnitTests = true),
@@ -62,7 +64,7 @@ final class FeedbackPresentationSpec extends FunSuite:
 
   test("native block programs keep their block-model warnings") {
     val nativeRequest = request().copy(
-      studentCodePython = BeStartProgram(PythonToExpression.parseWithDetails("print(1)").codeExpression),
+      studentCodePython = BeStartProgram(SourceParsing.parse("print(1)", SourceLanguage.Python).parsed().details.codeExpression),
       pythonSourceOverride = None
     )
     val warning = vmWarnings.head

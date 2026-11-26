@@ -15,7 +15,7 @@ class SymbolTableSpec extends FunSuite {
   private def function(text: String, inputs: Int = 0) =
     BeDefineFunction((0 until inputs).map(i => variable(s"p$i")).toList, None, BeSequence.optionalBody(Nil), BeDefineFunction.functionInfo(name(text)))
   private def clazz(text: String) = BeDefineClass(name(text), Nil, Nil)
-  private def context(known: Seq[KnownStructure] = Nil) = ParseContext.initial(CurrentlyKnownStructures.fromKnown(known))
+  private def context(known: Seq[KnownStructure] = Nil) = ParseContext.initial(CurrentlyKnownStructures.fromKnown(known), it.evadid.vm.conversion.dependencies.ProgrammingEnvironment.all)
   private def literal(text: String) = BeUseValue(BeDataValueLiteral(text), None)
 
   test("known structures accumulate by kind and operators are grouped by symbol and arity") {
@@ -97,7 +97,7 @@ class SymbolTableSpec extends FunSuite {
   }
 
   test("operators choose the best-typed candidate and create untyped operators for unknown symbols") {
-    val ctx = ParseContext.initial(CurrentlyKnownStructures.fromKnown(SymbolTable.defaultKnownStructures))
+    val ctx = ParseContext.initial(CurrentlyKnownStructures.fromKnown(SymbolTable.defaultKnownStructures), it.evadid.vm.conversion.dependencies.ProgrammingEnvironment.all)
     val (numeric, _) = ctx.resolveOperator("+", 2, List(literal("1"), literal("2")))
     assertEquals(numeric.outputs.map(_.variableType), Some(BeDataType.Numeric))
     val (text, _) = ctx.resolveOperator("+", 2, List(literal("\"a\""), literal("\"b\"")))

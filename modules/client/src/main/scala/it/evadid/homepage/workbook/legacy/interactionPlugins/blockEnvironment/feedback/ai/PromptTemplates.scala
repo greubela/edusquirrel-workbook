@@ -1,6 +1,8 @@
 package it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.feedback.ai
 
 import it.evadid.core.datastructures.language.AppLanguage
+import it.evadid.vm.parsing.source.{PythonFunctionStructured, SourceParsing}
+import it.evadid.vm.parsing.source.SourceParsing.SourceLanguage
 
 import it.evadid.core.datastructures.language.*
 import it.evadid.core.datastructures.language.AppLanguage.*
@@ -183,21 +185,15 @@ object PromptTemplates {
       modName -> moduleAlternatives.getOrElse(modName, None)
     }
 
+  /** The submission's function definitions, from the parsing pipeline's first step. */
+  private def pythonFunctions(code: String): Vector[PythonFunctionStructured] =
+    SourceParsing.parse(Option(code).getOrElse(""), SourceLanguage.Python).structured.functions
+
   private def detectIdentityReturn(rawPython: String): Option[String] = {
     val code = Option(rawPython).getOrElse("").replace("\r\n", "\n")
     val lines = code.split("\n", -1).toSeq.map(_.trim).filter(_.nonEmpty)
-    // Extract parameter names from the first function definition.
-    val funcDefRe = "(?i)def\\s+\\w+\\s*\\((\\w+)(?:\\s*,\\s*\\w+)*\\)\\s*:".r
-    val paramsOpt = lines
-      .flatMap { l =>
-        funcDefRe.findFirstMatchIn(l).map { m =>
-          // Pull all param names from the raw match: "def f(xs, k):" -> ["xs", "k"]
-          val raw = m.group(0)
-          val inner = raw.dropWhile(_ != '(').drop(1).takeWhile(_ != ')')
-          inner.split(",").toSeq.map(_.trim).filter(_.nonEmpty)
-        }
-      }
-      .headOption
+    // Parameter names of the first function definition.
+    val paramsOpt = pythonFunctions(code).headOption.map(_.parameters.map(_.name)).filter(_.nonEmpty)
     paramsOpt.flatMap { params =>
       params.find { param =>
         val returnRe = s"(?i)^return\\s+${scala.util.matching.Regex.quote(param)}\\s*$$".r
@@ -244,7 +240,7 @@ object PromptTemplates {
 
     if isScriptExercise && obs.isEmpty then {
       val AssignListPat = """^([a-zA-Z_]\w*)\s*=\s*\[.+\]""".r
-      val hasDefInCode = rawLines.exists(l => l.trim.startsWith("def "))
+      val hasDefInCode = pythonFunctions(code).nonEmpty
       if hasDefInCode then
         rawLines.foreach { line =>
           if !line.startsWith(" ") && !line.startsWith("\t") then
@@ -256,7 +252,7 @@ object PromptTemplates {
     }
 
     if isScriptExercise && obs.isEmpty then {
-      val hasDefInCode = rawLines.exists(l => l.trim.startsWith("def "))
+      val hasDefInCode = pythonFunctions(code).nonEmpty
       if !hasDefInCode then {
         val topLevelListAssignCount = rawLines.count { line =>
           !line.startsWith(" ") && !line.startsWith("\t") &&
@@ -452,7 +448,7 @@ object PromptTemplates {
       if diagnosis.recommendedNextChecks.isEmpty then "<none>"
       else diagnosis.recommendedNextChecks.take(6).map(s => s"- $s").mkString("\n")
 
-    val studentUsesFunction = rawPython.linesIterator.exists(l => l.trim.startsWith("def "))
+    val studentUsesFunction = pythonFunctions(rawPython).nonEmpty
     val isScript = isScriptExercise && !studentUsesFunction
     val scriptNoteDE =
       if isScript then
@@ -643,7 +639,7 @@ object PromptTemplates {
     val failing = signals.runtimeOutcome.tests.filterNot(_.passed)
     val firstTestName = failing.headOption.map(_.name).getOrElse(if isGerman(humanLanguage) then "deine Abgabe" else "your submission")
     val functionNameHint = extractFunctionNameHint(signals, failing.map(_.name).distinct.take(5))
-    val hasDef = signals.rawPython.linesIterator.exists(l => l.trim.startsWith("def "))
+    val hasDef = pythonFunctions(signals.rawPython).nonEmpty
     val isScript = isScriptExercise && !hasDef
     val noFunctionYet = !isScriptExercise && !hasDef
     val meaningfulLineCount = signals.rawPython.linesIterator.count(l => l.trim.nonEmpty && !l.trim.startsWith("#"))
@@ -653,10 +649,7 @@ object PromptTemplates {
       if isScriptExercise || !hasDef then None
       else
         functionNameHint.flatMap { expected =>
-          val DefPat = """^def\s+([a-zA-Z_]\w*)\s*\(""".r
-          val defined = signals.rawPython.linesIterator
-            .flatMap(l => DefPat.findFirstMatchIn(l.trim).map(_.group(1)))
-            .toSeq
+          val defined = pythonFunctions(signals.rawPython).map(_.name)
           if defined.nonEmpty && !defined.contains(expected) then Some((defined.head, expected))
           else None
         }

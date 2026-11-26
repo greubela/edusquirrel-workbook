@@ -1,5 +1,8 @@
 package it.evadid.homepage.webElements.editor.blocks
 
+import it.evadid.vm.parsing.source.SourceParsing
+import it.evadid.vm.parsing.source.SourceParsing.SourceLanguage
+
 import com.raquo.laminar.api.L.*
 import it.evadid.core.datastructures.geometry.Point
 import it.evadid.core.datastructures.language.AppLanguage.{BlockDisplay, Python}
@@ -8,7 +11,6 @@ import it.evadid.homepage.webElements.editor.code.EditorAppearance
 import it.evadid.homepage.webElements.editor.code.EditorDomSuite
 import it.evadid.vm.BeProgram
 import it.evadid.vm.code.controlStructures.BeRepeatNr
-import it.evadid.vm.conversion.pythonexpression.PythonToExpression
 import it.evadid.vm.editing.{BeBlockLibrary, BeNodePath, BeProgramEditing, BeSequenceSlot}
 import it.evadid.vm.types.BeChildRole.{BodySequence, ExpressionInSequence, FunctionParameter}
 import it.evadid.workbook.elements.interactionElements.programming.state.{ProgrammingState, ProgrammingStateBeExpression, ProgrammingStateRaw}
@@ -26,7 +28,7 @@ class BlockProgramEditorSpec extends EditorDomSuite {
 
   private val labels = BlockEditorLabels.fromContent(id => Val(id.entryKey))
   private val main = BeNodePath.root / BodySequence(0)
-  private val program = PythonToExpression.program("forward(100)\nfor _ in range(4):\n    right(90)\n")
+  private val program = SourceParsing.parse("forward(100)\nfor _ in range(4):\n    right(90)\n", SourceLanguage.Python).parsed().program
   private def roles(of: BeProgram) = BlockElements.roles(BlockElements.layout(BeExpressionBlocks.program(of, BlockView())))
   private def centerOf(role: BlockRole) = roles(program).collectFirst { case (`role`, bounds) => bounds.centerPoint }.get
 
@@ -63,12 +65,13 @@ class BlockProgramEditorSpec extends EditorDomSuite {
   }
 
   test("the Eva tab edits the central answer's expression representation") {
-    val tab = BlockProgramEditor.forEvaTab(labels, Val(it.evadid.core.datastructures.language.AppLanguage.English))
+    val tab = BlockProgramEditor.forEvaTab()
     assertEquals(tab.language, BlockDisplay)
-    val converted = tab.convert(ProgrammingStateRaw(Python, "forward(100)\n")).finalState.get
+    val converted = tab.convert(ProgrammingStateRaw(Python, "forward(100)\n"), it.evadid.vm.conversion.dependencies.ProgrammingEnvironment.all).finalState.get
     assertEquals(converted.associatedLanguage, BlockDisplay)
     val state = Var[ProgrammingState](converted)
-    val unmount = mount(tab.create(state, EditorAppearance()).getDomElement())
+    val unmount = mount(tab.create(state, it.evadid.homepage.webElements.editor.code.EvaTestContext(
+      it.evadid.homepage.webElements.editor.code.EvaEditor.EvaEditorLabels.fromContent(id => Val(id.entryKey)))).getDomElement())
     try {
       def statements = dom.document.querySelectorAll(".block-editor__drawing [data-block-role=statement]").length
       assertEquals(statements, 1)

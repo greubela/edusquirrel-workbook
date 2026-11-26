@@ -6,11 +6,12 @@ import it.evadid.facades.CodeMirror.{CodeMirrorHandle, EditorConfig}
 import com.raquo.airstream.ownership.Subscription
 import com.raquo.laminar.api.L
 import com.raquo.laminar.api.L.*
+import it.evadid.homepage.webElements.editor.code.ProgrammingStateView
 import com.raquo.laminar.nodes.ReactiveSvgElement
 import it.evadid.core.datastructures.language.AppLanguage.{ProgrammingLanguage, Python}
 import it.evadid.facades.CodeMirror
 import it.evadid.homepage.webElements.editor.abstractions.SimpleWebEditor
-import it.evadid.homepage.webElements.editor.code.EvaEditor.EvaEditorTab
+import it.evadid.homepage.webElements.editor.code.EvaEditor.{EvaEditorContext, EvaEditorLabels, EvaEditorTab}
 import it.evadid.vm.code.errors.ProgrammingConversionError
 import it.evadid.homepage.webElements.editor.config.CodeMirrorEditorConfig
 import it.evadid.util.logging.Logger
@@ -26,21 +27,23 @@ case class CodeMirrorEditor(
     underlyingVar: Var[String],
     language: ProgrammingLanguage,
     config: Var[CodeMirrorEditorConfig],
+    loadingLabel: Signal[String],
     diagnostics: Signal[Seq[CodeMirrorEditor.Diagnostic]] = Val(Nil),
     createEditor: EditorConfig => scala.concurrent.Future[CodeMirrorHandle] = settings => CodeMirror.editor(settings).createInstance(),
-    loadingLabel: Signal[String] = Val("Loading editor…"),
     firstLineNumber: Signal[Int] = Val(1),
     /** Equivalent documents leave the user's text, including formatting the state cannot represent, untouched. */
-    sameSource: (String, String) => Boolean = _ == _
+    sameSource: (String, String) => Boolean = _ == _,
+    /** The flowchart gutter of each language, shown when the configuration enables it. */
+    flowchartSource: ProgrammingLanguage => Option[CodeMirrorFlowchartSource] = CodeMirrorFlowchartSource.forLanguage
 ) extends SimpleWebEditor[String, CodeMirrorEditorConfig] {
   import CodeMirrorEditor.*
 
   private val handle = Var(Option.empty[CodeMirrorHandle])
   private val loadFailed = Var(false)
+  private val flowchart = flowchartSource(language)
+
   /** Typed text not yet in `underlyingVar`: the answer (history, sync, grading) follows after a typing pause,
-    * on blur, when the page is hidden or on unmount, so these reactions never delay a keystroke. An answer
-    * change that replaces the document also drops it, so a restoration, synchronization or conversion is
-    * never overwritten.
+    * on blur or on unmount, so these reactions never delay a keystroke.
     */
   private val unwrittenText = Var(Option.empty[String])
 
@@ -51,13 +54,11 @@ case class CodeMirrorEditor(
 
   override def getDomElement(): L.Element = div(
     cls := "code-mirror-editor-host",
-    // blur does not bubble, so it is captured from CodeMirror's content: clicking a button or tab writes the typed text first.
     onBlur.useCapture --> (_ => writeTypedText()),
-    // A hidden page may be closed before the typing pause ends (see RemoteInteractionCacheControl).
     documentEvents(_.onVisibilityChange).filter(_ => dom.document.hidden) --> (_ => writeTypedText()),
     child <-- config.signal.map(_.showFlowchartGutter).distinct.map { showFlowchart =>
       div(
-        cls := ("code-editor code-mirror-editor" + (if showFlowchart && language == Python then " code-mirror-editor-flowchart" else "")),
+        cls := ("code-editor code-mirror-editor" + (if showFlowchart && flowchart.nonEmpty then " code-mirror-editor-flowchart" else "")),
         styleAttr <-- config.signal.map(_.editorFont).map(font =>
           s"--code-font-family: '${font.name}', 'Fira Code', 'JetBrains Mono', monospace; --code-font-size: ${font.sizeInPx}px;"),
         p(cls := "code-mirror-editor__loading", role := "status",
@@ -72,24 +73,21 @@ case class CodeMirrorEditor(
           val lineNumbers = firstLineNumber.map(value => math.max(1, value)).distinct.observe(using ctx.owner)
           CodeMirror.inBackground(()).foreach { _ =>
             if !lifetime.isKilled && ctx.thisNode.ref.isConnected then {
-              val analysis = Option.when(showFlowchart && language == Python)(
-                new CodeMirrorFlowchartGutter.Analysis(new CodeMirrorFlowchartGutter.Cache))
+              val analysis = flowchart.filter(_ => showFlowchart)
               // The callback is required by the native CodeMirror API; Scala consumers observe the Var.
               val created = createEditor(EditorConfig(ctx.thisNode.ref, underlyingVar.now(),
-                value => if !lifetime.isKilled then unwrittenText.set(Some(value)),
-                languageToJs(language), analysis.map(current => source => current.chartForDoc(source).map(CodeMirrorFlowchartGutter.render)),
+                value => if !lifetime.isKilled then
+                  unwrittenText.set(Some(value)),
+                languageToJs(language), analysis.map(current => source => current.chart(source).map(CodeMirrorFlowchartGutter.render)),
                 firstLineNumber = lineNumbers.now()))
               created.foreach { native =>
-                if lifetime.isKilled || !ctx.thisNode.ref.isConnected then {
-                  native.destroy()
-                  analysis.foreach(_.close())
-                } else {
+                if lifetime.isKilled || !ctx.thisNode.ref.isConnected then native.destroy()
+                else {
                   unwrittenText.signal.changes.collect { case Some(_) => () }.debounce(typingWriteDelayMillis)
                     .foreach(_ => writeTypedText())(using ctx.owner)
                   new Subscription(ctx.owner, () => {
                     writeTypedText()
                     native.destroy()
-                    analysis.foreach(_.close())
                     handle.update(_.filterNot(_ == native))
                   })
                   handle.set(Some(native))
@@ -101,10 +99,7 @@ case class CodeMirrorEditor(
                   lineNumbers.foreach(native.setFirstLineNumber)(using ctx.owner)
                 }
               }
-              created.failed.foreach { _ =>
-                analysis.foreach(_.close())
-                if !lifetime.isKilled then loadFailed.set(true)
-              }
+              created.failed.foreach(_ => if !lifetime.isKilled then loadFailed.set(true))
             }
           }
         }
@@ -113,36 +108,20 @@ case class CodeMirrorEditor(
   )
 }
 object CodeMirrorEditor {
-  /** Typing pause after which the typed text becomes the bound answer. */
   val typingWriteDelayMillis: Int = 400
 
   def languageToJs(language: ProgrammingLanguage): String = language.asJsLanguage.getOrElse("python")
 
-  def apply(logger: Logger, state: Var[String], language: ProgrammingLanguage): CodeMirrorEditor =
-    CodeMirrorEditor(logger, state, language, Var(CodeMirrorEditorConfig.Default))
+  def apply(logger: Logger, state: Var[String], language: ProgrammingLanguage, loadingLabel: Signal[String]): CodeMirrorEditor =
+    CodeMirrorEditor(logger, state, language, Var(CodeMirrorEditorConfig.Default), loadingLabel)
 
-  def pythonEditorForEva(logger: Logger, config: CodeMirrorEditorConfig, tabLabel: String = "Python"): EvaEditorTab = new EvaEditorTab {
-    override val language = Python
-    override val label = tabLabel
-    override def create(state: Var[ProgrammingState], appearance: it.evadid.homepage.webElements.editor.code.EditorAppearance,
-        marker: Signal[Option[ProgrammingConversionError]], loading: Signal[String]): it.evadid.homepage.webElements.HtmlAppElement = {
-      val text = state.bimap {
-        case ProgrammingStateRaw(Python, code) => code
-        case value: ProgrammingStatePythonStructured => value.toString
-        case _ => ""
-      }(ProgrammingStatePythonStructured(_))
-      // The structured state orders classes first and completes empty blocks; typed text it represents stays as typed.
-      CodeMirrorEditor(logger, text, Python, Var(config), diagnostics = CodeMirrorEditor.marks(marker), loadingLabel = loading,
-        sameSource = (left, right) => left == right || ProgrammingStatePythonStructured(left) == ProgrammingStatePythonStructured(right))
-    }
-  }
+  /** A located warning of the program analysis, with `message` as its explanation. */
+  def mark(warning: it.evadid.vm.analysis.SourceWarning, message: String): Diagnostic =
+    Diagnostic(warning.startLine, Some(warning.endLine), Some(warning.startColumn - 1), Some(warning.endColumn - 1), message, "warning")
 
-  def marks(marker: Signal[Option[ProgrammingConversionError]]): Signal[Seq[Diagnostic]] = marker.map {
-    case Some(error) =>
-      error.line.toSeq.map(line => Diagnostic(line, fromCh = error.column.map(_ - 1),
-        toCh = error.column, message = "", severity = "error"))
-    case None => Nil
-  }
+  /** The error's line and column (if known), with `message` as its explanation. */
+  def mark(error: ProgrammingConversionError, message: String): Seq[Diagnostic] =
+    error.line.toSeq.map(line => Diagnostic(line, fromCh = error.column.map(_ - 1), toCh = error.column, message = message, severity = "error"))
 
   final case class Diagnostic(
                                line: Int,

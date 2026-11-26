@@ -10,6 +10,58 @@ import munit.FunSuite
 class BeProgramInterpreterSpec extends FunSuite {
   private def java(body: String) = ProgrammingStateJavaStructured(s"public class Main {\n$body\n}")
 
+  test("println preserves empty lines and escaped newlines through Python and never becomes a turtle command") {
+    val program = java("""static void main(String[] args) {
+      | System.out.println("first\nsecond");
+      | System.out.println();
+      | System.out.println("last");
+      | Turtle.forward(20);
+      |}""".stripMargin)
+    val execution = program.toBeExpression.programExecution
+    assert(execution.completed, execution.status.toString)
+    assertEquals(execution.stdout, "first\nsecond\n\nlast\n")
+    assertEquals(execution.moduleCommands(BeModules.Turtle).size, 1)
+    val python = program.toPython
+    assert(python.code.contains("print("), python.code)
+    val converted = python.toBeExpression.programExecution
+    assertEquals(converted.stdout, execution.stdout)
+    assertEquals(converted.moduleCommands(BeModules.Turtle), execution.moduleCommands(BeModules.Turtle))
+  }
+
+  test("system functions bind to a static module and preserve stdout/stderr separately") {
+    val source = java("""static void main(String[] args) {
+      | System.out.println("out");
+      | System.err.println("error");
+      | System.err.println();
+      |}""".stripMargin)
+    val expression = source.toBeExpression
+    val calls = expression.expression.moduleCalls(BeModules.System)
+    assertEquals(calls.map(_.funcDef.functionTypeInfo.displayName.universalInterpretation()).toList,
+      List("printToOut", "printToErr", "printToErr"))
+    assert(calls.forall(_.target.isInstanceOf[it.evadid.vm.code.usage.BeCallTarget.StaticMethod]))
+    assertEquals(expression.programExecution.stdout, "out\n")
+    assertEquals(expression.programExecution.stderr, "error\n\n")
+    assertEquals(expression.turtleCommandExecutionInfo.completedCommands, Nil)
+    val python = source.toPython.code
+    assert(python.startsWith("import sys\n"), python)
+    assert(python.contains("print(\"error\", file=sys.stderr)") && python.contains("print(file=sys.stderr)"), python)
+    val back = source.toPython.toBeExpression.programExecution
+    assertEquals(back.stdout, expression.programExecution.stdout)
+    assertEquals(back.stderr, expression.programExecution.stderr)
+  }
+
+  test("Python keyword arguments: print(..., file=sys.stderr) is the error stream, other keywords stay placeholders") {
+    val written = ProgrammingStateRaw(Python, "import sys\nprint(\"a\", 1, file=sys.stderr)\nprint(\"b\")\nprint(\"c\", end=\"\")\n")
+    val expression = written.toBeExpression
+    assertEquals(expression.programExecution.stderr, "a 1\n")
+    assertEquals(expression.programExecution.stdout, "b\n")
+    val unsupported = expression.expression.subtree.collect { case value: it.evadid.vm.code.errors.BeExpressionUnsupported => value }
+    assertEquals(unsupported.size, 1, expression.expression.toString)
+    val java = ProgrammingStateRaw(Python, "import sys\nprint(\"a\", file=sys.stderr)\n").toJava.code
+    assert(java.contains("System.err.println(\"a\");"), java)
+    intercept[IllegalArgumentException](written.toJava)
+  }
+
   private val swap = java(
     """    static void tausche(int i, int j) {
       |        int merke = NumberList.get(i);

@@ -14,7 +14,9 @@ sbt 'coreJVM/test' 'coreJS/test' 'client/test' 'server/test' 'worker/test'
 
 Missing codecs and stale entries in
 [serialization-exceptions.json](serialization-exceptions.json) fail the inventory
-check. The scanner is a source inventory, not proof that a codec preserves runtime
+check, which `npm run test:static` runs (`serialization-audit.test.mjs`). uPickle
+resolves codecs at compile time, so an exception documents intent; it cannot hide a
+codec that serialization needs. The scanner is a source inventory, not proof that a codec preserves runtime
 behavior or that all branches are tested. Round-trip and behavioral tests supply
 that evidence. See [state and serialization](state-and-serialization.md) for
 current authoring patterns.

@@ -35,8 +35,8 @@ private[evadid] trait CodeMirrorSuite extends it.evadid.util.JsDomSuite {
 }
 
 private[evadid] object CodeMirrorSuite {
-  val packages: List[String] = List("@codemirror/state", "@codemirror/view", "@codemirror/commands", "@codemirror/language",
-    "@codemirror/search", "@codemirror/autocomplete", "@codemirror/lang-python", "@codemirror/lang-sql", "@codemirror/lang-cpp",
+  val packages: List[String] = List("@codemirror/autocomplete", "@codemirror/state", "@codemirror/view", "@codemirror/commands", "@codemirror/language",
+    "@codemirror/search", "@codemirror/lang-python", "@codemirror/lang-sql", "@codemirror/lang-cpp",
     "@codemirror/lang-java", "@codemirror/theme-one-dark", "@replit/codemirror-indentation-markers")
   private val require = js.Dynamic.global.selectDynamic("require")
   private val cache = com.raquo.airstream.state.Var(Option.empty[js.Dynamic])

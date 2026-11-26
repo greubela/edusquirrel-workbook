@@ -156,7 +156,6 @@
   100% { background-position: 0% 50%; }
 }
 
-
 /* neon border pulse on hover */
 .feedback-studio-card a:hover .feedback-studio-preview {
   box-shadow:
@@ -164,7 +163,6 @@
     0 0 32px rgba(122,215,255,0.25),
     0 0 60px rgba(155,100,255,0.15);
 }
-
 
 .fsc-frag {
   position: absolute;

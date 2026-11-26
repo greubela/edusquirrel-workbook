@@ -59,7 +59,7 @@ private[evadid] object CodeMirrorRuntime {
   }
 
   /** A closing brace typed on a blank line moves to the indentation of the line opening its block. */
-  private val closingBraceIndentation: Extension = Libraries.EditorView.inputHandler.of((view: View, from: Int, to: Int, text: String) =>
+  private lazy val closingBraceIndentation: Extension = Libraries.EditorView.inputHandler.of((view: View, from: Int, to: Int, text: String) =>
     text == "}" && from == to && view.state.doc.sliceString(from, math.min(from + 1, view.state.doc.length)) != "}" && {
       val lineStart = view.state.doc.lineAt(from).from
       CodeIndentation.closingBrace(view.state.doc.sliceString(0, from), indent).exists { indentation =>
@@ -130,7 +130,7 @@ private[evadid] object CodeMirrorRuntime {
     private def prepare(source: String): String = if isJava then source else source.replace("\t", indent)
     private def text(source: String): js.Any = if isJava then CodeMirrorJavaLineEndings.text(source) else prepare(source)
     private val flowchart: Extension =
-      if language == "python" && config.flowchart.nonEmpty then
+      if config.flowchart.nonEmpty then
         CodeMirrorFlowchartRendering.extension(config.flowchart.get)
       else js.Array[Extension]()
 

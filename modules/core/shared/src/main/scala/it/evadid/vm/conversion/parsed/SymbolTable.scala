@@ -6,7 +6,9 @@ import it.evadid.core.datastructures.language.*
 import it.evadid.core.datastructures.language.AppLanguage.*
 import it.evadid.vm.code.abstractions.BeExpression
 import it.evadid.vm.code.controlStructures.BeSequence
-import it.evadid.vm.code.defining.{BeDefineClass, BeDefineFunction, BeDefineVariable}
+import it.evadid.vm.code.defining.{BeDefineClass, BeDefineFunction, BeDefineVariable, BeIntrinsic}
+import it.evadid.vm.conversion.dependencies.ProgrammingEnvironment
+import it.evadid.vm.parsing.source.{SourceIdentity, SourceSpan}
 import it.evadid.vm.naming.{BeEntityName, KnownBeEntityNames}
 import it.evadid.core.datastructures.vectorShapes.svg.TurtleCommand
 import it.evadid.vm.types.{AssigningNotPossible, AssigningPossibleWithImplicitCast, AssigningPossibleWithSameType, BeDataType}
@@ -91,6 +93,8 @@ object SymbolTable {
     * @param definedFunctions      every registered function and operator, in order
     * @param definedClasses        every class, replaced in place when it is registered again
     * @param currentClass          the class whose method body is read, for `self`/`this`
+    * @param environment           the libraries calls may bind to; any other library call binds like undefined code
+    * @param sources               where built definitions and placeholders came from in the source
     */
   final case class ParseContext(
       structures: CurrentlyKnownStructures,
@@ -100,11 +104,17 @@ object SymbolTable {
       definedVariables: List[BeDefineVariable],
       definedFunctions: List[BeDefineFunction],
       definedClasses: List[BeDefineClass],
-      currentClass: Option[BeDefineClass]) {
+      currentClass: Option[BeDefineClass],
+      environment: ProgrammingEnvironment,
+      sources: ParsedSources) {
 
-    /** A fresh context on what this one knows so far, with the same declared names, e.g. for a class or method body. */
+    /** A fresh context on what this one knows so far, with the same declared names, environment and recorded
+      * sources, e.g. for a class or method body.
+      */
     def child(currentClass: Option[BeDefineClass] = None): ParseContext =
-      ParseContext.initial(structures, declaredCallableNames, currentClass)
+      ParseContext.initial(structures, environment, declaredCallableNames, currentClass, sources)
+
+    def withSources(update: ParsedSources => ParsedSources): ParseContext = copy(sources = update(sources))
 
     // Variables
 
@@ -163,25 +173,38 @@ object SymbolTable {
       * method, a known name such as `print`, or else an unknown function with `arity` untyped parameters.
       * A callable parameter/local shadows a cached builtin or turtle alias in this scope and is not cached.
       */
-    def resolveFunction(name: String, arity: Int): (BeDefineFunction, ParseContext) =
-      if lookupVariable(name.takeWhile(_ != '.')).nonEmpty then (newFunction(name, arity), this)
-      else functionsByName.get(name).map(_ -> this).getOrElse {
-        val function = newFunction(name, arity)
-        (function, copy(functionsByName = functionsByName.updated(name, function)))
+    def resolveFunction(name: String, arity: Int): (BeDefineFunction, ParseContext) = {
+      val (resolved, next) =
+        if lookupVariable(name.takeWhile(_ != '.')).nonEmpty then (newFunction(name, arity), this)
+        else functionsByName.get(name).map(_ -> this).getOrElse {
+          val function = newFunction(name, arity)
+          (function, copy(functionsByName = functionsByName.updated(name, function)))
+        }
+      // print/println accepts zero or several arguments; one call must not fix later calls' arity.
+      resolved.intrinsic match {
+        case Some(value @ (BeIntrinsic.Print | BeIntrinsic.PrintErr)) => (it.evadid.vm.modules.SystemFunctionality.function(value, arity), next)
+        case _ => (resolved, next)
       }
+    }
 
     private def newFunction(name: String, arity: Int): BeDefineFunction = {
       val sourceBinding = hasSourceBinding(name)
-      val libraryMethod = if sourceBinding then None
-        else TurtleCommand.resolveTurtleMethod(name).orElse(it.evadid.vm.simulation.data.DataLibraries.resolveMethod(name))
-      libraryMethod.map { method =>
+      def libraryMethod(written: String) =
+        TurtleCommand.resolveTurtleMethod(written).orElse(it.evadid.vm.simulation.data.DataLibraries.resolveMethod(written))
+      (if sourceBinding then None else libraryMethod(name).filter(environment.provides)).map { method =>
         // Preserve the class signature while binding only the arguments supplied by this call.
         if arity < method.inputs.size then method.copy(inputs = method.inputs.take(arity)) else method
       }.getOrElse {
-        val canonical = if sourceBinding then None else KnownBeEntityNames.resolveCanonicalNames(name)
+        def intrinsicOf(canonical: BeEntityName) =
+          if canonical == KnownBeEntityNames.resolveSystemMethods("print").get then Some(BeIntrinsic.Print)
+          else if canonical == KnownBeEntityNames.resolveSystemMethods("print_to_err").get then Some(BeIntrinsic.PrintErr)
+          else None
+        // A canonical name of a library the environment does not provide stays the written, undefined name.
+        val canonical = (if sourceBinding then None else KnownBeEntityNames.resolveCanonicalNames(name))
+          .filter(canonical => intrinsicOf(canonical).forall(environment.provides) &&
+            libraryMethod(canonical.universalInterpretation()).forall(environment.provides))
         BeDefineFunction(positionalParameters(0, arity), None, BeSequence.optionalBody(Nil),
-          BeDefineFunction.functionInfo(canonical.getOrElse(BeEntityName.fromUniversalNameInParts(name))),
-          Option.when(canonical.contains(KnownBeEntityNames.resolveSystemMethods("print").get))(it.evadid.vm.code.defining.BeIntrinsic.Print))
+          BeDefineFunction.functionInfo(canonical.getOrElse(BeEntityName.fromUniversalNameInParts(name))), canonical.flatMap(intrinsicOf))
       }
     }
 
@@ -259,8 +282,8 @@ object SymbolTable {
 
   object ParseContext {
     /** A context that knows `known`; known operators also answer calls by their symbol. */
-    def initial(known: CurrentlyKnownStructures, declaredNames: Set[String] = Set.empty,
-        currentClass: Option[BeDefineClass] = None): ParseContext = {
+    def initial(known: CurrentlyKnownStructures, environment: ProgrammingEnvironment, declaredNames: Set[String] = Set.empty,
+        currentClass: Option[BeDefineClass] = None, sources: ParsedSources = ParsedSources.empty): ParseContext = {
       val operators = known.operators.toList.flatMap { case ((symbol, _), functions) => functions.map(symbol -> _) }
       val functions = operators.map(_._2) ++ known.functions.values
       ParseContext(
@@ -273,7 +296,21 @@ object SymbolTable {
         definedFunctions = functions.foldLeft(List.empty[BeDefineFunction])((defined, function) =>
           if defined.exists(_ eq function) then defined else defined :+ function),
         definedClasses = known.classes.values.toList,
-        currentClass = currentClass)
+        currentClass = currentClass,
+        environment = environment,
+        sources = sources)
     }
+  }
+
+  /** Where built definitions and placeholders came from: functions by the span of their declaration, and
+    * placeholders (unsupported or unreadable code) by identity, for located diagnostics.
+    */
+  final case class ParsedSources(functions: Map[SourceSpan, BeDefineFunction], origins: Map[SourceIdentity[BeExpression], SourceSpan]) {
+    def function(origin: SourceSpan, function: BeDefineFunction): ParsedSources = copy(functions = functions.updated(origin, function))
+    def origin(value: BeExpression, origin: SourceSpan): ParsedSources = copy(origins = origins.updated(SourceIdentity(value), origin))
+  }
+
+  object ParsedSources {
+    val empty: ParsedSources = ParsedSources(Map.empty, Map.empty)
   }
 }

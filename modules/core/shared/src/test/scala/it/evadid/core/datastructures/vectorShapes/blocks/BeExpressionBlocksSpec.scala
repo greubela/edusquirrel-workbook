@@ -1,11 +1,13 @@
 package it.evadid.core.datastructures.vectorShapes.blocks
 
+import it.evadid.vm.parsing.source.SourceParsing
+import it.evadid.vm.parsing.source.SourceParsing.SourceLanguage
+
 import it.evadid.core.datastructures.geometry.Point
 import it.evadid.core.datastructures.vectorShapes.FlowchartTestPlatform
 import it.evadid.core.datastructures.vectorShapes.abstractions.AppShapeElement.AppElementRendered
 import it.evadid.core.datastructures.vectorShapes.atomar.AppShapeDrawingRoutineElement
 import it.evadid.vm.BeProgram
-import it.evadid.vm.conversion.pythonexpression.PythonToExpression
 import it.evadid.vm.editing.{BeBlockLibrary, BeNodePath, BeProgramEditing}
 import munit.FunSuite
 
@@ -13,8 +15,7 @@ class BeExpressionBlocksSpec extends FunSuite {
   override def beforeAll(): Unit = FlowchartTestPlatform.setup()
   override def afterAll(): Unit = FlowchartTestPlatform.cleanup()
 
-  private val program = PythonToExpression.program(
-    """import turtle
+  private val program = SourceParsing.parse("""import turtle
       |# draw
       |x = 3
       |for _ in range(4):
@@ -26,7 +27,7 @@ class BeExpressionBlocksSpec extends FunSuite {
       |    penup()
       |else:
       |    pendown()
-      |""".stripMargin)
+      |""".stripMargin, SourceLanguage.Python).parsed().program
 
   private def leaves(node: AppElementRendered[Double]): List[AppElementRendered[Double]] =
     if node.children.isEmpty then List(node) else node.children.flatMap(leaves)

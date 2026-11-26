@@ -1,6 +1,7 @@
 package it.evadid.homepage.workbook.htmlRenderer.interactionRenderer.steps
 
 import com.raquo.laminar.api.L.*
+import it.evadid.homepage.webElements.basic.LabelSelection
 import it.evadid.homepage.webElements.HtmlAppElement
 import it.evadid.vm.simulation.{ProgramEntry, ProgramExecution}
 import it.evadid.vm.simulation.data.{DataWorld, ListCommand}
@@ -51,8 +52,8 @@ final class SortStepPanel(state: Var[ProgrammingState], sortFunction: String, ex
       })
   }
 
-  private def caption(replay: SortStepPanel.Replay, step: Int): Signal[String] =
-    if step == 0 then text("sortStepStart")
+  private def caption(replay: SortStepPanel.Replay, step: Int): (String, Seq[(String, String)]) =
+    if step == 0 then "sortStepStart" -> Nil
     else {
       val (key, values) = replay.steps(step - 1) match {
         case ListCommand.Get(index, value) => ("sortStepGet", Map("index" -> index, "value" -> value))
@@ -60,13 +61,14 @@ final class SortStepPanel(state: Var[ProgrammingState], sortFunction: String, ex
         case ListCommand.Swap(first, second) => ("sortStepSwap", Map("first" -> first, "second" -> second))
         case ListCommand.Length(length) => ("sortStepLength", Map("length" -> length))
       }
-      text(key).map(template => values.foldLeft(template) { case (current, (name, value)) => current.replace(s"{$name}", value.toString) })
+      key -> values.toSeq.map((name, value) => name -> value.toString)
     }
 
   override def getDomElement(): Element = div(cls := "step-panel sort-step-panel",
     child <-- replay.combineWith(navigator.step).map(bars),
     navigator.element,
-    p(cls := "step-panel__caption", aria.live := "polite", child.text <-- replay.combineWith(navigator.step).flatMapSwitch(caption)),
+    p(cls := "step-panel__caption", aria.live := "polite", child.text <-- LabelSelection.formatted(replay.combineWith(navigator.step),
+      Seq("sortStepStart", "sortStepGet", "sortStepSet", "sortStepSwap", "sortStepLength"), text)((replay, step) => Some(caption(replay, step)))),
     div(cls := "step-panel__footer",
       label(cls := "step-panel__toggle",
         input(typ := "checkbox", checked <-- showReads.signal, onChange.mapToChecked --> showReads.writer),

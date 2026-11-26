@@ -56,15 +56,13 @@ object MailBody {
               if (style.contains("text-align: center") || style.contains("text-align:center")) clean.classList.add("mail-body--center")
               if (style.contains("font-size:10pt") || style.contains("font-size: 10pt")) clean.classList.add("mail-body--small")
               if (style.contains("background")) clean.classList.add("mail-body--panel")
-              var i = 0
-              while (i < source.childNodes.length) { append(source.childNodes(i), clean); i += 1 }
+              (0 until source.childNodes.length).foreach(index => append(source.childNodes(index), clean))
               target.appendChild(clean)
             }
           }
         }
         val inert = fragment(mail.body)
-        var i = 0
-        while (i < inert.childNodes.length) { append(inert.childNodes(i), ctx.thisNode.ref); i += 1 }
+        (0 until inert.childNodes.length).foreach(index => append(inert.childNodes(index), ctx.thisNode.ref))
       }
     }
   )

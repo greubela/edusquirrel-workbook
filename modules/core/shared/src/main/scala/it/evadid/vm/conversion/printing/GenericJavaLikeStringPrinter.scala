@@ -166,6 +166,7 @@ abstract class GenericJavaLikeStringPrinter(
   }
 
   def forDefinition(ds: BeDefineStructure): String = ds.match {
+    case dependency: it.evadid.vm.code.defining.BeDependency => dependency.definition(progLang).getOrElse("")
     case BeDefineClass(name, attributes, methods) => {
       CodeStringBuilderMutable()
         .appendNextLine(defineClassLine(className(name)))

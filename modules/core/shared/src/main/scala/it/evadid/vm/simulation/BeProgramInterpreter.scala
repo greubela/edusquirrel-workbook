@@ -36,6 +36,8 @@ final case class ProgramExecution(
     world: DataWorld,
     returnValue: Option[Double],
     status: TurtleExecutionStatus) derives ReadWriter {
+  def stdout: String = moduleCommands(BeModules.System).collect { case it.evadid.vm.modules.SystemCommand.PrintToOut(text) => text }.mkString
+  def stderr: String = moduleCommands(BeModules.System).collect { case it.evadid.vm.modules.SystemCommand.PrintToErr(text) => text }.mkString
   def completed: Boolean = status == TurtleExecutionStatus.Completed
 
   /** The calls of `module`'s functions in program order, typed as that module's commands. */
@@ -233,15 +235,22 @@ object BeProgramInterpreter {
 
   private def interpretCall(unresolved: BeFunctionCall, before: State, limits: TurtleExecutionLimits, isCancelled: () => Boolean): State = {
     val library = isDataModule(unresolved.funcDef)
-    if !unresolved.target.isInstanceOf[BeCallTarget.Function] && !TurtleCommand.isTurtleMethod(unresolved.funcDef) && !library then
+    if !unresolved.target.isInstanceOf[BeCallTarget.Function] && !TurtleCommand.isTurtleMethod(unresolved.funcDef) && !library && !it.evadid.vm.modules.BeModules.System.owns(unresolved.funcDef) then
       unsupportedObjectExecution()
     else if unresolved.isOperator then before
     else {
       val (call, state) = resolveArguments(unresolved, before, limits, isCancelled)
-      if library then dataOperation(call.funcDef, call.arguments.map(evalNumber(_, state)), state, limits)._2
+      if BeModules.System.owns(call.funcDef) then {
+        val message = call.arguments.map(argument => text(eval(argument, state))).mkString(" ") + "\n"
+        val command = if call.funcDef.intrinsic.contains(BeIntrinsic.PrintErr) then it.evadid.vm.modules.SystemCommand.PrintToErr(message)
+          else it.evadid.vm.modules.SystemCommand.PrintToOut(message)
+        state.copy(recorded = state.recorded :+ ModuleCommand.System(command))
+      }
+      else if library then dataOperation(call.funcDef, call.arguments.map(evalNumber(_, state)), state, limits)._2
       else userDefinition(call, state) match {
         case Some(definition) => invoke(definition, call.arguments.map(eval(_, state)), state, limits, isCancelled)._2
-        case None => turtleCommand(call, state, limits)
+        case None if TurtleCommand.isTurtleMethod(call.funcDef) => turtleCommand(call, state, limits)
+        case None => throw IllegalArgumentException(s"Unsupported function: ${call.funcDef.functionTypeInfo.displayName.universalInterpretation()}")
       }
     }
   }
@@ -345,7 +354,9 @@ object BeProgramInterpreter {
   private def stringArg(expression: BeExpression): Option[String] =
     expression match
       case BeUseValue(BeDataValueLiteral(value), _) if numericLiteral(value).isEmpty =>
-        Some(Serializer.stringLiteralIO(parseEverything = true).deserialize(value))
+        Some(if value.trim.startsWith("\"") then scala.util.Try(ujson.read(value).str)
+          .getOrElse(Serializer.stringLiteralIO(parseEverything = true).deserialize(value))
+        else Serializer.stringLiteralIO(parseEverything = true).deserialize(value))
       case _ => None
 
   private def numericLiteral(value: String): Option[Double] =
@@ -367,6 +378,8 @@ object BeProgramInterpreter {
         Value.Text(call.arguments.headOption.map(argument => text(eval(argument, state))).getOrElse(""))
       case call: BeFunctionCall if call.funcDef.intrinsic.contains(BeIntrinsic.ToBoolean) =>
         Value.Num(if call.arguments.headOption.exists(evalBool(_, state)) then 1.0 else 0.0)
+      case call: BeFunctionCall if call.funcDef.intrinsic.contains(BeIntrinsic.Random) =>
+        throw IllegalArgumentException("A random number cannot be computed in advance.")
       case call: BeFunctionCall if call.funcDef.intrinsic.exists(numericIntrinsics) =>
         val values = call.arguments.map(evalNumber(_, state))
         val value = values.headOption.getOrElse(0.0)
@@ -375,6 +388,7 @@ object BeProgramInterpreter {
           case BeIntrinsic.Absolute => math.abs(value)
           case BeIntrinsic.Maximum => values.max
           case BeIntrinsic.Minimum => values.min
+          case BeIntrinsic.SquareRoot => math.sqrt(value)
           case _ => value)
       case _ => Value.Num(0.0)
 
@@ -391,7 +405,7 @@ object BeProgramInterpreter {
 
   /** Built-ins whose numeric result the interpreter computes; `int` truncates towards zero. */
   private val numericIntrinsics: Set[BeIntrinsic] =
-    Set(BeIntrinsic.ToInteger, BeIntrinsic.ToNumber, BeIntrinsic.Absolute, BeIntrinsic.Maximum, BeIntrinsic.Minimum)
+    Set(BeIntrinsic.ToInteger, BeIntrinsic.ToNumber, BeIntrinsic.Absolute, BeIntrinsic.Maximum, BeIntrinsic.Minimum, BeIntrinsic.SquareRoot)
 
   private def evalOperator(call: BeFunctionCall, state: State): Value = {
     val op = SnapControlFlow.operatorSymbol(call)

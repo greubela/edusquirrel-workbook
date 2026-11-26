@@ -1,5 +1,7 @@
 package it.evadid.vm.conversion.parsed
 
+import it.evadid.vm.parsing.source.SourceSpan
+
 /** Language-neutral source structure produced by the fastparse front ends.
   *
   * Python ([[it.evadid.vm.parsing.python.clean.PythonAstParserSimple]]) and Java
@@ -37,7 +39,7 @@ object ParsedStatement {
       assigned: Option[(ParsedExpression, Seq[ParsedParameter])] = None)
 
   final case class FunctionDef(name: String, parameters: Seq[ParsedParameter], returnType: Option[ParsedType],
-      body: Seq[ParsedStatement], kind: ParsedFunctionKind) extends ParsedStatement
+      body: Seq[ParsedStatement], kind: ParsedFunctionKind, origin: Option[SourceSpan] = None) extends ParsedStatement
 
   /** Python `global a, b`: the enclosing function assigns these module variables. */
   final case class Global(names: Seq[String]) extends ParsedStatement
@@ -108,7 +110,7 @@ object ParsedStatement {
   case object Pass extends ParsedStatement
 
   /** Recognised syntax the shared tree cannot represent (`unparsable = false`) or broken syntax. */
-  final case class Unsupported(source: String, reason: String, unparsable: Boolean) extends ParsedStatement
+  final case class Unsupported(source: String, reason: String, unparsable: Boolean, origin: Option[SourceSpan] = None) extends ParsedStatement
 }
 
 sealed trait ParsedExpression
@@ -140,7 +142,7 @@ object ParsedExpression {
   /** Explicit construction, Java `new Walker(…)`; Python constructs by calling the class. */
   final case class Construct(className: String, arguments: Seq[ParsedExpression]) extends ParsedExpression
 
-  final case class Unsupported(source: String) extends ParsedExpression
+  final case class Unsupported(source: String, origin: Option[SourceSpan] = None) extends ParsedExpression
 
   /** The value of a whole-number literal, possibly negated. */
   def wholeNumber(expression: ParsedExpression): Option[Int] = expression match {

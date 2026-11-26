@@ -1,12 +1,15 @@
 package it.evadid.vm.parsing.python.clean
 
+import it.evadid.vm.parsing.source.SourceParsing
+import it.evadid.vm.parsing.source.SourceParsing.SourceLanguage
+
 import it.evadid.vm.parsing.python.clean.model.PyAST.*
 import munit.FunSuite
 
 class TestSimplePythonParser extends FunSuite {
 
   private def parseOne(code: String): PyStatement = {
-    val parsed = PythonAstParserSimple.parse(code)
+    val parsed = SourceParsing.parse(code, SourceLanguage.Python).syntax.map(_.program)
     assert(parsed.isRight, parsed.left.getOrElse("parser returned Left"))
     val statements = parsed.toOption.get.statements.map(_.statement).filterNot(_ == PyEmptyStatement)
     assertEquals(statements.size, 1)

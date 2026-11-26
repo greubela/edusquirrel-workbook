@@ -1,17 +1,19 @@
 package it.evadid.vm.code.errors
 
+import it.evadid.vm.parsing.source.SourceParsing
+import it.evadid.vm.parsing.source.SourceParsing.SourceLanguage
+
 import it.evadid.core.datastructures.language.AppLanguage.{Java, Python, SnapLanguage}
 
 import munit.FunSuite
 import it.evadid.core.datastructures.language.AppLanguage.Cpp
-import it.evadid.vm.parsing.java.clean.JavaParser
 import it.evadid.workbook.elements.interactionElements.programming.state.{ProgrammingStateRaw}
 
 class ProgrammingConversionErrorSpec extends FunSuite {
   test("parser failures and java diagnostics report a 1-based position") {
     assertEquals(ProgrammingConversionLocation.lineColumn("a\nbc", 2), (2, 1))
     assertEquals(ProgrammingConversionLocation.inTrimmed("\nclass X", "class X", 0), (2, 1))
-    val java = JavaParser.parse("}").left.getOrElse(fail("expected a java parse failure")).asInstanceOf[ProgrammingConversionException]
+    val java = SourceParsing.parse("}", SourceLanguage.Java).parsed().swap.getOrElse(fail("expected a java parse failure"))
     assertEquals(java.error.kind, ProgrammingConversionKind.Unparsable)
     assertEquals(java.error.line, Some(1))
     assert(java.error.column.exists(_ >= 1))

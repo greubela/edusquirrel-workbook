@@ -1,6 +1,6 @@
 package it.evadid.vm.conversion.dependencies
 
-import it.evadid.vm.conversion.structured.SourceStructure.indent
+import it.evadid.vm.parsing.source.SourceText.indent
 import it.evadid.core.datastructures.language.AppLanguage.English
 import it.evadid.core.datastructures.vectorShapes.svg.TurtleCommand
 import it.evadid.vm.code.defining.BeDefineFunction

@@ -1,6 +1,7 @@
 package it.evadid.homepage.workbook.htmlRenderer.interactionRenderer.pixel
 
 import com.raquo.laminar.api.L.*
+import it.evadid.homepage.webElements.basic.LabelSelection
 import com.raquo.laminar.codecs.StringAsIsCodec
 import com.raquo.laminar.keys.HtmlAttr
 import it.evadid.core.datastructures.state.StateHelper.StateBasedVar
@@ -47,10 +48,10 @@ case object BinaryPixelRenderer extends LineBasedRenderingFactory[BinaryPixelInt
               .replace("{output}", if output then "1" else "0")
           }))),
       p(cls := "pixel-feedback", role := "status", aria.live := "polite",
-        text <-- state.signal.flatMapSwitch(image => e.matchingPixels(image) match {
-          case Some(count) => textFor("pixelProgress").map(_.replace("{count}", count.toString).replace("{total}", image.pixels.size.toString))
-          case None => textFor("pixelUngraded")
-        }))
+        text <-- LabelSelection.formatted(state.signal, Seq("pixelProgress", "pixelUngraded"), textFor)(image => Some(e.matchingPixels(image) match {
+          case Some(count) => "pixelProgress" -> Seq("count" -> count.toString, "total" -> image.pixels.size.toString)
+          case None => "pixelUngraded" -> Nil
+        })))
     )
     AtomarLineRendering.basicLine(e, dom)
   }

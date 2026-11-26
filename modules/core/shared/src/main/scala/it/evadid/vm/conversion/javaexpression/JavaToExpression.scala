@@ -6,12 +6,14 @@ import it.evadid.vm.code.errors.{BeExpressionUnparsable, BeExpressionUnsupported
 import it.evadid.vm.code.others.BeStartProgram
 import it.evadid.vm.code.tree.BeExpressionReference
 import it.evadid.vm.compilation.java.turtle.{JavaTurtleCompiler, JavaTurtleInputLimits, JavaTurtleProgram, JavaTurtleSourceParser}
-import it.evadid.vm.conversion.dependencies.KnownDependencies
+import it.evadid.vm.conversion.dependencies.{KnownDependencies, ProgrammingEnvironment}
 import it.evadid.vm.conversion.expressionjava.JavaSpelling
 import it.evadid.vm.conversion.parsed.{ParsedExpression, ParsedFunctionKind, ParsedParameter, ParsedProgram, ParsedProgramBuilder, ParsedStatement, ParsedType}
 import it.evadid.vm.conversion.parsed.ParsedExpression as E
 import it.evadid.vm.conversion.parsed.ParsedStatement as S
-import it.evadid.vm.parsing.java.clean.JavaParser
+import it.evadid.vm.parsing.java.clean.model.JavaAST
+import it.evadid.vm.parsing.java.clean.JavaSourceMap
+import it.evadid.vm.parsing.source.JavaSyntax
 import it.evadid.vm.parsing.java.clean.model.JavaAST.*
 import it.evadid.vm.parsing.java.clean.model.JavaType
 import it.evadid.vm.parsing.java.clean.model.JavaType.*
@@ -24,57 +26,34 @@ import it.evadid.workbook.elements.interactionElements.programming.state.Program
   * variables and functions, and `main`'s body is the main sequence. Classes without an entry point are
   * object classes. Loose statements and methods outside any class are module code as well.
   */
-final class JavaToExpression(code: String) {
-  // Library definitions are masked rather than removed, so reported positions match `code`.
-  private lazy val parsed: JavaProgram = {
-    JavaTurtleInputLimits.checkParserInput(code).fold(
-      diagnostic => throw ProgrammingConversionException.at(ProgrammingConversionKind.Unparsable, diagnostic.message, code, diagnostic.range.map(_.start)),
-      identity)
-    JavaToExpression.parser.parse(KnownDependencies.maskDefinitions(code, Java)).fold(
-      {
-        case conversion: ProgrammingConversionException =>
-          throw ProgrammingConversionException.unparsable(
-            "This Java source cannot be read as a complete program or fragment.", conversion.error.line, conversion.error.column)
-        case error => throw IllegalArgumentException("This Java source cannot be read as a complete program or fragment.", error)
-      },
-      program => { rejectUnparsable(program); program })
-  }
-
-  private def rejectUnparsable(program: JavaProgram): Unit = {
-    def visit(node: it.evadid.vm.parsing.generic.abstractions.GenericAST): Unit = node match {
-      case statement: JavaUnparsableStatement =>
-        throw ProgrammingConversionException.at(ProgrammingConversionKind.Unparsable,
-          "This Java source contains unsupported or unfinished syntax.", code, Option(code.indexOf(statement.source)).filter(_ >= 0))
-      case other => other.getChildren().foreach(visit)
-    }
-    visit(program)
-  }
-
-  def isClassProgram: Boolean = parsed.statements.exists(_.statement.isInstanceOf[JavaClassDef])
-
-  def toLegacyTurtleCommands: List[TurtleCommand[Double]] = {
-    if isClassProgram then throw IllegalArgumentException("Full Java classes require the checked Java runner.")
-    convert.turtleCommandExecutionInfo.completedCommands
-  }
-
-  def compileForExecution: Either[JavaTurtleSourceParser.Diagnostic, JavaTurtleProgram] = JavaTurtleCompiler.compile(code)
-
-  lazy val preparedSource = it.evadid.vm.conversion.structured.PreparedProgramSource(code, Java)
-
-  /** Constructs without a shared form stay placeholders, as in Python; conversion to another language
-    * reports them with their position ([[it.evadid.vm.conversion.ProgrammingStateDerivations]]).
-    */
-  def convert: ProgrammingStateBeExpression =
-    ProgrammingStateBeExpression(BeStartProgram(JavaToExpression.builder.build(JavaAstToParsed(parsed)).expression))
-}
-
 object JavaToExpression {
-  private val parser = new JavaParser(retainParentheses = false, retainComments = true)
-  private val builder = new ParsedProgramBuilder(Java)
+  /** Step 3 for Java ([[it.evadid.vm.parsing.source.SourceParsing]]): the expression tree of the step-2 syntax tree,
+    * binding library calls to the libraries `environment` provides. Constructs without a shared form stay
+    * placeholders, as in Python; conversion to another language reports them with their position
+    * ([[it.evadid.vm.conversion.ProgrammingStateDerivations]]). A statement the grammar kept unreadable is refused.
+    */
+  def convert(syntax: JavaSyntax, neutral: ParsedProgram, environment: ProgrammingEnvironment): (ProgrammingStateBeExpression, ParsedProgramBuilder.Result) = {
+    syntax.readable.left.foreach(error => throw error)
+    val built = ParsedProgramBuilder(Java, environment).build(neutral)
+    ProgrammingStateBeExpression(BeStartProgram(built.expression)) -> built
+  }
+
+  /** The language-neutral program of the step-2 syntax tree. */
+  def neutral(syntax: JavaSyntax): ParsedProgram = new JavaAstToParsed(syntax).apply(syntax.program)
+
 }
 
 /** Translates Java syntax into the language-neutral [[ParsedProgram]]. */
-private object JavaAstToParsed {
+private final class JavaAstToParsed(syntax: JavaSyntax) {
+  private val lines = it.evadid.vm.parsing.source.SourceLines(syntax.structured.source)
+  private def origin(node: JavaAST) = syntax.sourceMap.rangeOf(node).map(range => lines.span(range.start, range.end))
+  private def located[A](node: JavaAST)(result: => A): A = try result catch {
+    case error: ProgrammingConversionException if error.error.span.isEmpty =>
+      val span = origin(node)
+      throw new ProgrammingConversionException(error.getMessage, error.error.copy(span = span,
+        line = span.map(_.startLine), column = span.map(value => lines.column(value.start))))
+  }
+
   private final case class Owner(name: String, fields: Set[String], methods: Map[String, Boolean], isStatic: Boolean)
   /** `module` names the entry class, whose qualifier is dropped from calls and field accesses. */
   private final case class Scope(owner: Option[Owner], locals: Set[String], module: Option[String]) {
@@ -100,7 +79,7 @@ private object JavaAstToParsed {
     method.name == "main" && method.modifiers.contains("static") && method.parameters.size <= 1 &&
       method.parameters.forall(_.javaType.isInstanceOf[JAVA_ARRAY[?]])
 
-  private def module(definition: JavaClassDef, scope: Scope): Seq[ParsedStatement] = {
+  private def module(definition: JavaClassDef, scope: Scope): Seq[ParsedStatement] = located(definition) {
     val members = definition.body.statements.filterNot(member => member.isInstanceOf[JavaCommentStatement] || member.isInstanceOf[JavaClassDef] || member == JavaEmptyStatement)
     val isStaticMember: JavaStatement => Boolean = {
       case field: JavaVariableDeclaration => field.modifiers.contains("static")
@@ -109,9 +88,7 @@ private object JavaAstToParsed {
     }
     if members.exists(isStaticMember) && !members.forall(isStaticMember) then
       throw ProgrammingConversionException.unsupported("Mixed static and instance members are not supported by the shared expression tree.")
-    // `main(String[])` is the entry point; a parameterless `main` beside it is a helper (Python's `def main()`).
-    val candidates = members.collect { case method: JavaMethodDef if isEntryPoint(method) => method }
-    val main = candidates.find(_.parameters.nonEmpty).getOrElse(candidates.head)
+    val main = members.collect { case method: JavaMethodDef if isEntryPoint(method) => method }.sortBy(_.parameters.isEmpty).head
     main.parameters.headOption.foreach { arguments =>
       if mentions(main.body, arguments.name) then
         throw ProgrammingConversionException.unsupported("Program arguments cannot be represented by the shared startup expression.")
@@ -131,7 +108,14 @@ private object JavaAstToParsed {
     case other => other.getChildren().exists(mentions(_, name))
   }
 
-  private def classDef(definition: JavaClassDef): ParsedStatement = {
+  private def classDef(definition: JavaClassDef): ParsedStatement = located(definition) {
+    classDefinition(definition) match {
+      case value: S.Unsupported => value.copy(origin = origin(definition))
+      case other => other
+    }
+  }
+
+  private def classDefinition(definition: JavaClassDef): ParsedStatement = {
     val source = s"class ${definition.name}"
     if definition.extendsType.nonEmpty || definition.implementsTypes.nonEmpty then S.Unsupported(source, "Inheritance", unparsable = false)
     else {
@@ -159,7 +143,7 @@ private object JavaAstToParsed {
   private def function(method: JavaMethodDef, kind: ParsedFunctionKind, scope: Scope): S.FunctionDef = {
     val parameters = method.parameters.map(parameter => ParsedParameter(parameter.name, Some(parsedType(parameter.javaType))))
     val inner = parameters.foldLeft(scope)((current, parameter) => current.withLocal(parameter.name))
-    S.FunctionDef(method.name, parameters, method.returnType.map(parsedType), block(method.body, inner), kind)
+    S.FunctionDef(method.name, parameters, method.returnType.map(parsedType), block(method.body, inner), kind, origin(method))
   }
 
   private def block(value: JavaExecutionBlock, scope: Scope): Seq[ParsedStatement] = statements(value.statements, scope)
@@ -174,7 +158,14 @@ private object JavaAstToParsed {
       (done ++ statement(value, current), next)
     }._1
 
-  private def statement(value: JavaStatement, scope: Scope): Seq[ParsedStatement] = value match {
+  private def statement(value: JavaStatement, scope: Scope): Seq[ParsedStatement] = located(value) {
+    statementValue(value, scope).map {
+      case unsupported: S.Unsupported => unsupported.copy(origin = unsupported.origin.orElse(origin(value)))
+      case other => other
+    }
+  }
+
+  private def statementValue(value: JavaStatement, scope: Scope): Seq[ParsedStatement] = value match {
     case JavaCommentStatement(text) => Seq(S.Comment(text))
     case JavaEmptyStatement | _: JavaImportStatement | _: JavaPackageStatement => Nil
     case definition: JavaClassDef => Seq(classDef(definition))
@@ -270,7 +261,14 @@ private object JavaAstToParsed {
   // Expressions
 
 
-  private def expression(value: JavaExpression, scope: Scope): ParsedExpression = value match {
+  private def expression(value: JavaExpression, scope: Scope): ParsedExpression = located(value) {
+    expressionValue(value, scope) match {
+      case unsupported: E.Unsupported => unsupported.copy(origin = unsupported.origin.orElse(origin(value)))
+      case other => other
+    }
+  }
+
+  private def expressionValue(value: JavaExpression, scope: Scope): ParsedExpression = value match {
     case JavaLiteral("null", _) => E.NoneValue
     case JavaLiteral(raw, _: JAVA_BOOL) => E.Literal(raw.capitalize)
     case JavaLiteral(raw, _) => E.Literal(raw)
@@ -286,7 +284,11 @@ private object JavaAstToParsed {
       E.Binary("!=", expression(receiver, scope), E.Literal("\"\""))
     case JavaOperationUnary(operator, operand) => E.Unary(JavaSpelling.operators.getOrElse(operator, operator), expression(operand, scope))
     case JavaOperationBinary(left, operator, right) =>
-      E.Binary(JavaSpelling.operators.getOrElse(operator, operator), expression(left, scope), expression(right, scope))
+      (JavaSpelling.operators.getOrElse(operator, operator), expression(left, scope)) match {
+        // The printer writes Python's exact `56 / 8` as `56.0 / 8`; the dividend is the whole number again.
+        case ("/", E.Literal(dividend)) if dividend.matches("[0-9]+\\.0") => E.Binary("/", E.Literal(dividend.stripSuffix(".0")), expression(right, scope))
+        case (symbol, dividend) => E.Binary(symbol, dividend, expression(right, scope))
+      }
     case JavaFunctionCall(target, arguments) => call(target.locationString :+ target.name, arguments.map(expression(_, scope)), scope)
     // The Java printer spells text equality and emptiness with String methods (JavaSpelling).
     case JavaCallExpression(JavaAttributeAccess(receiver, "equals"), Seq(other)) => E.Binary("==", expression(receiver, scope), expression(other, scope))

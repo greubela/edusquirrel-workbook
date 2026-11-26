@@ -1,5 +1,7 @@
 package it.evadid.vm.conversion.snappython
 
+import it.evadid.vm.parsing.source.SourceParsing
+import it.evadid.vm.parsing.source.SourceParsing.SourceLanguage
 import it.evadid.core.datastructures.language.AppLanguage.{English, Python}
 import it.evadid.vm.BeProgram
 import it.evadid.vm.code.abstractions.BeExpression
@@ -37,9 +39,13 @@ object SnapProgramDerivation {
     fromXml(state.code)
 
   def fromXml(xml: String): DerivedView = {
-    val parsed = it.evadid.vm.conversion.snapexpression.SnapToExpression.parseWithLayout(xml)
+    val source = SourceParsing.parse(xml, SourceLanguage.Snap)
+    val unsupported = source.unsupportedSelectors.toTry.get
+    val parsed = if unsupported.isEmpty then source.parsed.toTry.get else
+      TurtleStitchToBeExpressionParser.ParseWithLayout(
+        it.evadid.vm.code.errors.BeExpressionUnsupported(xml, parsedFromLanguage = Some(it.evadid.core.datastructures.language.AppLanguage.SnapLanguage)),
+        SnapCanvasLayout.empty)
     val program = BeProgram(parsed.expression)
-    val unsupported = SnapExpressionSupport.unsupportedSnapSelectors(xml)
     val astOk = SnapExpressionSupport.validateSubset(program.fullProgram).isRight
     val pythonCompatible = unsupported.isEmpty && astOk
     val python = if pythonCompatible then ExpressionToPython.printedPython(parsed.expression) else ""

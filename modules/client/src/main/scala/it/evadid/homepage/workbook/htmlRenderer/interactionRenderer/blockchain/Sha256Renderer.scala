@@ -1,6 +1,7 @@
 package it.evadid.homepage.workbook.htmlRenderer.interactionRenderer.blockchain
 
 import com.raquo.laminar.api.L.*
+import it.evadid.homepage.webElements.basic.LabelSelection
 import it.evadid.core.datastructures.state.StateHelper.StateBasedVar
 import it.evadid.homepage.workbook.htmlRenderer.HtmlRenderFactory.LineBasedRenderingFactory
 import it.evadid.homepage.workbook.htmlRenderer.atomarLineRenderings.AtomarLineRendering
@@ -34,11 +35,11 @@ case object Sha256Renderer extends LineBasedRenderingFactory[Sha256Interaction] 
         text <-- state.signal.map(a => Sha256.differingBits(a.first, a.second)).combineWith(textFor("shaDifference"))
           .map((count, template) => template.replace("{count}", count.toString)))),
       p(cls := "hash-feedback", role := "status", aria.live := "polite",
-        text <-- state.signal.map(a => e.isCorrect(a) match {
+        text <-- LabelSelection(state.signal, Seq("shaComparisonSaved", "correct", "shaTryAgain"), textFor)(a => Some(e.isCorrect(a) match {
           case None => "shaComparisonSaved"
           case Some(true) => "correct"
           case Some(false) => "shaTryAgain"
-        }).flatMapSwitch(textFor))
+        })))
     )
     AtomarLineRendering.basicLine(e, dom)
   }

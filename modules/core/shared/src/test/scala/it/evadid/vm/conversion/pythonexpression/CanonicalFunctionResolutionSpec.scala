@@ -1,5 +1,8 @@
 package it.evadid.vm.conversion.pythonexpression
 
+import it.evadid.vm.parsing.source.SourceParsing
+import it.evadid.vm.parsing.source.SourceParsing.SourceLanguage
+
 import it.evadid.vm.conversion.parsed.SymbolTable
 import it.evadid.core.datastructures.language.AppLanguage.Python
 import it.evadid.core.datastructures.language.AppLanguage.{English, German}
@@ -14,7 +17,7 @@ import munit.FunSuite
 
 class CanonicalFunctionResolutionSpec extends FunSuite {
   private def calls(source: String): List[BeFunctionCall] = {
-    val tree = PythonToExpression.program(source).fullProgram
+    val tree = SourceParsing.parse(source, SourceLanguage.Python).parsed().program.fullProgram
       .recToTree(false, BeChildInfo(BeChildRole.NoRole, BeScope.GlobalScope()))
     tree.values.collect { case BeExpressionReference(_, call: BeFunctionCall) => call }.toList
   }
@@ -75,7 +78,7 @@ class CanonicalFunctionResolutionSpec extends FunSuite {
     val translated = BeEntityName.fromMapInCodeNotation(Map(English -> "advance", German -> "vorwärts"))
     val definition = BeDefineFunction(Nil, None, BeExpression.pass, BeDefineFunction.functionInfo(translated))
     val context = SymbolTable.ParseContext.initial(SymbolTable.CurrentlyKnownStructures.fromKnown(
-      Seq(SymbolTable.KnownStructure.Function("fd", definition))))
+      Seq(SymbolTable.KnownStructure.Function("fd", definition))), it.evadid.vm.conversion.dependencies.ProgrammingEnvironment.all)
     val (resolved, _) = context.resolveFunction("fd", 0)
     assert(resolved eq definition)
     assertEquals(resolved.functionTypeInfo.displayName.getNameIn(German, NamingStyle.SnakeCase), "vorwärts")
@@ -87,7 +90,9 @@ class CanonicalFunctionResolutionSpec extends FunSuite {
       assert(KnownBeEntityNames.resolveCanonicalNames(alias).get eq canonical)
     }
     val parsed = calls("print(1)\nprintln(2)\nSystem.out.println(3)")
-    assert(parsed.forall(_.funcDef.functionTypeInfo.displayName eq canonical))
+    assert(parsed.forall(_.funcDef.intrinsic.contains(it.evadid.vm.code.defining.BeIntrinsic.Print)))
+    assert(parsed.forall(_.target.isInstanceOf[it.evadid.vm.code.usage.BeCallTarget.StaticMethod]))
+    assert(parsed.forall(_.funcDef.functionTypeInfo.isMethodInClass.exists(_.name.universalInterpretation() == "SystemFunctionality")))
     val userCalls = calls("def println(n):\n    println(n)\nprintln(1)")
     assertEquals(userCalls.map(name), List("println", "println"))
   }

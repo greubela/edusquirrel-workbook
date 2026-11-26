@@ -72,7 +72,6 @@
     line-height: 2;
 }
 
-
 /* HEADER --> USER DROPDOWN MENU --> ACTUAL DROPDOWN APPEARANCE */
 
 .workbook-user-menu .dropdown-menu {
@@ -115,7 +114,6 @@
     outline: none;
 }
 
-
 /* HEADER --> LANGUAGE */
 
 .select-language-line {
@@ -134,7 +132,7 @@
     justify-content: center;
     gap: var(--space-lg);
     flex-wrap: wrap;
-    /*max-width: var(--workarea-width);*/
+
     justify-items: center;
 }
 
@@ -179,7 +177,6 @@
 .section-block:hover{
     border: var(--space-borders) solid var(--color-background-colored-accented-strong);
 }
-
 
 /* HEADER -> NAVIGATION */
 

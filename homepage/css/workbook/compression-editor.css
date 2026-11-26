@@ -18,7 +18,7 @@
 .compression-byte { display: grid; grid-template-columns: repeat(4, minmax(44px, 1fr)); }
 .compression-byte > code { grid-column: 1 / -1; text-align: center; }
 .compression-bit-selected { background: var(--color-mail-selected); border: 2px solid var(--color-mail-selected-border); }
-.compression-images canvas { display: block; width: min(100%, 28rem); height: auto; image-rendering: pixelated; margin: auto; }
+
 .compression-table-wrap { overflow-x: auto; max-width: 100%; }
 .compression-editor table, .compression-file-comparison table { width: 100%; border-collapse: collapse; }
 .compression-editor td, .compression-editor th, .compression-file-comparison td, .compression-file-comparison th {

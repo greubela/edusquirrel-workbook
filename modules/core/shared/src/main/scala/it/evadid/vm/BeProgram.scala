@@ -1,6 +1,6 @@
 package it.evadid.vm
 
-import it.evadid.vm.conversion.pythonexpression.PythonToExpression
+
 
 import upickle.default.ReadWriter
 
@@ -69,92 +69,6 @@ object BeProgram {
 
   def miniProgram(): BeProgram =
     BeProgram(miniProgramExpression())
-
-  def debugGraphicsProgram2(): BeProgram = PythonToExpression.program(
-    """
-      |i = 1
-      |while i < 3:
-      |    i = i + 1
-      |println("finished!")
-      |""".stripMargin
-  )
-
-  def parseSimpleWhile(): BeProgram = PythonToExpression.program(
-    """
-      |i: int = 3
-      |while i < 5:
-      |    i = i + 1
-      |""".stripMargin
-  )
-
-  def parseSimpleIf(): BeProgram = PythonToExpression.program(
-    """
-      |if c:
-      |    x = "hi"
-      |else:
-      |    x = "bye"
-      |""".stripMargin
-  )
-
-  def debugGraphicsProgram3(): BeProgram = PythonToExpression.program(
-    """
-      |import turtle
-      |# comments are supported
-      |        if i == 2:
-      |            turnLeft(90)
-      |        else:
-      |            backward("never!")
-      |    i = i + 1
-      |""".stripMargin
-  )
-
-  def debugGraphicsProgram(): BeProgram = PythonToExpression.program(
-    """
-      |import turtle
-      |# comments are supported
-      |syntax error!!
-      |i = 3
-      |while i < 10:
-      |    j = 2
-      |    while j < 2:
-      |        j = j + 1
-      |        if i == 2:
-      |            turnLeft(90)
-      |        else:
-      |            backward("never!")
-      |    i = i + 1
-      |""".stripMargin
-  )
-
-  def sampleParsedProgram(): BeProgram = PythonToExpression.program(
-    """
-      |import turtle
-      |callFunc("duck")
-      |if score > 10:
-      |    func(A)
-      |else:
-      |    doSomething()
-      |    if another > 3:
-      |        forward(1000)
-      |    else:
-      |        backward("never!")
-      |""".stripMargin
-  )
-
-  def sampleParsedProgram2(): BeProgram = PythonToExpression.program(
-    """
-      |import os
-      |x=3
-      |if you´re happy and you know it syntax error
-      |# comment are supported
-      |if score > 10:
-      |    func(A)
-      |elif score == 10:
-      |    func("B")
-      |else:
-      |    forward(1000)
-      |""".stripMargin
-  )
 
   private def defineParameters(parNames: List[LanguageMap[HumanLanguage]], parTypes: List[BeDataType]): List[BeDefineVariable] =
     parNames.zip(parTypes).map((curName, curType) => BeDefineVariable(BeEntityName.fromMapInCodeNotation(curName), curType))

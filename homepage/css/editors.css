@@ -1,6 +1,7 @@
 @import url("qr-editor.css");
 @import url("editor-appearance.css");
 @import url("block-editor.css");
+@import url("uml-structure-selector.css");
 /* Editor layout and chrome share the workbook's color and dimension tokens. */
 .eva-editor,
 .be-program-snap-fullscreen {
@@ -23,14 +24,6 @@
     padding: var(--space-md);
 }
 
-.eva-editor:has(> .turtle-sidebar) {
-    grid-template-columns: minmax(0, 1fr) minmax(16rem, 24%);
-}
-
-.eva-editor--error {
-    grid-template-rows: auto auto minmax(0, 1fr);
-}
-
 .eva-editor__error {
     flex: 1 0 100%;
     padding: var(--space-sm) var(--space-md);
@@ -51,9 +44,7 @@
 }
 
 .code-editor__loading,
-.code-mirror-editor__loading,
-.code-editor__conversion,
-.java-function-editor__conversion {
+.code-mirror-editor__loading {
     margin: 0;
     padding: var(--space-sm) var(--space-md);
 }
@@ -201,56 +192,6 @@
     color: var(--color-text-inverse);
 }
 
-.turtle-sidebar {
-    min-width: 0;
-    min-height: 0;
-    overflow: auto;
-    padding: var(--space-lg);
-    border: 1px solid var(--color-border-soft);
-    border-radius: var(--radius-sm);
-    background: var(--color-surface-base);
-}
-
-.turtle-sidebar .element-card-label {
-    margin: 0 0 var(--space-lg);
-    font-size: 1rem;
-    color: var(--color-text-primary);
-}
-
-@media (max-width: 860px) {
-    .eva-editor:has(> .turtle-sidebar) {
-        grid-template-columns: minmax(0, 1fr);
-        grid-template-rows: auto minmax(0, 1fr) minmax(0, 1fr);
-    }
-    .eva-editor--error:has(> .turtle-sidebar) {
-        grid-template-rows: auto auto minmax(0, 1fr) minmax(0, 1fr);
-    }
-}
-
-.turtle-sidebar .turtle-gradig-panel {
-    width: 100%;
-    max-width: none;
-}
-
-.turtle-execution { display: flex; flex-direction: column; gap: var(--space-lg); min-width: 0; }
-.turtle-execution__actions { display: flex; flex-wrap: wrap; gap: var(--space-md); }
-.turtle-execution__actions button {
-    min-height: 44px;
-    padding: var(--space-md) var(--space-lg);
-    border: 1px solid var(--color-border);
-    border-radius: var(--radius-sm);
-    background: var(--color-button-background);
-    color: var(--color-text-primary);
-}
-.turtle-execution__actions button:disabled { opacity: 0.5; }
-.turtle-execution__actions button:focus-visible { outline: 2px solid var(--color-focus); outline-offset: var(--space-xs); }
-.turtle-execution__status { min-height: 2.75rem; }
-.turtle-execution__error { color: var(--color-accent-error); }
-.turtle-execution__figure { margin: 0; min-width: 0; padding: var(--space-lg); border: 1px solid var(--color-border-soft); border-radius: var(--radius-sm); }
-.turtle-execution__figure figcaption { margin-bottom: var(--space-md); font-size: 0.875rem; }
-.turtle-execution__figure .turtle-gradig-panel { width: 100%; max-width: none; min-height: 180px; aspect-ratio: 1; }
-.turtle-execution select { max-width: 100%; }
-
 .edusquirrel-code-mirror {
     --edusquirrel-diag-warning: 255, 190, 88;
     --edusquirrel-diag-error: 255, 96, 96;
@@ -382,3 +323,10 @@
 .cm-flowchart-row > svg { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
 
 [data-editor-theme="dark"] .cm-flowchart-row > svg { filter: invert(1) hue-rotate(180deg); }
+
+.eva-editor__workspace { grid-column: 1; grid-row: 2; display: flex; flex-direction: column; min-width: 0; min-height: 0; }
+.eva-editor__workspace > .eva-editor__content { flex: 1; min-height: 0; }
+.programming-execution { flex: 0 0 auto; max-height: 30%; overflow: auto; padding: var(--space-sm); border-top: var(--space-borders) solid var(--editor-border); }
+.programming-execution pre { margin: var(--space-sm) 0; white-space: pre-wrap; overflow-wrap: anywhere; }
+.programming-execution__actions { display: flex; gap: var(--space-sm); }
+.programming-execution__errors { color: var(--color-accent-error); }

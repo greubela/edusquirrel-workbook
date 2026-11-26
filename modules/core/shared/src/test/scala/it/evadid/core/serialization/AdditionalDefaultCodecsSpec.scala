@@ -1,14 +1,14 @@
 package it.evadid.core.serialization
 
+import it.evadid.vm.parsing.source.SourceParsing
+import it.evadid.vm.parsing.source.SourceParsing.SourceLanguage
 import it.evadid.vm.conversion.expressionsnap.SnapCustomBlockMerge
 import it.evadid.vm.conversion.snapexpression.SnapControlFlow
 import it.evadid.vm.conversion.snapexpression.SnapCustomBlockRules
 import it.evadid.vm.conversion.snapmodelxml.SnapModelToXml.toXml
-
 import it.evadid.workbook.interaction.sync.model.*
 import munit.FunSuite
 import upickle.default.*
-
 import it.evadid.workbook.abstractions.InteractionFormat.*
 
 class AdditionalDefaultCodecsSpec extends FunSuite {
@@ -83,7 +83,7 @@ class AdditionalDefaultCodecsSpec extends FunSuite {
   test("Snap parsed XML and custom blocks retain exact source slices and slot behavior") {
     import it.evadid.workbook.elements.interactionElements.programming.state.snap.*
     val xml = "<block-definition s=\"draw %steps\" type=\"command\" category=\"motion\"><inputs><input type=\"%n\">20</input></inputs><script><block s=\"forward\"><l>20</l></block></script></block-definition>"
-    val element = it.evadid.vm.conversion.snapxmlmodel.SnapScalaXmlCodec.parse(xml).toOption.get.root.asInstanceOf[SnapScalaModel.BlockDefinition]
+    val element = SourceParsing.parse(xml, SourceLanguage.Snap).syntax.toOption.get.root.asInstanceOf[SnapScalaModel.BlockDefinition]
     assertEquals(restore(element).element.toXml, xml)
     val block = SnapCustomBlockRules.definition(element, 0, isGlobal = true)
     assertEquals(restore(block).blockSpec, "draw %n")

@@ -1,5 +1,7 @@
 package it.evadid.vm.conversion
 
+import it.evadid.vm.parsing.source.SourceParsing
+import it.evadid.vm.parsing.source.SourceParsing.SourceLanguage
 import it.evadid.core.datastructures.language.AppLanguage.{Java, Python, SnapLanguage}
 import it.evadid.core.datastructures.language.AppLanguage.ProgrammingLanguage
 import it.evadid.vm.conversion.snapexpression.SnapCustomBlockRules
@@ -48,7 +50,7 @@ class ReturningFunctionConversionSpec extends FunSuite {
 
   test("Snap writes reporters and predicates with report blocks, and native calls resolve") {
     val xml = ProgrammingStateRaw(Python, programs(3)._2.code + "\ndef big(n: float) -> bool:\n    return n > 10\n\nif big(2):\n    forward(1)\n").toSnapXml.code
-    val model = ProgrammingStateRaw(SnapLanguage, xml).toSnapScalaModel.fold(fail(_), _.model)
+    val model = ProgrammingStateRaw(SnapLanguage, xml).toSnapScalaModel.fold(failure => fail(failure.message), _.model)
     val definitions = (model.root +: model.root.descendants).collect { case d: BlockDefinition => d.spec.get -> d.blockType }
     assertEquals(definitions.toMap, Map("double %x" -> Some(BlockType.Reporter), "fact %n" -> Some(BlockType.Reporter),
       "big %n" -> Some(BlockType.Predicate)))
@@ -86,7 +88,7 @@ class ReturningFunctionConversionSpec extends FunSuite {
   test("other stop choices cannot silently become a function return") {
     for choice <- List("all", "this script", "other scripts in sprite", "") do {
       val xml = s"""<script><block s="doStopThis"><l><option>$choice</option></l></block></script>"""
-      val state = it.evadid.vm.conversion.snapxmlmodel.SnapScalaXmlCodec.parse(xml).fold(fail(_), ProgrammingStateSnapScalaModel(_))
+      val state = SourceParsing.parse(xml, SourceLanguage.Snap).syntax.fold(failure => fail(failure.message), ProgrammingStateSnapScalaModel(_))
       assert(state.convertToLanguage(Python).finalState.isEmpty, choice)
     }
   }

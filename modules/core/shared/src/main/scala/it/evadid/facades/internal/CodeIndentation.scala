@@ -8,7 +8,7 @@ private[evadid] object CodeIndentation {
   private val pythonDedent = "\\s*(return|pass|break|continue|raise)\\b.*".r
 
   /** Replace `deleteBefore` characters before the cursor and the selection by `insert`; the cursor ends `cursor` characters into it. */
-  final case class Edit(deleteBefore: Int, insert: String, cursor: Int)
+  final case class Edit(deleteBefore: Int, insert: String, cursor: Int) derives upickle.default.ReadWriter
 
   private def leading(line: String): String = line.takeWhile(c => c == ' ' || c == '\t')
 

@@ -21,26 +21,26 @@ import org.scalajs.dom
  */
 object HtmlMatchingInteractionRenderer extends LineBasedRenderingFactory[MatchingInteraction] {
 
-  private case class Point(x: Double, y: Double)
+  private case class Point(x: Double, y: Double) derives upickle.default.ReadWriter
 
-  private enum Side(val css: String) {
+  private enum Side(val css: String) derives upickle.default.ReadWriter {
     case Left extends Side("left")
     case Right extends Side("right")
     def opposite: Side = if this == Left then Right else Left
   }
 
   /** An item of either column. */
-  private case class End(side: Side, index: Int)
+  private case class End(side: Side, index: Int) derives upickle.default.ReadWriter
 
   /** A pointer press on an item; once it has moved beyond the threshold it draws a pending line.
     * A `dropped` drag has ended: its pointerup also produces a click when it ends on its own item, and that
     * click must not select the item. The next pointer press or key press replaces it.
     */
-  private case class Drag(from: End, start: Point, pointer: Point, moved: Boolean, dropped: Boolean = false) {
+  private case class Drag(from: End, start: Point, pointer: Point, moved: Boolean, dropped: Boolean = false) derives upickle.default.ReadWriter {
     def drawing: Boolean = moved && !dropped
   }
 
-  private case class Connection(left: Int, right: Int, from: Point, to: Point)
+  private case class Connection(left: Int, right: Int, from: Point, to: Point) derives upickle.default.ReadWriter
 
   private val DragThreshold = 6.0
 

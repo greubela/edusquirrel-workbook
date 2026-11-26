@@ -1,6 +1,7 @@
 package it.evadid.homepage.webElements.editor.compression
 
 import com.raquo.laminar.api.L.*
+import it.evadid.homepage.webElements.basic.LabelSelection
 import it.evadid.homepage.webElements.HtmlAppElement
 import it.evadid.workbook.interaction.sync.UpdateImportance.MAJOR
 import it.evadid.workbook.model.compression.*
@@ -22,13 +23,11 @@ case class CompressionActivitiesEditor(answer: Var[CompressionExperiment], initi
     })
   }
   private def fileView(v: FileSimulation, editable: Boolean): Element = {
-    var left = 0.0
-    val blocks = v.files.zipWithIndex.map { (f,i) =>
-      val width = f.bytes.toDouble / v.bytes * 1000
-      val node = svg.g(svg.titleTag(s"${f.name}: ${size(f.bytes)}; ${f.metadata.mkString("; ")}"),
-        svg.rect(svg.x := left.toString, svg.y := "0", svg.width := width.toString, svg.height := "120", svg.cls := s"compression-area compression-area-${i % 4}"),
+    val widths = v.files.map(_.bytes.toDouble / v.bytes * 1000)
+    val blocks = v.files.zip(widths.scanLeft(0.0)(_ + _)).zipWithIndex.map { case ((f, left), i) =>
+      svg.g(svg.titleTag(s"${f.name}: ${size(f.bytes)}; ${f.metadata.mkString("; ")}"),
+        svg.rect(svg.x := left.toString, svg.y := "0", svg.width := widths(i).toString, svg.height := "120", svg.cls := s"compression-area compression-area-${i % 4}"),
         onClick --> (_ => if editable && !lockedValue.now() then answer.update(a => a.asInstanceOf[FileSimulation].click(i))))
-      left += width; node
     }
     div(
       p(cls := "compression-summary", span(text <-- format("fileSummary", "size" -> size(v.bytes), "count" -> v.fileCount.toString, "steps" -> v.steps.toString)),
@@ -86,7 +85,8 @@ case class CompressionActivitiesEditor(answer: Var[CompressionExperiment], initi
             data.data(i*4) = gray;data.data(i*4+1)=gray;data.data(i*4+2)=gray;data.data(i*4+3)=255
           }; c.putImageData(data,0,0)
         }(using ctx.owner) })),
-      p(text <-- answer.signal.flatMapSwitch(a => a.asInstanceOf[BitComparison].imageBit.fold(localized("bitsUnchanged"))(i => format("bitChangedAt", "index" -> i.toString)))),
+      p(text <-- LabelSelection.formatted(answer.signal, Seq("bitsUnchanged", "bitChangedAt"), localized)(a =>
+        Some(a.asInstanceOf[BitComparison].imageBit.fold("bitsUnchanged" -> Nil)(i => "bitChangedAt" -> Seq("index" -> i.toString))))),
       action("widget.bitflip.flipButton") { answer.update { a => val v = a.asInstanceOf[BitComparison]
         v.copy(imageBit = Some(List(8192,1337,12000,2048,10000)(v.imageFlips % 5)), imageFlips = v.imageFlips + 1) } })
     case v: FileInspection => div(
@@ -118,8 +118,9 @@ case class CompressionActivitiesEditor(answer: Var[CompressionExperiment], initi
         text <-- src(s"widget.filesystemSimulator.tools.$tool.label"),
         aria.pressed <-- answer.signal.map(_.asInstanceOf[FileSimulation].tool == tool).map(_.toString),
         onClick --> (_ => answer.update(a => a.asInstanceOf[FileSimulation].choose(tool)))) }),
-      p(text <-- answer.signal.flatMapSwitch(a => { val v=a.asInstanceOf[FileSimulation];
-        src(if v.tool.isEmpty then "widget.filesystemSimulator.noToolHint" else s"widget.filesystemSimulator.tools.${v.tool}.hint") })),
+      p(text <-- LabelSelection(answer.signal, "widget.filesystemSimulator.noToolHint" +: CompressionSimulation.tools.map(tool =>
+        s"widget.filesystemSimulator.tools.$tool.hint"), src)(a => { val v=a.asInstanceOf[FileSimulation]
+        Some(if v.tool.isEmpty then "widget.filesystemSimulator.noToolHint" else s"widget.filesystemSimulator.tools.${v.tool}.hint") })),
       if initial.asInstanceOf[FileSimulation].tutorial then div(h3(text <-- src("widget.filesystemSimulator.tutorialTitle")),
         child <-- answer.signal.map { a => val v=a.asInstanceOf[FileSimulation]
           ul(List("hover" -> v.hovered,"tool" -> v.chosenTool,"click" -> v.clickedFile,"status" -> v.complete).map((key,done) =>
@@ -141,7 +142,7 @@ case class CompressionActivitiesEditor(answer: Var[CompressionExperiment], initi
         case Some(e) =>
           import it.evadid.core.datastructures.state.StateHelper.StateBasedVar
           val state=e.interactionVariable.createBoundStateWithUpdateImportance(MAJOR, fullInfo.workbookContextInformation).toAirstreamVar
-          blockQuote(text <-- state.signal.flatMapSwitch(a => { val text=a.asInstanceOf[WrittenAnswer].text; if text.isEmpty then localized("comparisonEmpty") else Val(text) }))
+          blockQuote(text <-- localized("comparisonEmpty").combineWith(state.signal).map((empty, a) => { val text=a.asInstanceOf[WrittenAnswer].text; if text.isEmpty then empty else text }))
         case None => p(text <-- localized("comparisonEmpty"))
       }
     case _ => span()

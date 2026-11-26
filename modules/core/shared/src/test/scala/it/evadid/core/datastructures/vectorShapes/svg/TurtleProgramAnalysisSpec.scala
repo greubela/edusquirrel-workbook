@@ -1,6 +1,8 @@
 package it.evadid.core.datastructures.vectorShapes.svg
 
-import it.evadid.vm.conversion.pythonexpression.PythonToExpression
+import it.evadid.vm.parsing.source.SourceParsing
+import it.evadid.vm.parsing.source.SourceParsing.SourceLanguage
+
 
 import it.evadid.core.datastructures.geometry.Point
 import it.evadid.core.datastructures.vectorShapes.abstractions.AppShapeElement.AppShapeComposition
@@ -28,24 +30,20 @@ class TurtleProgramAnalysisSpec extends FunSuite {
   }
 
   test("forward and repeat unroll into turtle commands") {
-    val program = PythonToExpression.program(
-      """for _ in range(2):
+    val program = SourceParsing.parse("""for _ in range(2):
         |    forward(10)
-        |""".stripMargin
-    )
+        |""".stripMargin, SourceLanguage.Python).parsed().program
     val commands = TurtleProgramAnalysis(program.fullProgram).completedCommands
     assertEquals(commands.map(_.name.universalInterpretation()), List("forward", "forward"))
     assertEquals(commands.map(_.args), List(List(10.0), List(10.0)))
   }
 
   test("quoted text preserves digits and inner quotes") {
-    val program = PythonToExpression.program(
-      """color("#112233")
+    val program = SourceParsing.parse("""color("#112233")
         |color("bird's blue")
         |color('say "blue"')
         |color('123')
-        |""".stripMargin
-    )
+        |""".stripMargin, SourceLanguage.Python).parsed().program
     assertEquals(
       TurtleProgramAnalysis(program.fullProgram).completedCommands,
       List("#112233", "bird's blue", "say \"blue\"", "123")
@@ -54,7 +52,7 @@ class TurtleProgramAnalysisSpec extends FunSuite {
   }
 
   test("scientific numeric literals produce only numeric arguments") {
-    val program = PythonToExpression.program("forward(1e3)\nforward(2.5e2)")
+    val program = SourceParsing.parse("forward(1e3)\nforward(2.5e2)", SourceLanguage.Python).parsed().program
     assertEquals(
       TurtleProgramAnalysis(program.fullProgram).completedCommands,
       List(TurtleCommand.Forward[Double](1000.0), TurtleCommand.Forward[Double](250.0))
@@ -62,7 +60,7 @@ class TurtleProgramAnalysisSpec extends FunSuite {
   }
 
   test("raw non-numeric literals retain their textual payload") {
-    val call = SnapControlFlow.topLevelStatements(PythonToExpression.program("color('red')").fullProgram)
+    val call = SnapControlFlow.topLevelStatements(SourceParsing.parse("color('red')", SourceLanguage.Python).parsed().program.fullProgram)
       .collectFirst { case call: BeFunctionCall => call }.get
     List("NaN", "Infinity").foreach { text =>
       val literalCall = call.copy(parameterValueMap = call.parameterValueMap.map { (parameter, _) =>
@@ -73,7 +71,7 @@ class TurtleProgramAnalysisSpec extends FunSuite {
   }
 
   test("boolean stitch arguments stay separate from numeric arguments") {
-    val program = PythonToExpression.program("jump_stitch(True)\njump_stitch(False)\ncross_stitch(8, 13, False)")
+    val program = SourceParsing.parse("jump_stitch(True)\njump_stitch(False)\ncross_stitch(8, 13, False)", SourceLanguage.Python).parsed().program
     assertEquals(
       TurtleProgramAnalysis(program.fullProgram).completedCommands,
       List(
@@ -85,14 +83,12 @@ class TurtleProgramAnalysisSpec extends FunSuite {
   }
 
   test("color, running stitch, and arithmetic for-loop produce a path") {
-    val program = PythonToExpression.program(
-      """running_stitch(10)
+    val program = SourceParsing.parse("""running_stitch(10)
         |color("red")
         |for i in range(1, 4 + 1):
         |    forward(i * 10)
         |    turn(90)
-        |""".stripMargin
-    )
+        |""".stripMargin, SourceLanguage.Python).parsed().program
     val commands = TurtleProgramAnalysis(program.fullProgram).completedCommands
     assert(commands.exists(_.name.universalInterpretation() == "running_stitch"), clue = commands.map(_.name.universalInterpretation()))
     assert(commands.exists(_.name.universalInterpretation() == "color"), clue = commands.map(_.name.universalInterpretation()))
@@ -109,7 +105,7 @@ class TurtleProgramAnalysisSpec extends FunSuite {
   }
 
   test("VmToSvg renders overlaid path segments instead of the duck stub") {
-    val program = PythonToExpression.program("forward(40)\nturn(90)\nforward(40)")
+    val program = SourceParsing.parse("forward(40)\nturn(90)\nforward(40)", SourceLanguage.Python).parsed().program
     val shape = VmToSvg.renderBeExpression(logger, program.fullProgram)
     assert(shape.isInstanceOf[AppShapeComposition[Double]], clue = shape.getClass.getName)
     assert(shape.childrenInRenderingOrder.forall(_.isInstanceOf[AppShapeDrawingRoutineElement[Double]]))
@@ -117,15 +113,13 @@ class TurtleProgramAnalysisSpec extends FunSuite {
   }
 
   test("VmToSvg splits styled segments by pen color and width") {
-    val program = PythonToExpression.program(
-      """color("red")
+    val program = SourceParsing.parse("""color("red")
         |pensize(2)
         |forward(10)
         |color("blue")
         |pensize(4)
         |forward(10)
-        |""".stripMargin
-    )
+        |""".stripMargin, SourceLanguage.Python).parsed().program
     val shape = VmToSvg.renderBeExpression(logger, program.fullProgram)
     val children = shape.childrenInRenderingOrder.collect { case path: AppShapeDrawingRoutineElement[Double] => path }
     assertEquals(children.size, 2)
@@ -138,20 +132,17 @@ class TurtleProgramAnalysisSpec extends FunSuite {
   }
 
   test("custom def calls are interpreted") {
-    val program = PythonToExpression.program(
-      """def square(n):
+    val program = SourceParsing.parse("""def square(n):
         |    forward(n)
         |    turn(90)
         |square(20)
-        |""".stripMargin
-    )
+        |""".stripMargin, SourceLanguage.Python).parsed().program
     val commands = TurtleProgramAnalysis(program.fullProgram).completedCommands
     assertEquals(commands.map(_.name.universalInterpretation()), List("forward", "right"))
     assertEquals(commands.head.args, List(20.0))
   }
   test("recursive calls restore their caller's parameters and local variables") {
-    val program = PythonToExpression.program(
-      """def branch(length, depth):
+    val program = SourceParsing.parse("""def branch(length, depth):
         |    if depth == 0:
         |        forward(length)
         |    else:
@@ -159,33 +150,33 @@ class TurtleProgramAnalysisSpec extends FunSuite {
         |        branch(length / 2, depth - 1)
         |branch(80, 2)
         |forward(7)
-        |""".stripMargin)
+        |""".stripMargin, SourceLanguage.Python).parsed().program
     val commands = TurtleProgramAnalysis(program.fullProgram).completedCommands
     assertEquals(commands.filter(_.name.universalInterpretation() == "forward").map(_.args),
       List(List(20.0), List(20.0), List(20.0), List(20.0), List(7.0)))
   }
   test("modulo drives alternating shapes and every-fourth branches") {
     for (period <- List(2, 4)) {
-      val program = PythonToExpression.program(s"""for i in range(1, 8):
+      val program = SourceParsing.parse(s"""for i in range(1, 8):
         |    if i % $period == 0:
         |        forward(40)
         |    else:
         |        forward(10)
-        |""".stripMargin)
+        |""".stripMargin, SourceLanguage.Python).parsed().program
       val commands = TurtleProgramAnalysis(program.fullProgram).completedCommands
       assertEquals(commands.map(_.args.head), (1 to 7).map(i => if i % period == 0 then 40.0 else 10.0).toList)
     }
   }
 
   test("remainder agrees with Python for signed integer and fractional operands") {
-    val program = PythonToExpression.program("negative_divisor = -3\nforward(-5 % 3)\nforward(5 % negative_divisor)\nforward(5.5 % 2)\n")
+    val program = SourceParsing.parse("negative_divisor = -3\nforward(-5 % 3)\nforward(5 % negative_divisor)\nforward(5.5 % 2)\n", SourceLanguage.Python).parsed().program
     assertEquals(TurtleProgramAnalysis(program.fullProgram).completedCommands.map(_.args),
       List(List(1.0), List(-1.0), List(1.5)))
   }
 
 
   private def drawn(python: String) = {
-    val info = TurtleProgramAnalysis(PythonToExpression.program(python).fullProgram)
+    val info = TurtleProgramAnalysis(SourceParsing.parse(python, SourceLanguage.Python).parsed().program.fullProgram)
     (info.executionStatus, info.executedTurtleCommandsInOrder)
   }
 

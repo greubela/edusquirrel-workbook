@@ -1,6 +1,8 @@
 package it.evadid.core.datastructures.vectorShapes
 
-import it.evadid.vm.conversion.pythonexpression.PythonToExpression
+import it.evadid.vm.parsing.source.SourceParsing
+import it.evadid.vm.parsing.source.SourceParsing.SourceLanguage
+
 
 import it.evadid.core.datastructures.geometry.{Bounds, Dimension, Point}
 import it.evadid.core.datastructures.vectorShapes.abstractions.AppShapeElement.AppElementRendered
@@ -119,7 +121,7 @@ class BeExpressionToFlowchartSpec extends FunSuite {
   }
 
   test("parsed programs use the new atomic shapes with finite paths and translated bounds") {
-    val expression = PythonToExpression.program("x = 1\nwhile x < 3:\n    if x == 2:\n        x = x + 1\n    else:\n        x = x + 2\n").fullProgram
+    val expression = SourceParsing.parse("x = 1\nwhile x < 3:\n    if x == 2:\n        x = x + 1\n    else:\n        x = x + 2\n", SourceLanguage.Python).parsed().program.fullProgram
     val chart = build(expression)
     assert(chart.nodes.count(_.kind == NodeKind.Decision) >= 2)
     val shape = BeExpressionToFlowchart(expression)

@@ -19,10 +19,9 @@ case class BeExpressionToPythonString
   override protected def currentInstanceName: String = "self"
   override protected def constructorCallPrefix: String = ""
   override protected def callName(call: BeFunctionCall): String =
-    if it.evadid.core.datastructures.vectorShapes.svg.TurtleCommand.isTurtleMethod(call.funcDef) then {
-      val name = entityName(call.funcDef.functionTypeInfo.displayName)
-      "turtle." + BeExpressionToPythonString.standardTurtleNames.getOrElse(name, name)
-    }
+    if call.funcDef.intrinsic.contains(it.evadid.vm.code.defining.BeIntrinsic.Print) then "print"
+    else if it.evadid.core.datastructures.vectorShapes.svg.TurtleCommand.isTurtleMethod(call.funcDef) then
+      "turtle." + BeExpressionToPythonString.standardTurtleNames.getOrElse(entityName(call.funcDef.functionTypeInfo.displayName), entityName(call.funcDef.functionTypeInfo.displayName))
     else if it.evadid.vm.modules.BeModules.qualifiedName(call.funcDef).nonEmpty then
       it.evadid.vm.modules.BeModules.qualifiedName(call.funcDef).get + "." + entityName(call.funcDef.functionTypeInfo.displayName)
     else super.callName(call)
@@ -64,6 +63,11 @@ case class BeExpressionToPythonString
 
   override def forOther(other: BeExpression): String = other match {
     case BeUseValue(BeDataValueUnit(), _) => "None"
+    // Strings print double-quoted whatever their source spelling, so '…' and "…" convert alike.
+    case BeUseValue(it.evadid.vm.types.BeDataValueLiteral(raw), _) if raw.startsWith("'") && it.evadid.vm.types.StringLiteral.isQuoted(raw) =>
+      it.evadid.vm.types.StringLiteral.quote(it.evadid.vm.types.StringLiteral.content(raw))
+    case call: BeFunctionCall if call.funcDef.intrinsic.contains(it.evadid.vm.code.defining.BeIntrinsic.PrintErr) =>
+      s"print(${(call.arguments.map(forValue) :+ "file=sys.stderr").mkString(", ")})"
     case call: BeFunctionCall if call.isOperator =>
       formatOperatorCall(call)
     case _ =>
@@ -168,7 +172,7 @@ case class BeExpressionToPythonString
 
 object BeExpressionToPythonString {
   /** Canonical turtle names that Python's standard `turtle` module spells differently. */
-  private[expressionpython] val standardTurtleNames: Map[String, String] = Map("pen_up" -> "penup", "pen_down" -> "pendown")
+  private[vm] val standardTurtleNames: Map[String, String] = Map("pen_up" -> "penup", "pen_down" -> "pendown")
 
   /** How the printer spells a missing result type. */
   private val noResult: String = it.evadid.vm.types.BeDataType.Unit.formatTypeForDisplay.getInLanguage(Python)

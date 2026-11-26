@@ -27,6 +27,7 @@ object FillInCodeEditor {
              codeState: Var[String],
              resetTemplate: String,
              title: Signal[String],
+             loadingLabel: Signal[String],
              todoLegend: Signal[String],
              checkButtonLabel: Signal[String],
              resetButtonLabel: Signal[String],
@@ -66,7 +67,7 @@ object FillInCodeEditor {
       ),
       div(
         cls := "fill-in-code-editor__mirror",
-        CodeMirrorEditor(logger, codeState, language).getDomElement()
+        CodeMirrorEditor(logger, codeState, language, loadingLabel).getDomElement()
       ),
       button(
         cls := "btn-check",

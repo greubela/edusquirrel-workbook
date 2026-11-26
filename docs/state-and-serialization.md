@@ -108,9 +108,9 @@ persistent state or an edit classification.
 
 `state.fingerprint()` identifies the
 stored representation; it is not a general semantic-equivalence test.
-[SnapProjectXmlSync](../modules/client/src/main/scala/it/evadid/homepage/webElements/editor/code/SnapEditor/SnapProjectXmlSync.scala)
-currently compares cleaned XML and handles runtime-pose metadata. The adapter's
-subscriptions, polling and cleanup belong to its Laminar mount lifecycle.
+[SnapProjectBinding](../modules/client/src/main/scala/it/evadid/homepage/webElements/editor/code/SnapEditor/SnapProjectBinding.scala)
+compares cleaned XML with the project Snap shows (Snap has no change events and
+normalizes projects); its subscriptions and polling belong to the mounted session.
 
 `State.biMap` composes pure forward/reverse functions against its backing store.
 Core `State` transitions are synchronous; a Var-backed view follows Airstream's
