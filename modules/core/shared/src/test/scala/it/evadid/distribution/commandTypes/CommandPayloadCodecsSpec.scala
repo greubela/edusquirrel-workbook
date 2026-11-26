@@ -361,7 +361,7 @@ class CommandPayloadCodecsSpec extends FunSuite {
   }
 
   test("mail attachments cross the transport with file name, copyright and exact bytes only") {
-    import it.evadid.core.datastructures.file.{CopyrightInfo, FileDescription, LoadedFile}
+    import it.evadid.core.datastructures.file.{CopyrightInfo, FileDescription, LoadedFile, NamedDataFileDescription}
     val bytes = Array[Byte](0, -1, 7, 42, -128, 127)
     val source = new FileDescription {
       def copyrightInfo = CopyrightInfo.fromAi
@@ -375,6 +375,7 @@ class CommandPayloadCodecsSpec extends FunSuite {
     val restored = read[MailCommands.SendMailRequest](json)
     assertEquals(restored.copy(attachments = Nil), request.copy(attachments = Nil))
     val attachment = { assertEquals(restored.attachments.size, 1); restored.attachments.head }
+    assert(attachment.isInstanceOf[NamedDataFileDescription])
     assertEquals(attachment.description.filenameWithExtension, "report.pdf")
     assertEquals(attachment.description.copyrightInfo, CopyrightInfo.fromAi)
     assertEquals(attachment.data.toList, bytes.toList)

@@ -81,6 +81,20 @@ object FileDescription {
 
 }
 
+/** A named file that already holds its bytes, so it describes and loads itself (e.g. a file received over transport). */
+case class NamedDataFileDescription(url: String, data: Array[Byte], copyrightInfo: CopyrightInfo) extends FileDescription with LoadedFile {
+
+  override def toString: String = "NamedDataFileDescription(" + asUrlString + ": " + data.length + " bytes)"
+
+  override def description: FileDescription = this
+
+  override def loadData(): Future[LoadedFile] = Future.successful(this)
+
+  override def getChildrenFile(childName: String, cCopyrightInfo: CopyrightInfo): Option[FileDescription] = None
+
+  override def asUrlString: String = url
+}
+
 /*
   def domainAndDirNames(fullPath: String): (List[String], List[String]) = if (fullPath.trim.isEmpty) (List(), List()) else {
     //val withoutName: String = fullPath.substring(0, fullPath.length - filenameWithExtension.length - 1)
@@ -93,19 +107,6 @@ object FileDescription {
 
 
 
-
-case class NamedDataFileDescription(url: String, override val data: Array[Byte], copyrightInfo: CopyrightInfo) extends FileDescription with LoadedFile {
-
-  override val toString: String = "NamedDataFileDescription(" + asUrlString + ": " + data.length + " bytes)"
-
-  def loadData(): Future[LoadedFile] = Future.successful(this)
-
-  override val description: FileDescription = this
-
-  override def getChildrenFile(childName: String, cCopyrightInfo: CopyrightInfo): Option[FileDescription] = None
-
-  override def asUrlString: String = url
-}
 
 /*case class DerivedChildFileDescription(parent: FileDescription, childName: String, childExtension: Option[String], override val copyrightInfo: CopyrightInfo) extends FileDescription {
 
