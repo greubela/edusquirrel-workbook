@@ -123,6 +123,7 @@ test('the monk workbook can be solved section by section with every interaction 
     };
     // The items are shuffled; drag each into place, from the top, by dropping it on the upper edge of its target slot.
     const reorder = keys => async id => {
+      await interaction(id).scrollIntoViewIfNeeded();
       const items = interaction(id).locator('.reorder-item');
       const expected = keys.map(key => labels[key]);
       for (const [index, text] of expected.entries()) {
@@ -191,7 +192,7 @@ test('the monk workbook can be solved section by section with every interaction 
     await page.locator('.section-block').first().click();
     const next = page.locator('.section-navigation button').last();
     for (const [index, {title, tasks}] of sections.entries()) {
-      await body.getByText(labels[title], {exact: true}).first().waitFor();
+      await page.locator('.section-block.active .section-block-description').getByText(labels[title], {exact: true}).waitFor();
       const ids = await body.locator('.interaction-element').evaluateAll(nodes => nodes.map(node => node.dataset.elementId));
       // Every gradable interaction of the section has a solution, and every solution has its interaction.
       const gradable = [];
@@ -206,7 +207,7 @@ test('the monk workbook can be solved section by section with every interaction 
         `${id} is still green after solving the rest of its section`);
       if (index < sections.length - 1) await next.click();
     }
-    assert(await next.isDisabled(), 'the final section has no next section');
+    assert(await next.isHidden(), 'the final section has no next section');
 
     // The last section closes with the ungraded survey; consent is opt-in.
     const rows = page.locator('.likert-interaction .likert-row');
