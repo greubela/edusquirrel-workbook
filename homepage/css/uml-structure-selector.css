@@ -1,5 +1,6 @@
 /* UmlStructureSelector: classes of a Java answer as UML boxes; every name, attribute and function of the program's
-   own classes is a button. Library and unknown classes are read-only boxes under a «stereotype».
+   own classes is a button. Library and unknown classes are read-only boxes under a «stereotype»; implied members
+   (used, but defined nowhere) are marked.
    Colors come from the editor appearance theme when present, otherwise from the shared workbook tokens. */
 .uml-structure-selector {
     --uml-ink: var(--editor-code-ink, var(--color-text-primary));
@@ -11,6 +12,8 @@
     --uml-selected: var(--editor-selected, var(--color-surface-muted));
     --uml-accent: var(--editor-accent, var(--color-accent-active));
     --uml-focus: var(--editor-focus, var(--color-focus));
+    --uml-implied: var(--editor-warning-border, var(--color-yellow-4));
+    --uml-implied-ink: var(--editor-warning-ink, var(--uml-ink));
 
     display: flex;
     flex-wrap: wrap;
@@ -115,26 +118,34 @@
     color: var(--editor-muted, var(--color-text-secondary, var(--uml-ink)));
 }
 
-.uml-class--library,
-.uml-class--unknown {
-    border-style: dashed;
-}
-
+/* Recognized libraries: solid, muted boxes. What the program implies but nothing defines (unknown classes and
+   implied members): dashed, in the warning color. */
 .uml-class--library .uml-class__header,
-.uml-class--unknown .uml-class__header,
 .uml-class--library:nth-child(even) .uml-class__header,
+.uml-class--unknown .uml-class__header,
 .uml-class--unknown:nth-child(even) .uml-class__header {
     background: var(--uml-header-alt);
-    border-bottom-style: dashed;
+}
+
+.uml-class--library {
+    color: var(--editor-muted, var(--color-text-secondary, var(--uml-ink)));
 }
 
 .uml-class--unknown {
-    border-color: var(--editor-warning-ink, var(--color-yellow-4));
+    border-style: dashed;
+    border-color: var(--uml-implied);
 }
 
-.uml-class--library .uml-class__compartment + .uml-class__compartment,
+.uml-class--unknown .uml-class__header,
 .uml-class--unknown .uml-class__compartment + .uml-class__compartment {
-    border-top-style: dashed;
+    border-style: dashed;
+    border-color: var(--uml-implied);
+}
+
+.uml-structure-selector .uml-entry--implied {
+    color: var(--uml-implied-ink);
+    text-decoration: underline dashed var(--uml-implied);
+    text-underline-offset: 0.2em;
 }
 
 .uml-structure-selector .uml-entry--readonly {

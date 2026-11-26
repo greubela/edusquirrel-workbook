@@ -44,6 +44,26 @@ class PythonComponentEditorSpec extends UiDomSuite {
       }
     }
   }
+  test("the modules a program uses are read-only boxes; implied members and unknown modules are marked") {
+    val state = Var(ProgrammingStatePythonStructured("import turtle\nturtle.forward(10)\nturtle.spin(2)\nfoo.bar(3)\n"))
+    val component = PythonComponentEditor(state, EvaTestContext(labels), CodeMirrorEditorConfig.Default,
+      analyzer = it.evadid.homepage.webElements.editor.code.worker.LocalWorker.analyzer())
+    mountedAsync(component.getDomElement()) { root =>
+      def box(name: String) = all(root, ".uml-class").find(_.getAttribute("data-uml-class") == name)
+      eventually(box("foo").nonEmpty, "the analysis adds the modules the program uses").map { _ =>
+        assertEquals(all(root, ".uml-class").map(_.getAttribute("data-uml-class")), List("__main__", "turtle", "foo"))
+        val turtle = box("turtle").get
+        assert(turtle.classList.contains("uml-class--library"))
+        assertEquals(turtle.querySelector(".uml-class__stereotype").textContent, "«" + english("umllibraryclass") + "»")
+        assert(all(turtle, ".uml-entry").exists(_.textContent == "+forward(distance)"))
+        assertEquals(all(turtle, ".uml-entry--implied").map(_.textContent), List("+spin(arg0)"))
+        assertEquals(all(turtle, "button").size, 0)
+        assert(box("foo").get.classList.contains("uml-class--unknown"))
+        assertEquals(all(box("foo").get, ".uml-entry--implied").map(_.getAttribute("title")), List(english("umlimpliedmemberhint")))
+      }
+    }
+  }
+
   test("member dialogs validate names, add static functions and generate constructor assignments") {
     val state = Var(ProgrammingStatePythonStructured("print(1)"))
     mountedAsync(PythonComponentEditor(state, EvaTestContext(labels), CodeMirrorEditorConfig.Default).getDomElement()) { root =>

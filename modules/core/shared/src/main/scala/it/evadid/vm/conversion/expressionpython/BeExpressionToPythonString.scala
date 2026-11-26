@@ -169,7 +169,7 @@ case class BeExpressionToPythonString
 
 object BeExpressionToPythonString {
   /** Canonical turtle names that Python's standard `turtle` module spells differently. */
-  private[expressionpython] val standardTurtleNames: Map[String, String] = Map("pen_up" -> "penup", "pen_down" -> "pendown")
+  private[vm] val standardTurtleNames: Map[String, String] = Map("pen_up" -> "penup", "pen_down" -> "pendown")
 
   /** How the printer spells a missing result type. */
   private val noResult: String = it.evadid.vm.types.BeDataType.Unit.formatTypeForDisplay.getInLanguage(Python)

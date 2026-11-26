@@ -211,7 +211,7 @@ class JavaComponentEditorSpec extends UiDomSuite {
         assertEquals(all(root, ".uml-class").map(_.querySelector(".uml-class__header").textContent),
           List("Main", "«library»System", "«library»PrintStream", "«unknown»Score", "«unknown»ScoreBoard"))
         assert(box("PrintStream").get.classList.contains("uml-class--library"))
-        assertEquals(box("ScoreBoard").get.getAttribute("title"), english("javaunknownclasshint"))
+        assertEquals(box("ScoreBoard").get.getAttribute("title"), english("umlunknownclasshint"))
         assertEquals(all(box("Score").get, ".uml-entry").map(_.textContent), List("Score", "+board: ScoreBoard"))
         assertEquals(all(box("ScoreBoard").get, "button").size, 0)
         // Only the program's own class has an "Add function" footer.

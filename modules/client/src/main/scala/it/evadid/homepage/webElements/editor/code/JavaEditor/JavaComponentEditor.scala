@@ -49,7 +49,8 @@ final class JavaComponentEditor(
   private val classDiagram = state.signal.map(JavaUmlDiagram(_))
   private val analysis = analyzer.statusOf(state.signal, environment)
   /** What the program uses without defining it, from the worker's analysis; the last result stays while the next is pending. */
-  private val externalClasses = analysis.scanLeft(external(UmlClassDiagram(Nil), _))(external)
+  private val externalClasses = ProgramAnalyzer.latest(analysis, UmlClassDiagram(Nil))(result =>
+    JavaUmlDiagram.external(result.libraryDependencies, result.unknownDependency))
   /** Located warnings (unknown dependencies, unreadable statements), only while the analysis describes the current source. */
   private[JavaEditor] val warnings = analysis.combineWith(labels.warnings.all).map {
     case (ProgramAnalyzer.Status.Ready(result), texts) => result.warnings.map(warning =>
@@ -58,11 +59,6 @@ final class JavaComponentEditor(
   }
   /** Marks of the printed program; the fragment editors show those within their fragment. */
   private lazy val marks = diagnostics.combineWith(warnings).map(_ ++ _)
-  private def external(last: UmlClassDiagram, status: ProgramAnalyzer.Status): UmlClassDiagram = status match {
-    case ProgramAnalyzer.Status.Ready(analysis) => JavaUmlDiagram.external(analysis.libraryDependencies, analysis.unknownDependency)
-    case ProgramAnalyzer.Status.Pending => last
-    case ProgramAnalyzer.Status.Failed(_) => UmlClassDiagram(Nil)
-  }
   private val structureReady = state.signal.map(_.definedClasses.values.forall(source =>
     SourceParsing.parse(source, SourceLanguage.Java).structured.balanced)).distinct
 
@@ -89,11 +85,7 @@ final class JavaComponentEditor(
       disabled <-- structureReady.map(!_), onClick --> (_ => dialog.addFunction(clazz.sourceKey)))),
     trailing = button(typ := "button", cls := "java-function-editor__button uml-add-class", child.text <-- labels(Key.javaAddClass),
       disabled <-- structureReady.map(!_), onClick --> (_ => dialog.addClass())),
-    originLabels = {
-      case UmlClassOrigin.Program => None
-      case UmlClassOrigin.Library => Some(UmlStructureSelector.OriginLabels(labels(Key.javaLibraryClass), labels(Key.javaLibraryClassHint)))
-      case UmlClassOrigin.Unknown => Some(UmlStructureSelector.OriginLabels(labels(Key.javaUnknownClass), labels(Key.javaUnknownClassHint)))
-    })
+    labels = labels.uml)
   private val dialog = JavaStructureDialog(state, labels, navigation.reveal)
   private val functionEditor = JavaFunctionEditor(logger, state, loadingLabel, editorConfig, marks)
   private val classEditor = JavaClassEditor(logger, state, loadingLabel, editorConfig, marks)

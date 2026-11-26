@@ -9,6 +9,8 @@ import it.evadid.workbook.elements.interactionElements.programming.state.Program
 import org.scalajs.dom
 
 class UmlStructureSelectorSpec extends EditorDomSuite {
+  private val labels = UmlStructureSelector.OriginLabels(key => Val(Map("umlLibraryClass" -> "library", "umlLibraryClassHint" -> "view only",
+    "umlUnknownClass" -> "unknown", "umlImpliedMemberHint" -> "implied").getOrElse(key, key)))
   private val coach =
     """public class Coach {
       |    public String name;
@@ -56,7 +58,7 @@ class UmlStructureSelectorSpec extends EditorDomSuite {
     assert(diagram.relations.contains(UmlRelation("Team", "Player", UmlRelation.Kind.Association, Some("players"), many = true)))
     assert(diagram.relations.contains(UmlRelation("Team", "Coach", UmlRelation.Kind.Dependency)))
     val selection = Var(Option.empty[UmlEntityKey])
-    val unmount = mount(UmlStructureSelector(Val(diagram), selection.signal, selection.writer.contramap(Some(_))).getDomElement())
+    val unmount = mount(UmlStructureSelector(Val(diagram), selection.signal, selection.writer.contramap(Some(_)), labels = labels).getDomElement())
     try assertEquals(dom.document.querySelector(".uml-class__stereotype").textContent, "«interface»")
     finally unmount()
   }
@@ -91,8 +93,7 @@ class UmlStructureSelectorSpec extends EditorDomSuite {
     val program = Var(ProgrammingStateJavaStructured(source))
     val selection = Var(Option.empty[UmlEntityKey])
     val selector = UmlStructureSelector(program.signal.map(JavaUmlDiagram(_)), selection.signal, selection.writer.contramap(Some(_)),
-      classFooter = _ => span(cls := "spec-footer"),
-      originLabels = origin => Option.when(origin == UmlClassOrigin.Library)(UmlStructureSelector.OriginLabels(Val("library"), Val("view only"))))
+      classFooter = _ => span(cls := "spec-footer"), labels = labels)
     val unmount = mount(selector.getDomElement())
     try {
       def boxes = (0 until dom.document.querySelectorAll(".uml-class").length).map(dom.document.querySelectorAll(".uml-class")(_))
@@ -113,10 +114,30 @@ class UmlStructureSelectorSpec extends EditorDomSuite {
     } finally unmount()
   }
 
+  test("recognized library members, implied members and unknown classes are told apart") {
+    val program = ProgrammingStateJavaStructured("class Main { static void main(String[] a) { System.out.println(1); System.out2.println(2); Helper.run(4); } }")
+    val analysis = it.evadid.vm.analysis.ProgramAnalysis.of(program)
+    val diagram = JavaUmlDiagram(program).including(JavaUmlDiagram.external(analysis.libraryDependencies, analysis.unknownDependency))
+    val selection = Var(Option.empty[UmlEntityKey])
+    val unmount = mount(UmlStructureSelector(Val(diagram), selection.signal, selection.writer.contramap(Some(_)), labels = labels).getDomElement())
+    try {
+      def box(name: String) = dom.document.querySelector(s".uml-class[data-uml-class='$name']")
+      def implied(name: String) = (0 until box(name).querySelectorAll(".uml-entry--implied").length)
+        .map(box(name).querySelectorAll(".uml-entry--implied")(_).textContent)
+      assert(box("System").classList.contains("uml-class--library"))
+      assertEquals(implied("System"), Seq("+out2: SystemOut2"))
+      assertEquals(box("System").querySelector(".uml-entry--implied").getAttribute("title"), "implied")
+      assert(box("System").textContent.contains("+out: PrintStream"))
+      assert(box("Helper").classList.contains("uml-class--unknown"))
+      assertEquals(box("Helper").querySelector(".uml-class__stereotype").textContent, "«unknown»")
+      assertEquals(implied("Helper"), Seq("+run(arg0)"))
+    } finally unmount()
+  }
+
   test("clicking names, attributes and functions selects them; the selection follows source edits") {
     val source = Var(state)
     val selection = Var(Option.empty[UmlEntityKey])
-    val selector = UmlStructureSelector(source.signal.map(JavaUmlDiagram(_)), selection.signal, selection.writer.contramap(Some(_)))
+    val selector = UmlStructureSelector(source.signal.map(JavaUmlDiagram(_)), selection.signal, selection.writer.contramap(Some(_)), labels = labels)
     val owner = ManualOwner()
     val selected = selector.selectedEntitySignal.observe(using owner)
     val unmount = mount(selector.getDomElement())

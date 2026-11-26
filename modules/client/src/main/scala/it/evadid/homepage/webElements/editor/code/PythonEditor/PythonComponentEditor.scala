@@ -9,6 +9,7 @@ import it.evadid.homepage.webElements.editor.code.EvaEditor.{EvaEditorContext, E
 import it.evadid.homepage.webElements.editor.code.EvaEditor.uml.UmlStructureSelector
 import it.evadid.homepage.webElements.editor.code.codemirror.CodeMirrorEditor
 import it.evadid.homepage.webElements.editor.code.ProgrammingStateView
+import it.evadid.homepage.webElements.editor.code.program.ProgramAnalyzer
 import it.evadid.homepage.webElements.editor.config.CodeMirrorEditorConfig
 import it.evadid.vm.editing.PythonMethodEditing
 import it.evadid.vm.naming.BeEntityName
@@ -22,7 +23,7 @@ import scala.scalajs.concurrent.JSExecutionContext.Implicits.queue
 
 /** Python's class/function/full views share source parsing, UML rendering and CodeMirror with Java. */
 final class PythonComponentEditor(state: Var[ProgrammingStatePythonStructured], context: EvaEditorContext,
-    config: CodeMirrorEditorConfig) extends HtmlAppElement {
+    config: CodeMirrorEditorConfig, analyzer: ProgramAnalyzer = ProgramAnalyzer.shared) extends HtmlAppElement {
   private val labels = context.labels.python
   private val mode = Var("function")
   private val selection = Var(Option.empty[UmlEntityKey])
@@ -34,7 +35,10 @@ final class PythonComponentEditor(state: Var[ProgrammingStatePythonStructured], 
   private val initializer = Var("")
   private val static = Var(false)
   private val error = Var(false)
-  private val diagram = state.signal.map(PythonUmlDiagram(_))
+  /** The program's modules and classes, then the read-only modules it uses without defining them (worker analysis). */
+  private val diagram = state.signal.map(PythonUmlDiagram(_)).combineWith(ProgramAnalyzer.latest(
+    analyzer.statusOf(state.signal, context.environment.programming), UmlClassDiagram(Nil))(result =>
+      PythonUmlDiagram.external(result.libraryDependencies, result.unknownDependency))).map(_.including(_))
 
   private def choose(key: UmlEntityKey): Unit = {
     selection.set(Some(key))
@@ -172,7 +176,8 @@ final class PythonComponentEditor(state: Var[ProgrammingStatePythonStructured], 
       button(typ := "button", child.text <-- labels("pythonAddAttribute"), onClick --> (_ => open("pythonAddAttribute", clazz.sourceKey))),
       Option.when(clazz.sourceKey != PythonMethodEditing.module)(button(typ := "button", child.text <-- labels("pythonAddConstructor"),
         onClick --> (_ => open("pythonAddConstructor", clazz.sourceKey))))),
-      trailing = button(typ := "button", cls := "uml-add-class", child.text <-- labels("pythonAddClass"), onClick --> (_ => open("pythonAddClass", PythonMethodEditing.module)))).getDomElement(),
+      trailing = button(typ := "button", cls := "uml-add-class", child.text <-- labels("pythonAddClass"), onClick --> (_ => open("pythonAddClass", PythonMethodEditing.module))),
+      labels = UmlStructureSelector.OriginLabels(labels(_))).getDomElement(),
     div(cls := "java-function-editor__workspace", child <-- selection.signal.combineWith(mode.signal).distinct.map(sourceEditor)),
     child.maybe <-- dialog.signal.map(_.map(renderDialog)))
 

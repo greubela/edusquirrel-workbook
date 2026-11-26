@@ -7,6 +7,7 @@ import it.evadid.core.datastructures.language.LanguageMapContentId
 final class JavaEditorLabels(text: String => Signal[String]) {
   import JavaEditorLabels.Key
   val warnings = it.evadid.homepage.webElements.editor.code.program.SourceWarningLabels(text)
+  val uml = it.evadid.homepage.webElements.editor.code.EvaEditor.uml.UmlStructureSelector.OriginLabels(text)
 
   def apply(key: Key): Signal[String] = text(key.entry)
 
@@ -23,7 +24,6 @@ object JavaEditorLabels {
     case javaTitle, javaSubtitle, javaShowClasses, javaHideClasses, javaNavigation, javaTaskReference
     case javaDelete, javaAddAttribute, javaEditAttribute, javaAttributeName, javaAttributeType, javaInitializer, javaVisibility, javaAddConstructor, javaAssignFields, javaFieldExists
     case javaNoClasses, javaNoClassesHint, javaAddClass, javaAddFunction
-    case javaLibraryClass, javaLibraryClassHint, javaUnknownClass, javaUnknownClassHint
     case javaModes, javaModeClass, javaModeFunction, javaModeFull
     case javaViewFunction, javaViewClass, javaViewSource, javaViewEmpty
     case javaSourceHeading, javaSelectionHeading, javaEditsKept, javaChooseEntry, javaChooseEntryHint, javaDraftWarning

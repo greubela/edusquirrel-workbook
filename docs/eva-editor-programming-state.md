@@ -59,10 +59,12 @@ Attribute and constructor dialogs, deletion and relationship arrows use the same
 `PythonComponentEditor` uses the same UML renderer and source stages for module,
 class and function views. `PythonMethodEditing` owns its source ranges and edits.
 
-Shared UML data lives in `core.datastructures.uml`; `JavaUmlDiagram` derives it from
-the parsing stages and `UmlStructureSelector` renders it. Program classes are editable.
-Library/unknown-dependency boxes are read-only and retain the last finished analysis
-while typing. An edited library definition becomes program code. UML classes use
+Shared UML data lives in `core.datastructures.uml`; `JavaUmlDiagram` and `PythonUmlDiagram`
+derive it from the parsing stages and `UmlStructureSelector` renders it. Program classes are
+editable. `ExternalUmlClasses` adds read-only boxes from the worker analysis (kept while the
+next analysis is pending): recognized libraries are «library» boxes (Java classes, Python
+modules such as `turtle`); what the program uses but nothing defines is *implied*: an
+implied member of a library box (`turtle.spin`) or an «unknown» box, marked dashed. An edited library definition becomes program code. UML classes use
 square corners and stable hover geometry.
 
 Labels come from `blockeditor` language maps. Use `LabelSelection` or

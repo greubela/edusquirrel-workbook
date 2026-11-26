@@ -38,6 +38,16 @@ final class ProgramAnalyzer(worker: SharedWorker) {
 object ProgramAnalyzer {
   lazy val shared: ProgramAnalyzer = ProgramAnalyzer(SharedWorker.analysis)
 
+  /** `view` of the latest ready analysis in `status`: kept while the next one is pending, `empty` after a failure. */
+  def latest[A](status: Signal[Status], empty: A)(view: ProgramAnalysis => A): Signal[A] = {
+    def step(last: A, next: Status): A = next match {
+      case Status.Ready(analysis) => view(analysis)
+      case Status.Pending => last
+      case Status.Failed(_) => empty
+    }
+    status.scanLeft(step(empty, _))(step)
+  }
+
   enum Status {
     case Pending
     case Ready(analysis: ProgramAnalysis)

@@ -2,12 +2,11 @@ package it.evadid.vm.structure
 
 import it.evadid.core.datastructures.language.AppLanguage.Java
 import it.evadid.core.datastructures.uml.*
-import it.evadid.vm.code.defining.{BeDefineClass, BeDependency, BeUnknownDependency}
+import it.evadid.vm.code.defining.{BeDependency, BeUnknownDependency}
 import it.evadid.vm.conversion.dependencies.KnownDependencies
 import it.evadid.vm.parsing.source.{JavaClassStructured, SourceParsing}
 import it.evadid.vm.parsing.source.SourceParsing.SourceLanguage
 import it.evadid.vm.naming.BeEntityName
-import it.evadid.vm.types.BeDataType
 import it.evadid.workbook.elements.interactionElements.programming.state.ProgrammingStateJavaStructured
 
 /** Java classes in the language-independent UML model, from the declarations of [[SourceParsing]]'s first step. */
@@ -30,20 +29,16 @@ object JavaUmlDiagram {
         }
       }.distinct)
 
-  /** Read-only boxes of what a program uses without defining it: the classes of the libraries it calls (in their
-    * Java form) and of its unknown dependency. An unknown class named like a library class (`System` with an
-    * unknown `out2`) shadows it in the stubs and keeps the library's members, so its box shows both.
+  /** Read-only boxes of what a program uses without defining it ([[ExternalUmlClasses]]): the classes of the
+    * libraries it calls, in their Java form, and of its unknown dependency. `java.lang`'s `System` is always known,
+    * so an unknown `System.out2` is an implied member of its library box.
     */
   def external(libraries: Seq[BeDependency], unknown: Option[BeUnknownDependency]): UmlClassDiagram = {
-    val library = libraries.flatMap(dependency => dependency.definition(Java).orElse(javaLibraryViews.get(dependency.structureName)))
-      .distinct.flatMap(classesOf(_, UmlClassOrigin.Library)).distinctBy(_.name)
-    val known = library ++ javaLibraryViews.values.toSeq.flatMap(classesOf(_, UmlClassOrigin.Library))
-    val unknownClasses = unknown.toSeq.flatMap(dependency =>
-      dependency.rootClasses.map(unknownClass(_, static = true)) ++ dependency.memberClasses.map(unknownClass(_, static = false)))
-      .map(umlClass => known.find(_.name == umlClass.name).fold(umlClass)(shadowed => umlClass.copy(
-        attributes = shadowed.attributes ++ umlClass.attributes.filterNot(member => shadowed.attributes.exists(_.name == member.name)),
-        functions = shadowed.functions ++ umlClass.functions)))
-    UmlClassDiagram(library.filterNot(value => unknownClasses.exists(_.name == value.name)) ++ unknownClasses)
+    val called = libraries.flatMap(dependency => dependency.definition(Java).orElse(javaLibraryViews.get(dependency.structureName)))
+    val shown = called.distinct.flatMap(classesOf(_, UmlClassOrigin.Library))
+    val implied = unknown.toSeq.flatMap(dependency => dependency.rootClasses ++ dependency.memberClasses).map(_.name.spelling()).toSet
+    val java = javaLibraryViews.values.toSeq.flatMap(classesOf(_, UmlClassOrigin.Library)).filter(value => implied(value.name))
+    ExternalUmlClasses(shown ++ java, unknown)
   }
 
   /** Java forms of library classes that `java.lang` provides, so no definition is printed for them. */
@@ -59,26 +54,6 @@ object JavaUmlDiagram {
 
   private def classesOf(source: String, origin: UmlClassOrigin): Seq[UmlClass] =
     SourceParsing.parse(source, SourceLanguage.Java).structured.classes.map(owner => umlClass(BeEntityName.fromCodeString(owner.name), owner, Some(origin)))
-
-  /** Unknown members have no known types: attributes show the class they lead to, methods their arguments. */
-  private def unknownClass(definition: BeDefineClass, static: Boolean): UmlClass = {
-    val name = definition.name.spelling()
-    def member(kind: UmlEntityKind, memberName: String, label: String) =
-      UmlMember(UmlEntityKey(name, Some(UmlMemberKey(kind, memberName, 0))), s"${UmlVisibility.Public.symbol}$label",
-        UmlVisibility.Public, static, isAbstract = false, code = "")
-    val attributes = definition.attributes.map { attribute =>
-      val owner = attribute.variableType match {
-        case BeDataType.ClassType(owner) => typeSuffix(owner.spelling())
-        case _ => ""
-      }
-      member(UmlEntityKind.Attribute, attribute.name.spelling(), s"${attribute.name.spelling()}$owner")
-    }
-    val functions = definition.methods.distinctBy(_.functionTypeInfo.displayName.spelling()).map { method =>
-      val methodName = method.functionTypeInfo.displayName.spelling()
-      member(UmlEntityKind.Function, methodName, s"$methodName(${method.inputs.map(_.name.spelling()).mkString(", ")})")
-    }
-    UmlClass(definition.name, name, "", isAbstract = false, attributes, functions, UmlClassOrigin.Unknown)
-  }
 
   /** The box of one class source; its `fullCode` is the declaration without the preamble of imports. Without an
     * `origin`, a verbatim library definition is a library class and any other source the program's own.

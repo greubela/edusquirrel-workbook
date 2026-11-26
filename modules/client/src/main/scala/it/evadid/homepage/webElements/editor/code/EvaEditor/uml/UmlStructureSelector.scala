@@ -11,14 +11,14 @@ import it.evadid.core.datastructures.uml.*
 /** A language-independent UML model rendered as class boxes: name, attributes and functions.
   * It shows the `selection` it is given and reports clicks to `choose`; the owner decides what is selected.
   * Only the program's own classes are clickable and get the `classFooter`. Library and unknown classes are
-  * read-only boxes under the stereotype and hint `originLabels` gives them.
+  * read-only boxes under a stereotype; implied members (used, but defined nowhere) are marked in any box.
   */
 case class UmlStructureSelector(diagram: Signal[UmlClassDiagram],
     selection: Signal[Option[UmlEntityKey]],
     choose: Observer[UmlEntityKey],
     classFooter: UmlClass => Modifier[HtmlElement] = _ => emptyMod,
     trailing: Modifier[HtmlElement] = emptyMod,
-    originLabels: UmlClassOrigin => Option[UmlStructureSelector.OriginLabels] = _ => None) extends HtmlAppElement {
+    labels: UmlStructureSelector.OriginLabels) extends HtmlAppElement {
   import it.evadid.core.datastructures.uml.UmlSelectedEntity
   import UmlRelationLayout.*
   private val root = Var(Option.empty[dom.Element])
@@ -85,16 +85,16 @@ case class UmlStructureSelector(diagram: Signal[UmlClassDiagram],
       renderClass(umlClass, key._2)), trailing)
 
   private def renderClass(umlClass: Signal[UmlClass], origin: UmlClassOrigin): Element = {
-    val labels = originLabels(origin).filterNot(_ => origin.editable)
+    val texts = labels.of(origin)
     sectionTag(
       cls := "uml-class",
       dataAttr("uml-class") <-- umlClass.map(_.name),
       onMountCallback(context => watch(context.thisNode.ref, context.owner)),
       cls(s"uml-class--${origin.toString.toLowerCase}") := !origin.editable,
-      labels.fold(emptyMod)(texts => title <-- texts.hint),
+      texts.fold(emptyMod)((_, hint) => title <-- hint),
       div(cls := "uml-class__header",
         child.maybe <-- umlClass.map(value => Option.when(value.isInterface)(span(cls := "uml-class__stereotype", "«interface»"))),
-        labels.fold(emptyMod)(texts => span(cls := "uml-class__stereotype", child.text <-- texts.name.map(name => s"«$name»"))),
+        texts.fold(emptyMod)((name, _) => span(cls := "uml-class__stereotype", child.text <-- name.map(value => s"«$value»"))),
         entry(origin, umlClass.map(_.key), umlClass.map(_.name), cls("uml-entry--abstract") <-- umlClass.map(_.isAbstract))),
       compartment(origin, "uml-class__attributes", umlClass.map(_.attributes)),
       compartment(origin, "uml-class__functions", umlClass.map(_.functions)),
@@ -103,9 +103,11 @@ case class UmlStructureSelector(diagram: Signal[UmlClassDiagram],
 
   private def compartment(origin: UmlClassOrigin, className: String, members: Signal[Seq[UmlMember]]): Element = ul(
     cls := s"uml-class__compartment $className",
-    children <-- members.split(_.key)((_, _, member) => li(entry(origin, member.map(_.key), member.map(_.label),
-      cls("uml-entry--static") <-- member.map(_.isStatic),
-      cls("uml-entry--abstract") <-- member.map(_.isAbstract)))))
+    children <-- members.split(member => (member.key, member.implied))((key, _, member) => li(
+      if key._2 then span(cls := "uml-entry uml-entry--readonly uml-entry--implied", title <-- labels.impliedHint, child.text <-- member.map(_.label))
+      else entry(origin, member.map(_.key), member.map(_.label),
+        cls("uml-entry--static") <-- member.map(_.isStatic),
+        cls("uml-entry--abstract") <-- member.map(_.isAbstract)))))
 
   private def entry(origin: UmlClassOrigin, key: Signal[UmlEntityKey], label: Signal[String], modifiers: Modifier[HtmlElement]*): HtmlElement =
     if !origin.editable then span(cls := "uml-entry uml-entry--readonly", child.text <-- label, modifiers)
@@ -121,6 +123,14 @@ case class UmlStructureSelector(diagram: Signal[UmlClassDiagram],
 }
 
 object UmlStructureSelector {
-  /** The stereotype shown above a read-only class's name, and the hint explaining it. */
-  final case class OriginLabels(name: Signal[String], hint: Signal[String])
+  /** Stereotypes and hints of read-only boxes, and the hint of implied members, by `blockeditor` map key. */
+  final class OriginLabels(text: String => Signal[String]) {
+    /** The stereotype shown above a read-only class's name, and the hint explaining it. */
+    def of(origin: UmlClassOrigin): Option[(Signal[String], Signal[String])] = origin match {
+      case UmlClassOrigin.Program => None
+      case UmlClassOrigin.Library => Some(text("umlLibraryClass") -> text("umlLibraryClassHint"))
+      case UmlClassOrigin.Unknown => Some(text("umlUnknownClass") -> text("umlUnknownClassHint"))
+    }
+    def impliedHint: Signal[String] = text("umlImpliedMemberHint")
+  }
 }
