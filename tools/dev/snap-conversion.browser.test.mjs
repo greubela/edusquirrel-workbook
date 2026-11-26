@@ -23,7 +23,7 @@ const cases = [
   {name:'custom command and reporter', xml:project('<custom-block s="step %n"><custom-block s="twice %n"><l>4</l></custom-block></custom-block>', customDefinitions)},
   {name:'detached script', xml:project(forward(literal(11)), '', '', script(forward(literal(999))))},
   {name:'empty numeric input', xml:project(forward(literal('')))},
-  {name:'unsupported native block', xml:project(forward(literal(3)) + block('doSayFor', literal('hello') + literal(0))), unsupported:true}
+  {name:'unsupported native block', xml:project(forward(literal(3)) + block('doThinkFor', literal('hello') + literal(0))), unsupported:true}
 ];
 
 function result(reply) {
