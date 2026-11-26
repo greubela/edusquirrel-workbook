@@ -1,13 +1,16 @@
 package it.evadid.server
 
+import it.evadid.core.datastructures.file.LoadedFile
 import it.evadid.distribution.commandTypes.MailCommands.{SendMailRequest, SendMailResponse}
 import it.evadid.util.JvmUtils
 import it.evadid.util.logging.Logger
 import jakarta.mail.*
-import jakarta.mail.internet.{AddressException, InternetAddress, MimeMessage}
+import jakarta.mail.internet.{AddressException, InternetAddress, MimeBodyPart, MimeMessage, MimeMultipart}
+import jakarta.mail.util.ByteArrayDataSource
+import jakarta.activation.DataHandler
 
 import java.util.Properties
-import java.net.{ConnectException, SocketTimeoutException, UnknownHostException}
+import java.net.{ConnectException, SocketTimeoutException, URLConnection, UnknownHostException}
 import javax.net.ssl.SSLException
 import scala.concurrent.{ExecutionContext, Future}
 
@@ -33,7 +36,7 @@ object SendMailCommand {
 
   private[server] def sendMail(request: SendMailRequest, logger: Logger, envProvider: String => Option[String]): SendMailResponse = {
     val config = readMailConfig(envProvider)
-    logger.logInfo(s"sending mail to '${request.recipientMail}'")// with subject '${request.subject}' via ${config.host}:${config.port}")
+    logger.logInfo(s"sending mail with ${request.attachments.size} attachment(s) to '${request.recipientMail}'")
 
     withDeliveryContext {
       val props = new Properties()
@@ -58,12 +61,29 @@ object SendMailCommand {
       msg.setFrom(InternetAddress(config.email))
       msg.setRecipients(Message.RecipientType.TO, request.recipientMail)
       msg.setSubject(request.subject)
-      msg.setText(request.content)
+      if request.attachments.isEmpty then msg.setText(request.content, "UTF-8")
+      else msg.setContent(multipartContent(request))
 
       Transport.send(msg)
       logger.logInfo(s"mail sent to '${request.recipientMail}'")
       SendMailResponse(None, sent = true)
     }
+  }
+
+  /** Text body followed by one MIME part per attachment. */
+  private[server] def multipartContent(request: SendMailRequest): MimeMultipart = {
+    val textPart = MimeBodyPart()
+    textPart.setText(request.content, "UTF-8")
+    MimeMultipart((textPart +: request.attachments.map(attachmentPart))*)
+  }
+
+  private def attachmentPart(file: LoadedFile): MimeBodyPart = {
+    val filename = file.description.filenameWithExtension
+    val contentType = Option(URLConnection.guessContentTypeFromName(filename)).getOrElse("application/octet-stream")
+    val part = MimeBodyPart()
+    part.setDataHandler(DataHandler(ByteArrayDataSource(file.data, contentType)))
+    part.setFileName(filename)
+    part
   }
 
   /** SMTP errors can contain recipients or message contents; only safe diagnostics cross the command boundary. */

@@ -360,6 +360,27 @@ class CommandPayloadCodecsSpec extends FunSuite {
     assertEquals(MailCommands.sendMailCommand.name, "send-mail-request")
   }
 
+  test("mail attachments cross the transport with file name, copyright and exact bytes only") {
+    import it.evadid.core.datastructures.file.{CopyrightInfo, FileDescription, LoadedFile}
+    val bytes = Array[Byte](0, -1, 7, 42, -128, 127)
+    val source = new FileDescription {
+      def copyrightInfo = CopyrightInfo.fromAi
+      def asUrlString = "https://example.invalid/private/dir/report.pdf"
+      def loadData(): Future[LoadedFile] = Future.successful(LoadedFile(this, bytes))
+      def getChildrenFile(name: String, copyright: CopyrightInfo): Option[FileDescription] = None
+    }
+    val request = MailCommands.SendMailRequest("student@example.org", "Subject", "Body", List(LoadedFile(source, bytes)))
+    val json = write(request)
+    assert(!json.contains("private/dir"))
+    val restored = read[MailCommands.SendMailRequest](json)
+    assertEquals(restored.copy(attachments = Nil), request.copy(attachments = Nil))
+    val attachment = { assertEquals(restored.attachments.size, 1); restored.attachments.head }
+    assertEquals(attachment.description.filenameWithExtension, "report.pdf")
+    assertEquals(attachment.description.copyrightInfo, CopyrightInfo.fromAi)
+    assertEquals(attachment.data.toList, bytes.toList)
+    assertEquals(read[MailCommands.SendMailRequest](write(MailCommands.SendMailRequest("a@example.org", "S", "B"))).attachments, Nil)
+  }
+
   test("a typed mail command preserves the response through the serialized transport") {
     val response = MailCommands.SendMailResponse(None, sent = true)
     val client = MailCommands.sendMailCommand.toLocalExecutionClient((_, _) => Future.successful(response))
