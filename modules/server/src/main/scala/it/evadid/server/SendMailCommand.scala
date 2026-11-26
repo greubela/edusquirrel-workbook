@@ -5,7 +5,7 @@ import it.evadid.distribution.commandTypes.MailCommands.{SendMailRequest, SendMa
 import it.evadid.util.JvmUtils
 import it.evadid.util.logging.Logger
 import jakarta.mail.*
-import jakarta.mail.internet.{AddressException, InternetAddress, MimeBodyPart, MimeMessage, MimeMultipart}
+import jakarta.mail.internet.{AddressException, ContentType, InternetAddress, MimeBodyPart, MimeMessage, MimeMultipart}
 import jakarta.mail.util.ByteArrayDataSource
 import jakarta.activation.DataHandler
 
@@ -13,6 +13,7 @@ import java.util.Properties
 import java.net.{ConnectException, SocketTimeoutException, URLConnection, UnknownHostException}
 import javax.net.ssl.SSLException
 import scala.concurrent.{ExecutionContext, Future}
+import scala.util.Try
 
 object SendMailCommand {
 
@@ -83,11 +84,12 @@ object SendMailCommand {
   /** Name for files without one, e.g. those located by a `data:` URL. */
   private[server] val unnamedAttachmentName = "attachment"
 
-  /** The declared media type wins over a guess from the file name. */
+  /** Client values never reach MIME headers raw: control characters leave the name, and a malformed declared media type
+   * yields to the guess from the file name. */
   private def attachmentPart(file: LoadedFile): MimeBodyPart = {
-    val filename = Some(file.description.filenameWithExtension).filter(_.nonEmpty).getOrElse(unnamedAttachmentName)
-    val contentType = file.description.mediaType.orElse(Option(URLConnection.guessContentTypeFromName(filename)))
-      .getOrElse("application/octet-stream")
+    val filename = Some(file.description.filenameWithExtension.filterNot(_.isControl).trim).filter(_.nonEmpty).getOrElse(unnamedAttachmentName)
+    val declared = file.description.mediaType.flatMap(mediaType => Try(ContentType(mediaType).toString).toOption.flatMap(Option(_)))
+    val contentType = declared.orElse(Option(URLConnection.guessContentTypeFromName(filename))).getOrElse("application/octet-stream")
     val part = MimeBodyPart()
     part.setDataHandler(DataHandler(ByteArrayDataSource(file.data, contentType)))
     part.setFileName(filename)

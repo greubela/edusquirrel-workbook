@@ -83,4 +83,33 @@ class SendMailAttachmentSpec extends FunSuite {
     assert(parts.getBodyPart(2).isMimeType("text/csv"))
     assertEquals(parts.getBodyPart(2).getFileName, "report.pdf")
   }
+
+  test("client-supplied attachment names and media types cannot inject MIME headers or parts") {
+    val injection = "\r\nX-Injected: 1\r\n\r\n--forged"
+    val request = SendMailRequest("a@example.org", "S", "B", List(
+      NamedDataFileDescription("evil.txt" + injection, Array[Byte](1), CopyrightInfo.unknownCopyrightInfo, None),
+      NamedDataFileDescription("b.bin", Array[Byte](2), CopyrightInfo.unknownCopyrightInfo, Some("text/plain" + injection)),
+      NamedDataFileDescription("c.bin", Array[Byte](3), CopyrightInfo.unknownCopyrightInfo, Some("not a media type"))))
+    val out = ByteArrayOutputStream()
+    SendMailCommand.mailMessage(session, "sender@example.org", request).writeTo(out)
+    val wire = out.toString("UTF-8")
+    assert(!wire.contains("\r\nX-Injected"), wire)
+    assert(!wire.contains("\r\n--forged"), wire)
+    val parts = MimeMessage(session, ByteArrayInputStream(out.toByteArray)).getContent.asInstanceOf[MimeMultipart]
+    assertEquals(parts.getCount, 4)
+    assertEquals(parts.getBodyPart(1).getFileName, "evil.txtX-Injected: 1--forged")
+    assertEquals(parts.getBodyPart(1).getInputStream.readAllBytes().toList, List[Byte](1))
+    assert(parts.getBodyPart(2).isMimeType("application/octet-stream"))
+    assert(parts.getBodyPart(3).isMimeType("application/octet-stream"))
+    assertEquals(parts.getBodyPart(3).getInputStream.readAllBytes().toList, List[Byte](3))
+  }
+
+  test("a client-supplied subject cannot inject top-level headers such as additional recipients") {
+    val out = ByteArrayOutputStream()
+    SendMailCommand.mailMessage(session, "sender@example.org", SendMailRequest("a@example.org", "Hi\r\nBcc: other@example.org", "B")).writeTo(out)
+    assert(!out.toString("UTF-8").contains("\r\nBcc:"), out.toString("UTF-8"))
+    val message = MimeMessage(session, ByteArrayInputStream(out.toByteArray))
+    assertEquals(message.getRecipients(Message.RecipientType.BCC), null)
+    assertEquals(message.getAllRecipients.map(_.toString).toList, List("a@example.org"))
+  }
 }
