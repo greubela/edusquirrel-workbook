@@ -393,7 +393,7 @@ object SnapProjectXml {
   }
 
   private def renderConditionValue(expression: BeExpression)(using RenderContext): String = expression match {
-    case BeUseValue(BeDataValueLiteral(value), _) => s"<l>${SnapXmlText.escape(value)}</l>"
+    case BeUseValue(BeDataValueLiteral(value), _) => s"<l>${SnapXmlText.escape(SnapInputCodec.slotText(value))}</l>"
     case BeUseValue(BeUseValueReference(variable), _) => renderVariableReporter(variable)
     case call: BeFunctionCall if call.isOperator => renderOperator(call)
     case call: BeFunctionCall => renderCall(call)

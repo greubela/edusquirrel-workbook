@@ -55,8 +55,7 @@ final case class JavaClassStructured(
     outer: Option[String],
     isInterface: Boolean = false,
     extendsNames: Vector[String] = Vector.empty,
-    implementsNames: Vector[String] = Vector.empty,
-    referencedNames: Vector[String] = Vector.empty
+    implementsNames: Vector[String] = Vector.empty
 ) derives ReadWriter {
   def isAbstract: Boolean = isInterface || modifiers.contains("abstract")
   def functions: Vector[JavaFunctionStructured] = members.collect { case function: JavaFunctionStructured => function }

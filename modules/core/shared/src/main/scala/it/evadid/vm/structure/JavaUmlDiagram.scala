@@ -23,9 +23,7 @@ object JavaUmlDiagram {
           val associations = owner.fields.flatMap(field => field.typeNames.distinct.filterNot(_ == owner.name).map(target =>
             UmlRelation(owner.name, target, UmlRelation.Kind.Association, Some(field.name),
               field.javaType.contains("[") || field.typeNames.exists(Set("List", "Set", "Map", "Collection", "Queue", "Deque")))))
-          val covered = (parents ++ associations).map(_.to).toSet + owner.name
-          val dependencies = owner.referencedNames.filterNot(covered).map(UmlRelation(owner.name, _, UmlRelation.Kind.Dependency))
-          parents ++ associations ++ dependencies
+          parents ++ associations
         }
       }.distinct)
 

@@ -25,13 +25,16 @@ case class UmlStructureSelector(diagram: Signal[UmlClassDiagram],
   private val boxes = Var(Map.empty[String, Box])
   private val markerId = s"uml-${UUID.randomUUID()}"
 
+  /** Box positions in the row's content coordinates, which the arrows share however far the row is scrolled. */
   private def measure(): Unit = root.now().foreach { parent =>
-    val area = parent.getBoundingClientRect()
+    val viewport = parent.getBoundingClientRect()
+    val originLeft = viewport.left + parent.clientLeft - parent.scrollLeft
+    val originTop = viewport.top + parent.clientTop - parent.scrollTop
     val nodes = parent.querySelectorAll(".uml-class")
     val next = (0 until nodes.length).map { index =>
       val node = nodes(index).asInstanceOf[dom.Element]
       val rect = node.getBoundingClientRect()
-      node.getAttribute("data-uml-class") -> Box(rect.left - area.left, rect.top - area.top, rect.width, rect.height)
+      node.getAttribute("data-uml-class") -> Box(rect.left - originLeft, rect.top - originTop, rect.width, rect.height)
     }.toMap
     if next != boxes.now() then boxes.set(next)
   }

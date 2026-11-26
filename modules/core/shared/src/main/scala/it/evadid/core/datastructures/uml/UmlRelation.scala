@@ -7,6 +7,6 @@ final case class UmlRelation(from: String, to: String, kind: UmlRelation.Kind,
 
 object UmlRelation {
   enum Kind derives ReadWriter {
-    case Inheritance, Realization, Association, Dependency
+    case Inheritance, Realization, Association
   }
 }

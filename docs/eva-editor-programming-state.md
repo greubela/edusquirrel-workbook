@@ -54,7 +54,9 @@ Diagnostics and worker-generated flowcharts arrive through signals. The gutter r
 owns mode/selection; `JavaFragmentEditor` splices partial drafts into source ranges, and
 core `JavaMethodEditing` locates, replaces and inserts methods on step-1 declarations.
 Adding a declaration in Function Mode selects only the new function.
-Attribute and constructor dialogs, deletion and relationship arrows use the same shared UML model.
+Attribute and constructor dialogs, deletion and relationship arrows (inheritance, realization,
+association; no usage arrows) use the same shared UML model. All classes share one row, which
+scrolls horizontally when needed.
 
 `PythonComponentEditor` uses the same UML renderer and source stages for module,
 class and function views. `PythonMethodEditing` owns its source ranges and edits.

@@ -56,7 +56,7 @@ class UmlStructureSelectorSpec extends EditorDomSuite {
     assert(diagram.relations.contains(UmlRelation("Team", "Base", UmlRelation.Kind.Inheritance)))
     assert(diagram.relations.contains(UmlRelation("Team", "Named", UmlRelation.Kind.Realization)))
     assert(diagram.relations.contains(UmlRelation("Team", "Player", UmlRelation.Kind.Association, Some("players"), many = true)))
-    assert(diagram.relations.contains(UmlRelation("Team", "Coach", UmlRelation.Kind.Dependency)))
+    assert(!diagram.relations.exists(_.to == "Coach"), "using a class draws no arrow")
     val selection = Var(Option.empty[UmlEntityKey])
     val unmount = mount(UmlStructureSelector(Val(diagram), selection.signal, selection.writer.contramap(Some(_)), labels = labels).getDomElement())
     try assertEquals(dom.document.querySelector(".uml-class__stereotype").textContent, "«interface»")

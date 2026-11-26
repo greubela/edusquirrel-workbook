@@ -36,8 +36,7 @@ private[source] object JavaStructureStep {
                   (method.modifiers ++ Vector("public") ++ Option.when(method.bodySpan.isEmpty)("abstract")).distinct)
                 case other => other
               }, library = KnownDependencies.isJavaDefinition(classCode), outer, isInterface = keyword == "interface",
-              extendsNames = superTypes(code.drop(index + 2), "extends"), implementsNames = superTypes(code.drop(index + 2), "implements"),
-              referencedNames = body.toVector.flatMap(group => flatten(group.children).collect { case Word(_, _, word) => word }).distinct) -> body)
+              extendsNames = superTypes(code.drop(index + 2), "extends"), implementsNames = superTypes(code.drop(index + 2), "implements")) -> body)
           case _ => None
         }
       }.toVector
