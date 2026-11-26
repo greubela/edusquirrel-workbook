@@ -35,7 +35,7 @@ object PythonToExpression {
     val built = new ParsedProgramBuilder(Python, knownStructures).build(parse(source))
     val expression = PythonEntryPoint.inline(BeStartProgram(built.expression)).startSequence.getOrElse(built.expression)
     Details(built.context.definedClasses, built.context.definedFunctions, built.context.definedVariables,
-      built.context.currentStructures, expression)
+      built.context.structures, expression)
   }
 
   /** Unreadable source is retained as one unparsable statement rather than discarded. */

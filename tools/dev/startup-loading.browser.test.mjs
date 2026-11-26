@@ -9,7 +9,9 @@ const root=path.resolve(import.meta.dirname,'../..');
 const origin='http://localhost:9000';
 const mime={'.html':'text/html','.js':'text/javascript','.css':'text/css','.json':'application/json','.svg':'image/svg+xml','.png':'image/png'};
 
-for(const prefix of ['/', '/edusquirrel-workbook/']) {
+// The full stalled-startup check runs under the Pages prefix; the dependency-failure test below covers the root prefix.
+{
+  const prefix='/edusquirrel-workbook/';
   test(`startup renders and preheats while configuration, translations and optional scripts are stalled (${prefix})`,async()=>{
     const browser=await chromium.launch({executablePath:process.env.CHROMIUM_PATH || chromium.executablePath(),chromiumSandbox:true});
     let releaseLibraries,releaseLanguages,releaseConfig;
@@ -100,8 +102,10 @@ test('a failed Snap dependency leaves the shell usable and a later editor open r
       try {await route.fulfill({body:await fs.readFile(file),contentType:mime[path.extname(file)]||'application/octet-stream'});}
       catch {await route.fulfill({status:404,body:'Not found'});}
     });
+    const workerRequest=page.waitForRequest(request=>request.url()===origin+'/artifacts/newest/worker.js');
     await installCodeMirrorModules(page);
     await page.goto(origin+'/homepage/workbookDesign/',{waitUntil:'domcontentloaded'});
+    await workerRequest;
     await page.getByRole('button',{name:'Start Using Locally',exact:true}).click();
     await page.locator('.section-block').first().click();
     const open=page.getByRole('button',{name:/Editor.*öffnen|Open editor/i}).first();
@@ -118,6 +122,7 @@ test('a failed Snap dependency leaves the shell usable and a later editor open r
       return canvas && canvas.width>1 && canvas.height>1 && new Set(canvas.getContext('2d')
         .getImageData(0,0,canvas.width,canvas.height).data).size>8;
     });
+    assert.equal(await page.evaluate(()=>window.base_prog_dir),origin+'/resources/programs/20260212TurtleStitch/');
     assert.deepEqual(errors,[]);
   } finally {await browser.close();}
 });

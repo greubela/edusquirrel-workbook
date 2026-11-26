@@ -96,8 +96,6 @@ jobs:
 
   scala-tests:
     runs-on: ubuntu-latest
-    outputs:
-      browser_artifact_name: browser-bundles-${{ github.run_attempt }}
     # Allow a clean dependency/build cache.
     timeout-minutes: 30
     steps:
@@ -130,9 +128,43 @@ jobs:
       # Scala.js DOM suites require jsdom while constructing their fixtures.
       - name: Install Node test dependencies
         run: npm ci
-      - name: Test every Scala module and build browser artifacts
-        run: sbt -batch -J-Xmx4G -Dsbt.supershell=false coreJVM/test coreJS/test client/test server/test worker/test desktop/compile buildClientDev buildWorkerDev
+      - name: Test every Scala module
+        run: sbt -batch -J-Xmx4G -Dsbt.supershell=false coreJVM/test coreJS/test client/test server/test worker/test desktop/compile
       - run: npm run test:static
+
+  # Builds the bundles for the browser checks alongside scala-tests, so those checks
+  # need not wait for every Scala test. scala-tests alone saves the build cache.
+  browser-bundles:
+    runs-on: ubuntu-latest
+    outputs:
+      browser_artifact_name: browser-bundles-${{ github.run_attempt }}
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: '21'
+          cache: sbt
+          cache-read-only: true
+          cache-dependency-path: |
+            build.sbt
+            project/*.scala
+            project/*.sbt
+            project/build.properties
+            project/repositories
+      - uses: sbt/setup-sbt@v1
+      - name: Restore incremental Scala build
+        uses: actions/cache/restore@v5
+        with:
+          path: |
+            target
+            project/target
+          key: ${{ runner.os }}-scala-build-${{ hashFiles('build.sbt', 'project/*.scala', 'project/*.sbt', 'project/build.properties', 'project/repositories') }}-${{ github.sha }}
+          restore-keys: |
+            ${{ runner.os }}-scala-build-${{ hashFiles('build.sbt', 'project/*.scala', 'project/*.sbt', 'project/build.properties', 'project/repositories') }}-
+      - name: Build browser artifacts
+        run: sbt -batch -J-Xmx4G -Dsbt.supershell=false buildClientDev buildWorkerDev
       - name: Upload browser bundles
         uses: actions/upload-artifact@v7
         with:
@@ -144,7 +176,7 @@ jobs:
           retention-days: 1
 
   browser-tests:
-    needs: scala-tests
+    needs: browser-bundles
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
@@ -157,7 +189,7 @@ jobs:
       - name: Download tested browser bundles
         uses: actions/download-artifact@v8
         with:
-          name: ${{ needs.scala-tests.outputs.browser_artifact_name }}
+          name: ${{ needs.browser-bundles.outputs.browser_artifact_name }}
           path: artifacts/newest
       - run: npx playwright install --with-deps chromium
       - name: Allow Chromium's sandbox on Ubuntu
@@ -249,15 +281,17 @@ jobs:
   # Preserve the required "tests" status as the gate for the whole test suite.
   tests:
     if: ${{ always() }}
-    needs: [scala-tests, browser-tests, mysql-integration]
+    needs: [scala-tests, browser-bundles, browser-tests, mysql-integration]
     runs-on: ubuntu-latest
     steps:
       - name: Require every test job to pass
         env:
           SCALA_RESULT: ${{ needs.scala-tests.result }}
+          BUNDLES_RESULT: ${{ needs.browser-bundles.result }}
           BROWSER_RESULT: ${{ needs.browser-tests.result }}
           MYSQL_RESULT: ${{ needs.mysql-integration.result }}
         run: |
           test "$SCALA_RESULT" = success
+          test "$BUNDLES_RESULT" = success
           test "$BROWSER_RESULT" = success
           test "$MYSQL_RESULT" = success
