@@ -9,7 +9,7 @@ import munit.FunSuite
 
 class BoundSourceOriginsSpec extends FunSuite {
   test("identical Java placeholders bind to separate syntax occurrences") {
-    val text = "class Main { static void main(String[] args) {\n Turtle.forward(Math.sqrt(16));\n Turtle.forward(Math.sqrt(16));\n} }"
+    val text = "class Main { static void main(String[] args) {\n Turtle.forward(Math.ceil(16));\n Turtle.forward(Math.ceil(16));\n} }"
     val parsed = SourceParsing.parse(text, SourceLanguage.Java).parsed().toOption.get
     val placeholders = parsed.expression.expression.subtree.collect { case value: BeSourcePlaceholder => value }
     val spans = placeholders.flatMap(value => parsed.sourceOrigins.get(SourceIdentity[it.evadid.vm.code.abstractions.BeExpression](value)))

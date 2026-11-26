@@ -284,7 +284,11 @@ private final class JavaAstToParsed(syntax: JavaSyntax) {
       E.Binary("!=", expression(receiver, scope), E.Literal("\"\""))
     case JavaOperationUnary(operator, operand) => E.Unary(JavaSpelling.operators.getOrElse(operator, operator), expression(operand, scope))
     case JavaOperationBinary(left, operator, right) =>
-      E.Binary(JavaSpelling.operators.getOrElse(operator, operator), expression(left, scope), expression(right, scope))
+      (JavaSpelling.operators.getOrElse(operator, operator), expression(left, scope)) match {
+        // The printer writes Python's exact `56 / 8` as `56.0 / 8`; the dividend is the whole number again.
+        case ("/", E.Literal(dividend)) if dividend.matches("[0-9]+\\.0") => E.Binary("/", E.Literal(dividend.stripSuffix(".0")), expression(right, scope))
+        case (symbol, dividend) => E.Binary(symbol, dividend, expression(right, scope))
+      }
     case JavaFunctionCall(target, arguments) => call(target.locationString :+ target.name, arguments.map(expression(_, scope)), scope)
     // The Java printer spells text equality and emptiness with String methods (JavaSpelling).
     case JavaCallExpression(JavaAttributeAccess(receiver, "equals"), Seq(other)) => E.Binary("==", expression(receiver, scope), expression(other, scope))

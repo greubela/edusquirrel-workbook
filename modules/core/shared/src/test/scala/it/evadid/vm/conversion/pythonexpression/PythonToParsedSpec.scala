@@ -26,9 +26,9 @@ class PythonToParsedSpec extends FunSuite {
       S.AssignMember(E.Name("self_less"), "value", E.Literal("3"))))
   }
 
-  test("bridge imports are dropped while other imports remain visible as unsupported") {
-    assertEquals(parse("import turtle\nfrom typing import Any\nfrom datetime import date\n"), Seq.empty)
-    assertEquals(parse("import math\n"), Seq(S.Unsupported("import math", "Imports are not supported", unparsable = false)))
+  test("bridge and library imports are dropped while other imports remain visible as unsupported") {
+    assertEquals(parse("import turtle\nfrom typing import Any\nfrom datetime import date\nimport math\nfrom random import random\n"), Seq.empty)
+    assertEquals(parse("import os\n"), Seq(S.Unsupported("import os", "Imports are not supported", unparsable = false)))
   }
 
   private def drawn(code: String): List[Double] =

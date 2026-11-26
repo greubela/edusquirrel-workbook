@@ -9,6 +9,10 @@ enum BeIntrinsic derives upickle.default.ReadWriter {
   case ToInteger, ToNumber, ToText, ToBoolean, Absolute
   /** The larger and the smaller of two numbers. Python's `round` is not shared: Java rounds halves up. */
   case Maximum, Minimum
+  /** The square root (Python `math.sqrt`, Java `Math.sqrt`, Snap `sqrt of`). */
+  case SquareRoot
+  /** A random number in [0, 1) (Python `random.random()`, Java `Math.random()`); not computed statically. */
+  case Random
   /** Operations on the provided number list ([[it.evadid.vm.simulation.data.DataLibraries]]). */
   case NumberList
   /** Operations on the provided sudoku grid ([[it.evadid.vm.simulation.data.DataLibraries]]). */

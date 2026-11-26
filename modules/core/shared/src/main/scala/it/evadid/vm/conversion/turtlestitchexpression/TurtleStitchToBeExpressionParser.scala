@@ -129,7 +129,7 @@ object TurtleStitchToBeExpressionParser {
   private def slotLiteral(value: String, numeric: Boolean): BeExpression =
     if value.trim.toDoubleOption.nonEmpty then BeUseValue(BeDataValueLiteral(value.trim), None)
     else if value.isEmpty && numeric then BeUseValue(BeDataValueLiteral("0"), None)
-    else BeUseValue(BeDataValueLiteral(SnapInputCodec.quotePython(value)), None)
+    else BeUseValue(BeDataValueLiteral(it.evadid.vm.types.StringLiteral.quote(value)), None)
 
   /** The result of a reporter (of `valueType`) or a predicate (a truth value); commands return nothing. */
   private def reportedResult(blockType: SnapVocabulary.BlockType, valueType: BeDataType): Option[BeDefineVariable] = blockType match {
@@ -264,6 +264,19 @@ object TurtleStitchToBeExpressionParser {
           case "doSayFor" => block match {
             case primitive: PrimitiveBlock => parseGenericBlock(primitive.copy(selector = Some("bubble"), inputs = primitive.inputs.take(1)), phaseOne)
             case _ => parseGenericBlock(block, phaseOne)
+          }
+          case "reportMonadic" => block.inputs.toList match {
+            case Literal(function) :: value if function.trim == "sqrt" =>
+              Some(SnapControlFlow.mathCall("sqrt", expandModelInputsToExpressions(value, phaseOne)))
+            case Literal(function) :: _ => throw it.evadid.vm.code.errors.ProgrammingConversionException.unsupported(
+              s"Snap's '${function.trim} of' has no translation; only 'sqrt of' has.")
+            case _ => throw it.evadid.vm.code.errors.ProgrammingConversionException.unsupported("Snap's function reporter needs a chosen function.")
+          }
+          case "reportRandom" => block.inputs.toList match {
+            case List(Literal(low), Literal(high)) if low.trim.toDoubleOption.contains(0.0) && high.trim == SnapControlFlow.RandomUpperBound =>
+              Some(SnapControlFlow.mathCall("random", Nil))
+            case _ => throw it.evadid.vm.code.errors.ProgrammingConversionException.unsupported(
+              s"Snap's 'pick random' translates only as random(), from 0 to ${SnapControlFlow.RandomUpperBound}.")
           }
           case "reportJoinWords" => Some(SnapControlFlow.textJoin(expandModelInputsToExpressions(block.inputs.toList, phaseOne)))
           case "doReport" => Some(BeReturn(Some(block.inputs.headOption.map(parseInputValue(_, None, phaseOne)).getOrElse(BeExpression.pass))))
@@ -433,7 +446,7 @@ object TurtleStitchToBeExpressionParser {
 
   private def colorLiteralToPython(value: TurtleStitchProgramModel.Rgba): String = {
     val raw = s"${value.r},${value.g},${value.b},${value.a}"
-    SnapInputCodec.pythonQuotedColorFromRaw(raw).getOrElse(SnapInputCodec.quotePython(raw))
+    SnapInputCodec.pythonQuotedColorFromRaw(raw).getOrElse(it.evadid.vm.types.StringLiteral.quote(raw))
   }
 
   private def createDefinition(signature: Signature): BeDefineFunction = {

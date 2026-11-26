@@ -23,27 +23,6 @@ object SnapInputCodec {
     else trimmed
   }
 
-  /** The text a Snap slot shows for a literal: a quoted string literal (`"Ada"`, `'Ada'`) is its decoded
-    * content, the inverse of [[quotePython]]; numbers and other literals are their source text.
-    */
-  def slotText(literal: String): String = {
-    val quoted = literal.length >= 2 && (literal.head == '"' || literal.head == '\'') && literal.last == literal.head
-    if !quoted then literal
-    else escapeSequence.replaceAllIn(literal.substring(1, literal.length - 1), escape => scala.util.matching.Regex.quoteReplacement(
-      escape.group(1) match {
-        case "n" => "\n"
-        case "r" => "\r"
-        case "t" => "\t"
-        case unicode if unicode.length == 5 => Integer.parseInt(unicode.tail, 16).toChar.toString
-        case other => other
-      }))
-  }
-
-  private val escapeSequence = """(?s)\\(u[0-9a-fA-F]{4}|.)""".r
-
-  def quotePython(value: String): String =
-    "\"" + value.replace("\\", "\\\\").replace("\"", "\\\"").replace("\n", "\\n").replace("\r", "\\r").replace("\t", "\\t") + "\""
-
   def parseColor(raw: String): Option[RGBColor] = {
     val value = stripQuotes(raw).trim
     if value.isEmpty then None
@@ -75,7 +54,7 @@ object SnapInputCodec {
   def pythonQuotedColor(color: RGBColor): String = {
     val hex = color.toHex("#").toLowerCase
     val named = WebColor.reverseNameMap.get(hex)
-    quotePython(named.getOrElse(s"rgb(${color.red}, ${color.green}, ${color.blue})"))
+    it.evadid.vm.types.StringLiteral.quote(named.getOrElse(s"rgb(${color.red}, ${color.green}, ${color.blue})"))
   }
 
   def pythonQuotedColorFromRaw(raw: String): Option[String] =
@@ -103,7 +82,7 @@ object SnapInputCodec {
           else value
         s"<l>${SnapXmlText.escape(normalized)}</l>"
       case _ =>
-        s"<l>${SnapXmlText.escape(slotText(value))}</l>"
+        s"<l>${SnapXmlText.escape(it.evadid.vm.types.StringLiteral.content(value))}</l>"
 
   def isValidForKind(kind: SnapInputKind, expression: BeExpression, userFunctions: Map[String, Int] = Map.empty): Boolean =
     kind match

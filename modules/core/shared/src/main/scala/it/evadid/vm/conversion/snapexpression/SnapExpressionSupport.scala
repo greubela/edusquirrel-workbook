@@ -31,7 +31,9 @@ object SnapExpressionSupport {
       // `report` ends a reporter or predicate definition with its value.
       "doReport" + "doStopThis" +
       // `say … for … secs` prints like `say`; `join` joins text.
-      "doSayFor" + "reportJoinWords"
+      "doSayFor" + "reportJoinWords" +
+      // `sqrt of` and `pick random 0 to 0.99…` (see SnapControlFlow.RandomUpperBound); other options stop the conversion.
+      "reportMonadic" + "reportRandom"
 
 
   def isScriptStatement(expression: BeExpression): Boolean =

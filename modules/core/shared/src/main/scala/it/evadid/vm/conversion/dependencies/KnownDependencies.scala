@@ -45,12 +45,17 @@ object KnownDependencies {
   /** Python prints to the error stream with `print(..., file=sys.stderr)`. */
   val systemErrors: BeDependency = system.copy(addDefinitions = Map(Python -> "import sys"))
 
-  private val byIntrinsic: Seq[(BeIntrinsic, BeDependency)] = Seq(BeIntrinsic.Turtle -> turtle, BeIntrinsic.FetchText -> fetchText, BeIntrinsic.Print -> system, BeIntrinsic.PrintErr -> systemErrors)
+  /** Python imports `sqrt` and `random`; Java has them in `java.lang.Math`, Snap as reporters. */
+  val squareRoot: BeDependency = BeDependency(BeEntityName.fromUniversalNameInParts("sqrt"), Map(Python -> "from math import sqrt"))
+  val random: BeDependency = BeDependency(BeEntityName.fromUniversalNameInParts("random"), Map(Python -> "from random import random"))
+
+  private val byIntrinsic: Seq[(BeIntrinsic, BeDependency)] = Seq(BeIntrinsic.Turtle -> turtle, BeIntrinsic.FetchText -> fetchText,
+    BeIntrinsic.Print -> system, BeIntrinsic.PrintErr -> systemErrors, BeIntrinsic.SquareRoot -> squareRoot, BeIntrinsic.Random -> random)
 
   /** Python modules that provide a dependency: importing one in any form (`import turtle`,
     * `from turtle import *`, `from turtle import forward`) means that library, not user code.
     */
-  private val pythonModules: Map[String, BeDependency] = Map("turtle" -> turtle)
+  private val pythonModules: Map[String, BeDependency] = Map("turtle" -> turtle, "math" -> squareRoot, "random" -> random)
 
   def providedByPythonModule(module: String): Option[BeDependency] = pythonModules.get(module)
 

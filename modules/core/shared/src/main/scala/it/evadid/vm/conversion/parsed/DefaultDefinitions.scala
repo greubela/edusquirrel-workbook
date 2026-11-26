@@ -128,6 +128,8 @@ object DefaultDefinitions {
     builtinFunctionDefinition("abs", List("value" -> NumericType), Some(NumericType), Some(it.evadid.vm.code.defining.BeIntrinsic.Absolute)),
     builtinFunctionDefinition("max", List("first" -> NumericType, "second" -> NumericType), Some(NumericType), Some(it.evadid.vm.code.defining.BeIntrinsic.Maximum)),
     builtinFunctionDefinition("min", List("first" -> NumericType, "second" -> NumericType), Some(NumericType), Some(it.evadid.vm.code.defining.BeIntrinsic.Minimum)),
+    builtinFunctionDefinition("sqrt", List("value" -> NumericType), Some(NumericType), Some(it.evadid.vm.code.defining.BeIntrinsic.SquareRoot)),
+    builtinFunctionDefinition("random", Nil, Some(NumericType), Some(it.evadid.vm.code.defining.BeIntrinsic.Random)),
     builtinFunctionDefinition("print_to_err", List("value" -> AnyType), Some(BeDataType.Unit), Some(it.evadid.vm.code.defining.BeIntrinsic.PrintErr)),
     builtinFunctionDefinition("print", List("value" -> AnyType), Some(BeDataType.Unit), Some(it.evadid.vm.code.defining.BeIntrinsic.Print)),
     builtinFunctionDefinition("fetch_text", List("url" -> StringType), Some(StringType), Some(it.evadid.vm.code.defining.BeIntrinsic.FetchText))

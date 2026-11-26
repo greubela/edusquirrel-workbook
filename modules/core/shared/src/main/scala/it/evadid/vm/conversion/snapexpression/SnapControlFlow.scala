@@ -278,7 +278,7 @@ object SnapControlFlow {
             SupportedOperators.contains(op) &&
               call.arguments.forall(isSupportedValue(_, userFunctions))
           // Library reporters such as `url` produce a value in Snap as well.
-          case _ if isToText(call) => call.arguments.forall(isSupportedValue(_, userFunctions))
+          case _ if isToText(call) || isMathReporter(call) => call.arguments.forall(isSupportedValue(_, userFunctions))
           case _ =>
             SnapModuleBlocks.of(call.funcDef).exists(_.blockType == SnapVocabulary.BlockType.Reporter) &&
               call.arguments.forall(isSupportedValue(_, userFunctions)) ||
@@ -405,6 +405,21 @@ object SnapControlFlow {
   def isTextJoin(call: BeFunctionCall): Boolean = call.isOperator && operatorSymbol(call) == "+" && call.arguments.exists(isText)
 
   def isText(value: BeExpression): Boolean = value.staticInformationExpression.staticType == BeDataType.String
+
+  /** Snap's `pick random 0 to …` with this upper bound draws from [0, 1) like `random()`: a fractional bound
+    * makes Snap draw a fraction instead of a whole number.
+    */
+  val RandomUpperBound: String = "0.9999999999999999"
+
+  /** `sqrt(value)` and `random()`, which Snap writes as `sqrt of` and `pick random`. */
+  def isMathReporter(call: BeFunctionCall): Boolean =
+    call.funcDef.intrinsic.exists(Set(it.evadid.vm.code.defining.BeIntrinsic.SquareRoot, it.evadid.vm.code.defining.BeIntrinsic.Random))
+
+  /** `sqrt(value)` or `random()` as the program's built-in call. */
+  def mathCall(name: String, arguments: List[BeExpression]): BeFunctionCall = {
+    val definition = it.evadid.vm.conversion.parsed.DefaultDefinitions.builtinFunctionsByName(name)
+    BeFunctionCall.fromDefinition(definition, definition.inputs.zip(arguments).toMap)
+  }
 
   /** `str(value)`; Snap's `join` converts on its own. */
   def isToText(call: BeFunctionCall): Boolean = call.funcDef.intrinsic.contains(it.evadid.vm.code.defining.BeIntrinsic.ToText)

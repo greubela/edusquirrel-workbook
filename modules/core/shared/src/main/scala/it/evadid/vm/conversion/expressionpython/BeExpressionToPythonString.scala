@@ -63,6 +63,9 @@ case class BeExpressionToPythonString
 
   override def forOther(other: BeExpression): String = other match {
     case BeUseValue(BeDataValueUnit(), _) => "None"
+    // Strings print double-quoted whatever their source spelling, so '…' and "…" convert alike.
+    case BeUseValue(it.evadid.vm.types.BeDataValueLiteral(raw), _) if raw.startsWith("'") && it.evadid.vm.types.StringLiteral.isQuoted(raw) =>
+      it.evadid.vm.types.StringLiteral.quote(it.evadid.vm.types.StringLiteral.content(raw))
     case call: BeFunctionCall if call.funcDef.intrinsic.contains(it.evadid.vm.code.defining.BeIntrinsic.PrintErr) =>
       s"print(${(call.arguments.map(forValue) :+ "file=sys.stderr").mkString(", ")})"
     case call: BeFunctionCall if call.isOperator =>

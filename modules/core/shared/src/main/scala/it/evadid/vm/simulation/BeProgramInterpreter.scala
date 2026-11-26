@@ -378,6 +378,8 @@ object BeProgramInterpreter {
         Value.Text(call.arguments.headOption.map(argument => text(eval(argument, state))).getOrElse(""))
       case call: BeFunctionCall if call.funcDef.intrinsic.contains(BeIntrinsic.ToBoolean) =>
         Value.Num(if call.arguments.headOption.exists(evalBool(_, state)) then 1.0 else 0.0)
+      case call: BeFunctionCall if call.funcDef.intrinsic.contains(BeIntrinsic.Random) =>
+        throw IllegalArgumentException("A random number cannot be computed in advance.")
       case call: BeFunctionCall if call.funcDef.intrinsic.exists(numericIntrinsics) =>
         val values = call.arguments.map(evalNumber(_, state))
         val value = values.headOption.getOrElse(0.0)
@@ -386,6 +388,7 @@ object BeProgramInterpreter {
           case BeIntrinsic.Absolute => math.abs(value)
           case BeIntrinsic.Maximum => values.max
           case BeIntrinsic.Minimum => values.min
+          case BeIntrinsic.SquareRoot => math.sqrt(value)
           case _ => value)
       case _ => Value.Num(0.0)
 
@@ -402,7 +405,7 @@ object BeProgramInterpreter {
 
   /** Built-ins whose numeric result the interpreter computes; `int` truncates towards zero. */
   private val numericIntrinsics: Set[BeIntrinsic] =
-    Set(BeIntrinsic.ToInteger, BeIntrinsic.ToNumber, BeIntrinsic.Absolute, BeIntrinsic.Maximum, BeIntrinsic.Minimum)
+    Set(BeIntrinsic.ToInteger, BeIntrinsic.ToNumber, BeIntrinsic.Absolute, BeIntrinsic.Maximum, BeIntrinsic.Minimum, BeIntrinsic.SquareRoot)
 
   private def evalOperator(call: BeFunctionCall, state: State): Value = {
     val op = SnapControlFlow.operatorSymbol(call)

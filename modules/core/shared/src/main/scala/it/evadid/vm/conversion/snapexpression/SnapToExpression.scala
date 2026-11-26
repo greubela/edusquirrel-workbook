@@ -53,7 +53,7 @@ object SnapToExpression {
       val literal = variable.value match {
         case Some(TurtleStitchProgramModel.BoolLiteral(value)) => if value then "True" else "False"
         case Some(TurtleStitchProgramModel.Literal(raw)) if raw.toDoubleOption.nonEmpty => raw
-        case Some(TurtleStitchProgramModel.Literal(text)) => SnapInputCodec.quotePython(text)
+        case Some(TurtleStitchProgramModel.Literal(text)) => it.evadid.vm.types.StringLiteral.quote(text)
         case None => "0"
         case Some(other) => throw it.evadid.vm.code.errors.ProgrammingConversionException.unsupported(
           s"The saved value of Snap variable ${variable.name} (${other.getClass.getSimpleName}) has no Python form.")

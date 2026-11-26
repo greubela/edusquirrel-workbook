@@ -50,6 +50,11 @@ object PythonToExpression {
  }
 
 private final class PythonAstToParsed(syntax: PythonSyntax) {
+  /** Functions the program defines, which shadow built-ins such as `pow`. */
+  private lazy val definedFunctions: Set[String] = syntax.program.traversePreOrderWithListener {
+    case function: PyFunctionDef => Some(function.name)
+    case _ => None
+  }.flatten
   private def origin(node: it.evadid.vm.parsing.python.clean.model.PyAST) = syntax.sourceMap.rangeOf(node)
 
   def apply(): ParsedProgram = {
@@ -339,6 +344,10 @@ private final class PythonAstToParsed(syntax: PythonSyntax) {
       case value => Right(value)
     }
     keywords match {
+      // `pow(a, b)` is `a ** b`; `math.sqrt` and `random.random` are the shared `sqrt` and `random`.
+      case Seq() if (path == Seq("pow") && !definedFunctions("pow") || path == Seq("math", "pow")) && positional.size == 2 =>
+        E.Binary("**", expression(positional.head), expression(positional(1)))
+      case Seq() if path == Seq("math", "sqrt") || path == Seq("random", "random") => E.Call(path.tail, positional.map(expression))
       case Seq() => E.Call(path, positional.map(expression))
       case Seq(("file", stream)) if path == Seq("print") && names(stream).contains(Seq("sys", "stderr")) =>
         E.Call(Seq("print_to_err"), positional.map(expression))

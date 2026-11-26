@@ -116,10 +116,16 @@ Detached Snap scripts use the reserved, uncalled `unusedCode` function and expor
 loose blocks. Empty source remains an empty program across all conversions, including
 a green flag in Snap. `StructuredProgrammingStateSpec` tests these contracts.
 
-Snap slots hold a string's text, never its quoted literal (`SnapInputCodec.slotText`).
+Snap slots hold a string's text, never its quoted literal (`StringLiteral.content`); Java re-quotes Python's
+`'...'` strings the same way.
 `say` and `say … for … secs` print (the duration is dropped); `join` is a text `+` whose
 non-text items are `str(...)`, and a text `+` or `str(...)` is written back as `join`.
 `NativeSnapRoundTripSpec` runs a project saved by native Snap through Python and Java.
+
+`sqrt` and `random()` are shared built-ins: Python `from math import sqrt` / `from random import
+random`, Java `Math.sqrt` / `Math.random()`, Snap `sqrt of` and `pick random 0 to 0.9999999999999999`
+(a fractional bound draws fractions). `pow(a, b)` reads as `a ** b`. Python strings print
+double-quoted, and an exact Python `56 / 8` prints as Java `56.0 / 8` (read back as `56 / 8`).
 
 ## Running Python
 

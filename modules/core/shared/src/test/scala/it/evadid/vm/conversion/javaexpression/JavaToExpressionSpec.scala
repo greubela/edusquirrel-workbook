@@ -93,7 +93,7 @@ class JavaToExpressionSpec extends FunSuite {
       }
     }
     assertEquals(outcomes.flatten.toList, Nil)
-    assert(python(program("char letter = 'a';")).contains("letter: str = 'a'"))
+    assert(python(program("char letter = 'a';")).contains("letter: str = \"a\""))
     val inheritance = SourceParsing.parse("class Box extends Base { }", SourceLanguage.Java).parsed().fold(error => throw error, _.expression).expression.toString
     assert(inheritance.contains("BeExpressionUnsupported(class Box") && inheritance.contains("Inheritance"), inheritance)
     assertEquals(rejected(program("Turtle.forward(1")).error.kind, ProgrammingConversionKind.Unparsable)
@@ -135,11 +135,11 @@ class JavaToExpressionSpec extends FunSuite {
   }
 
   test("Math methods map to Python built-ins or stay explicit placeholders instead of unimported math calls") {
-    val code = python(program("Turtle.forward(Math.abs(-3) + Math.max(1, 2) + Math.min(4, 5) + java.lang.Math.abs(-1));\nTurtle.forward(Math.pow(2, 3) + Math.floor(7.0 / 2));"))
-    Seq("abs(-3)", "max(1, 2)", "min(4, 5)", "abs(-1)", "2 ** 3", "7.0 // 2").foreach(part => assert(code.contains(part), s"'$part' missing in\n$code"))
-    assert(!code.contains("math."), code)
+    val code = python(program("Turtle.forward(Math.abs(-3) + Math.max(1, 2) + Math.min(4, 5) + java.lang.Math.abs(-1));\nTurtle.forward(Math.pow(2, 3) + Math.floor(7.0 / 2) + Math.sqrt(16) + Math.random());"))
+    Seq("abs(-3)", "max(1, 2)", "min(4, 5)", "abs(-1)", "2 ** 3", "7 // 2", "sqrt(16)", "random()").foreach(part => assert(code.contains(part), s"'$part' missing in\n$code"))
+    assert(!code.contains("math.") && code.contains("from math import sqrt") && code.contains("from random import random"), code)
     assertEquals(drawn(program("Turtle.forward(Math.abs(-3) + Math.max(1, 2));")), List(5.0))
-    for method <- Seq("sqrt(16)", "round(2.5)", "ceil(2.1)", "sin(0)") do {
+    for method <- Seq("round(2.5)", "ceil(2.1)", "sin(0)") do {
       val tree = SourceParsing.parse(program(s"Turtle.forward(Math.$method);"), SourceLanguage.Java).parsed().fold(error => throw error, _.expression).expression.toString
       assert(tree.contains(s"BeExpressionUnsupported(Math.${method.takeWhile(_ != '(')}(...)"), tree)
     }

@@ -17,7 +17,7 @@ class SnapInputCodecSpec extends FunSuite {
     assertEquals(SnapInputCodec.stripQuotes("'red'"), "red")
     assertEquals(SnapInputCodec.stripQuotes("'red"), "'red")
     assertEquals(SnapInputCodec.stripQuotes("\""), "\"")
-    assertEquals(SnapInputCodec.quotePython("a\"b\\c"), "\"a\\\"b\\\\c\"")
+    assertEquals(it.evadid.vm.types.StringLiteral.quote("a\"b\\c"), "\"a\\\"b\\\\c\"")
   }
 
   test("colors are read from Snap RGBA lists and web colours") {

@@ -348,10 +348,13 @@ object SnapProjectXml {
   private def renderArgument(argument: BeExpression, kind: SnapInputKind = SnapInputKind.String)(using
       RenderContext
   ): String = argument match {
+    // A truth value outside a boolean slot is Snap's true/false reporter, not the text "True".
+    case BeUseValue(BeDataValueLiteral("True" | "False"), _) if kind != SnapInputKind.Bool => renderCondition(argument)
     case BeUseValue(BeDataValueLiteral(value), _) => SnapInputCodec.renderLiteral(kind, value)
     case BeUseValue(BeUseValueReference(variable), _) => renderVariableReporter(variable)
     case sequence: BeSequence => s"<script>${renderScriptBody(sequence)}</script>"
     case call: BeFunctionCall if SnapControlFlow.isToText(call) => renderJoin(call.arguments)
+    case call: BeFunctionCall if SnapControlFlow.isMathReporter(call) => renderMath(call)
     case call: BeFunctionCall if call.isOperator => renderOperator(call)
     case call: BeFunctionCall => renderCall(call)
     case _ => "<l></l>"
@@ -365,6 +368,12 @@ object SnapProjectXml {
     case call: BeFunctionCall => renderCall(call)
     case _ => """<block s="reportTrue"></block>"""
   }
+
+  /** `sqrt of value`, or `pick random` over [0, 1) for `random()`. */
+  private def renderMath(call: BeFunctionCall)(using RenderContext): String =
+    if call.funcDef.intrinsic.contains(it.evadid.vm.code.defining.BeIntrinsic.Random) then
+      s"""<block s="reportRandom"><l>0</l><l>${SnapControlFlow.RandomUpperBound}</l></block>"""
+    else s"""<block s="reportMonadic"><l><option>sqrt</option></l>${call.arguments.map(renderConditionValue).mkString}</block>"""
 
   /** Snap's `join`, which converts its items to text; `str(value)` items are their value. */
   private def renderJoin(items: List[BeExpression])(using RenderContext): String =
@@ -402,10 +411,12 @@ object SnapProjectXml {
   }
 
   private def renderConditionValue(expression: BeExpression)(using RenderContext): String = expression match {
-    case BeUseValue(BeDataValueLiteral(value), _) => s"<l>${SnapXmlText.escape(SnapInputCodec.slotText(value))}</l>"
+    case BeUseValue(BeDataValueLiteral("True" | "False"), _) => renderCondition(expression)
+    case BeUseValue(BeDataValueLiteral(value), _) => s"<l>${SnapXmlText.escape(it.evadid.vm.types.StringLiteral.content(value))}</l>"
     case BeUseValue(BeUseValueReference(variable), _) => renderVariableReporter(variable)
     case call: BeFunctionCall if call.isOperator => renderOperator(call)
     case call: BeFunctionCall if SnapControlFlow.isToText(call) => renderJoin(call.arguments)
+    case call: BeFunctionCall if SnapControlFlow.isMathReporter(call) => renderMath(call)
     case call: BeFunctionCall => renderCall(call)
     case _ => "<l>0</l>"
   }

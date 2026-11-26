@@ -38,6 +38,8 @@ object KnownBeEntityNames {
     BeEntityName.fromUniversalNameInParts("round"),
     BeEntityName.fromUniversalNameInParts("min"),
     BeEntityName.fromUniversalNameInParts("max"),
+    BeEntityName.fromUniversalNameInParts("sqrt"),
+    BeEntityName.fromUniversalNameInParts("random"),
     BeEntityName.fromUniversalNameInParts("sum"),
     BeEntityName.fromUniversalNameInParts("sorted"),
     BeEntityName.fromUniversalNameInParts("enumerate"),

@@ -54,11 +54,11 @@ class StringLiteralSnapRoundTripSpec extends FunSuite {
   }
 
   test("a slot shows a literal's decoded text") {
-    import it.evadid.vm.conversion.snapexpression.SnapInputCodec.{quotePython, slotText}
-    for (text <- texts :+ "tab\tand\nline" :+ "") assertEquals(slotText(quotePython(text)), text)
-    assertEquals(slotText("'single'"), "single")
-    assertEquals(slotText("\"\\u00e9\""), "é")
-    assertEquals(slotText("42"), "42")
-    assertEquals(slotText("\""), "\"")
+    import it.evadid.vm.types.StringLiteral.{quote, content}
+    for (text <- texts :+ "tab\tand\nline" :+ "") assertEquals(content(quote(text)), text)
+    assertEquals(content("'single'"), "single")
+    assertEquals(content("\"\\u00e9\""), "é")
+    assertEquals(content("42"), "42")
+    assertEquals(content("\""), "\"")
   }
 }
