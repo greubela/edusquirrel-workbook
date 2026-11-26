@@ -5,14 +5,20 @@ import it.evadid.vm.types.BeDataType
 import munit.FunSuite
 
 class KnownBeDefineStructuresSpec extends FunSuite {
+  private def functionsNamed(name: String): List[BeDefineFunction] =
+    KnownBeDefineStructures.byName(name).collect { case fn: BeDefineFunction => fn }
+
+  private lazy val turtleClass: BeDefineClass =
+    KnownBeDefineStructures.byName("turtle").collectFirst { case cls: BeDefineClass => cls }.get
+
   test("known definition cache returns all function overloads associated with an entity name") {
-    val plusDefinitions = KnownBeDefineStructures.byName("+").collect { case fn: BeDefineFunction => fn }
+    val plusDefinitions = functionsNamed("+")
     assert(plusDefinitions.size >= 5)
     assert(plusDefinitions.forall(_.functionTypeInfo.displayName.universalInterpretation() == "+"))
   }
 
   test("operator definitions are actual BeDefineFunctions with multiple typed alternatives") {
-    val comparisonDefinitions = KnownBeDefineStructures.byName(">").collect { case fn: BeDefineFunction => fn }
+    val comparisonDefinitions = functionsNamed(">")
     assert(comparisonDefinitions.size >= 2)
     assert(comparisonDefinitions.forall(_.inputs.size == 2))
   }
@@ -28,7 +34,6 @@ class KnownBeDefineStructuresSpec extends FunSuite {
   }
 
   test("turtle class is a sensible class definition with fully formed methods") {
-    val turtleClass = KnownBeDefineStructures.byName("turtle").collectFirst { case cls: BeDefineClass => cls }.get
     val expectedMethodNames = Set(
       "forward", "backward", "left", "right", "pen_up", "pen_down", "circle", "goto", "setheading", "speed", "color", "pensize",
       "home", "running_stitch", "cross_stitch", "bean_stitch", "zigzag_stitch", "z_stitch", "satin_stitch", "tatami_stitch",
@@ -54,7 +59,7 @@ class KnownBeDefineStructuresSpec extends FunSuite {
   }
 
   test("turtle method parameter definitions preserve expected names and types") {
-    val methodsByName = KnownBeDefineStructures.byName("turtle").collectFirst { case cls: BeDefineClass => cls }.get.methods
+    val methodsByName = turtleClass.methods
       .map(method => method.functionTypeInfo.displayName.universalInterpretation() -> method)
       .toMap
 
@@ -95,9 +100,9 @@ class KnownBeDefineStructuresSpec extends FunSuite {
       assert(KnownBeDefineStructures.byName(name).contains(operator))
     }
 
-    assert(KnownBeDefineStructures.byName("+").collect { case fn: BeDefineFunction => fn }.exists(_.inputs.map(_.variableType) == List(BeDataType.String, BeDataType.String)))
-    assert(KnownBeDefineStructures.byName("+").collect { case fn: BeDefineFunction => fn }.exists(_.inputs.map(_.variableType) == List(BeDataType.Numeric, BeDataType.Numeric)))
-    assert(KnownBeDefineStructures.byName("not in").collect { case fn: BeDefineFunction => fn }.exists(_.outputs.exists(_.variableType == BeDataType.Boolean)))
+    assert(functionsNamed("+").exists(_.inputs.map(_.variableType) == List(BeDataType.String, BeDataType.String)))
+    assert(functionsNamed("+").exists(_.inputs.map(_.variableType) == List(BeDataType.Numeric, BeDataType.Numeric)))
+    assert(functionsNamed("not in").exists(_.outputs.exists(_.variableType == BeDataType.Boolean)))
   }
 
   test("operator aliases resolve to the same cached definitions") {

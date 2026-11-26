@@ -1,15 +1,12 @@
 package it.evadid.vm.conversion
 
-
 import it.evadid.vm.compilation.java.turtle.JavaTurtleCompiler
-
 import it.evadid.core.datastructures.language.AppLanguage.{Java, Python, SnapLanguage}
 import it.evadid.vm.conversion.pythonsnap.PythonToSnap
 import it.evadid.workbook.elements.interactionElements.programming.state.*
 import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseRegular.*
 
 import it.evadid.vm.compilation.java.turtle.{JavaTurtleSymbolResolver as R, JavaTurtleSourceParser}
-import it.evadid.vm.simulation.{BeSimulatorConfig, BeSimulatorState, BeVirtualMachineState}
 import it.evadid.vm.simulation.java.JavaTurtleInterpreter as T
 import it.evadid.vm.conversion.snapexpression.SnapExpressionSupport
 import munit.FunSuite
@@ -68,6 +65,14 @@ class ProgrammingStateConversionSpec extends FunSuite {
 
   private def normalized(state: ProgrammingState): String = state.toPython.code.trim
 
+  private def commands(state: ProgrammingState) = state.toBeExpression.turtleCommandExecutionInfo.completedCommands
+
+  private def reserialized(state: ProgrammingState): ProgrammingState =
+    ProgrammingState.serializer.deserialize(ProgrammingState.serializer.serialize(state))
+
+  private def compiled(state: ProgrammingStateRaw) =
+    state.compileForExecution.fold(diagnostic => fail(diagnostic.toString), identity)
+
   /** Snap saves project variables as well as scripts, so compare execution across that boundary. */
   private def assertAllRoundTrips(source: String, includeJava: Boolean = true)(assertSnap: String => Unit = _ => ()): Unit = {
     val expression = ProgrammingStateRaw(Python, source).toBeExpression
@@ -92,7 +97,7 @@ class ProgrammingStateConversionSpec extends FunSuite {
 
     (baseConversions ++ javaConversions).foreach { (route, result) =>
       if route.contains("Snap") then
-        assertEquals(result.toBeExpression.turtleCommandExecutionInfo.completedCommands,
+        assertEquals(commands(result),
           expression.turtleCommandExecutionInfo.completedCommands, clue = route)
       else assertEquals(normalized(result), expected, clue = route)
     }
@@ -100,9 +105,7 @@ class ProgrammingStateConversionSpec extends FunSuite {
     val serializableStates = List[ProgrammingState](expression, expression.toPython, snap) ++
       (if includeJava then List(expression.toJava) else Nil)
     serializableStates.foreach { state =>
-      val restored = ProgrammingState.serializer.deserialize(
-        ProgrammingState.serializer.serialize(state)
-      )
+      val restored = reserialized(state)
       assertEquals(normalized(restored), normalized(state), clue = s"serialized ${state.getClass.getSimpleName}")
     }
   }
@@ -129,19 +132,19 @@ class ProgrammingStateConversionSpec extends FunSuite {
 
   test("grouped arithmetic and boolean conditions keep their behavior through all target states") {
     val original = ProgrammingStateRaw(Python, "distance = (2 + 3) * 4\nif distance == 20 and not False:\n    forward(distance)\n")
-    val expected = original.toBeExpression.turtleCommandExecutionInfo.completedCommands
+    val expected = commands(original)
     assertEquals(expected.flatMap(_.args), List(20.0))
     val restored = Seq(original.toJava, original.toSnapXml, original.toJava.toSnapXml.toPython,
       original.toSnapXml.toJava.toPython)
-    restored.foreach(state => assertEquals(state.toBeExpression.turtleCommandExecutionInfo.completedCommands, expected))
+    restored.foreach(state => assertEquals(commands(state), expected))
   }
 
   test("user helpers and native turtle aliases retain distinct identities across languages") {
     val original = ProgrammingStateRaw(Python, "def right(distance):\n    forward(distance)\nright(7)\nrt(90)\n")
-    val expected = original.toBeExpression.turtleCommandExecutionInfo.completedCommands
+    val expected = commands(original)
     assertEquals(expected.map(_.name.universalInterpretation()), List("forward", "right"))
     Seq(original.toJava, original.toSnapXml, original.toSnapXml.toPython).foreach { state =>
-      assertEquals(state.toBeExpression.turtleCommandExecutionInfo.completedCommands, expected, clue = state.toString)
+      assertEquals(commands(state), expected, clue = state.toString)
     }
   }
 
@@ -215,9 +218,7 @@ class ProgrammingStateConversionSpec extends FunSuite {
       assertEquals(normalized(throughJava), normalized(original), clue = s"Java:\n${java.code}")
       if snapSupported then {
         val snap = original.toSnapXml
-        val restoredSnap = ProgrammingState.serializer.deserialize(
-          ProgrammingState.serializer.serialize(snap)
-        ).toSnapXml
+        val restoredSnap = reserialized(snap).toSnapXml
         assertEquals(restoredSnap, snap)
       } else intercept[IllegalArgumentException](original.toSnapXml)
     }
@@ -245,15 +246,14 @@ class ProgrammingStateConversionSpec extends FunSuite {
     val original = ProgrammingStateRaw(Python, source)
     val snap = original.toSnapXml
     assert(snap.code.contains("reportModulus"))
-    val expected = original.toBeExpression.turtleCommandExecutionInfo.completedCommands
+    val expected = commands(original)
     assertEquals(expected.flatMap(_.args), List(10.0, 20.0, 10.0, 20.0))
-    assertEquals(snap.toBeExpression.turtleCommandExecutionInfo.completedCommands, expected)
+    assertEquals(commands(snap), expected)
   }
 
   test("negative turns and pen-up return distances retain their signs in Snap") {
     val original = ProgrammingStateRaw(Python, "turn(-60)\npenup()\nlength = 30\nforward(-length)\npendown()\n")
-    assertEquals(original.toSnapXml.toBeExpression.turtleCommandExecutionInfo.completedCommands,
-      original.toBeExpression.turtleCommandExecutionInfo.completedCommands)
+    assertEquals(commands(original.toSnapXml), commands(original))
   }
 
   test("BeExpression and Java round trip") {
@@ -310,9 +310,9 @@ class ProgrammingStateConversionSpec extends FunSuite {
     val fingerprint = state.fingerprint()
     val expression = state.toBeExpression
     assert(SnapExpressionSupport.validateSubset(expression.expression).isRight, clue = source)
-    val commands = expression.turtleCommandExecutionInfo.completedCommands
-    assertEquals(commands.flatMap(_.args), List(10.0, 20.0, 10.0))
-    assertEquals(state.toSnapXml.toBeExpression.turtleCommandExecutionInfo.completedCommands, commands)
+    val expected = expression.turtleCommandExecutionInfo.completedCommands
+    assertEquals(expected.flatMap(_.args), List(10.0, 20.0, 10.0))
+    assertEquals(commands(state.toSnapXml), expected)
     assertEquals(state.toJava.code, source)
     assertEquals(state.fingerprint(), fingerprint)
   }
@@ -346,14 +346,14 @@ class ProgrammingStateConversionSpec extends FunSuite {
 
   test("full Java classes compile through the state boundary and execute a parameterized square") {
     val state = ProgrammingStateRaw(Java, squareJava())
-    val compiled = state.compileForExecution.fold(diagnostic => fail(diagnostic.toString), identity)
-    val execution = T.runVm(compiled)
+    val program = compiled(state)
+    val execution = T.runVm(program)
 
     assertEquals(execution.status, T.Status.Completed)
     assertEquals(execution.commands, squareCommands(25))
     assertEquals(execution.commands.size, 8)
-    assertEquals(compiled.root.entryPoint.binding.originalName, "main")
-    assertEquals(compiled.root.methods.map(_.binding.originalName), Vector("square", "main"))
+    assertEquals(program.root.entryPoint.binding.originalName, "main")
+    assertEquals(program.root.methods.map(_.binding.originalName), Vector("square", "main"))
     assertEquals(JavaTurtleCompiler.compile(state.code).map(program => T.runVm(program)), Right(execution))
     assertEquals(state.toJava, state)
     assertEquals(state.code, squareJava())
@@ -367,7 +367,7 @@ class ProgrammingStateConversionSpec extends FunSuite {
       squareJava(turn = 45) -> false
     )
     variants.foreach { (source, correct) =>
-      val program = ProgrammingStateRaw(Java, source).compileForExecution.fold(diagnostic => fail(diagnostic.toString), identity)
+      val program = compiled(ProgrammingStateRaw(Java, source))
       val execution = T.runVm(program)
       assertEquals(execution.status, T.Status.Completed)
       assertEquals(execution.commands.size, 8)
@@ -411,7 +411,7 @@ class ProgrammingStateConversionSpec extends FunSuite {
     assertEquals(restored.toJava.code, source)
     assertEquals(restored.fingerprint(), s"java:$source")
     assertEquals(ProgrammingState.serializer.serialize(restored), stored)
-    val program = restored.toJava.compileForExecution.fold(diagnostic => fail(diagnostic.toString), identity)
+    val program = compiled(restored.toJava)
     assertEquals(T.runVm(program).commands, squareCommands(25))
     assertEquals(original.code, source)
   }
@@ -461,7 +461,7 @@ class ProgrammingStateConversionSpec extends FunSuite {
     assert(source.contains("static void draw(double distance) {"), "the parameter's type follows its use as a distance: " + source)
     assert(source.contains("public static void main(String[] unusableArgs) {"), clue = source)
     assert(state.isClassProgram, clue = source)
-    assertEquals(state.toBeExpression.turtleCommandExecutionInfo.completedCommands.flatMap(_.args), List(12.0))
+    assertEquals(commands(state).flatMap(_.args), List(12.0))
     assert(state.toSnapXml.code.contains("custom-block"), clue = source)
     assertEquals(state.code, source)
   }
@@ -501,14 +501,14 @@ class ProgrammingStateConversionSpec extends FunSuite {
 
   test("full Java state programs enforce execution limits on endless loops") {
     val source = "class Main { public static void main(String[] args) { while (true) {} } }"
-    val program = ProgrammingStateRaw(Java, source).compileForExecution.fold(diagnostic => fail(diagnostic.toString), identity)
+    val program = compiled(ProgrammingStateRaw(Java, source))
     assertEquals(T.runVm(program, T.Limits(maxSteps = 20)), T.Execution(T.Status.LimitExceeded, Vector.empty, 20))
   }
 
   test("full Java state execution retains int32 overflow and negative integer division") {
     val source = "class Main { public static void main(String[] args) { " +
       "Turtle.forward(2147483647 + 1); Turtle.forward(-9 / 2); Turtle.forward(-9 % 2); } }"
-    val program = ProgrammingStateRaw(Java, source).compileForExecution.fold(diagnostic => fail(diagnostic.toString), identity)
+    val program = compiled(ProgrammingStateRaw(Java, source))
     val execution = T.runVm(program)
     assertEquals(execution.status, T.Status.Completed)
     assertEquals(execution.commands, Vector(Int.MinValue, -4, -1).map(value => T.Command(R.TurtleCommand.Forward, value)))
@@ -518,7 +518,7 @@ class ProgrammingStateConversionSpec extends FunSuite {
     val exercise = ProgrammingExerciseFullJava("kept-java-exercise")
     val source = exercise.defaultValue.toJava
     val stored = exercise.interactionFormat.stateSerializer.serialize(source)
-    val program = source.compileForExecution.fold(diagnostic => fail(diagnostic.toString), identity)
+    val program = compiled(source)
     val result = T.runVm(program)
     assertEquals(result.status, T.Status.Completed)
     assertEquals(result.commands, Vector.empty[T.Command])
@@ -532,10 +532,10 @@ class ProgrammingStateConversionSpec extends FunSuite {
     val snap = ProgrammingStateRaw(SnapLanguage, xml)
     val fingerprint = snap.fingerprint()
     val stored = ProgrammingState.serializer.serialize(snap)
-    val program = ProgrammingStateRaw(Java, squareJava()).compileForExecution.fold(diagnostic => fail(diagnostic.toString), identity)
+    val program = compiled(ProgrammingStateRaw(Java, squareJava()))
 
     assertEquals(T.runVm(program).commands, squareCommands(25))
-    assertEquals(snap.toBeExpression.turtleCommandExecutionInfo.completedCommands.flatMap(_.args), List(12.0))
+    assertEquals(commands(snap).flatMap(_.args), List(12.0))
     assert(snap.toPython.code.contains("forward(12)"), clue = snap.toPython.code)
     assert(snap.toJava.code.contains("forward(12)"), clue = snap.toJava.code)
     assertEquals(snap.toSnapXml.code, xml)
@@ -552,9 +552,9 @@ class ProgrammingStateConversionSpec extends FunSuite {
     )
 
     states.foreach { state =>
-      assertEquals(state.toBeExpression.turtleCommandExecutionInfo.completedCommands, Nil)
-      assertEquals(state.toPython.toBeExpression.turtleCommandExecutionInfo.completedCommands, Nil)
-      assertEquals(state.toJava.toBeExpression.turtleCommandExecutionInfo.completedCommands, Nil)
+      assertEquals(commands(state), Nil)
+      assertEquals(commands(state.toPython), Nil)
+      assertEquals(commands(state.toJava), Nil)
       assertEquals(state.toSnapXml, state)
     }
   }
@@ -574,9 +574,7 @@ class ProgrammingStateConversionSpec extends FunSuite {
       intercept[IllegalArgumentException](state.toJava)
       assertEquals(state.toSnapXml.code, xml)
       assertEquals(state.fingerprint(), fingerprint)
-      assertEquals(ProgrammingState.serializer.deserialize(
-        ProgrammingState.serializer.serialize(state)
-      ), state)
+      assertEquals(reserialized(state), state)
     }
   }
 

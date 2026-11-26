@@ -2,15 +2,21 @@ package it.evadid.distribution.commandTypes
 
 import it.evadid.vm.parsing.source.SourceParsing.SourceLanguage
 import it.evadid.core.datastructures.chat.{Message, MessengerModel}
+import it.evadid.core.datastructures.language.AppLanguage
+import it.evadid.core.datastructures.state.State
 import it.evadid.core.datastructures.user.{AllUserInfo, User, UserConfig, UserTokenInfo}
 import it.evadid.core.datastructures.user.UserTokenInfo.SignedToken
 import it.evadid.core.datastructures.vectorShapes.renderer.PythonFlowchartGutter
 import it.evadid.distribution.command.{ExecutionCommand, ExecutionCommandFactory}
 import it.evadid.llm.LlmConfiguration
 import it.evadid.sql.{BackendDatabase, DatabaseHistoryFormat}
+import it.evadid.vm.analysis.ProgramAnalysis
+import it.evadid.vm.conversion.dependencies.{ProgrammingEnvironment, ProgrammingLibrary}
 import it.evadid.vm.parsing.source.SourceParsing
+import it.evadid.vm.simulation.python.PythonTurtleCalls
 import it.evadid.vm.simulation.java.JavaTurtleExecutionEvidence as Evidence
 import it.evadid.workbook.abstractions.InteractionFormat.TextInteractionFormat
+import it.evadid.workbook.elements.interactionElements.programming.state.ProgrammingStateRaw
 import it.evadid.workbook.elements.interactionElements.sql.SqlDatabaseConfig
 import it.evadid.workbook.interaction.sync.{EventSyncStrategy, SyncSuccess, UpdateImportance, UsageContext}
 import it.evadid.workbook.interaction.sync.model.InteractionHistoryJson
@@ -33,7 +39,7 @@ class ExecutionCommandRoundTripSpec extends FunSuite {
 
     /** Sends the request through the command's local client and the real codecs, then checks both directions. */
     def roundTrip(): Future[Unit] = {
-      val received = it.evadid.core.datastructures.state.State(Vector.empty[I])
+      val received = State(Vector.empty[I])
       val client = factory.toLocalExecutionClient((input, _) => { received.update(_ :+ input); Future.successful(response) })
       factory.sendCommandTo(client, request).map { reply =>
         assertEquals(received.now(), Vector(request), s"$name: the handler receives the exact request")
@@ -57,6 +63,7 @@ class ExecutionCommandRoundTripSpec extends FunSuite {
   private val qr = QrCode.fromText("https://example.invalid/?q=1", QrErrorCorrection.Q, None, None)
   private val snapElement = SourceParsing.parse("""<project name="demo"><scripts><script x="1"/></scripts></project>""", SourceLanguage.Snap).syntax
     .toOption.get.root.element
+  private val pythonProgram = ProgrammingStateRaw(AppLanguage.Python, "helper(1)\nforward(10)\n")
 
   private val samples: List[Sample[?, ?]] = List(
     Sample(UserCommands.loginCommand, UserCommands.LoginRequest(user.user.mail, Right(signed)),
@@ -86,15 +93,14 @@ class ExecutionCommandRoundTripSpec extends FunSuite {
         Seq(SqlEditorCommands.Table("pupil", Seq(SqlEditorCommands.Column("name", "VARCHAR", nullable = true, primaryKey = false)), Nil)))),
     Sample(WorkerCommands.health, WorkerCommands.HealthRequest(), WorkerCommands.HealthResult("edusquirrel-worker", Seq("worker.health"))),
     Sample(WorkerCommands.parseSnapXml, WorkerCommands.ParseSnapXmlRequest("<project name=\"demo\"/>", "project"), Seq(snapElement)),
-    Sample(WorkerCommands.flowchart, WorkerCommands.FlowchartRequest(it.evadid.core.datastructures.language.AppLanguage.Python, "if x:\n    y = 1\n"),
+    Sample(WorkerCommands.flowchart, WorkerCommands.FlowchartRequest(AppLanguage.Python, "if x:\n    y = 1\n"),
       PythonFlowchartGutter.fromPython("if x:\n    y = 1\nelse:\n    y = 2\n")),
-    Sample(WorkerCommands.programAnalysis, WorkerCommands.ProgramAnalysisRequest(it.evadid.workbook.elements.interactionElements.programming.state.ProgrammingStateRaw(it.evadid.core.datastructures.language.AppLanguage.Python, "helper(1)\nforward(10)\n"),
-      it.evadid.vm.conversion.dependencies.ProgrammingEnvironment.of(it.evadid.vm.conversion.dependencies.ProgrammingLibrary.Turtle)),
-      it.evadid.vm.analysis.ProgramAnalysis.of(it.evadid.workbook.elements.interactionElements.programming.state.ProgrammingStateRaw(it.evadid.core.datastructures.language.AppLanguage.Python, "helper(1)\nforward(10)\n"))),
+    Sample(WorkerCommands.programAnalysis, WorkerCommands.ProgramAnalysisRequest(pythonProgram, ProgrammingEnvironment.of(ProgrammingLibrary.Turtle)),
+      ProgramAnalysis.of(pythonProgram)),
     Sample(WorkerCommands.calculateQrCode, WorkerCommands.CalculateQrCodeRequest("https://example.invalid/?q=1", QrErrorCorrection.Q),
       WorkerCommands.CalculateQrCodeResult(qr, qr.modules)),
     Sample(WorkerCommands.runPython, WorkerCommands.RunPythonRequest("forward(n)", Map("n" -> ujson.Num(10)), Map("turtle" -> Seq("forward")),
-      turtleCalls = it.evadid.vm.simulation.python.PythonTurtleCalls.Logged), WorkerCommands.RunPythonResult(ujson.Obj("done" -> true), "ok\n", "", Seq(WorkerCommands.PythonCallback("turtle", "forward", Seq(ujson.Num(10)))))),
+      turtleCalls = PythonTurtleCalls.Logged), WorkerCommands.RunPythonResult(ujson.Obj("done" -> true), "ok\n", "", Seq(WorkerCommands.PythonCallback("turtle", "forward", Seq(ujson.Num(10)))))),
     Sample(WorkerCommands.javaExecutionEvidence, WorkerCommands.JavaExecutionEvidenceRequest("class Main { static int f(int a) { return a; } }",
       Some("f"), Vector(Evidence.Scalar.Int32(3))), Evidence.Snapshot(Evidence.Outcome.Completed, 2, 0, Vector.empty))
   )

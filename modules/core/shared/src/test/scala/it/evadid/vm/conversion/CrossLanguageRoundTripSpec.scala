@@ -66,6 +66,12 @@ class CrossLanguageRoundTripSpec extends FunSuite {
     val found = problems.result()
     if found.nonEmpty then fail(s"${found.size} round-trip problems starting from $origin:\n${found.mkString("\n")}")
   }
+  /** Starts the round trips from `source` and from its two conversions to the other languages. */
+  private def assertRoundTripsFromEachLanguage(source: ProgrammingState, expectedCommands: Option[Seq[(String, Seq[Double])]]): Unit = {
+    val others = if source.associatedLanguage == Java then Seq(source.toPythonStructured, source.toSnapXml)
+      else Seq(source.toJavaStructured, source.toSnapXml)
+    (source +: others).foreach(assertRoundTrips(_, all, expectedCommands))
+  }
   private def forward(distance: Double) = "Forward" -> Seq(distance)
   private def right(angle: Double) = "Right" -> Seq(angle)
   private def left(angle: Double) = "Left" -> Seq(angle)
@@ -134,8 +140,7 @@ class CrossLanguageRoundTripSpec extends FunSuite {
       |main()
       |""".stripMargin
     val expected = Seq(forward(20), forward(20), forward(20), forward(100))
-    Seq(ProgrammingStateRaw(Python, python), ProgrammingStateRaw(Python, python).toJavaStructured,
-      ProgrammingStateRaw(Python, python).toSnapXml).foreach(assertRoundTrips(_, all, Some(expected)))
+    assertRoundTripsFromEachLanguage(ProgrammingStateRaw(Python, python), Some(expected))
   }
 
   test("the __main__ guard runs its body, so a guarded main() is the entry point") {
@@ -170,8 +175,7 @@ class CrossLanguageRoundTripSpec extends FunSuite {
       |forward(10)
       |""".stripMargin
     val expected = Seq(forward(10), "PenUp" -> Seq.empty[Double], forward(5), "PenDown" -> Seq.empty[Double], forward(10))
-    Seq(ProgrammingStateRaw(Python, python), ProgrammingStateRaw(Python, python).toJavaStructured,
-      ProgrammingStateRaw(Python, python).toSnapXml).foreach(assertRoundTrips(_, all, Some(expected)))
+    assertRoundTripsFromEachLanguage(ProgrammingStateRaw(Python, python), Some(expected))
   }
 
   test("Snap's repeat until with and without a negation survives the route through Python") {
@@ -206,8 +210,7 @@ class CrossLanguageRoundTripSpec extends FunSuite {
       |    forward(5)
       |""".stripMargin
     val expected = Seq(forward(10), forward(10), forward(10), right(90), right(90), forward(1), left(30), forward(4))
-    Seq(ProgrammingStateRaw(Python, python), ProgrammingStateRaw(Python, python).toJavaStructured,
-      ProgrammingStateRaw(Python, python).toSnapXml).foreach(assertRoundTrips(_, all, Some(expected)))
+    assertRoundTripsFromEachLanguage(ProgrammingStateRaw(Python, python), Some(expected))
   }
 
   test("scenario C: a class with attributes, constructor and method survives Python and Java pairs") {
@@ -235,8 +238,7 @@ class CrossLanguageRoundTripSpec extends FunSuite {
       |}
       |""".stripMargin
     val expected = Seq(forward(10), forward(7), forward(4), forward(1))
-    Seq(ProgrammingStateJavaStructured(java), ProgrammingStateJavaStructured(java).toPythonStructured,
-      ProgrammingStateJavaStructured(java).toSnapXml).foreach(assertRoundTrips(_, all, Some(expected)))
+    assertRoundTripsFromEachLanguage(ProgrammingStateJavaStructured(java), Some(expected))
   }
 
   test("Python ranges with a step count with that step in every language") {
@@ -246,8 +248,7 @@ class CrossLanguageRoundTripSpec extends FunSuite {
       |    turn_right(angle)
       |""".stripMargin
     val expected = Seq(forward(10), forward(7), forward(4), forward(1), right(0), right(20), right(40))
-    Seq(ProgrammingStateRaw(Python, python), ProgrammingStateRaw(Python, python).toJavaStructured,
-      ProgrammingStateRaw(Python, python).toSnapXml).foreach(assertRoundTrips(_, all, Some(expected)))
+    assertRoundTripsFromEachLanguage(ProgrammingStateRaw(Python, python), Some(expected))
   }
 
   test("conversion built-ins keep their meaning between Python and Java") {
@@ -287,15 +288,17 @@ class CrossLanguageRoundTripSpec extends FunSuite {
 
   test("strings with quotes, math functions and precedence survive every language pair, starting in Python") {
     assertRoundTrips(ProgrammingStateRaw(Python, mathPython), all, None)
-    val python = rendered(converted(ProgrammingStateRaw(Python, mathPython).toBeExpression, Python), Python)
+    def renderedIn(language: ProgrammingLanguage) =
+      rendered(converted(ProgrammingStateRaw(Python, mathPython).toBeExpression, language), language)
+    val python = renderedIn(Python)
     assert(python.contains("print(\"hai'\")") && python.contains("print(\"\\\"hai\\\"\")"), python)
     assert(python.contains("random() * 10") && python.contains("x ** 2") && python.contains("sqrt(64)"), python)
-    val java = rendered(converted(ProgrammingStateRaw(Python, mathPython).toBeExpression, Java), Java)
+    val java = renderedIn(Java)
     assert(java.contains("System.out.println(\"\\\"hai\\\"\");"), s"Java strings are double-quoted:\n$java")
     assert(java.contains("Math.random() * 10") && java.contains("Math.pow(x, 2)") && java.contains("Math.sqrt(64)"), java)
     assert(java.contains("56.0 / 8"), s"Python's exact division stays exact in Java:\n$java")
     assert(java.contains("true || (false && true)"), java)
-    val snap = rendered(converted(ProgrammingStateRaw(Python, mathPython).toBeExpression, SnapLanguage), SnapLanguage)
+    val snap = renderedIn(SnapLanguage)
     assert(snap.contains("<block s=\"reportMonadic\"><l><option>sqrt</option></l><l>64</l></block>"), snap)
     assert(snap.contains("<block s=\"reportRandom\"><l>0</l><l>0.9999999999999999</l></block>"), snap)
     assert(snap.contains("<l>&quot;hai&quot;</l>") && (snap.contains("<l>hai&apos;</l>") || snap.contains("<l>hai'</l>")), snap)

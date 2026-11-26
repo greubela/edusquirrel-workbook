@@ -3,7 +3,7 @@ package it.evadid.workbook.elements.interactionElements.programming
 import it.evadid.vm.parsing.source.SourceParsing
 import it.evadid.vm.parsing.source.SourceParsing.SourceLanguage
 
-import it.evadid.core.datastructures.language.AppLanguage.{Java, Python, SnapLanguage}
+import it.evadid.core.datastructures.language.AppLanguage.{Java, Python}
 import it.evadid.vm.conversion.pythonsnap.PythonToSnap
 import it.evadid.workbook.elements.interactionElements.programming.state.*
 import it.evadid.workbook.elements.interactionElements.programming.state.snap.*
@@ -11,26 +11,26 @@ import it.evadid.workbook.elements.interactionElements.programming.programmingEx
 import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseTurtle.*
 
 import it.evadid.core.datastructures.language.AppLanguage.English
-import it.evadid.vm.naming.NamingStyle
+import it.evadid.vm.naming.{BeEntityName, NamingStyle}
 import it.evadid.vm.types.BeDataType
-import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseRegular.ProgrammingExercise
-import it.evadid.vm.conversion.snapexpression.SnapExpressionSupport
 import munit.FunSuite
 
 class PythonTypeHintConversionSpec extends FunSuite {
   private def converted(source: String): ProgrammingStateRaw =
     ProgrammingStateRaw(Python, source).toBeExpression.toPython
 
+  /** Three successive conversions, each also restored from storage, reproduce the same Python. */
   private def assertStablePython(state: ProgrammingStateRaw): Unit = {
-    var current = state
-    (1 to 3).foreach { _ =>
-      current = current.toBeExpression.toPython
+    (1 to 3).foldLeft(state) { (previous, _) =>
+      val current = previous.toBeExpression.toPython
       assertEquals(current.code.trim, state.code.trim)
       val restored = ProgrammingState.serializer.deserialize(
         ProgrammingState.serializer.serialize(current.toBeExpression)
       )
       assertEquals(restored.toPython.code.trim, state.code.trim)
+      current
     }
+    ()
   }
 
   test("Java declared types take precedence over initializer inference and survive reassignment") {
@@ -196,14 +196,13 @@ class PythonTypeHintConversionSpec extends FunSuite {
 
     val parsed = SourceParsing.parse(roundTripped.code, SourceLanguage.Python).parsed().details
     assertEquals(parsed.definedClasses.size, 1, clue = roundTripped.code)
-    val standaloneNames = parsed.definedFunctions
-      .map(_.functionTypeInfo.displayName.getNameIn(English, NamingStyle.SnakeCase)).toSet
+    def snakeName(name: BeEntityName) = name.getNameIn(English, NamingStyle.SnakeCase)
+    val standaloneNames = parsed.definedFunctions.map(function => snakeName(function.functionTypeInfo.displayName)).toSet
     assert(!standaloneNames.contains("twice") && !standaloneNames.contains("label"))
     val clazz = parsed.definedClasses.head
-    assertEquals(clazz.name.getNameIn(English, NamingStyle.SnakeCase), "calculator")
+    assertEquals(snakeName(clazz.name), "calculator")
     assertEquals(clazz.attributes.map(_.variableType), List(BeDataType.Numeric))
-    assertEquals(clazz.methods.map(_.functionTypeInfo.displayName.getNameIn(English, NamingStyle.SnakeCase)),
-      List("twice", "label"))
+    assertEquals(clazz.methods.map(method => snakeName(method.functionTypeInfo.displayName)), List("twice", "label"))
     assertEquals(clazz.methods.map(_.outputs.get.variableType), List(BeDataType.Numeric, BeDataType.String))
     assertEquals(clazz.methods.map(_.inputs.map(_.variableType)),
       List(List(BeDataType.Numeric), List(BeDataType.String)))

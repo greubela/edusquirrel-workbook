@@ -99,6 +99,16 @@ class TurtleJsxGraphRendererGeometrySpec extends FunSuite:
     try test
     finally restore()
 
+  /** Runs `test` with the jsdom globals, `graph`'s JSXGraph stand-in and a host element in the document. */
+  private def withHost[A](graph: Graph)(test: dom.Element => A): A =
+    withDom {
+      graph.withLibrary {
+        val host = dom.document.createElement("div")
+        dom.document.body.appendChild(host)
+        test(host)
+      }
+    }
+
   private def installDom(): () => Unit =
     val globals = js.Dynamic.global.globalThis
     val window = EditorDomSuite.window
@@ -122,74 +132,62 @@ class TurtleJsxGraphRendererGeometrySpec extends FunSuite:
   }
 
   test("mounting multiple scenes passes distinct DOM containers and frees their own boards") {
-    withDom {
-      val graph = new Graph
-      graph.withLibrary {
-        val host = dom.document.createElement("div")
-        dom.document.body.appendChild(host)
-        val mounted = L.render(host, L.div(
-          TurtleJsxGraphRenderer.render(Scene(Nil, Nil), "Target"),
-          TurtleJsxGraphRenderer.render(Scene(Nil, Nil), "Your drawing")
-        ))
-        try
-          assertEquals(graph.initialized.size, 2)
-          assert(graph.initialized.head._1 ne graph.initialized.last._1)
-          assert(graph.initialized.head._2 != graph.initialized.last._2)
-          assertEquals(graph.freed.toList, Nil)
-        finally mounted.unmount()
-        assertEquals(graph.freed.toSet, graph.initialized.map(_._2).toSet)
-        assertEquals(graph.freed.size, 2)
-      }
+    val graph = new Graph
+    withHost(graph) { host =>
+      val mounted = L.render(host, L.div(
+        TurtleJsxGraphRenderer.render(Scene(Nil, Nil), "Target"),
+        TurtleJsxGraphRenderer.render(Scene(Nil, Nil), "Your drawing")
+      ))
+      try
+        assertEquals(graph.initialized.size, 2)
+        assert(graph.initialized.head._1 ne graph.initialized.last._1)
+        assert(graph.initialized.head._2 != graph.initialized.last._2)
+        assertEquals(graph.freed.toList, Nil)
+      finally mounted.unmount()
+      assertEquals(graph.freed.toSet, graph.initialized.map(_._2).toSet)
+      assertEquals(graph.freed.size, 2)
     }
   }
 
   test("replacing and remounting a scene frees each concrete board once") {
-    withDom {
+    val graph = new Graph
+    withHost(graph) { host =>
       import L.*
-      val graph = new Graph
-      graph.withLibrary {
-        val host = dom.document.createElement("div")
-        dom.document.body.appendChild(host)
-        val shown = Var(true)
-        val scene = TurtleJsxGraphRenderer.render(Scene(Nil, Nil), "Target")
-        val mounted = L.render(host, div(child.maybe <-- shown.signal.map(value => Option.when(value)(scene))))
-        try
-          assertEquals(graph.initialized.size, 1)
-          shown.set(false)
-          assertEquals(graph.freed.toList, List(graph.initialized.head._2))
-          shown.set(false)
-          assertEquals(graph.freed.size, 1)
-          shown.set(true)
-          assertEquals(graph.initialized.size, 2)
-        finally mounted.unmount()
-        assertEquals(graph.freed.toList, graph.initialized.map(_._2).toList)
-      }
+      val shown = Var(true)
+      val scene = TurtleJsxGraphRenderer.render(Scene(Nil, Nil), "Target")
+      val mounted = L.render(host, div(child.maybe <-- shown.signal.map(value => Option.when(value)(scene))))
+      try
+        assertEquals(graph.initialized.size, 1)
+        shown.set(false)
+        assertEquals(graph.freed.toList, List(graph.initialized.head._2))
+        shown.set(false)
+        assertEquals(graph.freed.size, 1)
+        shown.set(true)
+        assertEquals(graph.initialized.size, 2)
+      finally mounted.unmount()
+      assertEquals(graph.freed.toList, graph.initialized.map(_._2).toList)
     }
   }
 
   test("a changing scene replaces the panel with a fresh board in its default view; equal scenes are kept") {
-    withDom {
+    val graph = new Graph(batchUpdates = true)
+    withHost(graph) { host =>
       import L.*
-      val graph = new Graph(batchUpdates = true)
-      graph.withLibrary {
-        val host = dom.document.createElement("div")
-        dom.document.body.appendChild(host)
-        val commands = Var(List(cmd("forward", 10), cmd("right", 90), cmd("forward", 10)))
-        val expected = TurtleGraphic.TurtleGraphicProgram(commands.now())
-        val mounted = L.render(host, div(TurtleJsxGraphRenderer.renderStrokes(commands.signal, expected)))
-        try
-          assertEquals(graph.initialized.size, 1)
-          val firstPanel = host.querySelector(".turtle-gradig-panel")
-          commands.set(List(cmd("forward", 5)))
-          assertEquals(graph.initialized.size, 2, "a new board, initialized with the new scene's bounds")
-          assertEquals(graph.freed.toList, graph.initialized.take(1).map(_._2).toList, "the previous board is released")
-          assert(!(host.querySelector(".turtle-gradig-panel") eq firstPanel), "the whole panel is replaced")
-          assertEquals(host.querySelectorAll(".turtle-gradig-panel").length, 1)
-          commands.set(List(cmd("forward", 5)))
-          assertEquals(graph.initialized.size, 2, "an equal scene keeps its panel")
-        finally mounted.unmount()
-        assertEquals(graph.freed.toList, graph.initialized.map(_._2).toList)
-      }
+      val commands = Var(List(cmd("forward", 10), cmd("right", 90), cmd("forward", 10)))
+      val expected = TurtleGraphic.TurtleGraphicProgram(commands.now())
+      val mounted = L.render(host, div(TurtleJsxGraphRenderer.renderStrokes(commands.signal, expected)))
+      try
+        assertEquals(graph.initialized.size, 1)
+        val firstPanel = host.querySelector(".turtle-gradig-panel")
+        commands.set(List(cmd("forward", 5)))
+        assertEquals(graph.initialized.size, 2, "a new board, initialized with the new scene's bounds")
+        assertEquals(graph.freed.toList, graph.initialized.take(1).map(_._2).toList, "the previous board is released")
+        assert(!(host.querySelector(".turtle-gradig-panel") eq firstPanel), "the whole panel is replaced")
+        assertEquals(host.querySelectorAll(".turtle-gradig-panel").length, 1)
+        commands.set(List(cmd("forward", 5)))
+        assertEquals(graph.initialized.size, 2, "an equal scene keeps its panel")
+      finally mounted.unmount()
+      assertEquals(graph.freed.toList, graph.initialized.map(_._2).toList)
     }
   }
 
@@ -223,20 +221,16 @@ class TurtleJsxGraphRendererGeometrySpec extends FunSuite:
   }
 
   test("a failed scene mount releases its partially created board") {
-    withDom {
-      val graph = new Graph
-      graph.rejectCreation = true
-      graph.withLibrary {
-        val host = dom.document.createElement("div")
-        dom.document.body.appendChild(host)
-        val scene = Scene(List(RenderedLine(Point(0.0, 0.0), Point(10.0, 0.0), LineResult.Neutral, false)), Nil)
-        val mounted = L.render(host, TurtleJsxGraphRenderer.render(scene, "Target"))
-        try
-          assert(host.textContent.contains("drawing preview is unavailable"))
-          assertEquals(graph.freed.toList, graph.initialized.map(_._2).toList)
-        finally mounted.unmount()
-        assertEquals(graph.freed.size, 1)
-      }
+    val graph = new Graph
+    graph.rejectCreation = true
+    withHost(graph) { host =>
+      val scene = Scene(List(RenderedLine(Point(0.0, 0.0), Point(10.0, 0.0), LineResult.Neutral, false)), Nil)
+      val mounted = L.render(host, TurtleJsxGraphRenderer.render(scene, "Target"))
+      try
+        assert(host.textContent.contains("drawing preview is unavailable"))
+        assertEquals(graph.freed.toList, graph.initialized.map(_._2).toList)
+      finally mounted.unmount()
+      assertEquals(graph.freed.size, 1)
     }
   }
 
@@ -254,19 +248,15 @@ class TurtleJsxGraphRendererGeometrySpec extends FunSuite:
   }
 
   test("invalid display bounds produce a warning rather than a mounted board") {
-    withDom {
-      val graph = new Graph
-      graph.withLibrary {
-        val host = dom.document.createElement("div")
-        dom.document.body.appendChild(host)
-        val scene = Scene(List(RenderedLine(Point(0.0, 0.0), Point(Double.NaN, 0.0), LineResult.Neutral, false)), Nil)
-        val mounted = L.render(host, TurtleJsxGraphRenderer.render(scene, "Your drawing"))
-        try
-          assert(host.textContent.contains("outside the supported display range"))
-          assertEquals(graph.initialized.size, 0)
-        finally mounted.unmount()
-        assertEquals(graph.freed.size, 0)
-      }
+    val graph = new Graph
+    withHost(graph) { host =>
+      val scene = Scene(List(RenderedLine(Point(0.0, 0.0), Point(Double.NaN, 0.0), LineResult.Neutral, false)), Nil)
+      val mounted = L.render(host, TurtleJsxGraphRenderer.render(scene, "Your drawing"))
+      try
+        assert(host.textContent.contains("outside the supported display range"))
+        assertEquals(graph.initialized.size, 0)
+      finally mounted.unmount()
+      assertEquals(graph.freed.size, 0)
     }
   }
 

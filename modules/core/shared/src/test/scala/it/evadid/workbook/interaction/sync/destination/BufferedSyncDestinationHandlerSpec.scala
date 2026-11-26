@@ -5,7 +5,9 @@ import it.evadid.util.logging.BasicLogger
 import it.evadid.util.logging.derived.SyncLogger
 import it.evadid.workbook.abstractions.InteractionFormat
 import it.evadid.workbook.interaction.sync.*
-import it.evadid.workbook.interaction.sync.model.FetchResponse
+import it.evadid.workbook.interaction.sync.model.{FetchResponse, InteractionHistoryJson}
+import it.evadid.workbook.interaction.variable.InteractionVariableHistory
+import it.evadid.workbook.interaction.variable.events.{AnswerChangedEvent, InteractionEvent, InteractionEvents}
 import munit.FunSuite
 import java.time.LocalDateTime
 import scala.concurrent.{ExecutionContext, Future, Promise}
@@ -16,11 +18,35 @@ class BufferedSyncDestinationHandlerSpec extends FunSuite {
   private val key = context.toSyncContext("answer")
   private def saved(value: String): String = {
     val format = InteractionFormat.TextInteractionFormat
-    val history = it.evadid.workbook.interaction.variable.InteractionVariableHistory.empty[format.type]
-      .addEvent(it.evadid.workbook.interaction.variable.events.AnswerChangedEvent[format.type](value, LocalDateTime.of(2026, 1, 1, 12, 0), UpdateImportance.MAJOR, new java.util.UUID(0L, value.hashCode.toLong).toString))
-    it.evadid.workbook.interaction.sync.model.InteractionHistoryJson.fromHistory(format, history).serialized
+    val history = InteractionVariableHistory.empty[format.type]
+      .addEvent(AnswerChangedEvent[format.type](value, LocalDateTime.of(2026, 1, 1, 12, 0), UpdateImportance.MAJOR, new java.util.UUID(0L, value.hashCode.toLong).toString))
+    InteractionHistoryJson.fromHistory(format, history).serialized
   }
-  private def merged(values: String*): String = it.evadid.workbook.interaction.sync.model.InteractionHistoryJson.mergeSerialized(values.map(saved))
+  private def merged(values: String*): String = InteractionHistoryJson.mergeSerialized(values.map(saved))
+  /** Makes the destination's stores wait on the returned gate; the first promise completes once a store has started. */
+  private def gateStores(destination: Destination): (Promise[Unit], Promise[SyncSuccess]) = {
+    val started = Promise[Unit]()
+    val gate = Promise[SyncSuccess]()
+    destination.storeResult.set(() => { started.trySuccess(()); gate.future })
+    (started, gate)
+  }
+  /** One write and one read fail with `error`; after `recover`, a retried write reaches the destination. */
+  private def assertBatchFailsThenRetries(destination: Destination, error: Throwable)(recover: => Unit): Future[Unit] = {
+    val buffered = destination.toBuffered
+    val writing = buffered.storeHistoryJson(key, saved("first"))
+    val reading = buffered.readHistoryJson(key)
+    buffered.flush(true)
+    for {
+      writeError <- writing.failed
+      readError <- reading.failed
+      _ = assert(writeError eq error)
+      _ = assert(readError eq error)
+      _ = recover
+      retried = buffered.storeHistoryJson(key, saved("retry"))
+      _ = buffered.flush(true)
+      _ <- retried
+    } yield assertEquals(destination.writes.now().last, Map(key -> saved("retry")))
+  }
   private class Destination extends SyncDestinationHistoryHandler {
     val syncLogger = SyncLogger(BasicLogger())
     val definition = SyncDestinationDefinition.defaultBrowserHistory
@@ -88,9 +114,7 @@ class BufferedSyncDestinationHandlerSpec extends FunSuite {
   test("flushed write batches stay ordered and a failed batch does not block retries") {
     val destination = new Destination
     val buffered = destination.toBuffered
-    val started = Promise[Unit]()
-    val gate = Promise[SyncSuccess]()
-    destination.storeResult.set(() => { started.trySuccess(()); gate.future })
+    val (started, gate) = gateStores(destination)
     val first = buffered.storeHistoryJson(key, saved("first"))
     buffered.flush(true)
     started.future.flatMap { _ =>
@@ -107,7 +131,7 @@ class BufferedSyncDestinationHandlerSpec extends FunSuite {
     val bound = SyncInformation(destination.definition, EventSyncStrategy.SYNC_EVERYTHING).forContext(context, _ => destination.toBuffered)
     val format = InteractionFormat.TextInteractionFormat
     val typed = FormattedSyncDestination(bound, format)
-    def history(value: String) = it.evadid.workbook.interaction.sync.model.InteractionHistoryJson.deserialize(saved(value)).typedAs(format)
+    def history(value: String) = InteractionHistoryJson.deserialize(saved(value)).typedAs(format)
     val writing = typed.writer.writeAll(bound.handler.syncLogger, Map(key -> history("one"), context.toSyncContext("other") -> history("two")))
     typed.writer.flush(bound.handler.syncLogger, true)
     writing.map(_ => assertEquals(destination.writes.now().head.size, 2))
@@ -117,7 +141,7 @@ class BufferedSyncDestinationHandlerSpec extends FunSuite {
     val buffered = destination.toBuffered
     val pending = (1 to 30).map(index => buffered.storeHistoryJson(key, saved(index.toString)))
     Future.sequence(pending).map { _ =>
-      assertEquals(destination.writes.now(), List(Map(key -> it.evadid.workbook.interaction.sync.model.InteractionHistoryJson.mergeSerialized((1 to 30).map(index => saved(index.toString))))))
+      assertEquals(destination.writes.now(), List(Map(key -> InteractionHistoryJson.mergeSerialized((1 to 30).map(index => saved(index.toString))))))
       assertEquals(buffered.timestamps, Set.empty)
     }
   }
@@ -132,9 +156,7 @@ class BufferedSyncDestinationHandlerSpec extends FunSuite {
         Future.successful(FetchResponse.fromMap(LocalDateTime.now(), committed.now()))
       }
     }
-    val started = Promise[Unit]()
-    val gate = Promise[SyncSuccess]()
-    destination.storeResult.set(() => { started.trySuccess(()); gate.future })
+    val (started, gate) = gateStores(destination)
     val buffered = destination.toBuffered
     val writing = buffered.storeHistoryJson(key, saved("saved"))
     val reading = buffered.readHistoryJson(key)
@@ -149,23 +171,10 @@ class BufferedSyncDestinationHandlerSpec extends FunSuite {
 
   test("synchronous handler exceptions fail their callers and do not block the next batch") {
     val destination = new Destination
-    val buffered = destination.toBuffered
     val error = IllegalStateException("synchronous failure")
     destination.storeResult.set(() => throw error)
     destination.readResult.set(_ => throw error)
-    val writing = buffered.storeHistoryJson(key, saved("first"))
-    val reading = buffered.readHistoryJson(key)
-    buffered.flush(true)
-    for {
-      writeError <- writing.failed
-      readError <- reading.failed
-      _ = assert(writeError eq error)
-      _ = assert(readError eq error)
-      _ = destination.storeResult.set(() => Future.successful(SyncSuccess.emptyNow()))
-      retried = buffered.storeHistoryJson(key, saved("retry"))
-      _ = buffered.flush(true)
-      _ <- retried
-    } yield assertEquals(destination.writes.now().last, Map(key -> saved("retry")))
+    assertBatchFailsThenRetries(destination, error)(destination.storeResult.set(() => Future.successful(SyncSuccess.emptyNow())))
   }
 
   test("a clear runs after pending writes and before writes submitted afterwards") {
@@ -182,9 +191,7 @@ class BufferedSyncDestinationHandlerSpec extends FunSuite {
         Future.successful(SyncSuccess.emptyNow())
       }
     }
-    val started = Promise[Unit]()
-    val gate = Promise[SyncSuccess]()
-    destination.storeResult.set(() => { started.trySuccess(()); gate.future })
+    val (started, gate) = gateStores(destination)
     val buffered = destination.toBuffered
     val old = buffered.storeHistoryJson(key, saved("old"))
     buffered.flush(true)
@@ -222,20 +229,7 @@ class BufferedSyncDestinationHandlerSpec extends FunSuite {
     val destination = new Destination {
       override def flush(forceFlush: Boolean): Unit = if failing.now() then throw error
     }
-    val buffered = destination.toBuffered
-    val writing = buffered.storeHistoryJson(key, saved("first"))
-    val reading = buffered.readHistoryJson(key)
-    buffered.flush(true)
-    for {
-      writeError <- writing.failed
-      readError <- reading.failed
-      _ = assert(writeError eq error)
-      _ = assert(readError eq error)
-      _ = failing.set(false)
-      retry = buffered.storeHistoryJson(key, saved("retry"))
-      _ = buffered.flush(true)
-      _ <- retry
-    } yield assertEquals(destination.writes.now().last, Map(key -> saved("retry")))
+    assertBatchFailsThenRetries(destination, error)(failing.set(false))
   }
   test("range requests batch matching windows and preserve keys, strategy and nanosecond bounds") {
     val calls = State(Vector.empty[(Seq[SyncContext], LocalDateTime, LocalDateTime, EventSyncStrategy)])
@@ -246,7 +240,7 @@ class BufferedSyncDestinationHandlerSpec extends FunSuite {
       override def readHistoriesInRange(ctx: UsageContext, keys: Seq[SyncContext], start: LocalDateTime,
           end: LocalDateTime, strategy: EventSyncStrategy)(using ExecutionContext) = {
         calls.update(_ :+ (keys, start, end, strategy))
-        Future.successful(keys.map(key => key -> it.evadid.workbook.interaction.sync.model.InteractionHistoryJson.deserialize(saved(key.keyForSerialisation))).toMap)
+        Future.successful(keys.map(key => key -> InteractionHistoryJson.deserialize(saved(key.keyForSerialisation))).toMap)
       }
     }
     val buffered = destination.toBuffered
@@ -286,11 +280,10 @@ class BufferedSyncDestinationHandlerSpec extends FunSuite {
     val base = LocalDateTime.of(2026, 1, 1, 12, 0)
     val other = context.toSyncContext("other")
     val format = InteractionFormat.TextInteractionFormat
-    val events = (0 to 3).map(index => it.evadid.workbook.interaction.variable.events.AnswerChangedEvent[format.type](
+    val events = (0 to 3).map(index => AnswerChangedEvent[format.type](
       index.toString, base.plusNanos(index), UpdateImportance.MAJOR)).toSet
-    val full = it.evadid.workbook.interaction.sync.model.InteractionHistoryJson.fromHistory(format,
-      it.evadid.workbook.interaction.variable.InteractionVariableHistory(
-        it.evadid.workbook.interaction.variable.events.InteractionEvents(events.map(event => event: it.evadid.workbook.interaction.variable.events.InteractionEvent[format.type]))))
+    val full = InteractionHistoryJson.fromHistory(format,
+      InteractionVariableHistory(InteractionEvents(events.map(event => event: InteractionEvent[format.type]))))
     val destination = new Destination {
       override def readHistoriesInRange(ctx: UsageContext, keys: Seq[SyncContext], from: LocalDateTime,
           until: LocalDateTime, strategy: EventSyncStrategy)(using ExecutionContext) = {
@@ -329,8 +322,8 @@ class BufferedSyncDestinationHandlerSpec extends FunSuite {
     val destination = new Destination {
       override def readHistoriesInRange(ctx: UsageContext, keys: Seq[SyncContext], from: LocalDateTime,
           until: LocalDateTime, strategy: EventSyncStrategy)(using ExecutionContext) =
-        Future.successful(Map(key -> it.evadid.workbook.interaction.sync.model.InteractionHistoryJson.deserialize(saved("kept")),
-          other -> it.evadid.workbook.interaction.sync.model.InteractionHistoryJson(InteractionFormat.TextInteractionFormat, "{\"not\": \"a history\"}")))
+        Future.successful(Map(key -> InteractionHistoryJson.deserialize(saved("kept")),
+          other -> InteractionHistoryJson(InteractionFormat.TextInteractionFormat, "{\"not\": \"a history\"}")))
     }
     val buffer = destination.toBuffered
     val from = LocalDateTime.of(2026, 1, 1, 0, 0)

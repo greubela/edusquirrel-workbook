@@ -5,7 +5,6 @@ import it.evadid.vm.conversion.structured.StructuredProgramConversions
 import it.evadid.vm.parsing.source.SourceParsing
 import it.evadid.vm.parsing.source.SourceParsing.SourceLanguage
 import it.evadid.vm.naming.BeEntityName
-import it.evadid.core.datastructures.language.AppLanguage.{Java, Python}
 import it.evadid.workbook.elements.interactionElements.programming.state.*
 import it.evadid.vm.code.defining.BeDefineClass
 import it.evadid.vm.code.others.BeStartProgram

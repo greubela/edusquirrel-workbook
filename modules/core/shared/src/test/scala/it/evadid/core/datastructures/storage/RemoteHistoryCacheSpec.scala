@@ -62,6 +62,8 @@ class RemoteHistoryCacheSpec extends FunSuite {
   }
   private def cache(destinations: (Destination, EventSyncStrategy)*): Cache = RemoteHistoryCache(logger, destinations.toMap)
   private def local(cache: Cache, historyKey: SyncContext = key): History = cache.updateReport.now().get(historyKey)
+  private def reportOf(cache: Cache, historyKey: SyncContext = key) = cache.reports.now().get(historyKey)
+  private def syncingEverything(destination: Destination): Cache = cache(destination -> EventSyncStrategy.SYNC_EVERYTHING)
 
   test("local histories merge without IO and reports select pending events per destination") {
     val majorOnly = new Destination
@@ -71,7 +73,7 @@ class RemoteHistoryCacheSpec extends FunSuite {
     val minor = event(2, 2, UpdateImportance.MINOR)
     control.mergeLocal(Map(key -> history(major)))
     control.mergeLocal(Map(key -> history(minor)))
-    val report = control.reports.now().get(key)
+    val report = reportOf(control)
     assertEquals(local(control).events.values, Set(major, minor))
     assertEquals(report.pendingWrites(majorOnly).events.values, Set(major))
     assertEquals(report.pendingWrites(all).events.values, Set(major, minor))
@@ -83,12 +85,12 @@ class RemoteHistoryCacheSpec extends FunSuite {
   test("cold reads fetch full histories and successful empty reads also become fresh") {
     val destination = new Destination
     destination.persisted.set(Map(key -> history(event(1, 1))))
-    val control = cache(destination -> EventSyncStrategy.SYNC_EVERYTHING)
+    val control = syncingEverything(destination)
     control.ensureMaxAge(Set(key, otherKey)).flatMap { _ =>
       assertEquals(destination.reads.now().head.starting, LocalDateTime.MIN)
       assertEquals(local(control).events.values, Set(event(1, 1)))
       assertEquals(local(control, otherKey), empty)
-      assert(control.reports.now().get(otherKey).lastKnownValues(destination).fetchCompleted.nonEmpty)
+      assert(reportOf(control, otherKey).lastKnownValues(destination).fetchCompleted.nonEmpty)
       control.ensureMaxAge(Set(key, otherKey), LocalDateTime.MIN)
     }.map(_ => assertEquals(destination.reads.now().size, 1))
   }
@@ -99,7 +101,7 @@ class RemoteHistoryCacheSpec extends FunSuite {
     val tied = event(2, 5)
     val newer = event(3, 6)
     destination.persisted.set(Map(key -> history(first)))
-    val control = cache(destination -> EventSyncStrategy.SYNC_EVERYTHING)
+    val control = syncingEverything(destination)
     control.ensureMaxAge(Set(key)).flatMap { _ =>
       destination.persisted.set(Map(key -> history(first, tied, newer)))
       control.ensureMaxAge(Set(key), LocalDateTime.MAX)
@@ -107,7 +109,7 @@ class RemoteHistoryCacheSpec extends FunSuite {
       assertEquals(destination.reads.now().last.starting, time.plusSeconds(5))
       assertEquals(destination.reads.now().last.until, LocalDateTime.MAX)
       assertEquals(local(control).events.values, Set(first, tied, newer))
-      assertEquals(control.reports.now().get(key).lastKnownValues(destination).fetchedThrough, Some(time.plusSeconds(6)))
+      assertEquals(reportOf(control).lastKnownValues(destination).fetchedThrough, Some(time.plusSeconds(6)))
     }
   }
 
@@ -116,12 +118,12 @@ class RemoteHistoryCacheSpec extends FunSuite {
     val first = event(1, 1)
     val last = event(2, 2)
     destination.readOperation.set(_ => Future.successful(Map(key -> List(event(0, 0), first, last, event(3, 3)), otherKey -> List(first))))
-    val control = cache(destination -> EventSyncStrategy.SYNC_EVERYTHING)
+    val control = syncingEverything(destination)
     control.fetchEventsBetween(Seq(key, key), time.plusSeconds(1), time.plusSeconds(2)).flatMap { fetched =>
       assertEquals(fetched.keySet, Set(key))
       assertEquals(fetched(key).toSet, Set(first, last))
       assertEquals(destination.reads.now().head.keys, Seq(key))
-      val confirmed = control.reports.now().get(key).lastKnownValues(destination)
+      val confirmed = reportOf(control).lastKnownValues(destination)
       assertEquals(confirmed.fetchedThrough, None)
       assertEquals(confirmed.fetchCompleted, None)
       control.ensureMaxAge(Set(key), LocalDateTime.MIN)
@@ -137,18 +139,18 @@ class RemoteHistoryCacheSpec extends FunSuite {
     val control = cache(latest -> EventSyncStrategy.KEEP_LAST_MAJOR, all -> EventSyncStrategy.SYNC_EVERYTHING)
     control.fetchAll(Set(key)).flatMap { _ =>
       assertEquals(latest.reads.now().head.strategy, EventSyncStrategy.KEEP_LAST_MAJOR)
-      assertEquals(control.reports.now().get(key).lastKnownValues(latest).history.events.values, Set(event(2, 2)))
+      assertEquals(reportOf(control).lastKnownValues(latest).history.events.values, Set(event(2, 2)))
       control.requestStoreToAll(Map(key -> history(event(4, 4), event(5, 5, UpdateImportance.MINOR))))
     }.flatMap(_ => control.ensureMaxAge(Set(key))).map { _ =>
       assertEquals(latest.writes.now().last(key).events.values, Set(event(4, 4)))
       assertEquals(all.writes.now().last(key).events.values, Set(event(4, 4), event(5, 5, UpdateImportance.MINOR)))
-      assertEquals(control.reports.now().get(key).syncedDestinations, Set(all))
+      assertEquals(reportOf(control).syncedDestinations, Set(all))
     }
   }
 
   test("events read back are not resent, unread writes are, and missing older offline events are still written") {
     val destination = new Destination
-    val control = cache(destination -> EventSyncStrategy.SYNC_EVERYTHING)
+    val control = syncingEverything(destination)
     val newer = event(2, 20)
     val older = event(1, 1)
     control.requestStoreToAll(Map(key -> history(newer))).flatMap(_ => control.storeAll()).flatMap { _ =>
@@ -165,9 +167,9 @@ class RemoteHistoryCacheSpec extends FunSuite {
 
   test("a write is not known at its destination until a read returns it") {
     val destination = new Destination
-    val control = cache(destination -> EventSyncStrategy.SYNC_EVERYTHING)
+    val control = syncingEverything(destination)
     control.requestStoreToAll(Map(key -> history(event(100, 100)))).flatMap { _ =>
-      val report = control.reports.now().get(key)
+      val report = reportOf(control)
       assertEquals(report.lastKnownValues, Map.empty, "a requested write is not evidence that it was stored")
       assertEquals(report.syncedDestinations, Set.empty)
       assertEquals(destination.reads.now(), Nil)
@@ -176,13 +178,13 @@ class RemoteHistoryCacheSpec extends FunSuite {
     }.map { _ =>
       assertEquals(destination.reads.now().map(_.starting), List(LocalDateTime.MIN))
       assertEquals(local(control).events.values, Set(event(50, 50), event(100, 100)))
-      assertEquals(control.reports.now().get(key).syncedDestinations, Set(destination))
+      assertEquals(reportOf(control).syncedDestinations, Set(destination))
     }
   }
 
   test("failed and synchronously throwing reads retain their cursor and can be retried") {
     val destination = new Destination
-    val control = cache(destination -> EventSyncStrategy.SYNC_EVERYTHING)
+    val control = syncingEverything(destination)
     val failure = IllegalStateException("offline")
     destination.readOperation.set(_ => throw failure)
     control.ensureMaxAge(Set(key)).failed.flatMap { error =>
@@ -199,27 +201,27 @@ class RemoteHistoryCacheSpec extends FunSuite {
 
   test("failed and lost writes remain pending and are sent again") {
     val destination = new Destination
-    val control = cache(destination -> EventSyncStrategy.SYNC_EVERYTHING)
+    val control = syncingEverything(destination)
     val failure = IllegalStateException("offline")
     val persist = destination.writeOperation.now()
     destination.writeOperation.set(_ => throw failure)
     control.requestStoreToAll(Map(key -> history(event(1, 1)))).failed.flatMap { error =>
       assert(error eq failure)
-      assertEquals(control.reports.now().get(key).syncedDestinations, Set.empty)
-      assertEquals(control.reports.now().get(key).lastKnownValues, Map.empty)
+      assertEquals(reportOf(control).syncedDestinations, Set.empty)
+      assertEquals(reportOf(control).lastKnownValues, Map.empty)
       // The destination acknowledges, but never stores: the next read finds nothing.
       destination.writeOperation.set(_ => Future.successful(SyncSuccess.emptyNow()))
       control.storeAll().flatMap(_ => control.ensureMaxAge(Set(key), LocalDateTime.MAX))
     }.flatMap { _ =>
-      assertEquals(control.reports.now().get(key).syncedDestinations, Set.empty)
-      assertEquals(control.reports.now().get(key).pendingWrites(destination).events.values, Set(event(1, 1)))
+      assertEquals(reportOf(control).syncedDestinations, Set.empty)
+      assertEquals(reportOf(control).pendingWrites(destination).events.values, Set(event(1, 1)))
       destination.writeOperation.set(persist)
       // Force confirmation even if both reads complete within one clock tick (Scala.js).
       control.storeAll().flatMap(_ => control.ensureMaxAge(Set(key), LocalDateTime.MAX))
     }.map { _ =>
       assertEquals(destination.writes.now().size, 3)
       assertEquals(destination.reads.now().size, 2)
-      assertEquals(control.reports.now().get(key).syncedDestinations, Set(destination))
+      assertEquals(reportOf(control).syncedDestinations, Set(destination))
     }
   }
 
@@ -227,17 +229,17 @@ class RemoteHistoryCacheSpec extends FunSuite {
     val destination = new Destination
     val gate = Promise[Map[SyncContext, List[Event]]]()
     destination.readOperation.set(_ => gate.future)
-    val control = cache(destination -> EventSyncStrategy.SYNC_EVERYTHING)
+    val control = syncingEverything(destination)
     val reading = control.ensureMaxAge(Set(key))
     control.requestStoreToAll(Map(key -> history(event(2, 2)))).flatMap { _ =>
       gate.success(Map(key -> List(event(1, 1))))
       reading
     }.map { _ =>
       assertEquals(local(control).events.values, Set(event(1, 1), event(2, 2)))
-      val confirmed = control.reports.now().get(key).lastKnownValues(destination)
+      val confirmed = reportOf(control).lastKnownValues(destination)
       assertEquals(confirmed.history.events.values, Set(event(1, 1)), "only the events the read returned are known")
       assertEquals(confirmed.fetchedThrough, Some(time.plusSeconds(1)))
-      assertEquals(control.reports.now().get(key).pendingWrites(destination).events.values, Set(event(2, 2)))
+      assertEquals(reportOf(control).pendingWrites(destination).events.values, Set(event(2, 2)))
     }
   }
 
@@ -246,7 +248,7 @@ class RemoteHistoryCacheSpec extends FunSuite {
     val first = Promise[Map[SyncContext, List[Event]]]()
     val second = Promise[Map[SyncContext, List[Event]]]()
     destination.readOperation.set(_ => first.future)
-    val control = cache(destination -> EventSyncStrategy.SYNC_EVERYTHING)
+    val control = syncingEverything(destination)
     val olderRead = control.ensureMaxAge(Set(key))
     destination.readOperation.set(_ => second.future)
     val newerRead = control.ensureMaxAge(Set(key))
@@ -256,7 +258,7 @@ class RemoteHistoryCacheSpec extends FunSuite {
       olderRead
     }.map { _ =>
       assertEquals(local(control).events.values, Set(event(1, 1), event(2, 2)))
-      assertEquals(control.reports.now().get(key).lastKnownValues(destination).fetchedThrough, Some(time.plusSeconds(2)))
+      assertEquals(reportOf(control).lastKnownValues(destination).fetchedThrough, Some(time.plusSeconds(2)))
     }
   }
 
@@ -265,15 +267,15 @@ class RemoteHistoryCacheSpec extends FunSuite {
     val gate = Promise[Unit]()
     val persist = destination.writeOperation.now()
     destination.writeOperation.set(values => gate.future.flatMap(_ => persist(values)))
-    val control = cache(destination -> EventSyncStrategy.SYNC_EVERYTHING)
+    val control = syncingEverything(destination)
     val writing = control.requestStoreToAll(Map(key -> history(event(1, 1))))
     control.mergeLocal(Map(key -> history(event(2, 2))))
     gate.success(())
     writing.flatMap { _ =>
-      assertEquals(control.reports.now().get(key).lastKnownValues, Map.empty)
+      assertEquals(reportOf(control).lastKnownValues, Map.empty)
       control.ensureMaxAge(Set(key))
     }.flatMap { _ =>
-      val report = control.reports.now().get(key)
+      val report = reportOf(control)
       assertEquals(report.lastKnownValues(destination).history.events.values, Set(event(1, 1)))
       assertEquals(report.pendingWrites(destination).events.values, Set(event(2, 2)))
       control.storeAll()
@@ -298,14 +300,14 @@ class RemoteHistoryCacheSpec extends FunSuite {
         }
       }
     }
-    val control = cache(destination -> EventSyncStrategy.SYNC_EVERYTHING)
+    val control = syncingEverything(destination)
     val first = control.requestStoreToAll(Map(key -> history(event(1, 1))))
     assert(!first.isCompleted)
     control.flush(true)
     first.flatMap(_ => control.requestStoreToAll(Map(key -> history(event(2, 2))), forceFlush = true)).flatMap { _ =>
       assertEquals(queued.now(), None)
       control.ensureMaxAge(Set(key))
-    }.map(_ => assertEquals(control.reports.now().get(key).syncedDestinations, Set(destination)))
+    }.map(_ => assertEquals(reportOf(control).syncedDestinations, Set(destination)))
   }
 
   test("grading and scaffolding timestamps advance the read cursor and synchronize as independent deltas") {
@@ -326,9 +328,9 @@ class RemoteHistoryCacheSpec extends FunSuite {
       ScaffoldingStatus.ScaffoldingFeedback(LanguageMap.universalMap("Hint")), FeedbackEntity.LlmEntity, None, time.plusSeconds(6)))
     val destination = new Destination
     destination.persisted.set(Map(key -> history(event(1, 1), grading, scaffolding)))
-    val control = cache(destination -> EventSyncStrategy.SYNC_EVERYTHING)
+    val control = syncingEverything(destination)
     control.ensureMaxAge(Set(key)).flatMap { _ =>
-      assertEquals(control.reports.now().get(key).lastKnownValues(destination).fetchedThrough, Some(time.plusSeconds(6)))
+      assertEquals(reportOf(control).lastKnownValues(destination).fetchedThrough, Some(time.plusSeconds(6)))
       control.requestStoreToAll(Map(key -> history(ScaffoldingStartedEvent[TextInteractionFormat.type]("1", time.plusSeconds(7), FeedbackEntity.LlmEntity))))
     }.map { _ =>
       val written = destination.writes.now().last(key).events.values
@@ -340,7 +342,7 @@ class RemoteHistoryCacheSpec extends FunSuite {
 
   test("fetchAll retrieves an older late arrival that is outside the incremental timestamp range") {
     val destination = new Destination
-    val control = cache(destination -> EventSyncStrategy.SYNC_EVERYTHING)
+    val control = syncingEverything(destination)
     destination.persisted.set(Map(key -> history(event(10, 10))))
     control.fetchAll(Set(key)).flatMap { _ =>
       destination.persisted.set(Map(key -> history(event(1, 1), event(10, 10))))
@@ -356,7 +358,7 @@ class RemoteHistoryCacheSpec extends FunSuite {
 
   test("empty requests do no IO; invalid ranges and unconfigured destinations fail explicitly") {
     val destination = new Destination
-    val control = cache(destination -> EventSyncStrategy.SYNC_EVERYTHING)
+    val control = syncingEverything(destination)
     for {
       _ <- control.ensureMaxAge(Set.empty)
       _ <- control.fetchAll(Set.empty)
@@ -382,7 +384,7 @@ class RemoteHistoryCacheSpec extends FunSuite {
       assertEquals(received(key).toSet, Set(saved))
       assertEquals(local(control).events.values, Set(saved))
       assertEquals(error.getMessage, "offline")
-      assert(!control.reports.now().get(key).lastKnownValues.contains(unavailable))
+      assert(!reportOf(control).lastKnownValues.contains(unavailable))
     }
   }
   test("sync confirmation tracks the latest answer and associated lifecycle events, not all historical writes") {
@@ -395,16 +397,16 @@ class RemoteHistoryCacheSpec extends FunSuite {
     val initial = history(old, current, pending)
     control.requestStoreToAll(Map(key -> initial)).flatMap(_ => control.ensureMaxAge(Set(key))).flatMap { _ =>
       assertEquals(destination.persisted.now()(key).events.values, Set(current, pending))
-      assertEquals(control.reports.now().get(key).syncedDestinations, Set(destination))
+      assertEquals(reportOf(control).syncedDestinations, Set(destination))
       val newPending: Event = ScaffoldingStartedEvent[TextInteractionFormat.type]("2", time.plusSeconds(4), LlmEntity)
       control.mergeLocal(Map(key -> history(newPending)))
-      assertEquals(control.reports.now().get(key).syncedDestinations, Set.empty)
+      assertEquals(reportOf(control).syncedDestinations, Set.empty)
       control.storeAll()
     }.flatMap { _ =>
-      assertEquals(control.reports.now().get(key).syncedDestinations, Set.empty, "written, but not read yet")
+      assertEquals(reportOf(control).syncedDestinations, Set.empty, "written, but not read yet")
       control.ensureMaxAge(Set(key), LocalDateTime.MAX)
     }.flatMap { _ =>
-      assertEquals(control.reports.now().get(key).syncedDestinations, Set(destination))
+      assertEquals(reportOf(control).syncedDestinations, Set(destination))
       assertEquals(destination.writes.now().last(key).size, 1)
       control.storeAll()
     }.map(_ => assertEquals(destination.writes.now().size, 2))
@@ -417,7 +419,7 @@ class RemoteHistoryCacheSpec extends FunSuite {
     val pageDefault = event(0, 10, UpdateImportance.DEFAULT)
     control.requestStoreToAll(Map(key -> history(restored, pageDefault))).flatMap(_ => control.ensureMaxAge(Set(key))).map { _ =>
       assertEquals(destination.persisted.now()(key).events.values, Set(restored))
-      assertEquals(control.reports.now().get(key).syncedDestinations, Set(destination))
+      assertEquals(reportOf(control).syncedDestinations, Set(destination))
     }
   }
 
@@ -436,7 +438,7 @@ class RemoteHistoryCacheSpec extends FunSuite {
 
   test("normal destination refreshes use inclusive cursors and scheduled full reads recover older offline events") {
     val destination = new Destination
-    val control = cache(destination -> EventSyncStrategy.SYNC_EVERYTHING)
+    val control = syncingEverything(destination)
     val first = event(1, 10)
     val late = event(2, 1)
     destination.persisted.set(Map(key -> history(first)))

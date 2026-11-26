@@ -7,27 +7,21 @@ import munit.FunSuite
 class ColorConversionSpec extends FunSuite {
 
   test("WebColor.apply parses named, hex, and rgb formats with canonical formatting") {
-    val named = WebColor("Blue")
-    val shortHex = WebColor("#0f8")
-    val fullHex = WebColor("ff8800")
+    // input, parsed RGB, canonical hex, canonical rgb string
+    List(
+      ("Blue", RGBColor(0, 0, 255), "#0000ff", "rgb(0, 0, 255, 1)"),
+      ("#0f8", RGBColor(0, 255, 136), "#00ff88", "rgb(0, 255, 136, 1)"),
+      ("ff8800", RGBColor(255, 136, 0), "#ff8800", "rgb(255, 136, 0, 1)")
+    ).foreach { (input, rgb, hex, rgbText) =>
+      val color = WebColor(input)
+      assertEquals(color.toRGB, rgb, clue(input))
+      assertEquals(color.toRGB.toHex(), hex, clue(input))
+      assertEquals(color.toWebColor.webStyleHexString, hex, clue(input))
+      assertEquals(color.toWebColor.webStyleRgbString, rgbText, clue(input))
+    }
+    assertEquals(WebColor("Blue").toWebColor.webStyleNameOption, Some("blue"))
+
     val rgbString = WebColor("rgb(255, 136, 0, 0.5)")
-
-    assertEquals(named.toRGB, RGBColor(0, 0, 255))
-    assertEquals(named.toWebColor.webStyleNameOption, Some("blue"))
-    assertEquals(named.toRGB.toHex(), "#0000ff")
-    assertEquals(named.toWebColor.webStyleHexString, "#0000ff")
-    assertEquals(named.toWebColor.webStyleRgbString, "rgb(0, 0, 255, 1)")
-
-    assertEquals(shortHex.toRGB, RGBColor(0, 255, 136))
-    assertEquals(shortHex.toRGB.toHex(), "#00ff88")
-    assertEquals(shortHex.toWebColor.webStyleHexString, "#00ff88")
-    assertEquals(shortHex.toWebColor.webStyleRgbString, "rgb(0, 255, 136, 1)")
-
-    assertEquals(fullHex.toRGB, RGBColor(255, 136, 0))
-    assertEquals(fullHex.toRGB.toHex(), "#ff8800")
-    assertEquals(fullHex.toWebColor.webStyleHexString, "#ff8800")
-    assertEquals(fullHex.toWebColor.webStyleRgbString, "rgb(255, 136, 0, 1)")
-
     assertEquals(rgbString, RGBColor(255, 136, 0, 128))
     assertEquals(rgbString.toRGB.toHex(), "#ff8800")
     assertEquals(rgbString.toWebColor.webStyleHexString, "#ff8800")

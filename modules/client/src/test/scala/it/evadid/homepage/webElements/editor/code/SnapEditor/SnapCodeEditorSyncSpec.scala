@@ -1,6 +1,5 @@
 package it.evadid.homepage.webElements.editor.code.SnapEditor
 
-import it.evadid.workbook.elements.interactionElements.programming.state.ProgrammingStateSnapScalaModel
 import it.evadid.core.datastructures.language.AppLanguage.{Java, Python, SnapLanguage}
 
 import it.evadid.workbook.elements.interactionElements.programming.state.{ProgrammingState, ProgrammingStateRaw, ProgrammingStateSnapScalaModel}
@@ -9,7 +8,6 @@ import com.raquo.airstream.ownership.{ManualOwner, Owner}
 import com.raquo.laminar.api.L.*
 import com.raquo.airstream.state.Var
 import it.evadid.homepage.webElements.editor.code.SnapEditor.{CanvasVisibility, SnapCodeEditorConfig}
-import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseRegular.ProgrammingExercise
 import it.evadid.core.datastructures.language.AppLanguage.*
 import munit.FunSuite
 import SnapProjectBindingSpec.FakeNative
@@ -74,11 +72,15 @@ class SnapCodeEditorSyncSpec extends FunSuite {
   }
 
   private def model(xml: String) = SnapProjectBinding.typed(xml)
+  private def snapEditor(state: Var[ProgrammingState], impl: SnapCodeEditorImpl, language: Signal[HumanLanguage] = Val(English)) =
+    SnapCodeEditor(logger, state, SnapCodeEditorConfig.Testing, impl, Val("loading"), language)
+  private def snapPreview(state: Var[ProgrammingState], impl: SnapCodeEditorImpl, language: Signal[HumanLanguage] = Val(English)) =
+    SnapPreviewEditor(state.signal, SnapCodeEditorConfig.Testing, impl, language)
 
   test("the editor binds the answer as its Snap project and drops writes once it is no longer Snap") {
     val state = Var[ProgrammingState](ProgrammingStateSnapScalaModel.mini.toSnapXml)
     val impl = new RecordingImpl
-    val editor = SnapCodeEditor(logger, state, SnapCodeEditorConfig.Testing, impl, Val("loading"))
+    val editor = snapEditor(state, impl)
     val owner = new ManualOwner
     try {
       editor.mountEditorInto(null, owner)
@@ -206,7 +208,7 @@ class SnapCodeEditorSyncSpec extends FunSuite {
       val owner = new ManualOwner
       var received = List.empty[ProgrammingState]
       state.signal.foreach(next => received = received :+ next)(using owner)
-      val mounted = render(container, SnapPreviewEditor(state.signal, SnapCodeEditorConfig.Testing, impl).getDomElement())
+      val mounted = render(container, snapPreview(state, impl).getDomElement())
       try {
         val canvas = container.querySelector("canvas")
         val drafts = List("\n", "\r\n\t ", "\n\n  ").map(suffix => wrap(source + suffix))
@@ -232,7 +234,7 @@ class SnapCodeEditorSyncSpec extends FunSuite {
       val initial = ProgrammingStateSnapScalaModel.mini.toSnapXml
       val state = Var[ProgrammingState](initial)
       val impl = new RecordingImpl
-      val mounted = render(container, SnapPreviewEditor(state.signal, SnapCodeEditorConfig.Testing, impl).getDomElement())
+      val mounted = render(container, snapPreview(state, impl).getDomElement())
       try {
         val canvas = container.querySelector("canvas")
         val invalid = ProgrammingStateRaw(Java, "public class Drawing {\r\n\t")
@@ -252,7 +254,7 @@ class SnapCodeEditorSyncSpec extends FunSuite {
       val initial = ProgrammingStateSnapScalaModel.mini.toSnapXml
       val state = Var[ProgrammingState](initial)
       val impl = new DeferredImpl
-      val preview = SnapPreviewEditor(state.signal, SnapCodeEditorConfig.Testing, impl)
+      val preview = snapPreview(state, impl)
       val first = render(container, preview.getDomElement())
       val canvas = container.querySelector("canvas")
       for (_ <- 1 to 5) state.set(initial.copy())
@@ -279,7 +281,7 @@ class SnapCodeEditorSyncSpec extends FunSuite {
       val initial = ProgrammingStateSnapScalaModel.mini.toSnapXml
       val state = Var[ProgrammingState](initial)
       val impl = new DeferredImpl
-      val preview = SnapPreviewEditor(state.signal, SnapCodeEditorConfig.Testing, impl)
+      val preview = snapPreview(state, impl)
       val mounted = render(container, preview.getDomElement())
       try {
         assertEquals(impl.previewed, Nil)
@@ -304,7 +306,7 @@ class SnapCodeEditorSyncSpec extends FunSuite {
     withRoot { container =>
       val state = Var[ProgrammingState](ProgrammingStateSnapScalaModel.mini.toSnapXml)
       val impl = new DeferredImpl
-      val editor = SnapCodeEditor(logger, state, SnapCodeEditorConfig.Testing, impl, Val("loading"))
+      val editor = snapEditor(state, impl)
       val first = render(container, editor.getDomElement())
       first.unmount()
       val second = render(container, editor.getDomElement())
@@ -321,7 +323,7 @@ class SnapCodeEditorSyncSpec extends FunSuite {
     withRoot { container =>
       val state = Var[ProgrammingState](ProgrammingStateSnapScalaModel.mini.toSnapXml)
       val impl = new DeferredImpl
-      val mounted = render(container, SnapPreviewEditor(state.signal, SnapCodeEditorConfig.Testing, impl).getDomElement())
+      val mounted = render(container, snapPreview(state, impl).getDomElement())
       try {
         impl.pending.head._2(new IllegalStateException("runtime failed"))
         assert(container.querySelector("[role=alert]").textContent.contains("runtime failed"))
@@ -345,7 +347,7 @@ class SnapCodeEditorSyncSpec extends FunSuite {
     withRoot { container =>
       val state = Var[ProgrammingState](ProgrammingStateSnapScalaModel.mini.toSnapXml)
       val impl = new RecordingImpl
-      val editor = SnapCodeEditor(logger, state, SnapCodeEditorConfig.Testing, impl, Val("loading"))
+      val editor = snapEditor(state, impl)
       val mounted = render(container, editor.getDomElement())
       try withKeyboard { keyboard =>
         container.querySelector(".be-program-snap-renderer--editor").appendChild(keyboard)
@@ -361,7 +363,7 @@ class SnapCodeEditorSyncSpec extends FunSuite {
       val state = Var[ProgrammingState](initial)
       val language = Var[HumanLanguage](German)
       val impl = new RecordingImpl
-      val editor = SnapCodeEditor(logger, state, SnapCodeEditorConfig.Testing, impl, Val("loading"), language.signal)
+      val editor = snapEditor(state, impl, language.signal)
       val mounted = render(container, editor.getDomElement())
       try {
         assertEquals(impl.languages.now(), List(German))
@@ -383,7 +385,7 @@ class SnapCodeEditorSyncSpec extends FunSuite {
       val state = Var[ProgrammingState](initial)
       val language = Var[HumanLanguage](German)
       val impl = new RecordingImpl
-      val mounted = render(container, SnapPreviewEditor(state.signal, SnapCodeEditorConfig.Testing, impl, language.signal).getDomElement())
+      val mounted = render(container, snapPreview(state, impl, language.signal).getDomElement())
       try {
         val original = container.querySelector("canvas")
         language.set(Russian)
@@ -405,7 +407,7 @@ class SnapCodeEditorSyncSpec extends FunSuite {
       val state = Var[ProgrammingState](ProgrammingStateSnapScalaModel.mini.toSnapXml)
       val language = Var[HumanLanguage](German)
       val impl = new DeferredImpl
-      val editor = SnapCodeEditor(logger, state, SnapCodeEditorConfig.Testing, impl, Val("loading"), language.signal)
+      val editor = snapEditor(state, impl, language.signal)
       val mounted = render(container, editor.getDomElement())
       language.set(Spanish)
       impl.release()
@@ -424,7 +426,7 @@ class SnapCodeEditorSyncSpec extends FunSuite {
       val state = Var[ProgrammingState](initial)
       val language = Var[HumanLanguage](German)
       val impl = new DeferredImpl
-      val mounted = render(container, SnapPreviewEditor(state.signal, SnapCodeEditorConfig.Testing, impl, language.signal).getDomElement())
+      val mounted = render(container, snapPreview(state, impl, language.signal).getDomElement())
       try {
         language.set(Ukrainian)
         impl.release()
@@ -439,7 +441,7 @@ class SnapCodeEditorSyncSpec extends FunSuite {
     val source = ProgrammingStateRaw(SnapLanguage, xml)
     val state = Var[ProgrammingState](source)
     val impl = new RecordingImpl
-    val editor = SnapCodeEditor(logger, state, SnapCodeEditorConfig.Testing, impl, Val("loading"))
+    val editor = snapEditor(state, impl)
     val changes = Var(List.empty[ProgrammingState])
     val owner = new ManualOwner
     state.signal.changes.foreach(value => changes.update(_ :+ value))(using owner)
@@ -478,7 +480,7 @@ class SnapCodeEditorSyncSpec extends FunSuite {
     val original = ProgrammingStateSnapScalaModel.mini.toSnapXml.toBeExpression
     val state = Var[ProgrammingState](original)
     val impl = new RecordingImpl
-    val editor = SnapCodeEditor(logger, state, SnapCodeEditorConfig.Testing, impl, Val("loading"))
+    val editor = snapEditor(state, impl)
     val owner = new ManualOwner
     try {
       editor.mountEditorInto(null, owner)

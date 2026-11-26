@@ -2,23 +2,28 @@ package it.evadid.vm.conversion.javaexpression
 
 import it.evadid.vm.parsing.source.SourceParsing
 import it.evadid.vm.parsing.source.SourceParsing.SourceLanguage
-
 import it.evadid.core.datastructures.language.AppLanguage.Java
 import it.evadid.vm.code.errors.{ProgrammingConversionException, ProgrammingConversionKind}
 import it.evadid.workbook.elements.interactionElements.programming.state.{ProgrammingStateBeExpression, ProgrammingStateRaw}
 import munit.FunSuite
 
 class JavaToExpressionSpec extends FunSuite {
-  private def python(java: String): String = SourceParsing.parse(java, SourceLanguage.Java).parsed().fold(error => throw error, _.expression).toPython.code
+  private def expression(java: String) =
+    SourceParsing.parse(java, SourceLanguage.Java).parsed().fold(error => throw error, _.expression)
+
+  private def python(java: String): String = expression(java).toPython.code
+
+  private def assertContainsAll(code: String, parts: String*): Unit =
+    parts.foreach(part => assert(code.contains(part), s"'$part' missing in\n$code"))
 
   private def program(body: String, members: String = ""): String =
     s"class Main {\n$members\n    public static void main(String[] args) {\n$body\n    }\n}\n"
 
   private def rejected(java: String): ProgrammingConversionException =
-    intercept[ProgrammingConversionException](SourceParsing.parse(java, SourceLanguage.Java).parsed().fold(error => throw error, _.expression))
+    intercept[ProgrammingConversionException](expression(java))
 
   private def drawn(java: String): List[Double] =
-    SourceParsing.parse(java, SourceLanguage.Java).parsed().fold(error => throw error, _.expression).turtleCommandExecutionInfo.completedCommands.map(_.args.head)
+    expression(java).turtleCommandExecutionInfo.completedCommands.map(_.args.head)
 
   test("counting for loops run like Java, including steps, downward counts and empty ranges") {
     assert(python(program("for (int i = 0; i < 3; i++) { Turtle.forward(10); }")).contains("for _ in range(3)"))
@@ -41,18 +46,14 @@ class JavaToExpressionSpec extends FunSuite {
         |x--;
         |if (ready && !(x > 3) || false) { x = Math.floor(x / 2); } else { x = Math.pow(x, 2); }
         |while (x < 10) { x = java.lang.Math.pow(x, 1) + 1; }""".stripMargin))
-    Seq("x: float = 1", "ready: bool = True", "label = None", "x = x + 2", "x = x - 1", "x = x + 1", "x = x - 1",
-      "(ready and (not (x > 3))) or False", "x // 2", "x ** 2", "while x < 10", "x ** 1").foreach { part =>
-      assert(code.contains(part), s"'$part' missing in\n$code")
-    }
+    assertContainsAll(code, "x: float = 1", "ready: bool = True", "label = None", "x = x + 2", "x = x - 1", "x = x + 1", "x = x - 1",
+      "(ready and (not (x > 3))) or False", "x // 2", "x ** 2", "while x < 10", "x ** 1")
   }
 
   test("module members drop the entry-class qualifier and static fields stay module variables") {
     val code = python(program("Main.count = Main.count + 1;\nMain.step(count);",
       "    static double count = 0;\n    static double total;\n    static void step(double size) { Turtle.forward(size); }"))
-    Seq("count: float = 0", "total: float", "def step(size: float)", "count = count + 1", "step(count)").foreach { part =>
-      assert(code.contains(part), s"'$part' missing in\n$code")
-    }
+    assertContainsAll(code, "count: float = 0", "total: float", "def step(size: float)", "count = count + 1", "step(count)")
   }
 
   test("loose statements outside a class are module code and imports or packages are ignored") {
@@ -76,8 +77,7 @@ class JavaToExpressionSpec extends FunSuite {
         |        double unit = Box.unit();
         |    }
         |}""".stripMargin)
-    Seq("class Box", "self.size = size", "self.size = (self.size + 1)", "def unit", "box = Box(3)", "box.size = box.grow()", "Box.unit()")
-      .foreach(part => assert(code.contains(part), s"'$part' missing in\n$code"))
+    assertContainsAll(code, "class Box", "self.size = size", "self.size = (self.size + 1)", "def unit", "box = Box(3)", "box.size = box.grow()", "Box.unit()")
   }
 
   test("constructs without a shared representation are rejected with an explanation") {
@@ -87,14 +87,14 @@ class JavaToExpressionSpec extends FunSuite {
       program("double[] values = new double[3];\nvalues[0] = 1;") -> "",
       program("Turtle.forward(1") -> "")
     val outcomes = cases.map { (source, expected) =>
-      scala.util.Try(SourceParsing.parse(source, SourceLanguage.Java).parsed().fold(error => throw error, _.expression)).failed.toOption match {
+      scala.util.Try(expression(source)).failed.toOption match {
         case Some(error) => Option.when(!error.getMessage.contains(expected))(s"$source -> ${error.getMessage}")
         case None => Some(s"$source was accepted")
       }
     }
     assertEquals(outcomes.flatten.toList, Nil)
     assert(python(program("char letter = 'a';")).contains("letter: str = \"a\""))
-    val inheritance = SourceParsing.parse("class Box extends Base { }", SourceLanguage.Java).parsed().fold(error => throw error, _.expression).expression.toString
+    val inheritance = expression("class Box extends Base { }").expression.toString
     assert(inheritance.contains("BeExpressionUnsupported(class Box") && inheritance.contains("Inheritance"), inheritance)
     assertEquals(rejected(program("Turtle.forward(1")).error.kind, ProgrammingConversionKind.Unparsable)
   }
@@ -136,11 +136,11 @@ class JavaToExpressionSpec extends FunSuite {
 
   test("Math methods map to Python built-ins or stay explicit placeholders instead of unimported math calls") {
     val code = python(program("Turtle.forward(Math.abs(-3) + Math.max(1, 2) + Math.min(4, 5) + java.lang.Math.abs(-1));\nTurtle.forward(Math.pow(2, 3) + Math.floor(7.0 / 2) + Math.sqrt(16) + Math.random());"))
-    Seq("abs(-3)", "max(1, 2)", "min(4, 5)", "abs(-1)", "2 ** 3", "7 // 2", "sqrt(16)", "random()").foreach(part => assert(code.contains(part), s"'$part' missing in\n$code"))
+    assertContainsAll(code, "abs(-3)", "max(1, 2)", "min(4, 5)", "abs(-1)", "2 ** 3", "7 // 2", "sqrt(16)", "random()")
     assert(!code.contains("math.") && code.contains("from math import sqrt") && code.contains("from random import random"), code)
     assertEquals(drawn(program("Turtle.forward(Math.abs(-3) + Math.max(1, 2));")), List(5.0))
     for method <- Seq("round(2.5)", "ceil(2.1)", "sin(0)") do {
-      val tree = SourceParsing.parse(program(s"Turtle.forward(Math.$method);"), SourceLanguage.Java).parsed().fold(error => throw error, _.expression).expression.toString
+      val tree = expression(program(s"Turtle.forward(Math.$method);")).expression.toString
       assert(tree.contains(s"BeExpressionUnsupported(Math.${method.takeWhile(_ != '(')}(...)"), tree)
     }
   }

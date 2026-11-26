@@ -3,6 +3,7 @@ package it.evadid.distribution.commandTypes
 import it.evadid.sql.BackendDatabase
 import it.evadid.distribution.clients.LocalExecutionClient
 import it.evadid.distribution.command.{ExecutionCommand, ExecutionCommandFactory, SerializedException}
+import it.evadid.core.datastructures.file.{CopyrightInfo, FileDescription, LoadedFile, NamedDataFileDescription}
 import it.evadid.util.logging.{BasicLogger, Logger}
 import it.evadid.vm.simulation.java.{JavaTurtleExecutionEvidence as Evidence}
 import munit.FunSuite
@@ -13,6 +14,18 @@ import java.io.{ByteArrayOutputStream, PrintStream}
 
 class CommandPayloadCodecsSpec extends FunSuite {
   private given ExecutionContext = ExecutionContext.global
+
+  private def assertLogsOmitPrivate(logger: Logger): Unit = {
+    assert(!logger.getOut().contains("private"))
+    assert(!logger.getErr().contains("private"))
+  }
+
+  private def fileAt(url: String, copyright: CopyrightInfo, bytes: Array[Byte]): FileDescription = new FileDescription {
+    def copyrightInfo = copyright
+    def asUrlString = url
+    def loadData(): Future[LoadedFile] = Future.successful(LoadedFile(this, bytes))
+    def getChildrenFile(name: String, childCopyright: CopyrightInfo): Option[FileDescription] = None
+  }
 
   test("command log destinations come from registered definitions, with a default and sync override") {
     import it.evadid.sql.DatabaseTable
@@ -177,8 +190,7 @@ class CommandPayloadCodecsSpec extends FunSuite {
       assertEquals(response.result, "accepted")
       assertEquals(response.command.json, writeJs(request))
       assert(logger.getOut().contains("promptLength"))
-      assert(!logger.getOut().contains("private"))
-      assert(!logger.getErr().contains("private"))
+      assertLogsOmitPrivate(logger)
     }
   }
 
@@ -207,8 +219,7 @@ class CommandPayloadCodecsSpec extends FunSuite {
       assertEquals(reply.result, response)
       assertEquals(reply.command.json, writeJs(request))
       assert(logger.getOut().contains("codeLength"))
-      assert(!logger.getOut().contains("private"))
-      assert(!logger.getErr().contains("private"))
+      assertLogsOmitPrivate(logger)
     }
   }
 
@@ -274,7 +285,7 @@ class CommandPayloadCodecsSpec extends FunSuite {
         assert(!error.toJson.contains("private"))
         assert(error.cause.nonEmpty)
         assertEquals(write(malformed), before)
-        assert(!logger.getOut().contains("private") && !logger.getErr().contains("private"))
+        assertLogsOmitPrivate(logger)
       case other => fail("Unexpected parse failure: " + other.getClass.getName)
     }
   }
@@ -302,8 +313,7 @@ class CommandPayloadCodecsSpec extends FunSuite {
               assertEquals(error.cause, None)
             case other => fail(s"Unexpected permission failure: ${other.getClass.getName}")
           }
-          assert(!logger.getOut().contains("private"))
-          assert(!logger.getErr().contains("private"))
+          assertLogsOmitPrivate(logger)
         }
     }
   }
@@ -347,14 +357,8 @@ class CommandPayloadCodecsSpec extends FunSuite {
   }
 
   test("mail attachments cross the transport with file name, copyright and exact bytes only") {
-    import it.evadid.core.datastructures.file.{CopyrightInfo, FileDescription, LoadedFile, NamedDataFileDescription}
     val bytes = Array[Byte](0, -1, 7, 42, -128, 127)
-    val source = new FileDescription {
-      def copyrightInfo = CopyrightInfo.fromAi
-      def asUrlString = "https://example.invalid/private/dir/report.pdf"
-      def loadData(): Future[LoadedFile] = Future.successful(LoadedFile(this, bytes))
-      def getChildrenFile(name: String, copyright: CopyrightInfo): Option[FileDescription] = None
-    }
+    val source = fileAt("https://example.invalid/private/dir/report.pdf", CopyrightInfo.fromAi, bytes)
     val request = MailCommands.SendMailRequest("student@example.org", "Subject", "Body", List(LoadedFile(source, bytes)))
     val json = write(request)
     assert(!json.contains("private/dir"))
@@ -372,14 +376,8 @@ class CommandPayloadCodecsSpec extends FunSuite {
   }
 
   test("a data URL file crosses the transport nameless with its media type and without a duplicated payload") {
-    import it.evadid.core.datastructures.file.{CopyrightInfo, FileDescription, LoadedFile}
     val bytes = "Grüße".getBytes("UTF-8")
-    val source = new FileDescription {
-      def copyrightInfo = CopyrightInfo.unknownCopyrightInfo
-      def asUrlString = "data:text/plain;charset=utf-8;base64,R3LDvMOfZQ=="
-      def loadData(): Future[LoadedFile] = Future.successful(LoadedFile(this, bytes))
-      def getChildrenFile(name: String, copyright: CopyrightInfo): Option[FileDescription] = None
-    }
+    val source = fileAt("data:text/plain;charset=utf-8;base64,R3LDvMOfZQ==", CopyrightInfo.unknownCopyrightInfo, bytes)
     val json = write[LoadedFile](LoadedFile(source, bytes))
     assert(!json.contains("data:"))
     assertEquals(json.split("R3LDvMOfZQ==", -1).length, 2)
@@ -390,7 +388,6 @@ class CommandPayloadCodecsSpec extends FunSuite {
   }
 
   test("mail requests reject nameless attachments and names with control characters, when built and when read") {
-    import it.evadid.core.datastructures.file.{CopyrightInfo, NamedDataFileDescription}
     def named(name: String) = NamedDataFileDescription(name, Array[Byte](1), CopyrightInfo.unknownCopyrightInfo, None)
     def request(names: String*) = MailCommands.SendMailRequest("a@example.org", "S", "B", names.toList.map(named))
     assertEquals(intercept[IllegalArgumentException](request("a.txt", "")).getMessage,
@@ -408,7 +405,6 @@ class CommandPayloadCodecsSpec extends FunSuite {
   }
 
   test("an attachment with malformed Base64 data is rejected instead of silently altered") {
-    import it.evadid.core.datastructures.file.{CopyrightInfo, LoadedFile, NamedDataFileDescription}
     val valid = write(MailCommands.SendMailRequest("a@example.org", "S", "B",
       List(NamedDataFileDescription("a.txt", Array[Byte](1, 2, 3), CopyrightInfo.unknownCopyrightInfo, None))))
     assert(valid.contains("\"AQID\""))
