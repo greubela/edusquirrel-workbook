@@ -124,7 +124,7 @@ class CrossLanguageRoundTripSpec extends FunSuite {
     assertEquals(normalized.distinct.size, 1, normalized.mkString("\n---\n"))
     variants.foreach(variant => assertRoundTrips(ProgrammingStateRaw(Python, variant), all, Some(calculationCommands)))
     val java = ProgrammingStateRaw(Python, calculationPython).toJavaStructured.toString
-    val compactJava = java.replace("\n", " ").replaceAll(" +", " ")
+    val compactJava = java.linesIterator.map(line => line + (if line.contains("//") then "\n" else " ")).mkString.replaceAll(" +", " ").trim
     assertEquals(ProgrammingStateJavaStructured(compactJava).toBeExpression.toJavaStructured.toString, java)
   }
 

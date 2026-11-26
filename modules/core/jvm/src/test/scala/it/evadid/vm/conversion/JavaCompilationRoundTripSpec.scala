@@ -42,6 +42,26 @@ class JavaCompilationRoundTripSpec extends FunSuite {
     assertCompiles(python.convertToLanguage(Java).finalState.get.toString)
   }
 
+  test("Python and block programs keep fractional steps and negative floor division when run as Java") {
+    val python = ProgrammingStateRaw(Python, """def step():
+      |    forward((2 + 3) / 2)
+      |    forward(-7 // 2)
+      |    forward(int(9.5) / int(2.1))
+      |step()
+      |""".stripMargin)
+    val expected = Vector(2.5, -4.0, 4.5)
+    for source <- List(python, python.toBeExpression) do {
+      val result = source.convertToLanguage(Java)
+      val java = result.finalState.getOrElse(fail(result.conversionInfo.toString))
+      compileAndRun(java.toString) { loader =>
+        val distances = JavaTestRuntime.turtleSegments(loader).map(segment => segment(2) - segment(0))
+        assertEquals(distances, expected)
+      }
+      val restored = java.convertToLanguage(Python).finalState.getOrElse(fail(java.toString))
+      assertEquals(restored.toBeExpression.turtleCommandExecutionInfo.completedCommands.flatMap(_.args).toVector, expected)
+    }
+  }
+
   test("Python conversion built-ins become Java casts and library calls that compile and compute the same values") {
     val python = ProgrammingStateRaw(Python,
       "x = int(-3.7)\nt = str(x)\nn = int(\"42\") + float(\"0.5\")\na = abs(x)\nb = bool(a)\nif b:\n    forward(a + n)\n")

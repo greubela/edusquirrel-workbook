@@ -18,7 +18,7 @@ import it.evadid.vm.types.{BeDataType, BeDataValueLiteral}
   * Annotations in the source are kept; conflicting or missing evidence leaves a parameter untyped.
   */
 object ParsedTypeInference {
-  private val arithmetic = Set("+", "-", "*", "/", "//", "%", "**")
+  private val arithmetic = Set("+", "-", "*", "/", "//", "%", "fmod", "quotient", "**")
   private val logic = Set("<", "<=", ">", ">=", "==", "!=", "and", "or", "&&", "||", "not", "!")
 
   def infer(program: ParsedProgram): ParsedProgram = {

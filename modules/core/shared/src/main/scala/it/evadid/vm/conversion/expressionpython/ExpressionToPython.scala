@@ -28,6 +28,11 @@ object ExpressionToPython {
       .mkString("\n")
     // Single-line dependency definitions are imports and lead the module; helpers follow them.
     val (dependencyImports, helpers) = KnownDependencies.definitionsFor(expression, Python).partition(!_.contains('\n'))
+    if helpers.contains(KnownDependencies.ieeeDivide.definition(Python).get) && expression.subtree.exists {
+      case f: it.evadid.vm.code.defining.BeDefineFunction => pythonNameOf(f) == "ieee_divide"
+      case v: it.evadid.vm.code.defining.BeDefineVariable => v.name == KnownDependencies.ieeeDivide.structureName
+      case _ => false
+    } then throw it.evadid.vm.code.errors.ProgrammingConversionException.unsupported("The name ieee_divide conflicts with the floating-point division helper.")
     val imports = dependencyImports ++ List(
       "Any" -> "from typing import Any",
       "date" -> "from datetime import date"

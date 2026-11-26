@@ -86,11 +86,51 @@ class SemanticConsistencySpec extends FunSuite {
     everyLanguage(python).foreach(state => assertEquals(drawing(state), List(60.0), state.toString))
   }
 
-  test("the remainder of negative numbers is flagged between Java and Python or Snap, not elsewhere") {
-    val python = ProgrammingStateRaw(Python, "x = -7 % 3\nforward(x)\n")
-    assert(python.convertToLanguage(Java).conversionInfo.exists(_.warningMsg.contains("sign of the divisor")))
-    assert(!python.convertToLanguage(SnapLanguage).conversionInfo.exists(_.warningMsg.contains("sign of the divisor")))
-    assertEquals(drawing(python), List(2.0), "the shared tree keeps Python's and Snap's floor remainder")
+  test("remainders retain the original language's sign through Python, Java and Snap") {
+    val python = ProgrammingStateRaw(Python, "forward(-7 % 3)\nforward(7 % -3)\nforward(-7.5 % 3.0)\n")
+    val native = java("", "Turtle.forward(-7 % 3); Turtle.forward(7 % -3); Turtle.forward(-7.5 % 3.0);")
+    Seq(python -> List(2.0, -2.0, 1.5), native -> List(-1.0, 1.0, -1.5)).foreach { (source, expected) =>
+      everyLanguage(source).foreach(state => assertEquals(drawing(state), expected, state.toString))
+    }
+  }
+
+  test("switching to Snap reports a literal remainder its native block rounds away") {
+    val source = ProgrammingStateRaw(Python, "forward(1.0 % 100000000000000000000.0)\n")
+    val snap = source.convertToLanguage(SnapLanguage)
+    assertEquals(snap.finalState, None)
+    assert(snap.conversionInfo.exists(_.warningMsg.contains("cannot represent the remainder")), snap.toString)
+    assertEquals(drawing(converted(source, Java)), List(1.0))
+  }
+
+  test("a Java remainder evaluates its operands once and introduces no learner methods") {
+    val source = java("static int count = 0; static int left() { count += 1; return -7; } static int right() { count += 10; return 3; }",
+      "Turtle.forward(left() % right()); Turtle.forward(count);")
+    val python = converted(source, Python)
+    assertEquals(drawing(python), List(-1.0, 11.0))
+    assertEquals(text(python).linesIterator.count(line => line.startsWith("def ") && !line.startsWith("def main(")), 2)
+    assertEquals(source.convertToLanguage(SnapLanguage).finalState, None)
+    assertEquals(text(converted(java("", "Turtle.forward(-7 % 3);"), Python)).linesIterator.count(line => line.startsWith("def ") && !line.startsWith("def main(")), 0)
+  }
+
+  test("saved arithmetic and exported Python retain Java's signed rest and IEEE division at zero") {
+    val source = java("static void check(double d) { if (7.0 / d > 0) { Turtle.forward(1); } else { Turtle.forward(2); } " +
+      "if (0.0 / d != 0.0 / d) { Turtle.forward(3); } }", "check(0.0); check(-0.0); check(2.0); Turtle.forward(-7 % 3);")
+    val saved = upickle.default.read[ProgrammingState](upickle.default.write[ProgrammingState](source.toBeExpression))
+    Seq(source, saved, converted(saved, Python), converted(saved, Java)).foreach { state =>
+      assertEquals(drawing(state), List(1.0, 3.0, 2.0, 3.0, 1.0, -1.0), state.toString)
+    }
+  }
+
+  test("Python's floor division keeps decimal rounding and both division operators stop at zero") {
+    val decimal = ProgrammingStateRaw(Python, "forward(1.0 // 0.1)\nforward(-7.0 // 2.0)\n")
+    Seq(decimal, converted(decimal, Java)).foreach(state => assertEquals(drawing(state), List(9.0, -4.0)))
+    for op <- Seq("/", "//", "%") do {
+      val zero = ProgrammingStateRaw(Python, s"n = 0\nforward(2 $op n)\nforward(99)\n")
+      Seq(zero, converted(zero, Java)).foreach { state =>
+        val run = state.toBeExpression.programExecution
+        assert(!run.completed && run.status.toString.contains("zero"), run.status.toString)
+      }
+    }
   }
 
   test("Java programs carrying the generated Turtle class do not report integer widening") {
@@ -98,6 +138,45 @@ class SemanticConsistencySpec extends FunSuite {
     val result = generated.convertToLanguage(Python)
     assert(!result.hasLostFunctionality, result.conversionInfo.toString)
     assert(java("    static int value = 2;", "        Turtle.forward(value);").convertToLanguage(Python).hasLostFunctionality)
+  }
+
+  test("Java integer division truncates in Python and the shared program, also before widening into a double") {
+    val source = java("static void draw(int steps) { Turtle.forward(steps / 2); steps /= 3; Turtle.forward(steps); }",
+      "draw(-7); Turtle.forward(7 / 2); Turtle.forward(Math.floor(-7 / 2)); Turtle.forward(-7 / 2.0);")
+    Seq(source, converted(source, Python), converted(source, Python).toBeExpression).foreach { form =>
+      assertEquals(drawing(form), List(-3.0, -2.0, 3.0, -3.0, -3.5))
+    }
+  }
+
+  test("integer division that cannot be preserved leaves the Java draft editable and identifies the affected line") {
+    for member <- Seq(
+        "static void draw(int n, int d) { Turtle.forward(n / d); }",
+        "static void draw(int n) { Turtle.forward(n / -1); }",
+        "static void draw(long n) { Turtle.forward(n / 2); }",
+        "static void draw(int n) { Turtle.forward((n * n) / 2); }") do {
+      val original = java(member, "")
+      val result = original.convertToLanguage(Python)
+      assertEquals(result.finalState, None, member)
+      assertEquals(result.conversionInfo.flatMap(_.sourceError.flatMap(_.line)), Seq(2), member)
+      assertEquals(original.toJava.code, original.code)
+    }
+  }
+
+  test("a Java parameter can shadow a module field and keep its local value") {
+    val source = java("static double distanz = 100; static void quadrat(double distanz) { distanz /= 2; Turtle.forward(distanz); }",
+      "quadrat(24); Turtle.forward(distanz);")
+    Seq(source, converted(source, Python)).foreach(state => assertEquals(drawing(state), List(12.0, 100.0)))
+    val qualified = java("static int n = 7; static void draw(int n) { Turtle.forward(Main.n / 2); }", "draw(5);")
+    assertEquals(qualified.convertToLanguage(Python).finalState, None)
+  }
+
+  test("Java division uses method returns and the selected field or local declaration") {
+    val source = java("static int field = 7; static int size() { return 7; } static double length() { return 7.0; }",
+      "double n = 5.0; Turtle.forward(n / 2); Turtle.forward(Main.field / 2); Turtle.forward(size() / 2); Turtle.forward(length() / 2);")
+    assertEquals(drawing(converted(source, Python)), List(2.5, 3.0, 3.0, 3.5))
+    val hidden = java("static int n = 7;", "double n = 5.0; Turtle.forward(Main.n / 2); Turtle.forward(n / 2);").convertToLanguage(Python)
+    assertEquals(hidden.finalState, None)
+    assert(hidden.conversionInfo.exists(_.warningMsg.contains("hides a module field")), hidden.conversionInfo.toString)
   }
 
   test("the drawing simulation computes with text, floor division and powers instead of reading them as 0") {

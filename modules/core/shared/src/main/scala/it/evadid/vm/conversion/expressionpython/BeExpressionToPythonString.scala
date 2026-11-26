@@ -81,6 +81,8 @@ case class BeExpressionToPythonString
     val joinsText = symbol == "+" && call.arguments.exists(isText)
     val args = call.arguments.map(value => if joinsText && !isText(value) then s"str(${forValue(value)})" else forOperand(value))
     symbol match {
+      case "quotient" => s"ieee_divide(${args.mkString(", ")})"
+      case "fmod" => s"math.fmod(${args.mkString(", ")})"
       case "not" =>
         s"not ${args.headOption.getOrElse("")}"
       case _ if args.size >= 2 =>

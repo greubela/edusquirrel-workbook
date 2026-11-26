@@ -441,13 +441,24 @@ object BeProgramInterpreter {
       case "/" =>
         val denom = args.drop(1).headOption.getOrElse(1.0)
         if denom == 0 then throw ArithmeticException("Division by zero.") else args.headOption.getOrElse(0.0) / denom
+      case "quotient" => args.head / args(1)
+      case "fmod" =>
+        if args(1) == 0 then throw ArithmeticException("Remainder by zero.") else args.head % args(1)
       case "%" =>
         val dividend = args.headOption.getOrElse(0.0)
         val divisor = args.drop(1).headOption.getOrElse(1.0)
-        if divisor == 0 then throw ArithmeticException("Remainder by zero.") else dividend - divisor * math.floor(dividend / divisor)
+        if divisor == 0 then throw ArithmeticException("Remainder by zero.")
+        val rest = dividend % divisor
+        if rest == 0.0 then math.copySign(0.0, divisor)
+        else if (rest < 0) == (divisor < 0) then rest else rest + divisor
       case "//" =>
         val divisor = args.drop(1).headOption.getOrElse(1.0)
-        if divisor == 0 then throw ArithmeticException("Division by zero.") else math.floor(args.headOption.getOrElse(0.0) / divisor)
+        if divisor == 0 then throw ArithmeticException("Division by zero.")
+        val dividend = args.headOption.getOrElse(0.0)
+        val rest = dividend % divisor
+        val quotient = (dividend - rest) / divisor - (if rest != 0 && (rest < 0) != (divisor < 0) then 1 else 0)
+        val floor = math.floor(quotient)
+        if quotient == 0 then math.copySign(0.0, dividend / divisor) else if quotient - floor > 0.5 then floor + 1 else floor
       case "**" => math.pow(args.headOption.getOrElse(0.0), args.drop(1).headOption.getOrElse(1.0))
       case "<" => indicator(chained(args)(_ < _))
       case ">" => indicator(chained(args)(_ > _))

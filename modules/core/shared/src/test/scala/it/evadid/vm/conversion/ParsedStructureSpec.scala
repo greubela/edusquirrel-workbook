@@ -111,13 +111,14 @@ class ParsedStructureSpec extends FunSuite {
         |        if (total > 12) {
         |            Turtle.forward(total - limit);
         |        } else {
-        |            Turtle.turnLeft(total % 4);
+        |            Turtle.turnLeft(WorkbookMath.modulo(total, 4));
         |        }""".stripMargin)
     val expected = "[limit: num = 10; total: num = 0; def grow(value: num, factor: num) -> num [return ((value * factor) + 1)]; " +
       "while [(total < limit)] [total: num = grow(total, 2)]; " +
       "if [(total > 12)] [turtle.forward((total - limit))] else [turtle.left((total % 4))]]"
     assertEquals(outlineOf(python), expected)
-    assertEquals(outlineOf(javaSource), expected)
+    val modulo = it.evadid.vm.conversion.dependencies.KnownDependencies.modulo.definition(Java).get
+    assertEquals(outlineOf(javaSource.copy(code = javaSource.code + "\n" + modulo)), expected)
   }
 
   test("Snap builds the same tree with untyped variables") {
@@ -137,7 +138,7 @@ class ParsedStructureSpec extends FunSuite {
     val expected = "[a: num = 1; b: num = 2; c: num = 3; mix: num = ((a + (b * c)) - (a / (b - c))); power: num = (2 ** (3 ** 2)); " +
       "negated: num = (- (a ** 2)); logic: bool = (((not (a < b)) and (b < c)) or (c == a))]"
     assertEquals(outlineOf(python), expected)
-    assertEquals(outlineOf(javaSource), expected)
+    assertEquals(outlineOf(javaSource), expected.replace("a / (b - c)", "a quotient (b - c)"))
   }
 
   test("classes keep their attributes, constructor, methods and bound calls in both languages") {

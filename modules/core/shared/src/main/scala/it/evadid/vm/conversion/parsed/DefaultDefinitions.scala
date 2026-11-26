@@ -77,6 +77,8 @@ object DefaultDefinitions {
       binaryOperatorDefinition("/", NumericType, NumericType, NumericType),
       binaryOperatorDefinition("//", NumericType, NumericType, NumericType),
       binaryOperatorDefinition("%", NumericType, NumericType, NumericType),
+      binaryOperatorDefinition("quotient", NumericType, NumericType, NumericType),
+      binaryOperatorDefinition("fmod", NumericType, NumericType, NumericType),
       binaryOperatorDefinition("**", NumericType, NumericType, NumericType)
     )
 
