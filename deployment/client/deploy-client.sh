@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # Assembles the site (homepage, resources, client/worker artifacts, root redirects) with
-# tools/dev/assemble-pages.mjs, adds secrets/client.env as deployment/client/.env and uploads
+# tools/dev/assemble-pages.mjs, adds the stable client/worker (never artifacts/history) and
+# secrets/client.env as deployment/client/.env, and uploads
 # the files that changed since the last deployment to CLIENT_FTP_ROOT over FTP(S).
 #
 # Every batch is verified by comparing remote file sizes; incomplete files are uploaded again.
@@ -44,6 +45,19 @@ if [[ "$assemble" == true ]]; then
   (cd "$REPO_ROOT" && node tools/dev/assemble-pages.mjs) >&2
 fi
 [[ -f "$SITE/homepage/index.html" ]] || die "missing _site/; run without --skip-assemble"
+# Publish the stable client and worker (client.env's fallback) beside newest; never the history archive.
+for name in client.js worker.js; do
+  if [[ -f "$REPO_ROOT/artifacts/stable/$name" ]]; then
+    mkdir -p "$SITE/artifacts/stable"
+    cp "$REPO_ROOT/artifacts/stable/$name" "$SITE/artifacts/stable/$name"
+  else
+    warn "artifacts/stable/$name is missing; run 'sbt buildClientDeploy buildWorkerDeploy'"
+  fi
+done
+for entry in "$SITE"/artifacts/*; do
+  [[ -e "$entry" ]] || continue
+  case "${entry##*/}" in newest|stable) ;; *) die "_site/artifacts may contain only newest/ and stable/, found ${entry##*/}" ;; esac
+done
 mkdir -p "$SITE/deployment/client"
 cp "$CLIENT_ENV" "$SITE/deployment/client/.env"
 

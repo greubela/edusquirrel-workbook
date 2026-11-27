@@ -62,12 +62,13 @@ env_file_value() {
 # Quotes one argument for a POSIX remote shell.
 shell_quote() { printf "'%s'" "${1//\'/\'\\\'\'}"; }
 
-confirm() {
-  local prompt=$1 expected=${2:-yes} answer
+# Asks a [y/N] question and succeeds only for yes; --yes (DEPLOY_ASSUME_YES) answers it.
+ask_yes_no() {
+  local answer
   [[ "${DEPLOY_ASSUME_YES:-false}" == true ]] && return 0
-  [[ -t 0 ]] || die "confirmation required ($prompt); rerun interactively or pass --yes"
-  read -r -p "$prompt [type '$expected']: " answer
-  [[ "$answer" == "$expected" ]] || die "aborted"
+  [[ -t 0 ]] || die "$1 Rerun interactively to answer, or pass --yes."
+  read -r -p "$1 [y/N] " answer
+  [[ "$answer" =~ ^[Yy]([Ee][Ss])?$ ]]
 }
 
 # Created in the main shell so pipelines and command substitutions share it.

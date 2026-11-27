@@ -1,14 +1,15 @@
 #!/bin/sh
-# Runs on the backend server inside SERVER_REMOTE_DIR (uploaded by deploy-server.sh).
+# Runs on the backend server in <SERVER_REMOTE_DIR>/deployment/server (uploaded by deploy-server.sh);
+# the server directory mirrors the repository layout.
 #   sh update-docker.sh             Activate the *.upload files, recreate the services, wait for health;
 #                                   if the backend stays unhealthy, keep the new files as *.failed and
 #                                   roll back to the previous version automatically
 #   sh update-docker.sh --rollback  Restore the *.previous files and recreate the services
-# Files: docker-compose.yml, .env, artifacts/newest/server.jar
+# Files: docker-compose.yml, .env and ../../artifacts/newest/server.jar
 # Functions return explicitly on errors: they also run in if/&& contexts, where set -e is off.
 set -eu
 cd "$(dirname "$0")"
-FILES="docker-compose.yml .env artifacts/newest/server.jar"
+FILES="docker-compose.yml .env ../../artifacts/newest/server.jar"
 HEALTH_TIMEOUT="${HEALTH_TIMEOUT:-180}"
 
 log() { printf '[server] %s\n' "$*" >&2; }
@@ -69,7 +70,7 @@ fi
 if restart_services && wait_for_health; then exit 0; fi
 
 keep_failed
-if [ -f artifacts/newest/server.jar.previous ]; then
+if [ -f ../../artifacts/newest/server.jar.previous ]; then
   log "deployment failed; rolling back (the new files are kept as *.failed)"
   rollback && log "previous version restored"
 else

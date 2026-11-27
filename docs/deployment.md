@@ -7,7 +7,7 @@ order: database check, backend, website. Each script also runs on its own.
 ./deploy.sh                       # build + database check + server + client
 ./deploy.sh --skip-build          # deploy already built artifacts
 ./deploy.sh --only=client -- --dry-run
-./deploy.sh --database=reset      # recreate the schema (asks for confirmation)
+./deploy.sh --database=setup      # create the schema (asks before re-creating tables)
 ```
 
 Requirements on the deploying machine: Bash, OpenSSH 8.4+ (`ssh`, `ssh-agent`), curl,
@@ -16,53 +16,57 @@ so no local MySQL or Docker is needed (`DATABASE_TOOLS_HOST=local` uses local Do
 
 ## Secrets
 
-`deployment/secrets/` holds four files that Git ignores; copy each `*.example` template
+`deployment/secrets/` holds three files that Git ignores; copy each `*.example` template
 and fill it in. Values are read literally; single-quote values containing `$`, quotes or spaces.
 The files are authoritative: exported shell variables (such as development `SQL_*`) are ignored.
 `EDUSQUIRREL_SECRETS_DIR` selects another directory, for example for a staging target.
 
 | File | Content |
 | --- | --- |
-| `local.env` | SSH host/user/key/passphrase and remote directory, FTP login and webspace root, database tool host |
-| `database.env` | `SQL_*` connection, `DATABASE_PROTECTED`, `DATABASE_ALLOW_RESET`, reference MySQL image |
-| `server.env` | The backend's Compose `.env` (`SERVER_SECRET`, `SQL_*`, `OPENAI_*`, …); `SQL_*` must equal `database.env` |
+| `local.env` | SSH host/user/key/passphrase and remote directory, FTP login and webspace root, database tool host and reference MySQL image |
+| `server.env` | The backend's Compose `.env` (`SERVER_SECRET`, `SQL_*`, `OPENAI_*`, …); the single source of the database connection, also used by `deploy-database.sh` |
 | `client.env` | Client runtime configuration, published as `deployment/client/.env`; **public**, so credential-like keys are refused |
 
 An encrypted SSH key is unlocked once through a private `ssh-agent` that is stopped on exit.
 
 ## Database
 
-[deploy-database.sh](../deployment/database/deploy-database.sh) `check | setup | reset`
-targets only `SQL_DATABASE`; [setup.sql](../deployment/database/setup.sql) remains the
+[deploy-database.sh](../deployment/database/deploy-database.sh) `check | setup`
+targets only `SQL_DATABASE` from `server.env`; [setup.sql](../deployment/database/setup.sql) remains the
 single schema source (see the [database guide](database/README.md)).
 
 - `check` (default) builds a reference schema from `setup.sql` in a throwaway MySQL container
   and diffs tables, columns, indexes, foreign keys, routines and the seed row with the live database.
-- `setup` runs `setup.sql` on an empty database; its guard refuses any existing table.
-- `reset` dumps the tables to ignored `tmp/work/deployment/database-backups/`, drops every
-  table, view and routine, then runs `setup` and `check`.
-
-`setup` and `reset` require `DATABASE_ALLOW_RESET` to equal `SQL_DATABASE` and refuse names in
-`DATABASE_PROTECTED`, so a database shared with another project is never modified.
+- `setup` runs `setup.sql`, then `check`. If tables of `setup.sql` already exist, it lists them and
+  asks `[y/N]` (`--yes` answers yes); on yes it dumps them to ignored
+  `tmp/work/deployment/database-backups/` (unless `--no-backup`), drops them and creates them again.
+  Tables that `setup.sql` does not create are never dropped: they stop the setup before any change,
+  because `setup.sql` itself refuses a non-empty database.
 
 ## Backend server
 
 [deploy-server.sh](../deployment/server/deploy-server.sh) uploads `artifacts/newest/server.jar`,
 [docker-compose.yml](../deployment/server/docker-compose.yml), `server.env` (plus
 `SERVER_VERSION` from `git describe`) and [update-docker.sh](../deployment/server/update-docker.sh)
-to `SERVER_REMOTE_DIR` as `*.upload` files. `update-docker.sh` keeps the active files as
+as `*.upload` files. `SERVER_REMOTE_DIR` mirrors the repository root: the jar goes to
+`artifacts/newest/`, the other files to `deployment/server/`, where Compose runs. `update-docker.sh` keeps the active files as
 `*.previous`, activates the uploads, runs `docker compose down` / `up -d` and waits for the
 container health check. If the backend stays unhealthy, it keeps the new files as `*.failed`
 and restores the previous version; `sh update-docker.sh --rollback` does this manually.
 Finally `SERVER_HEALTH_URL` must report the deployed version.
 
-Compose names the project after `SERVER_REMOTE_DIR`. Before the first scripted deployment,
-stop a backend started from another directory (`docker compose down` there); otherwise
-ports 80/443 are still taken.
+Compose names the project after its directory (`server`), so a backend previously started from
+`deployment/server/` is replaced in place; one started elsewhere must be stopped first
+(`docker compose down` there), or ports 80/443 stay taken.
 
 ## Local backend
 
-To try client and server changes together (for example workbook submissions), run the
+[locally-test-server.sh](../deployment/client/locally-test-server.sh) serves the pages at
+`http://localhost:8000` (127.0.0.1 only) and generates `deployment/client/.env` from
+`client.env`; `--with-backend` also runs the local `server.jar` on port 9000 with the settings
+of `server.env` (its database, real mail) and points the pages at it.
+
+To try client and server changes together by hand (for example workbook submissions), run the
 server directly and point the local page at it:
 
 ```sh
@@ -83,7 +87,9 @@ headers; leave it unset behind Caddy, which sets them. Mail commands also need
 
 [deploy-client.sh](../deployment/client/deploy-client.sh) assembles `_site/` with
 [assemble-pages.mjs](../tools/dev/assemble-pages.mjs) (homepage, resources, newest client/worker,
-root redirects), adds `client.env` and uploads to `CLIENT_FTP_ROOT` over FTPS with curl.
+root redirects), adds the stable client/worker and `client.env` and uploads to `CLIENT_FTP_ROOT`
+over FTPS with curl. `artifacts/history/` is never uploaded, neither here nor to the server,
+which receives only `artifacts/newest/server.jar`.
 
 [sync-plan.mjs](../deployment/client/sync-plan.mjs) compares SHA-256 hashes with
 `.deploy-manifest.sha256`, the manifest of the last deployment stored on the webspace:

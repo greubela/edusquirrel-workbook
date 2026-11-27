@@ -5,8 +5,9 @@
 #   ./deploy.sh                      Build everything and deploy all parts
 #   ./deploy.sh --skip-build         Deploy the artifacts that are already built
 #   ./deploy.sh --only=server,client Run only the named steps (build, database, server, client)
-#   ./deploy.sh --database=reset     Recreate the schema (setup | reset; default: check only)
-#   ./deploy.sh --yes                Do not ask for confirmations
+#   ./deploy.sh --database=setup     Create the schema; asks before re-creating existing tables
+#                                    (default: check only)
+#   ./deploy.sh --yes                Answer yes to all questions
 #   ./deploy.sh -- --dry-run         Pass the remaining options to deploy-client.sh
 # shellcheck source=SCRIPTDIR/deployment/lib/common.sh
 source "$(dirname "${BASH_SOURCE[0]}")/deployment/lib/common.sh"
@@ -19,10 +20,10 @@ while [[ $# -gt 0 ]]; do
     --only=*) steps=",${1#--only=},"
       for step in ${steps//,/ }; do [[ ",build,database,server,client," == *",$step,"* ]] || die "unknown step: $step"; done ;;
     --database=*) database_mode="${1#--database=}"
-      [[ "$database_mode" =~ ^(check|setup|reset)$ ]] || die "--database must be check, setup or reset" ;;
+      [[ "$database_mode" =~ ^(check|setup)$ ]] || die "--database must be check or setup" ;;
     --yes) yes=(--yes) ;;
     --) shift; client_args=("$@"); break ;;
-    -h|--help) sed -n '2,11p' "$0"; exit 0 ;;
+    -h|--help) sed -n '2,12p' "$0"; exit 0 ;;
     *) die "unknown argument: $1" ;;
   esac
   shift
@@ -30,7 +31,7 @@ done
 has_step() { [[ "$steps" == *",$1,"* ]]; }
 
 # Fail before the long build when a step's settings are missing.
-needed="$(has_step database && echo "local.env database.env"; has_step server && echo "local.env server.env database.env"
+needed="$(has_step database && echo "local.env server.env"; has_step server && echo "local.env server.env"
   has_step client && echo "local.env client.env"; true)"
 for file in $needed; do
   [[ -f "$SECRETS_DIR/$file" ]] || die "missing $SECRETS_DIR/$file (copy $file.example and fill it in)"
