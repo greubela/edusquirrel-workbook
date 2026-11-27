@@ -61,7 +61,9 @@ one update logic splices partial drafts into a `FragmentRange` of the structured
 only locate and identify their fragment, and may present it differently (Python methods dedented).
 A draft that comes to hold code beyond its declaration keeps it all and reports a `FragmentCodeEditor.Scope`
 (`widened`); the component switches at once to the most local mode that shows it: any code typed around a method
-(another method, an attribute, even an unfinished line) → Class Mode; code outside a class → Full Mode.
+(another method, an attribute, even an unfinished line) → Class Mode; code outside a class → Full Mode. Nothing
+widens while brackets are open. Each fragment keeps the answer its range was found in, so readers never pair a range
+with another answer; the cursor and focus continue in the opened editor (`printedCursor`, `placeCursor`).
 Attribute and constructor dialogs, deletion and relationship arrows (inheritance, realization,
 association; no usage arrows) use the same shared UML model. All classes share one row, which
 scrolls horizontally when needed.

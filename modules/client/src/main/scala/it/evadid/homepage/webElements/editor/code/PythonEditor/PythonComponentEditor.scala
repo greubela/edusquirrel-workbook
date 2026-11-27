@@ -31,6 +31,8 @@ final class PythonComponentEditor(state: Var[ProgrammingStatePythonStructured], 
   private val selection = Var(Option.empty[UmlEntityKey])
   private val dialog = Var(Option.empty[String])
   private val structure = EvaToolbarControls.DiagramDisplay()
+  /** The printed-program offset to continue at in the editor created after a draft widened. */
+  private val pendingCursor = Var(Option.empty[Int])
   private val diagramId = s"python-diagram-${java.util.UUID.randomUUID()}"
   private val owner = Var(PythonMethodEditing.module)
   private val name = Var("")
@@ -132,12 +134,18 @@ final class PythonComponentEditor(state: Var[ProgrammingStatePythonStructured], 
     val marks = context.conversionDiagnostics.combineWith(context.sourceDiagnostics(state.signal)).map(_ ++ _)
     def selected[I](editor: FragmentCodeEditor[ProgrammingStatePythonStructured, I], identity: I): Element = {
       editor.select(identity)
-      editor.getDomElement().amend(editor.widened.changes.collect { case Some(scope) => scope } --> (widen(_, owner)))
+      pendingCursor.now().foreach(editor.placeCursor)
+      editor.getDomElement().amend(onMountCallback(_ => pendingCursor.set(None)),
+        editor.widened.changes.collect { case Some(scope) => scope } --> { scope =>
+          pendingCursor.set(editor.printedCursor)
+          widen(scope, owner)
+        })
     }
     (view, key.flatMap(_.member)) match {
-      case ("full", _) => div(cls := "java-function-editor__source", CodeMirrorEditor(context.logger,
+      case ("full", _) => div(cls := "java-function-editor__source", onMountCallback(_ => pendingCursor.set(None)), CodeMirrorEditor(context.logger,
         state.bimap(_.toString)(ProgrammingStatePythonStructured(_)).distinct, Python, Var(config), context.loading, diagnostics = marks,
-        sameSource = (left, right) => left == right || ProgrammingStatePythonStructured(left) == ProgrammingStatePythonStructured(right)).getDomElement())
+        sameSource = (left, right) => left == right || ProgrammingStatePythonStructured(left) == ProgrammingStatePythonStructured(right),
+        caret = Var(pendingCursor.now())).getDomElement())
       case ("function", Some(member)) if member.kind == UmlEntityKind.Function =>
         selected(PythonFunctionEditor(context.logger, state, context.loading, config, marks),
           PythonFunctionEditor.Function(owner, member.name, member.occurrence))

@@ -27,6 +27,9 @@ trait FragmentSource[S] {
 
   /** Whether `[start, end)` of one owner's source `code` holds only whitespace and comments besides `spans`. */
   def onlyTriviaAround(code: String, start: Int, end: Int, spans: Seq[SourceSpan]): Boolean
+
+  /** Whether `code` closes its brackets, strings and comments. */
+  def balanced(code: String): Boolean
 }
 
 object FragmentSource {
@@ -43,6 +46,7 @@ object FragmentSource {
     }
     def onlyTriviaAround(code: String, start: Int, end: Int, spans: Seq[SourceSpan]): Boolean =
       SourceParsing.parse(code, SourceLanguage.Java).structured.onlyTriviaAround(start, end, spans)
+    def balanced(code: String): Boolean = SourceParsing.parse(code, SourceLanguage.Java).structured.balanced
   }
 
   given python: FragmentSource[ProgrammingStatePythonStructured] with {
@@ -57,6 +61,7 @@ object FragmentSource {
     def onlyTriviaAround(code: String, start: Int, end: Int, spans: Seq[SourceSpan]): Boolean =
       !SourceParsing.parse(code, SourceLanguage.Python).structured.codeLines.exists(line =>
         start <= line.span.start && line.span.start < end && !spans.exists(_.contains(line.span.start)))
+    def balanced(code: String): Boolean = SourceParsing.parse(code, SourceLanguage.Python).structured.balanced
   }
 
   /** The name of the first Java class declared in `source`. */

@@ -79,7 +79,7 @@ object JavaEditorNavigation {
       else {
         val code = program.definedClasses.get(function.className).filter(_.length >= function.method.span.end)
           .map(function.method.span.text)
-        JavaUmlDiagram(program).key(function.className, code).fold(this)(key => copy(selection = Some(key)))
+        JavaUmlDiagram(program).key(function.className, code).filter(isFunction).fold(this)(key => copy(selection = Some(key)))
       }
   }
 
