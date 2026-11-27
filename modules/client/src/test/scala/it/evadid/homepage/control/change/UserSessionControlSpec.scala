@@ -139,13 +139,14 @@ class UserSessionControlSpec extends EditorDomSuite {
       _ = {
         assert(anonymous.user.isAnonymous)
         assertEquals(anonymous.config, UserConfig.defaults(isLocalAccount = true), "local users sync only to the browser")
-        assertEquals(control.loginIdentity.now(), Some(local.user), "the login page keeps the last named user")
+        assertEquals((anonymous.user.name, anonymous.user.mail), ("Anonymous", "anonymous@evadid.it"))
+        assertEquals(control.loginIdentity.now(), Some(anonymous.user), "the login page shows the local user's defaults")
       }
       reloaded = page().userSessionControl
       _ <- reloaded.tryAutoLogin()
       _ = {
         assertEquals(reloaded.fullInfo.current.userInfo.map(_.user), Some(anonymous.user), "a reload keeps the local user")
-        assertEquals(reloaded.loginIdentity.now(), None, "an anonymous user does not pre-fill the login page")
+        assertEquals(reloaded.loginIdentity.now(), Some(anonymous.user), "the restored local user pre-fills the login page")
       }
       _ <- reloaded.changeUser(None)
       afterLogout = page().userSessionControl

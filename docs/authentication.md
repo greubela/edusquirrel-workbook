@@ -29,9 +29,9 @@ Startup restores a local profile or signs in an online account whose cached toke
 backend accepts. Otherwise (no usable token, a refused or unreachable login) the login
 page shows, pre-filled with the last recognized name and email
 (`UserSessionControl.loginIdentity`), and the cached login is cleared. "Start locally"
-without a name creates an anonymous local user (`User.createAnonymous`); it is saved and
-restored on reload like a named local profile, so only an explicit logout ends it, but it
-never pre-fills the login page. An online account loaded from a session file is never
+without a name creates a local user named `Anonymous` with mail `anonymous@evadid.it`
+(`User.createAnonymous`); like a named local profile it is saved, restored on reload
+until an explicit logout, and pre-fills the login page. An online account loaded from a session file is never
 continued as a local profile.
 
 Saved preference restoration accepts only the current schema. Unreadable or obsolete

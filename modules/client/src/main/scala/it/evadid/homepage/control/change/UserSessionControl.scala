@@ -28,10 +28,12 @@ final class UserSessionControl(val fullInfo: FullInfo) {
 
   def loadSavedProfile(): Option[AllUserInfo] = storage.loadSavedProfile()
 
-  /** Name and email the login page pre-fills: the last recognized user, kept after its cached login is cleared. */
-  lazy val loginIdentity: Var[Option[User]] = Var(loadSavedProfile().map(_.user).filterNot(_.isAnonymous))
+  /** Name and email the login page pre-fills: the last user (also an anonymous local one), kept after its cached
+    * login is cleared.
+    */
+  lazy val loginIdentity: Var[Option[User]] = Var(loadSavedProfile().map(_.user))
 
-  private def rememberIdentity(user: User): Unit = if !user.isAnonymous then loginIdentity.set(Some(user))
+  private def rememberIdentity(user: User): Unit = loginIdentity.set(Some(user))
 
   private def tryServerLoginWith(userMail: String, token: Either[SingleAccessToken, SignedToken], cachedCredentials: UserCredentials = UserCredentials()): Future[?] = {
     val loginReq = LoginRequest(userMail.trim.toLowerCase, token)
