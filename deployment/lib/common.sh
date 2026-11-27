@@ -7,9 +7,15 @@ DEPLOY_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 REPO_ROOT="$(cd "$DEPLOY_DIR/.." && pwd)"
 SECRETS_DIR="${EDUSQUIRREL_SECRETS_DIR:-$DEPLOY_DIR/secrets}"
 
-log() { printf '\033[1;34m[%s]\033[0m %s\n' "${LOG_PREFIX:-deploy}" "$*" >&2; }
-warn() { printf '\033[1;33m[%s] warning:\033[0m %s\n' "${LOG_PREFIX:-deploy}" "$*" >&2; }
-die() { printf '\033[1;31m[%s] error:\033[0m %s\n' "${LOG_PREFIX:-deploy}" "$*" >&2; exit 1; }
+# Colors only on a terminal, so log files stay plain text.
+if [[ -t 2 && -z "${NO_COLOR:-}" ]]; then
+  DEPLOY_BLUE=$'\033[1;34m' DEPLOY_YELLOW=$'\033[1;33m' DEPLOY_RED=$'\033[1;31m' DEPLOY_RESET=$'\033[0m'
+else
+  DEPLOY_BLUE="" DEPLOY_YELLOW="" DEPLOY_RED="" DEPLOY_RESET=""
+fi
+log() { printf '%s[%s]%s %s\n' "$DEPLOY_BLUE" "${LOG_PREFIX:-deploy}" "$DEPLOY_RESET" "$*" >&2; }
+warn() { printf '%s[%s] warning:%s %s\n' "$DEPLOY_YELLOW" "${LOG_PREFIX:-deploy}" "$DEPLOY_RESET" "$*" >&2; }
+die() { printf '%s[%s] error:%s %s\n' "$DEPLOY_RED" "${LOG_PREFIX:-deploy}" "$DEPLOY_RESET" "$*" >&2; exit 1; }
 
 require_cmd() {
   local cmd
