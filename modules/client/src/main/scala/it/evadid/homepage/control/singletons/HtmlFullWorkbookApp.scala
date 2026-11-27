@@ -12,7 +12,7 @@ object HtmlFullWorkbookApp {
  // private lazy val homepageDefaults: HomepageInfo = HomepageInfo()
 
   private lazy val defaultHomepageInfo = HomepageInfo(
-    currentLanguage = AppLanguage.English,
+    currentLanguage = AppLanguage.German,
     workbookInfo = None,
     userInfo = None,
     displayInfo = AllDisplayInfo(

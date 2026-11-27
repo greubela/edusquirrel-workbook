@@ -24,7 +24,7 @@ import it.evadid.workbook.elements.structureElements.WorkbookSection.WorkbookSec
 
 trait WorkbookFactory {
 
-  def availableLanguages: Seq[HumanLanguage] = List(English, German) // todo remove default value
+  def availableLanguages: Seq[HumanLanguage] = List(German, English) // todo remove default value
 
   def defaultSectionActiveNr: Int = 0
 

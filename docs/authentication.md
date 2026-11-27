@@ -25,13 +25,15 @@ preferences, localStorage and exported sessions. The existing short-lived server
 login-code verification workflow is unchanged. Browser storage failures do not
 prevent login or logout from updating the in-memory session.
 
-Startup signs in automatically only a named local profile or an online account whose
-cached token the backend accepts. Otherwise (no usable token, a refused or unreachable
-login, an anonymous profile) the login page shows, pre-filled with the last recognized
-name and email (`UserSessionControl.loginIdentity`), and the cached login is cleared.
-"Start locally" without a name creates an anonymous user (`User.createAnonymous`) for
-the current visit only: it is never saved or restored. An online account loaded from a
-session file is never continued as a local profile.
+Startup restores a local profile or signs in an online account whose cached token the
+backend accepts. Otherwise (no usable token, a refused or unreachable login) the login
+page shows, pre-filled with the last recognized name and email
+(`UserSessionControl.loginIdentity`), and the cached login is cleared. "Start locally"
+without a name creates a local user named `Anonymous` with mail `anonymous@evadid.it`
+(`User.createAnonymous`); like a named local profile it is saved, restored on reload
+until an explicit logout, and pre-fills the login page. Local (offline) accounts are
+identified only by `UserConfig.isOnlineAccount = false`, never by name or mail. An online account loaded from a session file is never
+continued as a local profile.
 
 Saved preference restoration accepts only the current schema. Unreadable or obsolete
 login records are discarded so startup can show the login form. Other saved

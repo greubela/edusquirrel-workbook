@@ -3,7 +3,7 @@ package it.evadid.homepage.control.model
 
 import it.evadid.llm.LlmConfiguration
 import com.raquo.laminar.api.L.*
-import it.evadid.core.datastructures.language.AppLanguage.English
+import it.evadid.core.datastructures.language.AppLanguage.German
 import it.evadid.core.datastructures.language.control.LanguageMapIdResolver
 import it.evadid.core.datastructures.language.{AppLanguage, LanguageMap, LanguageMapContentId}
 import it.evadid.core.datastructures.state.StateHelper.RichSignal
@@ -42,7 +42,7 @@ case class FullInfo(
 
     override lazy val availableExecutionClients: Seq[ExecutionClient] = List(defaults.workerExecuter, defaults.backendExecutorWithCredentials(backendToken))
 
-    override def getCurrentLanguage: AppLanguage.HumanLanguage = currentLanguageObservable.now().getOrElse(English)
+    override def getCurrentLanguage: AppLanguage.HumanLanguage = currentLanguageObservable.now().getOrElse(German)
 
     override lazy val languageMapIdResolver: Option[LanguageMapIdResolver] = Some(new LanguageMapIdResolver(currentLanguageObservable) {
       override def resolveMap(id: LanguageMapContentId): Future[LanguageMap[AppLanguage.HumanLanguage]] = Future {
