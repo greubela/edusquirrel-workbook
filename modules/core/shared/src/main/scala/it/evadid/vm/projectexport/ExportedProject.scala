@@ -27,16 +27,3 @@ final case class ExportedProject(folder: String, files: Seq[ProjectFile]) {
       modified)
   }
 }
-
-object ExportedProject {
-  private val transliterations = Map('ä' -> "ae", 'ö' -> "oe", 'ü' -> "ue", 'Ä' -> "Ae", 'Ö' -> "Oe", 'Ü' -> "Ue", 'ß' -> "ss",
-    'å' -> "aa", 'Å' -> "Aa", 'æ' -> "ae", 'Æ' -> "Ae", 'ø' -> "oe", 'Ø' -> "Oe")
-
-  /** A folder name that unpacks the same everywhere: ASCII letters, digits, `-` and `_`. */
-  def folderName(title: String): String = {
-    val ascii = title.trim.flatMap(c => transliterations.getOrElse(c, c.toString))
-    val cleaned = ascii.map(c => if (c.isLetterOrDigit && c < 128) || c == '-' || c == '_' then c else '_')
-      .replaceAll("_+", "_").stripPrefix("_").stripSuffix("_")
-    if cleaned.isEmpty then "project" else cleaned
-  }
-}

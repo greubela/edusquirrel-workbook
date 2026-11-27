@@ -32,6 +32,11 @@ final case class JavaSourceStructured(
     inside.forall(comment => start <= comment.start && comment.end <= end) &&
       (start until end).forall(offset => source.charAt(offset).isWhitespace || inside.exists(_.contains(offset)))
   }
+
+  /** Whether `[start, end)` holds only trivia besides the disjoint `spans` within it. */
+  def onlyTriviaAround(start: Int, end: Int, spans: Seq[SourceSpan]): Boolean =
+    (start +: spans.sortBy(_.start).flatMap(span => Seq(span.start, span.end)) :+ end).grouped(2)
+      .forall { case Seq(from, to) => from >= to || onlyTrivia(from, to); case _ => true }
 }
 
 /** A `package` or `import` declaration outside classes; `text` runs to its `;`. */

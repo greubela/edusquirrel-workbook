@@ -33,13 +33,14 @@ Expensive work runs in workers: a Scala.js `Future` alone does not create a CPU 
 | `EvaEditorTab`, `EvaEditorConfig` | Language metadata and factories; only the selected editor is created |
 | `EvaConversionController` | Availability checks, requested switches and outcomes; no DOM |
 | `EvaLanguageTabs` | Accessible, localized tab list |
+| `EvaToolbarControls` | Selected editor's modes and class-diagram toggle, shown after the language tabs in Eva's single toolbar line (Snap adds none); `DiagramDisplay` hides the diagram on small screens |
 | `EvaEditorContext`, `EvaEditorEnvironment` | Logger, labels, exercise environment, appearance and diagnostics |
 | `WorkbookEvaEditor` | Workbook renderer's construction boundary |
 | `EditorWithWorkbookPanel` | Task instructions, grading, hints and drawing previews |
-| `ProgrammingExecutionPanel` | Console below Eva, observing the committed answer |
+| `ProgrammingExecutionPanel` | Console below Eva, observing the committed answer; its action bar holds Run, Stop and `ProjectDownloadButton` |
 
 Panels receive the central answer and task configuration directly. They do not read
-state back from editors or use an activation protocol. Drawings follow the explicitly run answer and use shared
+state back from editors or use an activation protocol. Drawings and the shape comparison follow the answer's state signal and use shared
 BeExpression turtle commands; the console runs the Python form in Pyodide.
 See [program analysis and execution](program-analysis-and-execution.md).
 
@@ -58,7 +59,9 @@ Class and function views of both languages are `FragmentCodeEditor[S, I]`s (`edi
 one update logic splices partial drafts into a `FragmentRange` of the structured answer `S`, with
 `FragmentSource[S]` describing its named sources (Java classes; Python classes and module). Subclasses
 only locate and identify their fragment, and may present it differently (Python methods dedented).
-Adding a declaration in Function Mode selects only the new function.
+A draft that comes to hold code beyond its declaration keeps it all and reports a `FragmentCodeEditor.Scope`
+(`widened`); the component switches at once to the most local mode that shows it: any code typed around a method
+(another method, an attribute, even an unfinished line) → Class Mode; code outside a class → Full Mode.
 Attribute and constructor dialogs, deletion and relationship arrows (inheritance, realization,
 association; no usage arrows) use the same shared UML model. All classes share one row, which
 scrolls horizontally when needed.

@@ -6,6 +6,7 @@ import it.evadid.homepage.webElements.HtmlAppElement
 import it.evadid.homepage.webElements.editor.code.codemirror.CodeMirrorEditor
 import it.evadid.homepage.webElements.editor.config.CodeMirrorEditorConfig
 import it.evadid.util.logging.Logger
+import it.evadid.vm.parsing.source.SourceSpan
 
 import scala.concurrent.Future
 import scala.scalajs.concurrent.JSExecutionContext.Implicits.queue
@@ -15,8 +16,9 @@ import scala.scalajs.concurrent.JSExecutionContext.Implicits.queue
   *
   * Changes of `local` are written into `state` at the fragment's range, which then spans the draft, so
   * unfinished code stays in place. Any other change of `state` refreshes `local` from the fragment; when its
-  * text changed, the fragment is found again by its identity `I` (see [[locate]]). Subclasses differ only in
-  * how they locate, identify and present their fragment.
+  * text changed, the fragment is found again by its identity `I` (see [[locate]]). A draft that comes to hold code
+  * beyond its declaration keeps its whole range and reports the [[FragmentCodeEditor.Scope]] that shows all of
+  * it in [[widened]]. Subclasses differ only in how they locate, identify, widen and present their fragment.
   */
 abstract class FragmentCodeEditor[S, I](
     logger: Logger,
@@ -25,7 +27,7 @@ abstract class FragmentCodeEditor[S, I](
     loadingLabel: Signal[String],
     diagnostics: Signal[Seq[CodeMirrorEditor.Diagnostic]]
 )(using sources: FragmentSource[S]) extends HtmlAppElement {
-  import FragmentCodeEditor.Fragment
+  import FragmentCodeEditor.{Fragment, Scope}
 
   private val fragment: Var[Option[Fragment[I]]] = Var(None)
 
@@ -38,11 +40,36 @@ abstract class FragmentCodeEditor[S, I](
   /** Whether the selected fragment was found in the answer. */
   val located: Signal[Boolean] = fragment.signal.map(_.exists(_.range.nonEmpty)).distinct
 
+  /** The scope that shows the whole selected fragment once it holds more than one declaration; its component
+    * switches to that scope's mode.
+    */
+  val widened: Signal[Option[Scope]] = state.signal.combineWith(fragment.signal)
+    .map((source, current) => current.flatMap(_.range).flatMap(widening(source, _))).distinct
+
   /** The range of the fragment identified by `identity` in `source`. */
   protected def locate(source: S, identity: I): Option[FragmentRange]
 
   /** The identity of the fragment now at `range`, after an edit; `None` keeps `previous` (e.g. unfinished code). */
   protected def identify(source: S, range: FragmentRange, previous: I): Option[I]
+
+  /** The scope a fragment at `range` needs because it holds code beyond its own declaration; `None` otherwise.
+    * Editors decide with [[memberWidening]] or [[ownerWidening]], so both languages follow one rule.
+    */
+  protected def widening(source: S, range: FragmentRange): Option[Scope]
+
+  /** Whether the fragment at `range` holds only whitespace and comments besides `spans` (of its owner's source). */
+  protected final def onlyTriviaAround(source: S, range: FragmentRange, spans: Seq[SourceSpan]): Boolean =
+    sources.source(source, range.owner).forall(code => sources.onlyTriviaAround(code, range.start, range.end, spans))
+
+  /** For an editor of one member (a method): its owner's view as soon as the draft holds code besides the one
+    * complete member in `members`, finished or not. A member that is itself unfinished is not in `members`.
+    */
+  protected final def memberWidening(source: S, range: FragmentRange, members: Seq[SourceSpan]): Option[Scope] =
+    Option.when(members.size > 1 || members.nonEmpty && !onlyTriviaAround(source, range, members))(Scope.Owner)
+
+  /** For an editor of a whole owner (a class): the program's view as soon as the draft holds code besides `declaration`. */
+  protected final def ownerWidening(source: S, range: FragmentRange, declaration: Seq[SourceSpan]): Option[Scope] =
+    Option.when(declaration.nonEmpty && !onlyTriviaAround(source, range, declaration))(Scope.Program)
 
   /** The editor text of a fragment stored as `stored` (e.g. a Python method without its class indentation). */
   protected def present(stored: String): String = stored
@@ -79,7 +106,8 @@ abstract class FragmentCodeEditor[S, I](
       if draft == local.now() && present(stored) != present(draft)
       (next, nextRange) <- range.replace(state.now(), store(draft, stored))
     } {
-      val identity = identify(next, nextRange, current.identity)
+      // A widened draft keeps its range, so all of it stays visible until the component switches its mode.
+      val identity = if widening(next, nextRange).isDefined then None else identify(next, nextRange, current.identity)
       val selectedRange = identity.flatMap(locate(next, _)).getOrElse(nextRange)
       fragment.set(Some(Fragment(identity.getOrElse(current.identity), Some(selectedRange))))
       state.set(next)
@@ -114,4 +142,9 @@ abstract class FragmentCodeEditor[S, I](
 
 object FragmentCodeEditor {
   private final case class Fragment[I](identity: I, range: Option[FragmentRange])
+
+  /** The most local view that shows a whole draft holding more than its fragment: its owner's source (a method
+    * with further code of its class, such as another method or an attribute) or the whole program (a second class).
+    */
+  enum Scope { case Owner, Program }
 }

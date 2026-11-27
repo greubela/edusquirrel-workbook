@@ -1,5 +1,7 @@
 package it.evadid.vm.projectexport
 
+import it.evadid.core.util.InfoUtil
+
 import it.evadid.core.datastructures.language.AppLanguage.{Java, Python, SnapLanguage, Rust}
 import it.evadid.vm.simulation.data.{DataWorld, SudokuGrid}
 import it.evadid.workbook.elements.interactionElements.programming.state.{ProgrammingStateJavaStructured, ProgrammingStatePythonStructured, ProgrammingStateRaw}
@@ -56,9 +58,9 @@ class ProjectExportSpec extends FunSuite {
   }
 
   test("project folders are portable and the archive unpacks into one folder") {
-    assertEquals(ExportedProject.folderName("Sudoku Löser (GdP1)"), "Sudoku_Loeser_GdP1")
-    assertEquals(ExportedProject.folderName("  ?? "), "project")
-    assertEquals(ExportedProject.folderName("Æble/../x"), "Aeble_x")
+    assertEquals(InfoUtil.fileNameSafe("Sudoku Löser (GdP1)"), "Sudoku_Loeser_GdP1")
+    assertEquals(InfoUtil.fileNameSafe("  ?? "), "project")
+    assertEquals(InfoUtil.fileNameSafe("Æble/../x"), "Aeble_x")
     val project = ExportedProject("demo", Seq(ProjectFile("src/A.java", "class A {}"), ProjectFile("README.TXT", "hi")))
     assertEquals(project.fileName, "demo.zip")
     assertEquals(unzip(project.zip()).map(_._1), Seq("demo/", "demo/src/", "demo/src/A.java", "demo/README.TXT"))

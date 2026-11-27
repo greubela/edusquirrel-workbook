@@ -1,6 +1,6 @@
 package it.evadid.homepage.webElements.download
 
-import it.evadid.core.datastructures.language.AppLanguage.ProgrammingLanguage
+import it.evadid.core.datastructures.language.AppLanguage.{Java, ProgrammingLanguage, Python, SnapLanguage}
 import it.evadid.vm.projectexport.{ExportedProject, ProjectExport}
 import it.evadid.vm.simulation.data.DataWorld
 import it.evadid.workbook.elements.interactionElements.programming.state.ProgrammingState
@@ -11,7 +11,8 @@ import scala.scalajs.js
 import scala.scalajs.js.typedarray.*
 
 /**
- * Saves programs from the editors as a ZIP the student can open in another IDE (BlueJ for Java).
+ * Saves programs from the editors in a form the student can open elsewhere: a single-file project as that file
+ * (Snap XML, a Python script), any other as a ZIP (a BlueJ project for Java).
  * The browser steps are injectable so the flow can be tested without a real download.
  */
 object ProjectDownload {
@@ -39,11 +40,21 @@ object ProjectDownload {
     }
   }
 
+  def supports(language: ProgrammingLanguage): Boolean = Seq(Java, Python, SnapLanguage).contains(language)
+
+  private val mimeTypes = Map("py" -> "text/x-python", "xml" -> "application/xml")
+
   /** Exports `state` in the format of `language` and saves it; Left explains why nothing was saved. */
   def download(state: ProgrammingState, language: ProgrammingLanguage, title: String, world: DataWorld = DataWorld(),
       saver: Saver = BrowserSaver, now: () => LocalDateTime = () => LocalDateTime.now()): Either[String, ExportedProject] =
     ProjectExport.forLanguage(state, language, title, world).map { project =>
-      saver.save(project.fileName, "application/zip", project.zip(now()))
+      project.files match {
+        case Seq(file) =>
+          val extension = file.path.substring(file.path.lastIndexOf('.') + 1)
+          saver.save(s"${project.folder}.$extension", mimeTypes.getOrElse(extension, "text/plain"),
+            file.content.getBytes(java.nio.charset.StandardCharsets.UTF_8))
+        case _ => saver.save(project.fileName, "application/zip", project.zip(now()))
+      }
       project
     }
 }

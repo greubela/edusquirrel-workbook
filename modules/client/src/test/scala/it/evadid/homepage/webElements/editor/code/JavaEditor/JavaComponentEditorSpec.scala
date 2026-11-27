@@ -48,6 +48,8 @@ class JavaComponentEditorSpec extends UiDomSuite {
   private def answer(source: String = mainClass + "\n\n" + helperClass) = Var(ProgrammingStateJavaStructured(source))
   private def editor(state: Var[ProgrammingStateJavaStructured], reference: Option[() => Element] = None) =
     new JavaComponentEditor(logger, state, labels, Val("Loading"), reference = reference)
+  /** The editor below the toolbar controls Eva shows above it. */
+  private def view(component: JavaComponentEditor) = div(component.toolbarControls, component.getDomElement())
   private def field(root: dom.Element) = one(root, "textarea.code-mirror-editor__fallback")
   private def heading(root: dom.Element) = one(root, ".java-function-editor__workspace-heading h3").textContent
   private def status(root: dom.Element) = one(root, ".java-function-editor__sync").textContent
@@ -61,7 +63,7 @@ class JavaComponentEditorSpec extends UiDomSuite {
     val state = answer()
     val component = editor(state)
     assert(!component.dismissOnOutsideClick)
-    mountedAsync(component.getDomElement()) { root =>
+    mountedAsync(view(component)) { root =>
       assertEquals(status(root), "Function view")
       assertEquals(heading(root), "Main.main")
       assert(valueOf(field(root)).startsWith("public static void main(String[] args)"), valueOf(field(root)))
@@ -84,7 +86,7 @@ class JavaComponentEditorSpec extends UiDomSuite {
 
   test("classes and attributes open the class editor, functions the function editor, and Full source everything") {
     val state = answer()
-    mountedAsync(editor(state, Some(() => p("Draw a square"))).getDomElement()) { root =>
+    mountedAsync(view(editor(state, Some(() => p("Draw a square"))))) { root =>
       assertEquals(one(root, "aside[aria-label='Task reference']").textContent, "Draw a square")
       click(entry(root, "Helper"))
       assertEquals(status(root), "Class view")
@@ -108,15 +110,16 @@ class JavaComponentEditorSpec extends UiDomSuite {
       eventually(classCode(state, "Main").contains("x + x"), "class edit written").map { _ =>
         val toggle = buttonNamed(root, "Hide classes")
         click(toggle)
-        assertEquals(toggle.getAttribute("aria-expanded"), "false")
-        assert(root.classList.contains("java-function-based-editor--structure-collapsed"))
+        assertEquals(toggle.getAttribute("aria-pressed"), "true")
+        assertEquals(buttonNamed(root, "Show classes").getAttribute("aria-pressed"), "false")
+        assert(one(root, ".java-component-editor").classList.contains("java-function-based-editor--structure-collapsed"))
       }
     }
   }
 
   test("adding a class and a function validates names and opens the new entry") {
     val state = answer()
-    mountedAsync(editor(state).getDomElement()) { root =>
+    mountedAsync(view(editor(state))) { root =>
       def dialog = one(root, "dialog")
       def dialogField(caption: String) = withText(dialog, "label", caption).map(one(_, "input")).head
       def submit(label: String) = click(buttonNamed(dialog, label))
@@ -156,9 +159,27 @@ class JavaComponentEditorSpec extends UiDomSuite {
     }
   }
 
+  test("a method typed next to another opens their class; a class typed next to a class the full source") {
+    val state = answer()
+    mountedAsync(view(editor(state))) { root =>
+      val method = valueOf(field(root))
+      typeInto(field(root), method + "\n\n  static void extra() {\n    forward(5);\n  }")
+      eventually(status(root) == "Class view", "Class Mode shows both methods").flatMap { _ =>
+        assertEquals(heading(root), "class Main")
+        assert(valueOf(field(root)).contains("forward(10);") && valueOf(field(root)).contains("forward(5);"), valueOf(field(root)))
+        assertEquals(buttonNamed(root, "Class Mode").getAttribute("aria-selected"), "true")
+        typeInto(field(root), valueOf(field(root)) + "\n\nclass Extra {}")
+        eventually(status(root) == "Full source", "Full Mode shows both classes")
+      }.map { _ =>
+        assertEquals(valueOf(field(root)), state.now().toString)
+        assert(valueOf(field(root)).contains("class Extra {}"))
+      }
+    }
+  }
+
   test("attributes and constructors are added to the chosen class; deletions preserve the other members") {
     val state = answer()
-    mountedAsync(editor(state).getDomElement()) { root =>
+    mountedAsync(view(editor(state))) { root =>
       def box = all(root, ".uml-class").find(_.querySelector(".uml-class__header").textContent == "Helper").get
       def dialog = one(root, "dialog")
       def input(caption: String) = withText(dialog, "label", caption).map(one(_, "input")).head
@@ -191,7 +212,7 @@ class JavaComponentEditorSpec extends UiDomSuite {
 
   test("outside changes refresh the open method; a removed selection shows the placeholder") {
     val state = answer()
-    mounted(editor(state).getDomElement()) { root =>
+    mounted(view(editor(state))) { root =>
       state.set(ProgrammingStateJavaStructured(mainClass.replace("forward(10)", "forward(80)") + "\n\n" + helperClass))
       assert(valueOf(field(root)).contains("forward(80)"))
       state.set(ProgrammingStateJavaStructured(helperClass))
@@ -205,7 +226,7 @@ class JavaComponentEditorSpec extends UiDomSuite {
       "    Score.board.show(2);\n  }\n}")
     val component = new JavaComponentEditor(logger, state, labels, Val("Loading"),
       analyzer = LocalWorker.analyzer())
-    mountedAsync(component.getDomElement()) { root =>
+    mountedAsync(view(component)) { root =>
       def box(name: String) = all(root, ".uml-class").find(_.querySelector(".uml-class__header").textContent.endsWith(name))
       eventually(box("ScoreBoard").nonEmpty, "the analysis adds the external classes").map { _ =>
         assertEquals(all(root, ".uml-class").map(_.querySelector(".uml-class__header").textContent),
@@ -233,7 +254,7 @@ class JavaComponentEditorSpec extends UiDomSuite {
     val state = answer("public class Main {\n  public static void main(String[] args) {\n    Turtle.forward(10);\n  }\n}")
     val component = new JavaComponentEditor(logger, state, labels, Val("Loading"),
       environment = ProgrammingEnvironment.of(ProgrammingLibrary.System), analyzer = LocalWorker.analyzer())
-    mountedAsync(component.getDomElement()) { root =>
+    mountedAsync(view(component)) { root =>
       eventually(all(root, ".uml-class--unknown").nonEmpty, "the analysis marks the turtle unknown").map { _ =>
         assertEquals(all(root, ".uml-class--unknown").map(_.querySelector(".uml-class__header").textContent), List("«unknown»Turtle"))
       }
@@ -242,7 +263,7 @@ class JavaComponentEditorSpec extends UiDomSuite {
 
   test("a program without a single entry point starts in the full source") {
     val state = answer("class Main {\n  void draw() {}\n}")
-    mounted(editor(state).getDomElement()) { root =>
+    mounted(view(editor(state))) { root =>
       assertEquals(status(root), "Full source")
       click(entry(root, "~draw(): void"))
       assertEquals(heading(root), "Main.draw")
@@ -260,6 +281,10 @@ class JavaComponentEditorSpec extends UiDomSuite {
     val eva = EvaEditor(state, Var(EvaEditorConfig(enabledLanguages = Seq(Java))), EvaTestContext.environment(evaLabels))
     val close = mount(eva.getDomElement())
     Future.unit.flatMap { _ =>
+      val toolbar = one(dom.document.body, ".eva-editor__toolbar")
+      assertEquals(all(toolbar, "[role=tablist]").map(_.getAttribute("aria-label")), List("Programming languages", "Java editing mode"))
+      assertEquals(buttonNamed(toolbar, "Show classes").getAttribute("aria-pressed"), "true")
+      assertEquals(all(dom.document.body, ".programming-execution__actions button").map(_.textContent), List("Run", "Stop", "Download project"))
       assert(textarea.value.contains("forward(10)"), textarea.value)
       typeInto(textarea, "public static void main(String[] args) { forward(45); }")
       eventually(state.now().toString.contains("forward(45)"), "edit published")

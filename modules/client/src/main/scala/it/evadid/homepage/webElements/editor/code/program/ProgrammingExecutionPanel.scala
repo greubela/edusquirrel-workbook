@@ -3,6 +3,7 @@ package it.evadid.homepage.webElements.editor.code.program
 import it.evadid.vm.conversion.dependencies.ProgrammingEnvironment
 import com.raquo.laminar.api.L.*
 import it.evadid.homepage.webElements.HtmlAppElement
+import it.evadid.homepage.webElements.editor.code.EvaEditor.EvaActionIcons
 import it.evadid.homepage.webElements.editor.code.program.ProgramAnalyzer.Status
 import it.evadid.workbook.elements.interactionElements.programming.state.ProgrammingState
 
@@ -12,13 +13,15 @@ import scala.util.{Failure, Success}
 /** The console below Eva's editor: runs the committed program dynamically in Pyodide ([[ProgramRunner]]) and
   * shows what it printed. Whether it can run, and why not, comes from the [[ProgramAnalyzer]]; it depends only on
   * the programming state, not on the editor's language. Each mount owns its runner, whose worker starts on Run.
+  * Further `actions` (such as the project download) join Run and Stop in its action bar.
   */
 final class ProgrammingExecutionPanel(
     source: Signal[ProgrammingState],
     environment: ProgrammingEnvironment,
     labels: ProgrammingExecutionLabels,
     analyzer: ProgramAnalyzer = ProgramAnalyzer.shared,
-    createRunner: () => ProgramRunner = () => ProgramRunner()
+    createRunner: () => ProgramRunner = () => ProgramRunner(),
+    actions: Seq[Element] = Nil
 ) extends HtmlAppElement {
   import ProgrammingExecutionPanel.Console
 
@@ -58,13 +61,14 @@ final class ProgrammingExecutionPanel(
         runner.close()
       },
       source.changes --> (_ => stop(Console.Idle)),
-      div(cls := "programming-execution__actions",
-        button(typ := "button", cls := "programming-execution__run", child.text <-- labels.run,
+      div(cls := "programming-execution__actions eva-editor__segments", role := "toolbar", aria.label <-- labels.console,
+        button(typ := "button", cls := "programming-execution__run", EvaActionIcons.run, span(child.text <-- labels.run),
           disabled <-- python.combineWith(console.signal).map((code, state) => state == Console.Running || !code.exists(_.isRight)),
           onClick.compose(_.sample(python)) --> (_.flatMap(_.toOption).foreach(code => queue.execute(() => run(code))))),
-        button(typ := "button", cls := "programming-execution__stop", child.text <-- labels.stop,
+        button(typ := "button", cls := "programming-execution__stop", EvaActionIcons.stop, span(child.text <-- labels.stop),
           disabled <-- console.signal.map(_ != Console.Running),
-          onClick --> (_ => stop(Console.Stopped)))),
+          onClick --> (_ => stop(Console.Stopped))),
+        actions),
       p(cls := "programming-execution__unavailable", role := "status",
         hidden <-- python.map(!_.exists(_.isLeft)),
         child.text <-- labels.unavailable.combineWith(python).map {

@@ -3,7 +3,7 @@ package it.evadid.homepage.webElements.editor.code.fragment
 import it.evadid.core.datastructures.language.AppLanguage.{Java, ProgrammingLanguage, Python}
 import it.evadid.vm.editing.PythonMethodEditing
 import it.evadid.vm.naming.BeEntityName
-import it.evadid.vm.parsing.source.SourceParsing
+import it.evadid.vm.parsing.source.{SourceParsing, SourceSpan}
 import it.evadid.vm.parsing.source.SourceParsing.SourceLanguage
 import it.evadid.workbook.elements.interactionElements.programming.state.{ProgrammingStateJavaStructured, ProgrammingStatePythonStructured}
 
@@ -24,6 +24,9 @@ trait FragmentSource[S] {
   def updated(state: S, owner: BeEntityName, code: String): (S, BeEntityName)
 
   def printed(state: S): String
+
+  /** Whether `[start, end)` of one owner's source `code` holds only whitespace and comments besides `spans`. */
+  def onlyTriviaAround(code: String, start: Int, end: Int, spans: Seq[SourceSpan]): Boolean
 }
 
 object FragmentSource {
@@ -38,6 +41,8 @@ object FragmentSource {
       val key = declaredJavaClass(code).filterNot(name => state.definedClasses.keys.exists(sameName(_, name))).getOrElse(owner)
       (ProgrammingStateJavaStructured(VectorMap.from(state.definedClasses.map((name, value) => if name == owner then key -> code else name -> value))), key)
     }
+    def onlyTriviaAround(code: String, start: Int, end: Int, spans: Seq[SourceSpan]): Boolean =
+      SourceParsing.parse(code, SourceLanguage.Java).structured.onlyTriviaAround(start, end, spans)
   }
 
   given python: FragmentSource[ProgrammingStatePythonStructured] with {
@@ -48,6 +53,10 @@ object FragmentSource {
     def printed(state: ProgrammingStatePythonStructured): String = state.toString
     def updated(state: ProgrammingStatePythonStructured, owner: BeEntityName, code: String): (ProgrammingStatePythonStructured, BeEntityName) =
       (PythonMethodEditing.updated(state, owner, code), PythonMethodEditing.ownerAfter(owner, code))
+    /** Python reads code by logical lines: a code line starting in the range outside `spans` is code around them. */
+    def onlyTriviaAround(code: String, start: Int, end: Int, spans: Seq[SourceSpan]): Boolean =
+      !SourceParsing.parse(code, SourceLanguage.Python).structured.codeLines.exists(line =>
+        start <= line.span.start && line.span.start < end && !spans.exists(_.contains(line.span.start)))
   }
 
   /** The name of the first Java class declared in `source`. */

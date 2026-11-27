@@ -170,7 +170,6 @@ test('running Java updates block previews, retaining equivalent sources and repl
         view.dispatch({changes:{from:0,to:view.state.doc.length,insert:code}});
       }, code);
       await editor.getByRole('tab', {name:'Full Mode',exact:true}).focus();
-      await page.locator('dialog[open] .turtle-run button').click();
       await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))));
       assert.equal(await page.evaluate(() => EduSquirrelCodeMirrorLibraries.EditorView
         .findFromDOM(document.querySelector('dialog[open] .cm-editor')).state.doc.toString()), code);

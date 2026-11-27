@@ -42,7 +42,7 @@ object HtmlTurtleStitchRendererHelper {
    */
   def renderDownloadButton(label: LanguageMapContentId, projectRelativeToResources: String): Element = {
     val projectFromFile: file.FileDescription = fullInfo.contentControl.fileFactory.relativeToTechnicalResources(projectRelativeToResources)
-    val desiredFilename: String = "TurtleStitch_" + InfoUtil.datetimeFormattedForFilenames() + "_" + projectFromFile.filenameWithExtension
+    val desiredFilename: String = InfoUtil.downloadName("TurtleStitch " + projectFromFile.structure.filenameWithoutExtension) + projectFromFile.structure.extensionWithPointOrEmpty
     HtmlButtonElement.withTextLabel(label, event =>
       projectFromFile.loadData().onComplete {
         case Success(projectData) => fullInfo.contentControl.downloadToDisc.downloadFile(desiredFilename, projectData.data)
@@ -51,7 +51,7 @@ object HtmlTurtleStitchRendererHelper {
   }
 
   def renderDownloadButton(label: LanguageMapContentId, workbookInteraction: WorkbookInteractionElement[TurtleProjectFormat.type]): Element = {
-    val desiredFilename: String = "TurtleStitch_" + InfoUtil.datetimeFormattedForFilenames() + "_" + workbookInteraction.elementId + ".xml"
+    val desiredFilename: String = InfoUtil.downloadName("TurtleStitch " + workbookInteraction.elementId) + ".xml"
     HtmlButtonElement.withTextLabel(label, event =>
       workbookInteraction.interactionVariable.currentValue.programXml.foreach(f = currentXml => {
         fullInfo.contentControl.downloadToDisc.downloadFile(desiredFilename, currentXml)

@@ -24,7 +24,7 @@ case class SessionData(
 
   /** Download name; workbook ids may contain path separators. */
   def fileName: String =
-    s"${it.evadid.core.util.InfoUtil.datetimeFormattedForFilenames(timestampStorage)}-eva-${userInfo.id}-${workbookInfo.loadedWorkbook.elementId.replaceAll("[/\\\\]", "-")}.eva"
+    it.evadid.core.util.InfoUtil.downloadName(s"eva ${userInfo.id} ${workbookInfo.loadedWorkbook.elementId}", timestampStorage) + ".eva"
 }
 
 object SessionData {
