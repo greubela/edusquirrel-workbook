@@ -64,13 +64,14 @@ test('Snap previews and editor wait for the runtime and ignore closed mounts', a
     await open.click();
     const editor = page.locator('dialog[open] .be-program-snap-renderer__canvas');
     await page.waitForFunction(hasBlocks, await editor.elementHandle());
+    const initialSources = await page.locator('script[src*="20260212TurtleStitch/"]').evaluateAll(scripts => scripts.map(script => script.src));
     await page.locator('.fullscreen-close-button').click();
     await open.click();
     await page.waitForFunction(hasBlocks, await editor.elementHandle());
     const sources = await page.locator('script[src*="20260212TurtleStitch/"]').evaluateAll(scripts =>
       scripts.map(script => ({src:script.src,priority:script.getAttribute('fetchpriority')})));
-    assert.equal(sources.length, 22);
-    assert.equal(new Set(sources.map(script => script.src)).size, 22, 'editor reopening does not load the runtime again');
+    assert.deepEqual(sources.map(script => script.src), initialSources, 'reopening reuses the loaded runtime');
+    assert.equal(new Set(sources.map(script => script.src)).size, sources.length, 'editor reopening does not load the runtime again');
     assert(sources.every(script => script.priority === 'low'));
     assert.deepEqual(errors, []);
   } finally {await browser.close();}
@@ -111,7 +112,7 @@ test('Snap finishes startup preheating without creating a Morphic world or openi
   } finally {await browser.close();}
 });
 
-test('running Java updates block previews, retaining equivalent sources and replacing changed or unfinished drafts', async () => {
+test('editing Java updates block previews, retaining equivalent sources and replacing changed or unfinished drafts', async () => {
   const browser = await chromium.launch({executablePath:process.env.CHROMIUM_PATH || chromium.executablePath(),chromiumSandbox:true});
   try {
     const page = await browser.newPage();
@@ -154,6 +155,7 @@ test('running Java updates block previews, retaining equivalent sources and repl
     });
     await installCodeMirrorModules(page);
     await page.goto(origin + prefix + 'homepage/workbookDesign/');
+    await page.locator('.select-language-line > div:has(.flag-fill-british-blue)').click();
     await page.locator('.section-register .login-area').nth(1).locator('button').click();
     await page.locator('.section-block').first().click();
     await page.getByRole('button',{name:/Editor.*öffnen|Open editor/i}).first().click();
@@ -170,7 +172,6 @@ test('running Java updates block previews, retaining equivalent sources and repl
         view.dispatch({changes:{from:0,to:view.state.doc.length,insert:code}});
       }, code);
       await editor.getByRole('tab', {name:'Full Mode',exact:true}).focus();
-      await page.locator('dialog[open] .turtle-run button').click();
       await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))));
       assert.equal(await page.evaluate(() => EduSquirrelCodeMirrorLibraries.EditorView
         .findFromDOM(document.querySelector('dialog[open] .cm-editor')).state.doc.toString()), code);

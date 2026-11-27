@@ -7,12 +7,11 @@ import it.evadid.homepage.control.model.*
 import it.evadid.homepage.webElements.HtmlAppElement
 import it.evadid.homepage.workbook.htmlRenderer.controlElements.HtmlWorkbookDomElement
 
+/** Composition root of the page: the one place that creates the page's FullInfo and passes it down. */
 object HtmlFullWorkbookApp {
 
- // private lazy val homepageDefaults: HomepageInfo = HomepageInfo()
-
   private lazy val defaultHomepageInfo = HomepageInfo(
-    currentLanguage = AppLanguage.English,
+    currentLanguage = AppLanguage.German,
     workbookInfo = None,
     userInfo = None,
     displayInfo = AllDisplayInfo(
@@ -24,7 +23,7 @@ object HtmlFullWorkbookApp {
 
   lazy final val fullInfo: FullInfo = FullInfo(defaultHomepageInfo)
 
-  private lazy val domElement: Element = HtmlWorkbookDomElement().getDomElement()
+  private lazy val domElement: Element = HtmlWorkbookDomElement(fullInfo).getDomElement()
 
   def getDomElement(): Element = domElement
 }

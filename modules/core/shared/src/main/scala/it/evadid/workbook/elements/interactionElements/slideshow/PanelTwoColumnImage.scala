@@ -23,8 +23,6 @@ object PanelTwoColumnImage {
 
     override def idsRequiredForDeserialization(element: WorkbookElementSerializable): Set[String] = Set(element.getElementAs[WorkbookElementReference]("image").referencedId)
 
-    override def serializedElementContainsOtherSerializations(element: WorkbookElementSerializable): Seq[WorkbookElementSerializable] = Seq.empty
-
     override def fromSerializedElement(element: WorkbookElementSerializable, parsedElements: Map[String, WorkbookElement]): PanelTwoColumnImage =
       PanelTwoColumnImage(element.elementId, element.getAndResolveWorkbookElement("image", parsedElements), element.getElementAs[LanguageMapContentId]("leftLabel"), element.getElementAs[LanguageMapContentId]("rightLabel"), element.getElementAs[LanguageMapContentId]("leftBody"), element.getElementAs[LanguageMapContentId]("rightBody"))
 

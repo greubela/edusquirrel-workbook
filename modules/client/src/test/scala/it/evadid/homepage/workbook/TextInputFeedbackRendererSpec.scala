@@ -1,5 +1,6 @@
 package it.evadid.homepage.workbook
 
+import it.evadid.workbook.session.{AllWorkbookInfo, WorkbookConfig}
 import it.evadid.core.datastructures.language.WorkbookContent
 
 import it.evadid.core.datastructures.chat.MessengerModel
@@ -44,7 +45,7 @@ class TextInputFeedbackRendererSpec extends EditorDomSuite {
     exercise.interactionVariable.updateHistory(_.addScaffolding(ScaffoldingResult[String, MessengerModel]("",
       ScaffoldingStatus.ScaffoldingFeedback(content), FeedbackEntity.TestEntity, None, LocalDateTime.now())), fullInfo.workbookContextInformation)
     loadExercise(exercise)
-    val element = TextInputWithScaffoldingAndGradingRenderer.renderAppElement(exercise).getDomElement()
+    val element = TextInputWithScaffoldingAndGradingRenderer.renderAppElement(fullInfo, exercise).getDomElement()
     val close = mount(element)
     try {
       val panel = element.ref.querySelector(".feedback-panel .interaction-hint-panel")
@@ -65,7 +66,7 @@ class TextInputFeedbackRendererSpec extends EditorDomSuite {
     val variable = exercise.interactionVariable
     val context = fullInfo.workbookContextInformation
     val reporter = GradingReporter(exercise)
-    val element = InteractionFeedbackPanel(exercise, reporter).getDomElement()
+    val element = InteractionFeedbackPanel(fullInfo, exercise, reporter).getDomElement()
     val close = mount(element)
     val time = LocalDateTime.now()
     def save(status: ScaffoldingStatus, offset: Long): Unit = variable.updateHistory(_.addScaffolding(
@@ -100,7 +101,7 @@ class TextInputFeedbackRendererSpec extends EditorDomSuite {
     }
     exercise.interactionVariable.updateHistory(_.addGradings(results), fullInfo.workbookContextInformation)
     loadExercise(exercise)
-    val element = TextInputWithScaffoldingAndGradingRenderer.renderAppElement(exercise).getDomElement()
+    val element = TextInputWithScaffoldingAndGradingRenderer.renderAppElement(fullInfo, exercise).getDomElement()
     val close = mount(element)
     try {
       val displayed = element.ref.querySelectorAll(".feedback-entry")
@@ -122,7 +123,7 @@ class TextInputFeedbackRendererSpec extends EditorDomSuite {
     val wrongLanguage = wrongAnswer.copy(gradedState = "", feedbackInformation = Some(WorkbookContent(
       LanguageMap.mapBasedLanguageMap[HumanLanguage](Map(otherLanguage -> "Wrong language feedback")))))
     loadExercise(exercise)
-    val element = TextInputWithScaffoldingAndGradingRenderer.renderAppElement(exercise).getDomElement()
+    val element = TextInputWithScaffoldingAndGradingRenderer.renderAppElement(fullInfo, exercise).getDomElement()
     val close = mount(element)
     try {
       // Use the correct event-based API - addGrading creates a GradingCompletedEvent

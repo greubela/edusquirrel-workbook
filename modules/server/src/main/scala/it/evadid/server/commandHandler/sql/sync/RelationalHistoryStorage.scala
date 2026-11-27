@@ -36,9 +36,9 @@ class RelationalHistoryStorage(connection: Connection, logger: Logger) extends H
     val format = request.history.format
     val history = request.history.typedAs[format.type](format)
     val identity = List(context.programId, context.scenarioId, context.userId, context.keyForSerialisation)
-    update("INSERT INTO sync_context_id (program_id,scenario_id,user_id,variable_id,format) VALUES (?,?,?,?,?) ON DUPLICATE KEY UPDATE id=id",
+    statements.update("INSERT INTO sync_context_id (program_id,scenario_id,user_id,variable_id,format) VALUES (?,?,?,?,?) ON DUPLICATE KEY UPDATE id=id",
       (identity :+ format.name)*)
-    val (sync, savedFormat) = query("SELECT id,format FROM sync_context_id WHERE program_id=? AND scenario_id=? AND user_id=? AND variable_id=? FOR UPDATE", identity)(row => row.getLong(1) -> row.getString(2)).head
+    val (sync, savedFormat) = statements.query("SELECT id,format FROM sync_context_id WHERE program_id=? AND scenario_id=? AND user_id=? AND variable_id=? FOR UPDATE", identity*)(row => row.getLong(1) -> row.getString(2)).head
     require(InteractionFormat.fromName(savedFormat) == format, s"History format cannot change for ${context.keyForSerialisation}")
     history.events.values.toList.map(event => storeEvent[format.type](sync, format)(event))
       .foldLeft(SyncSuccess.emptyNow[EventId]())(_.combine(_))
@@ -49,9 +49,9 @@ class RelationalHistoryStorage(connection: Connection, logger: Logger) extends H
     val table = tableFor(event)
     val codec = InteractionFormat.codecsFor(format).eventSerializer
     val eventId = event.eventId.value
-    val existing = query(s"SELECT serialized_data FROM $table WHERE sync_id=? AND event_id=?", List(sync, eventId))(_.getString(1)).headOption
+    val existing = statements.query(s"SELECT serialized_data FROM $table WHERE sync_id=? AND event_id=?", sync, eventId)(_.getString(1)).headOption
     existing.foreach(saved => require(codec.deserialize(saved) == event, s"Event $eventId is immutable but was sent with different content"))
-    if existing.isEmpty then update(s"INSERT INTO $table (sync_id,event_id,timestamp_nano,serialized_data) VALUES (?,?,?,?)",
+    if existing.isEmpty then statements.update(s"INSERT INTO $table (sync_id,event_id,timestamp_nano,serialized_data) VALUES (?,?,?,?)",
       sync, eventId, timestampText(event.timestamp), codec.serialize(event))
     SyncSuccess.immutable(Set(event.eventId), existing.map(_ => event.eventId).toSet, Set(event.eventId))
   }
@@ -59,8 +59,8 @@ class RelationalHistoryStorage(connection: Connection, logger: Logger) extends H
   /** Stored contexts as (sync id, format name); their events are read by the per-record read rule. */
   private def contexts(context: UsageContext, keys: Seq[String]): Seq[(SyncContext, (Long, String))] = {
     val keyFilter = if keys.isEmpty then "" else " AND variable_id IN (" + keys.map(_ => "?").mkString(",") + ")"
-    query("SELECT id,variable_id,format FROM sync_context_id WHERE program_id=? AND scenario_id=? AND user_id=?" + keyFilter,
-      List(context.programId, context.scenarioId, context.userId) ++ keys)(row => context.toSyncContext(row.getString(2)) -> (row.getLong(1), row.getString(3)))
+    statements.query("SELECT id,variable_id,format FROM sync_context_id WHERE program_id=? AND scenario_id=? AND user_id=?" + keyFilter,
+      (List(context.programId, context.scenarioId, context.userId) ++ keys)*)(row => context.toSyncContext(row.getString(2)) -> (row.getLong(1), row.getString(3)))
   }
 
   private def readHistory[F <: InteractionFormat](sync: Long, format: F, range: Option[(LocalDateTime, LocalDateTime)]): InteractionHistoryJson = {
@@ -77,7 +77,7 @@ class RelationalHistoryStorage(connection: Connection, logger: Logger) extends H
     val parameters = bounds.map(_._2)
     // An unreadable or inconsistent event row is discarded and reported; the other events still load.
     val events = tables.flatMap { table =>
-      query(s"SELECT event_id,serialized_data,timestamp_nano FROM $table WHERE sync_id=?" + filter, List(sync) ++ parameters) { row =>
+      statements.query(s"SELECT event_id,serialized_data,timestamp_nano FROM $table WHERE sync_id=?" + filter, (sync +: parameters)*) { row =>
         val eventId = row.getString("event_id")
         scala.util.Try {
           val event = InteractionFormat.codecsFor(format).eventSerializer.deserialize(row.getString("serialized_data"))

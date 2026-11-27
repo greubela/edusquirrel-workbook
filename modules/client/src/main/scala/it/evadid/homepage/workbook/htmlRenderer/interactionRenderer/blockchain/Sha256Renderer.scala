@@ -1,5 +1,7 @@
 package it.evadid.homepage.workbook.htmlRenderer.interactionRenderer.blockchain
 
+import it.evadid.homepage.control.model.FullInfo
+
 import com.raquo.laminar.api.L.*
 import it.evadid.homepage.webElements.basic.LabelSelection
 import it.evadid.core.datastructures.state.StateHelper.StateBasedVar
@@ -10,10 +12,10 @@ import it.evadid.core.util.crypto.Sha256
 import it.evadid.workbook.interaction.sync.UpdateImportance
 
 case object Sha256Renderer extends LineBasedRenderingFactory[Sha256Interaction] {
-  override protected def createRendering(e: Sha256Interaction): AtomarLineRendering = {
+  override protected def createRendering(fullInfo: FullInfo, e: Sha256Interaction): AtomarLineRendering = {
     val state = e.interactionVariable.createBoundStateWithUpdateImportance(UpdateImportance.MAJOR, fullInfo.workbookContextInformation).toAirstreamVar
     val disabledSignal = e.isDisabledState.toAirstreamVar.signal
-    def textFor(key: String): Signal[String] = laminarHelper.plaintextStringSignal(s"blockchainworkbook/$key")
+    def textFor(key: String): Signal[String] = laminarHelper(fullInfo).plaintextStringSignal(s"blockchainworkbook/$key")
     def textField(first: Boolean): Element = label(
       span(text <-- textFor(if first then "firstInput" else "secondInput")),
       textArea(maxLength := Sha256Interaction.maxTextLength, disabled <-- disabledSignal,
@@ -22,7 +24,7 @@ case object Sha256Renderer extends LineBasedRenderingFactory[Sha256Interaction] 
     val compare = e.task == CompareSha256()
     val zeros = e.task match { case FindSha256Prefix(n) => n; case _ => 0 }
     val dom = fieldSet(cls := "sha256-interaction",
-      legend(text <-- laminarHelper.plaintextStringSignal(e.title)),
+      legend(text <-- laminarHelper(fullInfo).plaintextStringSignal(e.title)),
       p(text <-- textFor(if compare then "shaCompareTask" else "shaPrefixTask").map(_.replace("{zeros}", zeros.toString))),
       div(cls := "hash-controls", textField(true), Option.when(compare)(textField(false)),
         button(typ := "button", disabled <-- disabledSignal, text <-- textFor("reset"), onClick --> (_ => state.set(e.initial)))),
@@ -41,6 +43,6 @@ case object Sha256Renderer extends LineBasedRenderingFactory[Sha256Interaction] 
           case Some(false) => "shaTryAgain"
         })))
     )
-    AtomarLineRendering.basicLine(e, dom)
+    AtomarLineRendering.basicLine(fullInfo, e, dom)
   }
 }

@@ -8,7 +8,7 @@ class JavaTurtleArithmeticSpec extends FunSuite {
   private def program(body: String) =
     JavaTurtleCompiler.compile(s"class Main { public static void main(String[] args) { $body } }").fold(problem => fail(problem.message), identity)
   private def drawn(body: String): Vector[Double] = {
-    val execution = JavaTurtleInterpreter.runVm(program(body))
+    val execution = JavaTurtleInterpreter.execute(program(body))
     assertEquals(execution.status, JavaTurtleInterpreter.Status.Completed, body)
     execution.commands.map(_.value)
   }
@@ -36,7 +36,7 @@ class JavaTurtleArithmeticSpec extends FunSuite {
   }
   test("left turns and pen commands retain their typed drawing commands and report values") {
     val compiled = program("Turtle.penUp(); Turtle.turnLeft(90); Turtle.forward(20); Turtle.turnRight(90); Turtle.penDown();")
-    val execution = JavaTurtleInterpreter.runVm(compiled)
+    val execution = JavaTurtleInterpreter.execute(compiled)
     assertEquals(execution.status, JavaTurtleInterpreter.Status.Completed)
     import it.evadid.core.datastructures.vectorShapes.svg.TurtleCommand
     assertEquals(execution.commands.map(_.toDrawingCommand), Vector[TurtleCommand[Double]](

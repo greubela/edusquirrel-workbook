@@ -11,7 +11,7 @@ private[SnapEditor] object SnapCustomBlocks:
   /** The predefined module block a definition installs, if any. */
   def moduleBlockOf(definition: js.Dynamic): Option[SnapModuleBlocks.ModuleBlock] =
     val spec = definition.selectDynamic("spec")
-    if js.isUndefined(spec) || spec == null then None else SnapModuleBlocks.bySpec(spec.toString)
+    if SnapJs.isAbsent(spec) then None else SnapModuleBlocks.bySpec(spec.toString)
 
   /**
    * Adds the definitions of predefined module blocks the palette offers but the project lacks (a program
@@ -23,7 +23,7 @@ private[SnapEditor] object SnapCustomBlocks:
     val missing = blocks.filterNot(installed.contains)
     val dynamicIde = ide.asInstanceOf[js.Dynamic]
     val stage = dynamicIde.selectDynamic("stage")
-    if missing.nonEmpty && !js.isUndefined(stage) && stage != null then
+    if missing.nonEmpty && !SnapJs.isAbsent(stage) then
       val loaded = dynamicIde.selectDynamic("serializer").applyDynamic("loadBlocks")(SnapModuleBlocks.libraryXml(missing), stage)
       loaded.selectDynamic("global").asInstanceOf[js.Array[js.Dynamic]].foreach { definition =>
         definition.updateDynamic("receiver")(stage)
@@ -32,7 +32,7 @@ private[SnapEditor] object SnapCustomBlocks:
       val globals = dynamicIde.selectDynamic("globalVariables")
       val existing = globals.selectDynamic("vars").selectDynamic(SnapModuleBlocks.NumberListVariable)
       val data = loaded.selectDynamic("data")
-      if (js.isUndefined(existing) || existing == null) && !js.isUndefined(data) && data != null then
+      if (SnapJs.isAbsent(existing)) && !SnapJs.isAbsent(data) then
         globals.applyDynamic("merge")(data)
       ide.flushPaletteCache()
 
@@ -41,7 +41,7 @@ private[SnapEditor] object SnapCustomBlocks:
     customBlockDefinitions(ide).find(moduleBlockOf(_).contains(block)).flatMap { definition =>
       try
         val template = definition.applyDynamic("templateInstance")()
-        Option.when(!js.isUndefined(template) && template != null)(template.asInstanceOf[BlockMorph])
+        Option.when(!SnapJs.isAbsent(template))(template.asInstanceOf[BlockMorph])
       catch case _: Throwable => None
     }
 
@@ -57,24 +57,24 @@ private[SnapEditor] object SnapCustomBlocks:
    */
   def paletteItems(ide: IDEMorph, category: String): List[js.Any] = {
     def blocksOf(owner: js.Dynamic, field: String): List[js.Dynamic] =
-      if js.isUndefined(owner) || owner == null then Nil
+      if SnapJs.isAbsent(owner) then Nil
       else
         val blocks = owner.selectDynamic(field)
-        if js.isUndefined(blocks) || blocks == null then Nil
+        if SnapJs.isAbsent(blocks) then Nil
         else blocks.asInstanceOf[js.Array[js.Dynamic]].toList
 
     val stage = ide.asInstanceOf[js.Dynamic].selectDynamic("stage")
     val sprite = ide.currentSprite.asInstanceOf[js.Dynamic]
     (blocksOf(stage, "globalBlocks") ++ blocksOf(sprite, "customBlocks")).flatMap { definition =>
       val current = definition.selectDynamic("category")
-      val currentName = if js.isUndefined(current) || current == null then "" else current.toString
+      val currentName = if SnapJs.isAbsent(current) then "" else current.toString
       val helper = definition.selectDynamic("isHelper")
-      val isHelper = !js.isUndefined(helper) && helper != null && helper.asInstanceOf[Boolean]
+      val isHelper = !SnapJs.isAbsent(helper) && helper.asInstanceOf[Boolean]
       if currentName != category || isHelper then Nil
       else
         try
           val template = definition.applyDynamic("templateInstance")()
-          if js.isUndefined(template) || template == null then Nil
+          if SnapJs.isAbsent(template) then Nil
           else List(template.asInstanceOf[js.Any])
         catch case _: Throwable => Nil
     }

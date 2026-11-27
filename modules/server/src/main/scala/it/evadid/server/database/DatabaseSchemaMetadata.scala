@@ -1,20 +1,18 @@
 package it.evadid.server.database
 
-import java.sql.{Connection, DatabaseMetaData, ResultSet}
+import java.sql.{Connection, DatabaseMetaData}
 import scala.util.Using
 
 /** JDBC metadata and MySQL-specific column details, read without changing the database. */
 private[database] object DatabaseSchemaMetadata {
   import DatabaseSchema.*
+  import SqlStatements.rows
 
   private case class ColumnDetails(sqlType: String, collation: Option[String], timestampPrecision: Int)
   private case class KeyColumn(indexName: String, position: Int, column: String)
   private case class ForeignKeyColumn(keyName: String, position: Int, column: String,
                                       referencedTable: String, referencedColumn: String,
                                       onDelete: ReferentialRule, onUpdate: ReferentialRule)
-
-  private def rows[A](result: ResultSet)(read: ResultSet => A): Seq[A] =
-    Using.resource(result)(rs => Iterator.continually(rs.next()).takeWhile(identity).map(_ => read(rs)).toList)
 
   def read(connection: Connection, requiredTables: Set[String]): Snapshot = {
     val metadata = connection.getMetaData

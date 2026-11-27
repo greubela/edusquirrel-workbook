@@ -1,5 +1,6 @@
 package it.evadid.homepage.workbook.htmlRenderer
 
+import scala.util.control.NonFatal
 import it.evadid.workbook.elements.interactionElements.compression.CompressionExperimentInteraction
 import it.evadid.homepage.workbook.htmlRenderer.interactionRenderer.compression.CompressionExperimentRenderer
 import it.evadid.workbook.elements.interactionElements.evacuation.EvacuationSimulationInteraction
@@ -9,7 +10,6 @@ import it.evadid.homepage.workbook.htmlRenderer.interactionRenderer.evacuation.E
 import com.raquo.laminar.api.L.*
 import com.raquo.laminar.nodes.ReactiveHtmlElement
 import it.evadid.homepage.control.model.*
-import it.evadid.homepage.control.singletons.HtmlFullWorkbookApp
 import it.evadid.homepage.webElements.sqlEditor.HtmlSqlCommandExerciseRenderer
 import it.evadid.workbook.elements.interactionElements.sql.SqlCommandExercise
 import it.evadid.homepage.webElements.HtmlAppElement
@@ -67,17 +67,15 @@ import it.evadid.workbook.elements.interactionElements.sorting.sortingReasonExer
 
 trait HtmlRenderFactory[T <: WorkbookElement] {
 
-  protected def fullInfo: FullInfo = HtmlFullWorkbookApp.fullInfo
+  def render(fullInfo: FullInfo, workbookElement: T): HtmlWorkbookElement[WorkbookElement, HtmlAppElement] = renderAppElement(fullInfo, workbookElement).asInstanceOf[HtmlWorkbookElement[WorkbookElement, HtmlAppElement]]
 
-  def render(workbookElement: T): HtmlWorkbookElement[WorkbookElement, HtmlAppElement] = renderAppElement(workbookElement).asInstanceOf[HtmlWorkbookElement[WorkbookElement, HtmlAppElement]]
+  def renderAppElement(fullInfo: FullInfo, workbookElement: T): HtmlWorkbookElement[T, HtmlAppElement]
 
-  def renderAppElement(workbookElement: T): HtmlWorkbookElement[T, HtmlAppElement]
+  protected def laminarHelper(fullInfo: FullInfo): LaminarRenderHelper = LaminarRenderHelper(fullInfo)
 
-  protected val laminarHelper: LaminarRenderHelper = LaminarRenderHelper.singleton
-
-  def placeholder(workbookElement: WorkbookElement, str: String): AtomarLineRendering = {
+  def placeholder(fullInfo: FullInfo, workbookElement: WorkbookElement, str: String): AtomarLineRendering = {
     val dom: ReactiveHtmlElement[HTMLDivElement] = div(s"${this.getClass.getName}::render cannot yet render an object because with the following information: $str!")
-    AtomarLineRendering.basicLine(workbookElement, dom)
+    AtomarLineRendering.basicLine(fullInfo, workbookElement, dom)
   }
 
 }
@@ -87,103 +85,84 @@ object HtmlRenderFactory {
 
 
   trait LineBasedRenderingFactory[T <: WorkbookElement] extends HtmlRenderFactory[T] {
-    override def renderAppElement(workbookElement: T): HtmlWorkbookElement[T, HtmlAppElement] =
-      renderWorkbookElement(workbookElement).asInstanceOf[HtmlWorkbookElement[T, HtmlAppElement]]
+    override def renderAppElement(fullInfo: FullInfo, workbookElement: T): HtmlWorkbookElement[T, HtmlAppElement] =
+      renderWorkbookElement(fullInfo, workbookElement).asInstanceOf[HtmlWorkbookElement[T, HtmlAppElement]]
 
-    def renderWorkbookElement(workbookElement: T): HtmlWorkbookElement[WorkbookElement, AtomarLineRendering] = {
-      HtmlWorkbookElement[WorkbookElement, AtomarLineRendering](workbookElement, createRendering(workbookElement))
+    def renderWorkbookElement(fullInfo: FullInfo, workbookElement: T): HtmlWorkbookElement[WorkbookElement, AtomarLineRendering] = {
+      HtmlWorkbookElement[WorkbookElement, AtomarLineRendering](workbookElement, createRendering(fullInfo, workbookElement))
     }
 
-    protected def createRendering(workbookElement: T): AtomarLineRendering
+    protected def createRendering(fullInfo: FullInfo, workbookElement: T): AtomarLineRendering
   }
 
 
-  private[workbook] def createPlaceholderElement[T <: WorkbookElement](workbookElement: T, msg: String): HtmlWorkbookElement[T, AtomarLineRendering] = {
+  private[workbook] def createPlaceholderElement[T <: WorkbookElement](fullInfo: FullInfo, workbookElement: T, msg: String): HtmlWorkbookElement[T, AtomarLineRendering] = {
     val dom: ReactiveHtmlElement[HTMLDivElement] = div(msg)
-    val rl: AtomarLineRendering = AtomarLineRendering.basicLine(workbookElement, dom)
+    val rl: AtomarLineRendering = AtomarLineRendering.basicLine(fullInfo, workbookElement, dom)
     HtmlWorkbookElement[T, AtomarLineRendering](workbookElement, rl)
   }
 
 
-  def render[T <: WorkbookElement](anyElement: T): HtmlWorkbookElement[WorkbookElement, HtmlAppElement] = {
-    try {
-      renderStructureElement(anyElement).asInstanceOf[HtmlWorkbookElement[WorkbookElement, HtmlAppElement]]
-    } catch case e: Throwable => try {
-      renderWorkbookElement(anyElement).asInstanceOf[HtmlWorkbookElement[WorkbookElement, HtmlAppElement]]
-    }
-    catch case e: Throwable => {
-      createPlaceholderElement(anyElement, s"Cannot render Element ${anyElement.getClass.getSimpleName} because of exception: ${e.getMessage}").asInstanceOf[HtmlWorkbookElement[WorkbookElement, HtmlAppElement]]
-    }
-  }
+  /** Renders any element; renderer failures become a visible placeholder instead of breaking the page. */
+  def render[T <: WorkbookElement](fullInfo: FullInfo, anyElement: T): HtmlWorkbookElement[WorkbookElement, HtmlAppElement] =
+    try anyElement match {
+      case c: ExerciseContainer => HtmlExerciseContainerRenderer.render(fullInfo, c)
+      case other => renderWorkbookElement(fullInfo, other).asInstanceOf[HtmlWorkbookElement[WorkbookElement, HtmlAppElement]]
+    } catch case NonFatal(e) =>
+      createPlaceholderElement(fullInfo, anyElement, s"Cannot render Element ${anyElement.getClass.getSimpleName} because of exception: ${e.getMessage}")
+        .asInstanceOf[HtmlWorkbookElement[WorkbookElement, HtmlAppElement]]
 
-
-  private def renderStructureElement[T <: WorkbookElement](anyElement: T): HtmlWorkbookElement[WorkbookElement, HtmlAppElement] = {
-    anyElement.match {
-      // structure
-      case c: ExerciseContainer => HtmlExerciseContainerRenderer.render(c)
-      case _: T => ???
-    }
-  }
-
-  def renderWorkbookElement[T <: WorkbookElement](anyElement: T): HtmlWorkbookElement[WorkbookElement, AtomarLineRendering] = {
+  def renderWorkbookElement[T <: WorkbookElement](fullInfo: FullInfo, anyElement: T): HtmlWorkbookElement[WorkbookElement, AtomarLineRendering] = {
     anyElement match {
-      case p: TwoColumnPanel => HtmlTwoColumnPanelRenderer.renderWorkbookElement(p)
-      case g: ExerciseGroup => HtmlExerciseGroupRenderer.renderWorkbookElement(g)
-      case c: DisplayLangMapContent => HtmlDisplayLangMapContentRenderer.renderWorkbookElement(c)
-      case b: LabeledWorkbookElement[?] => HtmlLabeledWorkbookElementRenderer(b).renderWorkbookElement(b)
-      case c: CollapsibleInstructionElement => HtmlCollapsibleInstructionRenderer.renderWorkbookElement(c)
-      case i: WorkbookImageElement => HtmlProxyAppElementRenderer.renderWorkbookElement(i, HtmlImageElement(i))
+      case p: TwoColumnPanel => HtmlTwoColumnPanelRenderer.renderWorkbookElement(fullInfo, p)
+      case g: ExerciseGroup => HtmlExerciseGroupRenderer.renderWorkbookElement(fullInfo, g)
+      case c: DisplayLangMapContent => HtmlDisplayLangMapContentRenderer.renderWorkbookElement(fullInfo, c)
+      case b: LabeledWorkbookElement[?] => HtmlLabeledWorkbookElementRenderer(b).renderWorkbookElement(fullInfo, b)
+      case c: CollapsibleInstructionElement => HtmlCollapsibleInstructionRenderer.renderWorkbookElement(fullInfo, c)
+      case s: WorkbookSubmissionElement => HtmlWorkbookSubmissionRenderer.renderWorkbookElement(fullInfo, s)
+      case i: WorkbookImageElement => HtmlProxyAppElementRenderer.renderWorkbookElement(fullInfo, i, HtmlImageElement(fullInfo, i))
 
       // interactions
-      case e: CompressionExperimentInteraction => CompressionExperimentRenderer.renderWorkbookElement(e)
-      case h: SquareMiddleHashInteraction => SquareMiddleHashRenderer.renderWorkbookElement(h)
-      case h: Sha256Interaction => Sha256Renderer.renderWorkbookElement(h)
-      case h: BlockchainInteraction => BlockchainRenderer.renderWorkbookElement(h)
-      case e: EvacuationSimulationInteraction => EvacuationSimulationRenderer.renderWorkbookElement(e)
-      case e: EvacuationConstructFloorInteraction => EvacuationConstructFloorRenderer.renderWorkbookElement(e)
-      case h: UnicodeComparisonInteraction => UnicodeComparisonRenderer.renderWorkbookElement(h)
-      case p: BinaryPixelInteraction => BinaryPixelRenderer.renderWorkbookElement(p)
-      case t: AnswerTableInteraction => AnswerTableRenderer.renderWorkbookElement(t)
-      case p: CoordinatePlotInteraction => CoordinatePlotRenderer.renderWorkbookElement(p)
-      case c: WorkbookContentChoiceInteraction => WorkbookContentChoiceInteractionRenderer.renderWorkbookElement(c)
-      case n: ThresholdNeuronInteraction => ThresholdNeuronRenderer.renderWorkbookElement(n)
-      case m: MailInteraction => HtmlMailInteractionRenderer.renderWorkbookElement(m)
-      case m: MailEditor => HtmlMailEditorRenderer.renderWorkbookElement(m)
-      case q: CreateQrCodeInteraction => CreateQrCodeInteractionRenderer.renderWorkbookElement(q)
-      case i: TextInteraction => HtmlSimpleTextInteractionRenderer.renderWorkbookElement(i)
-      case i: LabeledCheckboxInteraction => HtmlBasicCheckboxRenderer.renderWorkbookElement(i)
-      case i: LabeledNumberInteraction => HtmlBasicNumberRenderer.renderWorkbookElement(i)
-      case s: SortingInteraction => HtmlSortingInteractionRenderer.renderWorkbookElement(s)
-      case s: SortingReasonInteraction => HtmlSortingReasonInteractionRenderer.renderWorkbookElement(s)
-      case r: ReorderInteraction.ReorderCodeInteraction => HtmlReorderInteractionRenderer.renderWorkbookElement(r)
-      case r: ReorderInteraction.ReorderMapIdInteraction => HtmlReorderInteractionRenderer.renderWorkbookElement(r)
-      case c: CodeTaskToggleInteraction => HtmlCodeTaskToggleRenderer.renderWorkbookElement(c)
-      case d: SketchDownloadInteraction => HtmlSketchDownloadRenderer.renderWorkbookElement(d)
-      case i: MatchingInteraction => HtmlMatchingInteractionRenderer.renderWorkbookElement(i)
-      case i: LikertScaleInteraction => HtmlLikertScaleRenderer.renderWorkbookElement(i)
-      /*case i: ChoiceSelectionInteraction => HtmlChoiceSelectionRenderer.renderWorkbookElement(i)
-      case i: CategorizationInteraction => HtmlCategorizationInteractionRenderer.renderWorkbookElement(i)
-      case i: FillInBlanksInteraction => HtmlFillInBlanksRenderer.renderWorkbookElement(i)
-      case i: DropdownBlanksInteraction => HtmlDropdownBlanksRenderer.renderWorkbookElement(i)
-      case i: TableFillInInteraction => HtmlTableFillInRenderer.renderWorkbookElement(i)
-      case r: ReorderInteraction.ReorderCodeInteraction => HtmlReorderInteractionRenderer.renderWorkbookElement(r)*/
+      case e: CompressionExperimentInteraction => CompressionExperimentRenderer.renderWorkbookElement(fullInfo, e)
+      case h: SquareMiddleHashInteraction => SquareMiddleHashRenderer.renderWorkbookElement(fullInfo, h)
+      case h: Sha256Interaction => Sha256Renderer.renderWorkbookElement(fullInfo, h)
+      case h: BlockchainInteraction => BlockchainRenderer.renderWorkbookElement(fullInfo, h)
+      case e: EvacuationSimulationInteraction => EvacuationSimulationRenderer.renderWorkbookElement(fullInfo, e)
+      case e: EvacuationConstructFloorInteraction => EvacuationConstructFloorRenderer.renderWorkbookElement(fullInfo, e)
+      case h: UnicodeComparisonInteraction => UnicodeComparisonRenderer.renderWorkbookElement(fullInfo, h)
+      case p: BinaryPixelInteraction => BinaryPixelRenderer.renderWorkbookElement(fullInfo, p)
+      case t: AnswerTableInteraction => AnswerTableRenderer.renderWorkbookElement(fullInfo, t)
+      case p: CoordinatePlotInteraction => CoordinatePlotRenderer.renderWorkbookElement(fullInfo, p)
+      case c: WorkbookContentChoiceInteraction => WorkbookContentChoiceInteractionRenderer.renderWorkbookElement(fullInfo, c)
+      case n: ThresholdNeuronInteraction => ThresholdNeuronRenderer.renderWorkbookElement(fullInfo, n)
+      case m: MailInteraction => HtmlMailInteractionRenderer.renderWorkbookElement(fullInfo, m)
+      case m: MailEditor => HtmlMailEditorRenderer.renderWorkbookElement(fullInfo, m)
+      case q: CreateQrCodeInteraction => CreateQrCodeInteractionRenderer.renderWorkbookElement(fullInfo, q)
+      case i: TextInteraction => HtmlSimpleTextInteractionRenderer.renderWorkbookElement(fullInfo, i)
+      case i: LabeledCheckboxInteraction => HtmlBasicCheckboxRenderer.renderWorkbookElement(fullInfo, i)
+      case i: LabeledNumberInteraction => HtmlBasicNumberRenderer.renderWorkbookElement(fullInfo, i)
+      case s: SortingInteraction => HtmlSortingInteractionRenderer.renderWorkbookElement(fullInfo, s)
+      case s: SortingReasonInteraction => HtmlSortingReasonInteractionRenderer.renderWorkbookElement(fullInfo, s)
+      case r: ReorderInteraction.ReorderCodeInteraction => HtmlReorderInteractionRenderer.renderWorkbookElement(fullInfo, r)
+      case r: ReorderInteraction.ReorderMapIdInteraction => HtmlReorderInteractionRenderer.renderWorkbookElement(fullInfo, r)
+      case c: CodeTaskToggleInteraction => HtmlCodeTaskToggleRenderer.renderWorkbookElement(fullInfo, c)
+      case d: SketchDownloadInteraction => HtmlSketchDownloadRenderer.renderWorkbookElement(fullInfo, d)
+      case i: MatchingInteraction => HtmlMatchingInteractionRenderer.renderWorkbookElement(fullInfo, i)
+      case i: LikertScaleInteraction => HtmlLikertScaleRenderer.renderWorkbookElement(fullInfo, i)
       // plugins -- turtle
-      case t: TurtleStitchExploreProjectElement => HtmlTurtleStitchExploreProjectRenderer.renderWorkbookElement(t)
-      case t: TurtleRecreateShapeInteraction => HtmlTurtleRecreateShapeRenderer.renderWorkbookElement(t)
-      case t: TurtleStitchRecreateShapeInteractionLegacy => HtmlTurtleStitchRecreateShapeRendererLegacy.renderWorkbookElement(t)
+      case t: TurtleStitchExploreProjectElement => HtmlTurtleStitchExploreProjectRenderer.renderWorkbookElement(fullInfo, t)
+      case t: TurtleRecreateShapeInteraction => HtmlTurtleRecreateShapeRenderer.renderWorkbookElement(fullInfo, t)
+      case t: TurtleStitchRecreateShapeInteractionLegacy => HtmlTurtleStitchRecreateShapeRendererLegacy.renderWorkbookElement(fullInfo, t)
       // plugins -- gpt
-      case g: GptInteractionElement => HtmlGptTextfieldInteractionRenderer.renderWorkbookElement(g)
-      case t: TextInputWithScaffoldingAndGrading => TextInputWithScaffoldingAndGradingRenderer.renderWorkbookElement(t)
+      case g: GptInteractionElement => HtmlGptTextfieldInteractionRenderer.renderWorkbookElement(fullInfo, g)
+      case t: TextInputWithScaffoldingAndGrading => TextInputWithScaffoldingAndGradingRenderer.renderWorkbookElement(fullInfo, t)
       // plugins -- slideshow & reorder
-      case s: Slideshow => HtmlSlideshowEditor.renderWorkbookElement(s)
-      /*case r: HtmlReorderInteraction[?] @unchecked => fromElement(r, r.getDomElement())*/
-      // case e: HtmlEmbeddedDomInteraction => fromAppElement(e, e.domElement)
-      case s: SqlCommandExercise => HtmlSqlCommandExerciseRenderer.renderWorkbookElement(s)
-      case p: ProgrammingExercise => HtmlProgrammingExerciseRenderer.renderWorkbookElement(p)
-      case p: ProgrammingExerciseFullJava => HtmlProgrammingExerciseFullJavaRenderer.renderWorkbookElement(p)
-      case s: SortListExercise => HtmlSortListExerciseRenderer.renderWorkbookElement(s)
-      case a: T => createPlaceholderElement(a, "HtmlRenderFactory::renderWorkbookElement cannot yet render objects of type '" + a.getClass.getName + "'!")
-      // error
+      case s: Slideshow => HtmlSlideshowEditor.renderWorkbookElement(fullInfo, s)
+      case s: SqlCommandExercise => HtmlSqlCommandExerciseRenderer.renderWorkbookElement(fullInfo, s)
+      case p: ProgrammingExercise => HtmlProgrammingExerciseRenderer.renderWorkbookElement(fullInfo, p)
+      case p: ProgrammingExerciseFullJava => HtmlProgrammingExerciseFullJavaRenderer.renderWorkbookElement(fullInfo, p)
+      case s: SortListExercise => HtmlSortListExerciseRenderer.renderWorkbookElement(fullInfo, s)
+      case other => createPlaceholderElement(fullInfo, other, "HtmlRenderFactory::renderWorkbookElement cannot yet render objects of type '" + other.getClass.getName + "'!")
     }
   }
 

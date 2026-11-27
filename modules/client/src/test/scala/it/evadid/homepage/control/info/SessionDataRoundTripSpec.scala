@@ -1,5 +1,6 @@
 package it.evadid.homepage.control.info
 
+import it.evadid.workbook.session.{AllWorkbookInfo, SessionData, WorkbookConfig}
 import it.evadid.core.datastructures.file.LoadedFile
 import it.evadid.core.datastructures.language.{AppLanguage, LanguageMapContentId}
 import it.evadid.core.datastructures.language.control.LanguageMapStorage
@@ -39,8 +40,8 @@ class SessionDataRoundTripSpec extends EditorDomSuite {
     val studied = workbook(id, "first", "second")
     answer(studied, "first", "my first answer")
     answer(studied, "second", "my second answer")
-    val session = SessionData.createSessionData(HomepageInfo(AppLanguage.English, Some(studied), Some(user),
-      AllDisplayInfo(false, None), LanguageMapStorage.empty)).get
+    val session = HomepageInfo(AppLanguage.English, Some(studied), Some(user),
+      AllDisplayInfo(false, None), LanguageMapStorage.empty).toSessionData.get
     assert(!write(session).contains("signedBackendToken\":{"), "credentials are not exported")
     write(session)
   }
@@ -83,7 +84,7 @@ class SessionDataRoundTripSpec extends EditorDomSuite {
 
   test("the file name has no path separators and a file that is not a session fails the import") {
     val session = read[SessionData](downloaded("course/unit\\one"))
-    assert(session.fileName.endsWith("-course-unit-one.eva"), session.fileName)
+    assert(session.fileName.endsWith("_course_unit_one.eva"), session.fileName)
     assert(!session.fileName.exists(c => c == '/' || c == '\\'), session.fileName)
     val file = new LoadedFile {
       def description = null

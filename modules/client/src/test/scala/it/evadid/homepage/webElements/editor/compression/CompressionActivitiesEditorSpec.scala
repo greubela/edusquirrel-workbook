@@ -17,7 +17,7 @@ class CompressionActivitiesEditorSpec extends UiDomSuite {
   private def text(key: String) = loadingText(s"CompressionWorkbook/$key")
   private def activity[T <: CompressionExperiment](initial: T, locked: Signal[Boolean] = Val(false)): (Var[CompressionExperiment], Element) = {
     val answer = Var[CompressionExperiment](initial)
-    answer -> CompressionActivitiesEditor(answer, initial, locked).getDomElement()
+    answer -> CompressionActivitiesEditor(pageInfo, answer, initial, locked).getDomElement()
   }
 
   test("a written answer is saved as typed; in code answers Tab indents instead of leaving the field") {

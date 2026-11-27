@@ -1,5 +1,7 @@
 package it.evadid.homepage.webElements.editor.evacuation
 
+import it.evadid.homepage.control.model.FullInfo
+
 import com.raquo.laminar.api.L.*
 import it.evadid.homepage.webElements.basic.LabelSelection
 import it.evadid.core.datastructures.matrix.PositionInMatrix
@@ -7,9 +9,9 @@ import it.evadid.evacuation.eva2.model.EvaFloorMap
 import it.evadid.homepage.webElements.HtmlAppElement
 import it.evadid.workbook.model.evacuation.EvacuationTile
 
-case class EvacuationFloorView(floorMap: Signal[EvaFloorMap], locked: Signal[Boolean], click: PositionInMatrix => Unit)
+case class EvacuationFloorView(fullInfo: FullInfo, floorMap: Signal[EvaFloorMap], locked: Signal[Boolean], click: PositionInMatrix => Unit)
     extends HtmlAppElement {
-  private def textFor(key: String): Signal[String] = laminarHelper.plaintextStringSignal(s"digitalWorkbooks/$key")
+  private def textFor(key: String): Signal[String] = laminarHelper(fullInfo).plaintextStringSignal(s"digitalWorkbooks/$key")
   private val planSignal = floorMap.map(EvacuationFloorAdapter.encode)
   // Rebuild only when dimensions change, so painting keeps the focused cell mounted.
   private def grid(dim: it.evadid.core.datastructures.matrix.MatrixDimension): Element =

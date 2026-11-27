@@ -29,7 +29,7 @@ case class CreateTestWorkbook(fullInfo: FullInfo) extends WorkbookFactory {
   override def createWorkbook: Workbook = {
     workbook(
       "TestWorkbook/WorkbookTitle",
-      List(section1, section2, section3, section4, section5, section6, section7),
+      List(section1, section2, section3, section4, section5, section6, section7, section8),
       User.AndreGreubel
     )
   }
@@ -193,6 +193,13 @@ case class CreateTestWorkbook(fullInfo: FullInfo) extends WorkbookFactory {
             |WHERE students.grade >= 10
             |ORDER BY students.name;""".stripMargin
       )
+    ))
+  ))
+
+  /** Hands in this workbook's answers by e-mail without creating an account. */
+  lazy val section8: WorkbookSection = section("submission-demo", "login/submissionTitle", List(
+    container("login/submissionTitle", List(
+      it.evadid.workbook.elements.displayElements.WorkbookSubmissionElement("submission-demo-form")
     ))
   ))
 

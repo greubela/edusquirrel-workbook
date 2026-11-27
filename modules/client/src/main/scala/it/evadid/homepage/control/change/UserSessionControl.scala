@@ -1,5 +1,6 @@
 package it.evadid.homepage.control.change
 
+import it.evadid.workbook.session.SessionData
 import it.evadid.core.datastructures.file.LoadedFile
 import it.evadid.core.datastructures.user.*
 import it.evadid.core.datastructures.user.User.SingleAccessToken
@@ -8,7 +9,7 @@ import it.evadid.distribution.command.ExecutionInfo.ExecutionSuccess
 import it.evadid.distribution.command.SerializedException
 import it.evadid.distribution.commandTypes.UserCommands
 import it.evadid.distribution.commandTypes.UserCommands.{CreateAccountRequest, LoginRequest, LoginResponse}
-import it.evadid.homepage.control.info.{SessionData, WorkbookUserDataAnalyzer}
+import it.evadid.homepage.control.info.WorkbookUserDataAnalyzer
 import it.evadid.homepage.control.model.*
 import it.evadid.workbook.interaction.sync.SyncResetState
 import it.evadid.workbook.abstractions.InteractionFormat
@@ -24,19 +25,21 @@ final class UserSessionControl(val fullInfo: FullInfo) {
   private given ExecutionContext = ExecutionContext.global
   private def interactions: Seq[WorkbookInteractionElement[? <: InteractionFormat]] = fullInfo.current.allAvailableInteractions
   private val logger = fullInfo.loggerSystemInfo.contentControlLogger
-  private lazy val storage = new UserSessionStorage(logger, fullInfo.syncControl.syncLogger)
+  private val storage = new UserSessionStorage(logger, fullInfo.loggerSystemInfo.syncControlLogger)
 
   def loadSavedProfile(): Option[AllUserInfo] = storage.loadSavedProfile()
 
-  /** Name and email the login page pre-fills: the last recognized user, kept after its cached login is cleared. */
-  lazy val loginIdentity: Var[Option[User]] = Var(loadSavedProfile().map(_.user).filterNot(_.isAnonymous))
+  /** Name and email the login page pre-fills: the last user (also an anonymous local one), kept after its cached
+    * login is cleared.
+    */
+  val loginIdentity: Var[Option[User]] = Var(loadSavedProfile().map(_.user))
 
-  private def rememberIdentity(user: User): Unit = if !user.isAnonymous then loginIdentity.set(Some(user))
+  private def rememberIdentity(user: User): Unit = loginIdentity.set(Some(user))
 
   private def tryServerLoginWith(userMail: String, token: Either[SingleAccessToken, SignedToken], cachedCredentials: UserCredentials = UserCredentials()): Future[?] = {
     val loginReq = LoginRequest(userMail.trim.toLowerCase, token)
     val backend = token match {
-      case Left(_) => fullInfo.defaults.backendExecutor
+      case Left(_) => fullInfo.backendExecutor
       case Right(signed) => fullInfo.defaults.backendExecutorWithCredentials(Some(signed))
     }
     val loginRes: Future[ExecutionSuccess[LoginResponse]] = UserCommands.loginCommand.sendCommandTo(backend, loginReq)
@@ -132,7 +135,7 @@ final class UserSessionControl(val fullInfo: FullInfo) {
       val userConfig = UserConfig.defaults(isLocalAccount = false)
       val user = AllUserInfo.createNewUser(name.trim, normalizedEmail, userConfig)
       UserCommands.createAccountCommand
-        .sendCommandTo(fullInfo.defaults.backendExecutor, CreateAccountRequest(user))
+        .sendCommandTo(fullInfo.backendExecutor, CreateAccountRequest(user))
         .flatMap { exInfo =>
           val result = exInfo.result
           result.token match {
@@ -151,8 +154,8 @@ final class UserSessionControl(val fullInfo: FullInfo) {
     }
   }
 
-  /** Signs in only a named local profile or an online account whose cached token the backend accepts. Otherwise
-    * the login page stays, pre-filled with the cached name and email, and the cached login is cleared.
+  /** Restores a local profile (also an anonymous one) or signs in an online account whose cached token the backend
+    * accepts. Otherwise the login page stays, pre-filled with the cached name and email, and the cached login is cleared.
     */
   def tryAutoLogin(): Future[?] = storage.restoreSession().flatMap { cached =>
     cached.orElse(loadSavedProfile()) match {
@@ -160,8 +163,7 @@ final class UserSessionControl(val fullInfo: FullInfo) {
       case Some(info) =>
         rememberIdentity(info.user)
         val restored: Future[?] =
-          if info.user.isAnonymous then Future.failed(SerializedException("Anonymous sessions are not restored"))
-          else if info.config.isOnlineAccount then info.credentials.signedBackendToken.fold(
+          if info.config.isOnlineAccount then info.credentials.signedBackendToken.fold(
             Future.failed(AuthenticationFailure("login/errorLogin")))(token => tryServerLoginWith(info.user.mail, Right(token), info.credentials))
           else changeUser(Some(info))
         restored.recoverWith { case error =>
@@ -171,7 +173,7 @@ final class UserSessionControl(val fullInfo: FullInfo) {
     }
   }
 
-  def changeUser(newUserInfo: Option[AllUserInfo]): Future[?] = fullInfo.synchronized {
+  def changeUser(newUserInfo: Option[AllUserInfo]): Future[?] = {
     val oldUser = fullInfo.homepageInfoNow().userInfo
     logger.logInfo(s"Change User: ${oldUser.map(_.user.mail).getOrElse("none")} -> ${newUserInfo.map(_.user.mail).getOrElse("none")}")
 

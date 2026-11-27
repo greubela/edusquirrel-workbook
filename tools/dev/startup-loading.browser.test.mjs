@@ -63,6 +63,7 @@ const mime={'.html':'text/html','.js':'text/javascript','.css':'text/css','.json
       assert.equal((await workerRequest).url(),origin+prefix+'artifacts/newest/worker.js','configuration timeout cannot stall worker preheating');
       assert(!requests.some(url=>url.includes('/homepage/deployment/')),'configuration uses one known location');
       releaseLanguages();
+      await page.locator('.select-language-line > div:has(.flag-fill-british-blue)').click();
       await page.getByRole('button',{name:'Start Using Locally',exact:true}).click();
       await page.locator('.section-block').first().click();
       await page.getByRole('button',{name:/Editor.*öffnen|Open editor/i}).first().click();
@@ -106,6 +107,7 @@ test('a failed Snap dependency leaves the shell usable and a later editor open r
     await installCodeMirrorModules(page);
     await page.goto(origin+'/homepage/workbookDesign/',{waitUntil:'domcontentloaded'});
     await workerRequest;
+    await page.locator('.select-language-line > div:has(.flag-fill-british-blue)').click();
     await page.getByRole('button',{name:'Start Using Locally',exact:true}).click();
     await page.locator('.section-block').first().click();
     const open=page.getByRole('button',{name:/Editor.*öffnen|Open editor/i}).first();

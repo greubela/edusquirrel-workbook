@@ -1,5 +1,7 @@
 package it.evadid.homepage.workbook.htmlRenderer.interactionRenderer.reorderExercise
 
+import it.evadid.homepage.control.model.FullInfo
+
 import com.raquo.laminar.api.L.*
 import it.evadid.core.datastructures.state.StateHelper.InteractionVariableOnJS
 import it.evadid.core.datastructures.state.StateHelper.StateBasedVar
@@ -10,21 +12,21 @@ import it.evadid.workbook.interaction.sync.UpdateImportance.MAJOR
 import org.scalajs.dom
 
 object HtmlReorderInteractionRenderer extends LineBasedRenderingFactory[ReorderInteraction.ReorderCodeInteraction | ReorderInteraction.ReorderMapIdInteraction] {
-  override protected def createRendering(reorder: ReorderInteraction.ReorderCodeInteraction | ReorderInteraction.ReorderMapIdInteraction): AtomarLineRendering = {
+  override protected def createRendering(fullInfo: FullInfo, reorder: ReorderInteraction.ReorderCodeInteraction | ReorderInteraction.ReorderMapIdInteraction): AtomarLineRendering = {
     val disabled = reorder.isDisabledState.toAirstreamVar
     // Items that a failed check found misplaced are marked until the answer changes.
-    val wrong = fullInfo.signals.reportersFor(reorder).grading.checks.map(_.wrongParts).distinct
+    val wrong = fullInfo.reporters.reportersFor(reorder).grading.checks.map(_.wrongParts).distinct
     val dom = reorder match {
       case exercise: ReorderInteraction.ReorderCodeInteraction =>
         renderReorder(exercise.interactionVariable.createBoundVarWithUpdateImportance(MAJOR, fullInfo.workbookContextInformation), disabled, wrong,
           (state, index) => div(cls := "reorder-item-content", pre(code(state.elements(index))),
-            exercise.hints.lift(index).map(id => span(cls := "reorder-item-hint", text <-- laminarHelper.plaintextStringSignal(id)))),
+            exercise.hints.lift(index).map(id => span(cls := "reorder-item-hint", text <-- laminarHelper(fullInfo).plaintextStringSignal(id)))),
           "reorder-item--code")
       case exercise: ReorderInteraction.ReorderMapIdInteraction =>
         renderReorder(exercise.interactionVariable.createBoundVarWithUpdateImportance(MAJOR, fullInfo.workbookContextInformation), disabled, wrong,
-          (state, index) => span(text <-- laminarHelper.plaintextStringSignal(state.elements(index))), "")
+          (state, index) => span(text <-- laminarHelper(fullInfo).plaintextStringSignal(state.elements(index))), "")
     }
-    AtomarLineRendering.basicLine(reorder, dom)
+    AtomarLineRendering.basicLine(fullInfo, reorder, dom)
   }
 
   private def renderReorder[T](state: Var[ReorderInteractionState[T]], disabled: Var[Boolean], wrong: Signal[Set[Int]],

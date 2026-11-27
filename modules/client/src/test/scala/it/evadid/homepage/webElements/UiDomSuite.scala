@@ -1,8 +1,9 @@
 package it.evadid.homepage.webElements
 
+import it.evadid.workbook.session.{AllWorkbookInfo, WorkbookConfig}
 import com.raquo.laminar.api.L.*
 import it.evadid.core.datastructures.language.{AppLanguage, LanguageMapContentId}
-import it.evadid.homepage.control.model.{AllWorkbookInfo, WorkbookConfig}
+
 import it.evadid.homepage.control.singletons.HtmlFullWorkbookApp
 import it.evadid.homepage.webElements.editor.code.EditorDomSuite
 import it.evadid.workbook.abstractions.WorkbookElement

@@ -5,8 +5,7 @@ import com.raquo.laminar.nodes.ReactiveHtmlElement
 import it.evadid.core.datastructures.file.{CopyrightInfo, LoadedFile}
 import it.evadid.core.datastructures.language.{LanguageMap, LanguageMapContentId}
 import it.evadid.core.datastructures.language.AppLanguage.HumanLanguage
-import it.evadid.homepage.control.singletons.HtmlFullWorkbookApp
-import it.evadid.homepage.control.singletons.HtmlFullWorkbookApp.fullInfo
+import it.evadid.homepage.control.model.FullInfo
 import it.evadid.util.logging.Logger
 import it.evadid.workbook.abstractions.TypeOfTextDisplay
 import it.evadid.workbook.abstractions.TypeOfTextDisplay.{PLAINTEXT, PLAINTEXT_UNDERSCORE_REPLACABLE}
@@ -15,7 +14,8 @@ import org.scalajs.dom.{File, HTMLInputElement, MouseEvent, html}
 
 import scala.concurrent.ExecutionContext
 
-case class LaminarRenderHelper() {
+/** Language-map text, tooltips and small DOM helpers for one page state. */
+final case class LaminarRenderHelper(fullInfo: FullInfo) {
 
   /* Logging */
   val uiAndDomLogger: Logger = fullInfo.loggerSystemInfo.uiAndDomLogger
@@ -66,7 +66,7 @@ case class LaminarRenderHelper() {
   }
 
   def contentIdStringSignal(contentId: LanguageMapContentId, typeOfTextDisplay: TypeOfTextDisplay, additionalInfo: Seq[String] = List()): Signal[String] = {
-    val plaintext = HtmlFullWorkbookApp.fullInfo.signals.stringFromLanguageMapId(contentId)
+    val plaintext = fullInfo.signals.stringFromLanguageMapId(contentId)
     typeOfTextDisplay.match {
       case PLAINTEXT_UNDERSCORE_REPLACABLE => plaintext.map(str => replaceUnderscores(str, additionalInfo, Some(contentId)))
       case PLAINTEXT => plaintext
@@ -81,7 +81,7 @@ case class LaminarRenderHelper() {
 
   private def replaceUnderscores(plaintextUnderscoreReplaceable: String, additionalInfo: Seq[String], contentId: Option[LanguageMapContentId] = None): String = {
     val singleUnderscores = plaintextUnderscoreReplaceable.replaceAll("_+", "_")
-    val parts = singleUnderscores.split("_")
+    val parts = singleUnderscores.split("_", -1)
     val toInsert = parts.size - 1
 
     val msgStart = s"LaminarRendererHelper::replaceUnderscores('${plaintextUnderscoreReplaceable}' ($toInsert underscores), ${additionalInfo.mkString("(", ", ", ")")})"
@@ -122,12 +122,5 @@ case class LaminarRenderHelper() {
       }
     )
   }
-
-}
-
-object LaminarRenderHelper {
-
-
-  val singleton: LaminarRenderHelper = LaminarRenderHelper()
 
 }

@@ -1,6 +1,7 @@
 package it.evadid.homepage.workbook.content
 
 import it.evadid.core.datastructures.language.AppLanguage.{Java, Python, SnapLanguage}
+import it.evadid.core.datastructures.language.LanguageMapContentId
 import it.evadid.core.datastructures.vectorShapes.svg.TurtleCommand
 import it.evadid.vm.compilation.java.turtle.JavaTurtleCompiler
 import it.evadid.vm.simulation.java.JavaTurtleInterpreter
@@ -8,14 +9,47 @@ import it.evadid.workbook.elements.interactionElements.programming.programmingEx
 import it.evadid.workbook.elements.interactionElements.programming.state.{ProgrammingState, ProgrammingStateJavaStructured, ProgrammingStateSnapScalaModel}
 import munit.FunSuite
 
+import scala.scalajs.js
+
 class MonksWorkbookSpec extends FunSuite {
+  private lazy val workbook = CreateMonksWorkbook(null).createWorkbook
+
+  /** Language-map keys of the monk workbook in order of first use, read from the element constructors. */
+  private def usedKeys(value: Any): List[String] = value match {
+    case id: LanguageMapContentId => if id.languageMapId == "monksworkbook" then List(id.entryKey) else Nil
+    case values: IterableOnce[?] => values.iterator.toList.flatMap(usedKeys)
+    case product: Product => product.productIterator.toList.flatMap(usedKeys)
+    case _ => Nil
+  }
+
+  /** Keys of a monk language map in file order, lowercased like [[LanguageMapContentId]]. */
+  private def mapKeys(language: String): List[String] = {
+    val json = js.Dynamic.global.require("fs")
+      .readFileSync(s"resources/languageMaps/eva/monksworkbook/map-$language.json", "utf8").asInstanceOf[String]
+    js.Object.keys(js.JSON.parse(json).asInstanceOf[js.Object]).toList.map(_.toLowerCase)
+  }
+
+  test("each language map holds exactly the keys the workbook uses, in order of first use") {
+    val used = usedKeys(workbook).distinct
+    val universal = mapKeys("universal")
+    // File paths are language independent; every other key is translated.
+    assertEquals(universal, used.filter(universal.contains), "universal map")
+    val translated = used.filterNot(universal.contains)
+    List("de", "en", "dk").foreach { language =>
+      val keys = mapKeys(language)
+      assertEquals(keys.diff(used), Nil, s"$language: unused keys")
+      assertEquals(translated.diff(keys), Nil, s"$language: missing keys")
+      assertEquals(keys, translated, s"$language: key order")
+    }
+  }
+
   test("Monk choices, tables, slideshows and reorder tasks all expose shared graders") {
     import it.evadid.workbook.abstractions.WorkbookInteractionElement
     import it.evadid.workbook.elements.interactionElements.choice.WorkbookContentChoiceInteraction
     import it.evadid.workbook.elements.interactionElements.table.AnswerTableInteraction
     import it.evadid.workbook.elements.interactionElements.slideshow.Slideshow
     import it.evadid.workbook.elements.interactionElements.reorderExercise.ReorderInteraction.ReorderMapIdInteraction
-    val exercises = CreateMonksWorkbook(null).createWorkbook.allChildrenFullSubtree.collect {
+    val exercises = workbook.allChildrenFullSubtree.collect {
       case exercise: WorkbookContentChoiceInteraction => exercise
       case exercise: AnswerTableInteraction => exercise
       case exercise: Slideshow => exercise
@@ -24,12 +58,12 @@ class MonksWorkbookSpec extends FunSuite {
     assert(exercises.nonEmpty)
     exercises.foreach(exercise => assert(exercise.gradingElements.nonEmpty, exercise.elementId))
   }
-  test("the four assignment tasks are graded matchings and the survey is an ungraded scale with opt-in consent") {
+  test("the assignment tasks are graded matchings and the survey is an ungraded scale with opt-in consent") {
     import it.evadid.workbook.elements.interactionElements.basic.LabeledCheckboxInteraction
     import it.evadid.workbook.elements.interactionElements.matching.{LikertScaleInteraction, MatchingInteraction}
-    val elements = CreateMonksWorkbook(null).createWorkbook.allChildrenFullSubtree
+    val elements = workbook.allChildrenFullSubtree
     val matchings = elements.collect { case matching: MatchingInteraction => matching }
-    assertEquals(matchings.map(_.elementId).toSet, Set("monks-a4-match", "monks-a5-match", "monks-c1-match", "monks-c3-match"))
+    assertEquals(matchings.map(_.elementId).toSet, Set("monks-a4-match", "monks-c1-match"))
     matchings.foreach { matching =>
       assertEquals(matching.expected.map(_.size), Some(matching.left.size), matching.elementId)
       assertEquals(matching.gradingElements.size, 1, matching.elementId)
@@ -41,15 +75,21 @@ class MonksWorkbookSpec extends FunSuite {
     assertEquals(consent.map(_.defaultValue), Seq(false))
   }
 
-  private val editorIds = List("e1", "e2", "e3", "e4", "e5", "e6a", "e6b", "k2", "k4")
+  test("the workbook ends with the submission form") {
+    import it.evadid.workbook.elements.displayElements.WorkbookSubmissionElement
+    assertEquals(workbook.allChildrenFullSubtree.collect { case form: WorkbookSubmissionElement => form.elementId }, Seq("monks-submission"))
+    assertEquals(workbook.sections.last.groupElements.last.childrenOfThisElement.last, WorkbookSubmissionElement("monks-submission"))
+  }
+
+  private val editorIds = List("e1", "e3", "e4", "e5", "e6b", "k4")
   private def checked(code: String): JavaTurtleInterpreter.Execution =
-    JavaTurtleInterpreter.runVm(JavaTurtleCompiler.compile(code).fold(problem => fail(problem.message), identity))
+    JavaTurtleInterpreter.execute(JavaTurtleCompiler.compile(code).fold(problem => fail(problem.message), identity))
 
   test("all drawing tasks retain the workbook's Snap, Python and Java editor choices") {
-    val tasks = CreateMonksWorkbook(null).createWorkbook.allChildrenFullSubtree.collect {
+    val tasks = workbook.allChildrenFullSubtree.collect {
       case task: TurtleRecreateShapeInteraction => task
     }
-    assertEquals(tasks.size, editorIds.size)
+    assertEquals(tasks.map(_.elementId).toList, editorIds.map("monks-" + _))
     tasks.foreach { task =>
       assertEquals(task.exerciseConfig.allowedEditorLanguages, Seq(SnapLanguage, Python, Java), task.elementId)
       assert(task.desiredResult.renderLines.nonEmpty, task.elementId)
@@ -93,11 +133,17 @@ class MonksWorkbookSpec extends FunSuite {
     }
   }
 
-  test("the deliberately missing base case terminates at the Java execution limit") {
-    val code = CreateMonksWorkbook.EditorCode("e6a")
-    assertEquals(checked(code).status, JavaTurtleInterpreter.Status.LimitExceeded)
-    val shared = ProgrammingStateJavaStructured(code).toBeExpression.turtleCommandExecutionInfo
-    assertEquals(shared.executionStatus, it.evadid.vm.simulation.turtle.TurtleExecutionStatus.LimitExceeded)
+  test("each editor shows the lead text that precedes it in the workbook as its instruction") {
+    import it.evadid.workbook.elements.displayElements.DisplayLangMapContent
+    import it.evadid.workbook.elements.structureElements.ExerciseContainer
+    val pairs = workbook.allChildrenFullSubtree.collect { case container: ExerciseContainer => container.containerContent }
+      .flatMap(content => content.zip(content.drop(1)))
+      .collect { case (lead, task: TurtleRecreateShapeInteraction) => (lead, task) }
+    assertEquals(pairs.map(_._2.elementId).toSet, editorIds.map("monks-" + _).toSet)
+    pairs.foreach {
+      case (lead: DisplayLangMapContent, task) => assertEquals(task.instructionText, Some(lead.content), task.elementId)
+      case (other, task) => fail(s"${task.elementId} follows ${other.elementId} instead of a lead text")
+    }
   }
 
   test("the stairs without the way back miss the target until the turtle returns") {
@@ -153,7 +199,7 @@ class MonksWorkbookSpec extends FunSuite {
                                 |koch(270, 2);
                                 |Turtle.turnRight(120);""".stripMargin
 
-  List("k2" -> List(kochBody), "k4" -> List(kochBody, snowflakeMain)).foreach { (id, bodies) =>
+  List("k4" -> List(kochBody, snowflakeMain)).foreach { (id, bodies) =>
     test(s"$id solved with the sample Koch method draws the target, also after switching through Snap") {
       val code = bodies.foldLeft(CreateMonksWorkbook.EditorCode(id))((source, body) => source.replaceFirst("// TODO", body))
       val execution = checked(code)

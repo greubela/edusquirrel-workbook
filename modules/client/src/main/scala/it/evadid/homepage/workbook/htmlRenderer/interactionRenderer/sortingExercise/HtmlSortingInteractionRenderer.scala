@@ -1,5 +1,7 @@
 package it.evadid.homepage.workbook.htmlRenderer.interactionRenderer.sortingExercise
 
+import it.evadid.homepage.control.model.FullInfo
+
 import com.raquo.laminar.api.L.*
 import it.evadid.core.datastructures.language.LanguageMapContentId
 import it.evadid.core.datastructures.state.StateHelper.InteractionVariableOnJS
@@ -12,9 +14,9 @@ object HtmlSortingInteractionRenderer extends LineBasedRenderingFactory[SortingI
 
   private val errorCountLabelId = LanguageMapContentId("basic/sortingLastErrorCount")
 
-  override protected def createRendering(interaction: SortingInteraction): AtomarLineRendering = {
+  override protected def createRendering(fullInfo: FullInfo, interaction: SortingInteraction): AtomarLineRendering = {
     val errorCountSignal =
-      interaction.interactionVariable.createInteractionSignal(fullInfo.workbookContextInformation)
+      interaction.interactionVariable.createInteractionSignal
         .combineWith(fullInfo.signals.stringFromLanguageMapId(errorCountLabelId))
         .map { case (state, template) =>
           val totalErrors = state.lastSessionErrorCount + state.sessionErrorCount
@@ -27,8 +29,8 @@ object HtmlSortingInteractionRenderer extends LineBasedRenderingFactory[SortingI
         div(
           cls := "sorting-interaction__controls",
           HtmlButtonElement.withTextLabel(
-            interaction.openButtonLabel,
-            _ => fullInfo.displayControl.setFullscreen(HtmlSortingExerciseFullscreenElement(interaction)),
+            fullInfo, interaction.openButtonLabel,
+            _ => fullInfo.displayControl.setFullscreen(HtmlSortingExerciseFullscreenElement(fullInfo, interaction)),
             HtmlButtonElement.stdConfig
           ).getDomElement(),
           span(
@@ -38,6 +40,6 @@ object HtmlSortingInteractionRenderer extends LineBasedRenderingFactory[SortingI
         )
       )
 
-    AtomarLineRendering.basicLine(interaction, dom, "sorting-interaction")
+    AtomarLineRendering.basicLine(fullInfo, interaction, dom, "sorting-interaction")
   }
 }

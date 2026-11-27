@@ -30,11 +30,7 @@ case class ExecutionClientPool(clients: Seq[ExecutionClient]) extends ExecutionC
           .map(_.fixReceived(received).throwIfContainsError)
           .recoverWith { case NonFatal(error) =>
             logger.logError(s"Execution Client $handler failed execution at ${LocalDateTime.now()}, trying next handler!\n${error.getMessage}")
-            val current = error match {
-              case serialized: SerializedException => serialized
-              case other => SerializedException(other)
-            }
-            attempt(remaining, Some(current), tried + 1)
+            attempt(remaining, Some(SerializedException(error)), tried + 1)
           }
     }
 

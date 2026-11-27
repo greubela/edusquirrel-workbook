@@ -1,5 +1,7 @@
 package it.evadid.homepage.workbook.htmlRenderer.interactionRenderer.turtleStitch
 
+import it.evadid.homepage.control.model.FullInfo
+
 import com.raquo.laminar.api.L.*
 import it.evadid.core.datastructures.language.LanguageMapContentId
 import it.evadid.homepage.workbook.htmlRenderer.HtmlRenderFactory.LineBasedRenderingFactory
@@ -8,11 +10,11 @@ import it.evadid.workbook.elements.interactionElements.programming.programmingEx
 
 object HtmlTurtleStitchExploreProjectRenderer extends LineBasedRenderingFactory[TurtleStitchExploreProjectElement] {
 
-  override protected def createRendering(workbookElement: TurtleStitchExploreProjectElement): AtomarLineRendering = {
+  override protected def createRendering(fullInfo: FullInfo, workbookElement: TurtleStitchExploreProjectElement): AtomarLineRendering = {
     val contentCard1: Seq[Element] = List(
-      HtmlTurtleStitchRendererHelper.renderProjectPreviewImage(workbookElement.projectPathRelToResources),
-      HtmlTurtleStitchRendererHelper.renderDownloadButton(LanguageMapContentId("TurtleStitch/downloadButton"), workbookElement.projectPathRelToResources)
+      HtmlTurtleStitchRendererHelper.renderProjectPreviewImage(fullInfo, workbookElement.projectPathRelToResources),
+      HtmlTurtleStitchRendererHelper.renderDownloadButton(fullInfo, LanguageMapContentId("TurtleStitch/downloadButton"), workbookElement.projectPathRelToResources)
     )
-    AtomarLineRendering.cardLine(workbookElement, List(ElementCard(LanguageMapContentId("TurtleStitch/providedProjectLabel"), contentCard1)))
+    AtomarLineRendering.cardLine(fullInfo, workbookElement, List(ElementCard(fullInfo, LanguageMapContentId("TurtleStitch/providedProjectLabel"), contentCard1)))
   }
 }

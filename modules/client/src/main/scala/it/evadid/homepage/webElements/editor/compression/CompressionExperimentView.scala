@@ -1,18 +1,20 @@
 package it.evadid.homepage.webElements.editor.compression
 
+import it.evadid.homepage.control.model.FullInfo
+
 import com.raquo.laminar.api.L.*
 import it.evadid.homepage.webElements.basic.LabelSelection
 import it.evadid.homepage.workbook.htmlRenderer.LaminarRenderHelper
 import it.evadid.workbook.model.compression.*
 
 object CompressionExperimentView {
-  def localized(key: String): Signal[String] = LaminarRenderHelper.singleton.plaintextStringSignal(s"CompressionWorkbook/$key")
-  def format(key: String, fields: (String, String)*): Signal[String] = localized(key).map(LabelSelection.fill(_, fields))
+  def localized(fullInfo: FullInfo, key: String): Signal[String] = LaminarRenderHelper(fullInfo).plaintextStringSignal(s"CompressionWorkbook/$key")
+  def format(fullInfo: FullInfo, key: String, fields: (String, String)*): Signal[String] = localized(fullInfo, key).map(LabelSelection.fill(_, fields))
 
   private val summaryKeys = Seq("photoSummary", "videoSummary", "rleSummary", "dictionarySummary", "bitsSummary", "imageSummary",
     "archiveSummary", "storageSummary", "simulationSummary")
 
-  def summary(value: Signal[CompressionExperiment]): Signal[String] = LabelSelection.formatted(value, summaryKeys, localized)(summaryMessage)
+  def summary(fullInfo: FullInfo, value: Signal[CompressionExperiment]): Signal[String] = LabelSelection.formatted(value, summaryKeys, localized(fullInfo, _))(summaryMessage)
 
   private def summaryMessage(value: CompressionExperiment): Option[(String, Seq[(String, String)])] = {
     val (key, fields) = value match {

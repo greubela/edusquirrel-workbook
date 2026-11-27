@@ -1,6 +1,5 @@
 package it.evadid.server.database
 
-import it.evadid.server.commandHandler.sql.SqlUserCommands
 import it.evadid.util.logging.Logger
 import java.sql.Connection
 import scala.concurrent.{ExecutionContext, Future}
@@ -10,10 +9,10 @@ import scala.util.Using
 final class UserAccountDatabase(openConnection: () => Connection) {
   private given ExecutionContext = ExecutionContext.global
 
-  def execute[A](logger: Logger)(operation: SqlUserCommands => A): Future[A] = Future {
+  def execute[A](logger: Logger)(operation: UserAccountRows => A): Future[A] = Future {
     SqlFailure("executing user account request", logger) {
       Using.resource(openConnection()) { connection =>
-        operation(SqlUserCommands(connection, logger))
+        operation(UserAccountRows(connection, logger))
       }
     }
   }

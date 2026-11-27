@@ -1,7 +1,7 @@
 # Database setup and connections
 
 [setup.sql](../../deployment/database/setup.sql) is the single schema source for
-MySQL 8.4: account/login-token tables, command/sync logs, relational event tables,
+MySQL 8.4: account/login-token tables, command/sync/submission logs, relational event tables,
 blob histories and the anonymous logging identity. Both history layouts can share
 one database. See [history storage](interaction-history.md) for their architecture and
 the [timestamp decision](interaction-history.md#timestamp-representation) for exact
@@ -103,10 +103,13 @@ and prompts are excluded from command logs.
 
 ## Logging and proxy addresses
 
-`ExecutionCommandFactory.storeLogIntoTable` defaults to `commandLog`; history commands
-select `syncedLog`, and `None` disables database logging. Custom log tables need the
-same writable columns as the script's log tables. Logging failure warns without
-preventing history commands from executing. Anonymous logging grants no authorization.
+`ExecutionCommandFactory.storeLogIntoTable` takes a [`CommandLog`](../../modules/core/shared/src/main/scala/it/evadid/sql/CommandLog.scala),
+whose case fixes the written columns. `Audit` tables (default `commandLog`; history commands
+select `syncedLog`) store the privacy-filtered command; custom audit tables need the same
+writable columns. `SessionSubmission` (`submissionLog`) stores `timestamp`, `ipAddress`,
+`userid` and the submitted `SessionData` without credentials as `sessionDataSerialized` JSON.
+`None` disables database logging. Logging failure warns without preventing commands from
+executing. Anonymous logging grants no authorization.
 
 Both `origin` and `ipAddress` use Play's resolved connection address. In the supplied
 Compose deployment, Caddy is the public entry point and the backend port is not
@@ -124,7 +127,8 @@ IPv4/IPv6 forwarding and spoof rejection.
 
 Parsing errors identify the request/history entity and include a bounded, privacy-filtered
 preview and parser reason. Command pools report attempted handlers and their last failure.
-`SqlFailure` supplies an operation, SQLState explanation and vendor error code. Original
+Server SQL runs through `SqlStatements`, which binds typed values, closes every statement and
+result set, and wraps failures in `SqlFailure`: an operation, SQLState explanation and vendor error code. Original
 JDBC errors stay in server logs; their cause chains are omitted from browser responses
 because they can contain bound values or credentials. Unsupported formats and incompatible
 schemas fail explicitly, without fallback readers or automatic repair.

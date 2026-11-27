@@ -2,10 +2,12 @@ package it.evadid.homepage.webElements.editor.code.JavaEditor
 
 import it.evadid.vm.editing.JavaMethodEditing
 import it.evadid.homepage.webElements.editor.code.fragment.{FragmentCodeEditor, FragmentRange}
+import it.evadid.homepage.webElements.editor.code.fragment.FragmentCodeEditor.Scope
 import com.raquo.laminar.api.L.*
 import it.evadid.homepage.webElements.editor.code.codemirror.CodeMirrorEditor
 import it.evadid.homepage.webElements.editor.config.CodeMirrorEditorConfig
-import it.evadid.vm.parsing.source.JavaFunctionStructured
+import it.evadid.vm.parsing.source.{JavaFunctionStructured, SourceParsing}
+import it.evadid.vm.parsing.source.SourceParsing.SourceLanguage
 import it.evadid.util.logging.Logger
 import it.evadid.vm.naming.BeEntityName
 import it.evadid.workbook.elements.interactionElements.programming.state.ProgrammingStateJavaStructured
@@ -29,6 +31,15 @@ final class JavaFunctionEditor(
     source.definedClasses.get(range.owner)
       .flatMap(text => findEditedMethod(text, discover(text), previous.method, MethodRange(range.start, range.end)))
       .map(Function(range.owner, _))
+
+  /** The complete outermost methods within the draft; code a declaration does not end yet (such as a word before a
+    * method's modifiers) belongs to the method after it.
+    */
+  override protected def widening(source: ProgrammingStateJavaStructured, range: FragmentRange): Option[Scope] = {
+    val inside = source.definedClasses.get(range.owner).toVector.flatMap(text =>
+      SourceParsing.parse(text, SourceLanguage.Java).structured.functions.filter(method => range.start <= method.span.start && method.span.end <= range.end))
+    memberWidening(source, range, inside.filterNot(method => inside.exists(outer => outer != method && outer.span.contains(method.span))).map(_.span))
+  }
   override protected def cssClass: String = "java-function-editor__method"
 }
 

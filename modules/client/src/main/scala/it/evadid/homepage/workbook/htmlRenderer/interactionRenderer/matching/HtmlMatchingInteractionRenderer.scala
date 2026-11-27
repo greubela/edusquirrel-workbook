@@ -1,5 +1,7 @@
 package it.evadid.homepage.workbook.htmlRenderer.interactionRenderer.matching
 
+import it.evadid.homepage.control.model.FullInfo
+
 import com.raquo.airstream.ownership.Subscription
 import com.raquo.laminar.api.L.*
 import it.evadid.core.datastructures.language.LanguageMapContentId
@@ -65,7 +67,7 @@ object HtmlMatchingInteractionRenderer extends LineBasedRenderingFactory[Matchin
     Point(event.clientX - origin.left, event.clientY - origin.top)
   }
 
-  override protected def createRendering(e: MatchingInteraction): AtomarLineRendering = {
+  override protected def createRendering(fullInfo: FullInfo, e: MatchingInteraction): AtomarLineRendering = {
     val state = e.interactionVariable.createBoundStateWithUpdateImportance(UpdateImportance.MAJOR, fullInfo.workbookContextInformation).toAirstreamVar
     val locked = e.isDisabledState.toAirstreamVar
     val selected = Var(Option.empty[End])
@@ -74,7 +76,7 @@ object HtmlMatchingInteractionRenderer extends LineBasedRenderingFactory[Matchin
     val board = Var(Option.empty[dom.html.Element])
     val layoutTick = Var(0)
     // Statements that a failed check found wrongly connected are marked until the answer changes.
-    val wrong = fullInfo.signals.reportersFor(e).grading.checks.map(_.wrongParts).distinct
+    val wrong = fullInfo.reporters.reportersFor(e).grading.checks.map(_.wrongParts).distinct
 
     def connectionOf(leftIndex: Int): Signal[Option[Int]] =
       state.signal.map(_.selectedRightIndex(leftIndex, e.left.size, e.right.size)).distinct
@@ -150,20 +152,20 @@ object HtmlMatchingInteractionRenderer extends LineBasedRenderingFactory[Matchin
         button(typ := "button", cls := "matching-remove",
           visibility <-- connectionOf(index).map(connection => if connection.isEmpty then "hidden" else "visible"),
           disabled <-- locked.signal.combineWith(connectionOf(index)).map((isLocked, connection) => isLocked || connection.isEmpty),
-          aria.label <-- laminarHelper.plaintextStringSignal(basicLabel("matchingRemove")),
-          title <-- laminarHelper.plaintextStringSignal(basicLabel("matchingRemove")),
+          aria.label <-- laminarHelper(fullInfo).plaintextStringSignal(basicLabel("matchingRemove")),
+          title <-- laminarHelper(fullInfo).plaintextStringSignal(basicLabel("matchingRemove")),
           onClick --> (_ => connect(index, None)),
           "×"),
         button(typ := "button", cls := "matching-item matching-item--left",
           itemControls(End(Side.Left, index)),
           cls("matching-item--connected") <-- connectionOf(index).map(_.nonEmpty),
           cls("answer-part--wrong") <-- wrong.map(_.contains(index)),
-          InlineMarkdown.element(laminarHelper.plaintextStringSignal(content)),
+          InlineMarkdown.element(laminarHelper(fullInfo).plaintextStringSignal(content)),
           // Screen readers hear the current connection; sighted users see the line.
           child.maybe <-- connectionOf(index).map(_.map { rightIndex =>
             span(cls := "matching-sr-only",
-              text <-- laminarHelper.plaintextStringSignal(basicLabel("matchingConnectedTo"))
-                .combineWith(laminarHelper.plaintextStringSignal(e.right(rightIndex)))
+              text <-- laminarHelper(fullInfo).plaintextStringSignal(basicLabel("matchingConnectedTo"))
+                .combineWith(laminarHelper(fullInfo).plaintextStringSignal(e.right(rightIndex)))
                 .map((prefix, category) => s" ($prefix: $category)"))
           }),
           span(cls := "matching-dot", aria.hidden := true)))
@@ -173,7 +175,7 @@ object HtmlMatchingInteractionRenderer extends LineBasedRenderingFactory[Matchin
       button(typ := "button", cls := "matching-item matching-item--right",
         itemControls(End(Side.Right, index)),
         span(cls := "matching-dot", aria.hidden := true),
-        InlineMarkdown.element(laminarHelper.plaintextStringSignal(content)))
+        InlineMarkdown.element(laminarHelper(fullInfo).plaintextStringSignal(content)))
     }
 
     val lines = svg.svg(svg.cls := "matching-lines",
@@ -184,14 +186,14 @@ object HtmlMatchingInteractionRenderer extends LineBasedRenderingFactory[Matchin
           // Wide invisible stroke on top makes the thin line easy to hit.
           svg.path(svg.cls := "matching-line__hit", svg.d := path,
             onClick --> (_ => connect(connection.left, None)),
-            svg.titleTag(text <-- laminarHelper.plaintextStringSignal(basicLabel("matchingRemove")))))
+            svg.titleTag(text <-- laminarHelper(fullInfo).plaintextStringSignal(basicLabel("matchingRemove")))))
       }),
       child.maybe <-- pendingLine.map(_.map((from, to) =>
         svg.path(svg.cls := "matching-line__stroke matching-line__stroke--pending", svg.d := curve(from, to)))))
 
     val content = div(cls := "workbook-interaction matching-interaction",
-      e.instruction.map(id => div(cls := "matching-instruction", InlineMarkdown.element(laminarHelper.plaintextStringSignal(id)))),
-      p(cls := "matching-hint", text <-- laminarHelper.plaintextStringSignal(basicLabel("matchingHint"))),
+      e.instruction.map(id => div(cls := "matching-instruction", InlineMarkdown.element(laminarHelper(fullInfo).plaintextStringSignal(id)))),
+      p(cls := "matching-hint", text <-- laminarHelper(fullInfo).plaintextStringSignal(basicLabel("matchingHint"))),
       div(cls := "matching-board",
         cls("matching-board--dragging") <-- drag.signal.map(_.exists(_.drawing)),
         onMountCallback { context =>
@@ -243,6 +245,6 @@ object HtmlMatchingInteractionRenderer extends LineBasedRenderingFactory[Matchin
         div(cls := "matching-gap", aria.hidden := true),
         div(cls := "matching-column matching-column--right", rightItems),
         lines))
-    AtomarLineRendering.basicLine(e, content)
+    AtomarLineRendering.basicLine(fullInfo, e, content)
   }
 }

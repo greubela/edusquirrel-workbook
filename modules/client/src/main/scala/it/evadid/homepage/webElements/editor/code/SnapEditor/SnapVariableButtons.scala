@@ -11,16 +11,16 @@ private[SnapEditor] object SnapVariableButtons:
     val sprite = ide.currentSprite.asInstanceOf[js.Dynamic]
     val deletable = sprite.applyDynamic("deletableVariableNames")()
     val deletableCount =
-      if js.isUndefined(deletable) || deletable == null then 0
+      if SnapJs.isAbsent(deletable) then 0
       else deletable.asInstanceOf[js.Array[js.Any]].length
 
     val namesDyn = sprite.applyDynamic("allGlobalVariableNames")(true)
     val names =
-      if js.isUndefined(namesDyn) || namesDyn == null then js.Array[String]()
+      if SnapJs.isAbsent(namesDyn) then js.Array[String]()
       else namesDyn.asInstanceOf[js.Array[String]]
     val blocks = names.toList.flatMap { name =>
       val blockDyn = sprite.applyDynamic("variableBlock")(name)
-      Option.when(!js.isUndefined(blockDyn) && blockDyn != null) {
+      Option.when(!SnapJs.isAbsent(blockDyn)) {
         val block = blockDyn.asInstanceOf[BlockMorph]
         block.isDraggable = false
         block.isTemplate = true
@@ -42,7 +42,7 @@ private[SnapEditor] object SnapVariableButtons:
         sprite.applyDynamic("addVariable")(varName, true)
         sprite.applyDynamic("toggleVariableWatcher")(varName, true)
         val ide = sprite.applyDynamic("parentThatIsA")(IDE_Morph)
-        if !js.isUndefined(ide) && ide != null then
+        if !SnapJs.isAbsent(ide) then
           ide.applyDynamic("flushBlocksCache")("variables")
           ide.applyDynamic("refreshPalette")()
         sprite.applyDynamic("recordUserEdit")("palette", "variable", "global", "new", varName)
@@ -89,7 +89,7 @@ private[SnapEditor] object SnapVariableButtons:
       (() => {
         val menu = Snap.menu(onPick, sprite).createLoadedInstance().asInstanceOf[js.Dynamic]
         val names = sprite.applyDynamic("deletableVariableNames")()
-        if !js.isUndefined(names) && names != null then
+        if !SnapJs.isAbsent(names) then
           names.asInstanceOf[js.Array[String]].foreach { name =>
             menu.applyDynamic("addItem")(name, name, null, null, null, null, null, null, true)
           }
@@ -110,7 +110,7 @@ private[SnapEditor] object SnapVariableButtons:
     val dyn = ide.asInstanceOf[js.Dynamic]
     val stored = dyn.selectDynamic("__eduOriginalFlushBlocksCache")
     val original =
-      if !js.isUndefined(stored) && stored != null then stored
+      if !SnapJs.isAbsent(stored) then stored
       else
         val orig = dyn.selectDynamic("flushBlocksCache")
         dyn.updateDynamic("__eduOriginalFlushBlocksCache")(orig)

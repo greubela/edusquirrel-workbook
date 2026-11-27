@@ -7,15 +7,15 @@ import it.evadid.core.datastructures.user.User
 private[controlElements] final class LoginIdentityState(initialName: String, initialEmail: String) {
   val name: Var[String] = Var(initialName)
   val email: Var[String] = Var(initialEmail)
-  private var emailEntered = initialEmail.trim.nonEmpty
+  private val emailEntered: Var[Boolean] = Var(initialEmail.trim.nonEmpty)
 
   def changeName(value: String): Unit = {
     name.set(value)
-    if (!emailEntered) email.set(User.deriveHuMail(value).getOrElse(""))
+    if (!emailEntered.now()) email.set(User.deriveHuMail(value).getOrElse(""))
   }
 
   def changeEmail(value: String): Unit = {
-    emailEntered = value.trim.nonEmpty
+    emailEntered.set(value.trim.nonEmpty)
     email.set(value)
   }
 }

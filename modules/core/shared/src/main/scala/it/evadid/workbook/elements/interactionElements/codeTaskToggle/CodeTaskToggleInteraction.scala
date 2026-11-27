@@ -44,8 +44,6 @@ object CodeTaskToggleInteraction {
 
     override def idsRequiredForDeserialization(element: WorkbookElementSerializable): Set[String] = Set(element.getElementAs[WorkbookElementReference]("reorder").referencedId)
 
-    override def serializedElementContainsOtherSerializations(element: WorkbookElementSerializable) = Seq.empty
-
     override def toSerializableElement(e: CodeTaskToggleInteraction) = {
       WorkbookElementSerializable(
         e.elementId,

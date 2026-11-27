@@ -105,9 +105,11 @@ test('Pyodide runs on the main thread and in a worker, with independent interpre
     assert.deepEqual(python.value,{sum:5,label:'学校'});
     assert.equal(python.stdout,'Grüße\n');
     assert.equal(python.stderr,'warning\n');
-    const turtleModuleBefore = result(await page.evaluate(() => request('turtle-before','worker.runPython',{
+    const turtleBeforeReply = await page.evaluate(() => request('turtle-before','worker.runPython',{
       code:"import sys\nid(sys.modules.get('turtle'))"
-    }))).value;
+    }));
+    assert(result(turtleBeforeReply), JSON.stringify(turtleBeforeReply));
+    const turtleModuleBefore = result(turtleBeforeReply).value;
     const consoleProgram = result(await page.evaluate(() => request('console-program','worker.runPython',{
       code:'from turtle import *\nforward(100)\nprintln("hai")\n',turtleCalls:'Logged'
     })));

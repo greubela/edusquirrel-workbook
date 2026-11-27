@@ -210,6 +210,13 @@ private[evadid] object CodeMirrorRuntime {
       view.dispatch(js.Dynamic.literal(effects = lineNumbers.reconfigure(numberGutter(value)),
         annotations = Libraries.Transaction.addToHistory.of(false)))
     def focus(): Unit = view.focus()
+    def hasFocus(): Boolean = view.hasFocus
+    def cursor(): Int = view.state.selection.main.head
+    def placeCursor(offset: Int): Unit = if !destroyed then {
+      view.dispatch(js.Dynamic.literal(selection = js.Dynamic.literal(anchor = offset.max(0).min(view.state.doc.length)),
+        scrollIntoView = true))
+      view.focus()
+    }
     def destroy(): Unit = if !destroyed then {
       destroyed = true
       themeObserver.foreach(_.disconnect())

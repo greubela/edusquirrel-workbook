@@ -61,6 +61,25 @@ Compose names the project after its directory (`server`), so a backend previousl
 `deployment/server/` is replaced in place; one started elsewhere must be stopped first
 (`docker compose down` there), or ports 80/443 stay taken.
 
+## Local backend
+
+To try client and server changes together (for example workbook submissions), run the
+server directly and point the local page at it:
+
+```sh
+sbt buildServerDev
+SERVER_ALLOWED_ORIGINS=http://localhost:8000 SERVER_SECRET=local-dev SQL_HOST=... \
+  java -jar artifacts/newest/server.jar
+```
+
+Put `EDUSQUIRREL_BACKEND_URL=http://localhost:9000` into the served (git-ignored)
+`deployment/client/.env`. Keep the server's default port 9000: the pages' CSP `connect-src`
+allows `http://localhost:9000` and `http://127.0.0.1:9000`. Serve the pages from a local HTTP
+server, as browsers block public pages from reaching loopback addresses.
+`SERVER_ALLOWED_ORIGINS` lists exact page origins (comma-separated) that receive CORS
+headers; leave it unset behind Caddy, which sets them. Mail commands also need
+`MAIL_EMAIL` and `MAIL_PW` and send real mail; command logging needs the `SQL_*` database.
+
 ## Website
 
 [deploy-client.sh](../deployment/client/deploy-client.sh) assembles `_site/` with

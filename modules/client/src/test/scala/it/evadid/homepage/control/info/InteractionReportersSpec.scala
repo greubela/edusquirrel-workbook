@@ -1,5 +1,6 @@
 package it.evadid.homepage.control.info
 
+import it.evadid.workbook.session.{AllWorkbookInfo, WorkbookConfig}
 import com.raquo.laminar.api.L.*
 import com.raquo.airstream.ownership.ManualOwner
 import it.evadid.core.datastructures.language.AppLanguage.{English, German, HumanLanguage}
@@ -43,23 +44,23 @@ class InteractionReportersSpec extends EditorDomSuite {
     val other = TextInteraction("text")
     val loaded = workbook(Seq(element, other))
     val full = info(loaded)
-    val registry = full.signals.interactionReporters
+    val registry = full.reporters.all
     val initial = registry.now()
     assertEquals(initial.keySet, Set[WorkbookInteractionElement[? <: InteractionFormat]](element, other))
-    val reporter = full.signals.reportersFor(element)
+    val reporter = full.reporters.reportersFor(element)
     assert(reporter eq initial(element))
     full.homepageInfoState.update(_.copy(currentLanguage = German, displayInfo = AllDisplayInfo(true, None)))
     full.homepageInfoState.update(_.copy(workbookInfo = Some(loaded.copy(config = WorkbookConfig(None)))))
     val user = AllUserInfo.createNewUser("Student", "test@example.invalid", UserConfig(Seq.empty, true))
     full.homepageInfoState.update(_.copy(userInfo = Some(user)))
     assert(registry.now() eq initial)
-    assert(full.signals.reportersFor(element).grading eq reporter.grading)
+    assert(full.reporters.reportersFor(element).grading eq reporter.grading)
     val owner = new ManualOwner
     try {
       val sync = reporter.sync.report.observe(using owner)
       assertEquals(sync.now().status, SyncReporter.Status.Disabled)
       full.homepageInfoState.update(_.copy(userInfo = None))
-      assert(reporter.sync eq full.signals.reportersFor(element).sync)
+      assert(reporter.sync eq full.reporters.reportersFor(element).sync)
       assertEquals(sync.now().status, SyncReporter.Status.Disabled)
     } finally owner.killSubscriptions()
   }
@@ -67,7 +68,7 @@ class InteractionReportersSpec extends EditorDomSuite {
   test("simultaneous views receive the same snapshot and remounting reads current history") {
     val element = exercise("once")
     val full = info(workbook(Seq(element)))
-    val reporter = full.signals.reportersFor(element).grading
+    val reporter = full.reporters.reportersFor(element).grading
     val firstOwner = new ManualOwner
     val secondOwner = new ManualOwner
     val first = Var(Option.empty[GradingReporter.Report])
@@ -97,25 +98,25 @@ class InteractionReportersSpec extends EditorDomSuite {
     val oldWorkbook = workbook(Seq(oldElement))
     val newWorkbook = workbook(Seq(newElement))
     val full = info(oldWorkbook)
-    val oldReporter = full.signals.reportersFor(oldElement)
+    val oldReporter = full.reporters.reportersFor(oldElement)
     val owner = new ManualOwner
     try {
-      val active = full.signals.interactionReporters.flatMapSwitch(entries =>
+      val active = full.reporters.all.flatMapSwitch(entries =>
         if entries.isEmpty then Val(Option.empty[GradingReporter.Report]) else entries.values.head.grading.report.map(Some(_))).observe(using owner)
       full.homepageInfoState.update(_.copy(workbookInfo = Some(newWorkbook)))
-      assert(!(full.signals.reportersFor(newElement) eq oldReporter))
-      intercept[IllegalArgumentException](full.signals.reportersFor(oldElement))
+      assert(!(full.reporters.reportersFor(newElement) eq oldReporter))
+      intercept[IllegalArgumentException](full.reporters.reportersFor(oldElement))
       complete(oldElement, GradingStatus.Correct, 1)
       assertEquals(active.now().get.grading.correct, 0)
       complete(newElement, GradingStatus.Incorrect, 2)
       assertEquals(active.now().get.grading.status, GradingStatus.Incorrect)
       full.homepageInfoState.update(_.copy(workbookInfo = Some(oldWorkbook)))
       assertEquals(active.now().get.grading.correct, 1)
-      assert(!(full.signals.reportersFor(oldElement) eq oldReporter))
+      assert(!(full.reporters.reportersFor(oldElement) eq oldReporter))
       complete(newElement, GradingStatus.Correct, 3)
       assertEquals(active.now().get.grading.correct, 1)
       full.homepageInfoState.update(_.copy(workbookInfo = None))
-      assert(full.signals.interactionReporters.now().isEmpty)
+      assert(full.reporters.all.now().isEmpty)
       assert(active.now().isEmpty)
     } finally owner.killSubscriptions()
   }
@@ -129,19 +130,19 @@ class InteractionReportersSpec extends EditorDomSuite {
     try {
       val selected = Var(Option.empty[AllWorkbookInfo])
       selected.signal.changes.foreach(full.workbookNavigationControl.changeWorkbook)(using owner)
-      val rendered = full.signals.workbook.combineWith(full.signals.interactionReporters).map { (loaded, _) =>
-        loaded.toSeq.flatMap(_.loadedWorkbook.allContainedInteractionsById.values).map(full.signals.reportersFor)
+      val rendered = full.signals.workbook.combineWith(full.reporters.all).map { (loaded, _) =>
+        loaded.toSeq.flatMap(_.loadedWorkbook.allContainedInteractionsById.values).map(full.reporters.reportersFor)
       }.observe(using owner)
       selected.set(Some(target))
       assert(rendered.now().head.interaction eq replacement)
-      assert(full.signals.reportersFor(replacement) eq rendered.now().head)
+      assert(full.reporters.reportersFor(replacement) eq rendered.now().head)
     } finally owner.killSubscriptions()
   }
 
   test("current-answer hints are shared and late old-answer hints stay hidden") {
     val element = exercise("hints")
     val full = info(workbook(Seq(element)))
-    val reporter = full.signals.reportersFor(element).grading
+    val reporter = full.reporters.reportersFor(element).grading
     val owner = new ManualOwner
     try {
       val report = reporter.report.observe(using owner)

@@ -25,6 +25,8 @@ class PythonComponentEditorSpec extends UiDomSuite {
     super.afterAll()
   }
 
+  /** The editor below the toolbar controls Eva shows above it. */
+  private def view(component: PythonComponentEditor) = div(component.toolbarControls, component.getDomElement())
   private lazy val english = upickle.default.read[Map[String,String]](js.Dynamic.global.selectDynamic("require")("fs")
     .readFileSync("resources/languageMaps/eva/blockeditor/map-en.json", "utf8").asInstanceOf[String]).map((key,value) => key.toLowerCase -> value)
   private lazy val labels = EvaEditorLabels.fromContent(id => Val(english.getOrElse(id.entryKey, id.fullId)))
@@ -32,7 +34,7 @@ class PythonComponentEditorSpec extends UiDomSuite {
   test("Python opens main, retains unfinished method edits, and full mode keeps the classes") {
     val state = Var(ProgrammingStatePythonStructured("def helper():\n    return 2\ndef main():\n    forward(10)\nmain()\nclass Box:\n    pass\n"))
     val component = PythonComponentEditor(state, EvaTestContext(labels), CodeMirrorEditorConfig.Default)
-    mountedAsync(component.getDomElement()) { root =>
+    mountedAsync(view(component)) { root =>
       def field = one(root, "textarea.code-mirror-editor__fallback")
       assert(valueOf(field).startsWith("def main():"))
       typeInto(field, "def main():\n    forward(")
@@ -44,11 +46,31 @@ class PythonComponentEditorSpec extends UiDomSuite {
       }
     }
   }
+  test("code typed next to a function opens its module or class; code next to a class the full program") {
+    val state = Var(ProgrammingStatePythonStructured("def main():\n    forward(10)\nmain()\nclass Box:\n    def f(self):\n        return 1\n"))
+    mountedAsync(view(PythonComponentEditor(state, EvaTestContext(labels), CodeMirrorEditorConfig.Default))) { root =>
+      def field = one(root, "textarea.code-mirror-editor__fallback")
+      def selected(mode: String) = buttonNamed(root, mode).getAttribute("aria-selected") == "true"
+      typeInto(field, "def main():\n    forward(10)\n\ndef helper():\n    return 2")
+      eventually(selected("Class Mode"), "Class Mode shows the module").flatMap { _ =>
+        assert(valueOf(field).contains("def helper():") && valueOf(field).contains("main()"), valueOf(field))
+        click(withText(root, ".uml-entry", "+f()").head)
+        typeInto(field, "def f(self):\n    return 1\n\nsize = 3")
+        eventually(selected("Class Mode"), "Class Mode shows the method and the attribute")
+      }.flatMap { _ =>
+        assert(state.now().definedClasses(BeEntityName.fromCodeString("Box")).contains("    size = 3"))
+        assert(valueOf(field).startsWith("class Box:"), valueOf(field))
+        typeInto(field, valueOf(field) + "\nclass Crate:\n    pass\n")
+        eventually(selected("Full Mode"), "Full Mode shows both classes")
+      }.map(_ => assert(valueOf(field).contains("class Crate:"), valueOf(field)))
+    }
+  }
+
   test("the modules a program uses are read-only boxes; implied members and unknown modules are marked") {
     val state = Var(ProgrammingStatePythonStructured("import turtle\nturtle.forward(10)\nturtle.spin(2)\nfoo.bar(3)\n"))
     val component = PythonComponentEditor(state, EvaTestContext(labels), CodeMirrorEditorConfig.Default,
       analyzer = it.evadid.homepage.webElements.editor.code.worker.LocalWorker.analyzer())
-    mountedAsync(component.getDomElement()) { root =>
+    mountedAsync(view(component)) { root =>
       def box(name: String) = all(root, ".uml-class").find(_.getAttribute("data-uml-class") == name)
       eventually(box("foo").nonEmpty, "the analysis adds the modules the program uses").map { _ =>
         assertEquals(all(root, ".uml-class").map(_.getAttribute("data-uml-class")), List("__main__", "turtle", "foo"))
@@ -66,7 +88,7 @@ class PythonComponentEditorSpec extends UiDomSuite {
 
   test("member dialogs validate names, add static functions and generate constructor assignments") {
     val state = Var(ProgrammingStatePythonStructured("print(1)"))
-    mountedAsync(PythonComponentEditor(state, EvaTestContext(labels), CodeMirrorEditorConfig.Default).getDomElement()) { root =>
+    mountedAsync(view(PythonComponentEditor(state, EvaTestContext(labels), CodeMirrorEditorConfig.Default))) { root =>
       def dialog = one(root, "dialog")
       def field(caption: String) = withText(dialog, "label", caption).map(one(_, "input")).head
       def box = all(root, ".uml-class").find(_.querySelector(".uml-class__header").textContent == "Box").get

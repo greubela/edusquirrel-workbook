@@ -9,7 +9,7 @@ import it.evadid.core.util.io.serializer.ConstructorLikeSerializer.VariableDispl
 import it.evadid.distribution.command.SerializedException
 import it.evadid.workbook.abstractions.WorkbookElement
 import it.evadid.workbook.elements.displayElements.WorkbookImageElement.LanguageMapBasedWorkbookImageElement
-import it.evadid.workbook.elements.displayElements.{CollapsibleInstructionElement, DisplayLangMapContent, LabeledWorkbookElement, TwoColumnPanel, WorkbookImageElement}
+import it.evadid.workbook.elements.displayElements.{CollapsibleInstructionElement, DisplayLangMapContent, LabeledWorkbookElement, TwoColumnPanel, WorkbookImageElement, WorkbookSubmissionElement}
 import it.evadid.workbook.elements.interactionElements.qr.CreateQrCodeInteraction
 import it.evadid.workbook.elements.interactionElements.basic.{LabeledCheckboxInteraction, LabeledNumberInteraction, MessagingInteraction, TextInteraction}
 import it.evadid.workbook.elements.interactionElements.codeTaskToggle.{CodeTaskToggleInteraction, SketchDownloadInteraction}
@@ -121,25 +121,6 @@ object WorkbookElementFactory {
     override def addElementsToSerialization(element: T): Map[String, ujson.Value] = Map()
   }
 
-  def unsupportedFactory[T <: WorkbookElement](elementName: String): WorkbookElementFactory[T] = new WorkbookElementFactory[T] {
-    private def unsupported(operation: String): Nothing =
-      throw new UnsupportedOperationException(s"$elementName does not support workbook $operation")
-
-    override def idsRequiredForDeserialization(element: WorkbookElementSerializable): Set[String] = Set.empty
-
-    override def serializedElementKeysThatContainOtherSerializations(element: WorkbookElementSerializable): Set[String] = Set()
-
-    override def fromSerializedElement(element: WorkbookElementSerializable, parsedElements: Map[String, WorkbookElement]): T = unsupported("deserialization")
-
-    override def toSerializableElement(element: T): WorkbookElementSerializable = unsupported("serialization")
-
-    override lazy val elementMapAndOrderForConstructorLike: Map[Int, Seq[VariableDisplayConfig]] = ???
-    override lazy val writerJsonRegularRefBased: default.Writer[T] = ???
-
-    override def addElementsToSerialization(element: T): Map[String, ujson.Value] = Map()
-  }
-
-
   private lazy val knownFactoriesMap: Map[String, WorkbookElementFactory[? <: WorkbookElement]] = Map(
     classOf[TwoColumnPanel].getSimpleName -> TwoColumnPanel.factory,
     classOf[ExerciseGroup].getSimpleName -> ExerciseGroup.factory,
@@ -162,6 +143,7 @@ object WorkbookElementFactory {
     classOf[LabeledWorkbookElement[?]].getSimpleName -> LabeledWorkbookElement.factory,
     classOf[CollapsibleInstructionElement].getSimpleName -> CollapsibleInstructionElement.factory,
     classOf[DisplayLangMapContent].getSimpleName -> DisplayLangMapContent.factory,
+    classOf[WorkbookSubmissionElement].getSimpleName -> WorkbookSubmissionElement.factory,
     classOf[TextInteraction].getSimpleName -> TextInteraction.factory,
     classOf[MessagingInteraction].getSimpleName -> MessagingInteraction.factory,
     classOf[LabeledCheckboxInteraction].getSimpleName -> LabeledCheckboxInteraction.factory,
@@ -277,10 +259,6 @@ trait WorkbookElementFactory[T <: WorkbookElement] {
     res.copy(allConstructorFields = res.allConstructorFields ++ addElementsToSerialization(element))
   }
 
-  def toStringRefBasedJson(element: T): String = {
-    write(toSerializableElement(element))(using WorkbookElementSerializable.regularSerializer)
-  }
-
   def toStringConstructorLike(element: T): String = {
     val serialized = toSerializableElement(element)
     ConstructorLikeSerializer.serializeFields(
@@ -291,8 +269,6 @@ trait WorkbookElementFactory[T <: WorkbookElement] {
   }
 
   def idsRequiredForDeserialization(element: WorkbookElementSerializable): Set[String]
-
-  def serializedElementContainsOtherSerializations(element: WorkbookElementSerializable): Seq[WorkbookElementSerializable] = Seq.empty
 
   def serializedElementKeysThatContainOtherSerializations(element: WorkbookElementSerializable): Set[String] = Set.empty
 

@@ -54,11 +54,9 @@
     outline-offset: -2px;
 }
 
+/* One line of segmented groups: languages, then the selected editor's modes and diagram display. */
 .eva-editor__toolbar {
     grid-column: 1 / -1;
-}
-
-.eva-editor__tabs {
     display: flex;
     flex-wrap: wrap;
     align-items: center;
@@ -67,7 +65,33 @@
     padding-right: calc(var(--space-2xl) + var(--space-lg));
 }
 
-.eva-editor .eva-editor__tabs > button {
+.eva-editor__controls { display: contents; }
+
+/* Each group stays one row; on narrow screens it scrolls instead of stacking its buttons. */
+.eva-editor__segments {
+    display: flex;
+    flex-wrap: nowrap;
+    align-items: center;
+    gap: var(--space-sm);
+    max-width: 100%;
+    overflow-x: auto;
+    scrollbar-width: none;
+}
+
+.eva-editor__segments button {
+    flex: 0 0 auto;
+    white-space: nowrap;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--space-xs);
+    cursor: pointer;
+}
+
+.eva-editor__action-icon { flex: 0 0 auto; width: 16px; height: 16px; }
+.eva-editor__download { display: contents; }
+
+.eva-editor .eva-editor__segments button {
     border-radius: var(--radius-sm);
     border: 1px solid var(--color-border-soft);
     background: var(--color-surface-base);
@@ -75,24 +99,24 @@
     line-height: 1.4;
 }
 
-.eva-editor .eva-editor__tabs > button:hover:not([aria-disabled="true"]) {
+.eva-editor .eva-editor__segments button:hover:not([aria-disabled="true"], :disabled) {
     background: var(--color-background-colored);
     border-color: var(--color-accent-active);
 }
 
-.eva-editor .eva-editor__tabs > button[aria-selected="true"] {
+.eva-editor .eva-editor__segments button:is([aria-selected="true"], [aria-pressed="true"]) {
     background: var(--color-background-colored);
     border-color: var(--color-accent-strong);
     color: var(--color-accent-strong);
     font-weight: 700;
 }
 
-.eva-editor .eva-editor__tabs > button:focus-visible {
+.eva-editor .eva-editor__segments button:focus-visible {
     outline: 2px solid var(--color-focus);
     outline-offset: var(--space-xs);
 }
 
-.eva-editor .eva-editor__tabs > button[aria-disabled="true"] {
+.eva-editor .eva-editor__segments button:is([aria-disabled="true"], :disabled) {
     color: var(--color-text-muted-light);
     cursor: not-allowed;
 }
@@ -178,8 +202,8 @@
     box-sizing: border-box;
     width: 100%;
     min-height: 12rem;
-    font-family: var(--code-font-family, var(--color-code-font));
-    font-size: var(--code-font-size, var(--color-code-size));
+    font-family: var(--code-font-family, var(--font-code-family));
+    font-size: var(--code-font-size, var(--font-code-size));
     line-height: 1.5;
 }
 
@@ -256,13 +280,13 @@
     text-decoration-color: rgba(var(--edusquirrel-diag-soft), 0.86);
 }
 .edusquirrel-code-mirror .cm-scroller {
-    font-family: var(--code-font-family, var(--font-mono, 'Fira Code', 'JetBrains Mono', monospace));
+    font-family: var(--code-font-family, var(--font-code-family));
     font-size: var(--code-font-size, 14px);
     line-height: 1.5;
 }
 .edusquirrel-code-mirror .cm-indent-markers {
-    --indent-marker-bg-color: var(--cm-indent-color,        rgba(255,255,255,0.10));
-    --indent-marker-active-bg-color: var(--cm-indent-active-color, rgba(255,255,255,0.28));
+    --indent-marker-bg-color: var(--cm-indent-color, var(--color-code-indent));
+    --indent-marker-active-bg-color: var(--cm-indent-active-color, var(--color-code-indent-active));
 }
 .edusquirrel-code-mirror .cm-todo-token {
     color: var(--color-accent-error) !important;
@@ -317,7 +341,7 @@
 }
 
 .cm-flowchart-gutter { background-color: transparent; }
-.cm-flowchart-gutter .cm-activeLineGutter { background-color: rgba(255,255,255,0.10); }
+.cm-flowchart-gutter .cm-activeLineGutter { background-color: var(--color-code-indent); }
 .cm-flowchart-gutter .cm-gutterElement { padding: 0; overflow: hidden; }
 .cm-flowchart-row { position: relative; height: 100%; min-height: 1px; }
 .cm-flowchart-row > svg { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
@@ -328,5 +352,6 @@
 .eva-editor__workspace > .eva-editor__content { flex: 1; min-height: 0; }
 .programming-execution { flex: 0 0 auto; max-height: 30%; overflow: auto; padding: var(--space-sm); border-top: var(--space-borders) solid var(--editor-border); }
 .programming-execution pre { margin: var(--space-sm) 0; white-space: pre-wrap; overflow-wrap: anywhere; }
-.programming-execution__actions { display: flex; gap: var(--space-sm); }
+.programming-execution__actions { width: fit-content; }
+.programming-execution__run:not(:disabled) .eva-editor__action-icon { color: var(--editor-accent); fill: currentColor; }
 .programming-execution__errors { color: var(--color-accent-error); }

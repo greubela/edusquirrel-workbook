@@ -24,8 +24,6 @@ object GptInteractionElement {
 
     override def idsRequiredForDeserialization(element: WorkbookElementSerializable) = Set(element.getElementAs[WorkbookElementReference]("underlyingTextInteraction").referencedId)
 
-    override def serializedElementContainsOtherSerializations(element: WorkbookElementSerializable) = Seq.empty
-
     override def toSerializableElement(e: GptInteractionElement) = {
       WorkbookElementSerializable(
         e.elementId,

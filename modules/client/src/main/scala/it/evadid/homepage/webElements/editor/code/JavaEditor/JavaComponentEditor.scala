@@ -10,10 +10,11 @@ import it.evadid.vm.analysis.SourceWarning
 import com.raquo.laminar.nodes.ReactiveSvgElement
 import it.evadid.core.datastructures.language.AppLanguage.Java
 import it.evadid.homepage.webElements.HtmlAppElement
-import it.evadid.homepage.webElements.basic.MediaQuery
 import it.evadid.homepage.webElements.editor.code.JavaEditor.JavaEditorLabels.Key
 import it.evadid.homepage.webElements.editor.code.EditorAppearance
-import it.evadid.homepage.webElements.editor.code.EvaEditor.{EvaEditorContext, EvaEditorTab}
+import it.evadid.homepage.webElements.editor.code.fragment.FragmentCodeEditor
+import it.evadid.homepage.webElements.editor.code.fragment.FragmentCodeEditor.Scope
+import it.evadid.homepage.webElements.editor.code.EvaEditor.{EvaEditorContext, EvaEditorTab, EvaToolbarControls}
 import it.evadid.homepage.webElements.editor.code.EvaEditor.uml.UmlStructureSelector
 import it.evadid.core.datastructures.uml.*
 import it.evadid.homepage.webElements.editor.code.codemirror.CodeMirrorEditor
@@ -29,7 +30,8 @@ import java.util.UUID
 
 /** Edits a structured Java answer: its classes as a UML diagram on top and, below, the selection in a
   * [[JavaFunctionEditor]] (a function) or a [[JavaClassEditor]] (a class or one of its attributes), or the
-  * full source. Both editors and the diagram observe the same answer Var.
+  * full source. Both editors and the diagram observe the same answer Var. Its modes and the diagram's display are
+  * Eva toolbar controls.
   */
 final class JavaComponentEditor(
     logger: Logger,
@@ -42,7 +44,7 @@ final class JavaComponentEditor(
     diagnostics: Signal[Seq[CodeMirrorEditor.Diagnostic]] = Val(Nil),
     environment: ProgrammingEnvironment = ProgrammingEnvironment.all,
     analyzer: ProgramAnalyzer = ProgramAnalyzer.shared
-) extends HtmlAppElement {
+) extends HtmlAppElement with EvaToolbarControls {
   import JavaComponentEditor.*
   import JavaEditorNavigation.{Mode, isFunction}
 
@@ -90,13 +92,14 @@ final class JavaComponentEditor(
   private val functionEditor = JavaFunctionEditor(logger, state, loadingLabel, editorConfig, marks)
   private val classEditor = JavaClassEditor(logger, state, loadingLabel, editorConfig, marks)
   private val source = state.bimap(_.toString)(ProgrammingStateJavaStructured(_)).distinct
+  /** Where the full source continues after a draft widened into it. */
+  private val sourceCaret = Var(Option.empty[Int])
   private lazy val sourceEditor = CodeMirrorEditor(logger, source, language = Java, config = Var(editorConfig),
-    diagnostics = marks, loadingLabel = loadingLabel,
+    diagnostics = marks, loadingLabel = loadingLabel, caret = sourceCaret,
     sameSource = (left, right) => left == right || ProgrammingStateJavaStructured(left) == ProgrammingStateJavaStructured(right))
 
-  private val structureOpen = Var(true)
+  private val structure = EvaToolbarControls.DiagramDisplay()
   /** On a small screen the diagram covers the editor; it then closes when an entry is chosen. */
-  private val compactLayout = MediaQuery.matches("(max-width: 760px), (max-height: 600px)")
   private val presentation = appearance.getOrElse(new EditorAppearance)
 
   private val panel: Signal[Panel] =
@@ -128,17 +131,13 @@ final class JavaComponentEditor(
     }
   }
 
-  private def renderToolbar(navigationId: String): Element =
-    div(cls := "java-function-editor__topbar",
-      div(h2(cls := "java-function-editor__title", child.text <-- labels(Key.javaTitle)),
-        p(cls := "java-function-editor__subtitle", child.text <-- labels(Key.javaSubtitle))),
-      div(cls := "java-function-editor__topbar-actions",
-        button(typ := "button", cls := "java-function-editor__button java-function-editor__button--secondary",
-          aria.controls := navigationId, aria.expanded <-- structureOpen.signal,
-          child.text <-- labels.select(structureOpen.signal)(open => if open then Key.javaHideClasses else Key.javaShowClasses),
-          onClick --> (_ => structureOpen.update(!_))),
-        span(cls := "java-function-editor__sync", role := "status", aria.live := "polite",
-          child.text <-- labels.select(panel)(_.status))))
+  /** Shows a draft that outgrew the editor of `mode` in the next wider mode, continuing at the same place. */
+  private def widen(from: FragmentCodeEditor[ProgrammingStateJavaStructured, ?], mode: Mode, scope: Scope): Unit = {
+    // The next editor receives the cursor before the switch mounts it.
+    from.printedCursor.foreach(offset => if mode == Mode.Function && scope == Scope.Owner then classEditor.placeCursor(offset)
+      else sourceCaret.set(Some(offset)))
+    navigation.widen(mode, scope)
+  }
 
   private def renderDiagram(navigationId: String): Element =
     navTag(idAttr := navigationId, aria.label <-- labels(Key.javaNavigation), cls := "java-function-editor__diagram-section",
@@ -162,7 +161,8 @@ final class JavaComponentEditor(
         div(h3(cls := "java-function-editor__section-title",
             child.text <-- panel.combineWith(navigation.selection, labels.all).map(heading)),
           p(cls := "java-function-editor__section-hint", child.text <-- labels(Key.javaEditsKept))),
-      ),
+        span(cls := "java-function-editor__sync eva-editor__sr-only", role := "status", aria.live := "polite",
+          child.text <-- labels.select(panel)(_.status))),
       div(cls := "java-function-editor__editor-panel",
         child <-- panel.map {
           case Panel.Source => div(cls := "java-function-editor__source", sourceEditor.getDomElement())
@@ -176,39 +176,44 @@ final class JavaComponentEditor(
             else "java-function-editor__draft-warning"),
           child.text <-- labels(Key.javaDraftWarning))))
 
-  private def modeTabs: Element = div(cls := "java-component-editor__modes", role := "tablist", aria.label <-- labels(Key.javaModes),
-    Mode.values.toSeq.map { choice => button(typ := "button", role := "tab", child.text <-- labels(choice.label),
-      aria.selected <-- navigation.mode.map(_ == choice),
-      disabled <-- structureReady.map(ready => !ready && choice != Mode.Full),
-      onClick --> (_ => navigation.switchTo(choice))) })
+  private val navigationId = s"java-navigation-${UUID.randomUUID()}"
 
-  /** The editors follow the selection; the selection follows the function edited in Function Mode. */
+  /** Mode tabs, then showing or hiding the class diagram. */
+  override lazy val toolbarControls: Element = div(cls := "eva-editor__controls",
+    EvaToolbarControls.segments(labels(Key.javaModes), "tablist", Mode.values.toSeq.map { choice =>
+      button(typ := "button", role := "tab", child.text <-- labels(choice.label),
+        aria.selected <-- navigation.mode.map(_ == choice),
+        disabled <-- structureReady.map(ready => !ready && choice != Mode.Full),
+        onClick --> (_ => navigation.switchTo(choice))) }),
+    structure.toggle(labels(Key.classDiagram), labels(Key.javaShowClasses),
+      labels(Key.javaHideClasses), navigationId))
+
+  /** The editors follow the selection; the selection follows the function edited in Function Mode, and the mode
+    * widens to show a draft that holds several declarations.
+    */
   private val binders: Seq[Modifier[HtmlElement]] = Seq(
     onMountCallback(ctx => presentation.watch(ctx.owner)),
     navigation.selection --> (_.foreach(open)),
-    functionEditor.target.combineWith(state.signal) --> ((function, program) => function.foreach(navigation.follow(_, program))),
-    compactLayout --> (compact => if compact then structureOpen.set(false)),
-    navigation.selection.changes.withCurrentValueOf(compactLayout) --> ((_, compact) => if compact then structureOpen.set(false)))
+    functionEditor.targetInAnswer --> (_.foreach((function, program) => navigation.follow(function, program))),
+    functionEditor.widened.changes.collect { case Some(scope) => scope } --> (widen(functionEditor, Mode.Function, _)),
+    classEditor.widened.changes.collect { case Some(scope) => scope } --> (widen(classEditor, Mode.Class, _)),
+  ) ++ structure.binders(navigation.selection.changes)
 
-  override def getDomElement(): Element = {
-    val navigationId = s"java-navigation-${UUID.randomUUID()}"
+  override def getDomElement(): Element =
     div(
-      cls <-- structureOpen.signal.map { open =>
+      cls <-- structure.open.map { open =>
         "java-function-based-editor java-component-editor editor-appearance" +
           (if reference.isDefined then " java-function-based-editor--with-reference" else "") +
           (if open then "" else " java-function-based-editor--structure-collapsed")
       },
       dataAttr("editor-theme") <-- presentation.theme,
       binders,
-      modeTabs,
-      renderToolbar(navigationId),
       renderDiagram(navigationId),
       renderWorkspace(),
       reference.fold[Modifier[HtmlElement]](emptyMod) { renderReference =>
         asideTag(cls := "java-function-editor__reference", aria.label <-- labels(Key.javaTaskReference), renderReference())
       },
       dialog.node)
-  }
 }
 
 object JavaComponentEditor {

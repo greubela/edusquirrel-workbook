@@ -24,7 +24,7 @@ class MailEditorSpec extends UiDomSuite {
 
   test("the inbox lists its unread mails; opening one marks it read and shows sender, recipients and attachment") {
     val state = inbox
-    mounted(MailEditor(state, account = "me@school.example").getDomElement()) { root =>
+    mounted(MailEditor(pageInfo, state, account = "me@school.example").getDomElement()) { root =>
       assertEquals(items(root).map(_.querySelector(".mail-sender").textContent), List("● Bank Security", "● Anna"))
       assert(one(root, ".mail-folder-summary").textContent.contains(loadingText(s"emailSimulator/${MailFolder.Inbox}")))
       assertEquals(all(root, ".mail-count").map(_.textContent), List("2", "0", "0", "1", "0"))
@@ -50,7 +50,7 @@ class MailEditorSpec extends UiDomSuite {
 
   test("an HTML mail is rebuilt inert: scripts vanish, links only show their target, untrusted images become text") {
     val state = inbox
-    mounted(MailEditor(state).getDomElement()) { root =>
+    mounted(MailEditor(pageInfo, state).getDomElement()) { root =>
       click(items(root).head)
       val body = one(root, ".mail-body")
       assertEquals(all(body, "script").size, 0)
@@ -88,7 +88,7 @@ class MailEditorSpec extends UiDomSuite {
 
   test("moving mails between folders, marking unread and restoring them") {
     val state = inbox
-    mounted(MailEditor(state).getDomElement()) { root =>
+    mounted(MailEditor(pageInfo, state).getDomElement()) { root =>
       click(items(root).head)
       click(action(root, "delete"))
       assertEquals(mail(state, "m1").realFolder, MailFolder.Trash)
@@ -118,7 +118,7 @@ class MailEditorSpec extends UiDomSuite {
 
   test("composing validates the draft, sends locally into Sent and opens the sent mail") {
     val state = inbox
-    mounted(MailEditor(state, account = "me@school.example").getDomElement()) { root =>
+    mounted(MailEditor(pageInfo, state, account = "me@school.example").getDomElement()) { root =>
       click(action(root, "compose"))
       val compose = one(root, "form.mail-compose")
       val List(to, subject) = all(compose, "input"): @unchecked
@@ -142,7 +142,7 @@ class MailEditorSpec extends UiDomSuite {
 
   test("reply and forward prefill the draft; cancelling discards it") {
     val state = inbox
-    mounted(MailEditor(state).getDomElement()) { root =>
+    mounted(MailEditor(pageInfo, state).getDomElement()) { root =>
       click(items(root)(1))
       click(action(root, "reply"))
       val inputs = all(root, "form.mail-compose input").map(valueOf)
@@ -160,21 +160,21 @@ class MailEditorSpec extends UiDomSuite {
 
   test("a read-only mailbox offers no compose, reply or forward and unmounting forgets the draft") {
     val state = inbox
-    val editor = MailEditor(state, allowCompose = false)
+    val editor = MailEditor(pageInfo, state, allowCompose = false)
     assert(!editor.dismissOnOutsideClick)
     mounted(editor.getDomElement()) { root =>
       click(items(root).head)
       List("compose", "reply", "forward").foreach(key => assert(isDisabled(action(root, key)), key))
     }
     val composing = Var(InboxStateScaffolding(InboxState.withMails(Seq(invoice))))
-    val element = MailEditor(composing).getDomElement()
+    val element = MailEditor(pageInfo, composing).getDomElement()
     mounted(element) { root => click(action(root, "compose")); assertEquals(all(root, "form").size, 1) }
     mounted(element) { root => assertEquals(all(root, "form").size, 0, "a remounted editor starts without the old draft") }
   }
 
   test("checking the sorting reports unfinished, wrong and passed results with the score") {
     val state = inbox
-    mounted(MailEditor(state).getDomElement()) { root =>
+    mounted(MailEditor(pageInfo, state).getDomElement()) { root =>
       val check = buttonNamed(one(root, ".mail-feedback"), loadingText("emailSimulator/check"))
       def feedback = one(root, ".mail-feedback").textContent
       click(check)
@@ -184,7 +184,7 @@ class MailEditorSpec extends UiDomSuite {
       state.update(s => s.copy(inboxState = s.inboxState.moveMail("m1", MailFolder.Trash)))
       assert(feedback.contains(loadingText("emailSimulator/passed")) && feedback.contains("(2/2)"), feedback)
     }
-    mounted(MailEditor(Var(InboxStateScaffolding(InboxState.withMails(Seq(note))))).getDomElement()) { root =>
+    mounted(MailEditor(pageInfo, Var(InboxStateScaffolding(InboxState.withMails(Seq(note))))).getDomElement()) { root =>
       assert(isDisabled(buttonNamed(one(root, ".mail-feedback"), loadingText("emailSimulator/check"))), "no exercise mails, nothing to check")
     }
   }

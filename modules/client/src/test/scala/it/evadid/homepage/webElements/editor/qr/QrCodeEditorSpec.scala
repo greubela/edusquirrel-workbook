@@ -15,7 +15,7 @@ class QrCodeEditorSpec extends UiDomSuite {
 
   test("text, correction level, version and mask edits produce the saved symbol and update the requirement checklist") {
     val state = Var(QrCode.fromText("hi"))
-    val editor = QrCodeEditor(state, requirements)
+    val editor = QrCodeEditor(pageInfo, state, requirements)
     assert(!editor.dismissOnOutsideClick)
     mounted(editor.getDomElement()) { root =>
       assertEquals(passed(root).take(4), List(false, false, true, false), "too short, too weak, short enough, wrong version")
@@ -38,7 +38,7 @@ class QrCodeEditorSpec extends UiDomSuite {
 
   test("text that does not fit the chosen version is flagged and keeps the last valid symbol") {
     val state = Var(QrCode.fromText("ok"))
-    mounted(QrCodeEditor(state, QrCodeRequirements()).getDomElement()) { root =>
+    mounted(QrCodeEditor(pageInfo, state, QrCodeRequirements()).getDomElement()) { root =>
       choose(selects(root)(1), "1")
       choose(selects(root).head, "H")
       val saved = state.now()

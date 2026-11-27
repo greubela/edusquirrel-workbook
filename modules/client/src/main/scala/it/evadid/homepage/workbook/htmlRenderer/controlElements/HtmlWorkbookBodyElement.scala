@@ -1,10 +1,12 @@
 package it.evadid.homepage.workbook.htmlRenderer.controlElements
 
+import it.evadid.homepage.control.model.FullInfo
+
+import it.evadid.workbook.session.AllWorkbookInfo
 import com.raquo.laminar.api.L
 import com.raquo.laminar.api.L.*
 import com.raquo.laminar.nodes.ReactiveHtmlElement
 import it.evadid.core.datastructures.user.AllUserInfo
-import it.evadid.homepage.control.model.AllWorkbookInfo
 import it.evadid.homepage.webElements.HtmlAppElement
 import it.evadid.homepage.webElements.basic.HtmlButtonElement
 import it.evadid.homepage.webElements.basic.HtmlButtonElement.ButtonConfig
@@ -12,7 +14,7 @@ import it.evadid.homepage.workbook.htmlRenderer.HtmlRenderFactory
 import it.evadid.workbook.elements.structureElements.{Workbook, WorkbookSection}
 import org.scalajs.dom.HTMLDivElement
 
-case class HtmlWorkbookBodyElement(workbook: AllWorkbookInfo, user: AllUserInfo) extends HtmlAppElement {
+case class HtmlWorkbookBodyElement(fullInfo: FullInfo, workbook: AllWorkbookInfo, user: AllUserInfo) extends HtmlAppElement {
 
   //private val collapsed: Var[Boolean] = Var(true)
 
@@ -24,11 +26,11 @@ case class HtmlWorkbookBodyElement(workbook: AllWorkbookInfo, user: AllUserInfo)
   override def getDomElement(): L.Element = domElement
 
   private def createDomSectionContent(workbookSection: WorkbookSection): Seq[Element] =
-    workbookSection.sectionContent.map(HtmlRenderFactory.render).map(_.getDomElement())
+    workbookSection.sectionContent.map(HtmlRenderFactory.render(fullInfo, _)).map(_.getDomElement())
 
   private def sectionContainer(workbook: Workbook, currentlyActiveSection: Option[WorkbookSection]): Seq[Element] = currentlyActiveSection.match {
     case Some(s) => createDomSectionContent(s) ++ createDomSectionNavigation(workbook, s)
-    case None => List(span(text <-- laminarHelper.plaintextStringSignal("basic/noSectionSelected")))
+    case None => List(span(text <-- laminarHelper(fullInfo).plaintextStringSignal("basic/noSectionSelected")))
   }
 
   private def createDomSectionNavigation(workbook: Workbook, currentSection: WorkbookSection): Seq[Element] = {
@@ -38,8 +40,8 @@ case class HtmlWorkbookBodyElement(workbook: AllWorkbookInfo, user: AllUserInfo)
     val prevSection: Option[WorkbookSection] = if (sectionIndex > 0) Some(workbook.sections(sectionIndex - 1)) else None
     val nextSection: Option[WorkbookSection] = if (sectionIndex < workbook.sections.size - 1) Some(workbook.sections(sectionIndex + 1)) else None
 
-    val buttonPrev: HtmlButtonElement = HtmlButtonElement.withTextLabel("basic/previousSection", _ => fullInfo.workbookNavigationControl.updateWorkbookConfig(_.copy(activeSection = prevSection)), ButtonConfig(prevSection.nonEmpty, List()))
-    val buttonNext: HtmlButtonElement = HtmlButtonElement.withTextLabel("basic/nextSection", _ => fullInfo.workbookNavigationControl.updateWorkbookConfig(_.copy(activeSection = nextSection)), ButtonConfig(nextSection.nonEmpty, List()))
+    val buttonPrev: HtmlButtonElement = HtmlButtonElement.withTextLabel(fullInfo, "basic/previousSection", _ => fullInfo.workbookNavigationControl.updateWorkbookConfig(_.copy(activeSection = prevSection)), ButtonConfig(prevSection.nonEmpty, List()))
+    val buttonNext: HtmlButtonElement = HtmlButtonElement.withTextLabel(fullInfo, "basic/nextSection", _ => fullInfo.workbookNavigationControl.updateWorkbookConfig(_.copy(activeSection = nextSection)), ButtonConfig(nextSection.nonEmpty, List()))
 
     List(
       div(

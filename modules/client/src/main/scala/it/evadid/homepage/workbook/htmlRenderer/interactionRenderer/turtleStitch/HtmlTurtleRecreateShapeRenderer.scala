@@ -1,5 +1,7 @@
 package it.evadid.homepage.workbook.htmlRenderer.interactionRenderer.turtleStitch
 
+import it.evadid.homepage.control.model.FullInfo
+
 import it.evadid.workbook.interaction.sync.UpdateImportance
 
 import com.raquo.airstream.state.Var
@@ -25,42 +27,37 @@ import it.evadid.vm.conversion.dependencies.ProgrammingEnvironment
 case object HtmlTurtleRecreateShapeRenderer extends LineBasedRenderingFactory[TurtleRecreateShapeInteraction] {
 
   /** Editor side module replaying the drawing of the bound answer step by step. */
-  private[homepage] def turtleStepsCard(source: com.raquo.laminar.api.L.Signal[it.evadid.workbook.elements.interactionElements.programming.state.ProgrammingState],
+  private[homepage] def turtleStepsCard(fullInfo: FullInfo, source: com.raquo.laminar.api.L.Signal[it.evadid.workbook.elements.interactionElements.programming.state.ProgrammingState],
       environment: ProgrammingEnvironment, analyzer: ProgramAnalyzer = ProgramAnalyzer.shared,
       frame: Seq[it.evadid.core.datastructures.geometry.Point[Double]] = Nil): ElementCard =
-    ElementCard(LanguageMapContentId("basic/turtleStepsTitle"),
+    ElementCard(fullInfo, LanguageMapContentId("basic/turtleStepsTitle"),
       new it.evadid.homepage.workbook.htmlRenderer.interactionRenderer.steps.TurtleStepPanel(source,
-        key => laminarHelper.plaintextStringSignal(LanguageMapContentId(s"basic/$key")), environment, analyzer = analyzer, frame = frame).getDomElement())
+        key => laminarHelper(fullInfo).plaintextStringSignal(LanguageMapContentId(s"basic/$key")), environment, analyzer = analyzer, frame = frame).getDomElement())
 
   private def framePoints(target: it.evadid.workbook.elements.interactionElements.programming.programmingExerciseTurtle.TurtleGraphic) =
     scala.util.Try(target.renderMovements.flatMap(movement => Seq(movement.start, movement.end)).distinct).getOrElse(Nil)
 
-  override protected def createRendering(workbookElement: TurtleRecreateShapeInteraction): AtomarLineRendering = {
+  override protected def createRendering(fullInfo: FullInfo, workbookElement: TurtleRecreateShapeInteraction): AtomarLineRendering = {
     val boundVar = workbookElement.interactionVariable.createBoundStateWithUpdateImportance(UpdateImportance.MAJOR, fullInfo.workbookContextInformation).toAirstreamVar
 
-    val programRun = new TurtleProgramRun(boundVar, () => {
-      val context = fullInfo.workbookContextInformation
-      val control = workbookElement.interactionVariable.control
-      control.getOrCalculateGrading(context).flatMap(_ => control.getOrCalculateGrading(context, forceGrading = true))(using context.futureExecutionContext)
-      ()
-    })
-    val gradingReporter = fullInfo.signals.reportersFor(workbookElement).grading
+    val gradingReporter = fullInfo.reporters.reportersFor(workbookElement).grading
     val shapeGrader = workbookElement.gradingElements.collectFirst {
       case grader: it.evadid.workbook.elements.interactionElements.programming.programmingExerciseTurtle.RecreateShapeGrader => grader
     }.getOrElse(throw IllegalArgumentException("A shape exercise needs its shape grader."))
-    val shapeGradingPreview = CompareShapePreview(programRun.executed, shapeGrader.desiredResult, shapeGrader.comparisonPolicy, workbookElement.environment, scala.concurrent.duration.Duration.Zero)
+    // Drawings and the shape comparison follow the answer itself, after a short pause in typing.
+    val shapeGradingPreview = CompareShapePreview(fullInfo, boundVar.signal, shapeGrader.desiredResult, shapeGrader.comparisonPolicy, workbookElement.environment)
 
     val associatedInstruction = WorkbookEvaEditor.instruction(workbookElement.elementId,
       workbookElement.instructionText.getOrElse(LanguageMapContentId("turtlestitch/instructionRecreateShape")))
 
     def createShapeGradingCard: ElementCard = {
-      ElementCard(LanguageMapContentId("basic/turtleGradingPanel"),
-        com.raquo.laminar.api.L.div(programRun.element(id => laminarHelper.plaintextStringSignal(id)), shapeGradingPreview.getDomElement()))
+      ElementCard(fullInfo, LanguageMapContentId("basic/turtleGradingPanel"),
+        shapeGradingPreview.getDomElement())
     }
 
     def createCodePreview(): HtmlAppElement = {
       val defaultConfig: SnapCodeEditorConfig = SnapCodeEditorConfig()
-      SnapPreviewEditor(programRun.executed, SnapCodeEditorConfig(), it.evadid.homepage.webElements.editor.code.SnapEditor.SnapMorphicSession(), fullInfo.signals.currentLanguage)
+      SnapPreviewEditor(boundVar.signal, SnapCodeEditorConfig(), it.evadid.homepage.webElements.editor.code.SnapEditor.SnapMorphicSession(), fullInfo.signals.currentLanguage)
     }
 
     def createEditor(): HtmlAppElement = {
@@ -69,8 +66,8 @@ case object HtmlTurtleRecreateShapeRenderer extends LineBasedRenderingFactory[Tu
       val useConfig: SnapCodeEditorConfig = SnapCodeEditorConfig.forPalette(workbookElement.exerciseConfig.availablePalette)
       val evaEditor = WorkbookEvaEditor(fullInfo, workbookElement, boundVar,
         EvaEditorConfig(enabledLanguages = workbookElement.exerciseConfig.allowedEditorLanguages, snapConfig = useConfig))
-      val editor = EditorWithWorkbookPanel(workbookElement, Some(associatedInstruction), gradingReporter,
-        List(createShapeGradingCard, turtleStepsCard(programRun.executed, workbookElement.environment, frame = framePoints(shapeGrader.desiredResult))), evaEditor)
+      val editor = EditorWithWorkbookPanel(fullInfo, workbookElement, Some(associatedInstruction), gradingReporter,
+        List(createShapeGradingCard, turtleStepsCard(fullInfo, boundVar.signal, workbookElement.environment, frame = framePoints(shapeGrader.desiredResult))), evaEditor)
 
       editor
     }
@@ -80,16 +77,16 @@ case object HtmlTurtleRecreateShapeRenderer extends LineBasedRenderingFactory[Tu
     }
 
     def createCards(): Seq[ElementCard] = {
-      val buttonContent = HtmlButtonElement.withTextLabel("basic/OpenEditor", event => openEditorButtonPressed())
+      val buttonContent = HtmlButtonElement.withTextLabel(fullInfo, "basic/OpenEditor", event => openEditorButtonPressed())
       List(
-        ElementCard(LanguageMapContentId("basic/openEditor"), buttonContent.getDomElement()),
-        ElementCard(LanguageMapContentId("basic/canvas"), createCodePreview().getDomElement()),
+        ElementCard(fullInfo, LanguageMapContentId("basic/openEditor"), buttonContent.getDomElement()),
+        ElementCard(fullInfo, LanguageMapContentId("basic/canvas"), createCodePreview().getDomElement()),
         createShapeGradingCard
       )
     }
 
 
-    AtomarLineRendering.cardLine(workbookElement, createCards())
+    AtomarLineRendering.cardLine(fullInfo, workbookElement, createCards())
   }
 
 

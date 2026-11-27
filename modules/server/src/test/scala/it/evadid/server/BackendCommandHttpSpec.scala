@@ -100,4 +100,43 @@ class BackendCommandHttpSpec extends FunSuite {
     assertEquals(health.statusCode(), 200)
     assertEquals(ujson.read(health.body())("status").str, "ok")
   }
+
+  test("session submissions reach their handler without an account") {
+    import it.evadid.distribution.commandTypes.SubmissionCommands.{SubmitSessionEvent, submitSessionCommand}
+    assume(it.evadid.util.JvmUtils.env("MAIL_EMAIL").isEmpty, "with SMTP configured, this test would send real mail")
+    val command = ExecutionCommand(submitSessionCommand.name, writeJs(SubmitSessionEvent(SubmissionFixtures.session())))
+    val response = post(write(command))
+    assertEquals(response.statusCode(), 200)
+    // Without SMTP configuration, delivery fails inside the submission handler, not at authorization.
+    assert(failureMessage(response).contains("MAIL_EMAIL"), failureMessage(response))
+  }
+
+  test("only configured browser origins receive CORS headers from a directly reached server") {
+    assertEquals(BackendServer.allowedOriginsFrom(Some(" http://localhost:8000/, http://127.0.0.1:8000 ,")),
+      Set("http://localhost:8000", "http://127.0.0.1:8000"))
+    assertEquals(BackendServer.allowedOriginsFrom(None), Set.empty[String])
+    val server = BackendServer.createServer(ServerConfig(port = Some(0), address = "127.0.0.1", mode = Mode.Test))(
+      BackendServer.apiRouterAllowing(Set("http://localhost:8000")))
+    try {
+      val client = HttpClient.newHttpClient()
+      def request(origin: String, method: String) = client.send(HttpRequest.newBuilder(
+          URI.create(s"http://127.0.0.1:${server.httpPort.get}/executeCommand"))
+        .header("Origin", origin).header("Content-Type", "application/json")
+        .method(method, if method == "POST" then HttpRequest.BodyPublishers.ofString(write(ExecutionCommand("requires-login", ujson.Obj())))
+          else HttpRequest.BodyPublishers.noBody()).build(), HttpResponse.BodyHandlers.ofString())
+      def allowedOrigin(response: HttpResponse[String]) = response.headers().firstValue("Access-Control-Allow-Origin")
+      val preflight = request("http://localhost:8000", "OPTIONS")
+      assertEquals(preflight.statusCode(), 204)
+      assertEquals(allowedOrigin(preflight), java.util.Optional.of("http://localhost:8000"))
+      assert(preflight.headers().firstValue("Access-Control-Allow-Headers").get().contains("Authorization"))
+      assertEquals(allowedOrigin(request("http://localhost:8000", "POST")), java.util.Optional.of("http://localhost:8000"))
+      assertEquals(allowedOrigin(request("https://attacker.example", "OPTIONS")), java.util.Optional.empty[String]())
+      assertEquals(allowedOrigin(request("https://attacker.example", "POST")), java.util.Optional.empty[String]())
+      client.close()
+    } finally server.stop()
+    assume(it.evadid.util.JvmUtils.env("SERVER_ALLOWED_ORIGINS").isEmpty, "the shared fixture uses the environment's allowlist")
+    val default = send(commandRequest.header("Origin", "http://localhost:8000")
+      .POST(HttpRequest.BodyPublishers.ofString(write(ExecutionCommand("requires-login", ujson.Obj())))))
+    assertEquals(default.headers().firstValue("Access-Control-Allow-Origin"), java.util.Optional.empty[String](), "unset means no CORS headers")
+  }
 }

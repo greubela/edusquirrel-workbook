@@ -7,9 +7,10 @@ import it.evadid.distribution.commandTypes.*
 import it.evadid.distribution.commandTypes.LLMCommands.{FeedbackLlmRequest, MessengerChatCompletionRequest}
 import it.evadid.distribution.commandTypes.MailCommands.SendMailRequest
 import it.evadid.distribution.commandTypes.SQLCommands.*
+import it.evadid.distribution.commandTypes.SubmissionCommands.SubmitSessionEvent
 import it.evadid.distribution.commandTypes.UserCommands.{AuthMailRequest, LoginRequest, *}
 import it.evadid.distribution.formats.ExecutionClientResponse
-import it.evadid.server.commandHandler.sql.sync.{DeleteInDatabase, FetchFromDatabase, UpsertToDatabase}
+import it.evadid.server.commandHandler.sql.sync.HistorySql
 import it.evadid.server.commandHandler.sql.{SqlEditorExecution, SqlLogCommands, SqlUserCommands}
 import it.evadid.util.logging.Logger
 
@@ -45,39 +46,47 @@ object BackendCommandHandler {
   ))
 
 
-  private def localHandlerRequiringLogin(userToken: SignedToken): ExecutionClient = {
+  /** Commands accepted without an account; a submission also records the request's time and address. */
+  private[server] def handlersWithoutLogin(commandReceived: LocalDateTime, remoteAddress: InetAddress): ExecutionClient = ExecutionClientPool(List(
+    localHandlerNoLoginRequired,
+    SubmissionCommands.submitSessionCommand.toLocalExecutionClient(
+      (event: SubmitSessionEvent, logger: Logger) => SubmitSessionCommand.handle(event, remoteAddress, commandReceived, logger)
+    )
+  ))
+
+  private def localHandlerRequiringLogin(userToken: SignedToken, withoutLogin: ExecutionClient): ExecutionClient = {
     val tokenUser = userToken.info.user
     // Account-bound commands may only address the signed-in user's own records.
     def mayAccessUser(userId: String): Boolean = AuthHandling.mayAccessIdBased(tokenUser.id, userId)
 
     ExecutionClientPool(List(
-      localHandlerNoLoginRequired,
+      withoutLogin,
 
       // SQL
       SqlEditorCommands.execute.toLocalExecutionClient(
         (request, logger) => Future { SqlEditorExecution.handle(request) }
       ),
       SQLCommands.StoreToDbCommand.toLocalExecutionClient(
-        (request: StoreToDbRequest, logger: Logger) => Future { UpsertToDatabase.handleRequest(request, logger) },
+        (request: StoreToDbRequest, logger: Logger) => Future { HistorySql.forRequest(request, logger)(_.store(request)) },
         (request: StoreToDbRequest, _: Logger) => mayAccessUser(request.syncContext.userId)
       ),
       SQLCommands.bulkStoreToDbCommand.toLocalExecutionClient(
-        (request: BulkStoreToDbRequest, logger: Logger) => Future { UpsertToDatabase.handleBulkRequest(request, logger) },
+        (request: BulkStoreToDbRequest, logger: Logger) => Future { HistorySql.forRequest(request, logger)(_.storeAll(request)) },
         (request: BulkStoreToDbRequest, _: Logger) => request.syncContexts.forall(context => mayAccessUser(context.userId))
       ),
       SQLCommands.fetchEventsFromDbCommand.toLocalExecutionClient(
-        (request: FetchEventsFromDbRequest, logger: Logger) => Future { FetchFromDatabase.handleRequest(request, logger) },
+        (request: FetchEventsFromDbRequest, logger: Logger) => Future { HistorySql.forRequest(request, logger)(_.fetch(request)) },
         (request: FetchEventsFromDbRequest, _: Logger) => mayAccessUser(request.usageContext.userId)
       ),
       SQLCommands.resetUserHistoriesDbCommand.toLocalExecutionClient(
         (request: DeleteInDbRequest, logger: Logger) => Future {
           require(request.allWorkbooks, "A full reset requires the all-workbook scope.")
-          DeleteInDatabase.handleRequest(request, logger)
+          HistorySql.forRequest(request, logger)(_.delete(request))
         },
         (request: DeleteInDbRequest, _: Logger) => mayAccessUser(request.usageContext.userId)
       ),
       SQLCommands.clearValuesDbCommand.toLocalExecutionClient(
-        (request: DeleteInDbRequest, logger: Logger) => Future { DeleteInDatabase.handleRequest(request, logger) },
+        (request: DeleteInDbRequest, logger: Logger) => Future { HistorySql.forRequest(request, logger)(_.delete(request)) },
         (request: DeleteInDbRequest, _: Logger) => mayAccessUser(request.usageContext.userId)
       ),
 
@@ -120,14 +129,15 @@ object BackendCommandHandler {
     validateFeedbackRequest(executionCommand)
     SqlLogCommands.handleLog(commandReceived, executionCommand, verifiedToken, remoteAddress, logger)
 
+    val withoutLogin = handlersWithoutLogin(commandReceived, remoteAddress)
     verifiedToken match {
       case Some(token) =>
         val user = token.info.user
         logger.logInfo(s"User is authorized as user ${user.name} (${user.id} @ ${user.mail})")
-        localHandlerRequiringLogin(token).executeResponse(logger, executionCommand).map(_.fixReceived(commandReceived))
-      case None if localHandlerNoLoginRequired.canExecuteCommand(executionCommand) =>
+        localHandlerRequiringLogin(token, withoutLogin).executeResponse(logger, executionCommand).map(_.fixReceived(commandReceived))
+      case None if withoutLogin.canExecuteCommand(executionCommand) =>
         logger.logInfo(s"No authorized user found, only a subset of handlers are available!")
-        localHandlerNoLoginRequired.executeResponse(logger, executionCommand).map(_.fixReceived(commandReceived))
+        withoutLogin.executeResponse(logger, executionCommand).map(_.fixReceived(commandReceived))
       case None =>
         throw new IllegalArgumentException(s"Functionality ${executionCommand.name} either does not exist or requires an account!")
     }

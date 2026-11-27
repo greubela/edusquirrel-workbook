@@ -1,9 +1,10 @@
 package it.evadid.homepage.workbook.htmlRenderer.interactionRenderer.evacuation
 
+import it.evadid.homepage.control.model.FullInfo
+
 import com.raquo.laminar.api.L.*
-import it.evadid.core.datastructures.state.StateHelper.StateBasedVar
+import it.evadid.core.datastructures.state.StateHelper.{InteractionVariableOnJS, StateBasedVar}
 import it.evadid.core.datastructures.language.LanguageMapContentId
-import it.evadid.homepage.webElements.basic.HtmlButtonElement
 import it.evadid.homepage.webElements.editor.evacuation.EvacuationSimulationEditor
 import it.evadid.homepage.workbook.htmlRenderer.HtmlRenderFactory.LineBasedRenderingFactory
 import it.evadid.homepage.workbook.htmlRenderer.atomarLineRenderings.{AtomarLineRendering, ElementCard}
@@ -11,15 +12,13 @@ import it.evadid.workbook.elements.interactionElements.evacuation.EvacuationSimu
 import it.evadid.workbook.interaction.sync.UpdateImportance.MAJOR
 
 case object EvacuationSimulationRenderer extends LineBasedRenderingFactory[EvacuationSimulationInteraction] {
-  override protected def createRendering(e: EvacuationSimulationInteraction): AtomarLineRendering = {
-    val state = e.interactionVariable.createBoundStateWithUpdateImportance(MAJOR, fullInfo.workbookContextInformation).toAirstreamVar
-    val open = HtmlButtonElement.withTextLabel("basic/OpenEditor", _ =>
-      fullInfo.displayControl.setFullscreen(EvacuationSimulationEditor(state, e.initial, e.isDisabledState.toAirstreamVar.signal)))
+  override protected def createRendering(fullInfo: FullInfo, e: EvacuationSimulationInteraction): AtomarLineRendering = {
+    val state = e.interactionVariable.createBoundVarWithUpdateImportance(MAJOR, fullInfo.workbookContextInformation)
     val preview = p(cls := "evacuation-simulation-preview", role := "status",
-      text <-- state.signal.combineWith(laminarHelper.plaintextStringSignal("digitalWorkbooks/evacuationSimulationPreview"))
+      text <-- state.signal.combineWith(laminarHelper(fullInfo).plaintextStringSignal("digitalWorkbooks/evacuationSimulationPreview"))
         .map((value, template) => template.replace("{runs}", value.measurements.size.toString)
           .replace("{people}", value.floor.people.size.toString).replace("{exits}", value.floor.exitCount.toString)))
-    AtomarLineRendering.cardLine(e, List(ElementCard(LanguageMapContentId("digitalWorkbooks/evacuationSimulationTitle"), preview),
-      ElementCard(LanguageMapContentId("basic/openEditor"), open.getDomElement())))
+    AtomarLineRendering.editorCardLine(fullInfo, e, ElementCard(fullInfo, LanguageMapContentId("digitalWorkbooks/evacuationSimulationTitle"), preview),
+      () => EvacuationSimulationEditor(fullInfo, state, e.initial, e.isDisabledState.toAirstreamVar.signal))
   }
 }

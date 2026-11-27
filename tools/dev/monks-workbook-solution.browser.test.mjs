@@ -30,16 +30,15 @@ const koch = `
   }
 `;
 const program = (body, main) => `public class Zeichnung {\n${body}\n  public static void main(String[] args) {\n    ${main}\n  }\n}\n`;
-const stairs = back => `
+const stairs = `
   static void zeichneTreppe(int n) {
     if (n == 0) { return; }
-    stein(n * 20); hoch(); zeichneTreppe(n - 1);${back ? ' runter();' : ''}
+    stein(n * 20); hoch(); zeichneTreppe(n - 1); runter();
   }
 `;
 const editorSolutions = {
   e1: program('', 'Turtle.forward(60); Turtle.turnLeft(90); Turtle.forward(20); Turtle.turnLeft(90); ' +
     'Turtle.forward(60); Turtle.turnLeft(90); Turtle.forward(20);'),
-  e2: program(helpers, 'stein(80); hoch(); stein(60); hoch(); stein(40);'),
   e3: program(`
   static void vieleck(int ecken, double laenge) {
     for (int i = 0; i < ecken; i++) { Turtle.forward(laenge); Turtle.turnLeft(360.0 / ecken); }
@@ -58,9 +57,7 @@ const editorSolutions = {
     stein(n * 20); hoch(); springe(10); zeichnePyramide(n - 1); springe(-10); runter();
   }
 `, 'zeichnePyramide(4); springe(100); zeichnePyramide(3);'),
-  e6a: program(helpers + stairs(false), 'zeichneTreppe(4);'),
-  e6b: program(helpers + stairs(true), 'zeichneTreppe(4); springe(120); zeichneTreppe(3);'),
-  k2: program(koch, 'koch(270, 2);'),
+  e6b: program(helpers + stairs, 'zeichneTreppe(4); springe(120); zeichneTreppe(3);'),
   k4: program(koch, 'for (int i = 0; i < 3; i++) { koch(270, 2); Turtle.turnRight(120); }')
 };
 
@@ -161,35 +158,28 @@ test('the monk workbook can be solved section by section with every interaction 
     // ---- the workbook in navigation order; every interaction of a section must be listed here
     const sections = [
       {title: 'welcomeTitle', tasks: {}},
-      {title: 'parta', tasks: {
+      {title: 'sec1title', tasks: {
         'monks-theater': slideshow(13),
         'monks-a1': reorder([...Array(8).keys()].map(i => `a1-item${i}`)),
-        'monks-a2': cells('3', '5', '5 4 2', '5'),
         'monks-a3': choice(1),
         'monks-a4-match': matching(1, 2, 0, 3, 4),
-        'monks-stack': choice(0, 2),
-        'monks-ac-1': choice(0), 'monks-ac-2': choice(1), 'monks-ac-3': choice(2), 'monks-ac-4': choice(1),
-        'monks-a5-match': matching(0, 1, 2, 3),
-        'monks-a6': choice(1, 3, 5),
+        'monks-a2': cells('3', '5', '5 4 2', '5'),
+        'monks-an': choice(1),
+        'monks-a8b': cells('6'), 'monks-a8c': choice(2),
         'monks-a7': choice(1, 3, 5),
-        'monks-a8a': choice(1), 'monks-a8b': cells('6'), 'monks-a8c': choice(2)}},
+        'monks-a6': choice(1, 3, 5)}},
       {title: 'partc', tasks: {
         'monks-counting-story': slideshow(4),
-        'monks-c1-match': matching(1, 4, 2, 0, 3),
+        'monks-c1-match': matching(1, 2, 0, 3),
         'monks-c2': cells('2', '1', '1', '1', '2', '2', '0', '3', '3'), 'monks-c2b': cells('4'),
-        'monks-c3-match': matching(0, 1, 2),
-        'monks-c4': cells('6', '3', '5', '3'),
-        'monks-c5': choice(1, 3, 4, 5)}},
-      {title: 'partzero', tasks: {'monks-e1': editorTask('e1'), 'monks-e2': editorTask('e2'), 'monks-e3': editorTask('e3')}},
-      {title: 'partd', tasks: {
-        'monks-e4': editorTask('e4'), 'monks-e5': editorTask('e5'), 'monks-e6b': editorTask('e6b'), 'monks-e6a': editorTask('e6a'),
-        'monks-d1a': choice(1), 'monks-d1b': choice(1, 3)}},
-      {title: 'kochtitle', tasks: {
-        'monks-k1': cells('1', '270', '4', '90', '16', '30', '64', '10'), 'monks-k1b': choice(0),
-        'monks-k2': editorTask('k2'),
-        'monks-k3a': choice(1), 'monks-k3b': choice(0, 1),
-        'monks-k4': editorTask('k4'),
-        'monks-k5': cells('6', '21', '85', '64')}},
+        'monks-towerCode': choice(0),
+        'monks-strichliste': choice(1, 2, 3, 5)}},
+      {title: 'sec3Title', tasks: {
+        'monks-e1': editorTask('e1'), 'monks-e3': editorTask('e3'),
+        'monks-e4': editorTask('e4'), 'monks-e5': editorTask('e5'), 'monks-e6b': editorTask('e6b')}},
+      {title: 'sec4Title', tasks: {
+        'monks-k1': cells('1', '270', '4', '90', '16', '30', '64', '10'),
+        'monks-k4': editorTask('k4')}},
       {title: 'finishTitle', tasks: {}}
     ];
 

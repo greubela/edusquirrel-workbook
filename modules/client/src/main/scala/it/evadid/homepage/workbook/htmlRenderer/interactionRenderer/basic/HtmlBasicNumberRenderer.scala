@@ -1,5 +1,7 @@
 package it.evadid.homepage.workbook.htmlRenderer.interactionRenderer.basic
 
+import it.evadid.homepage.control.model.FullInfo
+
 import com.raquo.laminar.api.L.*
 import com.raquo.laminar.nodes.ReactiveHtmlElement
 import it.evadid.core.datastructures.state.StateHelper.StateBasedVar
@@ -14,7 +16,7 @@ object HtmlBasicNumberRenderer extends LineBasedRenderingFactory[LabeledNumberIn
 
   private val TrailingNumberPattern = """^(.*?)([+-]?\s*)((?:\d+(?:\.\d*)?|\.\d+)(?:[eE][+-]?\d+)?)\s*$""".r
 
-  override protected def createRendering(lni: LabeledNumberInteraction): AtomarLineRendering = {
+  override protected def createRendering(fullInfo: FullInfo, lni: LabeledNumberInteraction): AtomarLineRendering = {
 
     val numberVar: Var[String] = lni.interactionVariable.createBoundStateWithUpdateImportance(UpdateImportance.MINOR, fullInfo.workbookContextInformation).toAirstreamVar
 
@@ -23,7 +25,7 @@ object HtmlBasicNumberRenderer extends LineBasedRenderingFactory[LabeledNumberIn
         cls := "simple-number-editor__body",
         span(
           cls := "simple-number-editor__label-text",
-          text <-- laminarHelper.plaintextStringSignal(lni.numberLabel)
+          text <-- laminarHelper(fullInfo).plaintextStringSignal(lni.numberLabel)
         ),
         input(
           typ := "text",
@@ -52,7 +54,7 @@ object HtmlBasicNumberRenderer extends LineBasedRenderingFactory[LabeledNumberIn
         )
       )
 
-    AtomarLineRendering.basicLine(lni, dom, "simple-number-editor")
+    AtomarLineRendering.basicLine(fullInfo, lni, dom, "simple-number-editor")
 
   }
 

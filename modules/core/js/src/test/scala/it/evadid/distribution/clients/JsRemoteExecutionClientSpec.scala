@@ -221,10 +221,34 @@ class JsRemoteExecutionClientSpec extends FunSuite {
       }
     }
   }
+
+  test("a deferred backend waits for its configuration, then posts to the configured origin") {
+    val config = Promise[RemoteExecutionConfig]()
+    val requested = Promise[String]()
+    withFetch((url: String, _: dom.RequestInit) => {
+      requested.trySuccess(url)
+      js.Promise.resolve[dom.Response](new dom.Response("{}"))
+    }) {
+      val response = RemoteExecutionConfig.deferredExecutor(config.future, None)
+        .executeResponse(BasicLogger(), ExecutionCommand("deferred", ujson.Obj())).transform(outcome => scala.util.Success(outcome))
+      Future.unit.flatMap { _ =>
+        assert(!requested.isCompleted, "nothing is sent before the configuration is known")
+        config.success(RemoteExecutionConfig.fromUrl("http://localhost:9000"))
+        requested.future
+      }.map(url => assertEquals(url, "http://localhost:9000/executeCommand")).flatMap(_ => response.map(_ => ()))
+    }
+  }
+
+  test("a failed backend configuration fails each command with its reason") {
+    RemoteExecutionConfig.deferredExecutor(Future.failed(IllegalArgumentException("invalid backend URL")), None)
+      .executeResponse(BasicLogger(), ExecutionCommand("deferred", ujson.Obj())).transform(outcome => scala.util.Success(outcome))
+      .map(outcome => assert(outcome.failed.toOption.exists(_.getMessage.contains("invalid backend URL")), outcome.toString))
+  }
 }
 
 /** A browser compression stream that cannot be created, e.g. when the encoder is unavailable. */
 private class RejectingCompressionStream(format: String) extends js.Object {
   throw js.JavaScriptException(js.Error(s"$format compression is unavailable"))
+
 
 }

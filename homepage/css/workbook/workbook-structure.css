@@ -31,7 +31,7 @@ html.page-scroll-locked body {
 }
 
 dialog::backdrop {
-    background-color: rgba(0, 0, 0, 0.1);
+    background-color: var(--color-backdrop);
     backdrop-filter: blur(15px);
     -webkit-backdrop-filter: blur(15px);
 }
@@ -109,6 +109,12 @@ dialog {
 .login-email-input
 .login-name-input {
     width: 70%;
+}
+
+/* Workbook submission form: one login-style area inside the workbook flow. */
+.container-submission .submission-area {
+    width: 100%;
+    max-width: 36rem;
 }
 
 /* workbook structure */
@@ -524,7 +530,7 @@ button:disabled {
     align-items: center;
     aspect-ratio: 3 / 2;
     overflow: hidden;
-    background: var(--color-surface);
+    background: var(--color-surface-base);
     border: 1px solid var(--color-container-border-passive);
     border-radius: var(--radius-md);
     padding: var(--space-md);
@@ -537,15 +543,6 @@ button:disabled {
     border-radius: var(--radius-sm);
 }
 
-.slide-deck-description {
-    padding: var(--space-lg) var(--space-xl) var(--space-sm);
-    border: 1px solid var(--color-slide-border);
-    border-bottom: 0;
-    border-radius: var(--radius-sm) var(--radius-sm) 0 0;
-    background: var(--color-container-background);
-    font-weight: 700;
-    color: var(--color-slide-accent-text);
-}
 
 /* --- Editors --- */
 
@@ -558,7 +555,7 @@ textarea.workbook-interaction {
     transition: border-color 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
     box-sizing: border-box;
     outline: none;
-    font-family: var(--font-family);
+    font-family: var(--font-family-base);
 }
 
 .simple-text-editor textarea.mono {
@@ -571,7 +568,7 @@ textarea.workbook-interaction {
 }
 
 .simple-text-editor textarea[disabled] {
-    background: var(--color-interaction-background-alt);
+    background: var(--color-surface-subtle);
     color: var(--color-text-secondary);
     cursor: not-allowed;
     opacity: 0.85;
@@ -586,7 +583,7 @@ textarea.workbook-interaction {
 
 .simple-selector-editor__select {
     width: 100%;
-    border: 1px solid var(--color-border);
+    border: 1px solid var(--color-border-soft);
     border-radius: var(--radius-sm);
     background: var(--color-surface-muted);
     color: var(--color-text-primary);
@@ -606,7 +603,7 @@ textarea.workbook-interaction {
 }
 
 .simple-selector-editor__select[disabled] {
-    background: var(--color-interaction-background-alt);
+    background: var(--color-surface-subtle);
     color: var(--color-text-secondary);
     cursor: not-allowed;
     opacity: 0.85;
@@ -624,7 +621,7 @@ textarea.workbook-interaction {
     cursor: pointer;
     width: 100%;
     padding: var(--space-md);
-    background-color: var(--color-surface);
+    background-color: var(--color-surface-base);
 
 }
 
@@ -633,7 +630,7 @@ textarea.workbook-interaction {
     height: 1.25rem;
     border-radius: var(--radius-sm);
     border: var(--interaction-border);
-    background: var(--color-surface);
+    background: var(--color-surface-base);
     appearance: none;
     position: relative;
     box-sizing: border-box;
@@ -686,7 +683,7 @@ textarea.workbook-interaction {
 }
 
 .reorder-item {
-    border: 1px solid var(--color-border);
+    border: 1px solid var(--color-border-soft);
     border-radius: var(--radius-sm);
     background: var(--color-surface-muted);
     padding: var(--space-sm) var(--space-md);
@@ -702,8 +699,8 @@ textarea.workbook-interaction {
     margin: 0;
     background: var(--color-code-background);
     color: var(--color-code-text);
-    font-family: var(--color-code-font);
-    font-size: var(--color-code-size);
+    font-family: var(--font-code-family);
+    font-size: var(--font-code-size);
     padding: 14px 18px;
     cursor: grab;
     user-select: none;
@@ -933,7 +930,7 @@ textarea.workbook-interaction {
     gap: var(--space-sm);
     width: 100%;
     padding: var(--space-md);
-    background-color: var(--color-surface);
+    background-color: var(--color-surface-base);
 }
 
 .simple-number-editor__label-text {
@@ -948,7 +945,7 @@ textarea.workbook-interaction {
     border: var(--interaction-border);
     border-radius: var(--radius-sm);
     padding: var(--space-xs) var(--space-sm);
-    background: var(--color-surface);
+    background: var(--color-surface-base);
     color: var(--color-text-primary);
 }
 
@@ -1002,7 +999,7 @@ textarea.workbook-interaction {
 }
 
 .collapsible-header:hover {
-    background: var(--color-surface);
+    background: var(--color-surface-base);
 }
 
 .collapsible-toggle-icon {
@@ -1088,12 +1085,12 @@ textarea.workbook-interaction {
   inset: 8vh max(1rem, calc((100vw - 36rem) / 2));
   z-index: 1100;
   overflow-y: auto;
-  background: var(--surface, white);
-  color: var(--text-color, #222);
-  border: 1px solid #888;
-  border-radius: .5rem;
+  background: var(--color-surface-base);
+  color: var(--color-text-primary);
+  border: 1px solid var(--color-border-soft);
+  border-radius: var(--radius-sm);
   padding: 1.25rem;
-  box-shadow: 0 .5rem 2rem #0005;
+  box-shadow: var(--shadow-medium);
 }
 .session-credentials label { display: block; margin: .6rem 0; }
 .session-credentials label > span { display: block; }
@@ -1143,7 +1140,7 @@ textarea.workbook-interaction {
     text-align: left;
     font: inherit;
     color: inherit;
-    border: 1px solid var(--color-border);
+    border: 1px solid var(--color-border-soft);
     border-radius: var(--radius-sm);
     background: var(--color-surface-muted);
     padding: var(--space-sm) var(--space-md);

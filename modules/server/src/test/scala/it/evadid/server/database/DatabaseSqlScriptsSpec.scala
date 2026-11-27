@@ -9,7 +9,7 @@ class DatabaseSqlScriptsSpec extends FunSuite {
     val historyTables = (DatabaseHistoryFormat.BlobFormat.tables ++ DatabaseHistoryFormat.RelationalFormat.tables).map(_.name).toSet
     assert(historyTables.subsetOf(tables))
     assertEquals(DatabaseSqlScripts.name, "setup.sql")
-    assertEquals(tables, historyTables ++ Set("user", "loginTokens", "commandLog", "syncedLog"))
+    assertEquals(tables, historyTables ++ Set("user", "loginTokens", "commandLog", "syncedLog", "submissionLog"))
   }
   test("the standalone script creates tables only inside the selected database") {
     val sql = scala.util.Using.resource(scala.io.Source.fromResource(DatabaseSqlScripts.name))(_.mkString)

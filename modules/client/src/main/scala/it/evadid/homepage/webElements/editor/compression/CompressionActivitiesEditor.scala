@@ -1,5 +1,7 @@
 package it.evadid.homepage.webElements.editor.compression
 
+import it.evadid.homepage.control.model.FullInfo
+
 import com.raquo.laminar.api.L.*
 import it.evadid.homepage.webElements.basic.LabelSelection
 import it.evadid.homepage.webElements.HtmlAppElement
@@ -8,17 +10,17 @@ import it.evadid.workbook.model.compression.*
 import org.scalajs.dom
 
 /** Native Laminar controls for the activities that accompany the compression models. */
-case class CompressionActivitiesEditor(answer: Var[CompressionExperiment], initial: CompressionExperiment, locked: Signal[Boolean]) extends HtmlAppElement {
+case class CompressionActivitiesEditor(fullInfo: FullInfo, answer: Var[CompressionExperiment], initial: CompressionExperiment, locked: Signal[Boolean]) extends HtmlAppElement {
   private val lockedValue = Var(false)
   import CompressionExperimentView.{localized, format}
-  private def src(key: String): Signal[String] = localized("src_" + key.replace('.', '_'))
+  private def src(key: String): Signal[String] = localized(fullInfo, "src_" + key.replace('.', '_'))
   private def action(key: String)(run: => Unit): Element = button(typ := "button", disabled <-- locked,
     text <-- src(key), onClick --> (_ => run))
   private def size(bytes: Long): String = if bytes >= 1024L * 1024 * 1024 then f"${bytes.toDouble / (1024L * 1024 * 1024)}%.2f GiB"
     else if bytes >= 1024 * 1024 then f"${bytes.toDouble / (1024 * 1024)}%.2f MiB" else s"$bytes Bytes"
   private def formattedDocument(v: FileInspection): Element = v.formattedContent match {
     case None => pre(cls := "compression-output", v.text)
-    case Some(id) => div(child <-- laminarHelper.plaintextStringSignal(id).map { content =>
+    case Some(id) => div(child <-- laminarHelper(fullInfo).plaintextStringSignal(id).map { content =>
       foreignHtmlElement(com.raquo.laminar.DomApi.unsafeParseHtmlString(s"<div>$content</div>"))
     })
   }
@@ -30,10 +32,10 @@ case class CompressionActivitiesEditor(answer: Var[CompressionExperiment], initi
         onClick --> (_ => if editable && !lockedValue.now() then answer.update(a => a.asInstanceOf[FileSimulation].click(i))))
     }
     div(
-      p(cls := "compression-summary", span(text <-- format("fileSummary", "size" -> size(v.bytes), "count" -> v.fileCount.toString, "steps" -> v.steps.toString)),
+      p(cls := "compression-summary", span(text <-- format(fullInfo, "fileSummary", "size" -> size(v.bytes), "count" -> v.fileCount.toString, "steps" -> v.steps.toString)),
         span(text <-- src(if v.hasProblematicMetadata then "widget.filesystemSimulator.metadataYes" else "widget.filesystemSimulator.metadataNo"))),
-      div(role := "img", aria.label <-- localized("storageMap"), svg.svg(svg.viewBox := "0 0 1000 120", svg.cls := "compression-treemap", blocks)),
-      div(cls := "compression-table-wrap", table(thead(tr(List("storageName", "fileBytes", "fileMetadata").map(key => th(text <-- localized(key))))),
+      div(role := "img", aria.label <-- localized(fullInfo, "storageMap"), svg.svg(svg.viewBox := "0 0 1000 120", svg.cls := "compression-treemap", blocks)),
+      div(cls := "compression-table-wrap", table(thead(tr(List("storageName", "fileBytes", "fileMetadata").map(key => th(text <-- localized(fullInfo, key))))),
         tbody(v.files.zipWithIndex.map { (f,i) => tr(
           td(if editable then button(typ := "button", disabled <-- locked,
             cls := (if v.selected.contains(i) then "compression-file-selected" else ""), aria.pressed := v.selected.contains(i).toString,
@@ -41,7 +43,7 @@ case class CompressionActivitiesEditor(answer: Var[CompressionExperiment], initi
             onMouseOver --> (_ => if !lockedValue.now() && !answer.now().asInstanceOf[FileSimulation].hovered then answer.update(a => a.asInstanceOf[FileSimulation].copy(hovered = true))),
             onFocus --> (_ => if !lockedValue.now() && !answer.now().asInstanceOf[FileSimulation].hovered then answer.update(a => a.asInstanceOf[FileSimulation].copy(hovered = true))),
             onClick --> (_ => answer.update(a => a.asInstanceOf[FileSimulation].click(i)))) else span(f.name)),
-          td(size(f.bytes), if f.count > 1 then span(text <-- format("groupFileCount", "count" -> f.count.toString)) else span()),
+          td(size(f.bytes), if f.count > 1 then span(text <-- format(fullInfo, "groupFileCount", "count" -> f.count.toString)) else span()),
           td(cls := (if f.problematic then "compression-error" else ""), f.metadata.mkString("; "), s" [${f.kind}]")) }))),
       if v.error then p(role := "alert", cls := "compression-error", text <-- src("widget.filesystemSimulator.archiveMetadataError")) else span(),
       if v.complete then p(role := "status", cls := "compression-success", text <-- src("widget.filesystemSimulator.success").map(_.replace("{steps}", v.steps.toString))) else span())
@@ -73,7 +75,7 @@ case class CompressionActivitiesEditor(answer: Var[CompressionExperiment], initi
       action("widget.bitflip.flipButton") { answer.update { a => val v = a.asInstanceOf[BitComparison]
         val bit = List(47,12,83,31,96)(v.passwordFlips % 5) % (v.password.original.length * 8)
         v.copy(password = v.password.copy(flippedBit = Some(bit)), passwordFlips = v.passwordFlips + 1) } },
-      h3(text <-- src("widget.bitflip.imageLabel")), p(text <-- localized("pixelNote")),
+      h3(text <-- src("widget.bitflip.imageLabel")), p(text <-- localized(fullInfo, "pixelNote")),
       canvasTag(width := "128", height := "128", cls := "compression-bit-image", aria.label <-- src("widget.bitflip.imageLabel"),
         onMountCallback(ctx => { ctx.thisNode.ref.width = 128; ctx.thisNode.ref.height = 128
           answer.signal.foreach { a =>
@@ -85,12 +87,12 @@ case class CompressionActivitiesEditor(answer: Var[CompressionExperiment], initi
             data.data(i*4) = gray;data.data(i*4+1)=gray;data.data(i*4+2)=gray;data.data(i*4+3)=255
           }; c.putImageData(data,0,0)
         }(using ctx.owner) })),
-      p(text <-- LabelSelection.formatted(answer.signal, Seq("bitsUnchanged", "bitChangedAt"), localized)(a =>
+      p(text <-- LabelSelection.formatted(answer.signal, Seq("bitsUnchanged", "bitChangedAt"), localized(fullInfo, _))(a =>
         Some(a.asInstanceOf[BitComparison].imageBit.fold("bitsUnchanged" -> Nil)(i => "bitChangedAt" -> Seq("index" -> i.toString))))),
       action("widget.bitflip.flipButton") { answer.update { a => val v = a.asInstanceOf[BitComparison]
         v.copy(imageBit = Some(List(8192,1337,12000,2048,10000)(v.imageFlips % 5)), imageFlips = v.imageFlips + 1) } })
     case v: FileInspection => div(
-      p(text <-- localized("inspectorNote").map(_.replace("{size}", CompressionAlgorithms.utf8Bytes(v.text).toString).replace("{docxSize}", v.docxModelBytes.toString))),
+      p(text <-- localized(fullInfo, "inspectorNote").map(_.replace("{size}", CompressionAlgorithms.utf8Bytes(v.text).toString).replace("{docxSize}", v.docxModelBytes.toString))),
       div(cls := "compression-controls", div(h3("bericht.txt"),pre(cls := "compression-output",v.text)),
         div(h3("bericht.docx"), formattedDocument(v))),
       List("[Content_Types].xml" -> "contentTypesDesc", "_rels/.rels" -> "relsDesc", "docProps/core.xml" -> "coreDesc",
@@ -101,19 +103,19 @@ case class CompressionActivitiesEditor(answer: Var[CompressionExperiment], initi
               v.copy(expanded = if opened then (v.expanded :+ file).distinct else v.expanded.filterNot(_ == file)) } }))
       })
     case v: TransferSimulation => div(
-      p(text <-- localized("transferNote")),
-      p(text <-- format("transferSummary", "count" -> v.files.size.toString, "payload" -> v.payload.toString, "size" -> (v.payload + 320).toString)),
+      p(text <-- localized(fullInfo, "transferNote")),
+      p(text <-- format(fullInfo, "transferSummary", "count" -> v.files.size.toString, "payload" -> v.payload.toString, "size" -> (v.payload + 320).toString)),
       child <-- answer.signal.map { a => val state = a.asInstanceOf[TransferSimulation]
         div(state.files.zipWithIndex.map((file,i) => p(file._1, " · ",
-          span(text <-- localized(if state.step >= (i+1)*4 then "transferDone" else if state.step < i*4 then "transferReady" else List("transferAllocate","transferOpen","transferCopy","transferClose")(state.step % 4))))),
-          p("beweise.zip · ", span(text <-- localized(if state.step >= 20 then "transferDone" else if state.step == 0 then "transferReady" else List("transferAllocate","transferOpen","transferCopy","transferClose")(math.min(3,state.step/5)))))) },
+          span(text <-- localized(fullInfo, if state.step >= (i+1)*4 then "transferDone" else if state.step < i*4 then "transferReady" else List("transferAllocate","transferOpen","transferCopy","transferClose")(state.step % 4))))),
+          p("beweise.zip · ", span(text <-- localized(fullInfo, if state.step >= 20 then "transferDone" else if state.step == 0 then "transferReady" else List("transferAllocate","transferOpen","transferCopy","transferClose")(math.min(3,state.step/5)))))) },
       action("widget.zipArchive.simulateButton") { answer.update(a => a.asInstanceOf[TransferSimulation].copy(step = 0)); running.set(true) },
-      button(typ := "button", disabled <-- locked, text <-- localized("nextStep"), onClick --> (_ => transferStep())),
+      button(typ := "button", disabled <-- locked, text <-- localized(fullInfo, "nextStep"), onClick --> (_ => transferStep())),
       onMountCallback(ctx => EventStream.periodic(250).foreach(_ => if running.now() && !lockedValue.now() then transferStep())(using ctx.owner)),
       v.files.map((file,content) => detailsTag(summaryTag(file),pre(cls := "compression-output",content))),
       (0 until 4).map(i => detailsTag(summaryTag(text <-- src(s"widget.zipArchive.faq.$i.q")),
-        p(text <-- format("src_" + s"widget.zipArchive.faq.$i.a".replace('.','_'), "sizeHint" -> s"${v.payload} / ${v.payload+320} Bytes").combineWith(localized("managementOverhead")).map((text,overhead) => text.replace("{overhead}",overhead))))))
-    case _: FileSimulation => div(p(text <-- localized("modelAssumptions")), p(text <-- localized("binaryUnits")),
+        p(text <-- format(fullInfo, "src_" + s"widget.zipArchive.faq.$i.a".replace('.','_'), "sizeHint" -> s"${v.payload} / ${v.payload+320} Bytes").combineWith(localized(fullInfo, "managementOverhead")).map((text,overhead) => text.replace("{overhead}",overhead))))))
+    case _: FileSimulation => div(p(text <-- localized(fullInfo, "modelAssumptions")), p(text <-- localized(fullInfo, "binaryUnits")),
       div(cls := "compression-controls", CompressionSimulation.tools.map { tool => button(typ := "button", disabled <-- locked,
         text <-- src(s"widget.filesystemSimulator.tools.$tool.label"),
         aria.pressed <-- answer.signal.map(_.asInstanceOf[FileSimulation].tool == tool).map(_.toString),
@@ -129,8 +131,8 @@ case class CompressionActivitiesEditor(answer: Var[CompressionExperiment], initi
         disabled <-- locked.combineWith(answer.signal).map((l,a) => l || a.asInstanceOf[FileSimulation].selected.size < 2),
         onClick --> (_ => answer.update(a => a.asInstanceOf[FileSimulation].archive))),
       child <-- answer.signal.map(a => fileView(a.asInstanceOf[FileSimulation], true)))
-    case v: FileOverview => div(p(text <-- localized("binaryUnits")),
-      label(span(text <-- localized("storageScenario")), select(disabled <-- locked,
+    case v: FileOverview => div(p(text <-- localized(fullInfo, "binaryUnits")),
+      label(span(text <-- localized(fullInfo, "storageScenario")), select(disabled <-- locked,
         value <-- answer.signal.map(_.asInstanceOf[FileOverview].selected.toString),
         v.scenarios.zipWithIndex.map((s,i) => option(value := i.toString, text <-- src(s"widget.filesystemSimulator.scenarios.${s.scenario}"))),
         onChange.mapToValue --> (value => answer.update(a => a.asInstanceOf[FileOverview].copy(selected = value.toInt))))),
@@ -142,8 +144,8 @@ case class CompressionActivitiesEditor(answer: Var[CompressionExperiment], initi
         case Some(e) =>
           import it.evadid.core.datastructures.state.StateHelper.StateBasedVar
           val state=e.interactionVariable.createBoundStateWithUpdateImportance(MAJOR, fullInfo.workbookContextInformation).toAirstreamVar
-          blockQuote(text <-- localized("comparisonEmpty").combineWith(state.signal).map((empty, a) => { val text=a.asInstanceOf[WrittenAnswer].text; if text.isEmpty then empty else text }))
-        case None => p(text <-- localized("comparisonEmpty"))
+          blockQuote(text <-- localized(fullInfo, "comparisonEmpty").combineWith(state.signal).map((empty, a) => { val text=a.asInstanceOf[WrittenAnswer].text; if text.isEmpty then empty else text }))
+        case None => p(text <-- localized(fullInfo, "comparisonEmpty"))
       }
     case _ => span()
   }; div(onMountCallback(ctx => locked.foreach(lockedValue.set)(using ctx.owner)), content) }

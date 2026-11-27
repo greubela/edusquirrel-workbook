@@ -1424,9 +1424,9 @@ class JavaParserTest extends FunSuite {
     )
     val resolved = resolvedSource(source)
     val program = JavaTurtleCompiler.compileResolved(resolved).fold(problem => fail(problem.message), identity)
-    val execution = T.runVm(program)
+    val execution = T.execute(program)
     assertEquals(execution.status, T.Status.Completed)
-    assertEquals(execution, T.run(resolved))
+    assertEquals(execution, T.execute(resolved))
     val expected = Vector(1.0, 3.0, 3.0, 1.0, 1.0, 1.0, 3.0, 3.0, 27.0, 6.0, 12.0, 12.0,
       3.0, 2.5, 0.5, 0.5, Int.MaxValue.toDouble, Int.MinValue.toDouble, Int.MaxValue.toDouble,
       Int.MinValue.toDouble, Int.MaxValue.toDouble, Int.MinValue.toDouble, 12.0,

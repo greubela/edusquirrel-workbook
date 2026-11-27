@@ -24,7 +24,7 @@ class UserSessionControlSpec extends EditorDomSuite {
   override def beforeEach(context: BeforeEach): Unit = { dom.window.localStorage.clear(); backend.install() }
   override def afterEach(context: AfterEach): Unit = backend.uninstall()
 
-  private def page() = FullInfo(HomepageInfo(AppLanguage.English, None, None, AllDisplayInfo(false, None), LanguageMapStorage.empty))
+  private def page() = FullInfo(HomepageInfo(AppLanguage.German, None, None, AllDisplayInfo(false, None), LanguageMapStorage.empty))
   private val localConfig = UserConfig(Nil, isOnlineAccount = false)
   private val student = AllUserInfo.createNewUser("Ada Student", "ada@school.example", UserConfig(Nil, isOnlineAccount = true))
   private def signed(user: User) = SignedToken(UserTokenInfo(user, LocalDateTime.now(), LocalDateTime.now().plusDays(1)), "signature")
@@ -129,27 +129,31 @@ class UserSessionControlSpec extends EditorDomSuite {
     }
   }
 
-  test("a local start without a name is anonymous for this visit only; cached anonymous profiles are discarded") {
+  test("a local start without a name is anonymous and survives a reload until an explicit logout") {
     val control = page().userSessionControl
     val local = AllUserInfo.createNewUser("Local Learner", "local@school.example", localConfig)
     for {
       _ <- control.tryLocalRegistration(Some(local.user), Some(localConfig))
       _ <- control.tryLoginOrLocalRegistration(None, None)
+      anonymous = control.fullInfo.current.userInfo.getOrElse(fail("not signed in"))
       _ = {
-        val user = control.fullInfo.current.userInfo.get
-        assert(user.user.isAnonymous)
-        assertEquals(user.config, UserConfig.defaults(isLocalAccount = true), "local users sync only to the browser")
-        assertEquals(dom.window.localStorage.getItem("edusquirrel-alluserinfo"), null, "anonymous users are not saved")
-        assertEquals(control.loginIdentity.now(), Some(local.user), "the login page keeps the last named user")
+        assert(!anonymous.config.isOnlineAccount, "the config flag marks the account as local")
+        assertEquals(anonymous.config, UserConfig.defaults(isLocalAccount = true), "local users sync only to the browser")
+        assertEquals((anonymous.user.name, anonymous.user.mail), ("Anonymous", "anonymous@evadid.it"))
+        assertEquals(control.loginIdentity.now(), Some(anonymous.user), "the login page shows the local user's defaults")
       }
-      // A profile saved by an earlier version is discarded instead of being restored.
-      _ = dom.window.localStorage.setItem("edusquirrel-alluserinfo", write(SavedUserPreferences(User.createAnonymous(), localConfig)))
-      next = page().userSessionControl
-      reason <- next.tryAutoLogin().failed.map(_.getMessage)
+      reloaded = page().userSessionControl
+      _ <- reloaded.tryAutoLogin()
+      _ = {
+        assertEquals(reloaded.fullInfo.current.userInfo.map(_.user), Some(anonymous.user), "a reload keeps the local user")
+        assertEquals(reloaded.loginIdentity.now(), Some(anonymous.user), "the restored local user pre-fills the login page")
+      }
+      _ <- reloaded.changeUser(None)
+      afterLogout = page().userSessionControl
+      reason <- afterLogout.tryAutoLogin().failed.map(_.getMessage)
     } yield {
-      assertEquals(reason, "Anonymous sessions are not restored")
-      assertEquals(next.fullInfo.current.userInfo, None)
-      assertEquals(next.loginIdentity.now(), None, "an anonymous profile does not pre-fill the login page")
+      assertEquals(reason, "No cached login available")
+      assertEquals(afterLogout.fullInfo.current.userInfo, None, "logging out ends the local session")
       assertEquals(dom.window.localStorage.getItem("edusquirrel-alluserinfo"), null)
     }
   }
@@ -177,14 +181,18 @@ class UserSessionControlSpec extends EditorDomSuite {
     }
   }
 
+  test("the page starts in German") {
+    assertEquals(it.evadid.homepage.control.singletons.HtmlFullWorkbookApp.fullInfo.homepageInfoNow().currentLanguage, AppLanguage.German)
+  }
+
   test("credentials, display, language and workbook settings change only the page's state") {
     val info = page()
     val control = info.userSessionControl
     val user = AllUserInfo.createNewUser("Cred", "cred@school.example", localConfig)
     info.displayControl.updateDisplay(_.copy(collapsedNavigation = true))
     assert(info.homepageInfoNow().displayInfo.collapsedNavigation)
-    info.displayControl.changeLanguage(AppLanguage.German)
-    assertEquals(info.homepageInfoNow().currentLanguage, AppLanguage.German)
+    info.displayControl.changeLanguage(AppLanguage.English)
+    assertEquals(info.homepageInfoNow().currentLanguage, AppLanguage.English)
     info.workbookNavigationControl.updateWorkbookConfig(identity)
     assertEquals(info.homepageInfoNow().workbookInfo, None, "no workbook, nothing to configure")
     val llm = it.evadid.llm.LlmConfiguration("http://localhost:1234/v1/chat/completions", "local-model", None, Some(100))

@@ -3,7 +3,7 @@
 
 :root {
   font-family: 'Segoe UI', system-ui, -apple-system, BlinkMacSystemFont, 'Helvetica Neue', sans-serif;
-  color: #1f2933;
+  color: var(--color-text-primary);
 }
 
 * {
@@ -13,7 +13,7 @@
 }
 
 body {
-  background: linear-gradient(135deg, #fdf0d5, #f9f5ff);
+  background: linear-gradient(135deg, var(--color-catalog-background-start), var(--color-catalog-background-end));
   min-height: 100vh;
   display: flex;
   flex-direction: column;
@@ -25,7 +25,7 @@ body {
 
 .landing-container {
   border-radius: 18px;
-  box-shadow: 0 30px 60px rgba(15, 23, 42, 0.15);
+  box-shadow: var(--shadow-raised);
   display: grid;
   gap: 1.5rem;
   padding: 2.5rem;
@@ -35,8 +35,8 @@ body {
 }
 
 .headline-row {
-  background-color: #8b0000;
-  color: #fff;
+  background-color: var(--color-red-8);
+  color: var(--color-text-inverse);
   border-radius: 12px;
   padding: 1rem 1.5rem;
   display: flex;
@@ -47,8 +47,8 @@ body {
 }
 
 .owner-row {
-  background-color: #eee;
-  color: #400;
+  background-color: var(--color-gray-1);
+  color: var(--color-red-12);
   font-size: 0.85rem;
   border-radius: 12px;
   padding: 1rem 1.5rem;
@@ -62,7 +62,7 @@ body {
 .section-heading h1 {
   font-size: 1.6rem;
   letter-spacing: 0.02em;
-  color: #0f172a;
+  color: var(--color-text-primary);
   text-align: center;
 }
 
@@ -88,16 +88,16 @@ body {
   min-height: 220px;
   padding: 1rem;
   border-radius: 16px;
-  background-color: #fff;
+  background-color: var(--color-surface-base);
   overflow: hidden;
-  box-shadow: 0 15px 35px rgba(15, 23, 42, 0.15);
+  box-shadow: var(--shadow-raised);
   transition: transform 0.3s ease, box-shadow 0.3s ease;
 }
 
 .workbook-card a:hover,
 .workbook-card a:focus-visible {
   transform: translateY(-6px);
-  box-shadow: 0 20px 45px rgba(15, 23, 42, 0.25);
+  box-shadow: var(--shadow-raised-hover);
 }
 
 .workbook-card img {
@@ -112,7 +112,7 @@ body {
 
 .workbook-card figcaption {
   font-size: 0.95rem;
-  color: #475467;
+  color: var(--color-text-secondary);
   line-height: 1.4;
 }
 

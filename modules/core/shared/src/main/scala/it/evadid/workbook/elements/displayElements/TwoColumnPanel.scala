@@ -19,7 +19,6 @@ object TwoColumnPanel {
     )
     override def idsRequiredForDeserialization(element: WorkbookElementSerializable): Set[String] =
       Set(element.getElementAs[WorkbookElementReference]("left").referencedId, element.getElementAs[WorkbookElementReference]("right").referencedId)
-    override def serializedElementContainsOtherSerializations(element: WorkbookElementSerializable): Seq[WorkbookElementSerializable] = Seq.empty
     override def fromSerializedElement(element: WorkbookElementSerializable, parsedElements: Map[String, WorkbookElement]): TwoColumnPanel =
       TwoColumnPanel(element.elementId, element.getAndResolveWorkbookElement[WorkbookElement]("left", parsedElements), element.getAndResolveWorkbookElement[WorkbookElement]("right", parsedElements))
     override def toSerializableElement(element: TwoColumnPanel): WorkbookElementSerializable =

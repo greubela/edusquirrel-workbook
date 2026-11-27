@@ -1,5 +1,7 @@
 package it.evadid.homepage.workbook.htmlRenderer.interactionRenderer.codeTaskToggle
 
+import it.evadid.homepage.control.model.FullInfo
+
 import com.raquo.laminar.api.L.*
 import it.evadid.core.datastructures.language.LanguageMapContentId
 import it.evadid.core.datastructures.state.StateHelper.InteractionVariableOnJS
@@ -10,92 +12,50 @@ import it.evadid.homepage.workbook.htmlRenderer.interactionRenderer.reorderExerc
 import it.evadid.workbook.elements.interactionElements.codeTaskToggle.CodeTaskToggleInteraction
 import it.evadid.workbook.interaction.sync.UpdateImportance
 
-import java.time.LocalDateTime
 
 object HtmlCodeTaskToggleRenderer extends LineBasedRenderingFactory[CodeTaskToggleInteraction] {
 
-  override protected def createRendering(interaction: CodeTaskToggleInteraction): AtomarLineRendering = {
+  override protected def createRendering(fullInfo: FullInfo, interaction: CodeTaskToggleInteraction): AtomarLineRendering = {
     val stateVar = interaction.interactionVariable.createBoundVarWithUpdateImportance(UpdateImportance.MINOR, fullInfo.workbookContextInformation)
-    val advancedCodeVar: Var[String] = Var(stateVar.now().advancedCode)
+    val advancedCodeVar: Var[String] = stateVar.zoomLazy(_.advancedCode)((state, code) => state.copy(advancedCode = code))
 
-    val reorderDom =
-      HtmlReorderInteractionRenderer
-        .renderWorkbookElement(interaction.reorder)
-        .rendering
-        .elementsWithoutContainer
+    def reorderEditor(): Element = div(
+      children <-- HtmlReorderInteractionRenderer.renderWorkbookElement(fullInfo, interaction.reorder).rendering.elementsWithoutContainer.allElementsSignal)
 
-    val codeEditor = FillInCodeEditor(
+    def codeEditor(): Element = FillInCodeEditor(
       fullInfo.loggerSystemInfo.uiAndDomLogger,
       codeState = advancedCodeVar,
       resetTemplate = interaction.advancedCodeTemplate,
-      title = laminarHelper.plaintextStringSignal(interaction.codeEditorTitle),
-      loadingLabel = laminarHelper.plaintextStringSignal(LanguageMapContentId("blockeditor/loading")),
-      todoLegend = laminarHelper.plaintextStringSignal(LanguageMapContentId("basic/codeTodoLegend")),
-      checkButtonLabel = laminarHelper.plaintextStringSignal(LanguageMapContentId("basic/checkCode")),
-      resetButtonLabel = laminarHelper.plaintextStringSignal(LanguageMapContentId("basic/resetCode")),
-      resetConfirmMessage = laminarHelper.plaintextStringSignal(LanguageMapContentId("basic/resetCodeConfirm")),
-      resetConfirmYes = laminarHelper.plaintextStringSignal(LanguageMapContentId("basic/resetCodeConfirmYes")),
-      resetConfirmNo = laminarHelper.plaintextStringSignal(LanguageMapContentId("basic/resetCodeConfirmNo")),
+      title = laminarHelper(fullInfo).plaintextStringSignal(interaction.codeEditorTitle),
+      loadingLabel = laminarHelper(fullInfo).plaintextStringSignal(LanguageMapContentId("blockeditor/loading")),
+      todoLegend = laminarHelper(fullInfo).plaintextStringSignal(LanguageMapContentId("basic/codeTodoLegend")),
+      checkButtonLabel = laminarHelper(fullInfo).plaintextStringSignal(LanguageMapContentId("basic/checkCode")),
+      resetButtonLabel = laminarHelper(fullInfo).plaintextStringSignal(LanguageMapContentId("basic/resetCode")),
+      resetConfirmMessage = laminarHelper(fullInfo).plaintextStringSignal(LanguageMapContentId("basic/resetCodeConfirm")),
+      resetConfirmYes = laminarHelper(fullInfo).plaintextStringSignal(LanguageMapContentId("basic/resetCodeConfirmYes")),
+      resetConfirmNo = laminarHelper(fullInfo).plaintextStringSignal(LanguageMapContentId("basic/resetCodeConfirmNo")),
       incompleteIntroId = LanguageMapContentId("basic/advancedCodeFeedbackIncomplete"),
       successMessageId = interaction.advancedSuccessMessage,
       requirements = interaction.advancedRequirements,
-      resolveText = laminarHelper.plaintextStringSignal,
+      resolveText = laminarHelper(fullInfo).plaintextStringSignal,
       language = interaction.reorder.programmingLanguage
     )
 
-    def setBeginnerMode(value: Boolean): Unit = {
-      interaction.interactionVariable.updateStateFromUserInteraction(
-        state => state.copy(isBeginnerMode = value),
-        UpdateImportance.MINOR,
-        LocalDateTime.now(),
-        fullInfo.workbookContextInformation
-      )
-    }
-
-    val dom = div(
-      cls := "task-box",
-      onMountUnmountCallback(
-        mount = { ctx =>
-          advancedCodeVar.set(stateVar.now().advancedCode)
-          val _ = advancedCodeVar.signal.foreach { code =>
-            if (code != stateVar.now().advancedCode) {
-              interaction.interactionVariable.updateStateFromUserInteraction(
-                state => state.copy(advancedCode = code),
-                UpdateImportance.MINOR,
-                LocalDateTime.now(),
-                fullInfo.workbookContextInformation
-              )
-            }
-          }(using ctx.owner)
-        },
-        unmount = _ => ()
-      ),
-      div(
-        cls := "mode-toggle",
-        button(
-          cls := "mode-toggle__btn",
-          cls("mode-toggle__btn--active") <-- stateVar.signal.map(_.isBeginnerMode),
-          text <-- laminarHelper.plaintextStringSignal(LanguageMapContentId("basic/beginnerMode")),
-          onClick --> { _ => setBeginnerMode(true) }
-        ),
-        button(
-          cls := "mode-toggle__btn",
-          cls("mode-toggle__btn--active") <-- stateVar.signal.map(state => !state.isBeginnerMode),
-          text <-- laminarHelper.plaintextStringSignal(LanguageMapContentId("basic/advancedMode")),
-          onClick --> { _ => setBeginnerMode(false) }
-        )
-      ),
-      div(
-        cls("mode-hidden") <-- stateVar.signal.map(state => !state.isBeginnerMode),
-        children <-- reorderDom.allElementsSignal
-      ),
-      div(
-        cls("mode-hidden") <-- stateVar.signal.map(_.isBeginnerMode),
-        codeEditor
-      )
+    def modeButton(labelId: String, beginner: Boolean): Element = button(
+      cls := "mode-toggle__btn",
+      cls("mode-toggle__btn--active") <-- stateVar.signal.map(_.isBeginnerMode == beginner),
+      text <-- laminarHelper(fullInfo).plaintextStringSignal(LanguageMapContentId(labelId)),
+      onClick --> { _ => stateVar.update(_.copy(isBeginnerMode = beginner)) }
     )
 
-    AtomarLineRendering.basicLine(interaction, dom, "code-task-toggle")
+    // Only the selected editor exists; switching modes creates the other one from the saved answer.
+    val dom = div(
+      cls := "task-box",
+      div(cls := "mode-toggle", modeButton("basic/beginnerMode", beginner = true), modeButton("basic/advancedMode", beginner = false)),
+      child <-- stateVar.signal.map(_.isBeginnerMode).distinct.map(beginner => if beginner then reorderEditor() else codeEditor())
+    )
+
+    AtomarLineRendering.basicLine(fullInfo, interaction, dom, "code-task-toggle")
   }
 
 }

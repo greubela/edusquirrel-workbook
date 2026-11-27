@@ -41,8 +41,6 @@ object WorkbookSection {
       (references(element, "content") ++ references(element, "requiredBefore") ++ references(element, "recommendedBefore"))
         .map(_.referencedId).toSet
 
-    override def serializedElementContainsOtherSerializations(element: WorkbookElementSerializable): Seq[WorkbookElementSerializable] = Seq.empty
-
     override def fromSerializedElement(element: WorkbookElementSerializable, parsedElements: Map[String, WorkbookElement]): WorkbookSection =
       WorkbookSection(
         element.elementId,

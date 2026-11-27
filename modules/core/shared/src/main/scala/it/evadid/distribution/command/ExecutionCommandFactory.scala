@@ -4,7 +4,7 @@ import it.evadid.distribution.clients.{ExecutionClient, LocalExecutionClient}
 import it.evadid.distribution.command.ExecutionInfo.*
 import it.evadid.distribution.formats.ExecutionClientResponse.AdditionalLoggingOutput
 import it.evadid.util.logging.Logger
-import it.evadid.sql.DatabaseTable
+import it.evadid.sql.CommandLog
 import it.evadid.distribution.commandTypes.*
 import it.evadid.util.logging.derived.PrintToStdLogger
 import upickle.default
@@ -17,7 +17,7 @@ object ExecutionCommandFactory {
   lazy val knownCommands: Seq[ExecutionCommandFactory[?, ?]] = List(
     UserCommands.loginCommand, UserCommands.updateAccountCommand, UserCommands.createAccountCommand, UserCommands.authMailCommand,
     SQLCommands.StoreToDbCommand, SQLCommands.bulkStoreToDbCommand, SQLCommands.fetchEventsFromDbCommand, SQLCommands.clearValuesDbCommand, SQLCommands.resetUserHistoriesDbCommand,
-    MailCommands.sendMailCommand, LLMCommands.completeLLMCommandFactory, LLMCommands.feedbackLlmCommandFactory,
+    MailCommands.sendMailCommand, SubmissionCommands.submitSessionCommand, LLMCommands.completeLLMCommandFactory, LLMCommands.feedbackLlmCommandFactory,
     SqlEditorCommands.execute, WorkerCommands.health, WorkerCommands.parseSnapXml, WorkerCommands.flowchart, WorkerCommands.programAnalysis,
     WorkerCommands.calculateQrCode, WorkerCommands.runPython, WorkerCommands.javaExecutionEvidence)
 
@@ -30,7 +30,7 @@ object ExecutionCommandFactory {
 case class ExecutionCommandFactory[I: ReadWriter, O: ReadWriter](
                                                                   name: String,
                                                                   private val privacyFilter: Option[ujson.Value => ujson.Value] = None,
-                                                                  storeLogIntoTable: Option[DatabaseTable] = Some(DatabaseTable.commandLog),
+                                                                  storeLogIntoTable: Option[CommandLog] = Some(CommandLog.commandLog),
                                                                   requiresLogin: Boolean = false
                                                                 ) {
 

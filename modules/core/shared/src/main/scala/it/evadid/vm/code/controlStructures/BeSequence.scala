@@ -3,7 +3,6 @@ package it.evadid.vm.code.controlStructures
 import it.evadid.vm.code.abstractions.{BeControlStructure, BeExpression}
 import it.evadid.vm.code.tree.{BeExpressionNode, BeExpressionReference, BeExtensionPoint}
 import it.evadid.vm.io.{BeExpressionStructureInfo, BeSegmentedCodeElement}
-import it.evadid.vm.simulation.*
 import it.evadid.vm.static.BeExpressionStaticInformation
 import it.evadid.vm.types.*
 import it.evadid.vm.types.BeChildRole.ExpressionInSequence
@@ -21,15 +20,6 @@ case class BeSequence(body: Seq[BeExpression], sequenceInfo: BeSequenceInfo) ext
     override def staticValue: Option[BeDataValue] = body.lastOption.flatMap(_.staticInformationExpression.staticValue)
   }
 
-
-  override def expressionExecutor(simulatorConfig: BeSimulatorConfig, stateBeforeExecution: BeSimulatorState): BeExpressionExecutor = new BeExpressionExecutor(simulatorConfig, stateBeforeExecution, this) {
-    override protected def childExpressionsToExecute(stateBeforeExecution: BeSimulatorState): Seq[BeExpression] = body
-
-    override protected def applySideEffectsOfThisBlock(stateBeforeExecution: BeSimulatorState, childrenResults: Seq[(BeSimulatorState, BeDataValue)]): BeSimulatorState = stateBeforeExecution
-
-    override protected def executeThisBlockInSimulatorAndGetValue(stateBeforeExecution: BeSimulatorState, childrenResults: Seq[(BeSimulatorState, BeDataValue)]): (BeSimulatorState, BeDataValue) =
-      (stateBeforeExecution, BeDataValueUnit())
-  }
 
   override lazy val structureInfo: BeExpressionStructureInfo[?] = new BeExpressionStructureInfo[BeSequence](this) {
 

@@ -3,7 +3,9 @@ package it.evadid.homepage.control.model
 
 import it.evadid.llm.LlmConfiguration
 import com.raquo.laminar.api.L.*
-import it.evadid.core.datastructures.language.AppLanguage.English
+import com.raquo.airstream.ownership.ManualOwner
+import it.evadid.homepage.control.info.interaction.InteractionReporterRegistry
+import it.evadid.core.datastructures.language.AppLanguage.German
 import it.evadid.core.datastructures.language.control.LanguageMapIdResolver
 import it.evadid.core.datastructures.language.{AppLanguage, LanguageMap, LanguageMapContentId}
 import it.evadid.core.datastructures.state.StateHelper.RichSignal
@@ -11,79 +13,82 @@ import it.evadid.distribution.clients.ExecutionClient
 import it.evadid.homepage.control.change.*
 import it.evadid.homepage.control.info.*
 import it.evadid.homepage.control.singletons.HomepageDefaults
-import it.evadid.homepage.control.singletons.HtmlFullWorkbookApp.fullInfo
 import it.evadid.workbook.interaction.sync.SyncControl
 import it.evadid.workbook.meta.ExecutionContextInformation
 
 import scala.concurrent.{ExecutionContext, Future}
 
 
-case class FullInfo(
-                     // val defaults: HomepageDefaults,
-                     private[control] val defaultInfo: HomepageInfo
-                   ) {
+/** Page state and the controls derived from it. Each member only uses those declared above it, so the controls are
+  * built in one order without lazy cycles. Long-lived observers belong to `owner`; `release()` ends them.
+  */
+case class FullInfo(private[control] val defaultInfo: HomepageInfo) {
 
+  private[homepage] val owner: ManualOwner = new ManualOwner
 
-  val defaults: HomepageDefaults = HomepageDefaults(this)
+  /** Ends every long-lived observer of this page state, e.g. after a test. */
+  def release(): Unit = owner.killSubscriptions()
 
-  private[homepage] val feedbackSession = Var[AnyRef](new Object)
-  private[homepage] def invalidateFeedbackSession(): Unit = feedbackSession.set(new Object)
+  val defaults: HomepageDefaults = HomepageDefaults()
 
-  private lazy val currentLanguageObservable = signals.currentLanguage.toObservableValue
-
-  def workbookContextInformation: ExecutionContextInformation = {
-    val owner = feedbackSession.now()
-    val backendToken = homepageInfoNow().userInfo.flatMap(_.credentials.signedBackendToken)
-    new ExecutionContextInformation() {
-    override def isCurrent: Boolean = feedbackSession.now() eq owner
-
-    override val llmConfiguration: Option[LlmConfiguration] =
-      homepageInfoNow().userInfo.flatMap(_.credentials.llmApiConfig)
-
-    override lazy val availableExecutionClients: Seq[ExecutionClient] = List(defaults.workerExecuter, defaults.backendExecutorWithCredentials(backendToken))
-
-    override def getCurrentLanguage: AppLanguage.HumanLanguage = currentLanguageObservable.now().getOrElse(English)
-
-    override lazy val languageMapIdResolver: Option[LanguageMapIdResolver] = Some(new LanguageMapIdResolver(currentLanguageObservable) {
-      override def resolveMap(id: LanguageMapContentId): Future[LanguageMap[AppLanguage.HumanLanguage]] = Future {
-        homepageInfoState.now().languageMapStore.languageMaps(id)
-      }(using ExecutionContext.global)
-    })
-
-    override def futureExecutionContext: ExecutionContext = ExecutionContext.global
-
-    override def syncControl: Option[SyncControl] = Some(FullInfo.this.syncControl)
-  }
-  }
-
+  val loggerSystemInfo: HomepageLoggerInfo = HomepageLoggerInfo.singleton
 
   private[control] val homepageInfoState: Var[HomepageInfo] = Var(defaultInfo)
 
   def homepageInfoNow(): HomepageInfo = homepageInfoState.now()
 
+  private[homepage] val feedbackSession = Var[AnyRef](new Object)
+  private[homepage] def invalidateFeedbackSession(): Unit = feedbackSession.set(new Object)
+
   /* INFO */
 
-  //lazy val executorForParallelism: Seq[ExecutionClient] = List(backendExecutor)
-  //ExecuteOnRemoteServer("http://localhost", 9000),
-  //ExecuteOnWebWorker(FileFactory.relativeToArtifactsFolder("/newest/backend-worker.js").fullPath),:
+  val signals: HomepageSignalInfo = HomepageSignalInfo(this)
 
-  lazy val loggerSystemInfo: HomepageLoggerInfo = HomepageLoggerInfo.singleton
+  val current: HomepageCurrentInfo = HomepageCurrentInfo(this)
 
-  lazy val signals: HomepageSignalInfo = HomepageSignalInfo(this)
+  private val currentLanguageObservable = signals.currentLanguage.toObservableValue(using owner)
 
-  lazy val current: HomepageCurrentInfo = HomepageCurrentInfo(this)
+  private def backendToken = homepageInfoNow().userInfo.flatMap(_.credentials.signedBackendToken)
 
+  /** The backend executor with the current user's credentials. */
+  def backendExecutor: ExecutionClient = defaults.backendExecutorWithCredentials(backendToken)
 
   /* CONTROLS */
 
-  lazy val userSessionControl: UserSessionControl = new UserSessionControl(this)
+  val displayControl: DisplayControl = DisplayControl(this)
 
-  lazy val workbookNavigationControl: WorkbookNavigationControl = new WorkbookNavigationControl(this)
+  val contentControl: HomepageContentControl = HomepageContentControl(this, loggerSystemInfo.contentStorageLogger, loggerSystemInfo.fileDataStorageLogger)
 
-  lazy val syncControl: RemoteInteractionCacheControl = RemoteInteractionCacheControl(this)
+  val workbookNavigationControl: WorkbookNavigationControl = new WorkbookNavigationControl(this)
 
-  lazy val displayControl: DisplayControl = DisplayControl(this)
+  val userSessionControl: UserSessionControl = new UserSessionControl(this)
 
-  lazy val contentControl: HomepageContentControl = HomepageContentControl(this, loggerSystemInfo.contentStorageLogger, loggerSystemInfo.fileDataStorageLogger)
+  val syncControl: RemoteInteractionCacheControl = RemoteInteractionCacheControl(this)
 
+  val reporters: InteractionReporterRegistry = InteractionReporterRegistry(signals.workbook, syncControl, owner)
+
+  def workbookContextInformation: ExecutionContextInformation = {
+    val owner = feedbackSession.now()
+    val token = backendToken
+    new ExecutionContextInformation() {
+      override def isCurrent: Boolean = feedbackSession.now() eq owner
+
+      override val llmConfiguration: Option[LlmConfiguration] =
+        homepageInfoNow().userInfo.flatMap(_.credentials.llmApiConfig)
+
+      override lazy val availableExecutionClients: Seq[ExecutionClient] = List(defaults.workerExecuter, defaults.backendExecutorWithCredentials(token))
+
+      override def getCurrentLanguage: AppLanguage.HumanLanguage = currentLanguageObservable.now().getOrElse(German)
+
+      override lazy val languageMapIdResolver: Option[LanguageMapIdResolver] = Some(new LanguageMapIdResolver(currentLanguageObservable) {
+        override def resolveMap(id: LanguageMapContentId): Future[LanguageMap[AppLanguage.HumanLanguage]] = Future {
+          homepageInfoState.now().languageMapStore.languageMaps(id)
+        }(using ExecutionContext.global)
+      })
+
+      override def futureExecutionContext: ExecutionContext = ExecutionContext.global
+
+      override def syncControl: Option[SyncControl] = Some(FullInfo.this.syncControl)
+    }
+  }
 }

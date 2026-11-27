@@ -1,10 +1,10 @@
 package it.evadid.homepage.control.startup
 
+import it.evadid.workbook.session.AllWorkbookInfo
 import com.raquo.laminar.api.L.*
 import it.evadid.distribution.command.SerializedException
 import it.evadid.facades.{Algebrite, CodeMirror, JSXGraph, Snap, Workers}
 import it.evadid.homepage.control.change.LanguageMapStorageControl.STARTUP_STRATEGY.CONTINUE_IMMEDIATELY
-import it.evadid.homepage.control.model.AllWorkbookInfo
 import it.evadid.homepage.control.singletons.HtmlFullWorkbookApp
 import it.evadid.homepage.workbook.content.DigitalWorkbookCatalog
 import it.evadid.homepage.workbook.content.test.CreateTestWorkbook
@@ -35,15 +35,17 @@ object HomepageStartupLogic {
   private val tryToLoad: Seq[String] =
     Seq("landingPage", "loginPage", "plantWorkshopApp", "workbookTest") ++
       DigitalWorkbookCatalog.entries.flatMap(_.native.map(_.containerId))
-  private val canLoad: Seq[String] = tryToLoad.flatMap(id => if (dom.document.getElementById(id) != null) Some(id) else None)
+  /** Known container ids present on the current page. */
+  private def canLoad: Seq[String] = tryToLoad.filter(id => dom.document.getElementById(id) != null)
 
   def renderElementIntoApp(logger: Logger, domElement: Element): Unit = {
-    if (canLoad.isEmpty) {
+    val containerIds = canLoad
+    if (containerIds.isEmpty) {
       logger.logException(SerializedException("Cannot load content, because there is no known container id to render it into :-("))
       dom.document.body.appendChild(div(s"Content cannot be loaded, look at the console to find out more :-(").ref)
     } else {
-      val container = dom.document.getElementById(canLoad.head)
-      container.children.foreach(container.removeChild(_))
+      val container = dom.document.getElementById(containerIds.head)
+      container.textContent = ""
       if (dom.document.readyState == "loading") renderOnDomContentLoaded(container, domElement)
       else render(container, domElement)
     }

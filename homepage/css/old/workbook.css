@@ -129,7 +129,7 @@ body {
 }
 
 .section-block:hover {
-    background: var(--color-surface);
+    background: var(--color-surface-base);
     border-color: var(--color-border-strong);
     transform: translateY(-1px);
     box-shadow: var(--shadow-light);
@@ -490,7 +490,7 @@ button:disabled {
     align-items: center;
     aspect-ratio: 3 / 2;
     overflow: hidden;
-    background: var(--color-surface);
+    background: var(--color-surface-base);
     border: 1px solid var(--color-container-border-passive);
     border-radius: var(--radius-md);
     padding: var(--space-md);
@@ -593,7 +593,7 @@ textarea.workbook-interaction {
 
 .simple-selector-editor__select {
     width: 100%;
-    border: 1px solid var(--color-border);
+    border: 1px solid var(--color-border-soft);
     border-radius: var(--radius-sm);
     background: var(--color-surface-muted);
     color: var(--color-text-primary);
@@ -631,7 +631,7 @@ textarea.workbook-interaction {
     cursor: pointer;
     width: 100%;
     padding: var(--space-md);
-    background-color: var(--color-surface);
+    background-color: var(--color-surface-base);
 
 }
 
@@ -640,7 +640,7 @@ textarea.workbook-interaction {
     height: 1.25rem;
     border-radius: var(--radius-sm);
     border: var(--interaction-border);
-    background: var(--color-surface);
+    background: var(--color-surface-base);
     appearance: none;
     display: grid;
     place-items: center;
@@ -690,7 +690,7 @@ textarea.workbook-interaction {
 }
 
 .reorder-item {
-    border: 1px solid var(--color-border);
+    border: 1px solid var(--color-border-soft);
     border-radius: var(--radius-sm);
     background: var(--color-surface-muted);
     padding: var(--space-sm) var(--space-md);
@@ -706,8 +706,8 @@ textarea.workbook-interaction {
     margin: 0;
     background: var(--color-code-background);
     color: var(--color-code-text);
-    font-family: var(--color-code-font);
-    font-size: var(--color-code-size);
+    font-family: var(--font-code-family);
+    font-size: var(--font-code-size);
     padding: 14px 18px;
     cursor: grab;
     user-select: none;
@@ -891,7 +891,7 @@ textarea.workbook-interaction {
     display: flex;
     flex-direction: column;
     min-height: 10rem;
-    border: 1px solid var(--color-border);
+    border: 1px solid var(--color-border-soft);
     border-radius: var(--radius-md);
     background: var(--color-surface-muted);
     box-shadow: var(--shadow-soft);
@@ -905,8 +905,8 @@ textarea.workbook-interaction {
 .sorting-field-card__title {
     padding: var(--space-sm) var(--space-md);
     font-weight: 700;
-    border-bottom: 1px solid var(--color-border);
-    background: var(--color-surface);
+    border-bottom: 1px solid var(--color-border-soft);
+    background: var(--color-surface-base);
 }
 
 .sorting-field-card__drop {
@@ -916,7 +916,7 @@ textarea.workbook-interaction {
     gap: var(--space-sm);
     padding: var(--space-md);
     min-height: 6rem;
-    border: 2px dashed var(--color-border);
+    border: 2px dashed var(--color-border-soft);
     border-radius: 0 0 var(--radius-md) var(--radius-md);
     background: var(--color-surface-frosted);
     transition: border-color 0.15s ease, background 0.15s ease;
@@ -928,7 +928,7 @@ textarea.workbook-interaction {
 
 .sorting-source {
     flex: 0 0 auto;
-    border-top: 1px solid var(--color-border);
+    border-top: 1px solid var(--color-border-soft);
     padding-top: var(--space-md);
 }
 
@@ -949,8 +949,8 @@ textarea.workbook-interaction {
     align-items: center;
     padding: var(--space-sm) var(--space-md);
     border-radius: var(--radius-sm);
-    border: 1px solid var(--color-border);
-    background: var(--color-surface);
+    border: 1px solid var(--color-border-soft);
+    background: var(--color-surface-base);
     box-shadow: var(--shadow-soft);
     max-width: 100%;
     word-break: break-word;
@@ -1015,7 +1015,7 @@ textarea.workbook-interaction {
     margin: var(--space-md);
     padding: var(--space-lg);
     border-radius: var(--radius-md);
-    background: var(--color-surface);
+    background: var(--color-surface-base);
     box-shadow: var(--shadow-medium);
     text-align: center;
 }
@@ -1043,9 +1043,9 @@ textarea.workbook-interaction {
 .sorting-reason-form {
     margin-bottom: var(--space-md);
     padding: var(--space-md);
-    border: 1px solid var(--color-border);
+    border: 1px solid var(--color-border-soft);
     border-radius: var(--radius-md);
-    background: var(--color-surface);
+    background: var(--color-surface-base);
 }
 
 .sorting-reason-form__prompt {
@@ -1057,7 +1057,7 @@ textarea.workbook-interaction {
     width: 100%;
     min-height: 4.5rem;
     padding: var(--space-sm);
-    border: 1px solid var(--color-border);
+    border: 1px solid var(--color-border-soft);
     border-radius: var(--radius-sm);
     font-family: inherit;
     font-size: inherit;
@@ -1117,7 +1117,7 @@ textarea.workbook-interaction {
     background: var(--color-surface-muted);
     padding: 2px 6px;
     border-radius: 3px;
-    font-family: var(--color-code-font);
+    font-family: var(--font-code-family);
     font-size: 0.9em;
     color: var(--color-accent-error);
 }
@@ -1234,7 +1234,7 @@ textarea.workbook-interaction {
     gap: var(--space-sm);
     width: 100%;
     padding: var(--space-md);
-    background-color: var(--color-surface);
+    background-color: var(--color-surface-base);
 }
 
 .simple-number-editor__label-text {
@@ -1249,7 +1249,7 @@ textarea.workbook-interaction {
     border: var(--interaction-border);
     border-radius: var(--radius-sm);
     padding: var(--space-xs) var(--space-sm);
-    background: var(--color-surface);
+    background: var(--color-surface-base);
     color: var(--color-text-primary);
 }
 
@@ -1303,7 +1303,7 @@ textarea.workbook-interaction {
 }
 
 .collapsible-header:hover {
-    background: var(--color-surface);
+    background: var(--color-surface-base);
 }
 
 .collapsible-toggle-icon {

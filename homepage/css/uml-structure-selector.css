@@ -10,6 +10,7 @@
     --uml-header-alt: var(--editor-atmosphere-pearl, var(--color-surface-subtle));
     --uml-hover: var(--editor-hover, var(--color-surface-subtle));
     --uml-selected: var(--editor-selected, var(--color-surface-muted));
+    --uml-header-selected: color-mix(in srgb, var(--uml-accent) 30%, var(--uml-header));
     --uml-accent: var(--editor-accent, var(--color-accent-active));
     --uml-focus: var(--editor-focus, var(--color-focus));
     --uml-implied: var(--editor-warning-border, var(--color-yellow-4));
@@ -21,7 +22,7 @@
     align-items: flex-start;
     overflow-x: auto;
     gap: var(--space-xl);
-    padding: var(--space-md);
+    padding: var(--space-sm) var(--space-md);
 }
 
 .uml-structure-selector > * {
@@ -34,17 +35,20 @@
     min-width: var(--uml-class-min-width);
     overflow: hidden;
     border: var(--uml-line);
-    border-radius: 0;
+    border-radius: 6px;
     background: var(--uml-surface);
-    font-family: var(--code-font-family, var(--color-code-font));
-    font-size: var(--code-font-size, var(--color-code-size));
+    box-shadow: 0 6px 16px -12px var(--editor-shadow, transparent);
+    font-family: var(--code-font-family, var(--font-code-family));
+    /* Compact boxes: slightly smaller than the source, so the diagram leaves the editor its height. */
+    font-size: calc(var(--code-font-size, var(--font-code-size)) * 0.88);
+    line-height: 1.35;
 }
 
 .uml-class__header {
     display: flex;
     flex-direction: column;
     align-items: center;
-    padding: var(--space-md);
+    padding: var(--space-xs) var(--space-md);
     background: var(--uml-header);
     border-bottom: var(--uml-line);
 }
@@ -53,11 +57,31 @@
     background: var(--uml-header-alt);
 }
 
+/* A selected class shows in its whole header; the class name needs no frame of its own. */
+.uml-class.uml-class--selected .uml-class__header {
+    background: var(--uml-header-selected);
+}
+
+.uml-structure-selector .uml-class__header .uml-entry--selected,
+.uml-structure-selector .uml-class__header .uml-entry--selected:is(:hover, :focus) {
+    border-color: transparent;
+    background: transparent;
+    font-weight: 600;
+}
+
 .uml-class__compartment {
-    min-height: calc(2 * var(--space-lg));
+    min-height: var(--space-md);
     margin: 0;
-    padding: var(--space-sm) var(--space-md);
+    padding: var(--space-xs) var(--space-sm);
     list-style: none;
+}
+
+/* Long member lists of libraries scroll inside their box instead of stretching the whole diagram. */
+.uml-class--library .uml-class__compartment,
+.uml-class--unknown .uml-class__compartment {
+    max-height: 9.5em;
+    overflow-y: auto;
+    scrollbar-width: thin;
 }
 
 .uml-class__compartment + .uml-class__compartment {
@@ -68,7 +92,7 @@
 .uml-structure-selector .uml-entry:focus {
     display: block;
     width: 100%;
-    padding: var(--space-xs) var(--space-sm);
+    padding: 1px var(--space-sm);
     border: 1px solid transparent;
     border-radius: 0;
     background: transparent;
@@ -110,12 +134,23 @@
 }
 
 .uml-structure-selector .uml-entry:is(:hover, :focus, :active) {
-    padding: var(--space-xs) var(--space-sm);
+    padding: 1px var(--space-sm);
     border-width: 1px;
     font-weight: inherit;
     transform: none;
 }
-.uml-class__actions { padding: var(--space-sm); border-top: var(--uml-line); }
+.uml-class__actions { padding: var(--space-xs); border-top: var(--uml-line); }
+.uml-class__actions > div { display: flex; flex-wrap: wrap; gap: var(--space-xs); }
+/* Footer actions are small chips beside the members they change (overriding the editors' larger buttons). */
+.java-function-based-editor .uml-structure-selector .uml-class__actions button {
+    min-height: 0;
+    padding: 2px var(--space-sm);
+    font-size: 0.9em;
+    line-height: 1.4;
+}
+@media (pointer: coarse) {
+    .java-function-based-editor .uml-structure-selector .uml-class__actions button { min-height: 36px; }
+}
 .uml-add-class { align-self: center; }
 
 .uml-class__stereotype {

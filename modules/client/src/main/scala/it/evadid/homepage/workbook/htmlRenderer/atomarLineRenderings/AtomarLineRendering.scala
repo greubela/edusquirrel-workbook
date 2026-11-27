@@ -1,6 +1,8 @@
 package it.evadid.homepage.workbook.htmlRenderer.atomarLineRenderings
 
 import com.raquo.laminar.api.L.*
+import it.evadid.homepage.control.model.FullInfo
+import it.evadid.homepage.webElements.basic.HtmlButtonElement
 import it.evadid.core.datastructures.language.LanguageMapContentId
 import it.evadid.homepage.webElements.HtmlAppElement
 import it.evadid.homepage.workbook.htmlRenderer.{DomElementCollection, LaminarRenderHelper}
@@ -28,8 +30,8 @@ trait AtomarLineRendering extends HtmlAppElement {
 
 object AtomarLineRendering {
 
-  def exerciseContainerTitleLine(content: LanguageMapContentId): AtomarLineRendering = {
-    RenderingAsContainerTitle(LaminarRenderHelper.singleton.plaintextStringSignal(content), 1)
+  def exerciseContainerTitleLine(fullInfo: FullInfo, content: LanguageMapContentId): AtomarLineRendering = {
+    RenderingAsContainerTitle(LaminarRenderHelper(fullInfo).plaintextStringSignal(content), 1)
   }
 
   def cardLineContent(workbookElement: WorkbookElement, cards: Seq[ElementCard]): Element = {
@@ -42,13 +44,23 @@ object AtomarLineRendering {
     )
   }
 
-  def cardLine(workbookElement: WorkbookElement, cards: Seq[ElementCard]): AtomarLineRendering =
-    basicLine(workbookElement, cardLineContent(workbookElement, cards), "element-card-grid")
+  def cardLine(fullInfo: FullInfo, workbookElement: WorkbookElement, cards: Seq[ElementCard]): AtomarLineRendering =
+    basicLine(fullInfo, workbookElement, cardLineContent(workbookElement, cards), "element-card-grid")
 
-  def basicLine(workbookElement: WorkbookElement, content: DomElementCollection, additionalCssString: String = ""): AtomarLineRendering = workbookElement match {
+  /** A preview card and the button opening the fullscreen editor. The editor is created on opening, so it starts
+    * from the current answer and is released when fullscreen closes.
+    */
+  def editorCardLine(fullInfo: FullInfo, workbookElement: WorkbookElement, preview: ElementCard, openEditor: () => HtmlAppElement, editorFirst: Boolean = false)
+      : AtomarLineRendering = {
+    val open = ElementCard(fullInfo, LanguageMapContentId("basic/openEditor"),
+      HtmlButtonElement.withTextLabel(fullInfo, "basic/OpenEditor", _ => fullInfo.displayControl.setFullscreen(openEditor())).getDomElement())
+    cardLine(fullInfo, workbookElement, if editorFirst then List(open, preview) else List(preview, open))
+  }
+
+  def basicLine(fullInfo: FullInfo, workbookElement: WorkbookElement, content: DomElementCollection, additionalCssString: String = ""): AtomarLineRendering = workbookElement match {
     case d: WorkbookDisplayElement => RenderingDisplayLine(d, content, additionalCssString)
     case s: WorkbookStructureElement[?] => RenderingStructureLine(s, content, additionalCssString)
-    case i: WorkbookInteractionElement[? <: InteractionFormat] => RenderingInteractionLine(i, content, additionalCssString)
+    case i: WorkbookInteractionElement[? <: InteractionFormat] => RenderingInteractionLine(fullInfo, i, content, additionalCssString)
   }
 
 

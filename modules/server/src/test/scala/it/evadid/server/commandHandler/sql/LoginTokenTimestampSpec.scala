@@ -1,5 +1,7 @@
 package it.evadid.server.commandHandler.sql
 
+import it.evadid.server.database.UserAccountRows
+
 import it.evadid.util.logging.BasicLogger
 import munit.FunSuite
 
@@ -8,18 +10,17 @@ import java.sql.{Connection, PreparedStatement, ResultSet}
 import java.time.LocalDateTime
 
 class LoginTokenTimestampSpec extends FunSuite {
-  private val parser = GenericSqlFunctionality(BasicLogger())
 
   List("2026-10-13 01:40:00", "2026-10-13 01:40:00.0",
     "2026-10-13 01:40:00.123456", "2026-10-13 01:40:00.123456789").foreach { value =>
     test(s"token expiry accepts $value") {
-      assertEquals(parser.parseDatabaseTimestamp(value), LocalDateTime.parse(value.replace(' ', 'T')))
+      assertEquals(UserAccountRows.parseDatabaseTimestamp(value), LocalDateTime.parse(value.replace(' ', 'T')))
     }
   }
 
   test("unsupported expiry formats are rejected rather than interpreted as legacy data") {
     List("not a timestamp", "2026-10-13T01:40:00").foreach(value =>
-      intercept[RuntimeException](parser.parseDatabaseTimestamp(value)))
+      intercept[RuntimeException](UserAccountRows.parseDatabaseTimestamp(value)))
   }
 
   private def stub[T](kind: Class[T])(handle: (String, Array[AnyRef]) => AnyRef): T =
@@ -50,7 +51,7 @@ class LoginTokenTimestampSpec extends FunSuite {
         fields(args(0).toString)
       case _ => null
     }}
-    val token = SqlUserCommands(answering(result, "test token query"), BasicLogger()).findAccessTokens("user-1")
+    val token = UserAccountRows(answering(result, "test token query"), BasicLogger()).findAccessTokens("user-1")
     if code.nonEmpty && expiry == "2026-10-13 01:40:00.123456" then {
       assertEquals(token.map(_.token), Some("secret"))
       assertEquals(token.map(_.expires), Some(LocalDateTime.parse("2026-10-13T01:40:00.123456")))
@@ -75,7 +76,7 @@ class LoginTokenTimestampSpec extends FunSuite {
         rows(row)(args(0).toString)
       case _ => null
     }}
-    val accounts = SqlUserCommands(answering(result, "user query"), BasicLogger()).findUserWithMail("fixture@example.org")
+    val accounts = UserAccountRows(answering(result, "user query"), BasicLogger()).findUserWithMail("fixture@example.org")
     assertEquals(accounts.map(_.user.id), List("one", "two"))
     assertEquals(accounts.head.config, configured)
     assertEquals(accounts.last.config, UserConfig.defaults(isLocalAccount = false))

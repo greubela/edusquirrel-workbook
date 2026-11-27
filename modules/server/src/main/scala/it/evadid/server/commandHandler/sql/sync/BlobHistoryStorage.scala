@@ -21,14 +21,14 @@ class BlobHistoryStorage(connection: Connection, logger: Logger) extends History
     val codec = InteractionFormat.codecsFor[format.type](format).historySerializer
     val emptyJson = codec.serialize(InteractionVariableHistory.empty[format.type])
     val keys = rowKeys(request.usageContext, request.syncContext.keyForSerialisation)
-    update("INSERT INTO blob_history (program_id,scenario_id,user_id,variable_id,format,history_json) VALUES (?,?,?,?,?,?) ON DUPLICATE KEY UPDATE id=id",
+    statements.update("INSERT INTO blob_history (program_id,scenario_id,user_id,variable_id,format,history_json) VALUES (?,?,?,?,?,?) ON DUPLICATE KEY UPDATE id=id",
       (keys ++ List(format.name, emptyJson))*)
-    val existing = query("SELECT format,history_json FROM blob_history WHERE program_id=? AND scenario_id=? AND user_id=? AND variable_id=? FOR UPDATE", keys) { row =>
+    val existing = statements.query("SELECT format,history_json FROM blob_history WHERE program_id=? AND scenario_id=? AND user_id=? AND variable_id=? FOR UPDATE", keys*) { row =>
       InteractionHistoryJson(InteractionFormat.fromName(row.getString(1)), row.getString(2))
     }.head
     val previous = existing.typedAs[format.type](format)
     val merged = previous.mergeWith(newHistory)
-    update("UPDATE blob_history SET history_json=? WHERE program_id=? AND scenario_id=? AND user_id=? AND variable_id=?",
+    statements.update("UPDATE blob_history SET history_json=? WHERE program_id=? AND scenario_id=? AND user_id=? AND variable_id=?",
       (List(codec.serialize(merged)) ++ keys)*)
     SyncSuccess.immutable(newHistory.events.ids, previous.events.ids, merged.events.ids)
   }
@@ -36,8 +36,8 @@ class BlobHistoryStorage(connection: Connection, logger: Logger) extends History
   /** Stored rows as (format name, history JSON); decoding is left to the per-record read rule. */
   private def histories(context: UsageContext, keys: Seq[String]): Seq[(SyncContext, (String, String))] = {
     val filter = if keys.isEmpty then "" else " AND variable_id IN (" + keys.map(_ => "?").mkString(",") + ")"
-    query("SELECT variable_id,format,history_json FROM blob_history WHERE program_id=? AND scenario_id=? AND user_id=?" + filter,
-      List(context.programId, context.scenarioId, context.userId) ++ keys) { row =>
+    statements.query("SELECT variable_id,format,history_json FROM blob_history WHERE program_id=? AND scenario_id=? AND user_id=?" + filter,
+      (List(context.programId, context.scenarioId, context.userId) ++ keys)*) { row =>
       context.toSyncContext(row.getString(1)) -> (row.getString(2), row.getString(3))
     }
   }

@@ -56,7 +56,7 @@ class DependencySpec extends FunSuite {
     val java = python.toJava.code
     assert(java.contains("class Turtle {"), java)
     val compiled = JavaTurtleCompiler.compile(java).fold(problem => fail(s"$problem\n$java"), identity)
-    val execution = JavaTurtleInterpreter.runVm(compiled)
+    val execution = JavaTurtleInterpreter.execute(compiled)
     assertEquals(execution.status, JavaTurtleInterpreter.Status.Completed)
     assertEquals(execution.commands.map(command => command.command.toString -> command.value),
       Vector.fill(4)(Vector("Forward" -> 25.0, "TurnRight" -> 90.0)).flatten)

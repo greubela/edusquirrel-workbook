@@ -1,5 +1,6 @@
 package it.evadid.homepage.workbook
 
+import it.evadid.workbook.session.{AllWorkbookInfo, WorkbookConfig}
 import com.raquo.laminar.api.L.*
 import it.evadid.core.datastructures.language.{LanguageMap, LanguageMapContentId, WorkbookContent}
 import it.evadid.core.datastructures.language.AppLanguage.{English, German, HumanLanguage}
@@ -39,7 +40,7 @@ class ContentChoiceRendererSpec extends EditorDomSuite {
     }
     val exercise = WorkbookContentChoiceInteraction("renderer-choice", ChoiceConfig(LanguageMapContentId("test/prompt"), Some(true), GraderRunningBehavior.RUN_ALWAYS), options)
     load(exercise)
-    val element = WorkbookContentChoiceInteractionRenderer.renderAppElement(exercise).getDomElement()
+    val element = WorkbookContentChoiceInteractionRenderer.renderAppElement(fullInfo, exercise).getDomElement()
     val close = mount(element)
     Future.unit.flatMap { _ =>
       val inputs = element.ref.querySelectorAll("input[type=checkbox]")
@@ -66,7 +67,7 @@ class ContentChoiceRendererSpec extends EditorDomSuite {
     }
     val exercise = WorkbookContentChoiceInteraction("checked-choice", ChoiceConfig(LanguageMapContentId("test/prompt"), Some(false), GraderRunningBehavior.RUN_ONLY_MANUALLY), options)
     load(exercise)
-    val element = WorkbookContentChoiceInteractionRenderer.renderAppElement(exercise).getDomElement()
+    val element = WorkbookContentChoiceInteractionRenderer.renderAppElement(fullInfo, exercise).getDomElement()
     val close = mount(element)
     val control = exercise.interactionVariable.control
     val context = fullInfo.workbookContextInformation

@@ -1,5 +1,7 @@
 package it.evadid.homepage.workbook.htmlRenderer.workbookEditors
 
+import it.evadid.homepage.control.model.FullInfo
+
 import com.raquo.laminar.api.L
 import com.raquo.laminar.api.L.*
 import it.evadid.homepage.webElements.HtmlAppElement
@@ -11,8 +13,8 @@ import it.evadid.homepage.workbook.htmlRenderer.controlElements.interactionInfo.
 import it.evadid.workbook.abstractions.{InteractionFormat, WorkbookDisplayElement, WorkbookInteractionElement}
 import it.evadid.homepage.control.info.interaction.GradingReporter
 
-case class EditorWithWorkbookPanel[F <: InteractionFormat, EC <: WebEditorConfig]
-(
+case class EditorWithWorkbookPanel[F <: InteractionFormat, EC <: WebEditorConfig](
+  fullInfo: FullInfo,
   interaction: WorkbookInteractionElement[F],
   associatedInstruction: Option[WorkbookDisplayElement],
   gradingReporter: GradingReporter,
@@ -20,7 +22,7 @@ case class EditorWithWorkbookPanel[F <: InteractionFormat, EC <: WebEditorConfig
   editor: SimpleWebEditor[InteractionFormat.State[F], EC]
 ) extends HtmlAppElement {
 
-  lazy val sidePanel = InteractionSidePanelForEditor(interaction, associatedInstruction, gradingReporter, additionalModules)
+  lazy val sidePanel = InteractionSidePanelForEditor(fullInfo, interaction, associatedInstruction, gradingReporter, additionalModules)
 
   override def getDomElement(): L.Element =
     div(cls := "editor-with-panel",

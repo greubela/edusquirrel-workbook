@@ -10,7 +10,8 @@ import it.evadid.workbook.abstractions.{InteractionFormat, WorkbookInteractionEl
 
 case class IconSync[F <: InteractionFormat](fullInfo: FullInfo, laminarHelper: LaminarRenderHelper, workbookInteractionElement: WorkbookInteractionElement[F]) {
 
-  lazy val syncReport: Signal[SyncReporter.Report] = fullInfo.signals.reportersFor(workbookInteractionElement).sync.report
+
+  lazy val syncReport: Signal[SyncReporter.Report] = fullInfo.reporters.reportersFor(workbookInteractionElement).sync.report
 
   def deriveSyncSymbol(report: SyncReporter.Report): Element = {
     import SyncReporter.Status
@@ -27,7 +28,7 @@ case class IconSync[F <: InteractionFormat](fullInfo: FullInfo, laminarHelper: L
       case Status.Synced => ("basic/syncInfoTooltipFull", Seq(report.total.toString))
     }
     val tooltip = laminarHelper.contentIdStringSignal(key, PLAINTEXT_UNDERSCORE_REPLACABLE, arguments)
-    InteractionInfoPanel.infoPanelIcon("sync-info", icon, tooltip, Some(_ => onSyncRequested())).amend(
+    InteractionInfoPanel.infoPanelIcon(fullInfo, "sync-info", icon, tooltip, Some(_ => onSyncRequested())).amend(
       role := "img", tabIndex := 0, aria.label <-- tooltip,
       span(aria.hidden := true, child.text <-- laminarHelper.plaintextStringSignal("basic/syncInfoLabel")))
   }

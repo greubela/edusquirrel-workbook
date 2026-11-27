@@ -19,7 +19,7 @@ class ThresholdNeuronEditorSpec extends UiDomSuite {
 
   test("weights and threshold drive the weighted sums, outputs and comparisons for every example") {
     val state = Var(initial)
-    val editor = ThresholdNeuronEditor(state, labels, examples, initial)
+    val editor = ThresholdNeuronEditor(pageInfo, state, labels, examples, initial)
     assert(!editor.dismissOnOutsideClick)
     mounted(editor.getDomElement()) { root =>
       assertEquals(rows(root).map(_.take(4)), List(List("0", "0", "0", "0"), List("1", "0", "1", "1"), List("1", "1", "2", "1")))
@@ -37,7 +37,7 @@ class ThresholdNeuronEditorSpec extends UiDomSuite {
 
   test("invalid numbers are flagged and never saved; reset and restored answers replace the drafts") {
     val state = Var(initial)
-    mounted(ThresholdNeuronEditor(state, labels, examples, initial).getDomElement()) { root =>
+    mounted(ThresholdNeuronEditor(pageInfo, state, labels, examples, initial).getDomElement()) { root =>
       typeInto(inputs(root)(1), "heavy")
       assert(one(root, ".neuron-error").textContent.contains(loadingText("digitalWorkbooks/invalidNumbers")))
       assertEquals(state.now(), initial)

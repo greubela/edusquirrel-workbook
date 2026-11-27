@@ -1,5 +1,7 @@
 package it.evadid.homepage.workbook.htmlRenderer.interactionRenderer.matching
 
+import it.evadid.homepage.control.model.FullInfo
+
 import com.raquo.laminar.api.L.*
 import it.evadid.core.datastructures.language.LanguageMapContentId
 import it.evadid.core.datastructures.state.StateHelper.StateBasedVar
@@ -14,10 +16,10 @@ import it.evadid.workbook.interaction.sync.UpdateImportance
  */
 object HtmlLikertScaleRenderer extends LineBasedRenderingFactory[LikertScaleInteraction] {
 
-  override protected def createRendering(e: LikertScaleInteraction): AtomarLineRendering = {
+  override protected def createRendering(fullInfo: FullInfo, e: LikertScaleInteraction): AtomarLineRendering = {
     val state = e.interactionVariable.createBoundStateWithUpdateImportance(UpdateImportance.MAJOR, fullInfo.workbookContextInformation).toAirstreamVar
     val locked = e.isDisabledState.toAirstreamVar
-    val clearLabel = laminarHelper.plaintextStringSignal(LanguageMapContentId("basic/likertClear"))
+    val clearLabel = laminarHelper(fullInfo).plaintextStringSignal(LanguageMapContentId("basic/likertClear"))
 
     def rating(row: Int): Signal[Option[Int]] =
       state.signal.map(_.selectedRightIndex(row, e.statements.size, e.scale.size)).distinct
@@ -26,14 +28,14 @@ object HtmlLikertScaleRenderer extends LineBasedRenderingFactory[LikertScaleInte
       val statementId = s"${e.elementId}-statement-$row"
       div(cls := "likert-row", role := "radiogroup", aria.labelledBy := statementId,
         div(cls := "likert-row__statement", idAttr := statementId,
-          InlineMarkdown.element(laminarHelper.plaintextStringSignal(statement))),
+          InlineMarkdown.element(laminarHelper(fullInfo).plaintextStringSignal(statement))),
         e.scale.zipWithIndex.map { (point, column) =>
           label(cls := "likert-option",
             input(typ := "radio", nameAttr := s"${e.elementId}-$row",
               checked <-- rating(row).map(_.contains(column)),
               disabled <-- locked.signal,
               onChange.mapToChecked.filter(identity) --> (_ => state.update(e.rate(_, row, Some(column))))),
-            span(cls := "likert-option__label", text <-- laminarHelper.plaintextStringSignal(point)))
+            span(cls := "likert-option__label", text <-- laminarHelper(fullInfo).plaintextStringSignal(point)))
         },
         button(typ := "button", cls := "likert-row__clear",
           visibility <-- rating(row).map(answer => if answer.isEmpty then "hidden" else "visible"),
@@ -44,12 +46,12 @@ object HtmlLikertScaleRenderer extends LineBasedRenderingFactory[LikertScaleInte
 
     val content = div(cls := "workbook-interaction likert-interaction",
       styleProp("--likert-points") := e.scale.size.toString,
-      e.instruction.map(id => div(cls := "likert-instruction", InlineMarkdown.element(laminarHelper.plaintextStringSignal(id)))),
+      e.instruction.map(id => div(cls := "likert-instruction", InlineMarkdown.element(laminarHelper(fullInfo).plaintextStringSignal(id)))),
       div(cls := "likert-header", aria.hidden := true,
         span(),
-        e.scale.map(point => span(cls := "likert-header__point", text <-- laminarHelper.plaintextStringSignal(point))),
+        e.scale.map(point => span(cls := "likert-header__point", text <-- laminarHelper(fullInfo).plaintextStringSignal(point))),
         span()),
       rows)
-    AtomarLineRendering.basicLine(e, content)
+    AtomarLineRendering.basicLine(fullInfo, e, content)
   }
 }

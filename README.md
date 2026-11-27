@@ -100,7 +100,7 @@ See [catalogue and cache startup](docs/laminar-workbook-catalog-and-cache.md) fo
 
 Default language maps live under `resources/languageMaps/eva/<group>/map-<language>.json`, with `map-universal.json` where needed. IDs such as `PlantWorkshop/workbookTitle` are resolved through the language sources. [LanguageMapStorageControl.scala](modules/client/src/main/scala/it/evadid/homepage/control/change/LanguageMapStorageControl.scala) registers the default EVA directories and Snap locale sources. Add a new default group there; adding translations to an existing group uses its existing source registration.
 
-Static presentation belongs in dedicated files under `homepage/css/`, using `generic/colors.css` and `generic/dimensions.css`. Laminar binds semantic state and classes. Every workbook entry page explicitly links the mail simulator CSS. CSS imports supply other shared components and editors. Canvas rendering reads styles at the DOM boundary; computed drawing geometry and self-contained SVG/image exports still require values in code.
+Static presentation belongs in dedicated files under `homepage/css/`, using `generic/colors.css` (every color, including shadow ink) and `generic/dimensions.css` (sizes, typography, shadows). Laminar binds semantic state and classes. Every workbook entry page explicitly links the mail simulator CSS. CSS imports supply other shared components and editors. Canvas rendering reads styles at the DOM boundary; computed drawing geometry and self-contained SVG/image exports still require values in code.
 
 ## Build and local preview
 

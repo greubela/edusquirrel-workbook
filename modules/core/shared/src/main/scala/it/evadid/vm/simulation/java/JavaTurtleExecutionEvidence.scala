@@ -75,10 +75,8 @@ object JavaTurtleExecutionEvidence {
     val code: String = Y.invocationSource(Y.renderObserved(program, context.budget.maxEvents),
       context.method, context.arguments, context.limits)
 
-    private lazy val reference = context.method match {
-      case None => T.runVmTraced(program, context.limits, budget = context.budget)
-      case Some(method) => T.invokeVmTraced(program, method, context.arguments, context.limits, budget = context.budget)
-    }
+    private lazy val reference = T.executeTraced(program,
+      context.method.fold(T.Entry.Main)(T.Entry.Method(_, context.arguments)), context.limits, budget = context.budget)
 
     def verify(raw: String, current: Context): Verified = {
       require(sameContext(context, current), "The execution context has changed.")

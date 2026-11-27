@@ -35,9 +35,7 @@ case class InteractionVariableHistory[F <: InteractionFormat](
     scaffoldingEvents.collect { case event: ScaffoldingCompletedEvent[F] => event.result })
   /** Confirmation requires the latest answer (including ties) and every feedback event for it. */
   def latestAnswerEvents: Set[InteractionEvent[F]] = {
-    val candidates = cleanedHistory().allStates
-    val latest = candidates.map(_.timestamp).maxOption
-    val answers = candidates.filter(event => latest.contains(event.timestamp))
+    val answers = InteractionEvents.latestTies(cleanedHistory().allStates)
     val states = answers.map(_.associatedState)
     answers.map(event => event: InteractionEvent[F]) ++
       (gradingEvents ++ scaffoldingEvents).filter(event => states(event.associatedState))
@@ -96,8 +94,8 @@ case class InteractionVariableHistory[F <: InteractionFormat](
     val relevant = gradingEvents.filter(_.associatedState == state).groupBy(_.grader.key)
     val results = knownGraders.distinctBy(_.key).map { grader =>
       val candidates = relevant.getOrElse(grader.key, Set.empty)
-      val latestTime = candidates.map(_.timestamp).maxOption
-      val latest = candidates.filter(event => latestTime.contains(event.timestamp))
+      val latest = InteractionEvents.latestTies(candidates)
+      val latestTime = latest.headOption.map(_.timestamp)
       val completed = candidates.collect { case event: GradingCompletedEvent[F] if latest.exists(_.isInstanceOf[GradingCompletedEvent[F]]) =>
         event.result.copy(grader = grader)
       }
@@ -112,8 +110,7 @@ case class InteractionVariableHistory[F <: InteractionFormat](
 
   def scaffoldingForState(state: InteractionFormat.State[F]): Option[ScaffoldingResult[InteractionFormat.State[F], InteractionFormat.Scaffolding[F]]] = {
     val relevant = scaffoldingEvents.filter(_.associatedState == state)
-    val latestTime = relevant.map(_.timestamp).maxOption
-    val latest = relevant.filter(event => latestTime.contains(event.timestamp))
+    val latest = InteractionEvents.latestTies(relevant)
     if latest.exists(_.isInstanceOf[ScaffoldingCompletedEvent[F]]) then historyScaffolding.scaffoldingMap.get(state)
     else latest.collectFirst { case event: ScaffoldingStartedEvent[F] =>
       ScaffoldingResult(state, ScaffoldingStatus.ScaffoldingRequestedButNotFinished(), event.scaffoldingEntity, None, event.timestamp)

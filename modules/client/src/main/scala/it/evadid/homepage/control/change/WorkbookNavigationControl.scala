@@ -1,5 +1,6 @@
 package it.evadid.homepage.control.change
 
+import it.evadid.workbook.session.{AllWorkbookInfo, WorkbookConfig}
 import it.evadid.homepage.control.model.*
 import it.evadid.homepage.workbook.content.WorkbookFactory
 import scala.concurrent.{ExecutionContext, Future}
@@ -9,11 +10,9 @@ final class WorkbookNavigationControl(fullInfo: FullInfo) {
   private given ExecutionContext = ExecutionContext.global
   private val logger = fullInfo.loggerSystemInfo.contentControlLogger
 
-  def changeWorkbook(factory: WorkbookFactory): Unit = fullInfo.synchronized {
-    changeWorkbook(Some(factory.createEverything))
-  }
+  def changeWorkbook(factory: WorkbookFactory): Unit = changeWorkbook(Some(factory.createEverything))
 
-  def changeWorkbook(newWorkbook: Option[AllWorkbookInfo]): Unit = fullInfo.synchronized {
+  def changeWorkbook(newWorkbook: Option[AllWorkbookInfo]): Unit = {
     val previous = fullInfo.homepageInfoNow().workbookInfo
     val sameInstance = previous.zip(newWorkbook).forall((a, b) => a.loadedWorkbook eq b.loadedWorkbook)
     if (previous != newWorkbook || !sameInstance) {
@@ -23,7 +22,7 @@ final class WorkbookNavigationControl(fullInfo: FullInfo) {
     }
   }
 
-  def updateWorkbookConfig(func: WorkbookConfig => WorkbookConfig): Unit = fullInfo.synchronized {
+  def updateWorkbookConfig(func: WorkbookConfig => WorkbookConfig): Unit = {
     if (fullInfo.homepageInfoState.now().workbookInfo.nonEmpty) {
       fullInfo.homepageInfoState.update(curInfo => curInfo.copy(workbookInfo = curInfo.workbookInfo.map(info => info.copy(config = func(info.config)))))
     } else {

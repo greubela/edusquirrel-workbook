@@ -6,7 +6,6 @@ import it.evadid.vm.code.tree.{BeExpressionNode, BeExpressionReference}
 import it.evadid.vm.controlflow.ControlFlowType.ControlFlowDown
 import it.evadid.vm.io.{BeExpressionStructureInfo, BeSegmentedCodeElement}
 import it.evadid.vm.naming.BeEntityName
-import it.evadid.vm.simulation.*
 import it.evadid.vm.static.BeExpressionStaticInformation
 import it.evadid.vm.types.*
 
@@ -21,8 +20,6 @@ trait BeObjectExpression extends BeExpression {
       BeExpressionReference(BeChildInfo(role, scope), expression)
     }
   }
-  override def expressionExecutor(config: BeSimulatorConfig, state: BeSimulatorState): BeExpressionExecutor =
-    throw UnsupportedOperationException(s"Object execution is not supported by this simulator: ${getClass.getSimpleName}")
 }
 
 case class BeCurrentInstance(className: BeEntityName) extends BeObjectExpression {

@@ -1,7 +1,7 @@
 package it.evadid.homepage.workbook.content
 
+import it.evadid.workbook.session.{AllWorkbookInfo, WorkbookConfig}
 import it.evadid.workbook.abstractions.InteractionFormat.{LabeledCheckboxInteractionFormat, TextInteractionFormat}
-
 
 import it.evadid.core.datastructures.language.*
 import it.evadid.core.datastructures.language.AppLanguage.*
@@ -24,7 +24,7 @@ import it.evadid.workbook.elements.structureElements.WorkbookSection.WorkbookSec
 
 trait WorkbookFactory {
 
-  def availableLanguages: Seq[HumanLanguage] = List(English, German) // todo remove default value
+  def availableLanguages: Seq[HumanLanguage] = List(German, English) // todo remove default value
 
   def defaultSectionActiveNr: Int = 0
 

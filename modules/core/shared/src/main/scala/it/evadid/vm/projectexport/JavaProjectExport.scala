@@ -1,5 +1,7 @@
 package it.evadid.vm.projectexport
 
+import it.evadid.core.util.InfoUtil
+
 import it.evadid.core.datastructures.language.AppLanguage.Java
 import it.evadid.vm.code.abstractions.BeExpression
 import it.evadid.vm.modules.BeModules
@@ -35,7 +37,7 @@ object JavaProjectExport {
         val turtleCalls = own.flatMap(file => turtleCall.findAllMatchIn(file.source).map(_.group(1))).toSet
         val libraries = libraryFiles(libraryExpression(state, structured), world, turtleCalls).filterNot(file => defined(file.name))
         val classes = own ++ libraries
-        Right(ExportedProject(ExportedProject.folderName(title),
+        Right(ExportedProject(InfoUtil.fileNameSafe(title),
           classes.map(file => ProjectFile(s"${file.name}.java", file.source)) ++
             Seq(ProjectFile("package.bluej", packageFile(classes)), ProjectFile("README.TXT", readme(title, classes)))))
       }

@@ -1,5 +1,7 @@
 package it.evadid.homepage.workbook.htmlRenderer.interactionRenderer.pixel
 
+import it.evadid.homepage.control.model.FullInfo
+
 import com.raquo.laminar.api.L.*
 import it.evadid.homepage.webElements.basic.LabelSelection
 import com.raquo.laminar.codecs.StringAsIsCodec
@@ -13,10 +15,10 @@ import it.evadid.workbook.interaction.sync.UpdateImportance
 
 case object BinaryPixelRenderer extends LineBasedRenderingFactory[BinaryPixelInteraction] {
   private val headerScope = new HtmlAttr[String]("scope", StringAsIsCodec)
-  override protected def createRendering(e: BinaryPixelInteraction): AtomarLineRendering = {
+  override protected def createRendering(fullInfo: FullInfo, e: BinaryPixelInteraction): AtomarLineRendering = {
     val state = e.interactionVariable.createBoundStateWithUpdateImportance(UpdateImportance.MAJOR, fullInfo.workbookContextInformation).toAirstreamVar
     val disabledSignal = e.isDisabledState.toAirstreamVar.signal
-    def textFor(key: String): Signal[String] = laminarHelper.plaintextStringSignal(s"digitalWorkbooks/$key")
+    def textFor(key: String): Signal[String] = laminarHelper(fullInfo).plaintextStringSignal(s"digitalWorkbooks/$key")
     def grid(image: Signal[BinaryPixelImage], editable: Boolean): Element = div(cls := "pixel-grid-scroll", table(
       cls := "pixel-grid", caption(text <-- textFor(if editable then "pixelCanvas" else "pixelTarget")),
       thead(tr(th(), (0 until e.initial.columns).map(c => th(headerScope := "col", (c + 1).toString)))),
@@ -33,15 +35,15 @@ case object BinaryPixelRenderer extends LineBasedRenderingFactory[BinaryPixelInt
       )))
     ))
     val dom = fieldSet(cls := "pixel-interaction",
-      legend(text <-- laminarHelper.plaintextStringSignal(e.title)),
+      legend(text <-- laminarHelper(fullInfo).plaintextStringSignal(e.title)),
       p(text <-- textFor("pixelHelp")),
       div(cls := "pixel-canvases", grid(state.signal, true), e.expected.toList.map(target => grid(Val(target), false))),
       div(cls := "pixel-actions",
         button(typ := "button", disabled <-- disabledSignal, text <-- textFor("pixelReset"), onClick --> (_ => state.set(e.initial))),
         e.presets.map(preset => button(typ := "button", disabled <-- disabledSignal,
-          text <-- laminarHelper.plaintextStringSignal(preset.label), onClick --> (_ => state.set(preset.image))))),
+          text <-- laminarHelper(fullInfo).plaintextStringSignal(preset.label), onClick --> (_ => state.set(preset.image))))),
       e.probes.map(probe => p(cls := "pixel-probe", role := "status", aria.live := "polite",
-        span(text <-- laminarHelper.plaintextStringSignal(probe.label)), ": ",
+        span(text <-- laminarHelper(fullInfo).plaintextStringSignal(probe.label)), ": ",
         span(text <-- state.signal.map(image => (probe.activeCount(image), probe.activates(image)))
           .combineWith(textFor("pixelProbeResult")).map { (count, output, template) =>
             template.replace("{count}", count.toString).replace("{threshold}", probe.threshold.toString)
@@ -53,6 +55,6 @@ case object BinaryPixelRenderer extends LineBasedRenderingFactory[BinaryPixelInt
           case None => "pixelUngraded" -> Nil
         })))
     )
-    AtomarLineRendering.basicLine(e, dom)
+    AtomarLineRendering.basicLine(fullInfo, e, dom)
   }
 }

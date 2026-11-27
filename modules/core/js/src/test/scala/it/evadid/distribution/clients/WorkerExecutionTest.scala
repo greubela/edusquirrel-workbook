@@ -19,7 +19,7 @@ class WorkerExecutionTest extends FunSuite {
     var fail: Throwable => Unit = _ => ()
     var terminated = false
     val sent = ListBuffer.empty[String]
-    override def setHandlers(message: Any => Unit, failure: Throwable => Unit): Unit = { receive = message; fail = failure }
+    def connect(message: Any => Unit, failure: Throwable => Unit): Fake = { receive = message; fail = failure; this }
     override def postMessage(message: String): Unit = sent += message
     override def terminate(): Unit = terminated = true
     def reply(index: Int, value: String): Unit = {
@@ -29,7 +29,7 @@ class WorkerExecutionTest extends FunSuite {
         ExecutionClientResponse.forValue(ExecutionClientResponseTimestamps(now,now,now),value,request.command))))
     }
   }
-  private def client(fake: Fake, timeout: Double = 1000) = new WebWorkerExecutionClient(fake, Set("test"), timeout)
+  private def client(fake: Fake, timeout: Double = 1000) = new WebWorkerExecutionClient(fake.connect, Set("test"), timeout)
   private val command = ExecutionCommand("test",ujson.Obj("text" -> "Grüße\n\"外\""))
 
   test("typed framework calls correlate concurrent responses even when returned in reverse order") {

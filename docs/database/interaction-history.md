@@ -16,7 +16,7 @@ registries. See [formats and event semantics](../interaction-format.md).
 | [BufferedSyncDestinationHandler](../../modules/core/shared/src/main/scala/it/evadid/workbook/interaction/sync/destination/BufferedSyncDestinationHandler.scala) | Merges queued deltas per context, serializes batches and gives each caller the confirmations of its own events |
 | [DatabaseSyncViaBackendServerHandler](../../modules/client/src/main/scala/it/evadid/homepage/workbook/syncDestination/DatabaseSyncViaBackendServerHandler.scala) | Sends database commands using captured credentials and connection configuration |
 | [BackendCommandHandler](../../modules/server/src/main/scala/it/evadid/server/BackendCommandHandler.scala) | Decodes typed requests and authorizes every context |
-| [Server history handlers](../../modules/server/src/main/scala/it/evadid/server/commandHandler/sql/sync/) | `UpsertToDatabase`, `FetchFromDatabase` and `DeleteInDatabase` dispatch to the selected layout; `HistorySql` owns transactions, typed JDBC parameters and resource cleanup |
+| [Server history handlers](../../modules/server/src/main/scala/it/evadid/server/commandHandler/sql/sync/) | `HistorySql.forRequest` dispatches to the selected layout; `HistorySql` owns transactions; [`SqlStatements`](../../modules/server/src/main/scala/it/evadid/server/database/SqlStatements.scala) binds typed parameters and closes statements |
 
 Within the client control, `WorkbookBinding` captures an environment and
 `TypedBinding[F]` owns a `Var[RemoteHistoryCache.CacheState[...]]` for each

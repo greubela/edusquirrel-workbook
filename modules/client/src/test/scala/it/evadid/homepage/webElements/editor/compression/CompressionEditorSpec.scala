@@ -13,7 +13,7 @@ class CompressionEditorSpec extends UiDomSuite {
   private def text(key: String) = loadingText(s"CompressionWorkbook/$key")
   private def editor(initial: CompressionExperiment, locked: Signal[Boolean] = Val(false)): (Var[CompressionExperiment], Element) = {
     val answer = Var(initial)
-    val created = CompressionEditor(answer, initial, locked)
+    val created = CompressionEditor(pageInfo, answer, initial, locked)
     assert(!created.dismissOnOutsideClick)
     answer -> created.getDomElement()
   }
@@ -155,7 +155,9 @@ class CompressionEditorSpec extends UiDomSuite {
         _ = choose(brightness, "4")
         _ = assertEquals((answer.now().asInstanceOf[ImageBlocks].luminanceBlock, answer.now().asInstanceOf[ImageBlocks].chromaBlock), (4, 2))
         _ = assertEquals(canvas.lastRaster, rgb(2, 4))
-        _ = assertEquals(all(root, "li").map(_.textContent.take(2)), List("○ ", "✓ ", "✓ ", "[L"), "challenges and the size estimate")
+        items = all(root, "li").map(_.textContent)
+        _ = assertEquals(items.map(_.take(2)).init, List("○ ", "✓ ", "✓ "), "challenges")
+        _ = assert(items.last.endsWith(text("estimatedSize")), items.last)
       } yield ()).transform { outcome => canvas.uninstall(); outcome }
     }
   }
