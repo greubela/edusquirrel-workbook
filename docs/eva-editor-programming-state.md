@@ -59,9 +59,9 @@ Class and function views of both languages are `FragmentCodeEditor[S, I]`s (`edi
 one update logic splices partial drafts into a `FragmentRange` of the structured answer `S`, with
 `FragmentSource[S]` describing its named sources (Java classes; Python classes and module). Subclasses
 only locate and identify their fragment, and may present it differently (Python methods dedented).
-A draft that comes to hold several complete declarations keeps them all and reports a
-`FragmentCodeEditor.Scope` (`widened`); the component then switches to the mode that shows all of them:
-two methods → Class Mode, any other combination (a method and an attribute, two classes) → Full Mode.
+A draft that comes to hold code beyond its declaration keeps it all and reports a `FragmentCodeEditor.Scope`
+(`widened`); the component switches at once to the most local mode that shows it: any code typed around a method
+(another method, an attribute, even an unfinished line) → Class Mode; code outside a class → Full Mode.
 Attribute and constructor dialogs, deletion and relationship arrows (inheritance, realization,
 association; no usage arrows) use the same shared UML model. All classes share one row, which
 scrolls horizontally when needed.

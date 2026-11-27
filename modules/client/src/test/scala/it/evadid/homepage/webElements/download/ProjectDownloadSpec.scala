@@ -39,11 +39,11 @@ class ProjectDownloadSpec extends EditorDomSuite {
     val recorder = Recorder()
     val state = Var[ProgrammingState](ProgrammingStateRaw(Python, "print(1)\n"))
     val labels = ProgrammingExecutionLabels(Val("console"), Val("run"), Val("stop"), Val("running"), Val("stopped"), Val("unavailable"), Val("Download"))
-    val close = mount(ProjectDownloadButton(state.signal, labels, "Hallo Welt", recorder))
+    val close = mount(ProjectDownloadButton(state.signal, labels, "brick-task", recorder, () => LocalDateTime.of(2026, 11, 27, 13, 5, 9)))
     val button = dom.document.querySelector(".programming-execution__download").asInstanceOf[dom.html.Button]
     try {
       button.click()
-      assertEquals(recorder.saved.map(_._1), Vector("Hallo_Welt.py"))
+      assertEquals(recorder.saved.map(_._1), Vector("2026-11-27_13-05-09_brick-task.py"), "named after the time and the exercise id")
       state.set(ProgrammingStateRaw(Python, "forward(1)").toBeExpression)
       assert(button.disabled, "block display has no project format")
     } finally close()

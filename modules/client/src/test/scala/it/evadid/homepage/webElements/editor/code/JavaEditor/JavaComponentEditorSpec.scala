@@ -159,7 +159,7 @@ class JavaComponentEditorSpec extends UiDomSuite {
     }
   }
 
-  test("a second method typed in the function editor opens its class; an added attribute the full source") {
+  test("a method typed next to another opens their class; a class typed next to a class the full source") {
     val state = answer()
     mountedAsync(view(editor(state))) { root =>
       val method = valueOf(field(root))
@@ -168,12 +168,11 @@ class JavaComponentEditorSpec extends UiDomSuite {
         assertEquals(heading(root), "class Main")
         assert(valueOf(field(root)).contains("forward(10);") && valueOf(field(root)).contains("forward(5);"), valueOf(field(root)))
         assertEquals(buttonNamed(root, "Class Mode").getAttribute("aria-selected"), "true")
-        click(entry(root, "~twice(x: int): int"))
-        typeInto(field(root), valueOf(field(root)) + "\n\n  static int size = 3;")
-        eventually(status(root) == "Full source", "Full Mode shows the method and the attribute")
+        typeInto(field(root), valueOf(field(root)) + "\n\nclass Extra {}")
+        eventually(status(root) == "Full source", "Full Mode shows both classes")
       }.map { _ =>
         assertEquals(valueOf(field(root)), state.now().toString)
-        assert(classCode(state, "Main").contains("static int size = 3;"))
+        assert(valueOf(field(root)).contains("class Extra {}"))
       }
     }
   }

@@ -46,7 +46,7 @@ class PythonComponentEditorSpec extends UiDomSuite {
       }
     }
   }
-  test("a second function typed in Function Mode opens its module; an attribute added to a method the full program") {
+  test("code typed next to a function opens its module or class; code next to a class the full program") {
     val state = Var(ProgrammingStatePythonStructured("def main():\n    forward(10)\nmain()\nclass Box:\n    def f(self):\n        return 1\n"))
     mountedAsync(view(PythonComponentEditor(state, EvaTestContext(labels), CodeMirrorEditorConfig.Default))) { root =>
       def field = one(root, "textarea.code-mirror-editor__fallback")
@@ -56,11 +56,13 @@ class PythonComponentEditorSpec extends UiDomSuite {
         assert(valueOf(field).contains("def helper():") && valueOf(field).contains("main()"), valueOf(field))
         click(withText(root, ".uml-entry", "+f()").head)
         typeInto(field, "def f(self):\n    return 1\n\nsize = 3")
-        eventually(selected("Full Mode"), "Full Mode shows the method and the attribute")
-      }.map { _ =>
+        eventually(selected("Class Mode"), "Class Mode shows the method and the attribute")
+      }.flatMap { _ =>
         assert(state.now().definedClasses(BeEntityName.fromCodeString("Box")).contains("    size = 3"))
-        assert(valueOf(field).contains("class Box:"))
-      }
+        assert(valueOf(field).startsWith("class Box:"), valueOf(field))
+        typeInto(field, valueOf(field) + "\nclass Crate:\n    pass\n")
+        eventually(selected("Full Mode"), "Full Mode shows both classes")
+      }.map(_ => assert(valueOf(field).contains("class Crate:"), valueOf(field)))
     }
   }
 

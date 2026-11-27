@@ -74,7 +74,7 @@ final case class EvaEditor(
       }),
       // The console runs what was committed, never the keystrokes of an unfinished token.
       ProgrammingExecutionPanel(underlyingVar.signal, environment.programming, environment.labels.execution,
-        actions = Seq(ProjectDownloadButton(underlyingVar.signal, environment.labels.execution)))
+        actions = Seq(ProjectDownloadButton(underlyingVar.signal, environment.labels.execution, environment.projectName)))
         .getDomElement()))
 
   override def dismissOnOutsideClick: Boolean = false

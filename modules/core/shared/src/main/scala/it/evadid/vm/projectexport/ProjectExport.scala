@@ -1,5 +1,7 @@
 package it.evadid.vm.projectexport
 
+import it.evadid.core.util.InfoUtil
+
 import it.evadid.core.datastructures.language.AppLanguage.{Java, ProgrammingLanguage, Python, SnapLanguage}
 import it.evadid.vm.modules.BeModules
 import it.evadid.vm.simulation.data.{DataLibrarySources, DataWorld}
@@ -17,8 +19,8 @@ object ProjectExport {
       world: DataWorld = DataWorld()): Either[String, ExportedProject] = language match {
     case Java => JavaProjectExport.blueJ(state, title, world)
     case Python => python(state, title, world)
-    case SnapLanguage => attempt(ExportedProject(ExportedProject.folderName(title),
-      Seq(ProjectFile(s"${ExportedProject.folderName(title)}.xml", state.toSnapXml.code))))
+    case SnapLanguage => attempt(ExportedProject(InfoUtil.fileNameSafe(title),
+      Seq(ProjectFile(s"${InfoUtil.fileNameSafe(title)}.xml", state.toSnapXml.code))))
     case other => Left(s"Downloading $other projects is not supported.")
   }
 
@@ -35,7 +37,7 @@ object ProjectExport {
       Option.when(uses(BeModules.NumberList) && !defines("NumberList"))(DataLibrarySources.pythonNumberList(world.list)),
       Option.when(uses(BeModules.Sudoku) && !defines("Sudoku"))(DataLibrarySources.pythonSudoku(world.sudoku))).flatten
     val main = (libraries :+ source.trim).mkString("", "\n\n", "\n")
-    ExportedProject(ExportedProject.folderName(title), Seq(ProjectFile("main.py", main)))
+    ExportedProject(InfoUtil.fileNameSafe(title), Seq(ProjectFile("main.py", main)))
   }
 
   private def attempt(project: => ExportedProject): Either[String, ExportedProject] =

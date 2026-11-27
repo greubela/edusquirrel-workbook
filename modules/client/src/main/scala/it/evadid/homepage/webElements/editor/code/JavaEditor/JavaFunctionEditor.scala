@@ -6,7 +6,8 @@ import it.evadid.homepage.webElements.editor.code.fragment.FragmentCodeEditor.Sc
 import com.raquo.laminar.api.L.*
 import it.evadid.homepage.webElements.editor.code.codemirror.CodeMirrorEditor
 import it.evadid.homepage.webElements.editor.config.CodeMirrorEditorConfig
-import it.evadid.vm.parsing.source.{JavaFieldStructured, JavaFunctionStructured, JavaMemberStructured}
+import it.evadid.vm.parsing.source.{JavaFunctionStructured, SourceParsing}
+import it.evadid.vm.parsing.source.SourceParsing.SourceLanguage
 import it.evadid.util.logging.Logger
 import it.evadid.vm.naming.BeEntityName
 import it.evadid.workbook.elements.interactionElements.programming.state.ProgrammingStateJavaStructured
@@ -31,16 +32,14 @@ final class JavaFunctionEditor(
       .flatMap(text => findEditedMethod(text, discover(text), previous.method, MethodRange(range.start, range.end)))
       .map(Function(range.owner, _))
 
-  /** Complete methods only need their class; a method with an attribute needs the whole program. Unfinished or
-    * other code (statements, nested types) keeps the draft in this editor.
+  /** The complete outermost methods within the draft; code a declaration does not end yet (such as a word before a
+    * method's modifiers) belongs to the method after it.
     */
-  override protected def widening(source: ProgrammingStateJavaStructured, range: FragmentRange): Option[Scope] =
-    source.definedClasses.get(range.owner).flatMap { text =>
-      val members = discover(text).flatMap(_.members).filter(member => range.start <= member.span.start && member.span.end <= range.end)
-      def method(member: JavaMemberStructured) = member.isInstanceOf[JavaFunctionStructured]
-      Option.when(members.size > 1 && members.forall(member => method(member) || member.isInstanceOf[JavaFieldStructured]))(
-        if members.forall(method) then Scope.Owner else Scope.Program)
-    }
+  override protected def widening(source: ProgrammingStateJavaStructured, range: FragmentRange): Option[Scope] = {
+    val inside = source.definedClasses.get(range.owner).toVector.flatMap(text =>
+      SourceParsing.parse(text, SourceLanguage.Java).structured.functions.filter(method => range.start <= method.span.start && method.span.end <= range.end))
+    memberWidening(source, range, inside.filterNot(method => inside.exists(outer => outer != method && outer.span.contains(method.span))).map(_.span))
+  }
   override protected def cssClass: String = "java-function-editor__method"
 }
 

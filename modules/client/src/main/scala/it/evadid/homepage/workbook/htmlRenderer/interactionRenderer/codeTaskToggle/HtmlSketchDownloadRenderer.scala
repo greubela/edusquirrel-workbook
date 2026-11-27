@@ -2,10 +2,13 @@ package it.evadid.homepage.workbook.htmlRenderer.interactionRenderer.codeTaskTog
 
 import com.raquo.laminar.api.L.*
 import it.evadid.core.datastructures.state.StateHelper.InteractionVariableOnJS
+import it.evadid.core.util.InfoUtil
 import it.evadid.homepage.workbook.htmlRenderer.HtmlRenderFactory.LineBasedRenderingFactory
 import it.evadid.homepage.workbook.htmlRenderer.atomarLineRenderings.AtomarLineRendering
 import it.evadid.workbook.elements.interactionElements.codeTaskToggle.SketchDownloadInteraction
 import it.evadid.workbook.elements.interactionElements.reorderExercise.ReorderInteraction
+
+import java.time.LocalDateTime
 
 object HtmlSketchDownloadRenderer extends LineBasedRenderingFactory[SketchDownloadInteraction] {
 
@@ -28,11 +31,17 @@ object HtmlSketchDownloadRenderer extends LineBasedRenderingFactory[SketchDownlo
         cls := "btn-primary",
         disabled <-- enabledSignal.map(enabled => !enabled),
         text <-- laminarHelper.plaintextStringSignal(download.buttonLabel),
-        onClick --> { _ => fullInfo.contentControl.downloadToDisc.downloadFile(download.filenameRelativeToWorkbookResources, download.sketchContent) }
+        onClick --> { _ => fullInfo.contentControl.downloadToDisc.downloadFile(HtmlSketchDownloadRenderer.fileName(download), download.sketchContent) }
       )
     )
 
     AtomarLineRendering.basicLine(download, dom, "sketch-download")
   }
 
+  /** The sketch's own name, dated like every download (`2026-11-27_13-05-09_sensor-auslesen.ino`). */
+  def fileName(download: SketchDownloadInteraction, now: LocalDateTime = LocalDateTime.now()): String = {
+    val name = download.filenameRelativeToWorkbookResources.split('/').last
+    val dot = name.lastIndexOf('.')
+    if dot > 0 then InfoUtil.downloadName(name.take(dot), now) + name.drop(dot) else InfoUtil.downloadName(name, now)
+  }
 }
