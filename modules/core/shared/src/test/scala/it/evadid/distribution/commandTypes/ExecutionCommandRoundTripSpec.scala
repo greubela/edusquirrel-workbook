@@ -21,7 +21,7 @@ import it.evadid.workbook.elements.interactionElements.sql.SqlDatabaseConfig
 import it.evadid.workbook.interaction.sync.{EventSyncStrategy, SyncSuccess, UpdateImportance, UsageContext}
 import it.evadid.workbook.interaction.sync.model.InteractionHistoryJson
 import it.evadid.workbook.interaction.variable.InteractionVariableHistory
-import it.evadid.workbook.interaction.variable.events.AnswerChangedEvent
+import it.evadid.workbook.interaction.variable.events.{AnswerChangedEvent, EventId}
 import it.evadid.workbook.model.qr.{QrCode, QrErrorCorrection}
 import java.time.LocalDateTime
 import munit.FunSuite
@@ -59,7 +59,8 @@ class ExecutionCommandRoundTripSpec extends FunSuite {
   private val key = usage.toSyncContext("answer_history")
   private val history = InteractionHistoryJson.fromHistory(TextInteractionFormat, InteractionVariableHistory.empty[TextInteractionFormat.type]
     .addEvent(AnswerChangedEvent[TextInteractionFormat.type]("answer \"quoted\" 学校", at, UpdateImportance.MAJOR)))
-  private val synced = SyncSuccess(1, 2, 0, at)
+  private val synced = SyncSuccess[EventId](Set(EventId.random()), Set.empty, Set(EventId.random()), Set.empty, at)
+  private val removed = SyncSuccess.removed(Set(key)).copy(timestampCommitted = at)
   private val qr = QrCode.fromText("https://example.invalid/?q=1", QrErrorCorrection.Q, None, None)
   private val snapElement = SourceParsing.parse("""<project name="demo"><scripts><script x="1"/></scripts></project>""", SourceLanguage.Snap).syntax
     .toOption.get.root.element
@@ -78,9 +79,9 @@ class ExecutionCommandRoundTripSpec extends FunSuite {
       LocalDateTime.MAX, BackendDatabase, DatabaseHistoryFormat.RelationalFormat, EventSyncStrategy.KEEP_LAST_AND_MAJOR),
       SQLCommands.DbFetchResponse(Map(key -> history))),
     Sample(SQLCommands.clearValuesDbCommand, SQLCommands.DeleteInDbRequest(usage, Some("answer_history"), BackendDatabase,
-      DatabaseHistoryFormat.BlobFormat), synced),
+      DatabaseHistoryFormat.BlobFormat), removed),
     Sample(SQLCommands.resetUserHistoriesDbCommand, SQLCommands.DeleteInDbRequest(usage, None, BackendDatabase,
-      DatabaseHistoryFormat.RelationalFormat, allWorkbooks = true), synced),
+      DatabaseHistoryFormat.RelationalFormat, allWorkbooks = true), removed),
     Sample(MailCommands.sendMailCommand, MailCommands.SendMailRequest("teacher@example.invalid", "Subject: Grüße", "Line 1\nLine 2", Nil),
       MailCommands.SendMailResponse(None, sent = true)),
     Sample(LLMCommands.completeLLMCommandFactory, LLMCommands.MessengerChatCompletionRequest("system",

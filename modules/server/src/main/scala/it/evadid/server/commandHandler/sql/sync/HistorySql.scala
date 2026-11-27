@@ -1,8 +1,9 @@
 package it.evadid.server.commandHandler.sql.sync
 
 import it.evadid.util.logging.Logger
-import it.evadid.distribution.commandTypes.SQLCommands.{BulkStoreToDbRequest, StoreToDbRequest}
-import it.evadid.workbook.interaction.sync.SyncSuccess
+import it.evadid.distribution.commandTypes.SQLCommands.{BulkStoreToDbRequest, DeleteInDbRequest, StoreToDbRequest}
+import it.evadid.workbook.interaction.sync.{SyncContext, SyncSuccess}
+import it.evadid.workbook.interaction.variable.events.EventId
 import it.evadid.server.database.SqlFailure
 import it.evadid.core.util.io.ParsingContext
 import java.sql.{Connection, PreparedStatement, ResultSet}
@@ -10,13 +11,25 @@ import scala.util.Using
 
 /** Shared JDBC resource handling and transaction ownership for both history layouts. */
 abstract class HistorySql(connection: Connection, logger: Logger) {
-  def store(request: StoreToDbRequest): SyncSuccess
+  def store(request: StoreToDbRequest): SyncSuccess[EventId]
 
   /** One transaction and deterministic lock order across the entire network batch. */
-  final def storeAll(request: BulkStoreToDbRequest): SyncSuccess = transaction {
+  final def storeAll(request: BulkStoreToDbRequest): SyncSuccess[EventId] = transaction {
     request.entries.sortBy(entry => (entry.syncContext.programId, entry.syncContext.scenarioId,
       entry.syncContext.userId, entry.syncContext.keyForSerialisation))
-      .foldLeft(SyncSuccess.emptyNow())((result, entry) => result.combine(store(entry)))
+      .foldLeft(SyncSuccess.emptyNow[EventId]())((result, entry) => result.combine(store(entry)))
+  }
+
+  /** Deletes the request's history rows from a table keyed by context, reporting the removed contexts. */
+  protected final def deleteMatching(table: String, request: DeleteInDbRequest): SyncSuccess[SyncContext] = transaction {
+    val context = request.usageContext
+    val filter = "WHERE program_id=? AND user_id=?" + (if request.allWorkbooks then "" else " AND scenario_id=?") +
+      request.limitToKey.map(_ => " AND variable_id=?").getOrElse("")
+    val parameters = List(context.programId, context.userId) ++ Option.unless(request.allWorkbooks)(context.scenarioId).toList ++ request.limitToKey.toList
+    val removed = query(s"SELECT scenario_id,variable_id FROM $table $filter FOR UPDATE", parameters)(row =>
+      SyncContext(context.programId, row.getString(1), context.userId, row.getString(2))).toSet
+    update(s"DELETE FROM $table $filter", parameters*)
+    SyncSuccess.removed(removed)
   }
 
   private def prepared[A](sql: String, values: Seq[String | Long])(run: PreparedStatement => A): A =

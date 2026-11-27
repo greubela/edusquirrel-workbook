@@ -3,9 +3,9 @@ package it.evadid.workbook.interaction.sync
 import it.evadid.core.datastructures.storage.remote.{RemoteHistoryDataReader, RemoteHistoryDataWriter, RemoteHistoryReaderWriter}
 import it.evadid.util.logging.derived.SyncLogger
 import it.evadid.workbook.abstractions.InteractionFormat
-import it.evadid.workbook.interaction.sync.model.{FetchResponse, InteractionHistoryJson}
+import it.evadid.workbook.interaction.sync.model.InteractionHistoryJson
 import it.evadid.workbook.interaction.variable.InteractionVariableHistory
-import it.evadid.workbook.interaction.variable.events.InteractionEvent
+import it.evadid.workbook.interaction.variable.events.{EventId, InteractionEvent}
 import java.time.LocalDateTime
 import scala.concurrent.{ExecutionContext, Future}
 
@@ -30,8 +30,8 @@ case class FormattedSyncDestination[F <: InteractionFormat](information: SyncInf
   }
 
   val writer: RemoteHistoryDataWriter[SyncContext, F] = new RemoteHistoryDataWriter[SyncContext, F] {
-    def writeForKey(logger: SyncLogger, key: SyncContext, value: InteractionVariableHistory[F]): Future[SyncSuccess] = writeAll(logger, Map(key -> value))
-    def writeAll(logger: SyncLogger, values: Map[SyncContext, InteractionVariableHistory[F]]): Future[SyncSuccess] =
+    def writeForKey(logger: SyncLogger, key: SyncContext, value: InteractionVariableHistory[F]): Future[SyncSuccess[EventId]] = writeAll(logger, Map(key -> value))
+    def writeAll(logger: SyncLogger, values: Map[SyncContext, InteractionVariableHistory[F]]): Future[SyncSuccess[EventId]] =
       handler.storeHistoriesJson(values.map((key, history) => key -> InteractionHistoryJson.fromHistory(format, history).serialized))
     override def flush(logger: SyncLogger, forceFlush: Boolean): Unit = handler.flush(forceFlush)
   }

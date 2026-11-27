@@ -3,7 +3,8 @@ package it.evadid.core.datastructures.storage.remote
 import it.evadid.util.logging.derived.SyncLogger
 import it.evadid.workbook.abstractions.InteractionFormat
 import it.evadid.workbook.interaction.variable.InteractionVariableHistory
-import it.evadid.workbook.interaction.variable.events.InteractionEvent
+import it.evadid.workbook.interaction.sync.SyncSuccess
+import it.evadid.workbook.interaction.variable.events.{EventId, InteractionEvent}
 import java.time.LocalDateTime
 import scala.concurrent.Future
 
@@ -21,9 +22,13 @@ trait RemoteHistoryDataReader[K, F <: InteractionFormat] {
   def flush(logger: SyncLogger, forceFlush: Boolean): Unit = ()
 }
 
-/** Data writer for event-based history. */
-trait RemoteHistoryDataWriter[K, F <: InteractionFormat] extends RemoteReaderWriter.RemoteDataWriter[K, InteractionVariableHistory[F]] {
-  override def flush(logger: SyncLogger, forceFlush: Boolean): Unit = ()
+/** Data writer for event-based history. A result names the sent events stored once the write has committed. */
+trait RemoteHistoryDataWriter[K, F <: InteractionFormat] {
+  def writeForKey(logger: SyncLogger, key: K, value: InteractionVariableHistory[F]): Future[SyncSuccess[EventId]]
+
+  def writeAll(logger: SyncLogger, values: Map[K, InteractionVariableHistory[F]]): Future[SyncSuccess[EventId]]
+
+  def flush(logger: SyncLogger, forceFlush: Boolean): Unit = ()
 }
 
 /** Reader/Writer for event-based history. */

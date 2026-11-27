@@ -9,6 +9,7 @@ import it.evadid.workbook.interaction.sync.*
 import it.evadid.workbook.interaction.sync.destination.*
 import it.evadid.workbook.interaction.sync.destination.SyncDestinationDefinition.SyncDestinationBasedOnHistoryDatabase
 import it.evadid.workbook.interaction.sync.model.{FetchResponse, InteractionHistoryJson}
+import it.evadid.workbook.interaction.variable.events.EventId
 
 import scala.concurrent.*
 
@@ -19,28 +20,28 @@ case class DatabaseSyncViaBackendServerHandler(pSyncLogger: SyncLogger, definiti
 
   override def syncLogger: SyncLogger = pSyncLogger
 
-  private def clearValues(context: UsageContext, limitToKey: Option[String]): Future[SyncSuccess] = {
+  private def clearValues(context: UsageContext, limitToKey: Option[String]): Future[SyncSuccess[SyncContext]] = {
     val request = SQLCommands.DeleteInDbRequest(context, limitToKey, databaseConfig, definition.format)
-    val exInfoFut: Future[ExecutionSuccess[SyncSuccess]] = SQLCommands.clearValuesDbCommand.sendCommandTo(backend, request, None, None)
+    val exInfoFut: Future[ExecutionSuccess[SyncSuccess[SyncContext]]] = SQLCommands.clearValuesDbCommand.sendCommandTo(backend, request, None, None)
     exInfoFut.map(_.result)(using ec)
   }
 
-  override def clearAllHistories(context: UsageContext)(using ExecutionContext): Future[SyncSuccess] = {
+  override def clearAllHistories(context: UsageContext)(using ExecutionContext): Future[SyncSuccess[SyncContext]] = {
     val request = SQLCommands.DeleteInDbRequest(context, None, databaseConfig, definition.format, allWorkbooks = true)
     SQLCommands.resetUserHistoriesDbCommand.sendCommandTo(backend, request).map(_.result)
   }
 
-  override def clearValue(context: SyncContext)(implicit ec: ExecutionContext): Future[SyncSuccess] = {
+  override def clearValue(context: SyncContext)(implicit ec: ExecutionContext): Future[SyncSuccess[SyncContext]] = {
     clearValues(context.toUsageContext, Some(context.keyForSerialisation))
   }
 
-  override def clearValues(context: UsageContext)(implicit ec: ExecutionContext): Future[SyncSuccess] = clearValues(context, None)
+  override def clearValues(context: UsageContext)(implicit ec: ExecutionContext): Future[SyncSuccess[SyncContext]] = clearValues(context, None)
 
 
-  override def storeHistoryJson(context: SyncContext, json: String)(using ExecutionContext): Future[SyncSuccess] =
+  override def storeHistoryJson(context: SyncContext, json: String)(using ExecutionContext): Future[SyncSuccess[EventId]] =
     storeHistoriesJson(Map(context -> json))
 
-  override def storeHistoriesJson(values: Map[SyncContext, String])(using ExecutionContext): Future[SyncSuccess] = {
+  override def storeHistoriesJson(values: Map[SyncContext, String])(using ExecutionContext): Future[SyncSuccess[EventId]] = {
     if values.isEmpty then Future.successful(SyncSuccess.emptyNow()) else {
       val entries = values.toSeq.map((context, json) => context -> InteractionHistoryJson.deserialize(json))
       val request = SQLCommands.BulkStoreToDbRequest(entries.map(_._1), entries.map(_._2), databaseConfig, definition.format)

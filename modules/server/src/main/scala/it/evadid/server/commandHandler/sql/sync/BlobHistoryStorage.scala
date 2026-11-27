@@ -6,15 +6,15 @@ import it.evadid.workbook.abstractions.InteractionFormat
 import it.evadid.workbook.interaction.sync.{SyncContext, SyncSuccess, UsageContext}
 import it.evadid.workbook.interaction.sync.model.InteractionHistoryJson
 import it.evadid.workbook.interaction.variable.InteractionVariableHistory
+import it.evadid.workbook.interaction.variable.events.EventId
 import java.sql.Connection
-import java.time.LocalDateTime
 
 /** Serializes concurrent merges by locking the context row inside the transaction. */
 class BlobHistoryStorage(connection: Connection, logger: Logger) extends HistorySql(connection, logger) {
   private def rowKeys(context: UsageContext, key: String): Seq[String] =
     List(context.programId, context.scenarioId, context.userId, key)
 
-  def store(request: StoreToDbRequest): SyncSuccess = transaction {
+  def store(request: StoreToDbRequest): SyncSuccess[EventId] = transaction {
     val incoming = request.history
     val format = incoming.format
     val newHistory = incoming.typedAs[format.type](format)
@@ -30,7 +30,7 @@ class BlobHistoryStorage(connection: Connection, logger: Logger) extends History
     val merged = previous.mergeWith(newHistory)
     update("UPDATE blob_history SET history_json=? WHERE program_id=? AND scenario_id=? AND user_id=? AND variable_id=?",
       (List(codec.serialize(merged)) ++ keys)*)
-    SyncSuccess(0, merged.size - previous.size, 0, LocalDateTime.now())
+    SyncSuccess.immutable(newHistory.events.ids, previous.events.ids, merged.events.ids)
   }
 
   /** Stored rows as (format name, history JSON); decoding is left to the per-record read rule. */
@@ -49,12 +49,5 @@ class BlobHistoryStorage(connection: Connection, logger: Logger) extends History
       (key, error) => logger.logExceptionWarn(s"Discarded the unreadable history of ${key.keyForSerialisation}", error)))
   }
 
-  def delete(request: DeleteInDbRequest): SyncSuccess = transaction {
-    val context = request.usageContext
-    val scenario = if request.allWorkbooks then "" else " AND scenario_id=?"
-    val key = request.limitToKey.map(_ => " AND variable_id=?").getOrElse("")
-    val removed = update("DELETE FROM blob_history WHERE program_id=? AND user_id=?" + scenario + key,
-      (List(context.programId, context.userId) ++ Option.unless(request.allWorkbooks)(context.scenarioId).toList ++ request.limitToKey.toList)*)
-    SyncSuccess(0, 0, removed, LocalDateTime.now())
-  }
+  def delete(request: DeleteInDbRequest): SyncSuccess[SyncContext] = deleteMatching("blob_history", request)
 }

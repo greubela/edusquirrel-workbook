@@ -32,7 +32,7 @@ import it.evadid.workbook.abstractions.{FeedbackEntity, InteractionFormat}
 import it.evadid.workbook.abstractions.grading.{GradedState, GradingResult, GradingStatus, WorkbookInteractionGrader}
 import it.evadid.workbook.abstractions.scaffolding.{ScaffoldingResult, ScaffoldingStatus}
 import it.evadid.workbook.elements.interactionElements.gpt.{TextInputLlmGrader, TextInputWithScaffoldingAndGrading}
-import it.evadid.workbook.interaction.sync.{EventSyncStrategy, SyncContext, UpdateImportance, UsageContext}
+import it.evadid.workbook.interaction.sync.{EventSyncStrategy, SyncContext, SyncSuccess, UpdateImportance, UsageContext}
 import it.evadid.workbook.interaction.variable.*
 import it.evadid.util.logging.BasicLogger
 import java.time.LocalDateTime
@@ -69,7 +69,7 @@ class InteractionHistoryMysqlSpec extends FunSuite {
       case event => event
     }))
   }
-  private def fixtureId(value: String): String = java.util.UUID.nameUUIDFromBytes(value.getBytes(UTF_8)).toString
+  private def fixtureId(value: String): EventId = EventId(java.util.UUID.nameUUIDFromBytes(value.getBytes(UTF_8)).toString)
   private def encoded(history: History): InteractionHistoryJson = InteractionHistoryJson.fromHistory(format, history)
   private def store(history: History, storage: DatabaseHistoryFormat = RelationalFormat): Unit =
     UpsertToDatabase.handleRequest(StoreToDbRequest(sync, encoded(history), config, storage), logger)
@@ -127,11 +127,13 @@ class InteractionHistoryMysqlSpec extends FunSuite {
     test(s"$storage bulk request stores multiple keys atomically, merges deltas and deduplicates retries") {
       val other = context.toSyncContext("other-key")
       val initial = BulkStoreToDbRequest(Vector(sync, other), Vector(encoded(history()), encoded(history("other"))), config, storage)
+      val sent = history().events.ids ++ history("other").events.ids
       val first = UpsertToDatabase.handleBulkRequest(initial, logger)
-      assert(first.elementsChanged > 0)
+      assertEquals((first.elementsAdded, first.elementsUnchanged), (sent, Set.empty[EventId]))
       assertEquals(read[History](fetch(storage)(sync)), history())
       assertEquals(read[History](fetch(storage)(other)), history("other"))
-      assertEquals(UpsertToDatabase.handleBulkRequest(initial, logger).elementsChanged, 0)
+      val retry = UpsertToDatabase.handleBulkRequest(initial, logger)
+      assertEquals((retry.elementsAdded, retry.elementsUnchanged), (Set.empty[EventId], sent), "a retry confirms the stored events")
       val delta = history("next", time.plusNanos(1))
       UpsertToDatabase.handleBulkRequest(initial.copy(syncContexts = Seq(sync), histories = Seq(encoded(delta))), logger)
       assertEquals(read[History](fetch(storage)(sync)), history().mergeWith(delta))
@@ -218,27 +220,26 @@ class InteractionHistoryMysqlSpec extends FunSuite {
     assertEquals(fetch(), Map.empty)
   }
 
-  test("replayed and revised client event IDs upsert in both storage layouts") {
+  test("replayed event IDs are confirmed unchanged and different content under a stored ID is rejected in both layouts") {
     List(BlobFormat, RelationalFormat).foreach { storage =>
       val original = history()
       store(original, storage)
       val restored = read[History](fetch(storage)(sync))
-      store(restored, storage)
+      val replay = UpsertToDatabase.handleRequest(StoreToDbRequest(sync, encoded(restored), config, storage), logger)
+      assertEquals((replay.elementsAdded, replay.elementsUnchanged), (Set.empty[EventId], original.events.ids))
       assertEquals(read[History](fetch(storage)(sync)), original)
       val answer = original.allStates.head
       val revised = answer.copy[format.type](newState = "revised", timestamp = answer.timestamp.plusNanos(1))
       val delta = InteractionVariableHistory(InteractionEvents(Set[InteractionEvent[format.type]](revised)))
       val rowId = if storage == RelationalFormat then Some(scalar("SELECT id FROM answer_event")) else None
-      store(delta, storage)
-      store(delta, storage)
-      val fetched = read[History](fetch(storage)(sync))
-      assertEquals(fetched.allStates, Set(revised))
-      assertEquals(fetched.size, original.size)
+      intercept[Exception](store(delta, storage))
+      assertEquals(read[History](fetch(storage)(sync)), original, "the rejected request is rolled back")
       rowId.foreach { id =>
         assertEquals(scalar("SELECT COUNT(*) FROM answer_event"), 1L)
         assertEquals(scalar("SELECT id FROM answer_event"), id)
       }
-      DeleteInDatabase.handleRequest(DeleteInDbRequest(context, Some(key), config, storage), logger)
+      val removed = DeleteInDatabase.handleRequest(DeleteInDbRequest(context, Some(key), config, storage), logger)
+      assertEquals(removed.elementsRemoved, Set(sync))
     }
   }
 
@@ -311,12 +312,13 @@ class InteractionHistoryMysqlSpec extends FunSuite {
         assert(missingScope.result.isLeft, "the new reset command requires an explicit full scope")
         assert(readAt(context).nonEmpty)
         assert(erase(otherUser).result.isLeft, "a signed token cannot reset another account")
-        assert(erase(context).result.isRight)
+        def removed(response: ExecutionClientResponse) = response.throwIfContainsError.result.toOption.get.getAs[SyncSuccess[SyncContext]].elementsRemoved
+        assertEquals(removed(erase(context)), Set(context.toSyncContext(key), second.toSyncContext(key)))
         assertEquals(readAt(context), Map.empty)
         assertEquals(readAt(second), Map.empty)
         assert(readAt(otherUser).nonEmpty)
         assert(readAt(otherProgram).nonEmpty)
-        assert(erase(context).result.isRight, "reset retries are idempotent")
+        assertEquals(removed(erase(context)), Set.empty[SyncContext], "reset retries are idempotent")
       }
     }
   }
@@ -559,7 +561,7 @@ class InteractionHistoryMysqlSpec extends FunSuite {
       MysqlTestDatabase.withConnection { connection =>
         Using.resource(connection.prepareStatement("UPDATE answer_event SET timestamp_nano=? WHERE event_id=?")) { statement =>
           statement.setString(1, stored)
-          statement.setString(2, corruptEventId)
+          statement.setString(2, corruptEventId.value)
           assertEquals(statement.executeUpdate(), 1)
         }
       }

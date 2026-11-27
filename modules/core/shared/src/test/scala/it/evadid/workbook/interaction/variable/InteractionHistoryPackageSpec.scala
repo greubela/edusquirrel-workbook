@@ -25,14 +25,24 @@ class InteractionHistoryPackageSpec extends FunSuite {
     assertEquals(restored, original)
     assertEquals(original.mergeWith(restored).size, 1)
     assertEquals(original.addEvent(independent).size, 2)
-    val revised = first.copy[TextInteractionFormat.type](newState = "revised")
-    assertEquals(revised.eventId, first.eventId)
-    assertEquals(original.addEvent(revised).events.values, Set[InteractionEvent[TextInteractionFormat.type]](revised))
-    assertEquals(original.mergeWith(original.addEvent(revised)).events.values, Set[InteractionEvent[TextInteractionFormat.type]](revised))
+    assertEquals(original.addEvent(first), original, "adding an equal event is a no-op")
     val codec = TextInteractionFormat.codecs.eventSerializer
     val malformed = ujson.read(codec.serialize(first))
+    malformed("eventId") = "not-a-uuid"
+    intercept[Exception](codec.deserialize(ujson.write(malformed)))
     malformed.obj.remove("eventId")
     intercept[Exception](codec.deserialize(ujson.write(malformed)))
+  }
+
+  test("events are immutable: different content under a known ID is rejected") {
+    val first = majorAnswer(1)
+    val revised = first.copy[TextInteractionFormat.type](newState = "revised")
+    val original = InteractionVariableHistory.empty[TextInteractionFormat.type].addEvent(first)
+    intercept[IllegalArgumentException](original.addEvent(revised))
+    intercept[IllegalArgumentException](original.mergeWith(InteractionVariableHistory.empty[TextInteractionFormat.type].addEvent(revised)))
+    intercept[IllegalArgumentException](InteractionEvents[TextInteractionFormat.type](Set(first, revised)))
+    intercept[IllegalArgumentException](EventId("7"))
+    assertEquals(EventId(first.eventId.value), first.eventId)
   }
 
   test("publishing a state or result again preserves its event identity") {

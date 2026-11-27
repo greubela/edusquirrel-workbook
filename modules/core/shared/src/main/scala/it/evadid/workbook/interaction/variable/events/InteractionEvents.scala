@@ -5,19 +5,19 @@ import it.evadid.workbook.abstractions.InteractionFormat
 import java.time.LocalDateTime
 import upickle.default.*
 
-/** Client identities survive serialization and retries; timestamps never determine identity. */
+/** Client identities survive serialization and retries; timestamps never determine identity.
+  * Events are immutable, so adding an equal event is a no-op and a different event under a known ID is rejected.
+  */
 case class InteractionEvents[F <: InteractionFormat](values: Set[InteractionEvent[F]]) {
-  require(values.map(_.eventId).size == values.size, "History contains conflicting events with the same eventId")
+  require(ids.size == values.size, "Interaction events are immutable: different events share an eventId")
 
-  def updated(event: InteractionEvent[F]): InteractionEvents[F] =
-    copy(values = values.filterNot(_.eventId == event.eventId) + event)
+  lazy val ids: Set[EventId] = values.map(_.eventId)
+
+  def updated(event: InteractionEvent[F]): InteractionEvents[F] = copy(values = values + event)
 
   lazy val timestampLastChanged: Option[LocalDateTime] = values.map(_.timestamp).maxOption
 
-  def merge(other: InteractionEvents[F]): InteractionEvents[F] = {
-    val incomingIds = other.values.map(_.eventId)
-    copy(values = values.filterNot(event => incomingIds(event.eventId)) ++ other.values)
-  }
+  def merge(other: InteractionEvents[F]): InteractionEvents[F] = copy(values = values ++ other.values)
 }
 
 object InteractionEvents {

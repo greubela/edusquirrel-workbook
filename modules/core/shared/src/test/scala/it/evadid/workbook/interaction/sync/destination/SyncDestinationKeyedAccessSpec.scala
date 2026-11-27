@@ -23,16 +23,24 @@ class SyncDestinationKeyedAccessSpec extends FunSuite {
     override val syncLogger = SyncLogger(BasicLogger())
     override val underlyingDefinition = SyncDestinationDefinition.LocalStorageSyncDefinition(10000)
     override def readAll(implicit ec: ExecutionContext): Future[Map[String, String]] = Future.successful(records.now())
-    override def updateElement(key: String, update: Option[String] => String)(using ec: ExecutionContext): Future[SyncSuccess] =
-      storeElement(key, update(records.now().get(key)))
-    override def readElement(key: String)(implicit ec: ExecutionContext): Future[String] = Future.fromTry(scala.util.Try(records.now()(key)))
-    override def storeElement(key: String, value: String)(implicit ec: ExecutionContext): Future[SyncSuccess] = storeBulk(Map(key -> value))
-    override def storeBulk(values: Map[String, String])(implicit ec: ExecutionContext): Future[SyncSuccess] = {
-      records.update(_ ++ values)
-      Future.successful(SyncSuccess.emptyNow())
+    override def updateElement[R](key: String, update: Option[String] => (String, R))(using ec: ExecutionContext): Future[R] = {
+      val (value, result) = update(records.now().get(key))
+      records.update(_.updated(key, value))
+      Future.successful(result)
     }
-    override def clearAll()(implicit ec: ExecutionContext): Future[SyncSuccess] = { records.set(Map.empty); Future.successful(SyncSuccess.emptyNow()) }
-    override def clearValue(key: String)(implicit ec: ExecutionContext): Future[SyncSuccess] = { records.update(_ - key); Future.successful(SyncSuccess.emptyNow()) }
+    override def readElement(key: String)(implicit ec: ExecutionContext): Future[String] = Future.fromTry(scala.util.Try(records.now()(key)))
+    override def storeElement(key: String, value: String)(implicit ec: ExecutionContext): Future[SyncSuccess[String]] =
+      updateElement(key, previous => value -> SyncSuccess.written(key, previous, value))
+    override def clearAll()(implicit ec: ExecutionContext): Future[SyncSuccess[String]] = {
+      val removed = records.now().keySet
+      records.set(Map.empty)
+      Future.successful(SyncSuccess.removed(removed))
+    }
+    override def clearValue(key: String)(implicit ec: ExecutionContext): Future[SyncSuccess[String]] = {
+      val removed = records.now().keySet.intersect(Set(key))
+      records.update(_ - key)
+      Future.successful(SyncSuccess.removed(removed))
+    }
   }
 
   test("key-bound access stores, reads and clears one typed record") {
@@ -41,14 +49,19 @@ class SyncDestinationKeyedAccessSpec extends FunSuite {
     val slot = typed.forSpecificKey(7)
     assertEquals(slot.forKey, 7)
     for {
-      _ <- slot.storeValue(42)
+      added <- slot.storeValue(42)
+      unchanged <- slot.storeValue(42)
+      changed <- typed.storeAll(Map(7 -> 43, 8 -> 1))
       read <- slot.readValue
       stored = memory.records.now()
-      _ <- typed.clearValue(7)
+      removed <- typed.clearValue(7)
     } yield {
-      assertEquals(read, 42)
-      assertEquals(stored, Map("7" -> "42"))
-      assertEquals(memory.records.now(), Map.empty[String, String])
+      assertEquals((added.elementsAdded, unchanged.elementsUnchanged), (Set(7), Set(7)))
+      assertEquals((changed.elementsChanged, changed.elementsAdded), (Set(7), Set(8)), "results name the typed keys")
+      assertEquals(read, 43)
+      assertEquals(stored, Map("7" -> "43", "8" -> "1"))
+      assertEquals(removed.elementsRemoved, Set(7))
+      assertEquals(memory.records.now(), Map("8" -> "1"))
     }
   }
 
@@ -68,7 +81,7 @@ class SyncDestinationKeyedAccessSpec extends FunSuite {
       assert(badKeyClear.getMessage.contains("Could not remove element"), badKeyClear.getMessage)
       assert(badValue.getMessage.contains("Could not deserialize successfully read value"), badValue.getMessage)
       assert(nothing.getMessage.contains("Could not serialize a single element"), nothing.getMessage)
-      assertEquals((empty.elementsAdded, empty.elementsChanged, empty.elementsRemoved), (0, 0, 0))
+      assertEquals(empty.elementsStored ++ empty.elementsRemoved, Set.empty[Int])
     }
   }
 }

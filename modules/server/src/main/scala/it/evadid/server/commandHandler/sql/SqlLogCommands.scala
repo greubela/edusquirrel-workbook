@@ -5,8 +5,6 @@ import it.evadid.core.datastructures.user.User
 import it.evadid.distribution.command.ExecutionCommand
 import it.evadid.sql.DatabaseTable
 import it.evadid.util.logging.Logger
-import it.evadid.workbook.interaction.sync.*
-import it.evadid.workbook.interaction.sync.SyncSuccess
 
 import java.net.InetAddress
 import java.sql.{Connection, Timestamp}
@@ -34,7 +32,7 @@ object SqlLogCommands {
       verifiedToken: Option[SignedToken], remoteAddress: InetAddress, logger: Logger, connection: Connection): Unit = {
     val control = SqlLogCommands(connection, logger)
     val res = control.logCommand(commandReceived, executionCommand, verifiedToken, remoteAddress, executionCommand.storeLogIntoTable)
-    if (res.elementsAdded <= 0) logger.logWarn("Failed db logging for command: " + executionCommand.name + " (" + payloadForLog(executionCommand) + ")")
+    if (res <= 0) logger.logWarn("Failed db logging for command: " + executionCommand.name + " (" + payloadForLog(executionCommand) + ")")
   }
 
 }
@@ -47,8 +45,8 @@ class SqlLogCommands(
   private lazy val generic: GenericSqlFunctionality = new GenericSqlFunctionality(logger)
 
   def logCommand(commandReceived: LocalDateTime, executionCommand: ExecutionCommand, verifiedToken: Option[SignedToken],
-                 remoteAddress: InetAddress, storeLogIntoTable: Option[DatabaseTable]): SyncSuccess = {
-    if storeLogIntoTable.isEmpty then return SyncSuccess(0, 0, 0, LocalDateTime.now())
+                 remoteAddress: InetAddress, storeLogIntoTable: Option[DatabaseTable]): Int = {
+    if storeLogIntoTable.isEmpty then return 0
     val storeOrigin: String = remoteAddress.getHostAddress
     val storeTimestamp: Timestamp = Timestamp.valueOf(commandReceived)
     val storeType: String = executionCommand.name
@@ -61,7 +59,7 @@ class SqlLogCommands(
          |VALUES (?, ?, ?, ?, ?, ?)
          |""".stripMargin
 
-    val res = Using.resource(connection.prepareStatement(sql)) { stmt =>
+    Using.resource(connection.prepareStatement(sql)) { stmt =>
       stmt.setTimestamp(1, storeTimestamp)
       stmt.setString(2, storeOrigin)
       stmt.setString(3, storeType)
@@ -71,7 +69,6 @@ class SqlLogCommands(
 
       generic.executeUpdate(stmt)
     }
-    SyncSuccess(res, 0, 0, LocalDateTime.now())
   }
 
 

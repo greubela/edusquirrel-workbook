@@ -6,6 +6,7 @@ import it.evadid.workbook.interaction.sync.destination.BufferedSyncDestinationHa
 import it.evadid.workbook.interaction.sync.model.{FetchResponse, InteractionHistoryJson}
 import it.evadid.workbook.interaction.sync.{EventSyncStrategy, SyncContext, SyncSuccess, UsageContext}
 import it.evadid.workbook.interaction.variable.*
+import it.evadid.workbook.interaction.variable.events.EventId
 import it.evadid.util.logging.derived.SyncLogger
 import it.evadid.workbook.abstractions.InteractionFormat
 import upickle.default.*
@@ -47,14 +48,16 @@ case class BufferedSyncDestinationHandler(underlying: SyncDestinationHistoryHand
     }
   }
 
-  override def storeHistoryJson(context: SyncContext, json: String)(implicit ec: ExecutionContext): Future[SyncSuccess] = storeHistoriesJson(Map(context -> json))
-  override def storeHistoriesJson(values: Map[SyncContext, String])(implicit ec: ExecutionContext): Future[SyncSuccess] = synchronized {
-    if values.isEmpty then Future.successful(SyncSuccess.emptyNow()) else {
-      val promise = Promise[SyncSuccess]()
-      cachedStores.update(_ :+ CachedStoreRequest(LocalDateTime.now(), values, promise))
-      flush(false)
-      promise.future
-    }
+  override def storeHistoryJson(context: SyncContext, json: String)(implicit ec: ExecutionContext): Future[SyncSuccess[EventId]] = storeHistoriesJson(Map(context -> json))
+  /** Each caller receives the confirmations of its own events from the merged batch write. */
+  override def storeHistoriesJson(values: Map[SyncContext, String])(implicit ec: ExecutionContext): Future[SyncSuccess[EventId]] = synchronized {
+    if values.isEmpty then Future.successful(SyncSuccess.emptyNow()) else
+      Try(values.values.flatMap(InteractionHistoryJson.deserialize(_).eventIds).toSet).fold(Future.failed, sent => {
+        val promise = Promise[SyncSuccess[EventId]]()
+        cachedStores.update(_ :+ CachedStoreRequest(LocalDateTime.now(), values, sent, promise))
+        flush(false)
+        promise.future
+      })
   }
 
   def timestamps: Set[LocalDateTime] = synchronized {
@@ -79,15 +82,15 @@ case class BufferedSyncDestinationHandler(underlying: SyncDestinationHistoryHand
     }
   }
 
-  private def clear(operation: => Future[SyncSuccess]): Future[SyncSuccess] = synchronized {
+  private def clear(operation: => Future[SyncSuccess[SyncContext]]): Future[SyncSuccess[SyncContext]] = synchronized {
     flush(true)
     val clearing = lastFlush.now().transformWith(_ => attempt(operation))
     lastFlush.set(clearing.map(_ => ()))
     clearing
   }
-  override def clearAllHistories(context: UsageContext)(using ExecutionContext): Future[SyncSuccess] = clear(underlying.clearAllHistories(context))
-  override def clearValue(context: SyncContext)(implicit ec: ExecutionContext): Future[SyncSuccess] = clear(underlying.clearValue(context))
-  override def clearValues(context: UsageContext)(implicit ec: ExecutionContext): Future[SyncSuccess] = clear(underlying.clearValues(context))
+  override def clearAllHistories(context: UsageContext)(using ExecutionContext): Future[SyncSuccess[SyncContext]] = clear(underlying.clearAllHistories(context))
+  override def clearValue(context: SyncContext)(implicit ec: ExecutionContext): Future[SyncSuccess[SyncContext]] = clear(underlying.clearValue(context))
+  override def clearValues(context: UsageContext)(implicit ec: ExecutionContext): Future[SyncSuccess[SyncContext]] = clear(underlying.clearValues(context))
 }
 
 object BufferedSyncDestinationHandler {
@@ -136,7 +139,7 @@ object BufferedSyncDestinationHandler {
         execute(underlying)(underlying.storeHistoriesJson(merged))
       }
       storing.transform { outcome =>
-        stores.foreach(_.promise.tryComplete(outcome))
+        stores.foreach(request => request.promise.tryComplete(outcome.map(_.restrictedTo(request.sentEvents))))
         Success(())
       }
     }
@@ -144,7 +147,8 @@ object BufferedSyncDestinationHandler {
 
   private case class Range(starting: LocalDateTime, until: LocalDateTime, strategy: EventSyncStrategy)
   private sealed trait CachedRequest { def requestTimestamp: LocalDateTime }
-  private case class CachedStoreRequest(requestTimestamp: LocalDateTime, toStore: Map[SyncContext, String], promise: Promise[SyncSuccess])
+  private case class CachedStoreRequest(requestTimestamp: LocalDateTime, toStore: Map[SyncContext, String], sentEvents: Set[EventId],
+      promise: Promise[SyncSuccess[EventId]])
   private sealed trait CachedReadRequest extends CachedRequest {
     def fulfillWith(data: Try[FetchResponse[SyncContext, String]], discarded: (SyncContext, Throwable) => Unit): Unit
     def usageContext: UsageContext

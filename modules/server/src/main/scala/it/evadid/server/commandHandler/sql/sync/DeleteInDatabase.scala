@@ -7,11 +7,10 @@ import it.evadid.util.logging.Logger
 import it.evadid.workbook.interaction.sync.*
 
 import java.sql.{Connection, PreparedStatement}
-import java.time.LocalDateTime
 
 object DeleteInDatabase {
 
-  def handleRequest(request: DeleteInDbRequest, logger: Logger): SyncSuccess = {
+  def handleRequest(request: DeleteInDbRequest, logger: Logger): SyncSuccess[SyncContext] = {
     it.evadid.server.database.DatabaseRequestConnection.use(request, logger) { connection =>
       request.databaseFormat match {
         case DatabaseHistoryFormat.RelationalFormat =>

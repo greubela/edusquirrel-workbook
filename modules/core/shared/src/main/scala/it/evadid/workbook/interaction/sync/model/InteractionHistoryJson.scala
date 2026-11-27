@@ -4,6 +4,7 @@ import it.evadid.core.util.io.ParsingContext
 import it.evadid.workbook.abstractions.InteractionFormat
 import it.evadid.workbook.interaction.sync.EventSyncStrategy
 import it.evadid.workbook.interaction.variable.InteractionVariableHistory
+import it.evadid.workbook.interaction.variable.events.EventId
 import java.time.LocalDateTime
 import upickle.default.*
 
@@ -17,6 +18,8 @@ case class InteractionHistoryJson(format: InteractionFormat, historyJson: String
       InteractionFormat.codecsFor(expected).historySerializer.deserialize(historyJson)
     }
   }
+
+  def eventIds: Set[EventId] = toTyped.events.ids
 
   /** Stored records merge additively; superseded DEFAULT and TEMPORARY answers do not accumulate. */
   def merge(other: InteractionHistoryJson): InteractionHistoryJson =

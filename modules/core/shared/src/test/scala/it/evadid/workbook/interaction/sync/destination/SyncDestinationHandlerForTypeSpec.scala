@@ -17,16 +17,18 @@ class SyncDestinationHandlerForTypeSpec extends FunSuite {
     override val syncLogger = SyncLogger(logger)
     override val underlyingDefinition = SyncDestinationDefinition.LocalStorageSyncDefinition(10000)
     override def readAll(implicit ec: ExecutionContext): Future[Map[String, String]] = Future.successful(records)
-    override def updateElement(key: String, update: Option[String] => String)(using ec: ExecutionContext): Future[SyncSuccess] =
-      storeElement(key, update(records.get(key)))
+    override def updateElement[R](key: String, update: Option[String] => (String, R))(using ec: ExecutionContext): Future[R] = {
+      val (value, result) = update(records.get(key))
+      storeElement(key, value).map(_ => result)
+    }
     override def readElement(key: String)(implicit ec: ExecutionContext): Future[String] = Future.fromTry(scala.util.Try(records(key)))
-    override def storeElement(key: String, value: String)(implicit ec: ExecutionContext): Future[SyncSuccess] = storeBulk(Map(key -> value))
-    override def storeBulk(values: Map[String, String])(implicit ec: ExecutionContext): Future[SyncSuccess] = {
+    override def storeElement(key: String, value: String)(implicit ec: ExecutionContext): Future[SyncSuccess[String]] = storeBulk(Map(key -> value))
+    override def storeBulk(values: Map[String, String])(implicit ec: ExecutionContext): Future[SyncSuccess[String]] = {
       stored.trySuccess(values)
       Future.successful(SyncSuccess.emptyNow())
     }
-    override def clearAll()(implicit ec: ExecutionContext): Future[SyncSuccess] = Future.successful(SyncSuccess.emptyNow())
-    override def clearValue(key: String)(implicit ec: ExecutionContext): Future[SyncSuccess] = Future.successful(SyncSuccess.emptyNow())
+    override def clearAll()(implicit ec: ExecutionContext): Future[SyncSuccess[String]] = Future.successful(SyncSuccess.emptyNow())
+    override def clearValue(key: String)(implicit ec: ExecutionContext): Future[SyncSuccess[String]] = Future.successful(SyncSuccess.emptyNow())
   }
 
   test("fully readable stores do not emit conversion warnings even with more than two records") {

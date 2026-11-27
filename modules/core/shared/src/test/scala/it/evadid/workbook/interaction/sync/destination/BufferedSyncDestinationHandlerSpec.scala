@@ -7,7 +7,7 @@ import it.evadid.workbook.abstractions.InteractionFormat
 import it.evadid.workbook.interaction.sync.*
 import it.evadid.workbook.interaction.sync.model.{FetchResponse, InteractionHistoryJson}
 import it.evadid.workbook.interaction.variable.InteractionVariableHistory
-import it.evadid.workbook.interaction.variable.events.{AnswerChangedEvent, InteractionEvent, InteractionEvents}
+import it.evadid.workbook.interaction.variable.events.{AnswerChangedEvent, EventId, InteractionEvent, InteractionEvents}
 import munit.FunSuite
 import java.time.LocalDateTime
 import scala.concurrent.{ExecutionContext, Future, Promise}
@@ -19,14 +19,15 @@ class BufferedSyncDestinationHandlerSpec extends FunSuite {
   private def saved(value: String): String = {
     val format = InteractionFormat.TextInteractionFormat
     val history = InteractionVariableHistory.empty[format.type]
-      .addEvent(AnswerChangedEvent[format.type](value, LocalDateTime.of(2026, 1, 1, 12, 0), UpdateImportance.MAJOR, new java.util.UUID(0L, value.hashCode.toLong).toString))
+      .addEvent(AnswerChangedEvent[format.type](value, LocalDateTime.of(2026, 1, 1, 12, 0), UpdateImportance.MAJOR, eventId(value)))
     InteractionHistoryJson.fromHistory(format, history).serialized
   }
+  private def eventId(value: String): EventId = EventId(new java.util.UUID(0L, value.hashCode.toLong).toString)
   private def merged(values: String*): String = InteractionHistoryJson.mergeSerialized(values.map(saved))
   /** Makes the destination's stores wait on the returned gate; the first promise completes once a store has started. */
-  private def gateStores(destination: Destination): (Promise[Unit], Promise[SyncSuccess]) = {
+  private def gateStores(destination: Destination): (Promise[Unit], Promise[SyncSuccess[EventId]]) = {
     val started = Promise[Unit]()
-    val gate = Promise[SyncSuccess]()
+    val gate = Promise[SyncSuccess[EventId]]()
     destination.storeResult.set(() => { started.trySuccess(()); gate.future })
     (started, gate)
   }
@@ -52,7 +53,7 @@ class BufferedSyncDestinationHandlerSpec extends FunSuite {
     val definition = SyncDestinationDefinition.defaultBrowserHistory
     val writes = State(List.empty[Map[SyncContext, String]])
     val reads = State(List.empty[UsageContext])
-    val storeResult = State[() => Future[SyncSuccess]](() => Future.successful(SyncSuccess.emptyNow()))
+    val storeResult = State[() => Future[SyncSuccess[EventId]]](() => Future.successful(SyncSuccess.emptyNow()))
     val readResult = State[UsageContext => Future[FetchResponse[SyncContext, String]]](ctx =>
       Future.successful(FetchResponse.fromMap(LocalDateTime.now(), Map(ctx.toSyncContext("answer") -> ctx.userId))))
     def storeHistoryJson(key: SyncContext, json: String)(implicit ec: ExecutionContext) = storeHistoriesJson(Map(key -> json))
@@ -62,8 +63,8 @@ class BufferedSyncDestinationHandlerSpec extends FunSuite {
     }
     def readHistoriesJson(ctx: UsageContext)(implicit ec: ExecutionContext) = { reads.update(_ :+ ctx); readResult.now()(ctx) }
     def clearAllHistories(ctx: UsageContext)(using ExecutionContext) = clearValues(ctx)
-    def clearValue(key: SyncContext)(implicit ec: ExecutionContext) = Future.successful(SyncSuccess.emptyNow())
-    def clearValues(ctx: UsageContext)(implicit ec: ExecutionContext) = Future.successful(SyncSuccess.emptyNow())
+    def clearValue(key: SyncContext)(implicit ec: ExecutionContext) = Future.successful(SyncSuccess.emptyNow[SyncContext]())
+    def clearValues(ctx: UsageContext)(implicit ec: ExecutionContext) = Future.successful(SyncSuccess.emptyNow[SyncContext]())
   }
 
   test("one flush batches all keys, merges queued event histories and completes every caller") {
@@ -75,6 +76,23 @@ class BufferedSyncDestinationHandlerSpec extends FunSuite {
     buffered.flush(true)
     first.flatMap(_ => second).map { _ =>
       assertEquals(destination.writes.now(), List(Map(key -> merged("old", "new"), context.toSyncContext("other") -> saved("other"))))
+    }
+  }
+  test("every caller of a merged batch receives the confirmations of its own events only") {
+    val destination = new Destination
+    val other = context.toSyncContext("other")
+    destination.storeResult.set(() => Future.successful(SyncSuccess.emptyNow[EventId]().copy(
+      elementsAdded = Set(eventId("old"), eventId("other")), elementsUnchanged = Set(eventId("new")))))
+    val buffered = destination.toBuffered
+    val first = buffered.storeHistoryJson(key, saved("old"))
+    val second = buffered.storeHistoriesJson(Map(key -> saved("new"), other -> saved("other")))
+    val third = buffered.storeHistoryJson(other, saved("unconfirmed"))
+    buffered.flush(true)
+    for { a <- first; b <- second; c <- third } yield {
+      assertEquals(destination.writes.now().size, 1)
+      assertEquals(a.elementsStored, Set(eventId("old")))
+      assertEquals((b.elementsAdded, b.elementsUnchanged), (Set(eventId("other")), Set(eventId("new"))))
+      assertEquals(c.elementsStored, Set.empty[EventId])
     }
   }
   test("reads share one fetch per usage context and do not mix users") {
@@ -188,7 +206,7 @@ class BufferedSyncDestinationHandlerSpec extends FunSuite {
       override def clearValues(ctx: UsageContext)(implicit ec: ExecutionContext) = {
         operations.update(_ :+ "clear")
         persisted.set(Map.empty)
-        Future.successful(SyncSuccess.emptyNow())
+        Future.successful(SyncSuccess.emptyNow[SyncContext]())
       }
     }
     val (started, gate) = gateStores(destination)
@@ -259,20 +277,17 @@ class BufferedSyncDestinationHandlerSpec extends FunSuite {
     }
   }
 
-  test("malformed queued histories fail every batch caller without storing partial data and can retry") {
+  test("a malformed history is rejected on submission without failing the other queued writes") {
     val destination = new Destination
     val buffered = destination.toBuffered
     val valid = buffered.storeHistoryJson(key, saved("valid"))
     val invalid = buffered.storeHistoryJson(context.toSyncContext("invalid"), "malformed")
+    assert(invalid.isCompleted, "the request never joins the batch")
     buffered.flush(true)
     for {
-      _ <- valid.failed
       _ <- invalid.failed
-      _ = assertEquals(destination.writes.now(), Nil)
-      retry = buffered.storeHistoryJson(key, saved("retry"))
-      _ = buffered.flush(true)
-      _ <- retry
-    } yield assertEquals(destination.writes.now(), List(Map(key -> saved("retry"))))
+      _ <- valid
+    } yield assertEquals(destination.writes.now(), List(Map(key -> saved("valid"))))
   }
 
   test("different cursor windows share one query and each caller receives only its own events") {

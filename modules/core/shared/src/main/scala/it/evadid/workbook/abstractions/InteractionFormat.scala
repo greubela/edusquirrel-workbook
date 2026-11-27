@@ -90,13 +90,11 @@ object InteractionFormat {
     private given scaffoldingCompletedRW: ReadWriter[ScaffoldingCompletedEvent[F]] = macroRW
     private val taggedEventRW: ReadWriter[InteractionEvent[F]] = ReadWriter.merge(
       answerRW, gradingStartedRW, gradingCompletedRW, scaffoldingStartedRW, scaffoldingCompletedRW)
-    // Never create a new identity while decoding a saved event with a missing ID.
+    // Never create a new identity while decoding a saved event with a missing ID; EventId validates the format.
     private given eventRW: ReadWriter[InteractionEvent[F]] = readwriter[ujson.Value].bimap[InteractionEvent[F]](
       event => writeJs(event)(using taggedEventRW),
       json => {
-        val id = json.obj.get("eventId").map(_.str).getOrElse(
-          throw new IllegalArgumentException("Interaction event is missing its client-generated eventId"))
-        require(java.util.UUID.fromString(id).toString == id, "Interaction eventId must be a canonical UUID")
+        require(json.obj.contains("eventId"), "Interaction event is missing its client-generated eventId")
         read[InteractionEvent[F]](json)(using taggedEventRW)
       })
     private given eventsRW: ReadWriter[InteractionEvents[F]] = macroRW
