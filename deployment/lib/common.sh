@@ -85,7 +85,8 @@ DEPLOY_ON_EXIT=()
 on_exit() { DEPLOY_ON_EXIT+=("$1"); }
 deploy_cleanup() {
   local hook
-  for hook in "${DEPLOY_ON_EXIT[@]+"${DEPLOY_ON_EXIT[@]}"}"; do eval "$hook" || true; done
+  # Each hook runs in a subshell, so a failing hook (even one calling die) cannot cut the cleanup short.
+  for hook in "${DEPLOY_ON_EXIT[@]+"${DEPLOY_ON_EXIT[@]}"}"; do (eval "$hook") || true; done
   if [[ "$DEPLOY_SSH_AGENT_STARTED" == true ]]; then ssh-agent -k >/dev/null 2>&1 || true; fi
   rm -rf "$DEPLOY_TMP"
 }
@@ -140,6 +141,18 @@ ssh_init() {
         "ssh-add said: ${reason:-nothing} ($(ssh -V 2>&1 | tr -d '\r'))"
     fi
     SSH_OPTS+=(-o BatchMode=yes)
+  fi
+  # Test the login once, so a rejected user or key stops here with an explanation.
+  local status=0
+  ssh "${SSH_OPTS[@]}" -p "${SERVER_SSH_PORT:-22}" "$SERVER_SSH_USER@$SERVER_SSH_HOST" true < /dev/null || status=$?
+  if [[ "$status" -ne 0 ]]; then
+    # The fingerprint and comment identify the key, e.g. to compare with PuTTYgen or authorized_keys.
+    local offered
+    offered="$(ssh-add -l 2>/dev/null || ssh-keygen -l -f "${SERVER_SSH_KEY/#\~/$HOME}" 2>/dev/null || echo unknown)"
+    die "SSH login as $SERVER_SSH_USER@$SERVER_SSH_HOST failed (see ssh's message above). The server did not accept" \
+      "the key in SERVER_SSH_KEY (fingerprint: $(printf '%s' "$offered" | tr -d '\r')). Check SERVER_SSH_USER and" \
+      "that this key's public half is in that user's ~/.ssh/authorized_keys on the server. Test it with:" \
+      "ssh -i '$SERVER_SSH_KEY' $SERVER_SSH_USER@$SERVER_SSH_HOST"
   fi
 }
 
