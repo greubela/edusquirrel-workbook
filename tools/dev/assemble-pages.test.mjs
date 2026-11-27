@@ -83,15 +83,6 @@ for (const file of ["artifacts/newest/client.js", "artifacts/newest/worker.js", 
   });
 }
 
-test("the webspace deployment can assemble the site without the MathWorld build", t => {
-  const { root } = fixture(t);
-  rmSync(join(root, "resources/programs/20260907MathworldMain/dist"), { recursive: true });
-  const out = assemblePages(root, { requireMathWorld: false });
-  assert.ok(existsSync(join(out, "homepage/index.html")));
-  assert.ok(existsSync(join(out, "artifacts/newest/client.js")));
-  assert.ok(!existsSync(join(out, "resources/programs/20260907MathworldMain/dist")));
-});
-
 test("a linked output directory cannot replace another directory", t => {
   const { root, put } = fixture(t);
   put("keep/index.html", "keep");

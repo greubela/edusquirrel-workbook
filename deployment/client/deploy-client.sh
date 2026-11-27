@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
-# Assembles the site (homepage, resources, client/worker artifacts, root redirects) with
-# tools/dev/assemble-pages.mjs, adds the stable client/worker (never artifacts/history) and
-# secrets/client.env as deployment/client/.env, and uploads
-# the files that changed since the last deployment to CLIENT_FTP_ROOT over FTP(S).
+# Mirrors the published part of the repository to CLIENT_FTP_ROOT over FTP(S), in the repository's
+# layout: homepage/, resources/, favicon.ico, the client and worker of artifacts/newest and
+# artifacts/stable (never artifacts/history) and secrets/client.env as deployment/client/.env.
+# Only files that changed since the last deployment are uploaded.
 #
 # Every batch is verified by comparing remote file sizes; incomplete files are uploaded again.
 #
@@ -10,16 +10,14 @@
 #   --dry-run          Show what would be uploaded or deleted without changing the webspace
 #   --trust PREFIX     On a first deployment, treat files under PREFIX (e.g. resources/workbookpdfs)
 #                      as already present instead of uploading them; repeatable
-#   --skip-assemble    Reuse the existing _site/ directory
 # shellcheck source=SCRIPTDIR/../lib/common.sh
 source "$(dirname "${BASH_SOURCE[0]}")/../lib/common.sh"
 LOG_PREFIX=client
 
-dry_run=false assemble=true trust=()
+dry_run=false trust=()
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --dry-run) dry_run=true ;;
-    --skip-assemble) assemble=false ;;
     --trust) [[ $# -ge 2 ]] || die "--trust needs a path prefix"; trust+=(--trust "$2"); shift ;;
     *) die "unknown argument: $1" ;;
   esac
@@ -30,7 +28,6 @@ load_env local.env
 require_vars CLIENT_FTP_HOST CLIENT_FTP_USER CLIENT_FTP_PASSWORD
 require_cmd node curl
 CLIENT_ENV="$SECRETS_DIR/client.env"
-SITE="$REPO_ROOT/_site"
 
 # deployment/client/.env is publicly downloadable from the website.
 env_file_entries "$CLIENT_ENV" > "$DEPLOY_TMP/client-env"
@@ -40,27 +37,13 @@ while IFS= read -r -d '' key && IFS= read -r -d '' _; do
   fi
 done < "$DEPLOY_TMP/client-env"
 
-if [[ "$assemble" == true ]]; then
-  log "assembling the site"
-  # MathWorld is not built for the deployment; its dist/ is included only if it already exists.
-  (cd "$REPO_ROOT" && node tools/dev/assemble-pages.mjs --without-mathworld) >&2
-fi
-[[ -f "$SITE/homepage/index.html" ]] || die "missing _site/; run without --skip-assemble"
-# Publish the stable client and worker (client.env's fallback) beside newest; never the history archive.
-for name in client.js worker.js; do
-  if [[ -f "$REPO_ROOT/artifacts/stable/$name" ]]; then
-    mkdir -p "$SITE/artifacts/stable"
-    cp "$REPO_ROOT/artifacts/stable/$name" "$SITE/artifacts/stable/$name"
-  else
-    warn "artifacts/stable/$name is missing; run 'sbt buildClientDeploy buildWorkerDeploy'"
-  fi
+# The webspace mirrors the repository layout; stage its published part (see sync-plan.mjs stage).
+SITE="$REPO_ROOT/tmp/work/deployment/webspace"
+log "staging homepage, resources, artifacts (newest, stable) and deployment/client/.env"
+node "$DEPLOY_DIR/client/sync-plan.mjs" stage "$REPO_ROOT" "$SITE" "$CLIENT_ENV" 2>&1 | while IFS= read -r line; do
+  warn "$line"
 done
-for entry in "$SITE"/artifacts/*; do
-  [[ -e "$entry" ]] || continue
-  case "${entry##*/}" in newest|stable) ;; *) die "_site/artifacts may contain only newest/ and stable/, found ${entry##*/}" ;; esac
-done
-mkdir -p "$SITE/deployment/client"
-cp "$CLIENT_ENV" "$SITE/deployment/client/.env"
+[[ "${PIPESTATUS[0]}" -eq 0 ]] || die "staging the webspace failed (see above)"
 
 # Credentials go through a private curl config file, never the command line.
 curl_auth="$DEPLOY_TMP/auth.curl"
@@ -87,6 +70,9 @@ ftp --output "$previous" "$manifest_url" 2> "$plan_dir/manifest-error.txt" || st
 case "$status" in
   0) ;;
   78) rm -f "$previous" ;;  # The remote file does not exist: first deployment.
+  67) die "the FTP server rejected the login of '$CLIENT_FTP_USER' on $CLIENT_FTP_HOST (530). Check CLIENT_FTP_USER" \
+        "and CLIENT_FTP_PASSWORD in local.env against FileZilla's site settings; single-quote a password" \
+        "containing \$, spaces or quotes." ;;
   *) die "cannot read $manifest_url: $(cat "$plan_dir/manifest-error.txt")" ;;
 esac
 
@@ -96,7 +82,7 @@ uploads="$(summary 's.uploads')" deletes="$(summary 's.deletes')"
 if [[ "$(summary 's.firstDeployment')" == true ]]; then
   warn "no deployment manifest on the webspace: this deployment uploads every file not covered by --trust"
 fi
-log "$(summary 's.files') files assembled; $uploads to upload, $deletes to delete"
+log "$(summary 's.files') files staged; $uploads to upload, $deletes to delete"
 
 if [[ "$dry_run" == true ]]; then
   summary 's.uploadList.map(p => "  upload " + p).concat(s.deleteList.map(p => "  delete " + p)).join("\n")' >&2

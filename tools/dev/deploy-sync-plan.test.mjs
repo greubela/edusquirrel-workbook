@@ -4,7 +4,7 @@ import {tmpdir} from 'node:os';
 import {join} from 'node:path';
 import {spawnSync} from 'node:child_process';
 import test from 'node:test';
-import {parseManifest, parseRemoteSizes, plan, sizeMarker} from '../../deployment/client/sync-plan.mjs';
+import {listFiles, parseManifest, parseRemoteSizes, plan, sizeMarker, stageWebspace} from '../../deployment/client/sync-plan.mjs';
 
 test('uploads changed and new files and deletes only previously deployed ones', () => {
   const previous = new Map([['same', '1'], ['changed', '2'], ['gone', '3']]);
@@ -48,6 +48,28 @@ test('writes URL-encoded upload batches, progress manifests and a final manifest
       join(out, 'sizes.txt'), join(out, 'retry.curl')], {encoding: 'utf8'});
     assert.equal(check.stdout.trim(), '1', check.stderr);
     assert.match(readFileSync(join(out, 'retry.curl'), 'utf8'), /Pr%C3%A4sentation/);
+  } finally {
+    rmSync(root, {recursive: true, force: true});
+  }
+});
+
+test('stages the webspace in the repository layout without history, server builds or Pages extras', () => {
+  const root = mkdtempSync(join(tmpdir(), 'stage-webspace-'));
+  try {
+    const repo = join(root, 'repo'), out = join(root, 'out');
+    const put = (file, content = 'x') => { mkdirSync(join(repo, file, '..'), {recursive: true}); writeFileSync(join(repo, file), content); };
+    for (const file of ['homepage/index.html', 'homepage/workbooks/index.html', 'homepage/.env', 'resources/languageMaps/map-de.json',
+      'resources/programs/app/node_modules/lib.js', 'resources/programs/app/.git/HEAD', 'favicon.ico',
+      'artifacts/newest/client.js', 'artifacts/newest/worker.js', 'artifacts/newest/server.jar',
+      'artifacts/stable/client.js', 'artifacts/stable/server.jar', 'artifacts/history/client/2026-client.js']) put(file);
+    put('client.env', 'EDUSQUIRREL_BACKEND_MODULE_WORKERS=1\n');
+    const warnings = stageWebspace(repo, out, join(repo, 'client.env'));
+    assert.deepEqual(listFiles(out).sort(), ['artifacts/newest/client.js', 'artifacts/newest/worker.js',
+      'artifacts/stable/client.js', 'deployment/client/.env', 'favicon.ico', 'homepage/index.html',
+      'homepage/workbooks/index.html', 'resources/languageMaps/map-de.json']);
+    assert.deepEqual(warnings, ['artifacts/stable/worker.js is missing and is not uploaded']);
+    rmSync(join(repo, 'artifacts/newest/worker.js'));
+    assert.throws(() => stageWebspace(repo, out, join(repo, 'client.env')), /Missing build output: artifacts\/newest\/worker.js/);
   } finally {
     rmSync(root, {recursive: true, force: true});
   }
