@@ -74,7 +74,7 @@ object User {
   /** Mail of the placeholder user of a local session started without a name. */
   val anonymousMail: String = "no-reply@evadid.it"
 
-  /** A local session's placeholder user; it lasts for the page visit and is never persisted or restored. */
+  /** A local session's placeholder user; restored on reload like a named local profile until logout. */
   def createAnonymous(): User = createNewUser("Anonymous", anonymousMail)
 
   def createNewUser(name: String, mail: String): User = {

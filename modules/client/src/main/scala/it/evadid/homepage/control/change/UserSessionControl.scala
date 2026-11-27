@@ -151,8 +151,8 @@ final class UserSessionControl(val fullInfo: FullInfo) {
     }
   }
 
-  /** Signs in only a named local profile or an online account whose cached token the backend accepts. Otherwise
-    * the login page stays, pre-filled with the cached name and email, and the cached login is cleared.
+  /** Restores a local profile (also an anonymous one) or signs in an online account whose cached token the backend
+    * accepts. Otherwise the login page stays, pre-filled with the cached name and email, and the cached login is cleared.
     */
   def tryAutoLogin(): Future[?] = storage.restoreSession().flatMap { cached =>
     cached.orElse(loadSavedProfile()) match {
@@ -160,8 +160,7 @@ final class UserSessionControl(val fullInfo: FullInfo) {
       case Some(info) =>
         rememberIdentity(info.user)
         val restored: Future[?] =
-          if info.user.isAnonymous then Future.failed(SerializedException("Anonymous sessions are not restored"))
-          else if info.config.isOnlineAccount then info.credentials.signedBackendToken.fold(
+          if info.config.isOnlineAccount then info.credentials.signedBackendToken.fold(
             Future.failed(AuthenticationFailure("login/errorLogin")))(token => tryServerLoginWith(info.user.mail, Right(token), info.credentials))
           else changeUser(Some(info))
         restored.recoverWith { case error =>
