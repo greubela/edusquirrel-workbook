@@ -15,6 +15,8 @@ import scala.util.Try
 object PyodideCommandRuntime {
   private given ExecutionContext = ExecutionContext.global
   private val state = State(PyodideRuntimeState.initial)
+  // Jobs are serialized. Retained Python imports must keep writing into the current job’s output.
+  private val output = State(JobOutput.empty)
 
   /** The worker is single-threaded, so reading and replacing the job chain cannot interleave. */
   def run(request: RunPythonRequest, logger: Logger): Future[RunPythonResult] = {
@@ -101,8 +103,10 @@ object PyodideCommandRuntime {
   private def globalsFor(pyodide: PyodideRuntime, request: RunPythonRequest): js.Dynamic = {
     val current = state.now().session.namespace
     if (request.resetGlobals || current.isEmpty) {
+      val replacement = pyodide.runPython("dict()").asInstanceOf[js.Dynamic]
+      // State compares sessions when publishing: the previous proxy must still be live during that comparison.
+      state.update(_.withNamespace(replacement))
       current.foreach(_.destroy())
-      state.update(_.withNamespace(pyodide.runPython("dict()").asInstanceOf[js.Dynamic]))
     }
     val globals = state.now().session.namespace.get
     request.context.foreach { (key, value) =>
@@ -155,7 +159,7 @@ object PyodideCommandRuntime {
 
   private def execute(request: RunPythonRequest, logger: Logger): Future[RunPythonResult] =
     load().flatMap { pyodide =>
-      val output = State(JobOutput.empty)
+      output.set(JobOutput.empty)
       val flushOutput = captureOutput(pyodide, request, output)
       val globals = globalsFor(pyodide, request)
       registerCallbacks(pyodide, request.callbacks, output)
