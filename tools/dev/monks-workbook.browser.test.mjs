@@ -29,13 +29,13 @@ test('monk stories and revised tasks work with the current editor and interactio
     await page.goto(origin + '/homepage/monksWorkbook/');
     await page.locator('.section-register .login-area').nth(1).locator('button').click();
     await page.locator('.select-language-line > div:has(.flag-fill-german-red)').click();
-    assert.equal(await page.locator('.section-block').count(), 7);
+    assert.equal(await page.locator('.section-block').count(), 6);
     const labels = JSON.parse(await readFile(path.join(root, 'resources/languageMaps/eva/monksworkbook/map-de.json'), 'utf8'));
     const basic = JSON.parse(await readFile(path.join(root, 'resources/languageMaps/eva/basic/map-de.json'), 'utf8'));
     const section = key => page.locator('.section-block').filter({hasText: labels[key]});
     assert.equal(await section('welcomeTitle').count(), 1);
     assert.equal(await section('finishTitle').count(), 1);
-    await section('parta').click();
+    await section('sec1title').click();
     const counter = page.locator('.slide-deck-counter');
     await counter.getByText('1/13', {exact:true}).waitFor();
     const next = page.locator('.slide-deck-navigation button').last();
@@ -68,11 +68,11 @@ test('monk stories and revised tasks work with the current editor and interactio
     await choice.locator('.interaction-info__attempts-count').getByText('2', {exact:true}).waitFor();
     const multiple = page.locator('.interaction-element:has(.choice-interaction input[type=checkbox])').first();
     await expand(multiple);
-    // The call stack question of task 1.5: options 1 and 3 are correct.
-    for (const index of [0, 2]) await multiple.locator('input[type=checkbox]').nth(index).check();
+    // What the head monk needs to know: options 2, 4 and 6 are correct.
+    for (const index of [1, 3, 5]) await multiple.locator('input[type=checkbox]').nth(index).check();
     await check(multiple);
     await multiple.locator('.feedback-score-chip').getByText('1/1', {exact:true}).waitFor();
-    await multiple.locator('input[type=checkbox]').nth(2).uncheck();
+    await multiple.locator('input[type=checkbox]').nth(5).uncheck();
     await check(multiple);
     await multiple.locator('.feedback-entry.feedback-status--partial').waitFor();
     const table = page.locator('.interaction-element:has(.answer-table)').first();
@@ -87,7 +87,7 @@ test('monk stories and revised tasks work with the current editor and interactio
     await reorder.locator('button.feedback-action--primary').click();
     await reorder.locator('.feedback-entry.feedback-status--incorrect').waitFor();
     assert(await page.locator('.choice-interaction code').count() > 0, 'code options render as inline code');
-    // Task 1.4 as a matching: connections by clicking both items in either order, one by dragging from the right.
+    // The monks' actions as a matching: connections by clicking both items in either order, one by dragging from the right.
     const matching = page.locator('.interaction-element:has(.matching-interaction)').first();
     const left = matching.locator('.matching-item--left');
     const right = matching.locator('.matching-item--right');
@@ -103,7 +103,7 @@ test('monk stories and revised tasks work with the current editor and interactio
     await matching.locator('.feedback-score-chip').getByText('1/1', {exact:true}).waitFor();
     await matching.locator('.matching-remove').first().click();
     assert.equal(await matching.locator('.matching-line').count(), 4);
-    // The call stack figure is an SVG data URL that the browser can decode; it spans the text width of its task.
+    // The call stack figure is an SVG data URL that the browser can decode; it spans the text width of its exercise.
     const figure = page.locator('[data-element-id="monks-image-callstack"] img');
     await figure.waitFor();
     assert(await figure.evaluate(img => img.complete && img.naturalWidth > 0), 'call stack figure renders');
@@ -114,7 +114,7 @@ test('monk stories and revised tasks work with the current editor and interactio
     await section('partc').click();
     await counter.getByText('1/4', {exact:true}).waitFor();
     await page.locator('.answer-table thead th').getByText('Zeitpunkt', {exact:true}).waitFor();
-    await section('partzero').click();
+    await section('sec3Title').click();
     const open = () => page.locator('.workbook-body').getByRole('button', {name:/Editor.*öffnen|Open editor/i}).first();
     await open().click();
     const dialog = page.locator('dialog[open]');
@@ -152,8 +152,8 @@ test('monk stories and revised tasks work with the current editor and interactio
     await code.waitFor();
     assert.match(await codeText(), /if \(1 > 0\)/, 'the Python block reached the Java answer');
     await page.locator('.fullscreen-close-button').click();
-    await section('kochtitle').click();
-    assert.equal(await page.locator('.workbook-body').getByRole('button', {name:/Editor.*öffnen|Open editor/i}).count(), 2);
+    await section('sec4Title').click();
+    assert.equal(await page.locator('.workbook-body').getByRole('button', {name:/Editor.*öffnen|Open editor/i}).count(), 1);
     // Survey: eight statements on a five point scale; consent is opt-in.
     await section('finishTitle').click();
     const rows = page.locator('.likert-interaction .likert-row');

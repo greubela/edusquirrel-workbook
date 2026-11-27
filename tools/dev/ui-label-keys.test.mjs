@@ -45,7 +45,7 @@ test('feedback, step and data-preview labels exist in German, English and Danish
 });
 
 test('2026GdP1 lesson texts and test descriptions exist in German, English and Danish', () => {
-  const factory = read(`${client}/content/CreateGdp1Workbook.scala`);
+  const factory = read(`${client}/content/CreateGdp1WorkbookDraft.scala`);
   const keys = new Set([
     ...matches(factory, /key\("([A-Za-z0-9]+)"\)/g),
     ...matches(factory, /content\("([A-Za-z0-9]+)"\)/g),

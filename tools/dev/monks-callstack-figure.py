@@ -1,4 +1,4 @@
-"""Generates the call stack figure for task 1.5 of the monks workbook (German and English).
+"""Generates the call stack figure in section 1 of the monks workbook (German and English).
 
 Example: sortieren("7294") with the monks' selection sort; every frame is one monk.
 Usage: python3 tools/dev/monks-callstack-figure.py resources/workbookresources/monks/callstack

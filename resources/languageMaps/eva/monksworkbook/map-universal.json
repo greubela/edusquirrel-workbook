@@ -1,8 +1,4 @@
 {
-  "filetower01": "monks/theater2/monks-tower-01.jpg",
-  "filetower02": "monks/theater2/monks-tower-02.jpg",
-  "filetower03": "monks/theater2/monks-tower-03.jpg",
-  "filetower04": "monks/theater2/monks-tower-04.jpg",
   "filetheater01": "monks/theater/monks-theater-01.jpg",
   "filetheater02": "monks/theater/monks-theater-02.jpg",
   "filetheater03": "monks/theater/monks-theater-03.jpg",
@@ -16,6 +12,10 @@
   "filetheater11": "monks/theater/monks-theater-11.jpg",
   "filetheater12": "monks/theater/monks-theater-12.jpg",
   "filetheater13": "monks/theater/monks-theater-13.jpg",
+  "filetower01": "monks/theater2/monks-tower-01.jpg",
+  "filetower02": "monks/theater2/monks-tower-02.jpg",
+  "filetower03": "monks/theater2/monks-tower-03.jpg",
+  "filetower04": "monks/theater2/monks-tower-04.jpg",
   "filekoch0": "monks/koch/koch-0.svg",
   "filekoch1": "monks/koch/koch-1.svg",
   "filekoch2": "monks/koch/koch-2.svg"
