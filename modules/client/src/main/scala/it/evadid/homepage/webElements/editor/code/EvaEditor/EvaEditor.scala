@@ -2,6 +2,8 @@ package it.evadid.homepage.webElements.editor.code.EvaEditor
 
 import com.raquo.laminar.api.L.*
 import it.evadid.core.datastructures.language.AppLanguage.ProgrammingLanguage
+import it.evadid.homepage.webElements.HtmlAppElement
+import it.evadid.homepage.webElements.download.ProjectDownloadButton
 import it.evadid.homepage.webElements.editor.abstractions.SimpleWebEditor
 import it.evadid.homepage.webElements.editor.code.EditorAppearance
 import it.evadid.homepage.webElements.editor.code.program.ProgrammingExecutionPanel
@@ -9,7 +11,8 @@ import it.evadid.workbook.elements.interactionElements.programming.state.Program
 
 import scala.concurrent.Future
 
-/** One language editor bound to the answer, with language tabs above it and the console below it.
+/** One language editor bound to the answer, with one toolbar line above it (language tabs, then the editor's
+  * [[EvaToolbarControls]]) and the console with Run, Stop and the project download below it.
   *
   * Each typing editor publishes after a pause, focus loss, page hiding or unmount. Language switching is
   * [[EvaConversionController]]'s, the tab list [[EvaLanguageTabs]]'. The configured languages determine the
@@ -32,6 +35,9 @@ final case class EvaEditor(
   private val tabsSignal = config.signal.distinct.map(tabsFor)
   private val selected = underlyingVar.signal.combineWith(tabsSignal).map((source, current) =>
     current.find(_.language == source.associatedLanguage)).distinct
+
+  /** The selected tab's editor, created once per selection and shared by the toolbar and the workspace. */
+  private val editor: Signal[Option[HtmlAppElement]] = selected.map(_.map(_.create(underlyingVar, context)))
 
   def selectedLanguage: Option[ProgrammingLanguage] = tabs.find(_.language == underlyingVar.now().associatedLanguage).map(_.language)
 
@@ -59,14 +65,17 @@ final case class EvaEditor(
     onMountCallback(context => appearance.watch(context.owner)),
     div(cls := "eva-editor__toolbar",
       child <-- tabsSignal.map(current => EvaLanguageTabs(current, selected, conversion, environment.labels).element),
+      child.maybe <-- editor.map(_.collect { case controls: EvaToolbarControls => controls.toolbarControls }),
       child.maybe <-- conversionNotice),
     div(cls := "eva-editor__workspace",
-      div(cls := "eva-editor__content", child <-- selected.map {
-        case Some(tab) => tab.create(underlyingVar, context).getDomElement()
+      div(cls := "eva-editor__content", child <-- editor.map {
+        case Some(current) => current.getDomElement()
         case None => div(child.text <-- environment.labels.unavailable)
       }),
       // The console runs what was committed, never the keystrokes of an unfinished token.
-      ProgrammingExecutionPanel(underlyingVar.signal, environment.programming, environment.labels.execution).getDomElement()))
+      ProgrammingExecutionPanel(underlyingVar.signal, environment.programming, environment.labels.execution,
+        actions = Seq(ProjectDownloadButton(underlyingVar.signal, environment.labels.execution)))
+        .getDomElement()))
 
   override def dismissOnOutsideClick: Boolean = false
 }

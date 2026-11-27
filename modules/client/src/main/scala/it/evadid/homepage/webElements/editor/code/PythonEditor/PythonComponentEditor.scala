@@ -5,7 +5,7 @@ import it.evadid.core.datastructures.language.AppLanguage.Python
 import it.evadid.core.datastructures.uml.*
 import it.evadid.homepage.webElements.HtmlAppElement
 import it.evadid.homepage.webElements.basic.PageScrollLock
-import it.evadid.homepage.webElements.editor.code.EvaEditor.{EvaEditorContext, EvaEditorTab}
+import it.evadid.homepage.webElements.editor.code.EvaEditor.{EvaEditorContext, EvaEditorTab, EvaToolbarControls}
 import it.evadid.homepage.webElements.editor.code.EvaEditor.uml.UmlStructureSelector
 import it.evadid.homepage.webElements.editor.code.codemirror.CodeMirrorEditor
 import it.evadid.homepage.webElements.editor.code.fragment.FragmentCodeEditor
@@ -21,13 +21,17 @@ import it.evadid.vm.structure.PythonUmlDiagram
 import it.evadid.workbook.elements.interactionElements.programming.state.*
 import org.scalajs.dom
 
-/** Python's class/function/full views share source parsing, UML rendering and CodeMirror with Java. */
+/** Python's class/function/full views share source parsing, UML rendering and CodeMirror with Java. Its modes and
+  * the class diagram's display are Eva toolbar controls.
+  */
 final class PythonComponentEditor(state: Var[ProgrammingStatePythonStructured], context: EvaEditorContext,
-    config: CodeMirrorEditorConfig, analyzer: ProgramAnalyzer = ProgramAnalyzer.shared) extends HtmlAppElement {
+    config: CodeMirrorEditorConfig, analyzer: ProgramAnalyzer = ProgramAnalyzer.shared) extends HtmlAppElement with EvaToolbarControls {
   private val labels = context.labels.python
   private val mode = Var("function")
   private val selection = Var(Option.empty[UmlEntityKey])
   private val dialog = Var(Option.empty[String])
+  private val structureOpen = Var(true)
+  private val diagramId = s"python-diagram-${java.util.UUID.randomUUID()}"
   private val owner = Var(PythonMethodEditing.module)
   private val name = Var("")
   private val parameters = Var("")
@@ -141,23 +145,27 @@ final class PythonComponentEditor(state: Var[ProgrammingStatePythonStructured], 
     }
   }
 
+  /** Mode tabs, then showing or hiding the class diagram. */
+  override lazy val toolbarControls: Element = div(cls := "eva-editor__controls",
+    EvaToolbarControls.segments(labels("pythonModes"), "tablist", Seq("class", "function", "full").map(value =>
+      button(typ := "button", role := "tab", child.text <-- labels("pythonMode" + value.capitalize),
+        aria.selected <-- mode.signal.map(_ == value), onClick --> (_ => mode.set(value))))),
+    EvaToolbarControls.diagramToggle(structureOpen, labels("classDiagram"), labels("javaShowClasses"), labels("javaHideClasses"), diagramId))
+
   override def getDomElement(): Element = div(cls := "java-function-based-editor python-component-editor",
     onMountCallback { _ =>
       val entry = PythonUmlDiagram(state.now()).classes.flatMap(_.functions).find(_.name == "main")
       selection.set(entry.map(_.key).orElse(Some(UmlEntityKey(PythonMethodEditing.module.spelling(), None))))
       if entry.isEmpty then mode.set("full")
     },
-    div(cls := "java-function-editor__topbar", h2(child.text <-- labels("pythonEditorTitle"))),
-    div(role := "tablist", aria.label <-- labels("pythonModes"), cls := "java-function-editor__modes",
-      Seq("class", "function", "full").map(value => button(typ := "button", role := "tab",
-        child.text <-- labels("pythonMode" + value.capitalize), aria.selected <-- mode.signal.map(_ == value), onClick --> (_ => mode.set(value))))),
-    new UmlStructureSelector(diagram, selection.signal, Observer(choose), classFooter = clazz => div(
+    div(cls := "python-component-editor__diagram", idAttr := diagramId, hidden <-- structureOpen.signal.map(!_),
+      new UmlStructureSelector(diagram, selection.signal, Observer(choose), classFooter = clazz => div(
       button(typ := "button", child.text <-- labels("pythonAddFunction"), onClick --> (_ => open("pythonAddFunction", clazz.sourceKey))),
       button(typ := "button", child.text <-- labels("pythonAddAttribute"), onClick --> (_ => open("pythonAddAttribute", clazz.sourceKey))),
       Option.when(clazz.sourceKey != PythonMethodEditing.module)(button(typ := "button", child.text <-- labels("pythonAddConstructor"),
         onClick --> (_ => open("pythonAddConstructor", clazz.sourceKey))))),
       trailing = button(typ := "button", cls := "uml-add-class", child.text <-- labels("pythonAddClass"), onClick --> (_ => open("pythonAddClass", PythonMethodEditing.module))),
-      labels = UmlStructureSelector.OriginLabels(labels(_))).getDomElement(),
+      labels = UmlStructureSelector.OriginLabels(labels(_))).getDomElement()),
     div(cls := "java-function-editor__workspace", child <-- selection.signal.combineWith(mode.signal).distinct.map(sourceEditor)),
     child.maybe <-- dialog.signal.map(_.map(renderDialog)))
 

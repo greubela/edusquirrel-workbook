@@ -138,5 +138,6 @@ See [program analysis and execution](program-analysis-and-execution.md).
 
 `ProjectExport` produces BlueJ Java projects, Python `main.py` or Snap XML, adding
 required libraries and exercise data. `ExportedProject.zip` uses the dependency-free
-`ZipArchive`; client `ProjectDownload` saves it. Cross-language round-trip tests compare
+`ZipArchive`; client `ProjectDownload` saves a single-file project (Snap XML, Python) as that file and
+any other as the ZIP. Eva's `ProjectDownloadButton` exports the answer in its current language. Cross-language round-trip tests compare
 behavior after formatting normalization; checked-Java runtime tests remain separate.

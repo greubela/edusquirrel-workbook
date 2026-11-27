@@ -33,10 +33,11 @@ Expensive work runs in workers: a Scala.js `Future` alone does not create a CPU 
 | `EvaEditorTab`, `EvaEditorConfig` | Language metadata and factories; only the selected editor is created |
 | `EvaConversionController` | Availability checks, requested switches and outcomes; no DOM |
 | `EvaLanguageTabs` | Accessible, localized tab list |
+| `EvaToolbarControls` | Selected editor's modes and class-diagram toggle, shown after the language tabs in Eva's single toolbar line (Snap adds none) |
 | `EvaEditorContext`, `EvaEditorEnvironment` | Logger, labels, exercise environment, appearance and diagnostics |
 | `WorkbookEvaEditor` | Workbook renderer's construction boundary |
 | `EditorWithWorkbookPanel` | Task instructions, grading, hints and drawing previews |
-| `ProgrammingExecutionPanel` | Console below Eva, observing the committed answer |
+| `ProgrammingExecutionPanel` | Console below Eva, observing the committed answer; its action bar holds Run, Stop and `ProjectDownloadButton` |
 
 Panels receive the central answer and task configuration directly. They do not read
 state back from editors or use an activation protocol. Drawings follow the explicitly run answer and use shared

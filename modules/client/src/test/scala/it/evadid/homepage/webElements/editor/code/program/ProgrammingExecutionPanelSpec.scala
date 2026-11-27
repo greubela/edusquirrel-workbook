@@ -17,7 +17,7 @@ import scala.concurrent.{Future, Promise}
 import scala.scalajs.concurrent.JSExecutionContext.Implicits.queue
 
 class ProgrammingExecutionPanelSpec extends EditorDomSuite {
-  private val labels = ProgrammingExecutionLabels(Val("console"), Val("run"), Val("stop"), Val("running"), Val("stopped"), Val("unavailable"))
+  private val labels = ProgrammingExecutionLabels(Val("console"), Val("run"), Val("stop"), Val("running"), Val("stopped"), Val("unavailable"), Val("download"))
 
   /** The worker's analysis is the core one; Pyodide is replaced by `python`, which records each request. */
   private final class Fixture(python: RunPythonRequest => Future[RunPythonResult]) {

@@ -54,11 +54,9 @@
     outline-offset: -2px;
 }
 
+/* One line of segmented groups: languages, then the selected editor's modes and diagram display. */
 .eva-editor__toolbar {
     grid-column: 1 / -1;
-}
-
-.eva-editor__tabs {
     display: flex;
     flex-wrap: wrap;
     align-items: center;
@@ -67,7 +65,33 @@
     padding-right: calc(var(--space-2xl) + var(--space-lg));
 }
 
-.eva-editor .eva-editor__tabs > button {
+.eva-editor__controls { display: contents; }
+
+/* Each group stays one row; on narrow screens it scrolls instead of stacking its buttons. */
+.eva-editor__segments {
+    display: flex;
+    flex-wrap: nowrap;
+    align-items: center;
+    gap: var(--space-sm);
+    max-width: 100%;
+    overflow-x: auto;
+    scrollbar-width: none;
+}
+
+.eva-editor__segments button {
+    flex: 0 0 auto;
+    white-space: nowrap;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--space-xs);
+    cursor: pointer;
+}
+
+.eva-editor__action-icon { flex: 0 0 auto; width: 16px; height: 16px; }
+.eva-editor__download { display: contents; }
+
+.eva-editor .eva-editor__segments button {
     border-radius: var(--radius-sm);
     border: 1px solid var(--color-border-soft);
     background: var(--color-surface-base);
@@ -75,24 +99,24 @@
     line-height: 1.4;
 }
 
-.eva-editor .eva-editor__tabs > button:hover:not([aria-disabled="true"]) {
+.eva-editor .eva-editor__segments button:hover:not([aria-disabled="true"], :disabled) {
     background: var(--color-background-colored);
     border-color: var(--color-accent-active);
 }
 
-.eva-editor .eva-editor__tabs > button[aria-selected="true"] {
+.eva-editor .eva-editor__segments button:is([aria-selected="true"], [aria-pressed="true"]) {
     background: var(--color-background-colored);
     border-color: var(--color-accent-strong);
     color: var(--color-accent-strong);
     font-weight: 700;
 }
 
-.eva-editor .eva-editor__tabs > button:focus-visible {
+.eva-editor .eva-editor__segments button:focus-visible {
     outline: 2px solid var(--color-focus);
     outline-offset: var(--space-xs);
 }
 
-.eva-editor .eva-editor__tabs > button[aria-disabled="true"] {
+.eva-editor .eva-editor__segments button:is([aria-disabled="true"], :disabled) {
     color: var(--color-text-muted-light);
     cursor: not-allowed;
 }
@@ -328,5 +352,6 @@
 .eva-editor__workspace > .eva-editor__content { flex: 1; min-height: 0; }
 .programming-execution { flex: 0 0 auto; max-height: 30%; overflow: auto; padding: var(--space-sm); border-top: var(--space-borders) solid var(--editor-border); }
 .programming-execution pre { margin: var(--space-sm) 0; white-space: pre-wrap; overflow-wrap: anywhere; }
-.programming-execution__actions { display: flex; gap: var(--space-sm); }
+.programming-execution__actions { width: fit-content; }
+.programming-execution__run:not(:disabled) .eva-editor__action-icon { color: var(--editor-accent); fill: currentColor; }
 .programming-execution__errors { color: var(--color-accent-error); }
