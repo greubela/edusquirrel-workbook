@@ -12,6 +12,8 @@ import it.evadid.core.datastructures.language.AppLanguage.Java
 import it.evadid.homepage.webElements.HtmlAppElement
 import it.evadid.homepage.webElements.editor.code.JavaEditor.JavaEditorLabels.Key
 import it.evadid.homepage.webElements.editor.code.EditorAppearance
+import it.evadid.homepage.webElements.editor.code.fragment.FragmentCodeEditor
+import it.evadid.homepage.webElements.editor.code.fragment.FragmentCodeEditor.Scope
 import it.evadid.homepage.webElements.editor.code.EvaEditor.{EvaEditorContext, EvaEditorTab, EvaToolbarControls}
 import it.evadid.homepage.webElements.editor.code.EvaEditor.uml.UmlStructureSelector
 import it.evadid.core.datastructures.uml.*
@@ -90,8 +92,10 @@ final class JavaComponentEditor(
   private val functionEditor = JavaFunctionEditor(logger, state, loadingLabel, editorConfig, marks)
   private val classEditor = JavaClassEditor(logger, state, loadingLabel, editorConfig, marks)
   private val source = state.bimap(_.toString)(ProgrammingStateJavaStructured(_)).distinct
+  /** Where the full source continues after a draft widened into it. */
+  private val sourceCaret = Var(Option.empty[Int])
   private lazy val sourceEditor = CodeMirrorEditor(logger, source, language = Java, config = Var(editorConfig),
-    diagnostics = marks, loadingLabel = loadingLabel,
+    diagnostics = marks, loadingLabel = loadingLabel, caret = sourceCaret,
     sameSource = (left, right) => left == right || ProgrammingStateJavaStructured(left) == ProgrammingStateJavaStructured(right))
 
   private val structure = EvaToolbarControls.DiagramDisplay()
@@ -125,6 +129,14 @@ final class JavaComponentEditor(
         classes.entity(key).flatMap(entity => JavaFunctionEditor.find(current, className, entity.fullCode))
           .fold(functionEditor.clear())(functionEditor.select)
     }
+  }
+
+  /** Shows a draft that outgrew the editor of `mode` in the next wider mode, continuing at the same place. */
+  private def widen(from: FragmentCodeEditor[ProgrammingStateJavaStructured, ?], mode: Mode, scope: Scope): Unit = {
+    // The next editor receives the cursor before the switch mounts it.
+    from.printedCursor.foreach(offset => if mode == Mode.Function && scope == Scope.Owner then classEditor.placeCursor(offset)
+      else sourceCaret.set(Some(offset)))
+    navigation.widen(mode, scope)
   }
 
   private def renderDiagram(navigationId: String): Element =
@@ -182,9 +194,9 @@ final class JavaComponentEditor(
   private val binders: Seq[Modifier[HtmlElement]] = Seq(
     onMountCallback(ctx => presentation.watch(ctx.owner)),
     navigation.selection --> (_.foreach(open)),
-    functionEditor.target.combineWith(state.signal) --> ((function, program) => function.foreach(navigation.follow(_, program))),
-    functionEditor.widened.changes.collect { case Some(scope) => scope } --> (navigation.widen(Mode.Function, _)),
-    classEditor.widened.changes.collect { case Some(scope) => scope } --> (navigation.widen(Mode.Class, _)),
+    functionEditor.targetInAnswer --> (_.foreach((function, program) => navigation.follow(function, program))),
+    functionEditor.widened.changes.collect { case Some(scope) => scope } --> (widen(functionEditor, Mode.Function, _)),
+    classEditor.widened.changes.collect { case Some(scope) => scope } --> (widen(classEditor, Mode.Class, _)),
   ) ++ structure.binders(navigation.selection.changes)
 
   override def getDomElement(): Element =

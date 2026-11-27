@@ -90,6 +90,7 @@ class JavaComponentEditorSpec extends UiDomSuite {
       assertEquals(one(root, "aside[aria-label='Task reference']").textContent, "Draw a square")
       click(entry(root, "Helper"))
       assertEquals(status(root), "Class view")
+      assertEquals(all(root, ".uml-class--selected").map(_.getAttribute("data-uml-class")), List("Helper"), "the whole header marks the class")
       assertEquals(heading(root), "class Helper")
       assertEquals(valueOf(field(root)), helperClass)
       click(entry(root, "~twice(x: int): int"))
