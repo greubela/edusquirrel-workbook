@@ -63,7 +63,6 @@ object BuildCommands {
   lazy val buildClientFast = taskKey[Unit]("Deprecated alias for buildClientDev")
   lazy val buildWorkerFast = taskKey[Unit]("Deprecated alias for buildWorkerDev")
   lazy val buildServerFast = taskKey[Unit]("Deprecated alias for buildServerDev")
-  lazy val deployAll = taskKey[Unit]("Deprecated alias for buildAllDeploy")
   lazy val build = taskKey[Unit]("Build the client anew")
   lazy val buildJS = taskKey[Unit]("Build client and worker JS artifacts to artifacts/newest")
 
@@ -83,7 +82,6 @@ object BuildCommands {
     buildClientFast := buildClientDev.value,
     buildWorkerFast := buildWorkerDev.value,
     buildServerFast := buildServerDev.value,
-    deployAll := buildAllDeploy.value,
     buildJS := Def.task {
       buildClientDev.value
       buildWorkerDev.value

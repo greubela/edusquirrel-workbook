@@ -8,6 +8,10 @@
 //   Writes into <out-dir>: per batch NNN an upload-NNN.curl config, a verify-NNN.curl size query and
 //   batch-NNN.tsv (url, size, local file), progress-NNN.sha256 (the previous manifest plus every
 //   batch up to NNN), delete.curl, the final manifest.sha256 and summary.json.
+//   Local files in the curl configs are ASCII paths relative to <site-dir>, where curl must run:
+//   curl for Windows opens config paths in the ANSI code page, so a non-ASCII user folder or file
+//   name would not be found. Files with non-ASCII names are uploaded from an ASCII-named copy in
+//   the sibling folder upload-aliases/; their remote names stay unchanged.
 // node sync-plan.mjs stage <repo> <out-dir> <client-env>
 //   Copies the published part of the repository into <out-dir>, in the repository's layout (the
 //   webspace mirrors it): homepage/, resources/, favicon.ico, the client and worker of
@@ -126,6 +130,15 @@ async function main([siteDir, previousFile, outDir, baseUrl, remoteRoot, ...opti
   const trusted = options.flatMap((option, index) => option === "--trust" ? [options[index + 1]] : []);
   const current = new Map();
   for (const path of listFiles(siteDir).sort()) current.set(path, await sha256(join(siteDir, path)));
+  const aliasDir = join(siteDir, "..", "upload-aliases");
+  rmSync(aliasDir, { recursive: true, force: true });
+  const localFile = path => {
+    if (/^[\x20-\x7e]*$/.test(path)) return path;
+    mkdirSync(aliasDir, { recursive: true });
+    const alias = join(aliasDir, current.get(path));
+    if (!existsSync(alias)) copyFileSync(join(siteDir, path), alias);
+    return `../upload-aliases/${current.get(path)}`;
+  };
   const previous = previousFile !== "-" && existsSync(previousFile)
     ? parseManifest(readFileSync(previousFile, "utf8")) : new Map();
   const { uploads, deletes } = plan(current, previous, trusted);
@@ -141,11 +154,11 @@ async function main([siteDir, previousFile, outDir, baseUrl, remoteRoot, ...opti
   for (let start = 0; start < uploads.length; start += batchSize) {
     const batch = uploads.slice(start, start + batchSize);
     const number = String(start / batchSize + 1).padStart(3, "0");
-    writeFileSync(join(outDir, `upload-${number}.curl`), batch.map(path => uploadEntry(join(siteDir, path), url(path))).join(""));
+    writeFileSync(join(outDir, `upload-${number}.curl`), batch.map(path => uploadEntry(localFile(path), url(path))).join(""));
     writeFileSync(join(outDir, `verify-${number}.curl`),
       `head\nwrite-out = "${sizeMarker}\\t%{url}\\t%{exitcode}\\n"\n` + batch.map(path => `url = ${quote(url(path))}\n`).join(""));
     writeFileSync(join(outDir, `batch-${number}.tsv`), batch.map(path =>
-      `${url(path)}\t${statSync(join(siteDir, path)).size}\t${join(siteDir, path)}\n`).join(""));
+      `${url(path)}\t${statSync(join(siteDir, path)).size}\t${localFile(path)}\n`).join(""));
     for (const path of batch) progress.set(path, current.get(path));
     writeFileSync(join(outDir, `progress-${number}.sha256`), formatManifest(progress));
   }
