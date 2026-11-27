@@ -8,18 +8,17 @@ import java.sql.{Connection, PreparedStatement, ResultSet}
 import java.time.LocalDateTime
 
 class LoginTokenTimestampSpec extends FunSuite {
-  private val parser = GenericSqlFunctionality(BasicLogger())
 
   List("2026-10-13 01:40:00", "2026-10-13 01:40:00.0",
     "2026-10-13 01:40:00.123456", "2026-10-13 01:40:00.123456789").foreach { value =>
     test(s"token expiry accepts $value") {
-      assertEquals(parser.parseDatabaseTimestamp(value), LocalDateTime.parse(value.replace(' ', 'T')))
+      assertEquals(SqlUserCommands.parseDatabaseTimestamp(value), LocalDateTime.parse(value.replace(' ', 'T')))
     }
   }
 
   test("unsupported expiry formats are rejected rather than interpreted as legacy data") {
     List("not a timestamp", "2026-10-13T01:40:00").foreach(value =>
-      intercept[RuntimeException](parser.parseDatabaseTimestamp(value)))
+      intercept[RuntimeException](SqlUserCommands.parseDatabaseTimestamp(value)))
   }
 
   private def stub[T](kind: Class[T])(handle: (String, Array[AnyRef]) => AnyRef): T =

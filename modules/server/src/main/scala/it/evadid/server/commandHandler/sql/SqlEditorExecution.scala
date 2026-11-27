@@ -1,6 +1,7 @@
 package it.evadid.server.commandHandler.sql
 
 import it.evadid.distribution.commandTypes.SqlEditorCommands.*
+import it.evadid.server.database.SqlStatements
 import it.evadid.sql.DatabaseConfigWithCredentials
 
 import java.sql.{Connection, ResultSet, Statement, SQLException}
@@ -72,10 +73,6 @@ object SqlEditorExecution {
   private[sql] def escapePattern(name: String, escape: String): String =
     name.replace(escape, escape + escape).replace("_", escape + "_").replace("%", escape + "%")
 
-  /** Reads every row of a metadata result set and closes it. */
-  private def readAll[A](rows: ResultSet)(read: ResultSet => A): List[A] =
-    Using.resource(rows)(rs => Iterator.continually(rs.next()).takeWhile(identity).map(_ => read(rs)).toList)
-
   /** Reads the database schema including tables, columns, primary keys, and foreign keys.
     *
     * @param connection Active database connection
@@ -84,15 +81,15 @@ object SqlEditorExecution {
   private[sql] def readSchema(connection: Connection): Seq[Table] = {
     val metadata = connection.getMetaData
     val catalog = connection.getCatalog
-    val names = readAll(metadata.getTables(catalog, null, "%", Array("TABLE", "VIEW")))(_.getString("TABLE_NAME")).sorted
+    val names = SqlStatements.rows(metadata.getTables(catalog, null, "%", Array("TABLE", "VIEW")))(_.getString("TABLE_NAME")).sorted
     names.map { name =>
-      val primaryKeys = readAll(metadata.getPrimaryKeys(catalog, null, name))(_.getString("COLUMN_NAME")).toSet
-      val columns = readAll(metadata.getColumns(catalog, null, escapePattern(name, metadata.getSearchStringEscape), "%")) { rs =>
+      val primaryKeys = SqlStatements.rows(metadata.getPrimaryKeys(catalog, null, name))(_.getString("COLUMN_NAME")).toSet
+      val columns = SqlStatements.rows(metadata.getColumns(catalog, null, escapePattern(name, metadata.getSearchStringEscape), "%")) { rs =>
         val column = rs.getString("COLUMN_NAME")
         Column(column, rs.getString("TYPE_NAME"),
           rs.getInt("NULLABLE") != java.sql.DatabaseMetaData.columnNoNulls, primaryKeys.contains(column))
       }
-      val keys = readAll(metadata.getImportedKeys(catalog, null, name)) { rs =>
+      val keys = SqlStatements.rows(metadata.getImportedKeys(catalog, null, name)) { rs =>
         ForeignKey(rs.getString("FKCOLUMN_NAME"), rs.getString("PKTABLE_NAME"), rs.getString("PKCOLUMN_NAME"))
       }
       Table(name, columns, keys)

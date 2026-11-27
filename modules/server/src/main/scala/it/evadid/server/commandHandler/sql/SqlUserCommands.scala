@@ -7,13 +7,13 @@ import it.evadid.core.util.io.ParsingContext
 import it.evadid.distribution.commandTypes.MailCommands.{SendMailRequest, SendMailResponse}
 import it.evadid.distribution.commandTypes.UserCommands.*
 import it.evadid.server.AuthHandling
-import it.evadid.server.database.UserAccountDatabase
+import it.evadid.server.database.{SqlStatements, UserAccountDatabase}
 import it.evadid.server.SendMailCommand.sendMail
 import it.evadid.sql.DatabaseConfigWithCredentials
 import it.evadid.util.JvmUtils
 import it.evadid.util.logging.Logger
 
-import java.sql.{Connection, Timestamp}
+import java.sql.{Connection, ResultSet, Timestamp}
 import java.time.LocalDateTime
 import scala.concurrent.{ExecutionContext, Future}
 import scala.util.Try
@@ -99,13 +99,13 @@ object SqlUserCommands {
     UpdateAccountResponse(changes > 0, token)
   }
 
+
+  /** Reads a JDBC timestamp text such as `2026-10-13 01:40:00.123456`; other formats are rejected. */
+  private[sql] def parseDatabaseTimestamp(databaseTimestampString: String): LocalDateTime =
+    Timestamp.valueOf(databaseTimestampString).toLocalDateTime
 }
 
-
-class SqlUserCommands(
-                       connection: Connection,
-                       logger: Logger,
-                     ) {
+class SqlUserCommands(connection: Connection, logger: Logger) {
 
   def mayCreateAccount(requestedUser: User): Boolean = {
     val findMail = findUserWithMail(requestedUser.mail)
@@ -121,58 +121,44 @@ class SqlUserCommands(
     }
   }
 
-  private lazy val generic: GenericSqlFunctionality = new GenericSqlFunctionality(logger)
+  private val statements = SqlStatements(connection, logger)
 
   private val userColumns = List("id", "name", "mail", "config")
 
+  /** The named columns of the current row; an unreadable row is reported and skipped. */
+  private def columns(names: Seq[String])(row: ResultSet): Option[Seq[String]] =
+    Try(names.map(row.getString)).fold(error => {
+      logger.logWarn(s"Could not parse element from result set because of the following error: ${ParsingContext.reason(error)}")
+      None
+    }, Some(_))
+
   /** Columns in [[userColumns]] order; malformed settings fall back to the current defaults. */
-  private def parseUser(columns: Seq[String]): Option[UserInDatabase] =
-    Option.when(columns.size >= 4) {
-      val user = User(columns(1), columns(0), columns(2))
-      val userConfig = Try(read[UserConfig](columns(3))).recover {
-        case NonFatal(error) =>
-          logger.logWarn(s"Discarded invalid UserConfig; using current defaults: ${ParsingContext.reason(error)}")
-          UserConfig.defaults(isLocalAccount = false)
-      }.get
-      UserInDatabase(user, userConfig)
-    }
-
-  /** Users whose fixed key column equals `value`, bound as a statement parameter. */
-  private def selectUsers(keyColumn: "id" | "mail", value: String): Seq[UserInDatabase] = {
-    val sql =
-      s"""
-         |SELECT `id`, `name`, `mail`, `config`
-         |FROM `user`
-         |WHERE `$keyColumn` = ?
-         |""".stripMargin
-
-    val stmt = connection.prepareStatement(sql)
-    stmt.setString(1, value)
-    generic.executeQuery(stmt, userColumns).flatMap(parseUser)
+  private def parseUser(columns: Seq[String]): UserInDatabase = {
+    val user = User(columns(1), columns(0), columns(2))
+    val userConfig = Try(read[UserConfig](columns(3))).recover {
+      case NonFatal(error) =>
+        logger.logWarn(s"Discarded invalid UserConfig; using current defaults: ${ParsingContext.reason(error)}")
+        UserConfig.defaults(isLocalAccount = false)
+    }.get
+    UserInDatabase(user, userConfig)
   }
 
-  def findAccessTokens(userId: String): Option[SingleAccessToken] = {
-    val sql =
-      s"""
-         |SELECT `userId`, `token`, `tokenExpires`
-         |FROM `loginTokens`
-         |WHERE `userId` = ?
-         |""".stripMargin
+  /** Users whose fixed key column equals `value`, bound as a statement parameter. */
+  private def selectUsers(keyColumn: "id" | "mail", value: String): Seq[UserInDatabase] =
+    statements.query(s"SELECT `id`, `name`, `mail`, `config` FROM `user` WHERE `$keyColumn` = ?", value)(columns(userColumns))
+      .flatten.map(parseUser)
 
-    val stmt = connection.prepareStatement(sql)
-    stmt.setString(1, userId)
-
-    val result: Seq[Seq[String]] = generic.executeQuery(stmt, List("userId", "token", "tokenExpires"))
-    result.headOption.flatMap { columns =>
+  def findAccessTokens(userId: String): Option[SingleAccessToken] =
+    statements.query("SELECT `userId`, `token`, `tokenExpires` FROM `loginTokens` WHERE `userId` = ?", userId)(
+      columns(List("userId", "token", "tokenExpires"))).flatten.headOption.flatMap { columns =>
       Try {
         require(Option(columns(1)).exists(_.trim.nonEmpty), "Empty login code")
-        SingleAccessToken(columns(1), generic.parseDatabaseTimestamp(columns(2)))
+        SingleAccessToken(columns(1), SqlUserCommands.parseDatabaseTimestamp(columns(2)))
       }.fold(_ => {
         logger.logWarn("Discarded an invalid stored login code; a new code can be requested.")
         None
       }, Some(_))
     }
-  }
 
   def findUserWithMail(mail: String): Seq[UserInDatabase] = selectUsers("mail", mail.toLowerCase)
 
@@ -199,43 +185,21 @@ class SqlUserCommands(
     }
   }
 
+  def upsertToken(userId: String, token: SingleAccessToken): Int = statements.update(
+    """INSERT INTO `loginTokens` (`userId`, `token`, `tokenExpires`)
+      |VALUES (?, ?, ?)
+      |ON DUPLICATE KEY UPDATE
+      |  `token` = VALUES(`token`),
+      |  `tokenExpires` = VALUES(`tokenExpires`)""".stripMargin,
+    userId, token.token, Timestamp.valueOf(token.expires))
 
-  def upsertToken(userId: String, token: SingleAccessToken): Int = {
-    val sql =
-      s"""
-         |INSERT INTO `loginTokens` (`userId`, `token`, `tokenExpires`)
-         |VALUES (?, ?, ?)
-         |ON DUPLICATE KEY UPDATE
-         |  `token` = VALUES(`token`),
-         |  `tokenExpires` = VALUES(`tokenExpires`)
-         |""".stripMargin
-
-    val stmt = connection.prepareStatement(sql)
-    stmt.setString(1, userId)
-    stmt.setString(2, token.token)
-    stmt.setTimestamp(3, Timestamp.valueOf(token.expires))
-
-    generic.executeUpdate(stmt)
-  }
-
-  def upsertUser(user: User, userConfig: UserConfig): Int = {
-    val sql =
-      s"""
-         |INSERT INTO `user` (`id`, `name`, `mail`, `config`)
-         |VALUES (?, ?, ?, ?)
-         |ON DUPLICATE KEY UPDATE
-         |  `name` = VALUES(`name`),
-         |  `mail` = VALUES(`mail`),
-         |  `config` = VALUES(`config`)
-         |""".stripMargin
-
-    val stmt = connection.prepareStatement(sql)
-    stmt.setString(1, user.id)
-    stmt.setString(2, user.name)
-    stmt.setString(3, user.mail.toLowerCase)
-    stmt.setString(4, userConfig.withoutCredentials.toJson)
-
-    generic.executeUpdate(stmt)
-  }
+  def upsertUser(user: User, userConfig: UserConfig): Int = statements.update(
+    """INSERT INTO `user` (`id`, `name`, `mail`, `config`)
+      |VALUES (?, ?, ?, ?)
+      |ON DUPLICATE KEY UPDATE
+      |  `name` = VALUES(`name`),
+      |  `mail` = VALUES(`mail`),
+      |  `config` = VALUES(`config`)""".stripMargin,
+    user.id, user.name, user.mail.toLowerCase, userConfig.withoutCredentials.toJson)
 
 }
