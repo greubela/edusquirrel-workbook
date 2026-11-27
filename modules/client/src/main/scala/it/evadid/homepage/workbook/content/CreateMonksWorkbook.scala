@@ -7,7 +7,7 @@ import it.evadid.core.datastructures.vectorShapes.svg.TurtleCommand
 import it.evadid.homepage.control.model.FullInfo
 import it.evadid.workbook.abstractions.{TypeOfTextDisplay, WorkbookDisplayElement, WorkbookElement}
 import it.evadid.workbook.elements.displayElements.WorkbookImageElement.LanguageMapBasedWorkbookImageElement
-import it.evadid.workbook.elements.displayElements.LabeledWorkbookElement.HintLabel
+import it.evadid.workbook.elements.interactionElements.basic.TextInteraction
 import it.evadid.workbook.elements.interactionElements.choice.WorkbookContentChoiceInteraction
 import it.evadid.workbook.elements.interactionElements.matching.{LikertScaleInteraction, MatchingInteraction}
 import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseTurtle.{RecreateTurtleDidacticConfig, TurtleGraphic, TurtleRecreateShapeInteraction}
@@ -62,8 +62,10 @@ case class CreateMonksWorkbook(override val fullInfo: FullInfo) extends Workbook
       Some(lm(captionKey)), Some(copyright)), text(captionKey))
 
   /** Static picture of the Koch curve of the given depth, with its caption. */
-  private def kochFigure(depth: Int): List[WorkbookElement] =
-    figure("monks-image-koch-" + depth, "filekoch" + depth, "kochcaption" + depth, CopyrightInfo.plattformCopyrightInfo())
+  private def kochFigure(depth: Int): List[WorkbookElement] = {
+    List(text(s"kochexplain${depth}")) ++
+      figure("monks-image-koch-" + depth, "filekoch" + depth, "kochcaption" + depth, CopyrightInfo.plattformCopyrightInfo())
+  }
 
   // ---- task builders: the task `id` determines the container title and all language-map keys
 
@@ -110,10 +112,10 @@ case class CreateMonksWorkbook(override val fullInfo: FullInfo) extends Workbook
 
   /** Editor task: prompt and a Java turtle editor whose drawing is compared with the sample solution. The prompt is
    * also shown in the editor's side panel. `lead` is shown before the prompt. */
-  private def editorTask(id: String, lead: List[WorkbookElement] = Nil): WorkbookElement =
-    task(id, lead ++ List(prompt(id),
-      TurtleRecreateShapeInteraction("monks-" + id, ProgrammingStateJavaStructured(EditorCode(id)), editorTarget(id),
-        customExerciseConfig = Some(EditorConfig), instructionText = Some(lm(id + "prompt")))))
+  private def editorTask(id: String, lead: List[WorkbookElement] = Nil): WorkbookElement = {
+    TurtleRecreateShapeInteraction("monks-" + id, ProgrammingStateJavaStructured(EditorCode(id)), editorTarget(id),
+      customExerciseConfig = Some(EditorConfig), instructionText = Some(lm(id + "prompt")))
+  }
 
   // Building once makes IDs and state references stable across createWorkbook/createEverything calls.
   override lazy val createWorkbook: Workbook = workbook(
@@ -121,98 +123,124 @@ case class CreateMonksWorkbook(override val fullInfo: FullInfo) extends Workbook
     List(
       section("welcomeTitle", key("welcomeTitle"), List(
         container(key("welcomeTitle"), List(text("welcome"))))),
-      section("monks-story", key("parta"), List(
-        container(key("parta"), List(
-          text("parta-bridge"),
+      // sec 1
+      section("monks-story", key("sec1title"), List(
+        container(key("cont-1-1"), List(
           text("introduction"),
           Slideshow("monks-theater", theaterScenes.map(panel)),
-          text("schemaintro"), text("schemacode"))),
-        task("a1", List(prompt("a1"), reorder("a1", 8))),
-        task("a2", List(singleColumn("a2", List("3", "5", "5 4 2|5,4,2|5, 4, 2|5 , 4 , 2", "5")))),
-        task("a3", List(choice("a3", List(1), 4))),
-        // "none" is a distractor: no scene belongs to it.
-        task("a4", List(prompt("a4"), matching("a4",
-          List("abort", "simplify", "call", "combine", "first", "none"),
-          List("simplify", "call", "abort", "combine", "first")))),
-        // The call stack figure introduces `sortieren` before the gap task; the check question makes sure it is read.
-        task("stack", text("stack-intro") :: figure("monks-image-callstack", "filecallstack", "stack-caption", FigureCopyright) ++
-          List(choice("stack", List(0, 2), 4, multiple = true))),
-        // The story as code: one method with four gaps, one question per gap.
-        task("ac", List(text("ac-intro"), text("ac-code"),
-          choice("ac-1", List(0), 3), choice("ac-2", List(1), 3), choice("ac-3", List(2), 3), choice("ac-4", List(1), 3))),
-        // Refers to the gaps of task "ac" instead of showing the finished method, which would spoil "ac".
-        task("a5", List(prompt("a5"), matching("a5",
-          List("abort", "simplify", "call", "combine"),
-          List("abort", "simplify", "call", "combine")))),
-        task("a6", List(text("a6-bridge"), choice("a6", List(1, 3, 5), 6, multiple = true))),
-        task("a7", List(choice("a7", List(1, 3, 5), 6, multiple = true))),
-        // a8b transfers the call stack figure of task "stack" from 4 to 5 cards.
-        task("a8", List(text("a8intro"),
-          choice("a8a", List(1), 4),
-          singleColumn("a8b", List("6")),
-          choice("a8c", List(2), 4))),
-        summary("parta-summary"))),
+        )),
+        container(key("cont-1-2"), List(
+          prompt("a1"),
+          reorder("a1", 8),
+          choice("a3", List(1), 4),
+          text("schemaintro"),
+          text("schemacode"),
+          text("a4pre"),
+          matching("a4",
+            List("abort", "simplify", "call", "combine", "first", "none"),
+            List("simplify", "call", "abort", "combine", "first")),
+        )),
+        container(key("cont-1-3"), List(
 
+          singleColumn("a2", List("3", "5", "5 4 2|5,4,2|5, 4, 2|5 , 4 , 2", "5")),
+          text("javaintro"),
+          text("javacode"),
+          choice("an", List(2), 4),
+          text("stackintro"))
+          ++
+          figure("monks-image-callstack", "filecallstack", "stack-caption", FigureCopyright)
+          ++ List(
+          singleColumn("a8b", List("6")),
+          choice("a8c", List(2), 4),
+        )),
+
+        container(key("cont-1-4"), List(
+          choice("a7", List(1, 3, 5), 6, multiple = true),
+          choice("a6", List(1, 3, 5), 6, multiple = true),
+          text("functionaloutro"),
+        )),
+
+
+      ))
+      ,
+      // tower section
       section("monks-tower", key("partc"), List(
         container(key("partc"), List(
           prompt("c0"),
           Slideshow("monks-counting-story", countingScenes.map(panel)))),
-        task("c1", List(prompt("c1"), matching("c1",
-          List("abort", "simplify", "call", "combine", "state"),
-          List("simplify", "state", "call", "abort", "combine")))),
-        task("c2", List(
+
+        container(key("cont-2-1"), List(
+          prompt("c1"),
+          matching("c1",
+            List("abort", "simplify", "call", "combine"),
+            List("simplify", "call", "abort", "combine")),
           table("c2", List("c2-col0", "c2-col1", "c2-col2"), List(List("2", "1", "1"), List("1", "2", "2"), List("0", "3", "3")),
             "c2-rowheader"),
-          singleColumn("c2b", List("4")))),
-        task("c3", List(prompt("c3"), text("c3code"), matching("c3",
-          List("variant-a", "variant-b", "variant-c"), List("variant-a", "variant-b", "variant-c")))),
-        task("c4", List(singleColumn("c4", List("6", "3", "5", "3")))),
-        task("c5", List(text("functionalexplanation"), choice("c5", List(1, 3, 4, 5), 6, multiple = true))),
-        summary("partc-summary"))),
+          singleColumn("c2b", List("4")),
+          choice("towerCode", List(0), 3))),
+        container(key("cont-2-2"), List(
+          choice("strichliste", List(1, 2, 3, 5), 6, multiple = true),
+          text("sec2outro")
+        ))
+      )),
 
-      // Placed right before the drawing section, so learners use the editor directly after getting to know it.
-      section("monks-editor", key("partzero"), List(
-        container(key("partzero"), List(text("zerobridge"), text("zerointro"))),
-        editorTask("e1"), editorTask("e2"), editorTask("e3"),
-        summary("partzero-summary"))),
+      // Editor.
+      section("monks-editor", key("sec3Title"), List(
 
-      // Drawing with the building-brick methods from the editor section (tower, pyramids, stairs).
-      section("monks-bridge", key("partd"), List(
-        container(key("partd"), List(text("partdbridge"), text("partdintro"))),
-        editorTask("e4"), editorTask("e5"),
-        // The two debugging tasks share one lead-in that names the typical recursion mistakes.
-        editorTask("e6b", lead = List(text("e6-bridge"))), editorTask("e6a"),
-        task("d1", List(choice("d1a", List(1), 4), choice("d1b", List(1, 3), 5, multiple = true))),
-        // Also leads over to the final task in section 5.
-        summary("partd-summary"))),
+        container(key("sec3Ex1Title"), List(
+          text("sec3Ex1Instr1"),
+          editorTask("e1"),
+          text("sec3Ex1Instr2"),
+          editorTask("e3")
+        )),
 
-      // Final task: the Koch curve. The introduction explains the figure only; decomposition, angles and the
-      // method's contract are left to the tasks, so the support fades compared to section 4.
-      // Each depth is explained first and then shown in a captioned picture.
-      section("monks-koch", key("kochtitle"), List(
-        container(key("kochintroductioncont"), text("kochintroduction") ::
-          (0 to 2).toList.flatMap(depth => text("kochexplain" + depth) :: kochFigure(depth))),
-        task("k1", List(
-          table("k1", List("k1-col0", "k1-col1"),
-            List(List("1", "270"), List("4", "90"), List("16", "30"), List("64", "10")), "k1-rowheader"),
-          choice("k1b", List(0), 4))),
-        editorTask("k2"),
-        task("k3", List(choice("k3a", List(1), 4), choice("k3b", List(0, 1), 5, multiple = true))),
-        editorTask("k4"),
-        task("k5", List(singleColumn("k5", List("6", "21", "85", "64")))))),
+        container(key("sec3Ex2Title"), List(
+          text("sec3Ex2Instr1"),
+          editorTask("e4"),
+          text("sec3Ex2Instr2"),
+          editorTask("e5"),
+          text("sec3Ex2Instr3"),
+          editorTask("e6b"),
+          text("sec3Ex2Instr4"),
+        )),
+
+      )),
+
+      // Koch
+      section("monks-koch", key("sec4title"), List(
+
+        container(key("sec4Ex1Title"),
+          kochFigure(0) ++ kochFigure(1) ++ kochFigure(2) ++ List(
+            table("k1", List("k1-col0", "k1-col1"),
+              List(List("1", "270"), List("4", "90"), List("16", "30"), List("64", "10")), "k1-rowheader"),
+          )
+        ),
+
+        container(key("sec4Ex2Title"), List(
+          text("sec4Ex2Instr1"),
+          editorTask("k4"),
+          text("sec4Ex2Instr2"),
+        )),
+      )),
+
       section("finishTitle", key("finishTitle"), List[WorkbookElement](
-        text("finish"),
+        container(key("abschluss"), List(
+          text("finish"),
+        )),
         // Optional survey. Consent is opt-in: the checkbox starts unchecked.
         container(key("survey"), List(
           text("survey-intro"),
+          checklist(key("survey-consent"), "monks-survey-consent")
+          ,
           LikertScaleInteraction("monks-survey", None, List.tabulate(8)(i => lm(s"survey-item$i")),
             List.tabulate(5)(i => lm(s"survey-scale$i"))),
-          checklist(key("survey-consent"), "monks-survey-consent"))
-        ),
+          text("survey-additional"),
+          TextInteraction("free-feedback"),
+        )),
         container(key("submit"), List(
-          text("submit-todo"))
-        ),
-      )),
+          text("submitInstruction")
+        )),
+      ))
     ),
     User.AndreGreubel
   )
@@ -240,32 +268,39 @@ object CreateMonksWorkbook {
   /** The theater and tower images are Minecraft screenshots whose author is unknown. */
   val ScreenshotCopyright: CopyrightInfo = CopyrightInfo(CopyrightInfo.UnknownLicence, CopyrightInfo.UnknownAuthorInfo())
 
+  def compScene(sceneNr: Int, dialogNumbers: Int, notice: Boolean = false): Scene = {
+    val nr = if (sceneNr < 10) "0" + sceneNr else sceneNr.toString
+    Scene("comp-scene" + sceneNr, s"filetheater${nr}", 1.to(dialogNumbers).toList.map(nr => s"computarius-$sceneNr-${nr}"), ScreenshotCopyright, if (notice) Some(s"computarius-notice-${sceneNr}") else None)
+  }
+
+  def countScene(sceneNr: Int, dialogNumbers: Int): Scene = {
+    val nr = if (sceneNr < 10) "0" + sceneNr else sceneNr.toString
+    Scene("count-scene" + sceneNr, s"filetower${nr}", 1.to(dialogNumbers).toList.map(nr => s"counting-$sceneNr-${nr}"), ScreenshotCopyright)
+  }
+
   val theaterScenes: List[Scene] = List(
     // The notice is shown above the lines without becoming the image caption.
-    Scene("arrival", "filetheater01", List("narr-arrival", "entrancedialogue"), notice = Some("imagenotice")),
-    Scene("warning", "filetheater02", List("warningdialogue", "shoutdialogue")),
-    Scene("help", "filetheater03", List("narr-help", "cards-demanddialogue", "in-deed-onedialogue",
-      "help-uncertaindialogue", "in-deed-onedialogue", "help-questiondialogue", "in-deed-onedialogue")),
-    Scene("journey", "filetheater04", List("help-insistentdialogue", "journey-questiondialogue",
-      "journey-answerdialogue", "return-questiondialogue", "return-answerdialogue")),
-    Scene("patience", "filetheater05", List("patiencedialogue")),
-    Scene("tray", "filetheater06", List("tray-instructiondialogue", "narr-tray", "watchdialogue")),
-    Scene("select-a", "filetheater07", List("narr-select-a")),
-    Scene("select-b", "filetheater08", List("narr-select-b")),
-    Scene("empty", "filetheater09", List("narr-empty", "emptydialogue", "givebackdialogue")),
-    Scene("insert-a", "filetheater10", List("narr-insert-a")),
-    Scene("insert-b", "filetheater11", List("narr-insert-b")),
-    Scene("sorted", "filetheater12", List("narr-sorted", "sorteddialogue", "understooddialogue")),
-    Scene("farewell", "filetheater13", List("farewelldialogue", "narr-farewell")))
+    compScene(1, 3, true),
+    compScene(2, 2, true),
+    compScene(3, 15, false),
+    compScene(4, 8, false),
+    compScene(5, 3, false),
+    compScene(6, 4, false),
+    compScene(7, 3, false),
+    compScene(8, 3, false),
+    compScene(9, 4, false),
+    compScene(10, 2, false),
+    compScene(11, 1, false),
+    compScene(12, 9, false),
+    compScene(13, 1, false))
     .map(_.copy(copyright = ScreenshotCopyright))
 
   val countingScenes: List[Scene] = List(
-    Scene("family", "filetower01", List("familydialogue", "family-father-replydialogue",
-      "family-child-questiondialogue")),
-    Scene("count-red", "filetower02", List("count-explanationdialogue", "narr-count-red")),
-    Scene("count-yellow", "filetower03", List("narr-count-yellow")),
-    Scene("count-blue", "filetower04", List("narr-count-blue", "count-resultdialogue", "count-brokendialogue",
-      "count-rememberdialogue", "narr-count-rebuild", "count-grandmadialogue")))
+    countScene(1, 8),
+    countScene(2, 3),
+    countScene(3, 1),
+    countScene(4, 5),
+  )
     .map(_.copy(copyright = ScreenshotCopyright))
 
   /** Java starting code of the editor tasks E1–E6. Section 3 lets the learner write the building-brick methods
@@ -429,12 +464,16 @@ object CreateMonksWorkbook {
    * so the recorded strokes are exactly what the Java runner emits for the same solution.
    */
   private object Sketch {
+
     import TurtleCommand.*
 
     def stein(breite: Double): List[TurtleCommand[Double]] =
       List.fill(2)(List(Forward(breite), Left(90.0), Forward(20.0), Left(90.0))).flatten
+
     def hoch(): List[TurtleCommand[Double]] = List(PenUp, Left(90.0), Forward(20.0), Right(90.0), PenDown)
+
     def runter(): List[TurtleCommand[Double]] = List(PenUp, Right(90.0), Forward(20.0), Left(90.0), PenDown)
+
     def springe(weite: Double): List[TurtleCommand[Double]] = List(PenUp, Forward(weite), PenDown)
 
     def vieleck(ecken: Int, laenge: Double): List[TurtleCommand[Double]] =
