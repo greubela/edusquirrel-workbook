@@ -7,6 +7,7 @@ import it.evadid.core.datastructures.vectorShapes.svg.TurtleCommand
 import it.evadid.homepage.control.model.FullInfo
 import it.evadid.workbook.abstractions.{TypeOfTextDisplay, WorkbookDisplayElement, WorkbookElement}
 import it.evadid.workbook.elements.displayElements.WorkbookImageElement.LanguageMapBasedWorkbookImageElement
+import it.evadid.workbook.elements.displayElements.WorkbookSubmissionElement
 import it.evadid.workbook.elements.interactionElements.basic.TextInteraction
 import it.evadid.workbook.elements.interactionElements.choice.WorkbookContentChoiceInteraction
 import it.evadid.workbook.elements.interactionElements.matching.{LikertScaleInteraction, MatchingInteraction}
@@ -186,7 +187,7 @@ case class CreateMonksWorkbook(override val fullInfo: FullInfo) extends Workbook
             List.tabulate(5)(i => lm(s"survey-scale$i"))),
           text("survey-additional"),
           TextInteraction("free-feedback"))),
-        container(key("submit"), List(text("submitInstruction")))))
+        container(key("submit"), List(text("submitInstruction"), WorkbookSubmissionElement("monks-submission")))))
     ),
     User.AndreGreubel
   )

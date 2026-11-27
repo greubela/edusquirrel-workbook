@@ -14,7 +14,11 @@ import java.sql.Connection
 import java.net.InetAddress
 import it.evadid.distribution.command.{ExecutionCommand, ExecutionCommandFactory}
 import it.evadid.distribution.commandTypes.{SQLCommands, LLMCommands}
-import it.evadid.sql.DatabaseTable
+import it.evadid.distribution.commandTypes.SubmissionCommands.{SubmitSessionEvent, submitSessionCommand}
+import it.evadid.server.SubmissionFixtures
+import it.evadid.sql.{CommandLog, DatabaseTable}
+import it.evadid.workbook.session.SessionData
+import upickle.default.{read, writeJs}
 import java.time.LocalDateTime
 import scala.concurrent.Await
 import scala.concurrent.duration.*
@@ -55,6 +59,7 @@ class UserAccountMysqlSpec extends FunSuite {
 
   override def beforeEach(context: BeforeEach): Unit = withDatabase { connection =>
     Using.resource(connection.createStatement()) { statement =>
+      statement.executeUpdate("DELETE FROM `submissionLog`")
       statement.executeUpdate("DELETE FROM `syncedLog`")
       statement.executeUpdate("DELETE FROM `commandLog`")
       statement.executeUpdate("DELETE FROM `loginTokens`")
@@ -265,7 +270,7 @@ class UserAccountMysqlSpec extends FunSuite {
 
   test("a configured custom log table receives the same structured event") {
     val definition = ExecutionCommandFactory[String, String]("custom-audit",
-      storeLogIntoTable = Some(DatabaseTable("customCommandLog")))
+      storeLogIntoTable = Some(CommandLog.Audit(DatabaseTable("customCommandLog"))))
     withDatabase { connection =>
       Using.resource(connection.createStatement())(_.executeUpdate("CREATE TABLE `customCommandLog` LIKE `commandLog`"))
       try {
@@ -278,5 +283,28 @@ class UserAccountMysqlSpec extends FunSuite {
         assertEquals(logRows("commandLog"), Nil)
       } finally Using.resource(connection.createStatement())(_.executeUpdate("DROP TABLE `customCommandLog`"))
     }
+  }
+
+  test("an anonymous submission is logged once in submissionLog, without credentials and outside commandLog") {
+    val session = SubmissionFixtures.session()
+    val command = ExecutionCommand(submitSessionCommand.name, writeJs(SubmitSessionEvent(session)))
+    val received = LocalDateTime.of(2026, 11, 27, 10, 16, 0, 123456000)
+    SqlLogCommands.handleLog(received, command, None, InetAddress.getByName("2001:db8::7"), logger)
+    val rows = withDatabase { connection =>
+      Using.resource(connection.createStatement()) { statement =>
+        Using.resource(statement.executeQuery(
+          "SELECT `timestamp`, `ipAddress`, `userid`, `sessionDataSerialized` FROM `submissionLog`")) { result =>
+          Iterator.continually(result.next()).takeWhile(identity).map(_ =>
+            (result.getTimestamp(1).toLocalDateTime, result.getString(2), result.getString(3), result.getString(4))).toList
+        }
+      }
+    }
+    val List((timestamp, address, userId, serialized)) = rows
+    assertEquals(timestamp, received)
+    assertEquals(address, "2001:db8:0:0:0:0:0:7")
+    assertEquals(userId, User.Anonymous.id)
+    assertEquals(read[SessionData](serialized), session.withoutCredentials)
+    assert(!serialized.contains("private-"))
+    assertEquals(logRows("commandLog"), Nil)
   }
 }

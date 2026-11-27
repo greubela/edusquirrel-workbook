@@ -1,10 +1,10 @@
 package it.evadid.homepage.workbook.htmlRenderer.controlElements
 
+import it.evadid.workbook.session.AllWorkbookInfo
 import com.raquo.laminar.api.L
 import com.raquo.laminar.api.L.*
 import com.raquo.laminar.nodes.ReactiveHtmlElement
 import it.evadid.core.datastructures.user.AllUserInfo
-import it.evadid.homepage.control.model.AllWorkbookInfo
 import it.evadid.homepage.webElements.HtmlAppElement
 import it.evadid.homepage.webElements.basic.HtmlButtonElement
 import it.evadid.homepage.webElements.basic.HtmlButtonElement.ButtonConfig

@@ -75,6 +75,12 @@ class MonksWorkbookSpec extends FunSuite {
     assertEquals(consent.map(_.defaultValue), Seq(false))
   }
 
+  test("the workbook ends with the submission form") {
+    import it.evadid.workbook.elements.displayElements.WorkbookSubmissionElement
+    assertEquals(workbook.allChildrenFullSubtree.collect { case form: WorkbookSubmissionElement => form.elementId }, Seq("monks-submission"))
+    assertEquals(workbook.sections.last.groupElements.last.childrenOfThisElement.last, WorkbookSubmissionElement("monks-submission"))
+  }
+
   private val editorIds = List("e1", "e3", "e4", "e5", "e6b", "k4")
   private def checked(code: String): JavaTurtleInterpreter.Execution =
     JavaTurtleInterpreter.runVm(JavaTurtleCompiler.compile(code).fold(problem => fail(problem.message), identity))

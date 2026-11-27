@@ -1,5 +1,6 @@
 package it.evadid.homepage.control.change
 
+import it.evadid.workbook.session.{AllWorkbookInfo, WorkbookConfig}
 import it.evadid.homepage.control.model.*
 import it.evadid.homepage.workbook.content.WorkbookFactory
 import scala.concurrent.{ExecutionContext, Future}

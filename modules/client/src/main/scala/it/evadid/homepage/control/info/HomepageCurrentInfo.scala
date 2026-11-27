@@ -1,5 +1,6 @@
 package it.evadid.homepage.control.info
 
+import it.evadid.workbook.session.AllWorkbookInfo
 import it.evadid.core.datastructures.language.AppLanguage.*
 import it.evadid.core.datastructures.user.AllUserInfo
 import it.evadid.homepage.control.model.*

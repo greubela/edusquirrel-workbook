@@ -53,6 +53,15 @@ CREATE TABLE `syncedLog` (
   `ipAddress` VARCHAR(45) NULL,
   CONSTRAINT `syncedLog_user` FOREIGN KEY (`userid`) REFERENCES `user` (`id`)
 ) ENGINE=InnoDB DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_bin;
+-- Submitted sessions (accepted without an account; userid is the verified account or Anonymous).
+CREATE TABLE `submissionLog` (
+  `id` BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+  `timestamp` DATETIME(6) NOT NULL,
+  `ipAddress` VARCHAR(45) NOT NULL,
+  `userid` VARCHAR(128) NOT NULL,
+  `sessionDataSerialized` JSON NOT NULL,
+  CONSTRAINT `submissionLog_user` FOREIGN KEY (`userid`) REFERENCES `user` (`id`)
+) ENGINE=InnoDB DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_bin;
 
 -- Current schemas only. Formats are stable, workbook-independent names, never element IDs.
 -- Exact timestamps use ISO 8601 local date/time text with nine fractional digits.

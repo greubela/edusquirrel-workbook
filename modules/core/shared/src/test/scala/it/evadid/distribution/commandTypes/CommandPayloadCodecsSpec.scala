@@ -27,20 +27,23 @@ class CommandPayloadCodecsSpec extends FunSuite {
     def getChildrenFile(name: String, childCopyright: CopyrightInfo): Option[FileDescription] = None
   }
 
-  test("command log destinations come from registered definitions, with a default and sync override") {
-    import it.evadid.sql.DatabaseTable
+  test("command log destinations come from registered definitions, with a default, sync and submission override") {
+    import it.evadid.sql.CommandLog
     val syncNames = Set(SQLCommands.StoreToDbCommand.name, SQLCommands.bulkStoreToDbCommand.name, SQLCommands.fetchEventsFromDbCommand.name, SQLCommands.clearValuesDbCommand.name, SQLCommands.resetUserHistoriesDbCommand.name)
     val definitions = ExecutionCommandFactory.knownCommands
     assertEquals(definitions.map(_.name).distinct.size, definitions.size)
     definitions.foreach { definition =>
-      val expected = Some(if syncNames.contains(definition.name) then DatabaseTable.syncedLog else DatabaseTable.commandLog)
+      val expected = Some(
+        if syncNames.contains(definition.name) then CommandLog.syncedLog
+        else if definition.name == SubmissionCommands.submitSessionCommand.name then CommandLog.submissionLog
+        else CommandLog.commandLog)
       assertEquals(definition.storeLogIntoTable, expected)
       assertEquals(ExecutionCommand(definition.name, ujson.Obj()).storeLogIntoTable, expected)
     }
-    assertEquals(ExecutionCommand("unknown-command", ujson.Obj()).storeLogIntoTable, Some(DatabaseTable.commandLog))
+    assertEquals(ExecutionCommand("unknown-command", ujson.Obj()).storeLogIntoTable, Some(CommandLog.commandLog))
     val forged = read[ExecutionCommand](ujson.Obj("name" -> SQLCommands.StoreToDbCommand.name, "json" -> ujson.Obj(),
       "storeLogIntoTable" -> "another_table"))
-    assertEquals(forged.storeLogIntoTable, Some(DatabaseTable.syncedLog))
+    assertEquals(forged.storeLogIntoTable, Some(CommandLog.syncedLog))
   }
 
   test("bulk histories round-trip with matching keys, redact credentials and reject ambiguous entries") {
@@ -347,6 +350,27 @@ class CommandPayloadCodecsSpec extends FunSuite {
       assertEquals(response.result, "full diagnostic value")
       assert(logger.getOut().contains("full diagnostic value"))
     }
+  }
+
+  test("submission diagnostics name only the number of histories, never answers or identities") {
+    import it.evadid.core.datastructures.language.{AppLanguage, LanguageMapContentId}
+    import it.evadid.core.datastructures.user.User
+    import it.evadid.workbook.abstractions.InteractionFormat.TextInteractionFormat
+    import it.evadid.workbook.elements.structureElements.Workbook
+    import it.evadid.workbook.elements.structureElements.Workbook.WorkbookMetadata
+    import it.evadid.workbook.interaction.sync.{UpdateImportance, UsageContext}
+    import it.evadid.workbook.interaction.sync.model.InteractionHistoryJson
+    import it.evadid.workbook.interaction.variable.{InteractionVariableHistory, InteractionVariableState}
+    import it.evadid.workbook.session.{AllWorkbookInfo, SessionData, WorkbookConfig}
+    val learner = User("private name", "private-id", "private@example.invalid")
+    val history = InteractionHistoryJson.fromHistory(TextInteractionFormat, InteractionVariableHistory.empty[TextInteractionFormat.type]
+      .addState(InteractionVariableState("private answer", UpdateImportance.MAJOR, java.time.LocalDateTime.now())))
+    val workbook = Workbook("workbook", WorkbookMetadata(Set.empty, Set.empty, LanguageMapContentId("test/title"), List(AppLanguage.English)), Seq.empty)
+    val session = SessionData(java.time.LocalDateTime.now(), Map(UsageContext("p", "workbook", learner.id).toSyncContext("a") -> history),
+      learner, None, AllWorkbookInfo(workbook, WorkbookConfig(None), Map.empty))
+    val logged = ExecutionCommand(SubmissionCommands.submitSessionCommand.name, writeJs(SubmissionCommands.SubmitSessionEvent(session)))
+      .stripPrivacySensitiveInformation()
+    assertEquals(logged.json, ujson.Obj("redacted" -> true, "histories" -> 1))
   }
 
   test("a mail response codec initializes independently of its command factory") {

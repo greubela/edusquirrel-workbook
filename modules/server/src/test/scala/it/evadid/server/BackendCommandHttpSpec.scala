@@ -100,4 +100,14 @@ class BackendCommandHttpSpec extends FunSuite {
     assertEquals(health.statusCode(), 200)
     assertEquals(ujson.read(health.body())("status").str, "ok")
   }
+
+  test("session submissions reach their handler without an account") {
+    import it.evadid.distribution.commandTypes.SubmissionCommands.{SubmitSessionEvent, submitSessionCommand}
+    assume(it.evadid.util.JvmUtils.env("MAIL_EMAIL").isEmpty, "with SMTP configured, this test would send real mail")
+    val command = ExecutionCommand(submitSessionCommand.name, writeJs(SubmitSessionEvent(SubmissionFixtures.session())))
+    val response = post(write(command))
+    assertEquals(response.statusCode(), 200)
+    // Without SMTP configuration, delivery fails inside the submission handler, not at authorization.
+    assert(failureMessage(response).contains("MAIL_EMAIL"), failureMessage(response))
+  }
 }

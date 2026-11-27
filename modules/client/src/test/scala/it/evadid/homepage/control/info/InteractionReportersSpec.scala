@@ -1,5 +1,6 @@
 package it.evadid.homepage.control.info
 
+import it.evadid.workbook.session.{AllWorkbookInfo, WorkbookConfig}
 import com.raquo.laminar.api.L.*
 import com.raquo.airstream.ownership.ManualOwner
 import it.evadid.core.datastructures.language.AppLanguage.{English, German, HumanLanguage}

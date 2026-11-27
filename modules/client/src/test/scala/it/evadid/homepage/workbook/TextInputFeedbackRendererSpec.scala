@@ -1,5 +1,6 @@
 package it.evadid.homepage.workbook
 
+import it.evadid.workbook.session.{AllWorkbookInfo, WorkbookConfig}
 import it.evadid.core.datastructures.language.WorkbookContent
 
 import it.evadid.core.datastructures.chat.MessengerModel

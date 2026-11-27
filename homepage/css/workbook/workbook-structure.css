@@ -111,6 +111,12 @@ dialog {
     width: 70%;
 }
 
+/* Workbook submission form: one login-style area inside the workbook flow. */
+.container-submission .submission-area {
+    width: 100%;
+    max-width: 36rem;
+}
+
 /* workbook structure */
 
 .container-exercise {

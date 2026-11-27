@@ -1,12 +1,12 @@
 package it.evadid.homepage.workbook.htmlRenderer.controlElements
 
+import it.evadid.workbook.session.AllWorkbookInfo
 import it.evadid.homepage.webElements.basic.PageScrollLock
 import com.raquo.laminar.api.L.*
 import com.raquo.laminar.keys.EventProp
 import com.raquo.laminar.nodes.ReactiveHtmlElement
 import it.evadid.core.datastructures.language.LanguageMapContentId
 import it.evadid.core.datastructures.user.AllUserInfo
-import it.evadid.homepage.control.model.AllWorkbookInfo
 import it.evadid.homepage.webElements.HtmlAppElement
 import it.evadid.workbook.abstractions.TypeOfTextDisplay.PLAINTEXT_UNDERSCORE_REPLACABLE
 import org.scalajs.dom

@@ -4,7 +4,7 @@ import it.evadid.core.datastructures.language.AppLanguage.{Java, Python, SnapLan
 import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseTurtle.MaxCommandUsage
 import it.evadid.core.datastructures.language.LanguageMapContentId
 import it.evadid.workbook.abstractions.{InteractionFormat, LangMapContentIdType, RoleInWorkbook, TypeOfTextDisplay, WorkbookElement, WorkbookInteractionElement}
-import it.evadid.workbook.elements.displayElements.{CollapsibleInstructionElement, DisplayLangMapContent}
+import it.evadid.workbook.elements.displayElements.{CollapsibleInstructionElement, DisplayLangMapContent, WorkbookSubmissionElement}
 import it.evadid.workbook.elements.interactionElements.basic.{LabeledCheckboxInteraction, LabeledNumberInteraction, MessagingInteraction, TextInteraction}
 import it.evadid.workbook.elements.interactionElements.basic.LabeledNumberInteraction.NumberType
 import it.evadid.workbook.elements.interactionElements.codeTaskToggle.{AdvancedCodeRequirement, CodeTaskToggleInteraction, SketchDownloadInteraction}
@@ -116,6 +116,7 @@ class WorkbookElementSerializableRoundTripSpec extends FunSuite {
       SketchDownloadInteraction("download-1", content("label/download"), special, special, "reorder-1"),
       DisplayLangMapContent("display-1", content("instruction/body"), LangMapContentIdType(RoleInWorkbook.EXERCISE_DESCRIPTION, TypeOfTextDisplay.MARKDOWN)),
       CollapsibleInstructionElement("collapsible-1", content("hint/title"), content("hint/body"), initiallyCollapsed = false),
+      WorkbookSubmissionElement("submission-1"),
       reorder,
       ReorderInteraction.ReorderMapIdInteraction("reorder-map-1", List(content("line/one"), content("line/two")), 9),
       MatchingInteraction("matching-1", Some(content("matching/task")), List(content("left/one"), content("left/two")),

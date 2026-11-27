@@ -37,5 +37,13 @@
   "insertNamePlaceholder": "Dit navn",
   "enterMail": "E-mailadresse",
   "uploadFile": "Upload en fil med dine fremskridt",
-  "privacyFooterClose": "Luk privatlivsmeddelelse"
+  "privacyFooterClose": "Luk privatlivsmeddelelse",
+  "submissionTitle": "Aflever din løsning",
+  "submissionExplanation": "Dine svar i denne arbejdsbog sendes pr. e-mail til bedømmelse sammen med det navn og den adresse, du indtaster her, og gemmes i afleveringsloggen. Der oprettes ingen konto. Du modtager et resumé på denne adresse.",
+  "buttonSubmit": "Aflever",
+  "submissionSent": "Afleveret. Et resumé er sendt til din e-mailadresse.",
+  "submissionSentWithoutConfirmation": "Afleveret, men resuméet kunne ikke sendes til din e-mailadresse.",
+  "submissionErrorName": "Indtast venligst dit navn.",
+  "submissionErrorNoWorkbook": "Åbn en arbejdsbog, før du afleverer.",
+  "submissionError": "Afleveringen mislykkedes. Dine svar bevares; prøv venligst igen senere."
 }

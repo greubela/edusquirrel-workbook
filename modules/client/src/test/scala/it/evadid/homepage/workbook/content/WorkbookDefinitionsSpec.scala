@@ -8,8 +8,8 @@ import munit.FunSuite
 import it.evadid.core.datastructures.language.AppLanguage
 import it.evadid.core.datastructures.language.control.LanguageMapStorage
 import it.evadid.core.datastructures.user.{AllUserInfo, UserConfig}
-import it.evadid.homepage.control.info.SessionData
-import it.evadid.homepage.control.model.{AllDisplayInfo, AllWorkbookInfo, HomepageInfo}
+import it.evadid.workbook.session.{AllWorkbookInfo, SessionData}
+import it.evadid.homepage.control.model.{AllDisplayInfo, HomepageInfo}
 import it.evadid.util.logging.BasicLogger
 import it.evadid.workbook.meta.ExecutionContextInformation
 import it.evadid.workbook.interaction.sync.UpdateImportance
@@ -63,8 +63,8 @@ class WorkbookDefinitionsSpec extends FunSuite {
       // Each interaction's own default answer, submitted, exercises its real state and history codecs.
       interactions.values.foreach(interaction => submit(interaction))
       val user = AllUserInfo.createNewUser("Student", "catalogue@example.invalid", UserConfig(Nil, false))
-      val session = SessionData.createSessionData(HomepageInfo(AppLanguage.English, Some(studied), Some(user),
-        AllDisplayInfo(false, None), LanguageMapStorage.empty)).get
+      val session = HomepageInfo(AppLanguage.English, Some(studied), Some(user),
+        AllDisplayInfo(false, None), LanguageMapStorage.empty).toSessionData.get
       assertEquals(session.knownUsageData.size, interactions.size, "one history per interaction")
       val restored = read[SessionData](write(session))
       assertEquals(restored, session)

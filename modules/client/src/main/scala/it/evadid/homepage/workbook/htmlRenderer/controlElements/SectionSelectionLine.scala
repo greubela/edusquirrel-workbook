@@ -1,8 +1,8 @@
 package it.evadid.homepage.workbook.htmlRenderer.controlElements
 
+import it.evadid.workbook.session.AllWorkbookInfo
 import com.raquo.laminar.api.L
 import com.raquo.laminar.api.L.*
-import it.evadid.homepage.control.model.AllWorkbookInfo
 import it.evadid.homepage.webElements.HtmlAppElement
 import it.evadid.workbook.elements.structureElements.WorkbookSection
 

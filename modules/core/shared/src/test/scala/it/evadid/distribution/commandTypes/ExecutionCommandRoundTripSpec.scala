@@ -23,6 +23,10 @@ import it.evadid.workbook.interaction.sync.model.InteractionHistoryJson
 import it.evadid.workbook.interaction.variable.InteractionVariableHistory
 import it.evadid.workbook.interaction.variable.events.{AnswerChangedEvent, EventId}
 import it.evadid.workbook.model.qr.{QrCode, QrErrorCorrection}
+import it.evadid.workbook.elements.structureElements.Workbook
+import it.evadid.workbook.elements.structureElements.Workbook.WorkbookMetadata
+import it.evadid.workbook.session.{AllWorkbookInfo, SessionData, WorkbookConfig}
+import it.evadid.core.datastructures.language.LanguageMapContentId
 import java.time.LocalDateTime
 import munit.FunSuite
 import scala.concurrent.{ExecutionContext, Future}
@@ -65,6 +69,9 @@ class ExecutionCommandRoundTripSpec extends FunSuite {
   private val snapElement = SourceParsing.parse("""<project name="demo"><scripts><script x="1"/></scripts></project>""", SourceLanguage.Snap).syntax
     .toOption.get.root.element
   private val pythonProgram = ProgrammingStateRaw(AppLanguage.Python, "helper(1)\nforward(10)\n")
+  private val session = SessionData(at, Map(key -> history), user.user, Some(user.config), AllWorkbookInfo(
+    Workbook("workbook", WorkbookMetadata(Set(user.user), Set.empty, LanguageMapContentId("workbook/title"), List(AppLanguage.English)), Seq.empty),
+    WorkbookConfig(None), Map("section" -> 1.5)))
 
   private val samples: List[Sample[?, ?]] = List(
     Sample(UserCommands.loginCommand, UserCommands.LoginRequest(user.user.mail, Right(signed)),
@@ -84,6 +91,8 @@ class ExecutionCommandRoundTripSpec extends FunSuite {
       DatabaseHistoryFormat.RelationalFormat, allWorkbooks = true), removed),
     Sample(MailCommands.sendMailCommand, MailCommands.SendMailRequest("teacher@example.invalid", "Subject: Grüße", "Line 1\nLine 2", Nil),
       MailCommands.SendMailResponse(None, sent = true)),
+    Sample(SubmissionCommands.submitSessionCommand, SubmissionCommands.SubmitSessionEvent(session),
+      SubmissionCommands.SubmitSessionResponse(submittedInteractions = 1, confirmationSent = true)),
     Sample(LLMCommands.completeLLMCommandFactory, LLMCommands.MessengerChatCompletionRequest("system",
       MessengerModel(Seq(Message("question?", MessengerModel.pAgent, at))), Some(LlmConfiguration("https://llm.example", "model", None))),
       Message("answer", MessengerModel.pAgent, at)),

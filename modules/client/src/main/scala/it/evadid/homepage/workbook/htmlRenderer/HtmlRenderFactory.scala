@@ -132,6 +132,7 @@ object HtmlRenderFactory {
       case c: DisplayLangMapContent => HtmlDisplayLangMapContentRenderer.renderWorkbookElement(c)
       case b: LabeledWorkbookElement[?] => HtmlLabeledWorkbookElementRenderer(b).renderWorkbookElement(b)
       case c: CollapsibleInstructionElement => HtmlCollapsibleInstructionRenderer.renderWorkbookElement(c)
+      case s: WorkbookSubmissionElement => HtmlWorkbookSubmissionRenderer.renderWorkbookElement(s)
       case i: WorkbookImageElement => HtmlProxyAppElementRenderer.renderWorkbookElement(i, HtmlImageElement(i))
 
       // interactions
