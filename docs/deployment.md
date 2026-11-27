@@ -5,7 +5,7 @@ this; a failed pull stops the run), then builds what the selected steps need and
 deployment scripts in order: database check, backend, website. The pull runs from a temporary copy
 of the script, because Git for Windows cannot replace a script that a running shell holds open. Each script also runs on its own. The
 backend needs `buildServerDeploy`, the website `buildClientDeploy buildWorkerDeploy`. MathWorld
-is not built for the deployment; its `dist/` is uploaded only if it was built separately.
+is not built for the deployment; its `dist/` is uploaded with `resources/` only if it was built separately.
 
 ```sh
 ./deploy.sh                       # pull + build + database check + server + client
@@ -99,11 +99,13 @@ headers; leave it unset behind Caddy, which sets them. Mail commands also need
 
 ## Website
 
-[deploy-client.sh](../deployment/client/deploy-client.sh) assembles `_site/` with
-[assemble-pages.mjs](../tools/dev/assemble-pages.mjs) (homepage, resources, newest client/worker,
-root redirects), adds the stable client/worker and `client.env` and uploads to `CLIENT_FTP_ROOT`
-over FTPS with curl. `artifacts/history/` is never uploaded, neither here nor to the server,
-which receives only `artifacts/newest/server.jar`.
+The webspace (`CLIENT_FTP_ROOT`, served as `https://evadid.it/edusquirrel/`) mirrors the repository
+layout; it is independent of the GitHub Pages build. [deploy-client.sh](../deployment/client/deploy-client.sh)
+stages the published part in ignored `tmp/work/deployment/webspace/`: `homepage/`, `resources/`,
+`favicon.ico`, the client and worker of `artifacts/newest/` and `artifacts/stable/`, and
+`client.env` as `deployment/client/.env`. Hidden files and `node_modules` are left out, and
+`artifacts/history/` is never uploaded, neither here nor to the server, which receives only
+`artifacts/newest/server.jar`. The upload uses FTPS with curl.
 
 [sync-plan.mjs](../deployment/client/sync-plan.mjs) compares SHA-256 hashes with
 `.deploy-manifest.sha256`, the manifest of the last deployment stored on the webspace:

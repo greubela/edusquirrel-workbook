@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// Plans an incremental FTP upload of an assembled site for deploy-client.sh.
+// Stages the webspace mirror and plans its incremental FTP upload for deploy-client.sh.
 // The webspace keeps the manifest of the last successful deployment (sha256sum format);
 // only files whose hash changed are uploaded, and only files that earlier deployments
 // uploaded are deleted, so unrelated webspace content is never touched.
@@ -8,12 +8,18 @@
 //   Writes into <out-dir>: per batch NNN an upload-NNN.curl config, a verify-NNN.curl size query and
 //   batch-NNN.tsv (url, size, local file), progress-NNN.sha256 (the previous manifest plus every
 //   batch up to NNN), delete.curl, the final manifest.sha256 and summary.json.
+// node sync-plan.mjs stage <repo> <out-dir> <client-env>
+//   Copies the published part of the repository into <out-dir>, in the repository's layout (the
+//   webspace mirrors it): homepage/, resources/, favicon.ico, the client and worker of
+//   artifacts/newest/ and artifacts/stable/ (never artifacts/history/ or server builds) and
+//   <client-env> as deployment/client/.env. Hidden files, node_modules and links are left out.
 // node sync-plan.mjs verify <batch-tsv> <curl-head-output> <retry-curl-out>
 //   Compares the remote sizes reported by `curl --head` with the local files, writes an upload
 //   config for every missing or mismatched file and prints their number.
 import { createHash } from "node:crypto";
-import { createReadStream, existsSync, readdirSync, readFileSync, statSync, writeFileSync } from "node:fs";
-import { join, posix, resolve } from "node:path";
+import { copyFileSync, cpSync, createReadStream, existsSync, lstatSync, mkdirSync, readdirSync, readFileSync, rmSync,
+  statSync, writeFileSync } from "node:fs";
+import { basename, dirname, join, posix, resolve } from "node:path";
 import { pathToFileURL } from "node:url";
 
 export const manifestName = ".deploy-manifest.sha256";
@@ -26,6 +32,36 @@ export function listFiles(root, folder = "") {
     if (!entry.isFile()) throw new Error(`Unsupported non-regular file: ${path}`);
     return path === manifestName ? [] : [path];
   });
+}
+
+// Returns the warnings, e.g. for a missing stable build.
+export function stageWebspace(repo, out, clientEnv) {
+  rmSync(out, { recursive: true, force: true });
+  for (const folder of ["homepage", "resources"]) {
+    cpSync(join(repo, folder), join(out, folder), {
+      recursive: true,
+      filter: path => {
+        const name = basename(path);
+        if (path !== join(repo, folder) && (name.startsWith(".") || name === "node_modules")) return false;
+        if (lstatSync(path).isSymbolicLink()) return false;
+        return true;
+      }
+    });
+  }
+  const warnings = [];
+  for (const [file, required] of [["artifacts/newest/client.js", true], ["artifacts/newest/worker.js", true],
+    ["artifacts/stable/client.js", false], ["artifacts/stable/worker.js", false], ["favicon.ico", false]]) {
+    if (!existsSync(join(repo, file))) {
+      if (required) throw new Error(`Missing build output: ${file}`);
+      warnings.push(`${file} is missing and is not uploaded`);
+      continue;
+    }
+    mkdirSync(dirname(join(out, file)), { recursive: true });
+    copyFileSync(join(repo, file), join(out, file));
+  }
+  mkdirSync(join(out, "deployment", "client"), { recursive: true });
+  copyFileSync(clientEnv, join(out, "deployment", "client", ".env"));
+  return warnings;
 }
 
 function sha256(file) {
@@ -124,6 +160,10 @@ async function main([siteDir, previousFile, outDir, baseUrl, remoteRoot, ...opti
 
 if (process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1])).href) {
   const [command, ...rest] = process.argv.slice(2);
-  Promise.resolve().then(() => command === "verify" ? verify(rest) : main([command, ...rest]))
+  const commands = {
+    verify,
+    stage: ([repo, out, clientEnv]) => stageWebspace(repo, out, clientEnv).forEach(warning => console.error(warning))
+  };
+  Promise.resolve().then(() => (commands[command] ?? (args => main([command, ...args])))(rest))
     .catch(error => { console.error(error.message); process.exitCode = 1; });
 }
