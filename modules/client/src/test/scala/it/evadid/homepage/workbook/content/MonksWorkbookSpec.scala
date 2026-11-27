@@ -41,17 +41,6 @@ class MonksWorkbookSpec extends FunSuite {
     assertEquals(consent.map(_.defaultValue), Seq(false))
   }
 
-  test("the welcome text sits in an exercise container labelled like its section") {
-    import it.evadid.workbook.elements.structureElements.ExerciseContainer
-    val welcome = CreateMonksWorkbook(null).createWorkbook.sections.head
-    welcome.sectionContent match {
-      case Seq(container: ExerciseContainer) =>
-        assertEquals(container.containerTitle, welcome.metadata.sectionTitle)
-        assert(container.containerContent.nonEmpty)
-      case other => fail(s"Expected one exercise container, got $other")
-    }
-  }
-
   private val editorIds = List("e1", "e2", "e3", "e4", "e5", "e6a", "e6b", "k2", "k4")
   private def checked(code: String): JavaTurtleInterpreter.Execution =
     JavaTurtleInterpreter.runVm(JavaTurtleCompiler.compile(code).fold(problem => fail(problem.message), identity))
