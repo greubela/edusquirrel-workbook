@@ -182,11 +182,15 @@ final class JavaComponentEditor(
       disabled <-- structureReady.map(ready => !ready && choice != Mode.Full),
       onClick --> (_ => navigation.switchTo(choice))) })
 
-  /** The editors follow the selection; the selection follows the function edited in Function Mode. */
+  /** The editors follow the selection; the selection follows the function edited in Function Mode, and the mode
+    * widens to show a draft that holds several declarations.
+    */
   private val binders: Seq[Modifier[HtmlElement]] = Seq(
     onMountCallback(ctx => presentation.watch(ctx.owner)),
     navigation.selection --> (_.foreach(open)),
     functionEditor.target.combineWith(state.signal) --> ((function, program) => function.foreach(navigation.follow(_, program))),
+    functionEditor.widened.changes.collect { case Some(scope) => scope } --> (navigation.widen(Mode.Function, _)),
+    classEditor.widened.changes.collect { case Some(scope) => scope } --> (navigation.widen(Mode.Class, _)),
     compactLayout --> (compact => if compact then structureOpen.set(false)),
     navigation.selection.changes.withCurrentValueOf(compactLayout) --> ((_, compact) => if compact then structureOpen.set(false)))
 

@@ -2,10 +2,11 @@ package it.evadid.homepage.webElements.editor.code.JavaEditor
 
 import it.evadid.vm.editing.JavaMethodEditing
 import it.evadid.homepage.webElements.editor.code.fragment.{FragmentCodeEditor, FragmentRange}
+import it.evadid.homepage.webElements.editor.code.fragment.FragmentCodeEditor.Scope
 import com.raquo.laminar.api.L.*
 import it.evadid.homepage.webElements.editor.code.codemirror.CodeMirrorEditor
 import it.evadid.homepage.webElements.editor.config.CodeMirrorEditorConfig
-import it.evadid.vm.parsing.source.JavaFunctionStructured
+import it.evadid.vm.parsing.source.{JavaFieldStructured, JavaFunctionStructured, JavaMemberStructured}
 import it.evadid.util.logging.Logger
 import it.evadid.vm.naming.BeEntityName
 import it.evadid.workbook.elements.interactionElements.programming.state.ProgrammingStateJavaStructured
@@ -29,6 +30,17 @@ final class JavaFunctionEditor(
     source.definedClasses.get(range.owner)
       .flatMap(text => findEditedMethod(text, discover(text), previous.method, MethodRange(range.start, range.end)))
       .map(Function(range.owner, _))
+
+  /** Complete methods only need their class; a method with an attribute needs the whole program. Unfinished or
+    * other code (statements, nested types) keeps the draft in this editor.
+    */
+  override protected def widening(source: ProgrammingStateJavaStructured, range: FragmentRange): Option[Scope] =
+    source.definedClasses.get(range.owner).flatMap { text =>
+      val members = discover(text).flatMap(_.members).filter(member => range.start <= member.span.start && member.span.end <= range.end)
+      def method(member: JavaMemberStructured) = member.isInstanceOf[JavaFunctionStructured]
+      Option.when(members.size > 1 && members.forall(member => method(member) || member.isInstanceOf[JavaFieldStructured]))(
+        if members.forall(method) then Scope.Owner else Scope.Program)
+    }
   override protected def cssClass: String = "java-function-editor__method"
 }
 

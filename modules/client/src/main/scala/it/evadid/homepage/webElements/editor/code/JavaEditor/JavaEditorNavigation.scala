@@ -3,6 +3,7 @@ package it.evadid.homepage.webElements.editor.code.JavaEditor
 import com.raquo.laminar.api.L.*
 import it.evadid.core.datastructures.uml.{UmlClassDiagram, UmlEntityKey, UmlEntityKind}
 import it.evadid.homepage.webElements.editor.code.JavaEditor.JavaEditorLabels.Key
+import it.evadid.homepage.webElements.editor.code.fragment.FragmentCodeEditor.Scope
 import it.evadid.vm.naming.BeEntityName
 import it.evadid.vm.structure.JavaUmlDiagram
 import it.evadid.workbook.elements.interactionElements.programming.state.ProgrammingStateJavaStructured
@@ -11,7 +12,7 @@ import it.evadid.workbook.elements.interactionElements.programming.state.Program
   *
   * Both change together, only through the transitions below, as one immutable [[JavaEditorNavigation.Position]].
   * Choosing a class or member picks the matching mode; switching to a mode picks a matching entry; a function
-  * renamed or rewritten in Function Mode stays selected.
+  * renamed or rewritten in Function Mode stays selected; a draft that grew beyond its entry widens the mode.
   */
 final class JavaEditorNavigation(state: Var[ProgrammingStateJavaStructured]) {
   import JavaEditorNavigation.*
@@ -31,6 +32,9 @@ final class JavaEditorNavigation(state: Var[ProgrammingStateJavaStructured]) {
   /** Shows an entry that was just added: its class, or its function when `functionCode` names one. */
   def reveal(className: BeEntityName, functionCode: Option[String]): Unit =
     position.update(_.reveal(JavaUmlDiagram(state.now()).editable, className, functionCode))
+
+  /** Shows the whole draft of the editor of mode `from` once it holds several declarations. */
+  def widen(from: Mode, scope: Scope): Unit = position.update(_.widen(from, scope, JavaUmlDiagram(state.now()).editable))
 
   /** Keeps the edited function selected while its source changes in Function Mode. */
   def follow(function: JavaFunctionEditor.Function, program: ProgrammingStateJavaStructured): Unit =
@@ -59,6 +63,15 @@ object JavaEditorNavigation {
 
     def reveal(diagram: UmlClassDiagram, className: BeEntityName, functionCode: Option[String]): Position =
       Position(if functionCode.isDefined then Mode.Function else Mode.Class, diagram.key(className, functionCode))
+
+    /** Class Mode shows the methods of one class, Full Mode any other combination; only the open editor widens. */
+    def widen(from: Mode, scope: Scope, diagram: UmlClassDiagram): Position =
+      if mode != from then this
+      else scope match {
+        case Scope.Owner if mode == Mode.Function =>
+          Position(Mode.Class, selection.flatMap(key => diagram.classes.find(_.name == key.className)).map(_.key).orElse(selection))
+        case _ => copy(mode = Mode.Full)
+      }
 
     def follow(function: JavaFunctionEditor.Function, program: ProgrammingStateJavaStructured): Position =
       if mode != Mode.Function then this

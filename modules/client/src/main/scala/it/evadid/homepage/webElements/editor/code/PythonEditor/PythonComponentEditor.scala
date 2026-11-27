@@ -9,6 +9,7 @@ import it.evadid.homepage.webElements.editor.code.EvaEditor.{EvaEditorContext, E
 import it.evadid.homepage.webElements.editor.code.EvaEditor.uml.UmlStructureSelector
 import it.evadid.homepage.webElements.editor.code.codemirror.CodeMirrorEditor
 import it.evadid.homepage.webElements.editor.code.fragment.FragmentCodeEditor
+import it.evadid.homepage.webElements.editor.code.fragment.FragmentCodeEditor.Scope
 import it.evadid.homepage.webElements.editor.code.ProgrammingStateView
 import it.evadid.homepage.webElements.editor.code.program.ProgramAnalyzer
 import it.evadid.homepage.webElements.editor.config.CodeMirrorEditorConfig
@@ -42,6 +43,13 @@ final class PythonComponentEditor(state: Var[ProgrammingStatePythonStructured], 
   private def choose(key: UmlEntityKey): Unit = {
     selection.set(Some(key))
     mode.set(if key.member.exists(_.kind == UmlEntityKind.Function) then "function" else "class")
+  }
+
+  /** Shows a draft holding several declarations: its module or class in Class Mode, or the full program. */
+  private def widen(scope: Scope, owner: BeEntityName): Unit = scope match {
+    case Scope.Owner => Var.set(mode -> "class",
+      selection -> PythonUmlDiagram(state.now()).classes.find(_.sourceKey == owner).map(_.key).orElse(selection.now()))
+    case Scope.Program => mode.set("full")
   }
 
   private def open(kind: String, className: BeEntityName): Unit = {
@@ -120,7 +128,7 @@ final class PythonComponentEditor(state: Var[ProgrammingStatePythonStructured], 
     val marks = context.conversionDiagnostics.combineWith(context.sourceDiagnostics(state.signal)).map(_ ++ _)
     def selected[I](editor: FragmentCodeEditor[ProgrammingStatePythonStructured, I], identity: I): Element = {
       editor.select(identity)
-      editor.getDomElement()
+      editor.getDomElement().amend(editor.widened.changes.collect { case Some(scope) => scope } --> (widen(_, owner)))
     }
     (view, key.flatMap(_.member)) match {
       case ("full", _) => div(cls := "java-function-editor__source", CodeMirrorEditor(context.logger,

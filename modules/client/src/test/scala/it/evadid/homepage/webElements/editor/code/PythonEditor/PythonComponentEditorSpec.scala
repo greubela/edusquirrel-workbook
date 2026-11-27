@@ -44,6 +44,24 @@ class PythonComponentEditorSpec extends UiDomSuite {
       }
     }
   }
+  test("a second function typed in Function Mode opens its module; an attribute added to a method the full program") {
+    val state = Var(ProgrammingStatePythonStructured("def main():\n    forward(10)\nmain()\nclass Box:\n    def f(self):\n        return 1\n"))
+    mountedAsync(PythonComponentEditor(state, EvaTestContext(labels), CodeMirrorEditorConfig.Default).getDomElement()) { root =>
+      def field = one(root, "textarea.code-mirror-editor__fallback")
+      def selected(mode: String) = buttonNamed(root, mode).getAttribute("aria-selected") == "true"
+      typeInto(field, "def main():\n    forward(10)\n\ndef helper():\n    return 2")
+      eventually(selected("Class Mode"), "Class Mode shows the module").flatMap { _ =>
+        assert(valueOf(field).contains("def helper():") && valueOf(field).contains("main()"), valueOf(field))
+        click(withText(root, ".uml-entry", "+f()").head)
+        typeInto(field, "def f(self):\n    return 1\n\nsize = 3")
+        eventually(selected("Full Mode"), "Full Mode shows the method and the attribute")
+      }.map { _ =>
+        assert(state.now().definedClasses(BeEntityName.fromCodeString("Box")).contains("    size = 3"))
+        assert(valueOf(field).contains("class Box:"))
+      }
+    }
+  }
+
   test("the modules a program uses are read-only boxes; implied members and unknown modules are marked") {
     val state = Var(ProgrammingStatePythonStructured("import turtle\nturtle.forward(10)\nturtle.spin(2)\nfoo.bar(3)\n"))
     val component = PythonComponentEditor(state, EvaTestContext(labels), CodeMirrorEditorConfig.Default,

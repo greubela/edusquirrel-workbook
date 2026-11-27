@@ -156,6 +156,25 @@ class JavaComponentEditorSpec extends UiDomSuite {
     }
   }
 
+  test("a second method typed in the function editor opens its class; an added attribute the full source") {
+    val state = answer()
+    mountedAsync(editor(state).getDomElement()) { root =>
+      val method = valueOf(field(root))
+      typeInto(field(root), method + "\n\n  static void extra() {\n    forward(5);\n  }")
+      eventually(status(root) == "Class view", "Class Mode shows both methods").flatMap { _ =>
+        assertEquals(heading(root), "class Main")
+        assert(valueOf(field(root)).contains("forward(10);") && valueOf(field(root)).contains("forward(5);"), valueOf(field(root)))
+        assertEquals(buttonNamed(root, "Class Mode").getAttribute("aria-selected"), "true")
+        click(entry(root, "~twice(x: int): int"))
+        typeInto(field(root), valueOf(field(root)) + "\n\n  static int size = 3;")
+        eventually(status(root) == "Full source", "Full Mode shows the method and the attribute")
+      }.map { _ =>
+        assertEquals(valueOf(field(root)), state.now().toString)
+        assert(classCode(state, "Main").contains("static int size = 3;"))
+      }
+    }
+  }
+
   test("attributes and constructors are added to the chosen class; deletions preserve the other members") {
     val state = answer()
     mountedAsync(editor(state).getDomElement()) { root =>

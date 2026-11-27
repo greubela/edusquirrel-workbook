@@ -15,8 +15,9 @@ import scala.scalajs.concurrent.JSExecutionContext.Implicits.queue
   *
   * Changes of `local` are written into `state` at the fragment's range, which then spans the draft, so
   * unfinished code stays in place. Any other change of `state` refreshes `local` from the fragment; when its
-  * text changed, the fragment is found again by its identity `I` (see [[locate]]). Subclasses differ only in
-  * how they locate, identify and present their fragment.
+  * text changed, the fragment is found again by its identity `I` (see [[locate]]). A draft that comes to hold a
+  * further complete declaration keeps its whole range and reports the [[FragmentCodeEditor.Scope]] that shows all of
+  * it in [[widened]]. Subclasses differ only in how they locate, identify, widen and present their fragment.
   */
 abstract class FragmentCodeEditor[S, I](
     logger: Logger,
@@ -25,7 +26,7 @@ abstract class FragmentCodeEditor[S, I](
     loadingLabel: Signal[String],
     diagnostics: Signal[Seq[CodeMirrorEditor.Diagnostic]]
 )(using sources: FragmentSource[S]) extends HtmlAppElement {
-  import FragmentCodeEditor.Fragment
+  import FragmentCodeEditor.{Fragment, Scope}
 
   private val fragment: Var[Option[Fragment[I]]] = Var(None)
 
@@ -38,11 +39,22 @@ abstract class FragmentCodeEditor[S, I](
   /** Whether the selected fragment was found in the answer. */
   val located: Signal[Boolean] = fragment.signal.map(_.exists(_.range.nonEmpty)).distinct
 
+  /** The scope that shows the whole selected fragment once it holds more than one declaration; its component
+    * switches to that scope's mode.
+    */
+  val widened: Signal[Option[Scope]] = state.signal.combineWith(fragment.signal)
+    .map((source, current) => current.flatMap(_.range).flatMap(widening(source, _))).distinct
+
   /** The range of the fragment identified by `identity` in `source`. */
   protected def locate(source: S, identity: I): Option[FragmentRange]
 
   /** The identity of the fragment now at `range`, after an edit; `None` keeps `previous` (e.g. unfinished code). */
   protected def identify(source: S, range: FragmentRange, previous: I): Option[I]
+
+  /** The scope a fragment at `range` needs because it holds further complete declarations; `None` while it holds
+    * one (or unfinished code).
+    */
+  protected def widening(source: S, range: FragmentRange): Option[Scope]
 
   /** The editor text of a fragment stored as `stored` (e.g. a Python method without its class indentation). */
   protected def present(stored: String): String = stored
@@ -79,7 +91,8 @@ abstract class FragmentCodeEditor[S, I](
       if draft == local.now() && present(stored) != present(draft)
       (next, nextRange) <- range.replace(state.now(), store(draft, stored))
     } {
-      val identity = identify(next, nextRange, current.identity)
+      // A widened draft keeps its range, so all of it stays visible until the component switches its mode.
+      val identity = if widening(next, nextRange).isDefined then None else identify(next, nextRange, current.identity)
       val selectedRange = identity.flatMap(locate(next, _)).getOrElse(nextRange)
       fragment.set(Some(Fragment(identity.getOrElse(current.identity), Some(selectedRange))))
       state.set(next)
@@ -114,4 +127,9 @@ abstract class FragmentCodeEditor[S, I](
 
 object FragmentCodeEditor {
   private final case class Fragment[I](identity: I, range: Option[FragmentRange])
+
+  /** Where a draft holding several declarations is shown: its owner's source (two methods of one class) or the
+    * whole program (any other combination, such as a method and an attribute).
+    */
+  enum Scope { case Owner, Program }
 }
