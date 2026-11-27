@@ -12,8 +12,6 @@ out/
 !**/src/main/**/out/
 !**/src/test/**/out/
 artifacts/*
-!artifacts/database/
-!artifacts/database/*.sql
 
 ### Eclipse ###
 .apt_generated
@@ -64,6 +62,9 @@ dist/
 ### Secrets ###
 .env
 *.env
+# Deployment credentials and settings stay local; only the *.example templates are tracked.
+deployment/secrets/*
+!deployment/secrets/*.example
 
 ### node
 node_modules/*
