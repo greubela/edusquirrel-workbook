@@ -30,7 +30,7 @@ final class PythonComponentEditor(state: Var[ProgrammingStatePythonStructured], 
   private val mode = Var("function")
   private val selection = Var(Option.empty[UmlEntityKey])
   private val dialog = Var(Option.empty[String])
-  private val structureOpen = Var(true)
+  private val structure = EvaToolbarControls.DiagramDisplay()
   private val diagramId = s"python-diagram-${java.util.UUID.randomUUID()}"
   private val owner = Var(PythonMethodEditing.module)
   private val name = Var("")
@@ -150,15 +150,16 @@ final class PythonComponentEditor(state: Var[ProgrammingStatePythonStructured], 
     EvaToolbarControls.segments(labels("pythonModes"), "tablist", Seq("class", "function", "full").map(value =>
       button(typ := "button", role := "tab", child.text <-- labels("pythonMode" + value.capitalize),
         aria.selected <-- mode.signal.map(_ == value), onClick --> (_ => mode.set(value))))),
-    EvaToolbarControls.diagramToggle(structureOpen, labels("classDiagram"), labels("javaShowClasses"), labels("javaHideClasses"), diagramId))
+    structure.toggle(labels("classDiagram"), labels("javaShowClasses"), labels("javaHideClasses"), diagramId))
 
   override def getDomElement(): Element = div(cls := "java-function-based-editor python-component-editor",
+    structure.binders(selection.signal.changes),
     onMountCallback { _ =>
       val entry = PythonUmlDiagram(state.now()).classes.flatMap(_.functions).find(_.name == "main")
       selection.set(entry.map(_.key).orElse(Some(UmlEntityKey(PythonMethodEditing.module.spelling(), None))))
       if entry.isEmpty then mode.set("full")
     },
-    div(cls := "python-component-editor__diagram", idAttr := diagramId, hidden <-- structureOpen.signal.map(!_),
+    div(cls := "python-component-editor__diagram", idAttr := diagramId, hidden <-- structure.open.map(!_),
       new UmlStructureSelector(diagram, selection.signal, Observer(choose), classFooter = clazz => div(
       button(typ := "button", child.text <-- labels("pythonAddFunction"), onClick --> (_ => open("pythonAddFunction", clazz.sourceKey))),
       button(typ := "button", child.text <-- labels("pythonAddAttribute"), onClick --> (_ => open("pythonAddAttribute", clazz.sourceKey))),

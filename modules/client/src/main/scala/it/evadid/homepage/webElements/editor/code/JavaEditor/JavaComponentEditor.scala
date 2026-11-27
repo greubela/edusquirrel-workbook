@@ -10,7 +10,6 @@ import it.evadid.vm.analysis.SourceWarning
 import com.raquo.laminar.nodes.ReactiveSvgElement
 import it.evadid.core.datastructures.language.AppLanguage.Java
 import it.evadid.homepage.webElements.HtmlAppElement
-import it.evadid.homepage.webElements.basic.MediaQuery
 import it.evadid.homepage.webElements.editor.code.JavaEditor.JavaEditorLabels.Key
 import it.evadid.homepage.webElements.editor.code.EditorAppearance
 import it.evadid.homepage.webElements.editor.code.EvaEditor.{EvaEditorContext, EvaEditorTab, EvaToolbarControls}
@@ -95,9 +94,8 @@ final class JavaComponentEditor(
     diagnostics = marks, loadingLabel = loadingLabel,
     sameSource = (left, right) => left == right || ProgrammingStateJavaStructured(left) == ProgrammingStateJavaStructured(right))
 
-  private val structureOpen = Var(true)
+  private val structure = EvaToolbarControls.DiagramDisplay()
   /** On a small screen the diagram covers the editor; it then closes when an entry is chosen. */
-  private val compactLayout = MediaQuery.matches("(max-width: 760px), (max-height: 600px)")
   private val presentation = appearance.getOrElse(new EditorAppearance)
 
   private val panel: Signal[Panel] =
@@ -175,7 +173,7 @@ final class JavaComponentEditor(
         aria.selected <-- navigation.mode.map(_ == choice),
         disabled <-- structureReady.map(ready => !ready && choice != Mode.Full),
         onClick --> (_ => navigation.switchTo(choice))) }),
-    EvaToolbarControls.diagramToggle(structureOpen, labels(Key.classDiagram), labels(Key.javaShowClasses),
+    structure.toggle(labels(Key.classDiagram), labels(Key.javaShowClasses),
       labels(Key.javaHideClasses), navigationId))
 
   /** The editors follow the selection; the selection follows the function edited in Function Mode, and the mode
@@ -187,12 +185,11 @@ final class JavaComponentEditor(
     functionEditor.target.combineWith(state.signal) --> ((function, program) => function.foreach(navigation.follow(_, program))),
     functionEditor.widened.changes.collect { case Some(scope) => scope } --> (navigation.widen(Mode.Function, _)),
     classEditor.widened.changes.collect { case Some(scope) => scope } --> (navigation.widen(Mode.Class, _)),
-    compactLayout --> (compact => if compact then structureOpen.set(false)),
-    navigation.selection.changes.withCurrentValueOf(compactLayout) --> ((_, compact) => if compact then structureOpen.set(false)))
+  ) ++ structure.binders(navigation.selection.changes)
 
   override def getDomElement(): Element =
     div(
-      cls <-- structureOpen.signal.map { open =>
+      cls <-- structure.open.map { open =>
         "java-function-based-editor java-component-editor editor-appearance" +
           (if reference.isDefined then " java-function-based-editor--with-reference" else "") +
           (if open then "" else " java-function-based-editor--structure-collapsed")
