@@ -18,6 +18,13 @@ final case class FragmentRange(owner: BeEntityName, start: Int, end: Int) {
       (next, FragmentRange(key, start, start + draft.length))
     }
 
+  /** The printed-program offset of `offset` within this fragment. */
+  def printedOffset[S](state: S, offset: Int)(using sources: FragmentSource[S]): Int = preceding(state) + start + offset
+
+  /** The offset within this fragment of the printed-program offset `printed`, if it lies in the fragment. */
+  def fragmentOffset[S](state: S, printed: Int)(using sources: FragmentSource[S]): Option[Int] =
+    Some(printed - preceding(state) - start).filter(offset => offset >= 0 && offset <= end - start)
+
   /** Where the source of this fragment starts in the printed program. */
   private def preceding[S](state: S)(using sources: FragmentSource[S]): Int =
     sources.sources(state).takeWhile(_._1 != owner).map(_._2.length + "\n\n".length).sum

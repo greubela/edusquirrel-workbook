@@ -12,6 +12,9 @@
 
 .editor-appearance[data-editor-theme="dark"] { color-scheme: dark; }
 
+/* Beside the task panel the shell takes the container's and panel's corners, so no container corner shows around it. */
+.editor-with-panel .editor-appearance[data-editor-theme] { border-radius: var(--radius-md); }
+
 .fullscreen-content-container:has(> .editor-appearance) {
     border-radius: var(--radius-editor-shell);
     background: transparent;
@@ -65,7 +68,7 @@
 .editor-appearance .eva-editor__error { color: var(--editor-error); }
 .editor-appearance .eva-editor__content {
     border-color: var(--editor-border);
-    border-radius: 15px;
+    border-radius: var(--radius-md);
     background: var(--editor-code-surface);
     box-shadow: 0 9px 25px -18px var(--editor-shadow);
 }

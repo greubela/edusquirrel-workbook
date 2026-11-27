@@ -307,6 +307,14 @@ object CodeMirror {
 
     def focus(): Unit = js.native
 
+    def hasFocus(): Boolean = js.native
+
+    /** The main cursor's offset in the document. */
+    def cursor(): Int = js.native
+
+    /** Moves the cursor to `offset` (within the document), scrolls it into view and focuses the editor. */
+    def placeCursor(offset: Int): Unit = js.native
+
     def destroy(): Unit = js.native
   }
 
