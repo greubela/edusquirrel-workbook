@@ -2,6 +2,7 @@ package it.evadid.vm.parsing.python.clean.model
 
 import it.evadid.core.util.io.Serializer
 import it.evadid.core.util.io.Serializer.rawStringIO
+import it.evadid.vm.parsing.TopLevelSplitter
 import it.evadid.vm.parsing.generic.abstractions.GenericAST.*
 import it.evadid.vm.parsing.python.clean.model.PyAST.{PyExpression, PythonLiteral}
 import upickle.default.*
@@ -47,14 +48,14 @@ object PythonType {
 
   final case class PYTHON_LIST[Element](elementType: PythonType[Element]) extends PythonTypeImpl[List[Element]](
     s"list[${elementType.typeStringInPython}]",
-    PythonCollectionSerializers.collectionSerializer(elementType.serializerPythonValue, "[", "]"),
-    PythonCollectionSerializers.collectionSerializer(elementType.serializerScalaValue, "List(", ")")
+    TopLevelSplitter.brackets.collectionSerializer(elementType.serializerPythonValue, "[", "]"),
+    TopLevelSplitter.brackets.collectionSerializer(elementType.serializerScalaValue, "List(", ")")
   )
 
   final case class PYTHON_ARRAY[Element](elementType: PythonType[Element]) extends PythonTypeImpl[List[Element]](
     s"array[${elementType.typeStringInPython}]",
-    PythonCollectionSerializers.collectionSerializer(elementType.serializerPythonValue, "[", "]"),
-    PythonCollectionSerializers.collectionSerializer(elementType.serializerScalaValue, "List(", ")")
+    TopLevelSplitter.brackets.collectionSerializer(elementType.serializerPythonValue, "[", "]"),
+    TopLevelSplitter.brackets.collectionSerializer(elementType.serializerScalaValue, "List(", ")")
   )
 
   final case class PYTHON_SET[Element](elementType: PythonType[Element]) extends PythonTypeImpl[Set[Element]](
