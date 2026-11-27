@@ -31,7 +31,8 @@ page shows, pre-filled with the last recognized name and email
 (`UserSessionControl.loginIdentity`), and the cached login is cleared. "Start locally"
 without a name creates a local user named `Anonymous` with mail `anonymous@evadid.it`
 (`User.createAnonymous`); like a named local profile it is saved, restored on reload
-until an explicit logout, and pre-fills the login page. An online account loaded from a session file is never
+until an explicit logout, and pre-fills the login page. Local (offline) accounts are
+identified only by `UserConfig.isOnlineAccount = false`, never by name or mail. An online account loaded from a session file is never
 continued as a local profile.
 
 Saved preference restoration accepts only the current schema. Unreadable or obsolete

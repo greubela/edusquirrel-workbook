@@ -71,11 +71,10 @@ object User {
     createNewUser(firstName + " " + lastName, mail)
   }
 
-  /** Mail of the placeholder user of a local session started without a name. */
-  val anonymousMail: String = "anonymous@evadid.it"
-
-  /** A local session's placeholder user; restored on reload like a named local profile until logout. */
-  def createAnonymous(): User = createNewUser("Anonymous", anonymousMail)
+  /** Default name and mail of a local session started without a name. Whether an account is local is recorded
+    * only in `UserConfig.isOnlineAccount`, never derived from these values.
+    */
+  def createAnonymous(): User = createNewUser("Anonymous", "anonymous@evadid.it")
 
   def createNewUser(name: String, mail: String): User = {
     val id = java.util.UUID.randomUUID().toString
@@ -103,8 +102,6 @@ case class User(name: String, id: String, mail: String) extends ChatParticipant 
   }
 
   override def personId: String = id
-
-  def isAnonymous: Boolean = mail == User.anonymousMail
 
   override def role: SenderRole = SenderRole.USER
 

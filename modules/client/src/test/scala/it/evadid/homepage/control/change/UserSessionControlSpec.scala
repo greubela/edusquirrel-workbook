@@ -137,7 +137,7 @@ class UserSessionControlSpec extends EditorDomSuite {
       _ <- control.tryLoginOrLocalRegistration(None, None)
       anonymous = control.fullInfo.current.userInfo.getOrElse(fail("not signed in"))
       _ = {
-        assert(anonymous.user.isAnonymous)
+        assert(!anonymous.config.isOnlineAccount, "the config flag marks the account as local")
         assertEquals(anonymous.config, UserConfig.defaults(isLocalAccount = true), "local users sync only to the browser")
         assertEquals((anonymous.user.name, anonymous.user.mail), ("Anonymous", "anonymous@evadid.it"))
         assertEquals(control.loginIdentity.now(), Some(anonymous.user), "the login page shows the local user's defaults")
