@@ -10,13 +10,14 @@ final case class ProgrammingExecutionLabels(
     stop: Signal[String],
     running: Signal[String],
     stopped: Signal[String],
-    unavailable: Signal[String]
+    unavailable: Signal[String],
+    download: Signal[String]
 )
 
 object ProgrammingExecutionLabels {
   def fromContent(text: LanguageMapContentId => Signal[String]): ProgrammingExecutionLabels = {
     def label(key: String) = text(LanguageMapContentId("blockeditor", key))
     ProgrammingExecutionLabels(label("console"), label("run"), label("stop"), label("executionRunning"),
-      label("executionStopped"), label("executionUnavailable"))
+      label("executionStopped"), label("executionUnavailable"), label("downloadProject"))
   }
 }

@@ -21,7 +21,7 @@ final class JavaEditorLabels(text: String => Signal[String]) {
 object JavaEditorLabels {
   /** Entries of the `blockeditor` language map; each name is its map key. */
   enum Key {
-    case javaTitle, javaSubtitle, javaShowClasses, javaHideClasses, javaNavigation, javaTaskReference
+    case javaShowClasses, javaHideClasses, javaNavigation, classDiagram, javaTaskReference
     case javaDelete, javaAddAttribute, javaEditAttribute, javaAttributeName, javaAttributeType, javaInitializer, javaVisibility, javaAddConstructor, javaAssignFields, javaFieldExists
     case javaNoClasses, javaNoClassesHint, javaAddClass, javaAddFunction
     case javaModes, javaModeClass, javaModeFunction, javaModeFull

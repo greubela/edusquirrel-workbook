@@ -38,29 +38,24 @@ case object HtmlTurtleRecreateShapeRenderer extends LineBasedRenderingFactory[Tu
   override protected def createRendering(workbookElement: TurtleRecreateShapeInteraction): AtomarLineRendering = {
     val boundVar = workbookElement.interactionVariable.createBoundStateWithUpdateImportance(UpdateImportance.MAJOR, fullInfo.workbookContextInformation).toAirstreamVar
 
-    val programRun = new TurtleProgramRun(boundVar, () => {
-      val context = fullInfo.workbookContextInformation
-      val control = workbookElement.interactionVariable.control
-      control.getOrCalculateGrading(context).flatMap(_ => control.getOrCalculateGrading(context, forceGrading = true))(using context.futureExecutionContext)
-      ()
-    })
     val gradingReporter = fullInfo.signals.reportersFor(workbookElement).grading
     val shapeGrader = workbookElement.gradingElements.collectFirst {
       case grader: it.evadid.workbook.elements.interactionElements.programming.programmingExerciseTurtle.RecreateShapeGrader => grader
     }.getOrElse(throw IllegalArgumentException("A shape exercise needs its shape grader."))
-    val shapeGradingPreview = CompareShapePreview(programRun.executed, shapeGrader.desiredResult, shapeGrader.comparisonPolicy, workbookElement.environment, scala.concurrent.duration.Duration.Zero)
+    // Drawings and the shape comparison follow the answer itself, after a short pause in typing.
+    val shapeGradingPreview = CompareShapePreview(boundVar.signal, shapeGrader.desiredResult, shapeGrader.comparisonPolicy, workbookElement.environment)
 
     val associatedInstruction = WorkbookEvaEditor.instruction(workbookElement.elementId,
       workbookElement.instructionText.getOrElse(LanguageMapContentId("turtlestitch/instructionRecreateShape")))
 
     def createShapeGradingCard: ElementCard = {
       ElementCard(LanguageMapContentId("basic/turtleGradingPanel"),
-        com.raquo.laminar.api.L.div(programRun.element(id => laminarHelper.plaintextStringSignal(id)), shapeGradingPreview.getDomElement()))
+        shapeGradingPreview.getDomElement())
     }
 
     def createCodePreview(): HtmlAppElement = {
       val defaultConfig: SnapCodeEditorConfig = SnapCodeEditorConfig()
-      SnapPreviewEditor(programRun.executed, SnapCodeEditorConfig(), it.evadid.homepage.webElements.editor.code.SnapEditor.SnapMorphicSession(), fullInfo.signals.currentLanguage)
+      SnapPreviewEditor(boundVar.signal, SnapCodeEditorConfig(), it.evadid.homepage.webElements.editor.code.SnapEditor.SnapMorphicSession(), fullInfo.signals.currentLanguage)
     }
 
     def createEditor(): HtmlAppElement = {
@@ -70,7 +65,7 @@ case object HtmlTurtleRecreateShapeRenderer extends LineBasedRenderingFactory[Tu
       val evaEditor = WorkbookEvaEditor(fullInfo, workbookElement, boundVar,
         EvaEditorConfig(enabledLanguages = workbookElement.exerciseConfig.allowedEditorLanguages, snapConfig = useConfig))
       val editor = EditorWithWorkbookPanel(workbookElement, Some(associatedInstruction), gradingReporter,
-        List(createShapeGradingCard, turtleStepsCard(programRun.executed, workbookElement.environment, frame = framePoints(shapeGrader.desiredResult))), evaEditor)
+        List(createShapeGradingCard, turtleStepsCard(boundVar.signal, workbookElement.environment, frame = framePoints(shapeGrader.desiredResult))), evaEditor)
 
       editor
     }

@@ -79,7 +79,7 @@ class SessionFileJourneySpec extends EditorDomSuite {
       .setStateFromUserInteraction("my reasoning", UpdateImportance.MAJOR, context = ExecutionContextInformation.default)
     val logger = BasicLogger()
     captureDownload(WorkbookUserDataAnalyzer().downloadAllData(logger, DownloadToDisc(logger), first.homepageInfoNow())).flatMap { (name, content) =>
-      assert(name.endsWith("-journey-workbook.eva") && name.contains(user.user.id), name)
+      assert(name.endsWith("_journey_workbook.eva") && name.contains(user.user.id), name)
       assert(!content.contains("signedBackendToken\":{"), "the file holds no credentials")
       val second = client(None, None)
       second.userSessionControl.tryContinueWithSessionFile(uploaded(content)).flatMap { _ =>

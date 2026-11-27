@@ -1,6 +1,7 @@
 package it.evadid.homepage.webElements.editor.code.JavaEditor
 
 import it.evadid.homepage.webElements.editor.code.JavaEditor.JavaEditorNavigation.{Mode, Position}
+import it.evadid.homepage.webElements.editor.code.fragment.FragmentCodeEditor.Scope
 import it.evadid.vm.naming.BeEntityName
 import it.evadid.vm.structure.JavaUmlDiagram
 import it.evadid.workbook.elements.interactionElements.programming.state.ProgrammingStateJavaStructured
@@ -31,6 +32,15 @@ class JavaEditorNavigationSpec extends FunSuite {
     assertEquals(Position(Mode.Class, Some(helper)).switchTo(Mode.Function, diagram).selection, Some(helper),
       "a class without functions stays selected")
     assertEquals(Position(Mode.Function, Some(main)).switchTo(Mode.Full, diagram), Position(Mode.Full, Some(main)))
+  }
+
+  test("a draft holding several declarations widens the open editor's mode") {
+    val function = Position(Mode.Function, Some(main))
+    assertEquals(function.widen(Mode.Function, Scope.Owner, diagram), Position(Mode.Class, Some(key("Main"))))
+    assertEquals(function.widen(Mode.Function, Scope.Program, diagram), Position(Mode.Full, Some(main)))
+    assertEquals(Position(Mode.Class, Some(helper)).widen(Mode.Class, Scope.Program, diagram), Position(Mode.Full, Some(helper)))
+    assertEquals(Position(Mode.Class, Some(helper)).widen(Mode.Function, Scope.Program, diagram), Position(Mode.Class, Some(helper)),
+      "an editor that is not shown does not widen")
   }
 
   test("an added entry is revealed; an edited function stays selected only in Function Mode") {

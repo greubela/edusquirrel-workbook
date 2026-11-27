@@ -71,6 +71,27 @@ class EvaEditorSpec extends EditorDomSuite {
     }
   }
 
+  test("one toolbar line: the languages, then only the selected editor's controls; Snap adds none") {
+    def tab(lang: ProgrammingLanguage, controls: Boolean): EvaEditorTab = new EvaEditorTab {
+      override val language = lang
+      override def create(bound: Var[ProgrammingState], context: EvaEditorContext): HtmlAppElement =
+        if controls then new HtmlAppElement with EvaToolbarControls {
+          override def getDomElement(): Element = div("editor")
+          override lazy val toolbarControls: Element = div(dataAttr("spec-controls") := lang.name)
+        } else HtmlAppElement(div("plain"))
+    }
+    val state = Var[ProgrammingState](ProgrammingStateJavaStructured("class Drawing {}"))
+    val editor = EvaEditor(state, Var(EvaEditorConfig(enabledLanguages = List(SnapLanguage, Java))), EvaTestContext.environment(specLabels),
+      Some(List(tab(SnapLanguage, controls = false), tab(Java, controls = true))))
+    val close = mount(editor.getDomElement())
+    def toolbar = dom.document.querySelector(".eva-editor__toolbar")
+    def controls = toolbar.querySelectorAll("[data-spec-controls]").toList.map(_.getAttribute("data-spec-controls"))
+    assertEquals(toolbar.querySelectorAll("[role=tablist]").length, 1)
+    assertEquals(controls, List("Java"))
+    state.set(ProgrammingStateSnapScalaModel.mini)
+    try assertEquals(controls, Nil) finally close()
+  }
+
   test("a missing native tab leaves the answer intact until an external entity selects one") {
     val source = ProgrammingStatePythonStructured("forward(1)")
     val f = new Fixture(source, List(Java))

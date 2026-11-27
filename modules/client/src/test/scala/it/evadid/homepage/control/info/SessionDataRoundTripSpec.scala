@@ -84,7 +84,7 @@ class SessionDataRoundTripSpec extends EditorDomSuite {
 
   test("the file name has no path separators and a file that is not a session fails the import") {
     val session = read[SessionData](downloaded("course/unit\\one"))
-    assert(session.fileName.endsWith("-course-unit-one.eva"), session.fileName)
+    assert(session.fileName.endsWith("_course_unit_one.eva"), session.fileName)
     assert(!session.fileName.exists(c => c == '/' || c == '\\'), session.fileName)
     val file = new LoadedFile {
       def description = null

@@ -61,7 +61,7 @@ final class EvaLanguageTabs(
     // The focused tab holds the tab stop; otherwise the selected one, otherwise the first.
     val active = focused.signal.combineWith(selected).map((focus, current) =>
       focus.orElse(current.map(_.language)).orElse(tabs.headOption.map(_.language)))
-    div(cls := "eva-editor__tabs", role := "tablist", aria.label <-- labels.languages,
+    div(cls := "eva-editor__tabs eva-editor__segments", role := "tablist", aria.label <-- labels.languages,
       selected.changes --> (_ => focused.set(None)),
       tabs.map(tabButton(_, active)))
   }

@@ -108,18 +108,38 @@ class FragmentCodeEditorSpec extends EditorDomSuite {
     }
   }
 
-  test("adding a second declaration selects only the new function for later edits") {
-    val answer = state()
-    withMounted(JavaFunctionEditor(logger, answer, Val("loading"))) { editor =>
-      editor.select(mainFunction(answer))
-      val original = editor.local.now()
-      val added = "static void extra() { forward(42); }"
-      editor.local.set(original + "\n" + added)
-      eventually(editor.local.now() == added, "new method selected").flatMap { _ =>
-        editor.local.set(added.replace("42", "43"))
-        eventually(classes(answer)(main).contains("forward(43)"), "new method edited")
-      }.map { _ => assert(classes(answer)(main).contains(original), "the previous method is preserved") }
-    }
+  /** The scope `editor` reports once `draft` replaced its fragment `identity` in the answer. */
+  private def widenedBy[S, I](editor: FragmentCodeEditor[S, I], identity: I, draft: String => String): Future[Option[FragmentCodeEditor.Scope]] = {
+    val close = mount(editor.getDomElement())
+    val owner = ManualOwner()
+    val widened = editor.widened.observe(using owner)
+    editor.select(identity)
+    val (before, written) = (editor.state.now(), draft(editor.local.now()))
+    assertEquals(widened.now(), None)
+    editor.local.set(written)
+    eventually(editor.state.now() != before, "draft written").map { _ =>
+      assertEquals(editor.local.now(), written, "the whole draft stays in the editor")
+      widened.now()
+    }.andThen { case _ => owner.killSubscriptions(); close() }
+  }
+
+  test("any code typed around a Java method widens the draft to its class; code outside a class to the whole program") {
+    import FragmentCodeEditor.Scope
+    def widened(draft: String => String) = { val answer = state(); widenedBy(JavaFunctionEditor(logger, answer, Val("loading")), mainFunction(answer), draft) }
+    val methods = state()
+    widenedBy(JavaFunctionEditor(logger, methods, Val("loading")), mainFunction(methods), _ + "\n  static void extra() { forward(42); }")
+      .flatMap { scope =>
+        assertEquals(scope, Some(Scope.Owner))
+        assert(classes(methods)(main).contains("forward(10); }\n  static void extra() { forward(42); }"), classes(methods)(main))
+        widened(_ + "\n  static int size = 3;")
+      }.flatMap { scope =>
+        assertEquals(scope, Some(Scope.Owner), "a method and an attribute are shown by their class")
+        widened(_ + "\n  int")
+      }.flatMap { scope =>
+        assertEquals(scope, Some(Scope.Owner), "unfinished code after the method switches at once")
+        val twoClasses = state()
+        widenedBy(JavaClassEditor(logger, twoClasses, Val("loading")), helper, _ + "\n\nclass Extra {")
+      }.map(scope => assertEquals(scope, Some(Scope.Program), "code outside the class needs the whole program"))
   }
 
   test("fragment ranges map to lines of the printed program") {
@@ -175,6 +195,27 @@ class FragmentCodeEditorSpec extends EditorDomSuite {
       editor.local.set("def g(self):\n    return 9")
       Future(()).flatMap(_ => Future(())).map(_ => assertEquals(answer.now(), closed, "a released editor does not write"))
     }
+  }
+
+  test("any code typed around a Python method widens the draft to its class; code outside a class to the whole program") {
+    import FragmentCodeEditor.Scope
+    val f = PythonFunctionEditor.Function(box, "f", 0)
+    def widened(draft: String => String) = widenedBy(PythonFunctionEditor(logger, python(), Val("loading")), f, draft)
+    val methods = python()
+    widenedBy(PythonFunctionEditor(logger, methods, Val("loading")), f, _ + "\n\ndef h(self):\n    return 4").flatMap { scope =>
+      assertEquals(scope, Some(Scope.Owner))
+      assert(methods.now().definedClasses(box).contains("    def h(self):\n        return 4"), methods.now().definedClasses(box))
+      widened(_ + "\n\nsize = 3")
+    }.flatMap { scope =>
+      assertEquals(scope, Some(Scope.Owner), "a method and an attribute are shown by their class")
+      widened("p\n" + _)
+    }.flatMap { scope =>
+      assertEquals(scope, Some(Scope.Owner), "a single character before the method switches at once")
+      widened(_ + "\n    pass")
+    }.flatMap { scope =>
+      assertEquals(scope, None, "the method's own body stays")
+      widenedBy(PythonClassEditor(logger, python(), Val("loading")), box, _ + "\nc")
+    }.map(scope => assertEquals(scope, Some(Scope.Program), "code outside the class needs the whole program"))
   }
 
   test("the Python class editor edits the whole class or module and follows a renamed class") {
