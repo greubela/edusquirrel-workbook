@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 # Checks or (re)creates the EduSquirrel schema in the dedicated MySQL database.
 #
-#   deploy-database.sh check   Compare the live schema with setup.sql (default; changes nothing)
+#   deploy-database.sh check   Compare the live schema with setup.sql (default). An empty database
+#                              gets its tables; a differing one is changed only after [y/N] questions.
 #   deploy-database.sh setup   Create the tables of setup.sql, then check. If some of them already
 #                              exist, ask [y/N] whether to back them up, drop them and create them again.
 #
@@ -97,11 +98,15 @@ reference_fingerprint() {
     || die "cannot read the reference schema"
 }
 
+# Prints the differences and fails when the schema does not match setup.sql.
 check_schema() {
   local expected="$DEPLOY_TMP/expected-schema.tsv" actual="$DEPLOY_TMP/actual-schema.tsv" version
-  reference_fingerprint > "$expected.raw"
-  LC_ALL=C sort "$expected.raw" > "$expected"
-  [[ -s "$expected" ]] || die "reference fingerprint is empty"
+  # The reference is built once per run; a check after a setup reuses it.
+  if [[ ! -s "$expected" ]]; then
+    reference_fingerprint > "$expected.raw"
+    LC_ALL=C sort "$expected.raw" > "$expected"
+    [[ -s "$expected" ]] || die "reference fingerprint is empty"
+  fi
   version="$(echo 'SELECT VERSION();' | remote_sql)" || die "cannot connect to $SQL_DATABASE on $SQL_HOST"
   log "reading the schema of $SQL_DATABASE on $SQL_HOST (MySQL $version, reference $MYSQL_IMAGE)"
   fingerprint_sql | remote_sql > "$actual.raw" || die "cannot read the schema of $SQL_DATABASE"
@@ -109,7 +114,8 @@ check_schema() {
   if diff -u --label "expected (setup.sql)" --label "actual ($SQL_DATABASE)" "$expected" "$actual" >&2; then
     log "schema of $SQL_DATABASE matches setup.sql"
   else
-    die "schema of $SQL_DATABASE differs from setup.sql (- expected, + actual). Run 'deploy-database.sh setup' to recreate it."
+    warn "schema of $SQL_DATABASE differs from setup.sql (lines: - expected, + actual)"
+    return 1
   fi
 }
 
@@ -169,10 +175,25 @@ setup_schema() {
 
 case "$mode" in
   check)
-    check_schema
+    # An empty database gets its tables right away: nothing can be lost.
+    tables="$(echo "SELECT COUNT(*) FROM information_schema.TABLES WHERE TABLE_SCHEMA = DATABASE();" | remote_sql)" \
+      || die "cannot connect to $SQL_DATABASE on $SQL_HOST"
+    if [[ "$tables" == 0 ]]; then
+      log "$SQL_DATABASE is empty; creating the tables of setup.sql"
+      run_setup
+    fi
+    check_schema && exit 0
+    hint="run './deploy.sh --database=setup' (or 'deploy-database.sh setup') to re-create the tables; it asks before dropping them"
+    # Only a person at the terminal can switch to setup here; --yes never does.
+    [[ -t 0 ]] || die "$hint"
+    read -r -p "Set up the schema of $SQL_DATABASE now? Existing tables are only dropped after a second question. [y/N] " answer
+    [[ "$answer" =~ ^[Yy]([Ee][Ss])?$ ]] || die "$hint"
+    DEPLOY_ASSUME_YES=false
+    setup_schema
+    check_schema || die "schema of $SQL_DATABASE still differs after setup"
     ;;
   setup)
     setup_schema
-    check_schema
+    check_schema || die "schema of $SQL_DATABASE still differs after setup"
     ;;
 esac
