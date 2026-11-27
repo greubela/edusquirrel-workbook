@@ -2,8 +2,8 @@
 
 [deploy.sh](../deploy.sh) builds what the selected steps need and runs the three deployment
 scripts in order: database check, backend, website. Each script also runs on its own. The
-backend needs `buildServerDeploy`; the website needs `buildClientDeploy buildWorkerDeploy` and
-the MathWorld build, whose `dist/` is published under `resources/programs/`.
+backend needs `buildServerDeploy`, the website `buildClientDeploy buildWorkerDeploy`. MathWorld
+is not built for the deployment; its `dist/` is uploaded only if it was built separately.
 
 ```sh
 ./deploy.sh                       # build + database check + server + client
