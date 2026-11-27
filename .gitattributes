@@ -1,0 +1,4 @@
+# Shell scripts run in bash, and the server files are uploaded to Linux: keep LF on Windows checkouts.
+*.sh text eol=lf
+deployment/server/docker-compose.yml text eol=lf
+deployment/database/setup.sql text eol=lf

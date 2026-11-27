@@ -1,13 +1,23 @@
 # Deployment
 
-[deploy.sh](../deploy.sh) builds all artifacts and runs the three deployment scripts in
-order: database check, backend, website. Each script also runs on its own.
+[deploy.sh](../deploy.sh) builds what the selected steps need and runs the three deployment
+scripts in order: database check, backend, website. Each script also runs on its own. The
+backend needs `buildServerDeploy`; the website needs `buildClientDeploy buildWorkerDeploy` and
+the MathWorld build, whose `dist/` is published under `resources/programs/`.
 
 ```sh
 ./deploy.sh                       # build + database check + server + client
 ./deploy.sh --skip-build          # deploy already built artifacts
 ./deploy.sh --only=client -- --dry-run
 ./deploy.sh --database=setup      # create the schema (asks before re-creating tables)
+```
+
+Every run is also logged to ignored `tmp/work/deployment/logs/`. On Windows, run it in Git Bash,
+or from PowerShell through Git's bash (a plain `.\deploy.sh` opens a separate window, so `>`
+captures nothing); a window opened just for the script stays open until Enter is pressed:
+
+```powershell
+& "$env:ProgramFiles\Git\bin\bash.exe" ./deploy.sh
 ```
 
 Requirements on the deploying machine: Bash, OpenSSH 8.4+ (`ssh`, `ssh-agent`), curl,

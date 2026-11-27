@@ -9,6 +9,9 @@
 #                                    (default: check only)
 #   ./deploy.sh --yes                Answer yes to all questions
 #   ./deploy.sh -- --dry-run         Pass the remaining options to deploy-client.sh
+#
+# Every run is logged to tmp/work/deployment/logs/. On Windows, run it in Git Bash, or from
+# PowerShell with: & "$env:ProgramFiles\Git\bin\bash.exe" ./deploy.sh
 # shellcheck source=SCRIPTDIR/deployment/lib/common.sh
 source "$(dirname "${BASH_SOURCE[0]}")/deployment/lib/common.sh"
 LOG_PREFIX=deploy
@@ -23,12 +26,28 @@ while [[ $# -gt 0 ]]; do
       [[ "$database_mode" =~ ^(check|setup)$ ]] || die "--database must be check or setup" ;;
     --yes) yes=(--yes) ;;
     --) shift; client_args=("$@"); break ;;
-    -h|--help) sed -n '2,12p' "$0"; exit 0 ;;
+    -h|--help) sed -n '2,14p' "$0"; exit 0 ;;
     *) die "unknown argument: $1" ;;
   esac
   shift
 done
 has_step() { [[ "$steps" == *",$1,"* ]]; }
+
+# Log everything, including the child scripts, to a file as well as the console.
+log_file="$REPO_ROOT/tmp/work/deployment/logs/deploy-$(date +%Y%m%d-%H%M%S)-$$.log"
+mkdir -p "${log_file%/*}"
+exec > >(tee -a "$log_file") 2>&1
+export NO_COLOR=1
+log "log file: ${log_file#"$REPO_ROOT"/}"
+report_result() {
+  local status=$1
+  if [[ "$status" -ne 0 ]]; then
+    printf '[deploy] FAILED (exit %s); see the messages above and %s\n' "$status" "${log_file#"$REPO_ROOT"/}" >&2
+  fi
+  # Started by a double-click or from PowerShell, the window would close before the output can be read.
+  if [[ "${SHLVL:-1}" -le 1 && -t 0 ]]; then read -r -p "Press Enter to close this window. " _ || true; fi
+}
+trap 'report_result $?; deploy_cleanup' EXIT
 
 # Fail before the long build when a step's settings are missing.
 needed="$(has_step database && echo "local.env server.env"; has_step server && echo "local.env server.env"
@@ -40,20 +59,31 @@ if [[ -n "$(git -C "$REPO_ROOT" status --porcelain --untracked-files=no 2>/dev/n
   warn "the working tree has uncommitted changes; the server reports version $(git_version)"
 fi
 
+# Build only what the selected steps deploy (everything when only "build" is selected).
 if has_step build; then
-  require_cmd sbt npm
-  log "building client, worker and server (sbt buildAllDeploy)"
-  (cd "$REPO_ROOT" && sbt -batch buildAllDeploy)
-  log "building MathWorld"
-  (cd "$REPO_ROOT/resources/programs/20260907MathworldMain" && npm ci && npm run build -- --base=./)
+  tasks=()
+  if has_step server; then tasks+=(buildServerDeploy); fi
+  if has_step client; then tasks+=(buildClientDeploy buildWorkerDeploy); fi
+  if [[ ${#tasks[@]} -eq 0 ]]; then tasks=(buildAllDeploy); fi
+  require_cmd sbt
+  log "building: sbt ${tasks[*]}"
+  (cd "$REPO_ROOT" && sbt -batch "${tasks[@]}") || die "sbt build failed"
+  # The website includes the MathWorld teaching program, whose built dist/ is part of resources/.
+  if has_step client || ! { has_step database || has_step server; }; then
+    require_cmd npm
+    log "building MathWorld (published under resources/programs/20260907MathworldMain/dist)"
+    (cd "$REPO_ROOT/resources/programs/20260907MathworldMain" && npm ci && npm run build -- --base=./) \
+      || die "MathWorld build failed"
+  fi
 fi
+# "bash" runs the steps even where the execute bit or the #! line is not honored (Windows).
 if has_step database; then
-  "$DEPLOY_DIR/database/deploy-database.sh" "$database_mode" "${yes[@]+"${yes[@]}"}"
+  bash "$DEPLOY_DIR/database/deploy-database.sh" "$database_mode" "${yes[@]+"${yes[@]}"}" || die "database step failed"
 fi
 if has_step server; then
-  "$DEPLOY_DIR/server/deploy-server.sh"
+  bash "$DEPLOY_DIR/server/deploy-server.sh" || die "server step failed"
 fi
 if has_step client; then
-  "$DEPLOY_DIR/client/deploy-client.sh" "${client_args[@]+"${client_args[@]}"}"
+  bash "$DEPLOY_DIR/client/deploy-client.sh" "${client_args[@]+"${client_args[@]}"}" || die "website step failed"
 fi
 log "finished: ${steps//,/ }"
