@@ -347,14 +347,14 @@ class ProgrammingStateConversionSpec extends FunSuite {
   test("full Java classes compile through the state boundary and execute a parameterized square") {
     val state = ProgrammingStateRaw(Java, squareJava())
     val program = compiled(state)
-    val execution = T.runVm(program)
+    val execution = T.execute(program)
 
     assertEquals(execution.status, T.Status.Completed)
     assertEquals(execution.commands, squareCommands(25))
     assertEquals(execution.commands.size, 8)
     assertEquals(program.root.entryPoint.binding.originalName, "main")
     assertEquals(program.root.methods.map(_.binding.originalName), Vector("square", "main"))
-    assertEquals(JavaTurtleCompiler.compile(state.code).map(program => T.runVm(program)), Right(execution))
+    assertEquals(JavaTurtleCompiler.compile(state.code).map(program => T.execute(program)), Right(execution))
     assertEquals(state.toJava, state)
     assertEquals(state.code, squareJava())
   }
@@ -368,7 +368,7 @@ class ProgrammingStateConversionSpec extends FunSuite {
     )
     variants.foreach { (source, correct) =>
       val program = compiled(ProgrammingStateRaw(Java, source))
-      val execution = T.runVm(program)
+      val execution = T.execute(program)
       assertEquals(execution.status, T.Status.Completed)
       assertEquals(execution.commands.size, 8)
       assertEquals(execution.commands == squareCommands(25), correct, clue = source)
@@ -412,7 +412,7 @@ class ProgrammingStateConversionSpec extends FunSuite {
     assertEquals(restored.fingerprint(), s"java:$source")
     assertEquals(ProgrammingState.serializer.serialize(restored), stored)
     val program = compiled(restored.toJava)
-    assertEquals(T.runVm(program).commands, squareCommands(25))
+    assertEquals(T.execute(program).commands, squareCommands(25))
     assertEquals(original.code, source)
   }
 
@@ -502,14 +502,14 @@ class ProgrammingStateConversionSpec extends FunSuite {
   test("full Java state programs enforce execution limits on endless loops") {
     val source = "class Main { public static void main(String[] args) { while (true) {} } }"
     val program = compiled(ProgrammingStateRaw(Java, source))
-    assertEquals(T.runVm(program, T.Limits(maxSteps = 20)), T.Execution(T.Status.LimitExceeded, Vector.empty, 20))
+    assertEquals(T.execute(program, limits = T.Limits(maxSteps = 20)), T.Execution(T.Status.LimitExceeded, Vector.empty, 20))
   }
 
   test("full Java state execution retains int32 overflow and negative integer division") {
     val source = "class Main { public static void main(String[] args) { " +
       "Turtle.forward(2147483647 + 1); Turtle.forward(-9 / 2); Turtle.forward(-9 % 2); } }"
     val program = compiled(ProgrammingStateRaw(Java, source))
-    val execution = T.runVm(program)
+    val execution = T.execute(program)
     assertEquals(execution.status, T.Status.Completed)
     assertEquals(execution.commands, Vector(Int.MinValue, -4, -1).map(value => T.Command(R.TurtleCommand.Forward, value)))
   }
@@ -519,7 +519,7 @@ class ProgrammingStateConversionSpec extends FunSuite {
     val source = exercise.defaultValue.toJava
     val stored = exercise.interactionFormat.stateSerializer.serialize(source)
     val program = compiled(source)
-    val result = T.runVm(program)
+    val result = T.execute(program)
     assertEquals(result.status, T.Status.Completed)
     assertEquals(result.commands, Vector.empty[T.Command])
     assertEquals(exercise.elementId, "kept-java-exercise")
@@ -534,7 +534,7 @@ class ProgrammingStateConversionSpec extends FunSuite {
     val stored = ProgrammingState.serializer.serialize(snap)
     val program = compiled(ProgrammingStateRaw(Java, squareJava()))
 
-    assertEquals(T.runVm(program).commands, squareCommands(25))
+    assertEquals(T.execute(program).commands, squareCommands(25))
     assertEquals(commands(snap).flatMap(_.args), List(12.0))
     assert(snap.toPython.code.contains("forward(12)"), clue = snap.toPython.code)
     assert(snap.toJava.code.contains("forward(12)"), clue = snap.toJava.code)

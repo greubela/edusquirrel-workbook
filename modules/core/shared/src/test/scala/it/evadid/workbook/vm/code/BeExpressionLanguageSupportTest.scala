@@ -409,22 +409,22 @@ class BeExpressionLanguageSupportTest extends FunSuite {
       "public static void main(String[] args) { double length = 10; double truncated = 10 / 3; " +
       "draw(length, 3); Turtle.forward(truncated); Turtle.forward(length); } }\t "
     val program = JavaTurtleCompiler.compile(raw).fold(error => fail(error.message), identity)
-    val execution = T.runVm(program)
+    val execution = T.execute(program)
     assertEquals(execution.status, T.Status.Completed)
     assertEquals(execution.commands.map(_.value), Vector(10.0 / 3.0, 3.0, 10.0))
-    assertEquals(T.run(program.bindings.source), execution)
+    assertEquals(T.execute(program.bindings.source), execution)
     val helper = program.root.methods.find(_.binding.originalName == "draw").get
     assertEquals(helper.binding.parameters.head.definition.get.variableType, BeDataType.Numeric)
     assertEquals(helper.binding.parameters(1).definition.get.variableType, BeDataType.Int)
-    assertEquals(T.invokeVm(program, helper.binding.id, Vector(E.Value.IntValue(10), E.Value.IntValue(3))).commands.map(_.value), Vector(10.0 / 3.0))
+    assertEquals(T.execute(program, T.Entry.Method(helper.binding.id, Vector(E.Value.IntValue(10), E.Value.IntValue(3)))).commands.map(_.value), Vector(10.0 / 3.0))
     assertEquals(program.bindings.source.source, raw)
   }
 
   test("nonfinite double calculations remain usable until they reach a drawing command") {
-    val usable = T.run(javaProgram("double infinity = 1.0 / 0.0; if (infinity > 0) { Turtle.forward(2); } double nan = 0.0 / 0.0; if (nan != nan) { Turtle.forward(3); }"))
+    val usable = T.execute(javaProgram("double infinity = 1.0 / 0.0; if (infinity > 0) { Turtle.forward(2); } double nan = 0.0 / 0.0; if (nan != nan) { Turtle.forward(3); }"))
     assertEquals(usable.status, T.Status.Completed)
     assertEquals(usable.commands, Vector(forward(2), forward(3)))
-    val stopped = T.run(javaProgram("Turtle.forward(1); Turtle.forward(1.0 / 0.0); Turtle.forward(99);"))
+    val stopped = T.execute(javaProgram("Turtle.forward(1); Turtle.forward(1.0 / 0.0); Turtle.forward(99);"))
     assertEquals(stopped.status, T.Status.Failed(T.Failure.NonFiniteCommand))
     assertEquals(stopped.commands, Vector(forward(1)))
   }
@@ -447,7 +447,7 @@ class BeExpressionLanguageSupportTest extends FunSuite {
   }
 
   test("Java loop declarations reset on each entry and sibling scopes stay separate") {
-    val execution = T.run(javaProgram("""
+    val execution = T.execute(javaProgram("""
       for (int i = 0; i < 3; i += 1) { int value = i; Turtle.forward(value); }
       if (true) { int value = 7; Turtle.forward(value); }
       if (true) { int value = 8; Turtle.forward(value); }
@@ -458,7 +458,7 @@ class BeExpressionLanguageSupportTest extends FunSuite {
   }
 
   test("Java loops skip zero iterations and execute updates after the body in order") {
-    val execution = T.run(javaProgram("""
+    val execution = T.execute(javaProgram("""
       int i = 0;
       while (i < 0) { Turtle.forward(99); }
       for (int k = 0; k < 0; k += 1) { Turtle.forward(99); }
@@ -467,13 +467,13 @@ class BeExpressionLanguageSupportTest extends FunSuite {
     """))
     assertEquals(execution.status, T.Status.Completed)
     assertEquals(execution.commands, Vector(forward(0), right(1), forward(1), right(2), forward(2), right(3), forward(3)))
-    val overflow = T.run(javaProgram("int i = 2147483647; while (i > 0) { Turtle.forward(i); i += 1; } Turtle.forward(i);"))
+    val overflow = T.execute(javaProgram("int i = 2147483647; while (i > 0) { Turtle.forward(i); i += 1; } Turtle.forward(i);"))
     assertEquals(overflow.status, T.Status.Completed)
     assertEquals(overflow.commands, Vector(forward(Int.MaxValue), forward(Int.MinValue)))
   }
 
   test("Java return ends only its method and skips the pending loop update") {
-    val execution = T.run(javaProgram("first(); Turtle.forward(11); second(1); Turtle.forward(14);", """
+    val execution = T.execute(javaProgram("first(); Turtle.forward(11); second(1); Turtle.forward(14);", """
       static void first() {
         for (int i = 0; i < 4; Turtle.forward(999)) { Turtle.forward(10); return; }
         Turtle.forward(999);
@@ -485,30 +485,30 @@ class BeExpressionLanguageSupportTest extends FunSuite {
     """))
     assertEquals(execution.status, T.Status.Completed)
     assertEquals(execution.commands, Vector(10, 11, 12, 14).map(forward))
-    val early = T.run(javaProgram("if (true) { Turtle.forward(1); return; } Turtle.forward(999);"))
+    val early = T.execute(javaProgram("if (true) { Turtle.forward(1); return; } Turtle.forward(999);"))
     assertEquals(early.status, T.Status.Completed)
     assertEquals(early.commands, Vector(forward(1)))
   }
 
   test("Java call and block depth limits stop explicit stacks without affecting later runs") {
     val source = javaProgram("draw();", "static void draw() { Turtle.forward(1); }")
-    val tooDeep = T.run(source, T.Limits(maxCallDepth = 1))
+    val tooDeep = T.execute(source, limits = T.Limits(maxCallDepth = 1))
     assertEquals(tooDeep.status, T.Status.LimitExceeded)
     assertEquals(tooDeep.commands, Vector.empty)
-    val shallow = T.run(source, T.Limits(maxCallDepth = 2))
+    val shallow = T.execute(source, limits = T.Limits(maxCallDepth = 2))
     assertEquals(shallow.status, T.Status.Completed)
     assertEquals(shallow.commands, Vector(forward(1)))
-    val deep = T.run(callChain(80))
+    val deep = T.execute(callChain(80))
     assertEquals(deep.status, T.Status.LimitExceeded)
     assertEquals(deep.commands, Vector.empty)
-    val long = T.run(callChain(40))
+    val long = T.execute(callChain(40))
     assertEquals(long.status, T.Status.Completed)
     assertEquals(long.commands, Vector(forward(1)))
     val nested = javaProgram("if (true) { " * 8 + "Turtle.forward(1);" + " }" * 8)
-    val restricted = T.run(nested, T.Limits(maxBlockDepth = 8))
+    val restricted = T.execute(nested, limits = T.Limits(maxBlockDepth = 8))
     assertEquals(restricted.status, T.Status.LimitExceeded)
     assertEquals(restricted.commands, Vector.empty)
-    val allowed = T.run(nested, T.Limits(maxBlockDepth = 9))
+    val allowed = T.execute(nested, limits = T.Limits(maxBlockDepth = 9))
     assertEquals(allowed.status, T.Status.Completed)
     assertEquals(allowed.commands, Vector(forward(1)))
   }
@@ -545,7 +545,7 @@ class BeExpressionLanguageSupportTest extends FunSuite {
     assert(locals.flatMap(_.definition).forall(_.initValue.isEmpty))
     assertEquals(locals.head.definition.get.variableType, BeDataType.Int)
     assertEquals(locals(1).definition.get.variableType, BeDataType.Boolean)
-    assertEquals(T.run(source).status, T.Status.Completed)
+    assertEquals(T.execute(source).status, T.Status.Completed)
   }
 
   test("Java VM names do not normalize or collide with learner identifiers") {
@@ -573,7 +573,7 @@ class BeExpressionLanguageSupportTest extends FunSuite {
       for language <- List(Python, Java) do
         assertEquals(read.structureInfo.toStringInLanguage(language, English), variable.name.universalInterpretation())
     }
-    assertEquals(T.run(source).commands, Vector(forward(1), forward(2), forward(3)))
+    assertEquals(T.execute(source).commands, Vector(forward(1), forward(2), forward(3)))
   }
 
   test("Java VM references use interned definitions and reject mismatched symbols") {
@@ -621,7 +621,7 @@ class BeExpressionLanguageSupportTest extends FunSuite {
     val size = bindings.variables.find(_.variable.name == "size").getOrElse(fail("Missing size"))
     assertEquals(size.variable.id.index, 1)
     assertEquals(size.definition.get.name.universalInterpretation(), "java_variable_0_1")
-    assertEquals(T.run(source).commands, Vector(forward(40)))
+    assertEquals(T.execute(source).commands, Vector(forward(40)))
   }
 
   test("Java VM bindings keep a main declared before its helper as the entry point") {
@@ -633,7 +633,7 @@ class BeExpressionLanguageSupportTest extends FunSuite {
     assertEquals(bindings.methods.map(_.originalName), Vector("main", "draw"))
     assertEquals(bindings.methods(1).parameters.head.variable.id, R.VariableId(R.MethodId(1), 0))
     assertEquals(bindings.methods(1).name.universalInterpretation(), "java_method_1")
-    assertEquals(T.run(resolved).commands, Vector(forward(40)))
+    assertEquals(T.execute(resolved).commands, Vector(forward(40)))
   }
 
   test("Java VM binding collection handles the full variable budget and deep branches") {
@@ -1043,13 +1043,13 @@ class BeExpressionLanguageSupportTest extends FunSuite {
     for (body, size, correct) <- variants do {
       val source = javaProgram(s"square($size);", s"static void square(int size) { $body }")
       val program = compiledJava(source)
-      val execution = T.runVm(program)
-      assertEquals(execution, T.run(source))
+      val execution = T.execute(program)
+      assertEquals(execution, T.execute(source))
       assertEquals(execution.status, T.Status.Completed)
       assertEquals(execution.commands == Vector.fill(4)(Vector(forward(size), right(90))).flatten, correct)
       val method = program.root.methods.find(_.binding.originalName == "square").get.binding.id
-      val invoked = T.invokeVm(program, method, Vector(E.Value.IntValue(size)))
-      assertEquals(invoked, T.invoke(source, method, Vector(E.Value.IntValue(size))))
+      val invoked = T.execute(program, T.Entry.Method(method, Vector(E.Value.IntValue(size))))
+      assertEquals(invoked, T.execute(source, T.Entry.Method(method, Vector(E.Value.IntValue(size)))))
       assertEquals(invoked.commands, execution.commands)
     }
   }
@@ -1060,18 +1060,18 @@ class BeExpressionLanguageSupportTest extends FunSuite {
       static void inner(int size) { size *= 2; Turtle.forward(size); }
     """)
     val program = compiledJava(source)
-    val execution = T.runVm(program)
-    assertEquals(execution, T.run(source))
+    val execution = T.execute(program)
+    assertEquals(execution, T.execute(source))
     assertEquals(execution.status, T.Status.Completed)
     assertEquals(execution.commands, Vector(30, 15, 5, 34, 17).map(forward))
-    assertEquals(T.runVm(program), execution)
+    assertEquals(T.execute(program), execution)
     val flags = javaProgram("boolean enabled = true; flip(enabled); if (enabled) { Turtle.forward(3); } flip(false);", """
       static void flip(boolean enabled) {
         enabled = !enabled; if (enabled) { Turtle.forward(1); } else { Turtle.forward(2); }
       }
     """)
-    val booleanExecution = T.runVm(compiledJava(flags))
-    assertEquals(booleanExecution, T.run(flags))
+    val booleanExecution = T.execute(compiledJava(flags))
+    assertEquals(booleanExecution, T.execute(flags))
     assertEquals(booleanExecution.commands, Vector(2, 3, 1).map(forward))
   }
 
@@ -1087,8 +1087,8 @@ class BeExpressionLanguageSupportTest extends FunSuite {
       }
     """)
     val program = compiledJava(source)
-    val execution = T.runVm(program)
-    assertEquals(execution, T.run(source))
+    val execution = T.execute(program)
+    assertEquals(execution, T.execute(source))
     assertEquals(execution.status, T.Status.Completed)
     assertEquals(execution.commands, Vector(forward(10), forward(20), forward(0), right(1), forward(1), right(2), forward(30),
       forward(10), forward(20), forward(0), right(1), forward(30)))
@@ -1098,8 +1098,8 @@ class BeExpressionLanguageSupportTest extends FunSuite {
         Turtle.forward(999);
       }
     """)
-    val earlyExecution = T.runVm(compiledJava(early))
-    assertEquals(earlyExecution, T.run(early))
+    val earlyExecution = T.execute(compiledJava(early))
+    assertEquals(earlyExecution, T.execute(early))
     assertEquals(earlyExecution.commands, Vector(forward(1), forward(2)))
   }
 
@@ -1112,18 +1112,18 @@ class BeExpressionLanguageSupportTest extends FunSuite {
       boolean enabled = false && 1 / 0 > 0;
       if (!enabled || 1 / 0 > 0) { Turtle.forward(2); }
     """)
-    val execution = T.runVm(compiledJava(source))
-    assertEquals(execution, T.run(source))
+    val execution = T.execute(compiledJava(source))
+    assertEquals(execution, T.execute(source))
     assertEquals(execution.status, T.Status.Completed)
     assertEquals(execution.commands, Vector(Int.MinValue, Int.MaxValue, 1, Int.MinValue, 0, -4, -1, 2).map(forward))
     for body <- Seq("int value = 5; value /= 0;", "int value = 5; value %= 0;", "pair(1, 5 / 0);") do {
       val failing = javaProgram(s"Turtle.forward(1); $body Turtle.forward(999);", "static void pair(int a, int b) { Turtle.forward(999); }")
       val program = compiledJava(failing)
-      val result = T.runVm(program)
-      assertEquals(result, T.run(failing))
+      val result = T.execute(program)
+      assertEquals(result, T.execute(failing))
       assertEquals(result.status, T.Status.Failed(T.Failure.Evaluation(E.Failure.DivisionByZero)))
       assertEquals(result.commands, Vector(forward(1)))
-      assertEquals(T.runVm(program), result)
+      assertEquals(T.execute(program), result)
     }
   }
 
@@ -1136,14 +1136,14 @@ class BeExpressionLanguageSupportTest extends FunSuite {
     val source = resolvedJava(text)
     val program = compiledJava(source)
     assertEquals(program.root.entryPoint.binding.id, R.MethodId(1))
-    val execution = T.runVm(program)
-    assertEquals(execution, T.run(source))
+    val execution = T.execute(program)
+    assertEquals(execution, T.execute(source))
     assertEquals(execution.status, T.Status.Completed)
     assertEquals(execution.commands, Vector(forward(10), right(20)))
-    assertEquals(T.invokeVm(program, R.MethodId(2), Vector(E.Value.IntValue(30))).commands, Vector(right(30)))
+    assertEquals(T.execute(program, T.Entry.Method(R.MethodId(2), Vector(E.Value.IntValue(30)))).commands, Vector(right(30)))
     val another = compiledJava(javaProgram("int size = 7; Turtle.forward(size);"))
-    assertEquals(T.runVm(another).commands, Vector(forward(7)))
-    assertEquals(T.runVm(program), execution)
+    assertEquals(T.execute(another).commands, Vector(forward(7)))
+    assertEquals(T.execute(program), execution)
   }
 
   test("Java VM execution rejects invalid limits and helper invocations before polling") {
@@ -1154,37 +1154,37 @@ class BeExpressionLanguageSupportTest extends FunSuite {
     for (id, arguments) <- Seq(method -> Vector.empty[E.Value], method -> Vector(E.Value.BooleanValue(true)),
       method -> Vector(E.Value.IntValue(1), E.Value.IntValue(2)), R.MethodId(999) -> Vector.empty[E.Value],
       program.root.entryPoint.binding.id -> Vector.empty[E.Value]) do {
-      val result = T.invokeVm(program, id, arguments, isCancelled = neverPoll)
+      val result = T.execute(program, T.Entry.Method(id, arguments), isCancelled = neverPoll)
       assertEquals(result, T.Execution(T.Status.Failed(T.Failure.InvalidInvocation), Vector.empty, 0))
-      assertEquals(result, T.invoke(source, id, arguments, isCancelled = neverPoll))
+      assertEquals(result, T.execute(source, T.Entry.Method(id, arguments), isCancelled = neverPoll))
     }
     for limits <- Seq(T.Limits(maxSteps = 0), T.Limits(maxSteps = -1), T.Limits(maxSteps = T.Limits.MaxSteps + 1),
       T.Limits(maxCommands = -1), T.Limits(maxCommands = T.Limits.MaxCommands + 1),
       T.Limits(maxCallDepth = 0), T.Limits(maxCallDepth = T.Limits.MaxCallDepth + 1),
       T.Limits(maxBlockDepth = 0), T.Limits(maxBlockDepth = T.Limits.MaxBlockDepth + 1)) do {
       val expected = T.Execution(T.Status.Failed(T.Failure.InvalidLimits), Vector.empty, 0)
-      assertEquals(T.runVm(program, limits, neverPoll), expected)
-      assertEquals(T.invokeVm(program, method, Vector(E.Value.IntValue(1)), limits, neverPoll), expected)
+      assertEquals(T.execute(program, limits = limits, isCancelled = neverPoll), expected)
+      assertEquals(T.execute(program, T.Entry.Method(method, Vector(E.Value.IntValue(1))), limits, neverPoll), expected)
     }
-    assertEquals(T.runVm(compiledJava(javaProgram("")), T.Limits(maxCommands = 0)).status, T.Status.Completed)
-    assertEquals(T.runVm(program, T.Limits(maxCommands = 0)).commands, Vector.empty)
-    assertEquals(T.runVm(program, T.Limits(maxCommands = 0)).status, T.Status.LimitExceeded)
+    assertEquals(T.execute(compiledJava(javaProgram("")), limits = T.Limits(maxCommands = 0)).status, T.Status.Completed)
+    assertEquals(T.execute(program, limits = T.Limits(maxCommands = 0)).commands, Vector.empty)
+    assertEquals(T.execute(program, limits = T.Limits(maxCommands = 0)).status, T.Status.LimitExceeded)
   }
 
   test("Java VM execution retains exact statement expression and command budgets") {
     val empty = compiledJava(javaProgram(""))
-    assertEquals(T.runVm(empty, T.Limits(maxSteps = 2)), T.Execution(T.Status.Completed, Vector.empty, 2))
+    assertEquals(T.execute(empty, limits = T.Limits(maxSteps = 2)), T.Execution(T.Status.Completed, Vector.empty, 2))
     val one = compiledJava(javaProgram("Turtle.forward(1);"))
-    assertEquals(T.runVm(one, T.Limits(maxSteps = 5)), T.Execution(T.Status.Completed, Vector(forward(1)), 5))
-    assertEquals(T.runVm(one, T.Limits(maxSteps = 4)), T.Execution(T.Status.LimitExceeded, Vector.empty, 4))
+    assertEquals(T.execute(one, limits = T.Limits(maxSteps = 5)), T.Execution(T.Status.Completed, Vector(forward(1)), 5))
+    assertEquals(T.execute(one, limits = T.Limits(maxSteps = 4)), T.Execution(T.Status.LimitExceeded, Vector.empty, 4))
     val expressions = compiledJava(javaProgram("int a = 1 + 2; int b = 3 + 4; Turtle.forward(a + b);"))
-    assertEquals(T.runVm(expressions, T.Limits(maxSteps = 15)), T.Execution(T.Status.Completed, Vector(forward(10)), 15))
-    assertEquals(T.runVm(expressions, T.Limits(maxSteps = 14)), T.Execution(T.Status.LimitExceeded, Vector.empty, 14))
+    assertEquals(T.execute(expressions, limits = T.Limits(maxSteps = 15)), T.Execution(T.Status.Completed, Vector(forward(10)), 15))
+    assertEquals(T.execute(expressions, limits = T.Limits(maxSteps = 14)), T.Execution(T.Status.LimitExceeded, Vector.empty, 14))
     val square = compiledJava(javaProgram("for (int i = 0; i < 4; i += 1) { Turtle.forward(10); Turtle.turnRight(90); }"))
-    val complete = T.runVm(square, T.Limits(maxCommands = 8))
+    val complete = T.execute(square, limits = T.Limits(maxCommands = 8))
     assertEquals(complete.status, T.Status.Completed)
     assertEquals(complete.commands.size, 8)
-    val limited = T.runVm(square, T.Limits(maxCommands = 7))
+    val limited = T.execute(square, limits = T.Limits(maxCommands = 7))
     assertEquals(limited.status, T.Status.LimitExceeded)
     assertEquals(limited.commands, complete.commands.take(7))
   }
@@ -1193,24 +1193,24 @@ class BeExpressionLanguageSupportTest extends FunSuite {
     for body <- Seq("while (true) {}", "for (;;) {}", "for (;;) { ; }", "while (true);", "for (;;);") do {
       val source = javaProgram(body)
       val program = compiledJava(source)
-      assertEquals(T.runVm(program, T.Limits(maxSteps = 20)), T.Execution(T.Status.LimitExceeded, Vector.empty, 20))
+      assertEquals(T.execute(program, limits = T.Limits(maxSteps = 20)), T.Execution(T.Status.LimitExceeded, Vector.empty, 20))
       var polls = 0
-      assertEquals(T.runVm(program, T.Limits(maxSteps = 30), () => { polls += 1; polls >= 10 }),
+      assertEquals(T.execute(program, limits = T.Limits(maxSteps = 30), isCancelled = () => { polls += 1; polls >= 10 }),
         T.Execution(T.Status.Cancelled, Vector.empty, 9))
       assertEquals(polls, 10)
-      assertEquals(T.runVm(program, T.Limits(maxSteps = 20)), T.run(source, T.Limits(maxSteps = 20)))
+      assertEquals(T.execute(program, limits = T.Limits(maxSteps = 20)), T.execute(source, limits = T.Limits(maxSteps = 20)))
     }
     val program = compiledJava(javaProgram("Turtle.forward(1); Turtle.forward(2);"))
-    assertEquals(T.runVm(program, isCancelled = () => true), T.Execution(T.Status.Cancelled, Vector.empty, 0))
+    assertEquals(T.execute(program, isCancelled = () => true), T.Execution(T.Status.Cancelled, Vector.empty, 0))
     var polls = 0
-    assertEquals(T.runVm(program, isCancelled = () => { polls += 1; polls >= 8 }),
+    assertEquals(T.execute(program, isCancelled = () => { polls += 1; polls >= 8 }),
       T.Execution(T.Status.Cancelled, Vector(forward(1)), 7))
     assertEquals(polls, 8)
-    assertEquals(T.runVm(program), T.Execution(T.Status.Completed, Vector(forward(1), forward(2)), 8))
+    assertEquals(T.execute(program), T.Execution(T.Status.Completed, Vector(forward(1), forward(2)), 8))
     val emptyLoop = compiledJava(javaProgram("while (true) {}"))
-    assertEquals(T.runVm(emptyLoop), T.Execution(T.Status.LimitExceeded, Vector.empty, T.Limits.MaxSteps))
+    assertEquals(T.execute(emptyLoop), T.Execution(T.Status.LimitExceeded, Vector.empty, T.Limits.MaxSteps))
     val emitting = compiledJava(javaProgram("while (true) { Turtle.forward(1); }"))
-    val limited = T.runVm(emitting)
+    val limited = T.execute(emitting)
     assertEquals(limited.status, T.Status.LimitExceeded)
     assertEquals(limited.commands.size, T.Limits.MaxCommands)
     assert(limited.commands.forall(_ == forward(1)))
@@ -1219,31 +1219,31 @@ class BeExpressionLanguageSupportTest extends FunSuite {
   test("Java VM execution enforces exact call and block depths without recursive host stacks") {
     val allowedSource = callChain(63)
     val allowed = compiledJava(allowedSource)
-    val full = T.runVm(allowed)
-    assertEquals(full, T.run(allowedSource))
+    val full = T.execute(allowed)
+    assertEquals(full, T.execute(allowedSource))
     assertEquals(full.status, T.Status.Completed)
     assertEquals(full.commands, Vector(forward(1)))
     val excessiveSource = callChain(64)
     val excessive = compiledJava(excessiveSource)
-    val rejected = T.runVm(excessive)
-    assertEquals(rejected, T.run(excessiveSource))
+    val rejected = T.execute(excessive)
+    assertEquals(rejected, T.execute(excessiveSource))
     assertEquals(rejected.status, T.Status.LimitExceeded)
     assertEquals(rejected.commands, Vector.empty)
-    val direct = T.invokeVm(excessive, R.MethodId(0), Vector.empty)
-    assertEquals(direct, T.invoke(excessiveSource, R.MethodId(0), Vector.empty))
+    val direct = T.execute(excessive, T.Entry.Method(R.MethodId(0), Vector.empty))
+    assertEquals(direct, T.execute(excessiveSource, T.Entry.Method(R.MethodId(0), Vector.empty)))
     assertEquals(direct.status, T.Status.Completed)
     assertEquals(direct.commands, Vector(forward(1)))
     val nestedSource = javaProgram("if (true) { " * 8 + "Turtle.forward(1);" + " }" * 8)
     val nested = compiledJava(nestedSource)
-    val shallow = T.runVm(nested, T.Limits(maxBlockDepth = 8))
-    assertEquals(shallow, T.run(nestedSource, T.Limits(maxBlockDepth = 8)))
+    val shallow = T.execute(nested, limits = T.Limits(maxBlockDepth = 8))
+    assertEquals(shallow, T.execute(nestedSource, limits = T.Limits(maxBlockDepth = 8)))
     assertEquals(shallow.status, T.Status.LimitExceeded)
     assertEquals(shallow.commands, Vector.empty)
-    val deep = T.runVm(nested, T.Limits(maxBlockDepth = 9))
-    assertEquals(deep, T.run(nestedSource, T.Limits(maxBlockDepth = 9)))
+    val deep = T.execute(nested, limits = T.Limits(maxBlockDepth = 9))
+    assertEquals(deep, T.execute(nestedSource, limits = T.Limits(maxBlockDepth = 9)))
     assertEquals(deep.status, T.Status.Completed)
     assertEquals(deep.commands, Vector(forward(1)))
-    assertEquals(T.runVm(allowed), full)
+    assertEquals(T.execute(allowed), full)
   }
 
   test("Java recursive methods draw fractional lengths independently of invocation") {
@@ -1257,16 +1257,16 @@ class BeExpressionLanguageSupportTest extends FunSuite {
     for depth <- Vector(0, 1, 3) do {
       val source = javaProgram(s"split($depth, 10.5);", helper)
       val program = compiledJava(source)
-      val execution = T.runVm(program)
+      val execution = T.execute(program)
       val commands = Vector.fill(1 << depth)(T.Command(R.TurtleCommand.Forward, 10.5 / math.pow(3, depth)))
-      assertEquals(execution, T.run(source))
+      assertEquals(execution, T.execute(source))
       assertEquals(execution.status, T.Status.Completed)
       assertEquals(execution.commands, commands)
       val arguments = Vector(E.Value.IntValue(depth), E.Value.DoubleValue(10.5))
-      val invoked = T.invokeVm(program, R.MethodId(0), arguments)
-      assertEquals(invoked, T.invoke(source, R.MethodId(0), arguments))
+      val invoked = T.execute(program, T.Entry.Method(R.MethodId(0), arguments))
+      assertEquals(invoked, T.execute(source, T.Entry.Method(R.MethodId(0), arguments)))
       assertEquals(invoked.commands, commands)
-      assertEquals(T.runVm(program), execution)
+      assertEquals(T.execute(program), execution)
     }
   }
 
@@ -1282,8 +1282,8 @@ class BeExpressionLanguageSupportTest extends FunSuite {
       }
     """)
     val program = compiledJava(source)
-    val execution = T.runVm(program)
-    assertEquals(execution, T.run(source))
+    val execution = T.execute(program)
+    assertEquals(execution, T.execute(source))
     assertEquals(execution.status, T.Status.Completed)
     assertEquals(execution.commands, Vector(forward(3), forward(1), forward(9), right(1), right(3)))
   }
@@ -1305,8 +1305,8 @@ class BeExpressionLanguageSupportTest extends FunSuite {
         for (int marker = 0; marker < 1; marker += 1) { Turtle.turnRight(marker); }
       }
     """)
-    val execution = T.runVm(compiledJava(source))
-    assertEquals(execution, T.run(source))
+    val execution = T.execute(compiledJava(source))
+    assertEquals(execution, T.execute(source))
     assertEquals(execution.status, T.Status.Completed)
     assertEquals(execution.commands, Vector(forward(4), forward(5), forward(12), right(10),
       forward(6), forward(7), forward(12), right(0), forward(99)))
@@ -1325,8 +1325,8 @@ class BeExpressionLanguageSupportTest extends FunSuite {
       val source = javaProgram(main, single)
       val actual = compiledJava(source)
       val explicit = compiledJava(javaProgram(main, braced))
-      val recorded = T.runVmTraced(actual)
-      val reference = T.runVmTraced(explicit)
+      val recorded = T.executeTraced(actual)
+      val reference = T.executeTraced(explicit)
       assertEquals(recorded.execution.status, T.Status.Completed)
       assertEquals(recorded.execution.commands, expected.map(forward))
       assertEquals(recorded.execution, reference.execution)
@@ -1353,11 +1353,11 @@ class BeExpressionLanguageSupportTest extends FunSuite {
       }
     """)
     val program = compiledJava(source)
-    val execution = T.runVm(program)
-    assertEquals(execution, T.run(source))
+    val execution = T.execute(program)
+    assertEquals(execution, T.execute(source))
     assertEquals(execution.status, T.Status.Completed)
     assertEquals(execution.commands, Vector(0, 1, 2, 0, 9).map(forward))
-    assertEquals(T.runVm(program), execution)
+    assertEquals(T.execute(program), execution)
   }
 
   test("Java unused cycles do not affect repeated top-level calls") {
@@ -1369,8 +1369,8 @@ class BeExpressionLanguageSupportTest extends FunSuite {
       static void unused() { unused(); }
     """)
     val program = compiledJava(source)
-    val execution = T.runVm(program)
-    assertEquals(execution, T.run(source))
+    val execution = T.execute(program)
+    assertEquals(execution, T.execute(source))
     assertEquals(execution.status, T.Status.Completed)
     assertEquals(execution.commands, Vector(0, 1, 2).map(forward))
   }
@@ -1379,38 +1379,38 @@ class BeExpressionLanguageSupportTest extends FunSuite {
     val helper = "static void down(int depth) { if (depth > 0) { down(depth - 1); } else { Turtle.forward(1); } }"
     val source = javaProgram("down(62);", helper)
     val program = compiledJava(source)
-    val allowed = T.runVm(program)
-    assertEquals(allowed, T.run(source))
+    val allowed = T.execute(program)
+    assertEquals(allowed, T.execute(source))
     assertEquals(allowed.status, T.Status.Completed)
     assertEquals(allowed.commands, Vector(forward(1)))
-    val direct = T.invokeVm(program, R.MethodId(0), Vector(E.Value.IntValue(63)))
+    val direct = T.execute(program, T.Entry.Method(R.MethodId(0), Vector(E.Value.IntValue(63))))
     assertEquals(direct.status, T.Status.Completed)
     assertEquals(direct.commands, Vector(forward(1)))
     assertEquals(direct.steps, 703)
-    val rejected = T.invokeVm(program, R.MethodId(0), Vector(E.Value.IntValue(64)))
-    assertEquals(rejected, T.invoke(source, R.MethodId(0), Vector(E.Value.IntValue(64))))
+    val rejected = T.execute(program, T.Entry.Method(R.MethodId(0), Vector(E.Value.IntValue(64))))
+    assertEquals(rejected, T.execute(source, T.Entry.Method(R.MethodId(0), Vector(E.Value.IntValue(64)))))
     assertEquals(rejected.status, T.Status.LimitExceeded)
     assertEquals(rejected.commands, Vector.empty)
     assertEquals(rejected.steps, 705)
-    assertEquals(T.invokeVm(program, R.MethodId(0), Vector(E.Value.IntValue(63))), direct)
+    assertEquals(T.execute(program, T.Entry.Method(R.MethodId(0), Vector(E.Value.IntValue(63)))), direct)
   }
 
   test("Java recursion retains executed commands at budgets cancellation and errors") {
     val source = javaProgram("repeat(0);", "static void repeat(int n) { Turtle.forward(n); repeat(n + 1); }")
     val program = compiledJava(source)
     val arguments = Vector(E.Value.IntValue(0))
-    val commandLimit = T.invokeVm(program, R.MethodId(0), arguments, T.Limits(maxCommands = 2))
-    assertEquals(commandLimit, T.invoke(source, R.MethodId(0), arguments, T.Limits(maxCommands = 2)))
+    val commandLimit = T.execute(program, T.Entry.Method(R.MethodId(0), arguments), T.Limits(maxCommands = 2))
+    assertEquals(commandLimit, T.execute(source, T.Entry.Method(R.MethodId(0), arguments), T.Limits(maxCommands = 2)))
     assertEquals(commandLimit, T.Execution(T.Status.LimitExceeded, Vector(forward(0), forward(1)), 23))
-    val stepLimit = T.invokeVm(program, R.MethodId(0), arguments, T.Limits(maxSteps = 18))
+    val stepLimit = T.execute(program, T.Entry.Method(R.MethodId(0), arguments), T.Limits(maxSteps = 18))
     assertEquals(stepLimit, T.Execution(T.Status.LimitExceeded, Vector(forward(0), forward(1)), 18))
     var polls = 0
-    val cancelled = T.invokeVm(program, R.MethodId(0), arguments, isCancelled = () => { polls += 1; polls >= 19 })
+    val cancelled = T.execute(program, T.Entry.Method(R.MethodId(0), arguments), isCancelled = () => { polls += 1; polls >= 19 })
     assertEquals(cancelled, stepLimit.copy(status = T.Status.Cancelled))
     assertEquals(polls, 19)
-    assertEquals(T.invokeVm(program, R.MethodId(0), arguments, isCancelled = () => true),
+    assertEquals(T.execute(program, T.Entry.Method(R.MethodId(0), arguments), isCancelled = () => true),
       T.Execution(T.Status.Cancelled, Vector.empty, 0))
-    assertEquals(T.invokeVm(program, R.MethodId(0), arguments, T.Limits(maxCommands = 2)), commandLimit)
+    assertEquals(T.execute(program, T.Entry.Method(R.MethodId(0), arguments), T.Limits(maxCommands = 2)), commandLimit)
     val failedSource = javaProgram("fall(1);", """
       static void fall(int depth) {
         Turtle.forward(depth);
@@ -1418,8 +1418,8 @@ class BeExpressionLanguageSupportTest extends FunSuite {
         int invalid = 1 / 0;
       }
     """)
-    val failed = T.runVm(compiledJava(failedSource))
-    assertEquals(failed, T.run(failedSource))
+    val failed = T.execute(compiledJava(failedSource))
+    assertEquals(failed, T.execute(failedSource))
     assertEquals(failed.status, T.Status.Failed(T.Failure.Evaluation(E.Failure.DivisionByZero)))
     assertEquals(failed.commands, Vector(forward(1), forward(0)))
   }
@@ -1440,8 +1440,8 @@ class BeExpressionLanguageSupportTest extends FunSuite {
           counter.update(_ + 1)
           counter.now() >= cancelAt
         }
-        val normal = T.runVm(program, limit, () => poll(normalPolls))
-        val traced = T.runVmTraced(program, limit, () => poll(tracedPolls))
+        val normal = T.execute(program, limits = limit, isCancelled = () => poll(normalPolls))
+        val traced = T.executeTraced(program, limits = limit, isCancelled = () => poll(tracedPolls))
         assertEquals(traced.execution, normal)
         assertEquals(tracedPolls.now(), normalPolls.now())
         assert(traced.trace.events.forall(event => event.dependencies(true).forall(_ < event.id)))
@@ -1451,16 +1451,16 @@ class BeExpressionLanguageSupportTest extends FunSuite {
 
   test("Java trace nodes distinguish repeated source expressions and repeated executions") {
     val program = compiledJava(javaProgram("Turtle.forward(1); Turtle.forward(1);"))
-    val recorded = T.runVmTraced(program)
+    val recorded = T.executeTraced(program)
     val commands = turtleEvents(recorded.trace)
     assertEquals(commands.map(_.node.path), Vector(Vector("body", "0"), Vector("body", "1")))
     assertEquals(commands.map(_.node).distinct.size, 2)
     assertEquals(recorded.trace.events.map(_.id), recorded.trace.events.indices.toVector)
-    val repeated = T.runVmTraced(program)
+    val repeated = T.executeTraced(program)
     assertEquals(repeated.execution, recorded.execution)
     assertEquals(repeated.trace.events, recorded.trace.events)
     assertEquals(repeated.trace.truncated, recorded.trace.truncated)
-    assertEquals(T.runVm(program), recorded.execution)
+    assertEquals(T.execute(program), recorded.execution)
     assertEquals(recorded.trace.backwardSlice(-1), None)
     assertEquals(recorded.trace.backwardSlice(recorded.trace.events.size), None)
   }
@@ -1469,7 +1469,7 @@ class BeExpressionLanguageSupportTest extends FunSuite {
     Vector(false, true).foreach { prefix =>
       val update = if prefix then "++x" else "x++"
       val program = compiledJava(javaProgram(s"int x = 1; int y = $update; Turtle.forward(y); Turtle.forward(x);"))
-      val recorded = T.runVmTraced(program)
+      val recorded = T.executeTraced(program)
       assertEquals(recorded.execution.commands, Vector(forward(if prefix then 2 else 1), forward(2)))
       val writes = traceWrites(recorded.trace, "x")
       assertEquals(writes.size, 2)
@@ -1484,8 +1484,8 @@ class BeExpressionLanguageSupportTest extends FunSuite {
 
   test("Java compound assignment captures its old value before RHS updates") {
     val program = compiledJava(javaProgram("int x = 1; x += x++; Turtle.forward(x);"))
-    val recorded = T.runVmTraced(program)
-    assertEquals(recorded.execution, T.runVm(program))
+    val recorded = T.executeTraced(program)
+    assertEquals(recorded.execution, T.execute(program))
     assertEquals(recorded.execution.commands, Vector(forward(2)))
     val writes = traceWrites(recorded.trace, "x")
     assertEquals(writes.size, 3)
@@ -1499,7 +1499,7 @@ class BeExpressionLanguageSupportTest extends FunSuite {
 
   test("Java expression traces retain left to right reads across multiple updates") {
     val program = compiledJava(javaProgram("int x = 1; Turtle.forward(x++ + x++); Turtle.forward(x);"))
-    val recorded = T.runVmTraced(program)
+    val recorded = T.executeTraced(program)
     assertEquals(recorded.execution.commands, Vector(forward(3), forward(3)))
     val writes = traceWrites(recorded.trace, "x")
     val commands = turtleEvents(recorded.trace)
@@ -1516,8 +1516,8 @@ class BeExpressionLanguageSupportTest extends FunSuite {
       boolean b = false && x++ > 0;
       if (true || x++ > 0) { Turtle.forward(x); }
     """))
-    val recorded = T.runVmTraced(program)
-    assertEquals(recorded.execution, T.runVm(program))
+    val recorded = T.executeTraced(program)
+    assertEquals(recorded.execution, T.execute(program))
     assertEquals(recorded.execution.commands, Vector(forward(1)))
     assertEquals(traceWrites(recorded.trace, "x").size, 1)
     assertEquals(traceReads(recorded.trace, "x").size, 1)
@@ -1530,8 +1530,8 @@ class BeExpressionLanguageSupportTest extends FunSuite {
         Turtle.forward(n); draw(n - 1); Turtle.turnRight(n);
       }
     """))
-    val recorded = T.runVmTraced(program)
-    assertEquals(recorded.execution, T.runVm(program))
+    val recorded = T.executeTraced(program)
+    assertEquals(recorded.execution, T.execute(program))
     assertEquals(recorded.execution.commands, Vector(forward(2), forward(1), right(1), right(2)))
     val calls = recorded.trace.events.filter(_.kind.isInstanceOf[J.Kind.Call])
     val returns = recorded.trace.events.filter(_.kind.isInstanceOf[J.Kind.Return])
@@ -1542,8 +1542,8 @@ class BeExpressionLanguageSupportTest extends FunSuite {
       event.dataDependencies.foreach(id => assertEquals(indexed(id).invocation, event.invocation))
     }
     val method = program.root.methods.find(_.binding.originalName == "draw").get.binding.id
-    assertEquals(T.invokeVmTraced(program, method, Vector(E.Value.IntValue(2))).execution,
-      T.invokeVm(program, method, Vector(E.Value.IntValue(2))))
+    assertEquals(T.executeTraced(program, T.Entry.Method(method, Vector(E.Value.IntValue(2)))).execution,
+      T.execute(program, T.Entry.Method(method, Vector(E.Value.IntValue(2)))))
   }
 
   test("Java slices retain false early-return guards without unrelated overwritten writes") {
@@ -1554,7 +1554,7 @@ class BeExpressionLanguageSupportTest extends FunSuite {
         Turtle.forward(x);
       }
     """))
-    val recorded = T.runVmTraced(program)
+    val recorded = T.executeTraced(program)
     val slice = recorded.trace.backwardSlice(turtleEvents(recorded.trace).head.id).get
     assert(slice.events.exists(_.kind == J.Kind.Condition(false)))
     assert(!slice.events.exists(_.kind match {
@@ -1569,7 +1569,7 @@ class BeExpressionLanguageSupportTest extends FunSuite {
   test("Java trace reinitializes loop-local versions without changing the compiled source") {
     val source = javaProgram("for (int i = 0; i < 2; i++) { int x = i; Turtle.forward(x); }")
     val program = compiledJava(source)
-    val recorded = T.runVmTraced(program)
+    val recorded = T.executeTraced(program)
     val writes = traceWrites(recorded.trace, "x")
     assertEquals(writes.size, 2)
     assertEquals(writes.map(_.node).distinct.size, 1)
@@ -1581,12 +1581,12 @@ class BeExpressionLanguageSupportTest extends FunSuite {
     assert(!second(writes.head.id))
     assert(second(writes.last.id))
     assertEquals(program.bindings.source.source, source.source)
-    assertEquals(T.runVm(program), recorded.execution)
+    assertEquals(T.execute(program), recorded.execution)
   }
 
   test("Java slices include command and return order only when requested") {
     val program = compiledJava(javaProgram("draw(); Turtle.forward(2);", "static void draw() { Turtle.turnRight(90); }"))
-    val recorded = T.runVmTraced(program)
+    val recorded = T.executeTraced(program)
     val commands = turtleEvents(recorded.trace)
     val valueSlice = recorded.trace.backwardSlice(commands.last.id).get.events
     val orderedSlice = recorded.trace.backwardSlice(commands.last.id, includeOrder = true).get.events
@@ -1598,10 +1598,10 @@ class BeExpressionLanguageSupportTest extends FunSuite {
 
   test("Java trace saturation preserves execution and exposes only a bounded prefix") {
     val program = compiledJava(javaProgram("for (int i = 0; i < 4; i++) { Turtle.forward(i); }"))
-    val full = T.runVmTraced(program)
+    val full = T.executeTraced(program)
     Vector(J.Budget(maxEvents = 0), J.Budget(maxEvents = 3), J.Budget(maxDependencies = 0)).foreach { budget =>
-      val recorded = T.runVmTraced(program, budget = budget)
-      assertEquals(recorded.execution, T.runVm(program))
+      val recorded = T.executeTraced(program, budget = budget)
+      assertEquals(recorded.execution, T.execute(program))
       assertEquals(recorded.trace.events, full.trace.events.take(recorded.trace.events.size))
       assert(recorded.trace.truncated)
       assert(recorded.trace.events.size <= budget.maxEvents)
@@ -1615,12 +1615,12 @@ class BeExpressionLanguageSupportTest extends FunSuite {
 
   test("Java stopped traces do not invent returns or commands") {
     val program = compiledJava(javaProgram("again();", "static void again() { Turtle.forward(1); again(); }"))
-    val limited = T.runVmTraced(program, T.Limits(maxCallDepth = 2))
-    assertEquals(limited.execution, T.runVm(program, T.Limits(maxCallDepth = 2)))
+    val limited = T.executeTraced(program, limits = T.Limits(maxCallDepth = 2))
+    assertEquals(limited.execution, T.execute(program, limits = T.Limits(maxCallDepth = 2)))
     assertEquals(limited.trace.events.count(_.kind.isInstanceOf[J.Kind.Call]), 2)
     assert(!limited.trace.events.exists(_.kind.isInstanceOf[J.Kind.Return]))
     assertEquals(turtleEvents(limited.trace).size, limited.execution.commands.size)
-    val cancelled = T.runVmTraced(program, isCancelled = () => true)
+    val cancelled = T.executeTraced(program, isCancelled = () => true)
     assertEquals(cancelled.execution.status, T.Status.Cancelled)
     assertEquals(cancelled.execution.steps, 0)
     assertEquals(cancelled.trace.events, Vector.empty)
@@ -1629,15 +1629,15 @@ class BeExpressionLanguageSupportTest extends FunSuite {
 
   test("Java trace retains nonfinite intermediates and signed zero without emitting invalid motion") {
     val program = compiledJava(javaProgram("double x = 0.0 / 0.0; Turtle.forward(1); Turtle.forward(x);"))
-    val recorded = T.runVmTraced(program)
-    assertEquals(recorded.execution, T.runVm(program))
+    val recorded = T.executeTraced(program)
+    assertEquals(recorded.execution, T.execute(program))
     assertEquals(recorded.execution.commands, Vector(forward(1)))
     assertEquals(turtleEvents(recorded.trace).size, 1)
     assert(recorded.trace.events.exists(_.kind match {
       case J.Kind.Expression(E.Value.DoubleValue(value)) => value.isNaN
       case _ => false
     }))
-    val zero = T.runVmTraced(compiledJava(javaProgram("double x = -0.0; Turtle.forward(x);")))
+    val zero = T.executeTraced(compiledJava(javaProgram("double x = -0.0; Turtle.forward(x);")))
     assertEquals(1.0 / zero.execution.commands.head.value, Double.NegativeInfinity)
     assert(zero.trace.events.exists(_.kind match {
       case J.Kind.Read(_, E.Value.DoubleValue(value)) => 1.0 / value == Double.NegativeInfinity
@@ -1651,9 +1651,9 @@ class BeExpressionLanguageSupportTest extends FunSuite {
       Turtle.forward(depth); draw(depth - 1);
     }""")
     val program = compiledJava(resolved)
-    val recorded = T.runVmTraced(program)
+    val recorded = T.executeTraced(program)
     val located = locatedEvents(recorded, resolved.source)
-    assertEquals(recorded.execution, T.runVm(program))
+    assertEquals(recorded.execution, T.execute(program))
     val draw = program.root.methods.find(_.binding.originalName == "draw").get.binding.id
     val calls = located.filter(_.event.kind match { case J.Kind.Call(`draw`, _) => true; case _ => false })
     assertEquals(calls.map(_.text), Vector("draw(2);", "draw(depth - 1);", "draw(depth - 1);"))
@@ -1674,7 +1674,7 @@ class BeExpressionLanguageSupportTest extends FunSuite {
   test("Java implicit numeric widening maps both runtime levels to the actual source expression") {
     val resolved = javaProgram("double n = 1; n = 2; draw(3); Turtle.forward(n + 4);",
       "static void draw(double value) { Turtle.forward(value); }")
-    val recorded = T.runVmTraced(compiledJava(resolved))
+    val recorded = T.executeTraced(compiledJava(resolved))
     val located = locatedEvents(recorded, resolved.source)
     Vector(1, 2, 3, 4).foreach { number =>
       val integer = located.filter(_.event.kind == J.Kind.Expression(E.Value.IntValue(number)))
@@ -1690,9 +1690,9 @@ class BeExpressionLanguageSupportTest extends FunSuite {
   test("Java minimum integer grouping unary operators and parenthesized updates locate without invented nodes") {
     val resolved = javaProgram("int x = -2147483648; Turtle.forward((x)++); Turtle.forward(++(x)); Turtle.forward(-(-1));")
     val program = compiledJava(resolved)
-    val recorded = T.runVmTraced(program)
+    val recorded = T.executeTraced(program)
     val located = locatedEvents(recorded, resolved.source)
-    assertEquals(recorded.execution, T.runVm(program))
+    assertEquals(recorded.execution, T.execute(program))
     val minimum = located.find(event => event.event.node.path == Vector("body", "0", "initial")).get
     assertEquals(minimum.text, "-2147483648")
     assertEquals(minimum.event.kind, J.Kind.Expression(E.Value.IntValue(Int.MinValue)))
@@ -1705,23 +1705,23 @@ class BeExpressionLanguageSupportTest extends FunSuite {
   test("Java trace locations keep all for-header occurrences and locate an omitted condition at its loop") {
     val resolved = javaProgram("int n = 0; for (n = 0, n++; n < 2; n++, --n, n += 1) { Turtle.forward(n); }")
     val program = compiledJava(resolved)
-    val recorded = T.runVmTraced(program)
+    val recorded = T.executeTraced(program)
     val located = locatedEvents(recorded, resolved.source)
-    assertEquals(recorded.execution, T.runVm(program))
+    assertEquals(recorded.execution, T.execute(program))
     val writes = located.filter(event => event.event.kind.isInstanceOf[J.Kind.Write] &&
       (event.event.node.path.contains("init") || event.event.node.path.contains("update")))
     assertEquals(writes.map(_.text), Vector("n = 0", "n++", "n++", "--n", "n += 1"))
     val repeatedUpdates = writes.filter(_.text == "n++")
     assertEquals(repeatedUpdates.map(_.range).distinct.size, 2)
     val emptyCondition = javaProgram("for (;;) { return; }")
-    val emptyTrace = T.runVmTraced(compiledJava(emptyCondition))
+    val emptyTrace = T.executeTraced(compiledJava(emptyCondition))
     val conditions = locatedEvents(emptyTrace, emptyCondition.source).filter(_.event.kind == J.Kind.Condition(true))
     assertEquals(conditions.map(_.text), Vector("for (;;) { return; }"))
   }
 
   test("Java trace locations separate equal commands and exclude skipped short-circuit occurrences") {
     val resolved = javaProgram("int x = 1; boolean a = false && x++ > 0; boolean b = true || ++x > 0; Turtle.forward(x); Turtle.forward(x);")
-    val recorded = T.runVmTraced(compiledJava(resolved))
+    val recorded = T.executeTraced(compiledJava(resolved))
     val located = locatedEvents(recorded, resolved.source)
     Vector(Vector("body", "1", "initial", "1"), Vector("body", "2", "initial", "1")).foreach { skipped =>
       assert(!recorded.trace.events.exists(_.node.path.startsWith(skipped)), clue = skipped)
@@ -1736,7 +1736,7 @@ class BeExpressionLanguageSupportTest extends FunSuite {
 
   test("Java terminating for conditions remain located after the last command") {
     val resolved = javaProgram("for (int i = 0; i < 2; i++) { Turtle.forward(i); }")
-    val recorded = T.runVmTraced(compiledJava(resolved))
+    val recorded = T.executeTraced(compiledJava(resolved))
     assertEquals(recorded.execution.commands, Vector(forward(0), forward(1)))
     val conditions = locatedEvents(recorded, resolved.source).filter(_.event.kind.isInstanceOf[J.Kind.Condition])
     assertEquals(conditions.map(_.event.kind), Vector(J.Kind.Condition(true), J.Kind.Condition(true), J.Kind.Condition(false)))
@@ -1757,7 +1757,7 @@ class BeExpressionLanguageSupportTest extends FunSuite {
     Vector("\n", "\r\n", "\r").foreach { newline =>
       val source = Vector("/* 😀 */", "class Drawing {", "  public static void main(String[] args) {",
         "    int x = 1;", "    /* 😀 */ Turtle.forward(x + 1); Turtle.forward(x + 1);", "  }", "}").mkString(newline)
-      val recorded = T.runVmTraced(JavaTurtleCompiler.compile(source).toOption.get)
+      val recorded = T.executeTraced(JavaTurtleCompiler.compile(source).toOption.get)
       assertEquals(recorded.execution.commands, Vector(forward(2), forward(2)))
       val expressions = locatedEvents(recorded, source).filter(event =>
         event.event.kind == J.Kind.Expression(E.Value.IntValue(2)) && event.text == "x + 1")
@@ -1772,9 +1772,9 @@ class BeExpressionLanguageSupportTest extends FunSuite {
   test("Java prefix locations keep trace saturation failures and cancellation separate from lookup") {
     val resolved = javaProgram("Turtle.forward(1); int bad = 1 / 0;")
     val program = compiledJava(resolved)
-    val ordinary = T.runVm(program)
-    val traces = Vector(T.runVmTraced(program), T.runVmTraced(program, budget = J.Budget(maxEvents = 0)),
-      T.runVmTraced(program, budget = J.Budget(maxEvents = 3)), T.runVmTraced(program, isCancelled = () => true))
+    val ordinary = T.execute(program)
+    val traces = Vector(T.executeTraced(program), T.executeTraced(program, budget = J.Budget(maxEvents = 0)),
+      T.executeTraced(program, budget = J.Budget(maxEvents = 3)), T.executeTraced(program, isCancelled = () => true))
     traces.foreach { recorded =>
       val before = recorded.trace.events
       val locations = locatedEvents(recorded, resolved.source)
@@ -1790,7 +1790,7 @@ class BeExpressionLanguageSupportTest extends FunSuite {
       if before.isEmpty then assertEquals(recorded.trace.locatedSlice(0, resolved.source), None)
     }
     val polls = State(0)
-    val counted = T.runVmTraced(program, isCancelled = () => { polls.update(_ + 1); false })
+    val counted = T.executeTraced(program, isCancelled = () => { polls.update(_ + 1); false })
     val beforePolls = polls.now()
     locatedEvents(counted, resolved.source).foreach(event => counted.trace.locatedSlice(event.event.id, resolved.source))
     assertEquals(polls.now(), beforePolls)
@@ -1800,7 +1800,7 @@ class BeExpressionLanguageSupportTest extends FunSuite {
   test("Java trace provenance rejects stale sources and unknown ids but survives checked recompilation") {
     val resolved = javaProgram("int n = 1; Turtle.forward(n);")
     val program = compiledJava(resolved)
-    val recorded = T.runVmTraced(program)
+    val recorded = T.executeTraced(program)
     val locations = locatedEvents(recorded, resolved.source)
     val first = recorded.trace.events.head.id
     val stale = Vector(" " + resolved.source, resolved.source + " // note", resolved.source.replace("Drawing", "Another"),
@@ -1814,7 +1814,7 @@ class BeExpressionLanguageSupportTest extends FunSuite {
       assertEquals(recorded.trace.locatedSlice(id, resolved.source), None)
     }
     Vector(P.fromRoot(program.root), JavaTurtleCompiler.compile(resolved.source).toOption.get).foreach { compiled =>
-      val repeated = T.runVmTraced(compiled)
+      val repeated = T.executeTraced(compiled)
       assertEquals(repeated.execution, recorded.execution)
       assertEquals(locatedEvents(repeated, resolved.source).map(event => (event.range, event.text, event.start, event.end)),
         locations.map(event => (event.range, event.text, event.start, event.end)))
@@ -1848,8 +1848,8 @@ class BeExpressionLanguageSupportTest extends FunSuite {
       |""".stripMargin
     val prefix = "/* 😀 */\r\n  "
     val variant = prefix + source.replace("\n", "\r\n")
-    val original = T.runVmTraced(JavaTurtleCompiler.compile(source).toOption.get)
-    val transformed = T.runVmTraced(JavaTurtleCompiler.compile(variant).toOption.get)
+    val original = T.executeTraced(JavaTurtleCompiler.compile(source).toOption.get)
+    val transformed = T.executeTraced(JavaTurtleCompiler.compile(variant).toOption.get)
     assertEquals(original.execution.status, T.Status.Completed)
     assertEquals(transformed.execution, original.execution)
     assertEquals(transformed.trace.events, original.trace.events)
@@ -1875,7 +1875,7 @@ class BeExpressionLanguageSupportTest extends FunSuite {
     assert(exported.source.endsWith("        return _result(problem.status, problem.problem)\n"))
     assert(exported.source.linesIterator.forall(line => line.isEmpty || line.startsWith("    ") || line.startsWith("def ")))
     assertEquals(exported.methods, Map("draw" -> R.MethodId(0)))
-    assertEquals(T.runVm(program).commands, Vector(forward(5)))
+    assertEquals(T.execute(program).commands, Vector(forward(5)))
     assertEquals(Y.render(compiledJava(javaProgram(""))).methods, Map.empty[String, R.MethodId])
   }
 
@@ -2065,7 +2065,7 @@ class BeExpressionLanguageSupportTest extends FunSuite {
 
   test("Java expression observations distinguish real reads from update and assignment bookkeeping") {
     val program = compiledJava(javaProgram("int x=1; x += x++; Turtle.forward(x);"))
-    val recorded = T.runVmTraced(program)
+    val recorded = T.executeTraced(program)
     val observations = recorded.trace.completedExpressions.get
     assertEquals(observations.map(_.value), Vector(E.Value.IntValue(1), E.Value.IntValue(1), E.Value.IntValue(2)))
     assertEquals(observations.map(_.node.path), Vector(
@@ -2074,16 +2074,16 @@ class BeExpressionLanguageSupportTest extends FunSuite {
 
     val updateRead = recorded.trace.events.find(event => event.node.path == Vector("body", "1", "value") &&
       event.kind.isInstanceOf[J.Kind.Read]).get
-    val prefix = T.runVmTraced(program, budget = J.Budget(maxEvents = updateRead.id + 1))
+    val prefix = T.executeTraced(program, budget = J.Budget(maxEvents = updateRead.id + 1))
     assertEquals(prefix.trace.events.last, updateRead)
     assert(prefix.trace.truncated)
     assertEquals(prefix.trace.completedExpressions.get, observations.take(1))
-    assertEquals(T.runVmTraced(program, budget = J.Budget(maxEvents = 0)).trace.completedExpressions, Some(Vector.empty))
+    assertEquals(T.executeTraced(program, budget = J.Budget(maxEvents = 0)).trace.completedExpressions, Some(Vector.empty))
   }
 
   test("Java completed expression observations retain recursive invocation identity and source paths") {
     val resolved = javaProgram("draw(2);", "static void draw(int n){if(n==0){return;} Turtle.forward(n);draw(n-1);}")
-    val recorded = T.runVmTraced(compiledJava(resolved))
+    val recorded = T.executeTraced(compiledJava(resolved))
     val observations = recorded.trace.completedExpressions.get
     assertEquals(observations.map(_.invocation).distinct, Vector(0, 1, 2, 3))
     observations.foreach { observed =>
@@ -2095,7 +2095,7 @@ class BeExpressionLanguageSupportTest extends FunSuite {
         })).get
       assert(recorded.trace.locate(event.id, resolved.source).isDefined)
     }
-    assertEquals(T.runVmTraced(compiledJava(javaProgram(""))).trace.completedExpressions, Some(Vector.empty))
+    assertEquals(T.executeTraced(compiledJava(javaProgram(""))).trace.completedExpressions, Some(Vector.empty))
   }
 
   test("Java observed Python export is opt in and keeps the normal execution contract") {
@@ -2115,7 +2115,7 @@ class BeExpressionLanguageSupportTest extends FunSuite {
     assert(observed.source.contains("_invocation = _enter()"))
     assertEquals(normal.source.linesIterator.count(_.trim == "_gate()"),
       observed.source.linesIterator.count(_.trim == "_gate()"))
-    val observations = T.runVmTraced(program).trace.completedExpressions.get
+    val observations = T.executeTraced(program).trace.completedExpressions.get
     observations.foreach { observedValue =>
       val path = observedValue.node.path.map(part => ujson.write(ujson.Str(part))).mkString("(", ", ", ",)")
       val label = s"(${observedValue.node.method.index}, $path)"
@@ -2142,8 +2142,8 @@ class BeExpressionLanguageSupportTest extends FunSuite {
     val prepared = Evidence.prepare(program)
     val report = evidenceReport()
     val verified = prepared.verify(report.render(), prepared.context)
-    assertEquals(verified.execution, T.runVm(program))
-    assertEquals(verified.events, T.runVmTraced(program).trace.events)
+    assertEquals(verified.execution, T.execute(program))
+    assertEquals(verified.events, T.executeTraced(program).trace.events)
     verified.events.foreach { event =>
       assert(verified.locate(event.id, prepared.context).isDefined)
       assert(verified.locatedSlice(event.id, prepared.context).isDefined)
@@ -2247,17 +2247,17 @@ class BeExpressionLanguageSupportTest extends FunSuite {
   test("Java evidence preserves ordered repeated observations rather than their set") {
     val program = compiledJava(javaProgram("int n=0;while(n<2){Turtle.forward(1);n++;}"))
     val prepared = Evidence.prepare(program)
-    val report = evidenceFrom(T.runVmTraced(program))
+    val report = evidenceFrom(T.executeTraced(program))
     val observations = report("observations").arr.toVector
     assert(observations.distinct.size < observations.size)
-    assertEquals(prepared.verify(report.render(), prepared.context).execution, T.runVm(program))
+    assertEquals(prepared.verify(report.render(), prepared.context).execution, T.execute(program))
     val repeated = observations.indexWhere(value => observations.count(_ == value) > 1)
     val alterations = Vector(observations.reverse, observations.patch(repeated, Nil, 1),
       observations.patch(repeated, Vector(observations(repeated)), 0))
     alterations.foreach(values => intercept[IllegalArgumentException](prepared.verify(
       evidenceField(report, "observations", ujson.Arr.from(values)).render(), prepared.context)))
     val reorderedFields = ujson.Obj.from(report.obj.toVector.reverse)
-    assertEquals(prepared.verify(reorderedFields.render(), prepared.context).execution, T.runVm(program))
+    assertEquals(prepared.verify(reorderedFields.render(), prepared.context).execution, T.execute(program))
   }
 
   test("Java evidence verifies failed and limited prefixes without accepting a cancelled transcript") {
@@ -2266,7 +2266,7 @@ class BeExpressionLanguageSupportTest extends FunSuite {
       compiledJava(javaProgram("Turtle.forward(1);Turtle.forward(1.0/0.0);")) -> T.Limits(),
       compiledJava(javaProgram("while(true){Turtle.forward(1);}")) -> T.Limits(maxSteps = 30))
     programs.foreach { (program, limits) =>
-      val recorded = T.runVmTraced(program, limits)
+      val recorded = T.executeTraced(program, limits = limits)
       assert(recorded.execution.status != T.Status.Completed)
       val report = evidenceFrom(recorded)
       val prepared = Evidence.prepare(program, limits = limits)
@@ -2301,7 +2301,7 @@ class BeExpressionLanguageSupportTest extends FunSuite {
     val source = "class Drawing {\r\n// Maße 🐢\r\npublic static void main(String[] args) {\r\n" +
       "int x=2; double ratio=1.5; boolean ok=true; if(ok){Turtle.forward(x);}\r\n} }"
     val program = JavaTurtleCompiler.compile(source).fold(error => fail(error.message), identity)
-    val recorded = T.runVmTraced(program)
+    val recorded = T.executeTraced(program)
     val prepared = Evidence.prepare(program)
     val snapshot = prepared.verify(evidenceFrom(recorded).render(), prepared.context).snapshot
     val starts = Vector(source.indexOf("2"), source.indexOf("1.5"), source.indexOf("true"),
@@ -2325,7 +2325,7 @@ class BeExpressionLanguageSupportTest extends FunSuite {
       "static void draw(int x){x += x++; Turtle.forward(x);}"))
     val method = Y.render(program).methods("draw")
     val arguments = Vector(E.Value.IntValue(1))
-    val recorded = T.invokeVmTraced(program, method, arguments)
+    val recorded = T.executeTraced(program, T.Entry.Method(method, arguments))
     val prepared = Evidence.prepare(program, Some(method), arguments)
     val snapshot = prepared.verify(evidenceFrom(recorded).render(), prepared.context).snapshot
     assertEquals(snapshot.outcome, Evidence.Outcome.Completed)
@@ -2341,7 +2341,7 @@ class BeExpressionLanguageSupportTest extends FunSuite {
 
   test("Java snapshots keep complete expression sequences and distinguish execution outcomes") {
     val repeated = compiledJava(javaProgram("int n=0;while(n<40){Turtle.forward(n);n++;}"))
-    val recorded = T.runVmTraced(repeated)
+    val recorded = T.executeTraced(repeated)
     val prepared = Evidence.prepare(repeated)
     val snapshot = prepared.verify(evidenceFrom(recorded).render(), prepared.context).snapshot
     assert(snapshot.expressions.size > 64)
@@ -2355,7 +2355,7 @@ class BeExpressionLanguageSupportTest extends FunSuite {
       ("while(true){Turtle.forward(1);}", T.Limits(maxSteps = 30), Evidence.Outcome.LimitExceeded))
     cases.foreach { (body, limits, outcome) =>
       val program = compiledJava(javaProgram(body))
-      val recorded = T.runVmTraced(program, limits)
+      val recorded = T.executeTraced(program, limits = limits)
       val prepared = Evidence.prepare(program, limits = limits)
       val snapshot = prepared.verify(evidenceFrom(recorded).render(), prepared.context).snapshot
       assertEquals(snapshot.outcome, outcome)
@@ -2367,11 +2367,11 @@ class BeExpressionLanguageSupportTest extends FunSuite {
     val program = compiledJava(javaProgram("Turtle.forward(1);"))
     val invalidLimits = T.Limits(maxSteps = 0)
     val invalid = Evidence.prepare(program, limits = invalidLimits)
-    val invalidReport = evidenceFrom(T.runVmTraced(program, invalidLimits)).render()
+    val invalidReport = evidenceFrom(T.executeTraced(program, limits = invalidLimits)).render()
     intercept[IllegalArgumentException](invalid.verify(invalidReport, invalid.context).snapshot)
     val missingMethod = R.MethodId(999)
     val missing = Evidence.prepare(program, Some(missingMethod))
-    val missingReport = evidenceFrom(T.invokeVmTraced(program, missingMethod, Vector.empty)).render()
+    val missingReport = evidenceFrom(T.executeTraced(program, T.Entry.Method(missingMethod, Vector.empty))).render()
     intercept[IllegalArgumentException](missing.verify(missingReport, missing.context).snapshot)
   }
 
