@@ -5,19 +5,19 @@ import it.evadid.core.datastructures.state.observable.ObservableValue
 import it.evadid.core.datastructures.storage.remote.RemoteHistoryCache.*
 import it.evadid.util.logging.derived.SyncLogger
 import it.evadid.workbook.abstractions.InteractionFormat
-import it.evadid.workbook.interaction.sync.EventSyncStrategy
+import it.evadid.workbook.interaction.sync.{EventSyncStrategy, SyncSuccess}
 import it.evadid.workbook.interaction.variable.InteractionVariableHistory
-import it.evadid.workbook.interaction.variable.events.{InteractionEvent, InteractionEvents}
+import it.evadid.workbook.interaction.variable.events.{EventId, InteractionEvent, InteractionEvents}
 import java.time.LocalDateTime
 import scala.concurrent.{ExecutionContext, Future}
 import scala.util.{Failure, Try}
 
 /** Typed additive cache used by workbook synchronization.
   *
-  * A destination's known events come only from reads: a requested write is not evidence that the destination
-  * stored it. A store sends the strategy's selection minus the events already read from that destination and
-  * returns; the buffered writer merges repeated requests until it flushes. A later read (the periodic
-  * synchronization or an explicit sync) confirms what arrived, so lost writes stay unconfirmed and are resent.
+  * Each destination is tracked by the IDs of the immutable events it is known to hold. An event becomes known when a
+  * read returns it or when a committed write acknowledges it ([[SyncSuccess.elementsStored]]); a requested write
+  * alone is not evidence. A store sends the strategy's selection minus the known events; the buffered writer merges
+  * repeated requests until it flushes. Lost or failed writes stay unconfirmed and are resent.
   */
 final class RemoteHistoryCache[K, F <: InteractionFormat, RW <: RemoteHistoryReaderWriter[K, F]](
     syncLogger: SyncLogger, cacheStrategies: Map[RW, EventSyncStrategy],
@@ -29,10 +29,10 @@ final class RemoteHistoryCache[K, F <: InteractionFormat, RW <: RemoteHistoryRea
   val reports: ObservableValue[Map[K, CacheReportForKey[K, F, RW]]] = state.observable.deriveValue { current =>
     current.histories.map { (key, history) =>
       val known = current.destinations.flatMap((cache, values) => values.get(key).map(cache -> _))
-      def knownHistory(cache: RW): History = known.getOrElse(cache, RemoteHistoryValue.empty).history
-      val pending = cacheStrategies.map((cache, strategy) => cache -> missing(history, knownHistory(cache), strategy))
-      val required = history.latestAnswerEvents
-      val synced = cacheStrategies.keySet.filter(cache => required.subsetOf(knownHistory(cache).events.values))
+      def knownIds(cache: RW): Set[EventId] = known.get(cache).fold(Set.empty)(_.knownEventIds)
+      val pending = cacheStrategies.map((cache, strategy) => cache -> missing(history, knownIds(cache), strategy))
+      val required = history.latestAnswerEvents.map(_.eventId)
+      val synced = cacheStrategies.keySet.filter(cache => required.subsetOf(knownIds(cache)))
       key -> CacheReportForKey(key, history, known, pending, synced)
     }
   }
@@ -40,8 +40,17 @@ final class RemoteHistoryCache[K, F <: InteractionFormat, RW <: RemoteHistoryRea
   private def attempt[A](operation: => Future[A]): Future[A] = Try(operation).fold(Future.failed, identity)
   private def empty: History = InteractionVariableHistory(InteractionEvents.empty)
   private def later(a: Option[LocalDateTime], b: Option[LocalDateTime]): Option[LocalDateTime] = (a.toList ++ b).maxOption
-  private def missing(local: History, known: History, strategy: EventSyncStrategy): History =
-    InteractionVariableHistory(InteractionEvents(local.cleanWithStrategy(strategy).events.values -- known.events.values))
+  private def missing(local: History, known: Set[EventId], strategy: EventSyncStrategy): History =
+    InteractionVariableHistory(InteractionEvents(local.cleanWithStrategy(strategy).events.values.filterNot(event => known(event.eventId))))
+
+  /** Events are immutable; a received event whose ID names different local content is corrupt and left out. */
+  private def withoutConflicts(cache: RW, key: K, received: Seq[InteractionEvent[F]]): Set[InteractionEvent[F]] = {
+    val local = state.now().histories.get(key).fold(Map.empty[EventId, InteractionEvent[F]])(_.events.values.map(event => event.eventId -> event).toMap)
+    val (conflicting, accepted) = received.toSet.partition(event => local.get(event.eventId).exists(_ != event))
+    if conflicting.nonEmpty then syncLogger.logWarn(
+      s"Discarded ${conflicting.size} events from $cache whose IDs name different local events: ${conflicting.map(_.eventId).mkString(", ")}")
+    accepted
+  }
 
 
   def mergeLocal(histories: Map[K, History]): Unit = state.update(_.withLocalHistories(histories))
@@ -115,7 +124,7 @@ final class RemoteHistoryCache[K, F <: InteractionFormat, RW <: RemoteHistoryRea
         val received = keys.map { key =>
           val bounded = response.getOrElse(key, Nil).filter(event =>
             starting.forall(from => !event.timestamp.isBefore(from)) && !event.timestamp.isAfter(until))
-          key -> InteractionVariableHistory(InteractionEvents(bounded.toSet))
+          key -> InteractionVariableHistory(InteractionEvents(withoutConflicts(cache, key, bounded)))
         }.toMap
         state.update(withFetched(_, cache, received, completed, trackProgress, fullRead = starting.isEmpty))
         received
@@ -129,7 +138,7 @@ final class RemoteHistoryCache[K, F <: InteractionFormat, RW <: RemoteHistoryRea
     val remote = received.foldLeft(current.destinations(cache)) { case (values, (key, history)) =>
       val previous = values.getOrElse(key, RemoteHistoryValue.empty)
       values.updated(key, previous.copy(
-        history = previous.history.mergeWith(history),
+        knownEventIds = previous.knownEventIds ++ history.events.ids,
         fullFetchCompleted = if trackProgress && fullRead then later(previous.fullFetchCompleted, Some(completed)) else previous.fullFetchCompleted,
         fetchCompleted = if trackProgress then later(previous.fetchCompleted, Some(completed)) else previous.fetchCompleted,
         fetchedThrough = if trackProgress then later(previous.fetchedThrough, history.events.timestampLastChanged) else previous.fetchedThrough))
@@ -147,14 +156,14 @@ final class RemoteHistoryCache[K, F <: InteractionFormat, RW <: RemoteHistoryRea
     // Inputs belong to this request, even when the backing store defers its notification/update.
     val current = state.now().withLocalHistories(histories)
     val deltas = histories.keys.flatMap { key =>
-      val known = current.destinations(cache).getOrElse(key, RemoteHistoryValue.empty).history
+      val known = current.destinations(cache).get(key).fold(Set.empty)(_.knownEventIds)
       val delta = missing(current.histories(key), known, cacheStrategies(cache))
       Option.when(delta.events.values.nonEmpty)(key -> delta)
     }.toMap
     if deltas.isEmpty then Future.unit else {
       val written = cache.writer.writeAll(syncLogger, deltas)
       cache.writer.flush(syncLogger, forceFlush)
-      written.map(_ => ())
+      written.map(success => { state.update(_.withStored(cache, deltas.map((key, delta) => key -> delta.events.ids), success.elementsStored)); () })
     }
   }.andThen { case Failure(error) => syncLogger.logExceptionWarn(s"Could not store event histories for ${histories.size} keys", error) }
 
@@ -176,35 +185,42 @@ object RemoteHistoryCache {
       logger: SyncLogger, strategies: Map[RW, EventSyncStrategy]): RemoteHistoryCache[K, F, RW] =
     new RemoteHistoryCache(logger, strategies, State(CacheState.empty(strategies.keySet)))
 
-  case class RemoteHistoryValue[F <: InteractionFormat](
-      history: InteractionVariableHistory[F],
+  /** What one destination is known to hold for a key; the progress fields advance only with tracked reads. */
+  case class RemoteHistoryValue(
+      knownEventIds: Set[EventId],
       fetchCompleted: Option[LocalDateTime],
       fetchedThrough: Option[LocalDateTime],
       fullFetchCompleted: Option[LocalDateTime])
 
   object RemoteHistoryValue {
-    def empty[F <: InteractionFormat]: RemoteHistoryValue[F] =
-      RemoteHistoryValue(InteractionVariableHistory(InteractionEvents.empty), None, None, None)
+    val empty: RemoteHistoryValue = RemoteHistoryValue(Set.empty, None, None, None)
   }
 
   case class CacheState[K, F <: InteractionFormat, RW](
       histories: Map[K, InteractionVariableHistory[F]],
-      destinations: Map[RW, Map[K, RemoteHistoryValue[F]]]) {
+      destinations: Map[RW, Map[K, RemoteHistoryValue]]) {
     def withLocalHistories(incoming: Map[K, InteractionVariableHistory[F]]): CacheState[K, F, RW] =
       copy(histories = incoming.foldLeft(histories) { case (merged, (key, history)) =>
         merged.updated(key, merged.getOrElse(key, InteractionVariableHistory(InteractionEvents.empty[F])).mergeWith(history).cleanedHistory())
       })
+
+    /** Registers the sent events that a committed write acknowledged as stored. */
+    def withStored(cache: RW, sent: Map[K, Set[EventId]], stored: Set[EventId]): CacheState[K, F, RW] =
+      copy(destinations = destinations.updated(cache, sent.foldLeft(destinations(cache)) { case (values, (key, ids)) =>
+        val previous = values.getOrElse(key, RemoteHistoryValue.empty)
+        values.updated(key, previous.copy(knownEventIds = previous.knownEventIds ++ ids.intersect(stored)))
+      }))
   }
 
   object CacheState {
     def empty[K, F <: InteractionFormat, RW](destinations: Set[RW]): CacheState[K, F, RW] =
-      CacheState(Map.empty, destinations.map(_ -> Map.empty[K, RemoteHistoryValue[F]]).toMap)
+      CacheState(Map.empty, destinations.map(_ -> Map.empty[K, RemoteHistoryValue]).toMap)
   }
 
   case class CacheReportForKey[K, F <: InteractionFormat, RW](
       key: K,
       localHistory: InteractionVariableHistory[F],
-      lastKnownValues: Map[RW, RemoteHistoryValue[F]],
+      lastKnownValues: Map[RW, RemoteHistoryValue],
       pendingWrites: Map[RW, InteractionVariableHistory[F]],
       syncedDestinations: Set[RW])
 }

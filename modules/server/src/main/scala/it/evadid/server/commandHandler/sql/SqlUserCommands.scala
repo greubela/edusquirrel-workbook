@@ -12,7 +12,6 @@ import it.evadid.server.SendMailCommand.sendMail
 import it.evadid.sql.DatabaseConfigWithCredentials
 import it.evadid.util.JvmUtils
 import it.evadid.util.logging.Logger
-import it.evadid.workbook.interaction.sync.SyncSuccess
 
 import java.sql.{Connection, Timestamp}
 import java.time.LocalDateTime
@@ -201,7 +200,7 @@ class SqlUserCommands(
   }
 
 
-  def upsertToken(userId: String, token: SingleAccessToken): SyncSuccess = {
+  def upsertToken(userId: String, token: SingleAccessToken): Int = {
     val sql =
       s"""
          |INSERT INTO `loginTokens` (`userId`, `token`, `tokenExpires`)
@@ -216,8 +215,7 @@ class SqlUserCommands(
     stmt.setString(2, token.token)
     stmt.setTimestamp(3, Timestamp.valueOf(token.expires))
 
-    val res = generic.executeUpdate(stmt)
-    SyncSuccess(0, res, 0, LocalDateTime.now())
+    generic.executeUpdate(stmt)
   }
 
   def upsertUser(user: User, userConfig: UserConfig): Int = {

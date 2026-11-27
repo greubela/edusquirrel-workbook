@@ -7,7 +7,6 @@ import it.evadid.workbook.interaction.sync.destination.SyncDestinationDefinition
 import org.scalajs.dom
 import org.scalajs.dom.{IDBDatabase, IDBObjectStore, IDBTransaction, IDBTransactionMode}
 
-import java.time.LocalDateTime
 import scala.concurrent.{ExecutionContext, Future, Promise}
 import scala.scalajs.js
 import scala.util.{Failure, Success, Try}
@@ -18,53 +17,51 @@ object LocalIndexedDbStorageSyncHandler {
 
 case class LocalIndexedDbStorageSyncHandler(definition: LocalIndexedDbSyncDefinition) extends SyncDestinationHandler {
 
-  override def clearAll(logger: SyncLogger)(using ec: ExecutionContext): Future[SyncSuccess] =
-    // todo: count is transaction.. nervig
-    inTransaction[SyncSuccess](IDBTransactionMode.readwrite, "IndexedDB transaction aborted",
-      committed = Some(() => SyncSuccess(0, 0, 0, LocalDateTime.now()))) { (_, store, _) =>
-      store.clear()
+  override def clearAll(logger: SyncLogger)(using ec: ExecutionContext): Future[SyncSuccess[String]] =
+    inTransaction(IDBTransactionMode.readwrite, "IndexedDB clear transaction aborted") { (_, store) =>
+      val keys = store.getAllKeys()
+      onResult(keys) { all =>
+        store.clear()
+        SyncSuccess.removed(all.toSet.map(_.toString))
+      }
     }
 
-  override def removeKeyRaw(logger: SyncLogger, key: String)(using ec: ExecutionContext): Future[SyncSuccess] =
-    inTransaction[SyncSuccess](IDBTransactionMode.readwrite, "IndexedDB delete transaction aborted",
-      committed = Some(() => SyncSuccess(0, 0, 1, LocalDateTime.now()))) { (_, store, _) =>
-      store.delete(key)
-    }
-
-  override def storeElementRaw(logger: SyncLogger, key: String, value: String)(using ec: ExecutionContext): Future[SyncSuccess] =
-    inTransaction[SyncSuccess](IDBTransactionMode.readwrite, "IndexedDB write transaction aborted",
-      committed = Some(() => SyncSuccess(1, 0, 0, LocalDateTime.now()))) { (_, store, _) =>
-      store.put(record(key, value))
-    }
-
-  override def updateElementRaw(logger: SyncLogger, key: String, update: Option[String] => String)(using ec: ExecutionContext): Future[SyncSuccess] =
-    inTransaction[SyncSuccess](IDBTransactionMode.readwrite, s"IndexedDB update aborted for $key",
-      committed = Some(() => SyncSuccess(0, 1, 0, LocalDateTime.now()))) { (transaction, store, promise) =>
+  override def removeKeyRaw(logger: SyncLogger, key: String)(using ec: ExecutionContext): Future[SyncSuccess[String]] =
+    inTransaction(IDBTransactionMode.readwrite, "IndexedDB delete transaction aborted") { (_, store) =>
       val request = store.get(key)
-      request.onsuccess = (_: dom.Event) => {
-        try {
-          val previous = if js.isUndefined(request.result) then None else Some(storedValue(request.result))
-          store.put(record(key, update(previous)))
-        } catch case scala.util.control.NonFatal(error) =>
-          promise.tryFailure(error)
+      onResult(request) { result =>
+        store.delete(key)
+        SyncSuccess.removed(Set(key).filterNot(_ => js.isUndefined(result)))
+      }
+    }
+
+  override def updateElementRaw[R](logger: SyncLogger, key: String, update: Option[String] => (String, R))(using ec: ExecutionContext): Future[R] =
+    inTransaction(IDBTransactionMode.readwrite, s"IndexedDB update aborted for $key") { (transaction, store) =>
+      val request = store.get(key)
+      onResult(request) { result =>
+        val (value, outcome) = try update(if js.isUndefined(result) then None else Some(storedValue(result)))
+        catch case scala.util.control.NonFatal(error) =>
           transaction.abort()
+          throw error
+        store.put(record(key, value))
+        outcome
       }
     }
 
   override def readElementRaw(logger: SyncLogger, key: String)(using ec: ExecutionContext): Future[String] =
-    inTransaction[String](IDBTransactionMode.readonly, s"IndexedDB read aborted: $key") { (_, store, promise) =>
+    inTransaction(IDBTransactionMode.readonly, s"IndexedDB read aborted: $key") { (_, store) =>
       val request = store.get(key)
-      request.onsuccess = (_: dom.Event) => {
-        if (js.isUndefined(request.result)) promise.tryFailure(new NoSuchElementException(s"No IndexedDB value for $key"))
-        else promise.trySuccess(storedValue(request.result))
+      onResult(request) { result =>
+        if js.isUndefined(result) then throw new NoSuchElementException(s"No IndexedDB value for $key")
+        storedValue(result)
       }
-      request.onerror = (_: dom.Event) => promise.tryFailure(new RuntimeException(s"IndexedDB read failed: ${request.error.name}"))
     }
 
   override def underlyingDefinition: SyncDestinationDefinition = definition
 
   override def readDestinationRaw(logger: SyncLogger)(implicit ec: ExecutionContext): Future[Map[String, String]] =
-    inTransaction[Map[String, String]](IDBTransactionMode.readonly, "IndexedDB cursor transaction aborted") { (_, store, promise) =>
+    inTransaction(IDBTransactionMode.readonly, "IndexedDB cursor transaction aborted") { (_, store) =>
+      val promise = Promise[Map[String, String]]()
       // Use a cursor to step through the records asynchronously; each step installs the handler for the next one.
       val request = store.openCursor()
       def collect(entries: Map[String, String]): Unit =
@@ -84,6 +81,7 @@ case class LocalIndexedDbStorageSyncHandler(definition: LocalIndexedDbSyncDefini
       request.onerror = (_: dom.Event) => {
         promise.tryFailure(new RuntimeException(s"Cursor parsing failed: ${request.error.name}"))
       }
+      promise.future
     }
 
   /** Our store layout: 'id' (string key) -> 'value' (stringified data). */
@@ -91,24 +89,32 @@ case class LocalIndexedDbStorageSyncHandler(definition: LocalIndexedDbSyncDefini
 
   private def storedValue(result: Any): String = result.asInstanceOf[js.Dynamic].value.asInstanceOf[String]
 
-  /** Starts one transaction on the store. Its commit closes the database and, if `committed` is given, completes
-    * with that result; an abort closes the database and fails with `abortMessage`. `start` may complete earlier.
+  /** Completes with `handle(result)` inside the request's success callback, while the transaction is still active. */
+  private def onResult[T, A](request: dom.IDBRequest[?, T])(handle: T => A): Future[A] = {
+    val promise = Promise[A]()
+    request.onsuccess = (_: dom.Event) => promise.tryComplete(Try(handle(request.result)))
+    request.onerror = (_: dom.Event) => promise.tryFailure(new RuntimeException(s"IndexedDB request failed: ${request.error.name}"))
+    promise.future
+  }
+
+  /** Runs one transaction on the store. `start` issues its requests and yields their outcome, which is reported only
+    * once the transaction has committed; an abort fails with the outcome's error, else with `abortMessage`.
     */
-  private def inTransaction[A](mode: IDBTransactionMode, abortMessage: => String, committed: Option[() => A] = None)(
-      start: (IDBTransaction, IDBObjectStore, Promise[A]) => Unit)(using ExecutionContext): Future[A] =
+  private def inTransaction[A](mode: IDBTransactionMode, abortMessage: => String)(
+      start: (IDBTransaction, IDBObjectStore) => Future[A])(using ExecutionContext): Future[A] =
     openDatabase().flatMap { db =>
-      val promise = Promise[A]()
+      val committed = Promise[A]()
       val transaction = db.transaction(js.Array(definition.storeName), mode)
-      start(transaction, transaction.objectStore(definition.storeName), promise)
+      val outcome = Try(start(transaction, transaction.objectStore(definition.storeName))).fold(Future.failed, identity)
       transaction.oncomplete = (_: dom.Event) => {
         db.close()
-        committed.foreach(result => promise.trySuccess(result()))
+        committed.tryComplete(outcome.value.getOrElse(Failure(new IllegalStateException(s"$abortMessage: committed without a result"))))
       }
       transaction.onabort = (_: dom.Event) => {
         db.close()
-        promise.tryFailure(new RuntimeException(abortMessage))
+        committed.tryComplete(outcome.value.filter(_.isFailure).getOrElse(Failure(new RuntimeException(abortMessage))))
       }
-      promise.future
+      committed.future
     }
 
   // --- Helper: Open DB Connection wrapped in a Scala Future ---

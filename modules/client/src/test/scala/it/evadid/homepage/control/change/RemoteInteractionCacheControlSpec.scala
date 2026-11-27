@@ -27,7 +27,7 @@ import it.evadid.workbook.interaction.sync.*
 import it.evadid.workbook.interaction.sync.destination.SyncDestinationDefinition.*
 import it.evadid.workbook.interaction.sync.model.InteractionHistoryJson
 import it.evadid.workbook.interaction.variable.InteractionVariableHistory
-import it.evadid.workbook.interaction.variable.events.AnswerChangedEvent
+import it.evadid.workbook.interaction.variable.events.{AnswerChangedEvent, EventId}
 import it.evadid.workbook.meta.ExecutionContextInformation
 import scala.concurrent.{ExecutionContext, Future, Promise}
 import scala.scalajs.js
@@ -125,16 +125,15 @@ class RemoteInteractionCacheControlSpec extends EditorDomSuite {
           val request = read[BulkStoreToDbRequest](command.json)
           if failStores.now() then
             return ExecutionClientResponse.forError(times, SerializedException("retired write failed"), command)
-          database.store(request.databaseFormat, request.entries.map(entry => entry.syncContext -> entry.history))
+          val stored = database.store(request.databaseFormat, request.entries.map(entry => entry.syncContext -> entry.history))
           afterStore.now()()
-          ExecutionClientResponse.forValue(times, SyncSuccess.emptyNow(), command)
+          ExecutionClientResponse.forValue(times, stored, command)
         case name if name == resetUserHistoriesDbCommand.name =>
           val request = read[DeleteInDbRequest](command.json)
           assert(request.allWorkbooks)
           if failBlobReset.now() && request.databaseFormat == BlobFormat then
             return ExecutionClientResponse.forError(times, SerializedException("reset destination offline"), command)
-          database.delete(request)
-          ExecutionClientResponse.forValue(times, SyncSuccess.emptyNow(), command)
+          ExecutionClientResponse.forValue(times, database.delete(request), command)
         case other => throw IllegalArgumentException(s"Unexpected request: $other")
       }
     }
@@ -387,14 +386,14 @@ class RemoteInteractionCacheControlSpec extends EditorDomSuite {
   }
 
   /** Event ids each destination format received for each interaction key, from the recorded store commands. */
-  private def sentEventIds(fixture: Fixture): Map[(DatabaseHistoryFormat, String), Set[String]] =
+  private def sentEventIds(fixture: Fixture): Map[(DatabaseHistoryFormat, String), Set[EventId]] =
     fixture.storeRequests
       .flatMap(request => request.syncContexts.zip(request.histories).map((key, history) =>
         (request.databaseFormat, key.keyForSerialisation) -> history.typedAs(TextInteractionFormat).events.values.map(_.eventId)))
       .groupMapReduce(_._1)(_._2)(_ ++ _)
 
   /** Event ids each destination format holds for each interaction key. */
-  private def heldEventIds(fixture: Fixture): Map[(DatabaseHistoryFormat, String), Set[String]] =
+  private def heldEventIds(fixture: Fixture): Map[(DatabaseHistoryFormat, String), Set[EventId]] =
     fixture.database.rows.now().map { case ((format, key), history) =>
       (format, key.keyForSerialisation) -> history.typedAs(TextInteractionFormat).events.values.map(_.eventId)
     }
@@ -402,7 +401,7 @@ class RemoteInteractionCacheControlSpec extends EditorDomSuite {
   /** Every event of every local history, as each destination's strategy selects it, was either sent to that
     * destination in some store command or already held there (it was fetched from it) before the commands.
     */
-  private def assertEveryLocalEventSent(fixture: Fixture, heldBefore: Map[(DatabaseHistoryFormat, String), Set[String]]): Unit = {
+  private def assertEveryLocalEventSent(fixture: Fixture, heldBefore: Map[(DatabaseHistoryFormat, String), Set[EventId]]): Unit = {
     val sent = sentEventIds(fixture)
     for
       information <- fixture.user.config.syncDestinations
@@ -724,7 +723,7 @@ class RemoteInteractionCacheControlSpec extends EditorDomSuite {
                 assertEquals(summary.now().confirmed, 0)
                 newGate.release()
                 replacement.flatMap { _ =>
-                  assertEquals(report.now().get.destinationsWithSufficientWrites.size, 0, "written, but not read back yet")
+                  assertEquals(report.now().get.destinationsWithSufficientWrites.size, 2, "the replacement's own acknowledgments confirm")
                   fixture.info.syncControl.fetchAll(true)
                 }.map { _ =>
                   assertEquals(report.now().get.destinationsWithSufficientWrites.size, 2)

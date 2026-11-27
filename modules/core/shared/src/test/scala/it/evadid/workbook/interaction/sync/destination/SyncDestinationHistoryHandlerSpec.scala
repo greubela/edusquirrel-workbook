@@ -32,15 +32,25 @@ class SyncDestinationHistoryHandlerSpec extends FunSuite {
       Future.successful(values.now())
     }
     def readElement(key: String)(implicit ec: ExecutionContext): Future[String] = Future.successful(values.now()(key))
-    def storeElement(key: String, value: String)(implicit ec: ExecutionContext): Future[SyncSuccess] = Future.successful(SyncSuccess.emptyNow())
-    def updateElement(key: String, update: Option[String] => String)(using ec: ExecutionContext): Future[SyncSuccess] = Future {
-      values.update(current => current.updated(key, update(current.get(key))))
-      SyncSuccess.emptyNow()
+    def storeElement(key: String, value: String)(implicit ec: ExecutionContext): Future[SyncSuccess[String]] =
+      updateElement(key, previous => value -> SyncSuccess.written(key, previous, value))
+    def updateElement[R](key: String, update: Option[String] => (String, R))(using ec: ExecutionContext): Future[R] = Future {
+      synchronized { // atomic, like the browser stores
+        val (value, result) = update(values.now().get(key))
+        values.update(_.updated(key, value))
+        result
+      }
     }
-    def clearValue(key: String)(implicit ec: ExecutionContext): Future[SyncSuccess] = Future.successful(SyncSuccess.emptyNow())
-    def clearAll()(implicit ec: ExecutionContext): Future[SyncSuccess] = {
+    def clearValue(key: String)(implicit ec: ExecutionContext): Future[SyncSuccess[String]] = {
+      val removed = values.now().keySet.intersect(Set(key))
+      values.update(_ - key)
+      Future.successful(SyncSuccess.removed(removed))
+    }
+    def clearAll()(implicit ec: ExecutionContext): Future[SyncSuccess[String]] = {
+      val removed = values.now().keySet
+      values.set(Map.empty)
       cleared.success(())
-      Future.successful(SyncSuccess.emptyNow())
+      Future.successful(SyncSuccess.removed(removed))
     }
   }
 
@@ -78,7 +88,39 @@ class SyncDestinationHistoryHandlerSpec extends FunSuite {
   }
   test("full local reset clears corrupt records without decoding histories or keys") {
     val destination = new Destination(Map("unreadable key" -> "invalid JSON"), prohibitReads = true)
-    destination.forHistory().clearAllHistories(context).map(_ => assert(destination.cleared.isCompleted))
+    destination.forHistory().clearAllHistories(context).map { result =>
+      assert(destination.cleared.isCompleted)
+      assertEquals(result.elementsRemoved, Set.empty[SyncContext], "only history keys are reported")
+    }
+  }
+
+  test("local stores confirm the sent events they hold after merging, distinguishing new from known events") {
+    import it.evadid.workbook.interaction.variable.events.*
+    val handler = new Destination(Map.empty).forHistory()
+    def answer(value: String, importance: UpdateImportance, offset: Long): InteractionEvent[textFormat.type] =
+      AnswerChangedEvent[textFormat.type](value, at.plusSeconds(offset), importance)
+    def json(events: InteractionEvent[textFormat.type]*): String =
+      InteractionHistoryJson.fromHistory(textFormat, InteractionVariableHistory(InteractionEvents(events.toSet))).serialized
+    val first = answer("first", UpdateImportance.MAJOR, 1)
+    val superseded = answer("draft", UpdateImportance.TEMPORARY, 2)
+    val latest = answer("latest", UpdateImportance.MAJOR, 3)
+    handler.storeHistoryJson(key, json(first)).flatMap { stored =>
+      assertEquals((stored.elementsAdded, stored.elementsUnchanged), (Set(first.eventId), Set.empty[EventId]))
+      handler.storeHistoryJson(key, json(first, superseded, latest))
+    }.map { stored =>
+      assertEquals(stored.elementsAdded, Set(latest.eventId))
+      assertEquals(stored.elementsUnchanged, Set(first.eventId))
+      assert(!stored.elementsStored.contains(superseded.eventId), "the cleaned merge did not keep the temporary answer")
+    }
+  }
+
+  test("local removal reports the removed history contexts") {
+    val other = context.toSyncContext("other")
+    val handler = new Destination(Map(SyncContext.serializer.serialize(key) -> history, SyncContext.serializer.serialize(other) -> history)).forHistory()
+    handler.clearValue(key).flatMap { removed =>
+      assertEquals(removed.elementsRemoved, Set(key))
+      handler.clearAllHistories(context)
+    }.map(removed => assertEquals(removed.elementsRemoved, Set(other)))
   }
 
 }

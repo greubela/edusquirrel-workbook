@@ -31,7 +31,7 @@ class RelationalHistoryStorage(connection: Connection, logger: Logger) extends H
     case _: ScaffoldingEvent[F] => "scaffolding_event"
   }
 
-  def store(request: StoreToDbRequest): SyncSuccess = transaction {
+  def store(request: StoreToDbRequest): SyncSuccess[EventId] = transaction {
     val context = request.syncContext
     val format = request.history.format
     val history = request.history.typedAs[format.type](format)
@@ -40,20 +40,20 @@ class RelationalHistoryStorage(connection: Connection, logger: Logger) extends H
       (identity :+ format.name)*)
     val (sync, savedFormat) = query("SELECT id,format FROM sync_context_id WHERE program_id=? AND scenario_id=? AND user_id=? AND variable_id=? FOR UPDATE", identity)(row => row.getLong(1) -> row.getString(2)).head
     require(InteractionFormat.fromName(savedFormat) == format, s"History format cannot change for ${context.keyForSerialisation}")
-    val written = history.events.values.toList.map(event => storeEvent[format.type](sync, format)(event)).sum
-    SyncSuccess(0, written, 0, LocalDateTime.now())
+    history.events.values.toList.map(event => storeEvent[format.type](sync, format)(event))
+      .foldLeft(SyncSuccess.emptyNow[EventId]())(_.combine(_))
   }
 
-  private def storeEvent[F <: InteractionFormat](sync: Long, format: F)(event: InteractionEvent[F]): Int = {
+  /** Events are immutable: a stored equal event is confirmed unchanged, a different one under its ID is rejected. */
+  private def storeEvent[F <: InteractionFormat](sync: Long, format: F)(event: InteractionEvent[F]): SyncSuccess[EventId] = {
     val table = tableFor(event)
-    val serialized = InteractionFormat.codecsFor(format).eventSerializer.serialize(event)
-    val eventId = event.eventId
+    val codec = InteractionFormat.codecsFor(format).eventSerializer
+    val eventId = event.eventId.value
     val existing = query(s"SELECT serialized_data FROM $table WHERE sync_id=? AND event_id=?", List(sync, eventId))(_.getString(1)).headOption
-    if existing.exists(saved => ujson.read(saved) == ujson.read(serialized)) then 0 else {
-      update(s"INSERT INTO $table (sync_id,event_id,timestamp_nano,serialized_data) VALUES (?,?,?,?) ON DUPLICATE KEY UPDATE timestamp_nano=VALUES(timestamp_nano),serialized_data=VALUES(serialized_data)",
-        sync, eventId, timestampText(event.timestamp), serialized)
-      1
-    }
+    existing.foreach(saved => require(codec.deserialize(saved) == event, s"Event $eventId is immutable but was sent with different content"))
+    if existing.isEmpty then update(s"INSERT INTO $table (sync_id,event_id,timestamp_nano,serialized_data) VALUES (?,?,?,?)",
+      sync, eventId, timestampText(event.timestamp), codec.serialize(event))
+    SyncSuccess.immutable(Set(event.eventId), existing.map(_ => event.eventId).toSet, Set(event.eventId))
   }
 
   /** Stored contexts as (sync id, format name); their events are read by the per-record read rule. */
@@ -81,7 +81,7 @@ class RelationalHistoryStorage(connection: Connection, logger: Logger) extends H
         val eventId = row.getString("event_id")
         scala.util.Try {
           val event = InteractionFormat.codecsFor(format).eventSerializer.deserialize(row.getString("serialized_data"))
-          require(eventId == event.eventId, "Stored event_id must match the serialized client eventId")
+          require(eventId == event.eventId.value, "Stored event_id must match the serialized client eventId")
           require(row.getString("timestamp_nano") == timestampText(event.timestamp),
             "timestamp_nano must match the serialized event as canonical ISO 8601 with nanosecond precision")
           require(table == tableFor(event), "Event stored in the wrong table")
@@ -105,12 +105,5 @@ class RelationalHistoryStorage(connection: Connection, logger: Logger) extends H
       (key, error) => logger.logExceptionWarn(s"Discarded the unreadable history of ${key.keyForSerialisation}", error)))
   }
 
-  def delete(request: DeleteInDbRequest): SyncSuccess = transaction {
-    val context = request.usageContext
-    val scenario = if request.allWorkbooks then "" else " AND scenario_id=?"
-    val limit = request.limitToKey.map(_ => " AND variable_id=?").getOrElse("")
-    val parameters = List(context.programId, context.userId) ++ Option.unless(request.allWorkbooks)(context.scenarioId).toList ++ request.limitToKey.toList
-    val removed = update("DELETE FROM sync_context_id WHERE program_id=? AND user_id=?" + scenario + limit, parameters*)
-    SyncSuccess(0, 0, removed, LocalDateTime.now())
-  }
+  def delete(request: DeleteInDbRequest): SyncSuccess[SyncContext] = deleteMatching("sync_context_id", request)
 }

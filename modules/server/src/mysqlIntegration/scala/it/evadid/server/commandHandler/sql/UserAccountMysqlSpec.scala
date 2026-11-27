@@ -258,7 +258,7 @@ class UserAccountMysqlSpec extends FunSuite {
     val disabled = ExecutionCommandFactory[String, String]("disabled", storeLogIntoTable = None)
     val result = SqlLogCommands(null, logger).logCommand(LocalDateTime.now(), ExecutionCommand(disabled.name, ujson.Obj()),
       None, InetAddress.getLoopbackAddress, disabled.storeLogIntoTable)
-    assertEquals(result.elementsAdded, 0)
+    assertEquals(result, 0)
     assertEquals(logRows("commandLog").size, 1)
     assertEquals(logRows("syncedLog"), Nil)
   }
@@ -272,7 +272,7 @@ class UserAccountMysqlSpec extends FunSuite {
         val command = ExecutionCommand(definition.name, ujson.Obj("event" -> "custom"))
         val result = SqlLogCommands(connection, logger).logCommand(LocalDateTime.now(), command,
           None, InetAddress.getByName("192.0.2.1"), definition.storeLogIntoTable)
-        assertEquals(result.elementsAdded, 1)
+        assertEquals(result, 1)
         assertEquals(logRows("customCommandLog").map(_.take(3)),
           List(List(definition.name, User.Anonymous.id, "192.0.2.1")))
         assertEquals(logRows("commandLog"), Nil)

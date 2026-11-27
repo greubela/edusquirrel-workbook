@@ -174,7 +174,7 @@ class DatabaseHistoryRoundTripSpec extends FunSuite {
         assertEquals(session.reports.now().get(key).pendingWrites(target).events.values.size, 1)
         database.offline.set(false)
         session.storeAll().flatMap { _ =>
-          assertEquals(session.reports.now().get(key).syncedDestinations, Set.empty, "written, but not read back yet")
+          assertEquals(session.reports.now().get(key).syncedDestinations, Set(target), "the committed acknowledgment confirms the write")
           session.fetchAll(Set(key))
         }.map { restored =>
           assertEquals(restored(key).map(_.associatedState), Seq("offline"))

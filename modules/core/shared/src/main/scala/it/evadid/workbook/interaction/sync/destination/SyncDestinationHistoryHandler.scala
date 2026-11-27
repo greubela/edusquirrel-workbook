@@ -6,11 +6,11 @@ import it.evadid.workbook.abstractions.InteractionFormat
 import it.evadid.workbook.interaction.sync.model.{FetchResponse, InteractionHistoryJson}
 import it.evadid.workbook.interaction.sync.{EventSyncStrategy, SyncContext, SyncSuccess, UsageContext}
 import it.evadid.workbook.interaction.variable.{InteractionVariable, InteractionVariableHistory}
+import it.evadid.workbook.interaction.variable.events.EventId
 import upickle.default.*
 
 import java.time.LocalDateTime
 import scala.concurrent.{ExecutionContext, Future}
-import scala.util.{Failure, Success}
 
 trait SyncDestinationHistoryHandler {
 
@@ -18,18 +18,18 @@ trait SyncDestinationHistoryHandler {
 
   def definition: SyncDestinationDefinition
 
-  def clearValue(context: SyncContext)(implicit ec: ExecutionContext): Future[SyncSuccess]
+  def clearValue(context: SyncContext)(implicit ec: ExecutionContext): Future[SyncSuccess[SyncContext]]
 
-  def clearValues(context: UsageContext)(implicit ec: ExecutionContext): Future[SyncSuccess]
+  def clearValues(context: UsageContext)(implicit ec: ExecutionContext): Future[SyncSuccess[SyncContext]]
 
   /** Full user reset across workbooks; local answer stores are cleared completely. */
-  def clearAllHistories(context: UsageContext)(using ExecutionContext): Future[SyncSuccess]
+  def clearAllHistories(context: UsageContext)(using ExecutionContext): Future[SyncSuccess[SyncContext]]
 
-  def storeHistoryJson(syncContext: SyncContext, historyJson: String)(implicit ec: ExecutionContext): Future[SyncSuccess]
+  /** The result names the sent events that are stored once the write has committed. */
+  def storeHistoryJson(syncContext: SyncContext, historyJson: String)(implicit ec: ExecutionContext): Future[SyncSuccess[EventId]]
 
-  def storeHistoriesJson(contextJsonMap: Map[SyncContext, String])(implicit ec: ExecutionContext): Future[SyncSuccess] = {
-    Future.traverse(contextJsonMap.toList)(storeHistoryJson).map(_.fold(SyncSuccess.emptyNow())(_.combine(_)))
-  }
+  def storeHistoriesJson(contextJsonMap: Map[SyncContext, String])(implicit ec: ExecutionContext): Future[SyncSuccess[EventId]] =
+    Future.traverse(contextJsonMap.toList)(storeHistoryJson).map(_.foldLeft(SyncSuccess.emptyNow[EventId]())(_.combine(_)))
 
   def flush(forceFlush: Boolean): Unit = {}
 
@@ -83,23 +83,23 @@ object SyncDestinationHistoryHandler {
 
       override def definition: SyncDestinationDefinition = basic.underlyingDefinition
 
-      override def clearAllHistories(context: UsageContext)(using ExecutionContext): Future[SyncSuccess] = basic.clearAll()
+      override def clearAllHistories(context: UsageContext)(using ExecutionContext): Future[SyncSuccess[SyncContext]] =
+        basic.clearAll().map(_.collect(Function.unlift(key => SyncContext.serializer.tryDeserialize(key).toOption)))
 
-      override def clearValue(context: SyncContext)(implicit ec: ExecutionContext): Future[SyncSuccess] = typed.clearValue(context)
+      override def clearValue(context: SyncContext)(implicit ec: ExecutionContext): Future[SyncSuccess[SyncContext]] = typed.clearValue(context)
 
-      override def clearValues(context: UsageContext)(implicit ec: ExecutionContext): Future[SyncSuccess] = readHistoriesJson(context).flatMap(response => {
-        val containedKeys = response.fetchedValues.map(_.dataKey).filter(cur => cur.programId == context.programId && cur.scenarioId == context.scenarioId && cur.userId == context.userId)
-        Future.traverse(containedKeys)(clearValue).map(_ => SyncSuccess(0, 0, containedKeys.size, LocalDateTime.now()))
-      })
+      override def clearValues(context: UsageContext)(implicit ec: ExecutionContext): Future[SyncSuccess[SyncContext]] = readHistoriesJson(context).flatMap(response =>
+        Future.traverse(response.fetchedValues.map(_.dataKey))(clearValue).map(_.foldLeft(SyncSuccess.emptyNow[SyncContext]())(_.combine(_))))
 
-      override def storeHistoryJson(context: SyncContext, json: String)(using ec: ExecutionContext): Future[SyncSuccess] = {
+      override def storeHistoryJson(context: SyncContext, json: String)(using ec: ExecutionContext): Future[SyncSuccess[EventId]] = {
         scala.util.Try(InteractionHistoryJson.deserialize(json)).fold(Future.failed, incoming =>
           basic.updateElement(SyncContext.serializer.serialize(context), previous => {
             val saved = previous.flatMap(value => scala.util.Try(InteractionHistoryJson.deserialize(value)).fold(error => {
               syncLogger.logExceptionWarn("Discarding malformed stored interaction history", error)
               None
             }, Some(_)))
-            saved.fold(incoming)(_.merge(incoming)).serialized
+            val merged = saved.fold(incoming)(_.merge(incoming))
+            merged.serialized -> SyncSuccess.immutable(incoming.eventIds, saved.fold(Set.empty)(_.eventIds), merged.eventIds)
           }))
       }
 

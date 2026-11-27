@@ -131,7 +131,7 @@ class InteractionVariableHistorySpec extends FunSuite {
     assertEquals(rebuilt.scaffoldingForState("b"), built.scaffoldingForState("b"))
   }
 
-  test("merging is idempotent, commutative and associative for distinct events; an incoming event replaces its id") {
+  test("merging is idempotent, commutative and associative; a different event under a known id is rejected") {
     val a = history(answer("a", 1), gradingDone("a", 2))
     val b = history(answer("b", 3), hintStarted("b", 4))
     val c = history(answer("c", 5, MAJOR))
@@ -143,7 +143,7 @@ class InteractionVariableHistorySpec extends FunSuite {
     assertEquals((merged.size, merged.timestampLastChanged), (5, Some(t(5))))
     val original = AnswerChangedEvent[F]("draft", t(1), MINOR)
     val revised = original.copy[F](newState = "revised")
-    assertEquals(history(original).mergeWith(history(revised)).allStates.map(_.newState), Set("revised"))
+    intercept[IllegalArgumentException](history(original).mergeWith(history(revised)))
     assertEquals(history().timestampLastChanged, None)
   }
 

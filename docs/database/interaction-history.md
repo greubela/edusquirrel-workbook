@@ -11,9 +11,9 @@ registries. See [formats and event semantics](../interaction-format.md).
 | --- | --- |
 | [HomepageSignalInfo](../../modules/client/src/main/scala/it/evadid/homepage/control/info/HomepageSignalInfo.scala) | Derives the workbook/user/destination/credential environment |
 | [RemoteInteractionCacheControl](../../modules/client/src/main/scala/it/evadid/homepage/control/change/RemoteInteractionCacheControl.scala) | Replaces bindings, restores fetched answers, batches phases and owns user-scoped reset progress |
-| [RemoteHistoryCache](../../modules/core/shared/src/main/scala/it/evadid/core/datastructures/storage/remote/RemoteHistoryCache.scala) | Immutable `CacheState`: local histories and per-location confirmed events, read freshness and cursors |
+| [RemoteHistoryCache](../../modules/core/shared/src/main/scala/it/evadid/core/datastructures/storage/remote/RemoteHistoryCache.scala) | Immutable `CacheState`: local histories and per-location known event IDs, read freshness and cursors |
 | [FormattedSyncDestination](../../modules/core/shared/src/main/scala/it/evadid/workbook/interaction/sync/FormattedSyncDestination.scala) | Converts typed histories to/from envelopes at a destination boundary |
-| [BufferedSyncDestinationHandler](../../modules/core/shared/src/main/scala/it/evadid/workbook/interaction/sync/destination/BufferedSyncDestinationHandler.scala) | Merges queued deltas per context, serializes batches and completes their result futures |
+| [BufferedSyncDestinationHandler](../../modules/core/shared/src/main/scala/it/evadid/workbook/interaction/sync/destination/BufferedSyncDestinationHandler.scala) | Merges queued deltas per context, serializes batches and gives each caller the confirmations of its own events |
 | [DatabaseSyncViaBackendServerHandler](../../modules/client/src/main/scala/it/evadid/homepage/workbook/syncDestination/DatabaseSyncViaBackendServerHandler.scala) | Sends database commands using captured credentials and connection configuration |
 | [BackendCommandHandler](../../modules/server/src/main/scala/it/evadid/server/BackendCommandHandler.scala) | Decodes typed requests and authorizes every context |
 | [Server history handlers](../../modules/server/src/main/scala/it/evadid/server/commandHandler/sql/sync/) | `UpsertToDatabase`, `FetchFromDatabase` and `DeleteInDatabase` dispatch to the selected layout; `HistorySql` owns transactions, typed JDBC parameters and resource cleanup |
@@ -49,12 +49,18 @@ TEMPORARY answers do not accumulate. IndexedDB merges within one read-write
 transaction. Malformed local records are excluded individually; malformed backend
 requests or persisted database events fail explicitly.
 
-A destination's known events come only from reads: a requested or acknowledged
-write is not evidence that it was stored. A store sends the strategy's selection
-minus the events read from that destination and returns; the buffered handler
-merges repeated requests until it flushes, and lost writes are resent. The periodic
-synchronization's next read, or an explicit sync from the sync icon (commit the
-current answer as MAJOR, store, flush, read), confirms them. History updates schedule
+Each destination is tracked by the IDs of the events it is known to hold: those a
+read returned or a committed write acknowledged.
+[`SyncSuccess[T]`](../../modules/core/shared/src/main/scala/it/evadid/workbook/interaction/sync/SyncSuccess.scala)
+names the added, changed, unchanged and removed elements (`EventId`s for history
+stores, `SyncContext`s for removals, keys for raw key-value stores); its
+`elementsStored` were present at commit. A requested write alone is not evidence.
+A store sends the strategy's selection minus the known events; the buffered handler
+merges repeated requests until it flushes and gives each caller the confirmations of
+its own events. Failed or unacknowledged writes are resent. Acknowledgments do not
+advance read cursors or freshness; a read event whose ID names different local
+content is discarded. An explicit sync from the sync icon commits the current answer
+as MAJOR, stores, flushes and reads. History updates schedule
 their store after the current task; a replaced binding runs its pending stores
 before its final flush. Normal reads replay the last received timestamp inclusively. A poll performs a
 full refresh once the last full read is five minutes old, also recovering late
@@ -76,9 +82,10 @@ until it is committed.
 Identity is `(programId, scenarioId, userId, keyForSerialisation)`. The format is
 metadata, not part of the unique key. Changing it is rejected even if the two
 formats share a JSON schema. Case and trailing spaces are significant; numeric
-row IDs stay on the server. Each event receives a client-generated UUID once;
-serialization, copies and retries preserve it. Both layouts merge by this ID.
-Relational writes upsert `(sync_id, event_id)`, preserving the internal row ID.
+row IDs stay on the server. Each event receives a client-generated `EventId` once;
+serialization, copies and retries preserve it, and the event is immutable. Both
+layouts confirm a replayed equal event as unchanged and reject a request that sends
+different content under a stored ID; relational rows are unique per `(sync_id, event_id)`.
 Timestamps are never adjusted to manufacture uniqueness: distinct same-time events
 survive, while replaying an event cannot create another row. Saved events without
 an ID are unsupported. History storage grows as new events are recorded; transmission strategies do not provide deletion or retention policies.
@@ -119,11 +126,12 @@ import it.evadid.sql.BackendDatabase
 import it.evadid.sql.DatabaseHistoryFormat.BlobFormat
 import it.evadid.workbook.interaction.sync.{SyncSuccess, UsageContext}
 import it.evadid.workbook.interaction.sync.model.InteractionHistoryJson
+import it.evadid.workbook.interaction.variable.events.EventId
 import scala.concurrent.{ExecutionContext, Future}
 
 def storePair(backend: ExecutionClient, context: UsageContext,
     first: InteractionHistoryJson, second: InteractionHistoryJson)
-    (using ExecutionContext): Future[SyncSuccess] = {
+    (using ExecutionContext): Future[SyncSuccess[EventId]] = {
   val request = SQLCommands.BulkStoreToDbRequest(
     syncContexts = Seq(context.toSyncContext("first_history"), context.toSyncContext("second_history")),
     histories = Seq(first, second), databaseConfig = BackendDatabase, databaseFormat = BlobFormat)
@@ -132,7 +140,8 @@ def storePair(backend: ExecutionClient, context: UsageContext,
 ```
 
 The backend authorizes every context before storing anything. A batch commits
-atomically; one invalid entry rolls it all back. Retrying exact events is safe.
+atomically; one invalid entry rolls it all back. Retrying exact events is safe and
+confirms them as `elementsUnchanged`. Deletes report the removed contexts.
 
 The sole read command is `fetch-events-from-db-request`, with inclusive bounds;
 complete reads use `LocalDateTime.MIN` and `MAX`. Selection precedes the timestamp

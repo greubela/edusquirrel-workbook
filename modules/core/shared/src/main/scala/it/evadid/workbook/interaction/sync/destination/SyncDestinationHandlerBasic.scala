@@ -6,27 +6,25 @@ import it.evadid.util.logging.derived.SyncLogger
 import it.evadid.workbook.interaction.sync.SyncSuccess
 import upickle.default.*
 
-import java.time.LocalDateTime
 import scala.concurrent.{ExecutionContext, Future}
 import scala.util.{Failure, Success}
 
 trait SyncDestinationHandlerBasic {
 
-  def storeElement(key: String, value: String)(implicit ec: ExecutionContext): Future[SyncSuccess]
+  def storeElement(key: String, value: String)(implicit ec: ExecutionContext): Future[SyncSuccess[String]]
 
-  def storeBulk(elementMap: Map[String, String])(implicit ec: ExecutionContext): Future[SyncSuccess] = {
-    Future.traverse(elementMap.toList)(storeElement).map(syncSuccesses => SyncSuccess(syncSuccesses.map(_.elementsAdded).sum, 0, 0, LocalDateTime.now()))
-  }
+  def storeBulk(elementMap: Map[String, String])(implicit ec: ExecutionContext): Future[SyncSuccess[String]] =
+    Future.traverse(elementMap.toList)(storeElement).map(_.foldLeft(SyncSuccess.emptyNow[String]())(_.combine(_)))
 
-  def clearAll()(implicit ec: ExecutionContext): Future[SyncSuccess]
+  def clearAll()(implicit ec: ExecutionContext): Future[SyncSuccess[String]]
 
-  def updateElement(key: String, update: Option[String] => String)(using ec: ExecutionContext): Future[SyncSuccess]
+  def updateElement[R](key: String, update: Option[String] => (String, R))(using ec: ExecutionContext): Future[R]
 
   def readElement(key: String)(implicit ec: ExecutionContext): Future[String]
 
   def readAll(implicit ec: ExecutionContext): Future[Map[String, String]]
 
-  def clearValue(key: String)(implicit ec: ExecutionContext): Future[SyncSuccess]
+  def clearValue(key: String)(implicit ec: ExecutionContext): Future[SyncSuccess[String]]
 
   def underlyingDefinition: SyncDestinationDefinition
 
@@ -55,7 +53,7 @@ object SyncDestinationHandlerBasic {
     private val maxCharLengthForLogging: Int = 60
 
     // Basic
-    def storeElement(key: String, value: String)(implicit ec: ExecutionContext): Future[SyncSuccess] = {
+    def storeElement(key: String, value: String)(implicit ec: ExecutionContext): Future[SyncSuccess[String]] = {
       basicHandler.storeElementRaw(syncLogger, key, value).transform {
         case Success(syncResult) =>
           syncLogger.log(s"Successfully stored key->Value pair to ${toString}: ${key.take(maxCharLengthForLogging)}->${value.take(maxCharLengthForLogging)}", INFO, Some(true))
@@ -66,7 +64,7 @@ object SyncDestinationHandlerBasic {
       }(using ec)
     }
 
-    def updateElement(key: String, update: Option[String] => String)(using ec: ExecutionContext): Future[SyncSuccess] =
+    def updateElement[R](key: String, update: Option[String] => (String, R))(using ec: ExecutionContext): Future[R] =
       scala.util.Try(basicHandler.updateElementRaw(syncLogger, key, update)).fold(Future.failed, identity)
 
     def readElement(key: String)(implicit ec: ExecutionContext): Future[String] = {
@@ -85,13 +83,13 @@ object SyncDestinationHandlerBasic {
     // Raw
     def withReplacedSyncLogger(newLogger: SyncLogger): SyncDestinationHandlerBasic = SyncDestinationHandlerBasic(basicHandler, newLogger)
 
-    override def clearAll()(implicit ec: ExecutionContext): Future[SyncSuccess] = basicHandler.clearAll(syncLogger)
+    override def clearAll()(implicit ec: ExecutionContext): Future[SyncSuccess[String]] = basicHandler.clearAll(syncLogger)
 
     override def underlyingDefinition: SyncDestinationDefinition = basicHandler.underlyingDefinition
 
     override def syncLogger: SyncLogger = pSyncLogger
 
-    override def clearValue(key: String)(implicit ec: ExecutionContext): Future[SyncSuccess] = {
+    override def clearValue(key: String)(implicit ec: ExecutionContext): Future[SyncSuccess[String]] = {
       basicHandler.removeKeyRaw(syncLogger, key)
     }
   }

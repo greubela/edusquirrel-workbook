@@ -8,7 +8,6 @@ import it.evadid.workbook.interaction.sync.destination.{SyncDestinationDefinitio
 import org.scalajs.dom
 import org.scalajs.dom.Storage
 
-import java.time.LocalDateTime
 import scala.concurrent.{ExecutionContext, Future}
 import scala.util.{Failure, Success}
 
@@ -25,17 +24,16 @@ object LocalStorageSyncHandler {
     ).toMap
   }
 
-  def resetCompleteStorage(): SyncSuccess = {
-    val removed = dom.window.localStorage.length
+  def resetCompleteStorage(): SyncSuccess[String] = {
+    val removed = fetchAllRawSync().keySet
     dom.window.localStorage.clear()
-    SyncSuccess(0, 0, removed, LocalDateTime.now())
+    SyncSuccess.removed(removed)
   }
 
-  def removeKey(key: String): SyncSuccess = {
-    val sizeBefore = dom.window.localStorage.length
+  def removeKey(key: String): SyncSuccess[String] = {
+    val existed = Option(dom.window.localStorage.getItem(key)).isDefined
     dom.window.localStorage.removeItem(key)
-    val sizeAfter = dom.window.localStorage.length
-    SyncSuccess(0, 0, sizeBefore - sizeAfter, LocalDateTime.now())
+    SyncSuccess.removed(Set(key).filter(_ => existed))
   }
 }
 
@@ -43,23 +41,19 @@ case class LocalStorageSyncHandler(localStorageSyncDefinition: LocalStorageSyncD
 
   private val storage: Storage = dom.window.localStorage
 
-  override def storeElementRaw(logger: SyncLogger, key: String, value: String)(using ec: ExecutionContext): Future[SyncSuccess] = Future {
-    storage.setItem(key.toString, value.toString)
-    SyncSuccess(1, 0, 0, LocalDateTime.now())
-  }
-
-  override def updateElementRaw(logger: SyncLogger, key: String, update: Option[String] => String)(using ec: ExecutionContext): Future[SyncSuccess] = Future {
-    storage.setItem(key, update(Option(storage.getItem(key))))
-    SyncSuccess(0, 1, 0, LocalDateTime.now())
+  override def updateElementRaw[R](logger: SyncLogger, key: String, update: Option[String] => (String, R))(using ec: ExecutionContext): Future[R] = Future {
+    val (value, result) = update(Option(storage.getItem(key)))
+    storage.setItem(key, value)
+    result
   }
 
   override def underlyingDefinition: SyncDestinationDefinition = localStorageSyncDefinition
 
-  override def clearAll(logger: SyncLogger)(using ec: ExecutionContext): Future[SyncSuccess] = Future {
+  override def clearAll(logger: SyncLogger)(using ec: ExecutionContext): Future[SyncSuccess[String]] = Future {
     LocalStorageSyncHandler.resetCompleteStorage()
   }
 
-  override def removeKeyRaw(logger: SyncLogger, key: String)(using ec: ExecutionContext): Future[SyncSuccess] = Future {
+  override def removeKeyRaw(logger: SyncLogger, key: String)(using ec: ExecutionContext): Future[SyncSuccess[String]] = Future {
     LocalStorageSyncHandler.removeKey(key)
   }
 
