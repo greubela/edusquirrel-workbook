@@ -9,6 +9,7 @@
 # MySQL clients run in Docker on DATABASE_TOOLS_HOST: "server" (the backend host via SSH,
 # default) or "local". The reference schema for "check" is built from setup.sql in a
 # throwaway MySQL container on the same host, so no database other than SQL_DATABASE is touched.
+# shellcheck source=SCRIPTDIR/../lib/common.sh
 source "$(dirname "${BASH_SOURCE[0]}")/../lib/common.sh"
 LOG_PREFIX=database
 
@@ -49,7 +50,7 @@ remote_client() {
     "IFS= read -r MYSQL_PWD && export MYSQL_PWD && exec docker run --rm -i -e MYSQL_PWD $(shell_quote "$MYSQL_IMAGE") $program$quoted"
 }
 remote_sql() {
-  remote_client mysql --batch --skip-column-names --default-character-set=utf8mb4 "$@" "$SQL_DATABASE"
+  remote_client mysql --batch --skip-column-names --default-character-set=utf8mb4 "$SQL_DATABASE"
 }
 
 # One sorted line per table, column, index, foreign key and seed row. Values compare as text.
@@ -87,7 +88,8 @@ reference_fingerprint() {
     || die "reference MySQL container did not start"
   on_tools_host "docker exec -i $name mysql -h127.0.0.1 -uroot reference" < "$SETUP_SQL" \
     || die "setup.sql failed on an empty reference database"
-  fingerprint_sql | on_tools_host "docker exec -i $name mysql -h127.0.0.1 -uroot --batch --skip-column-names reference"
+  fingerprint_sql | on_tools_host "docker exec -i $name mysql -h127.0.0.1 -uroot --batch --skip-column-names reference" \
+    || die "cannot read the reference schema"
 }
 
 check_schema() {
@@ -97,7 +99,7 @@ check_schema() {
   [[ -s "$expected" ]] || die "reference fingerprint is empty"
   version="$(echo 'SELECT VERSION();' | remote_sql)" || die "cannot connect to $SQL_DATABASE on $SQL_HOST"
   log "reading the schema of $SQL_DATABASE on $SQL_HOST (MySQL $version, reference $MYSQL_IMAGE)"
-  fingerprint_sql | remote_sql > "$actual.raw"
+  fingerprint_sql | remote_sql > "$actual.raw" || die "cannot read the schema of $SQL_DATABASE"
   LC_ALL=C sort "$actual.raw" > "$actual"
   if diff -u --label "expected (setup.sql)" --label "actual ($SQL_DATABASE)" "$expected" "$actual" >&2; then
     log "schema of $SQL_DATABASE matches setup.sql"
@@ -107,10 +109,11 @@ check_schema() {
 }
 
 ensure_writable_target() {
-  local protected
+  local protected name
   IFS=',' read -r -a protected <<< "${DATABASE_PROTECTED:-}"
-  for name in "${protected[@]}"; do
-    [[ "$(echo "$name" | xargs)" == "$SQL_DATABASE" ]] && die "$SQL_DATABASE is listed in DATABASE_PROTECTED"
+  for name in ${protected[@]+"${protected[@]}"}; do
+    name="${name#"${name%%[![:space:]]*}"}" name="${name%"${name##*[![:space:]]}"}"
+    if [[ "$name" == "$SQL_DATABASE" ]]; then die "$SQL_DATABASE is listed in DATABASE_PROTECTED"; fi
   done
   [[ "${DATABASE_ALLOW_RESET:-}" == "$SQL_DATABASE" ]] \
     || die "set DATABASE_ALLOW_RESET=$SQL_DATABASE in database.env to allow $mode on this database"

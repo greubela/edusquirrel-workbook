@@ -39,21 +39,23 @@ env_file_entries() {
   done < "$file"
 }
 
-# Exports every entry of a secrets file; values already set in the environment win,
-# so single runs can override settings (for example DATABASE_TOOLS_HOST=local).
+# Exports every entry of a secrets file. The file is authoritative: variables exported in the
+# calling shell (for example SQL_* from local development) never redirect a deployment.
 load_env() {
-  local file="$SECRETS_DIR/$1" key value
+  local key value
+  env_file_entries "$SECRETS_DIR/$1" > "$DEPLOY_TMP/parsed-env"
   while IFS= read -r -d '' key && IFS= read -r -d '' value; do
-    [[ -n "${!key+set}" ]] || export "$key=$value"
-  done < <(env_file_entries "$file")
+    export "$key=$value"
+  done < "$DEPLOY_TMP/parsed-env"
 }
 
-# Prints one entry of an env file without exporting it.
+# Prints one entry of an env file without exporting it; fails when the key is absent.
 env_file_value() {
   local file=$1 wanted=$2 key value
+  env_file_entries "$file" > "$DEPLOY_TMP/parsed-value"
   while IFS= read -r -d '' key && IFS= read -r -d '' value; do
     [[ "$key" == "$wanted" ]] && { printf '%s' "$value"; return 0; }
-  done < <(env_file_entries "$file")
+  done < "$DEPLOY_TMP/parsed-value"
   return 1
 }
 
@@ -81,6 +83,8 @@ deploy_cleanup() {
   rm -rf "$DEPLOY_TMP"
 }
 trap deploy_cleanup EXIT
+# Interrupts exit through the EXIT trap, so temporary containers and the agent are cleaned up.
+trap 'exit 130' INT TERM
 
 git_version() { git -C "$REPO_ROOT" describe --always --dirty --tags 2>/dev/null || printf 'unknown'; }
 
@@ -108,6 +112,7 @@ ssh_init() {
     eval "$(ssh-agent -s)" >/dev/null
     DEPLOY_SSH_AGENT_STARTED=true
     local askpass="$DEPLOY_TMP/askpass.sh"
+    # shellcheck disable=SC2016  # The askpass script expands the variable itself.
     printf '#!/bin/sh\nprintf "%%s\\n" "$SERVER_SSH_KEY_PASSPHRASE"\n' > "$askpass"
     chmod 700 "$askpass"
     SSH_ASKPASS="$askpass" SSH_ASKPASS_REQUIRE=force DISPLAY="${DISPLAY:-none}" \

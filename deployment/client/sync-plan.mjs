@@ -5,10 +5,14 @@
 // uploaded are deleted, so unrelated webspace content is never touched.
 //
 // node sync-plan.mjs <site-dir> <previous-manifest|-> <out-dir> <ftp-base-url> <remote-root> [--trust PREFIX]...
-// Writes into <out-dir>: upload-NNN.curl batches with progress-NNN.sha256 manifests (the previous
-// manifest plus every batch up to NNN), delete.curl, the final manifest.sha256 and summary.json.
+//   Writes into <out-dir>: per batch NNN an upload-NNN.curl config, a verify-NNN.curl size query and
+//   batch-NNN.tsv (url, size, local file), progress-NNN.sha256 (the previous manifest plus every
+//   batch up to NNN), delete.curl, the final manifest.sha256 and summary.json.
+// node sync-plan.mjs verify <batch-tsv> <curl-head-output> <retry-curl-out>
+//   Compares the remote sizes reported by `curl --head` with the local files, writes an upload
+//   config for every missing or mismatched file and prints their number.
 import { createHash } from "node:crypto";
-import { createReadStream, existsSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
+import { createReadStream, existsSync, readdirSync, readFileSync, statSync, writeFileSync } from "node:fs";
 import { join, posix, resolve } from "node:path";
 import { pathToFileURL } from "node:url";
 
@@ -52,6 +56,34 @@ export function plan(current, previous, trusted = []) {
 // curl config strings use backslash escapes inside double quotes.
 const quote = value => `"${value.replace(/\\/g, "\\\\").replace(/"/g, "\\\"")}"`;
 const encodePath = path => path.split("/").filter(Boolean).map(encodeURIComponent).join("/");
+const uploadEntry = (file, target) => `upload-file = ${quote(file)}\nurl = ${quote(target)}\n`;
+// Written by `curl --head --write-out` after each file of a verify config.
+export const sizeMarker = "EDUSQUIRREL-SIZE";
+
+// Maps each URL to the Content-Length curl reported for it; files that failed are absent.
+export function parseRemoteSizes(output) {
+  const sizes = new Map();
+  let length = null;
+  for (const line of output.split(/\r?\n/)) {
+    const header = /^Content-Length: (\d+)$/i.exec(line);
+    if (header) length = Number(header[1]);
+    const marker = line.split("\t");
+    if (marker[0] === sizeMarker) {
+      if (marker[2] === "0" && length !== null) sizes.set(marker[1], length);
+      length = null;
+    }
+  }
+  return sizes;
+}
+
+function verify([batchFile, headOutput, retryFile]) {
+  const remote = parseRemoteSizes(readFileSync(headOutput, "utf8"));
+  const failed = readFileSync(batchFile, "utf8").split("\n").filter(Boolean).map(line => line.split("\t"))
+    .filter(([target, size]) => remote.get(target) !== Number(size));
+  writeFileSync(retryFile, failed.map(([target, , file]) => uploadEntry(file, target)).join(""));
+  for (const [target, size] of failed) console.error(`  ${target}: expected ${size} bytes, remote ${remote.get(target) ?? "missing"}`);
+  console.log(failed.length);
+}
 
 async function main([siteDir, previousFile, outDir, baseUrl, remoteRoot, ...options]) {
   if (!outDir || !baseUrl || remoteRoot === undefined) throw new Error("usage: see header of sync-plan.mjs");
@@ -73,8 +105,11 @@ async function main([siteDir, previousFile, outDir, baseUrl, remoteRoot, ...opti
   for (let start = 0; start < uploads.length; start += batchSize) {
     const batch = uploads.slice(start, start + batchSize);
     const number = String(start / batchSize + 1).padStart(3, "0");
-    writeFileSync(join(outDir, `upload-${number}.curl`), batch.map(path =>
-      `upload-file = ${quote(join(siteDir, path))}\nurl = ${quote(url(path))}\n`).join(""));
+    writeFileSync(join(outDir, `upload-${number}.curl`), batch.map(path => uploadEntry(join(siteDir, path), url(path))).join(""));
+    writeFileSync(join(outDir, `verify-${number}.curl`),
+      `head\nwrite-out = "${sizeMarker}\\t%{url}\\t%{exitcode}\\n"\n` + batch.map(path => `url = ${quote(url(path))}\n`).join(""));
+    writeFileSync(join(outDir, `batch-${number}.tsv`), batch.map(path =>
+      `${url(path)}\t${statSync(join(siteDir, path)).size}\t${join(siteDir, path)}\n`).join(""));
     for (const path of batch) progress.set(path, current.get(path));
     writeFileSync(join(outDir, `progress-${number}.sha256`), formatManifest(progress));
   }
@@ -88,5 +123,7 @@ async function main([siteDir, previousFile, outDir, baseUrl, remoteRoot, ...opti
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1])).href) {
-  main(process.argv.slice(2)).catch(error => { console.error(error.message); process.exitCode = 1; });
+  const [command, ...rest] = process.argv.slice(2);
+  Promise.resolve().then(() => command === "verify" ? verify(rest) : main([command, ...rest]))
+    .catch(error => { console.error(error.message); process.exitCode = 1; });
 }

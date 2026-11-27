@@ -4,7 +4,7 @@ import {tmpdir} from 'node:os';
 import {join} from 'node:path';
 import {spawnSync} from 'node:child_process';
 import test from 'node:test';
-import {parseManifest, plan} from '../../deployment/client/sync-plan.mjs';
+import {parseManifest, parseRemoteSizes, plan, sizeMarker} from '../../deployment/client/sync-plan.mjs';
 
 test('uploads changed and new files and deletes only previously deployed ones', () => {
   const previous = new Map([['same', '1'], ['changed', '2'], ['gone', '3']]);
@@ -12,6 +12,12 @@ test('uploads changed and new files and deletes only previously deployed ones', 
   assert.deepEqual(plan(current, previous, ['resources']), {uploads: ['changed', 'new', 'resourcesX'], deletes: ['gone']});
   // Trust only covers files without a previous hash; recorded files are compared normally.
   assert.deepEqual(plan(new Map([['resources/a', 'new']]), new Map([['resources/a', 'old']]), ['resources']).uploads, ['resources/a']);
+});
+
+test('reads remote sizes and treats failed queries as missing', () => {
+  const sizes = parseRemoteSizes(`Last-Modified: x\r\nContent-Length: 12\r\n${sizeMarker}\tftp://h/a\t0\n` +
+    `curl: (78) The file does not exist\n${sizeMarker}\tftp://h/b\t78\n${sizeMarker}\tftp://h/c\t0\n`);
+  assert.deepEqual([...sizes], [['ftp://h/a', 12]]);
 });
 
 test('writes URL-encoded upload batches, progress manifests and a final manifest', () => {
@@ -25,13 +31,23 @@ test('writes URL-encoded upload batches, progress manifests and a final manifest
     writeFileSync(join(site, '.deploy-manifest.sha256'), 'ignored');
     const run = spawnSync(process.execPath, ['deployment/client/sync-plan.mjs', site, '-', out, 'ftp://host', '/Eva/edu/'], {encoding: 'utf8'});
     assert.equal(run.status, 0, run.stderr);
-    assert.deepEqual(readdirSync(out).sort(), ['delete.curl', 'manifest.sha256', 'progress-001.sha256', 'summary.json', 'upload-001.curl']);
+    assert.deepEqual(readdirSync(out).sort(), ['batch-001.tsv', 'delete.curl', 'manifest.sha256', 'progress-001.sha256',
+      'summary.json', 'upload-001.curl', 'verify-001.curl']);
     const upload = readFileSync(join(out, 'upload-001.curl'), 'utf8');
     assert.match(upload, /url = "ftp:\/\/host\/Eva\/edu\/Math%20World\/Pr%C3%A4sentation%20%221%22\.pdf"/);
     assert.match(upload, /upload-file = ".*Präsentation \\"1\\"\.pdf"/);
     const manifest = parseManifest(readFileSync(join(out, 'manifest.sha256'), 'utf8'));
     assert.deepEqual([...manifest.keys()], ['Math World/Präsentation "1".pdf', 'index.html']);
     assert.equal(readFileSync(join(out, 'progress-001.sha256'), 'utf8'), readFileSync(join(out, 'manifest.sha256'), 'utf8'));
+
+    // A truncated file is uploaded again; the intact one is not.
+    const [pdf, page] = readFileSync(join(out, 'batch-001.tsv'), 'utf8').trim().split('\n').map(line => line.split('\t'));
+    assert.equal(page[1], '4');
+    writeFileSync(join(out, 'sizes.txt'), `Content-Length: 1\n${sizeMarker}\t${pdf[0]}\t0\nContent-Length: 4\n${sizeMarker}\t${page[0]}\t0\n`);
+    const check = spawnSync(process.execPath, ['deployment/client/sync-plan.mjs', 'verify', join(out, 'batch-001.tsv'),
+      join(out, 'sizes.txt'), join(out, 'retry.curl')], {encoding: 'utf8'});
+    assert.equal(check.stdout.trim(), '1', check.stderr);
+    assert.match(readFileSync(join(out, 'retry.curl'), 'utf8'), /Pr%C3%A4sentation/);
   } finally {
     rmSync(root, {recursive: true, force: true});
   }

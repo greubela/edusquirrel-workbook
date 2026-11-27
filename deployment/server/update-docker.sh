@@ -5,6 +5,7 @@
 #                                   roll back to the previous version automatically
 #   sh update-docker.sh --rollback  Restore the *.previous files and recreate the services
 # Files: docker-compose.yml, .env, artifacts/newest/server.jar
+# Functions return explicitly on errors: they also run in if/&& contexts, where set -e is off.
 set -eu
 cd "$(dirname "$0")"
 FILES="docker-compose.yml .env artifacts/newest/server.jar"
@@ -13,11 +14,11 @@ HEALTH_TIMEOUT="${HEALTH_TIMEOUT:-180}"
 log() { printf '[server] %s\n' "$*" >&2; }
 
 restart_services() {
-  docker compose config --quiet
+  docker compose config --quiet || { log "docker-compose.yml or .env is invalid"; return 1; }
   log "docker compose down"
-  docker compose down --remove-orphans
+  docker compose down --remove-orphans || return 1
   log "docker compose up -d"
-  docker compose up -d
+  docker compose up -d || return 1
 }
 
 wait_for_health() {
@@ -39,10 +40,9 @@ wait_for_health() {
 
 rollback() {
   for file in $FILES; do
-    if [ -f "$file.previous" ]; then cp -p "$file.previous" "$file" && log "restored $file"; fi
+    if [ -f "$file.previous" ]; then cp -p "$file.previous" "$file" && log "restored $file" || return 1; fi
   done
-  restart_services
-  wait_for_health
+  restart_services && wait_for_health
 }
 
 if [ "${1:-}" = "--rollback" ]; then
@@ -58,9 +58,17 @@ for file in $FILES; do
   mv "$file.upload" "$file"
 done
 chmod 600 .env
+keep_failed() { for file in $FILES; do cp -p "$file" "$file.failed"; done; }
+# An invalid configuration never touches the running services: restore the files and stop.
+if ! docker compose config --quiet; then
+  keep_failed
+  for file in $FILES; do if [ -f "$file.previous" ]; then cp -p "$file.previous" "$file"; fi; done
+  log "docker-compose.yml or .env is invalid; services left running, new files kept as *.failed"
+  exit 1
+fi
 if restart_services && wait_for_health; then exit 0; fi
 
-for file in $FILES; do cp -p "$file" "$file.failed"; done
+keep_failed
 if [ -f artifacts/newest/server.jar.previous ]; then
   log "deployment failed; rolling back (the new files are kept as *.failed)"
   rollback && log "previous version restored"

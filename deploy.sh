@@ -8,6 +8,7 @@
 #   ./deploy.sh --database=reset     Recreate the schema (setup | reset; default: check only)
 #   ./deploy.sh --yes                Do not ask for confirmations
 #   ./deploy.sh -- --dry-run         Pass the remaining options to deploy-client.sh
+# shellcheck source=SCRIPTDIR/deployment/lib/common.sh
 source "$(dirname "${BASH_SOURCE[0]}")/deployment/lib/common.sh"
 LOG_PREFIX=deploy
 
@@ -28,7 +29,10 @@ while [[ $# -gt 0 ]]; do
 done
 has_step() { [[ "$steps" == *",$1,"* ]]; }
 
-for file in local.env database.env server.env client.env; do
+# Fail before the long build when a step's settings are missing.
+needed="$(has_step database && echo "local.env database.env"; has_step server && echo "local.env server.env database.env"
+  has_step client && echo "local.env client.env"; true)"
+for file in $needed; do
   [[ -f "$SECRETS_DIR/$file" ]] || die "missing $SECRETS_DIR/$file (copy $file.example and fill it in)"
 done
 if [[ -n "$(git -C "$REPO_ROOT" status --porcelain --untracked-files=no 2>/dev/null)" ]]; then

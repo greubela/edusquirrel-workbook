@@ -3,11 +3,14 @@
 # tools/dev/assemble-pages.mjs, adds secrets/client.env as deployment/client/.env and uploads
 # the files that changed since the last deployment to CLIENT_FTP_ROOT over FTP(S).
 #
+# Every batch is verified by comparing remote file sizes; incomplete files are uploaded again.
+#
 # Options:
 #   --dry-run          Show what would be uploaded or deleted without changing the webspace
 #   --trust PREFIX     On a first deployment, treat files under PREFIX (e.g. resources/workbookpdfs)
 #                      as already present instead of uploading them; repeatable
 #   --skip-assemble    Reuse the existing _site/ directory
+# shellcheck source=SCRIPTDIR/../lib/common.sh
 source "$(dirname "${BASH_SOURCE[0]}")/../lib/common.sh"
 LOG_PREFIX=client
 
@@ -29,11 +32,12 @@ CLIENT_ENV="$SECRETS_DIR/client.env"
 SITE="$REPO_ROOT/_site"
 
 # deployment/client/.env is publicly downloadable from the website.
+env_file_entries "$CLIENT_ENV" > "$DEPLOY_TMP/client-env"
 while IFS= read -r -d '' key && IFS= read -r -d '' _; do
   if [[ "$(printf '%s' "$key" | tr '[:lower:]' '[:upper:]')" =~ (PASS|PW|SECRET|TOKEN|KEY|CREDENTIAL) ]]; then
     die "client.env is public on the website and must not contain $key"
   fi
-done < <(env_file_entries "$CLIENT_ENV")
+done < "$DEPLOY_TMP/client-env"
 
 if [[ "$assemble" == true ]]; then
   log "assembling the site"
@@ -63,11 +67,13 @@ mkdir -p "$plan_dir"
 log "reading the manifest of the last deployment from $CLIENT_FTP_HOST/$root"
 previous="$plan_dir/previous.sha256"
 manifest_url="$base_url/$root/.deploy-manifest.sha256"
-if ! ftp --output "$previous" "$manifest_url" 2> "$plan_dir/manifest-error.txt"; then
-  # curl exit 78: the remote file does not exist (first deployment).
-  grep -q '(78)' "$plan_dir/manifest-error.txt" || die "cannot read $manifest_url: $(cat "$plan_dir/manifest-error.txt")"
-  rm -f "$previous"
-fi
+status=0
+ftp --output "$previous" "$manifest_url" 2> "$plan_dir/manifest-error.txt" || status=$?
+case "$status" in
+  0) ;;
+  78) rm -f "$previous" ;;  # The remote file does not exist: first deployment.
+  *) die "cannot read $manifest_url: $(cat "$plan_dir/manifest-error.txt")" ;;
+esac
 
 node "$DEPLOY_DIR/client/sync-plan.mjs" "$SITE" "$previous" "$plan_dir" "$base_url" "$root" "${trust[@]+"${trust[@]}"}"
 summary() { node -e 'const s = require(process.argv[1]); console.log(eval(process.argv[2]))' "$plan_dir/summary.json" "$1"; }
@@ -85,10 +91,20 @@ fi
 
 shopt -s nullglob
 batches=("$plan_dir"/upload-*.curl)
-for batch in "${batches[@]}"; do
+for batch in ${batches[@]+"${batches[@]}"}; do
   number="${batch##*/upload-}" number="${number%.curl}"
   log "uploading batch $((10#$number)) of ${#batches[@]}"
   ftp --fail-early --config "$batch" || die "upload failed; rerun to continue (finished batches are recorded)"
+  # A server may confirm a transfer it stored incompletely, so compare the remote sizes.
+  for attempt in 1 2 3; do
+    ftp --config "$plan_dir/verify-$number.curl" > "$plan_dir/sizes.txt" 2>/dev/null || true
+    failed="$(node "$DEPLOY_DIR/client/sync-plan.mjs" verify "$plan_dir/batch-$number.tsv" "$plan_dir/sizes.txt" \
+      "$plan_dir/retry.curl")"
+    [[ "$failed" == 0 ]] && break
+    [[ "$attempt" == 3 ]] && die "$failed files still differ on the webspace after two retries (see above)"
+    warn "$failed files arrived incomplete; uploading them again"
+    ftp --config "$plan_dir/retry.curl" || true
+  done
   # Record progress so a rerun skips the batches that already arrived.
   ftp --upload-file "$plan_dir/progress-$number.sha256" "$manifest_url" || die "could not record upload progress"
 done
