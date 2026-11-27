@@ -90,13 +90,14 @@ test('test workbook preserves edits across human languages, programming language
     });
     await installCodeMirrorModules(page);
     await page.goto(origin + '/homepage/workbookDesign/index.html');
+    await page.locator('.select-language-line > div:has(.flag-fill-british-blue)').click();
     // Start local usage explicitly: there is no default user.
     await page.locator('.section-register .login-area').nth(1).locator('button').click();
     await page.locator('.section-block').first().click();
     await page.waitForFunction(() => window.snapLanguagePreviews?.some(p => p.language === 'en' && p.specs.includes('move %n steps')));
     const preview = page.locator('.be-program-snap-renderer__canvas:not(dialog *)').first();
     await preview.evaluate(canvas => { window.englishPreview = canvas; });
-    await page.locator('.select-language-line > div').nth(1).click();
+    await page.locator('.select-language-line > div:has(.flag-fill-german-red)').click();
     await page.waitForFunction(() => snapLanguagePreviews.some(p => p.language === 'de' && p.specs.includes('gehe %n Schritte')));
     assert(await preview.evaluate(canvas => canvas !== englishPreview), 'language changes replace a static preview');
     await page.getByRole('button',{name:/Editor.*öffnen|Open editor/i}).first().click();
@@ -138,14 +139,14 @@ test('test workbook preserves edits across human languages, programming language
     });
     // The modal makes header controls inert to pointer input. Dispatch the real
     // language control's click to exercise its signal while the editor stays open.
-    await page.locator('.select-language-line > div').first().evaluate(flag => flag.click());
+    await page.locator('.select-language-line > div:has(.flag-fill-british-blue)').evaluate(flag => flag.click());
     await page.waitForFunction(() => snapLanguageEditor === germanIde && snapLanguageEditor.currentSprite.scripts.allChildren()
       .some(m => m.selector === 'forward' && m.blockSpec === 'move %n steps'));
     assert.deepEqual(await page.evaluate(() => [...new DOMParser().parseFromString(snapLanguageEditor.getProjectXML(),'application/xml')
       .querySelectorAll('scripts')].map(scripts => scripts.outerHTML)), source);
     assert.equal(await page.locator('dialog[open]').count(), 1);
     assert(await page.evaluate(() => snapLanguageWorld === germanWorld), 'language changes retain the Morphic world');
-    await page.locator('.select-language-line > div').nth(1).evaluate(flag => flag.click());
+    await page.locator('.select-language-line > div:has(.flag-fill-german-red)').evaluate(flag => flag.click());
     await page.waitForFunction(() => snapLanguageEditor.currentSprite.scripts.allChildren()
       .some(m => m.selector === 'forward' && m.blockSpec === 'gehe %n Schritte'));
     assert.equal(localeRequests.filter(url => url.endsWith('/lang-de.js')).length, 1, 'dictionary loads are shared across previews and reopenings');
@@ -201,11 +202,11 @@ test('test workbook preserves edits across human languages, programming language
     assert(!persisted.includes('data:image/png;base64,'), 'generated previews are absent from database history');
     // A language switch must also flush a numeric field still being edited.
     await editForward(91, false);
-    await page.locator('.select-language-line > div').first().evaluate(flag => flag.click());
+    await page.locator('.select-language-line > div:has(.flag-fill-british-blue)').evaluate(flag => flag.click());
     await page.waitForFunction(() => snapLanguageEditor === germanIde && snapLanguageEditor.currentSprite.scripts.allChildren()
       .some(m => m.selector === 'forward' && m.blockSpec === 'move %n steps' && Number(m.inputs()[0].evaluate()) === 91));
     await page.locator('.fullscreen-close-button').click();
-    await page.locator('.select-language-line > div').nth(1).click();
+    await page.locator('.select-language-line > div:has(.flag-fill-german-red)').click();
     await page.getByRole('button',{name:/Editor.*öffnen|Open editor/i}).first().click();
     await page.waitForFunction(() => snapLanguageEditor.currentSprite.scripts.allChildren()
       .some(m => m.selector === 'forward' && m.blockSpec === 'gehe %n Schritte' && Number(m.inputs()[0].evaluate()) === 91));
@@ -219,14 +220,14 @@ test('test workbook preserves edits across human languages, programming language
     // The whole program is replaced, so the Python tab shows it in full rather than its main function.
     await editor.getByRole('tab', {name:/^(Full Mode|Gesamtmodus)$/}).click();
     await code.fill('forward(123)\nforward(17)\n');
-    await page.locator('.select-language-line > div').first().evaluate(flag => flag.click());
+    await page.locator('.select-language-line > div:has(.flag-fill-british-blue)').evaluate(flag => flag.click());
     assert.match(await code.innerText(), /forward\(123\)\s+(?:turtle\.)?forward\(17\)/);
     await editor.getByRole('tab',{name:'Snap!',exact:true}).click();
     await page.waitForFunction(() => {
       const blocks = snapLanguageEditor.currentSprite.scripts.allChildren().filter(m => m.selector === 'forward');
       return [123,17].every(value => blocks.some(m => m.blockSpec === 'move %n steps' && Number(m.inputs()[0].evaluate()) === value));
     });
-    await page.locator('.select-language-line > div').nth(1).evaluate(flag => flag.click());
+    await page.locator('.select-language-line > div:has(.flag-fill-german-red)').evaluate(flag => flag.click());
     await page.waitForFunction(() => snapLanguageEditor.currentSprite.scripts.allChildren()
       .some(m => m.selector === 'forward' && m.blockSpec === 'gehe %n Schritte' && Number(m.inputs()[0].evaluate()) === 123));
     await editor.getByRole('tab',{name:'Python',exact:true}).click();
@@ -242,7 +243,7 @@ test('test workbook preserves edits across human languages, programming language
       const xml = window.snapLanguageEditor?.getProjectXML();
       return xml?.includes('line') && xml.includes('64') && xml.includes('forward');
     });
-    await page.locator('.select-language-line > div').first().evaluate(flag => flag.click());
+    await page.locator('.select-language-line > div:has(.flag-fill-british-blue)').evaluate(flag => flag.click());
     await page.waitForFunction(() => SnapTranslator.language === 'en');
     await editor.getByRole('tab',{name:'Java',exact:true}).click();
     await editor.getByRole('tab', {name: 'Full Mode',exact:true}).click();

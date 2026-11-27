@@ -120,10 +120,10 @@ test('monk stories and revised tasks work with the current editor and interactio
     const dialog = page.locator('dialog[open]');
     await dialog.getByRole('tab', {name:'Java',exact:true}).click();
     assert.equal(await dialog.getByRole('tab', {name:'Python',exact:true}).count(), 1);
-    // The method editor opens main; the full source is a read-only view of the whole class.
-    // Until CodeMirror has loaded, the editor's plain text fallback edits the same answer.
-    const code = dialog.locator('.cm-content, textarea.code-mirror-editor__fallback:visible').first();
-    const codeText = () => code.evaluate(node => node.tagName === 'TEXTAREA' ? node.value : node.innerText);
+    // Edit the selected main method, then exercise full-program Python drafts.
+    // Exercise native draft preservation after CodeMirror has finished loading.
+    const code = dialog.locator('.cm-content:visible');
+    const codeText = () => code.evaluate(node => EduSquirrelCodeMirrorLibraries.EditorView.findFromDOM(node).state.doc.toString());
     await code.waitFor();
     assert.match(await codeText(), /Turtle\.turnLeft\(90\)/);
     await code.fill('public static void main(String[] args) {\nTurtle.forward(60);\nTurtle.turnLeft(90);\nTurtle.forward(20);\n' +
@@ -140,13 +140,19 @@ test('monk stories and revised tasks work with the current editor and interactio
     // Python: a block being typed gets no automatic pass and stays as typed.
     // (Switching from Java generates the Python tab from the Java answer, which shows valid Python with pass.)
     await dialog.getByRole('tab', {name:'Python',exact:true}).click();
+    const editorLabels = JSON.parse(await readFile(path.join(root, 'resources/languageMaps/eva/blockeditor/map-de.json'), 'utf8'));
+    await dialog.getByRole('tab', {name:editorLabels.pythonModeFull,exact:true}).click();
     await code.waitFor();
-    const typed = (await codeText()).replace(/\s*$/, '') + '\n    if 1 > 0:\n        ';
+    const typed = 'import turtle\n\ndef main():\n    turtle.forward(60)\n    if 1 > 0:\n        ';
     await code.fill(typed);
     await page.waitForTimeout(3000);
     assert.equal(await codeText(), typed, 'the typed text stays, without pass');
     await dialog.getByRole('tab', {name:'Java',exact:true}).click();
     await code.waitFor();
+    await page.waitForFunction(() => {
+      const node = document.querySelector('dialog[open] .cm-content');
+      return node && /if \(1 > 0\)/.test(EduSquirrelCodeMirrorLibraries.EditorView.findFromDOM(node).state.doc.toString());
+    });
     assert.match(await codeText(), /if \(1 > 0\)/, 'the Python block reached the Java answer');
     await page.locator('.fullscreen-close-button').click();
     await section('sec4Title').click();
