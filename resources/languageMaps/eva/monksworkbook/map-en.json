@@ -49,7 +49,7 @@
 
   "computarius-6-1": "(the head monk turns back to the traveller and speaks firmly)",
   "computarius-6-2": "**Head monk:** “Put the cards on the tray!”",
-  "computarius-6-3": "(The traveller puts his cards on a tray and the young monk carries it to the head monk)",
+  "computarius-6-3": "(The traveller puts his cards on the tray and the young monk carries it to the head monk.)",
   "computarius-6-4": "**Head monk:** “Watch closely and learn!”",
 
   "computarius-7-1": "(the head monk looks at the cards on the tray [4 7 2 9] and takes the 9)",
@@ -123,7 +123,7 @@
   "questioncolumn": "Question",
   "javaintro": "In Java, the method could look like this, for example:",
   "javacode": "```java\nString sort(String cards) {\n    if (cards.isEmpty()) {\n        return \"\";\n    }\n    char largest = largestCard(cards);\n    String rest = without(cards, largest);\n    String sorted = sort(rest);\n    return largest + sorted;\n}\n```",
-  "an-question": "Instead of monks, the traveller uses a table. Which technical element does the table, or the monks as a whole, correspond to?",
+  "an-question": "Instead of the monks, the traveller uses a table. Which technical element do the table, or the monks as a whole, correspond to?",
   "an-opt0": "The structure of the recursion",
   "an-opt1": "The function stack with input and return data",
   "an-opt2": "The array in which the cards to be sorted are stored",
@@ -176,7 +176,7 @@
 
   "counting-4-1": "**Traveller:** “Exactly three bricks, sweetheart!”",
   "counting-4-2": "**Daughter:** “Yeees ... but now my tower is broken?”",
-  "counting-4-3": "**Traveller:** “But the paper is fine ... and don't worry, I'll put it back together for you!”",
+  "counting-4-3": "**Traveller:** “But the sheet is fine ... and don't worry, I'll put it back together for you!”",
   "counting-4-4": "(The traveller takes the blue brick from the table and puts it on the floor. Then the yellow one on top. Then the red one)",
   "counting-4-5": "**Daughter:** “You count funny ... And what was the paper for?”",
 
@@ -220,8 +220,8 @@
   "sec3Ex1Instr2": "Defining your own functions is supported as well!\n\nWrite a method `vieleck(ecken, laenge)` (polygon) that draws a regular polygon with `ecken` corners and the side length `laenge`. Also write a method `springe(weite)` (jump) that moves the turtle **without drawing** by `weite` in its current direction.",
 
   "sec3Ex2Title": "Programming recursively",
-  "sec3Ex2Instr1": "Implement the function `zeichneTurm(n)` (draw tower) recursively (without a loop): it should build a tower of `n` bricks of width 40.",
-  "sec3Ex2Instr2": "Implement `zeichnePyramide(n)` (draw pyramid) recursively. It should draw a pyramid with the side length `n*20`. Do not change the main function.",
+  "sec3Ex2Instr1": "Implement the function `zeichneTurm(n)` (draw tower) recursively (without a loop): it should draw a tower of `n` bricks of width 40.",
+  "sec3Ex2Instr2": "Implement `zeichnePyramide(n)` (draw pyramid) recursively. It should draw a pyramid with the side length `n*20`. Do not change the `main` function.",
   "sec3Ex2Instr3": "Fix the errors in the given program!",
   "sec3Ex2Instr4": "All clear? Good, then you are ready for the big final exercise!",
 
@@ -244,7 +244,7 @@
   "k1-rowheader": "Recursion depth",
 
   "sec4Ex2Title": "The Koch snowflake!",
-  "sec4Ex2Instr1": "Program the method `koch(double laenge, int tiefe)` (length, depth), which draws the Koch snowflake recursively. The Koch snowflake consists of a triangle of Koch curves!",
+  "sec4Ex2Instr1": "Program the method `koch(double laenge, int tiefe)` (length, depth), which draws a Koch curve recursively, and use it to draw the Koch snowflake. The Koch snowflake consists of a triangle of Koch curves!",
   "sec4Ex2Instr2": "With that, the hardest exercise is done. Happy holidays!",
 
   "finishTitle": "Submission",

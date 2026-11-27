@@ -49,7 +49,7 @@
 
   "computarius-6-1": "(overmunken vender sig igen mod den rejsende og taler bestemt)",
   "computarius-6-2": "**Overmunk:** „Læg kortene på bakken!“",
-  "computarius-6-3": "(Den rejsende lægger sine kort på en bakke, og den unge munk bærer den hen til overmunken)",
+  "computarius-6-3": "(Den rejsende lægger sine kort på bakken, og den unge munk bærer den hen til overmunken.)",
   "computarius-6-4": "**Overmunk:** „Se godt efter og lær!“",
 
   "computarius-7-1": "(overmunken ser på kortene på bakken [4 7 2 9] og tager 9'eren)",
@@ -176,7 +176,7 @@
 
   "counting-4-1": "**Rejsende:** „Præcis tre klodser, skat!“",
   "counting-4-2": "**Datter:** „Jaaa ... men nu er mit tårn jo gået i stykker?“",
-  "counting-4-3": "**Rejsende:** „Men papiret er helt ... og bare rolig, jeg sætter det sammen igen til dig!“",
+  "counting-4-3": "**Rejsende:** „Men sedlen er hel ... og bare rolig, jeg sætter det sammen igen til dig!“",
   "counting-4-4": "(Den rejsende tager den blå klods fra bordet og stiller den på gulvet. Derefter den gule ovenpå. Derefter den røde)",
   "counting-4-5": "**Datter:** „Du tæller da mærkeligt ... Og hvad skulle papiret så bruges til?“",
 
@@ -220,8 +220,8 @@
   "sec3Ex1Instr2": "Det er også muligt at definere egne funktioner!\n\nSkriv en metode `vieleck(ecken, laenge)` (polygon), der tegner en regulær polygon med `ecken` hjørner og sidelængden `laenge`. Skriv desuden en metode `springe(weite)` (spring), der flytter skildpadden `weite` frem i dens aktuelle retning **uden at tegne**.",
 
   "sec3Ex2Title": "Programmér rekursivt",
-  "sec3Ex2Instr1": "Implementér funktionen `zeichneTurm(n)` (tegn tårn) rekursivt (uden løkke): Den skal bygge et tårn af `n` klodser med bredden 40.",
-  "sec3Ex2Instr2": "Implementér `zeichnePyramide(n)` (tegn pyramide) rekursivt. Den skal tegne en pyramide med sidelængden `n*20`. Ændr ikke main-funktionen.",
+  "sec3Ex2Instr1": "Implementér funktionen `zeichneTurm(n)` (tegn tårn) rekursivt (uden løkke): Den skal tegne et tårn af `n` klodser med bredden 40.",
+  "sec3Ex2Instr2": "Implementér `zeichnePyramide(n)` (tegn pyramide) rekursivt. Den skal tegne en pyramide med sidelængden `n*20`. Ændr ikke `main`-funktionen.",
   "sec3Ex2Instr3": "Ret fejlene i det givne program!",
   "sec3Ex2Instr4": "Alt klart? Godt, så er du klar til den store afsluttende opgave!",
 
@@ -244,7 +244,7 @@
   "k1-rowheader": "Rekursionsdybde",
 
   "sec4Ex2Title": "Kochs snefnug!",
-  "sec4Ex2Instr1": "Programmér metoden `koch(double laenge, int tiefe)` (længde, dybde), som tegner Kochs snefnug rekursivt. Kochs snefnug består af en trekant af Koch-kurver!",
+  "sec4Ex2Instr1": "Programmér metoden `koch(double laenge, int tiefe)` (længde, dybde), som tegner en Koch-kurve rekursivt, og tegn dermed Kochs snefnug. Kochs snefnug består af en trekant af Koch-kurver!",
   "sec4Ex2Instr2": "Dermed er den sværeste opgave klaret. Glædelig højtid!",
 
   "finishTitle": "Aflevering",
