@@ -1,5 +1,7 @@
 package it.evadid.server.commandHandler.sql
 
+import it.evadid.server.database.newConnection
+
 import it.evadid.distribution.commandTypes.SqlEditorCommands.*
 import it.evadid.server.database.SqlStatements
 import it.evadid.sql.DatabaseConfigWithCredentials

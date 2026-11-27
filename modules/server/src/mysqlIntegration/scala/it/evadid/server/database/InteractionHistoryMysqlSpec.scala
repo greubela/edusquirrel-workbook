@@ -103,7 +103,7 @@ class InteractionHistoryMysqlSpec extends FunSuite {
     val client = HttpClient.newHttpClient()
     val user = User("Sync test", context.userId, "sync-test@example.test")
     MysqlTestDatabase.withConnection { connection =>
-      it.evadid.server.commandHandler.sql.SqlUserCommands(connection, logger)
+      UserAccountRows(connection, logger)
         .upsertUser(user, it.evadid.core.datastructures.user.UserConfig.defaults(isLocalAccount = false))
     }
     val token = AuthHandling.createToken(user)

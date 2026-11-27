@@ -1,5 +1,7 @@
 package it.evadid.server.commandHandler.sql
 
+import it.evadid.server.database.newConnection
+
 import it.evadid.core.datastructures.user.UserTokenInfo.SignedToken
 import it.evadid.core.datastructures.user.User
 import it.evadid.distribution.command.ExecutionCommand

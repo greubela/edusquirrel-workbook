@@ -3,7 +3,6 @@ package it.evadid.server.database
 import it.evadid.sql.{BackendDatabase, DatabaseConnection, DatabaseConfiguration, DatabaseConfig, DatabaseConfigWithCredentials}
 import it.evadid.distribution.commandTypes.SQLCommands.DbRequest
 import it.evadid.util.logging.Logger
-import it.evadid.server.commandHandler.sql.RichDatabaseConfig
 import java.sql.Connection
 import scala.util.{Try, Using}
 
