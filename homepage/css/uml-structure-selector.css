@@ -37,9 +37,9 @@
     border-radius: 6px;
     background: var(--uml-surface);
     box-shadow: 0 6px 16px -12px var(--editor-shadow, transparent);
-    font-family: var(--code-font-family, var(--color-code-font));
+    font-family: var(--code-font-family, var(--font-code-family));
     /* Compact boxes: slightly smaller than the source, so the diagram leaves the editor its height. */
-    font-size: calc(var(--code-font-size, var(--color-code-size)) * 0.88);
+    font-size: calc(var(--code-font-size, var(--font-code-size)) * 0.88);
     line-height: 1.35;
 }
 

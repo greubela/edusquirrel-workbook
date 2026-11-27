@@ -91,7 +91,7 @@
 
 .sorting-exercise-fullscreen__reset-button {
     border-radius: var(--radius-sm);
-    border-color: var(--color-border);
+    border-color: var(--color-border-soft);
     background: var(--color-surface-base);
     color: var(--color-text-primary);
     font-weight: 600;
@@ -359,7 +359,7 @@
 
 .fill-in-code-editor__mirror {
     min-height: 16rem;
-    border: 1px solid var(--color-border);
+    border: 1px solid var(--color-border-soft);
     border-radius: var(--radius-sm);
     overflow: hidden;
 }

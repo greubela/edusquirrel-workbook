@@ -202,8 +202,8 @@
     box-sizing: border-box;
     width: 100%;
     min-height: 12rem;
-    font-family: var(--code-font-family, var(--color-code-font));
-    font-size: var(--code-font-size, var(--color-code-size));
+    font-family: var(--code-font-family, var(--font-code-family));
+    font-size: var(--code-font-size, var(--font-code-size));
     line-height: 1.5;
 }
 
@@ -280,13 +280,13 @@
     text-decoration-color: rgba(var(--edusquirrel-diag-soft), 0.86);
 }
 .edusquirrel-code-mirror .cm-scroller {
-    font-family: var(--code-font-family, var(--font-mono, 'Fira Code', 'JetBrains Mono', monospace));
+    font-family: var(--code-font-family, var(--font-code-family));
     font-size: var(--code-font-size, 14px);
     line-height: 1.5;
 }
 .edusquirrel-code-mirror .cm-indent-markers {
-    --indent-marker-bg-color: var(--cm-indent-color,        rgba(255,255,255,0.10));
-    --indent-marker-active-bg-color: var(--cm-indent-active-color, rgba(255,255,255,0.28));
+    --indent-marker-bg-color: var(--cm-indent-color, var(--color-code-indent));
+    --indent-marker-active-bg-color: var(--cm-indent-active-color, var(--color-code-indent-active));
 }
 .edusquirrel-code-mirror .cm-todo-token {
     color: var(--color-accent-error) !important;
@@ -341,7 +341,7 @@
 }
 
 .cm-flowchart-gutter { background-color: transparent; }
-.cm-flowchart-gutter .cm-activeLineGutter { background-color: rgba(255,255,255,0.10); }
+.cm-flowchart-gutter .cm-activeLineGutter { background-color: var(--color-code-indent); }
 .cm-flowchart-gutter .cm-gutterElement { padding: 0; overflow: hidden; }
 .cm-flowchart-row { position: relative; height: 100%; min-height: 1px; }
 .cm-flowchart-row > svg { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }

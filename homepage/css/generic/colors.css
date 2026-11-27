@@ -116,8 +116,6 @@
     --color-yellow-14: #3E2F0C;
     --color-yellow-15: #292008;
 
-    /* Todo: new and lighter gray tones */
-
     --color-gray-0: #F2F2F2;
     --color-gray-1: #ededed;
     --color-gray-2: #DBDBDB;
@@ -179,12 +177,9 @@
     --feedback-pending-surface: color-mix(in srgb, var(--color-blue-4) 12%, var(--color-surface-base));
     --feedback-neutral: var(--color-gray-11);
     --feedback-neutral-surface: var(--color-surface-muted);
-    --feedback-icon-size: 1.15rem;
     --color-border-soft: var(--color-gray-3);
-    --color-border: var(--color-gray-3);
     --color-surface-base: var(--color-background-workarea-interactible);
     --color-surface-muted: var(--color-gray-0);
-    --color-surface: var(--color-surface-base);
     --color-surface-subtle: var(--color-gray-1);
     --color-text-muted-light: var(--color-gray-7);
     --color-text-primary: var(--textcolor-regular);
@@ -192,6 +187,12 @@
     --color-text-inverse: var(--color-surface-base);
     --color-focus: var(--color-accent-primary);
     --color-focus-ring: rgba(37, 99, 235, 0.2);
+    /* Shadows mix this ink with transparency (see the shadow tokens in dimensions.css). */
+    --color-shadow-ink: rgb(24, 35, 51);
+    --color-backdrop: rgba(0, 0, 0, 0.1);
+    /* Indentation guides and the active flowchart row on dark code surfaces. */
+    --color-code-indent: rgba(255, 255, 255, 0.10);
+    --color-code-indent-active: rgba(255, 255, 255, 0.28);
     --color-interaction-background: var(--color-surface-base);
     --color-button-background: var(--color-surface-muted);
     --color-button-hover: var(--color-surface-base);
@@ -203,12 +204,10 @@
     --color-outline-blue-soft: var(--color-blue-1);
     --color-code-background: var(--color-gray-14);
     --color-code-text: var(--color-blue-2);
-    --color-code-font: 'Consolas', 'Monaco', monospace;
-    --color-code-size: 14px;
     --color-tooltip-background: var(--color-surface-base);
     --color-tooltip-text: var(--color-ink);
     --color-tooltip-border: var(--color-border-soft);
-    --color-tooltip-shadow: rgba(24, 35, 51, 0.15);
+    --color-tooltip-shadow: color-mix(in srgb, var(--color-shadow-ink) 15%, transparent);
     --color-taskbox-background: var(--color-background-workarea-display);
     --color-taskbox-border: var(--color-blue-4);
     --color-taskbox-btn-active: var(--color-blue-4);
@@ -216,8 +215,6 @@
     --color-taskbox-btn-text: var(--color-blue-4);
     --color-taskbox-btn-bg: var(--color-surface-base);
     --interaction-border: 2px solid var(--color-accent-active);
-    --interaction-highlight-transition: transform 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
-    --font-family-base: 'Inter', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
 
     /* ASSOCIATED ROLES */
 

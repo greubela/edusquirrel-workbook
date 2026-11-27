@@ -33,7 +33,7 @@ Expensive work runs in workers: a Scala.js `Future` alone does not create a CPU 
 | `EvaEditorTab`, `EvaEditorConfig` | Language metadata and factories; only the selected editor is created |
 | `EvaConversionController` | Availability checks, requested switches and outcomes; no DOM |
 | `EvaLanguageTabs` | Accessible, localized tab list |
-| `EvaToolbarControls` | Selected editor's modes and class-diagram toggle, shown after the language tabs in Eva's single toolbar line (Snap adds none) |
+| `EvaToolbarControls` | Selected editor's modes and class-diagram toggle, shown after the language tabs in Eva's single toolbar line (Snap adds none); `DiagramDisplay` hides the diagram on small screens |
 | `EvaEditorContext`, `EvaEditorEnvironment` | Logger, labels, exercise environment, appearance and diagnostics |
 | `WorkbookEvaEditor` | Workbook renderer's construction boundary |
 | `EditorWithWorkbookPanel` | Task instructions, grading, hints and drawing previews |

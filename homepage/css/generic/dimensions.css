@@ -6,7 +6,7 @@
     --plot-font-size: 20px;
     --evacuation-cell-size: max(2.75rem, 44px);
     --blockchain-card-min-width: 18rem;
-  --unicode-table-min-width: 20rem;
+    --unicode-table-min-width: 20rem;
     --pixel-cell-size: max(2.75rem, 44px);
     --answer-table-control-min-width: 6rem;
     --neuron-control-min-width: 10rem;
@@ -24,6 +24,13 @@
     --snap-category-label-growth: 2px;
 
     --workarea-width: min(100%, 980px);
+
+    /* Typography and motion */
+    --font-family-base: 'Inter', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    --font-code-family: 'Consolas', 'Monaco', monospace;
+    --font-code-size: 14px;
+    --feedback-icon-size: 1.15rem;
+    --interaction-highlight-transition: transform 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
 
     --space-xs: 3px;
     --space-sm: 5px;
@@ -47,8 +54,10 @@
 
     --messenger-avatar-dimension: calc(var(--info-icons-dimension) * 2);
 
-    --shadow-soft: 0 4px 16px rgba(24, 35, 51, 0.10);
-    --shadow-button: 0 4px 12px -6px rgba(24, 35, 51, 0.35);
-    --shadow-medium: 0 8px 28px -8px rgba(24, 35, 51, 0.18);
+    --shadow-soft: 0 4px 16px color-mix(in srgb, var(--color-shadow-ink) 10%, transparent);
+    --shadow-button: 0 4px 12px -6px color-mix(in srgb, var(--color-shadow-ink) 35%, transparent);
+    --shadow-medium: 0 8px 28px -8px color-mix(in srgb, var(--color-shadow-ink) 18%, transparent);
+    --shadow-raised: 0 15px 35px color-mix(in srgb, var(--color-shadow-ink) 15%, transparent);
+    --shadow-raised-hover: 0 20px 45px color-mix(in srgb, var(--color-shadow-ink) 25%, transparent);
     --shadow-focus: 0 0 0 3px var(--color-focus-ring);
 }
