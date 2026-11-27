@@ -48,6 +48,31 @@ class LanguageMapStorageSpec extends FunSuite {
     assertEquals(read[LanguageMapStorage](write(storage)).loadedSources, Set.empty[LanguageMapInputSource])
   }
 
+  test("a server triple that conflicts with a restored cache entry replaces it, also in the re-persisted cache") {
+    val other = LanguageMapContentId("test", "other")
+    val cached = ParsedTriples(
+      Set(LanguageMapEntry[HumanLanguage](id, English, "cached English"),
+        LanguageMapEntry[HumanLanguage](id, German, "cached German"),
+        LanguageMapEntry[HumanLanguage](other, English, "cached other")),
+      Set(LanguageMapEntry[SpecialLanguage](id, UniversalLanguage, "cached fallback")))
+    val restoredCache = read[ParsedTriples](write(cached))
+    val installed = LanguageMapStorage.empty.withLoadedTriples(BasicLogger(), Set.empty, restoredCache)
+    val fromServer = ParsedTriples(
+      Set(LanguageMapEntry[HumanLanguage](id, English, "server English")),
+      Set(LanguageMapEntry[SpecialLanguage](id, UniversalLanguage, "server fallback")))
+    val refreshed = installed.withLoadedTriples(BasicLogger(), Set.empty, fromServer)
+
+    def check(storage: LanguageMapStorage): Unit = {
+      assertEquals(storage.parsedTriples.size, 4)
+      assertEquals(storage.languageMaps(id).getInLanguage(English), "server English")
+      assertEquals(storage.languageMaps(id).getInLanguage(German), "cached German")
+      assertEquals(storage.languageMaps(id).getInLanguage(French), "server fallback")
+      assertEquals(storage.languageMaps(other).getInLanguage(English), "cached other")
+    }
+    check(refreshed)
+    check(LanguageMapStorage.empty.withLoadedTriples(BasicLogger(), Set.empty, read[ParsedTriples](write(refreshed.parsedTriples))))
+  }
+
   test("joined language maps preserve language intersections, empty input and trailing separators") {
     val first = LanguageMap.mapBasedLanguageMap[HumanLanguage](Map(English -> "one", German -> "eins"))
     val second = LanguageMap.mapBasedLanguageMap[HumanLanguage](Map(English -> "two"))
