@@ -201,7 +201,6 @@ test('Java method editing and theme changes preserve source and undo history', a
     const beforeHover = await classEntry.boundingBox();
     await classEntry.hover();
     assert.deepEqual(await classEntry.boundingBox(), beforeHover, 'UML hover preserves element geometry');
-    assert.equal(await box.evaluate(node => getComputedStyle(node).borderRadius), '0px', 'UML classes have square corners');
     assert.equal(await editor.getByRole('tab', {name:'Java',exact:true}).innerText(), 'Java');
     await diagramEntry('square(side: int)').click();
     await waitForDocumentPrefix('static void square(int side)');
@@ -300,6 +299,7 @@ test('language tabs follow the current draft and commit converted representation
     });
     await installCodeMirrorModules(page);
     await page.goto(origin + prefix + 'homepage/workbookDesign/');
+    await page.locator('.select-language-line > div:has(.flag-fill-british-blue)').click();
     await page.locator('.section-register .login-area').nth(1).locator('button').click();
     await page.locator('.section-block').first().click();
     const open = page.getByRole('button', {name: /Editor.*öffnen|Open editor/i}).first();

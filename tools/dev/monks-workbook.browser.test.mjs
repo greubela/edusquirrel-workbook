@@ -140,6 +140,8 @@ test('monk stories and revised tasks work with the current editor and interactio
     // Python: a block being typed gets no automatic pass and stays as typed.
     // (Switching from Java generates the Python tab from the Java answer, which shows valid Python with pass.)
     await dialog.getByRole('tab', {name:'Python',exact:true}).click();
+    const editorLabels = JSON.parse(await readFile(path.join(root, 'resources/languageMaps/eva/blockeditor/map-de.json'), 'utf8'));
+    await dialog.getByRole('tab', {name:editorLabels.pythonModeFull,exact:true}).click();
     await code.waitFor();
     const typed = (await codeText()).replace(/\s*$/, '') + '\n    if 1 > 0:\n        ';
     await code.fill(typed);

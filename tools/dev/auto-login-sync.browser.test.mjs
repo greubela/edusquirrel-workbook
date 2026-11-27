@@ -133,7 +133,9 @@ test('automatic login restores answers; full reset clears every destination, pau
     await installCodeMirrorModules(page);
     await page.goto(origin+'/seed');await seed(page);
     await page.goto(origin+'/homepage/workbookDesign/');
-    await page.locator('.section-block').last().click();
+    await page.locator('.select-language-line > div:has(.flag-fill-british-blue)').click();
+    const feedbackTitle = JSON.parse(await readFile(path.join(root, 'resources/languageMaps/eva/testworkbook/map-en.json'), 'utf8')).sec7;
+    await page.locator('.section-block').filter({hasText:feedbackTitle}).click();
     const input=page.locator('.text-input-feedback textarea');
     await input.waitFor();
     await page.waitForFunction(expected=>document.querySelector('.text-input-feedback textarea')?.value===expected,answer);
@@ -150,7 +152,8 @@ test('automatic login restores answers; full reset clears every destination, pau
     await Promise.all(writes);
     assert(formats.every(format=>JSON.parse(histories.get(format).historyJson).events.values.some(event=>event.newState===edited)));
     await page.reload();
-    await page.locator('.section-block').last().click();
+    await page.locator('.select-language-line > div:has(.flag-fill-british-blue)').click();
+    await page.locator('.section-block').filter({hasText:feedbackTitle}).click();
     await page.waitForFunction(expected=>document.querySelector('.text-input-feedback textarea')?.value===expected,edited);
     assert.equal(navigations,2);
     assert.equal(await page.locator('.container-login').count(),0,'reload preserves cached authentication');
@@ -179,7 +182,8 @@ test('automatic login restores answers; full reset clears every destination, pau
       page.waitForEvent('framenavigated', frame => frame === page.mainFrame()),
       page.getByRole('menuitem',{name:'Retry full reset',exact:true}).click()
     ]);
-    await page.locator('.section-block').last().click();
+    await page.locator('.select-language-line > div:has(.flag-fill-british-blue)').click();
+    await page.locator('.section-block').filter({hasText:feedbackTitle}).click();
     await page.locator('.text-input-feedback textarea').waitFor();
     assert.equal(await page.locator('.text-input-feedback textarea').inputValue(),'');
     assert.equal(navigations,3,'successful reset reloads exactly once');

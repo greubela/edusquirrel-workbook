@@ -90,6 +90,7 @@ test('test workbook preserves edits across human languages, programming language
     });
     await installCodeMirrorModules(page);
     await page.goto(origin + '/homepage/workbookDesign/index.html');
+    await page.locator('.select-language-line > div:has(.flag-fill-british-blue)').click();
     // Start local usage explicitly: there is no default user.
     await page.locator('.section-register .login-area').nth(1).locator('button').click();
     await page.locator('.section-block').first().click();
