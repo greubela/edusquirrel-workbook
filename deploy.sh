@@ -8,10 +8,44 @@
 #   ./deploy.sh --database=setup     Create the schema; asks before re-creating existing tables
 #                                    (default: check only)
 #   ./deploy.sh --yes                Answer yes to all questions
+#   ./deploy.sh --no-pull            Deploy the checkout as it is, without git fetch/pull first
 #   ./deploy.sh -- --dry-run         Pass the remaining options to deploy-client.sh
 #
-# Every run is logged to tmp/work/deployment/logs/. On Windows, run it in Git Bash, or from
-# PowerShell with: & "$env:ProgramFiles\Git\bin\bash.exe" ./deploy.sh
+# Every run first fetches and fast-forwards the current branch, and is logged to
+# tmp/work/deployment/logs/. On Windows, run it in Git Bash, or from PowerShell with:
+#   & "$env:ProgramFiles\Git\bin\bash.exe" ./deploy.sh
+
+# Whether this run has a window of its own (double-click, PowerShell), decided once before re-starts.
+if [[ -z "${DEPLOY_OWN_WINDOW:-}" ]]; then
+  if [[ "${SHLVL:-1}" -le 1 && -t 0 ]]; then DEPLOY_OWN_WINDOW=true; else DEPLOY_OWN_WINDOW=false; fi
+  export DEPLOY_OWN_WINDOW
+fi
+
+# Fetch and pull first, from a temporary copy of this script: Git for Windows cannot replace a script
+# that a running shell holds open. Afterwards the freshly pulled deploy.sh runs the deployment.
+if [[ -z "${DEPLOY_PULLED:-}" && " $* " != *" --no-pull "* && " $* " != *" -h "* && " $* " != *" --help "* ]]; then
+  if [[ -z "${DEPLOY_PULL_REPO:-}" ]]; then
+    DEPLOY_PULL_REPO="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+    copy="$(mktemp "${TMPDIR:-/tmp}/edusquirrel-deploy-pull.XXXXXX")"
+    cp "$DEPLOY_PULL_REPO/deploy.sh" "$copy"
+    export DEPLOY_PULL_REPO
+    exec bash "$copy" "$@"
+  fi
+  rm -f "${BASH_SOURCE[0]}"
+  pull_failed() {
+    printf '[deploy] error: %s; resolve it, or run with --no-pull to deploy the checkout as it is\n' "$1" >&2
+    if [[ "$DEPLOY_OWN_WINDOW" == true ]]; then read -r -p "Press Enter to close this window. " _ || true; fi
+    exit 1
+  }
+  cd "$DEPLOY_PULL_REPO" || pull_failed "cannot enter $DEPLOY_PULL_REPO"
+  branch="$(git symbolic-ref --quiet --short HEAD)" || pull_failed "the checkout is not on a branch"
+  printf '[deploy] fetching and pulling %s\n' "$branch" >&2
+  git fetch --prune --quiet || pull_failed "git fetch failed"
+  git pull --ff-only || pull_failed "git pull failed (local commits or conflicting local changes?)"
+  export DEPLOY_PULLED=1
+  exec bash "$DEPLOY_PULL_REPO/deploy.sh" "$@"
+fi
+
 # shellcheck source=SCRIPTDIR/deployment/lib/common.sh
 source "$(dirname "${BASH_SOURCE[0]}")/deployment/lib/common.sh"
 LOG_PREFIX=deploy
@@ -26,8 +60,9 @@ while [[ $# -gt 0 ]]; do
     --database=*) database_mode="${1#--database=}"
       [[ "$database_mode" =~ ^(check|setup)$ ]] || die "--database must be check or setup" ;;
     --yes) yes=(--yes) ;;
+    --no-pull) ;;  # Handled before the pull above.
     --) shift; client_args=("$@"); break ;;
-    -h|--help) sed -n '2,14p' "$0"; exit 0 ;;
+    -h|--help) sed -n '2,16p' "$0"; exit 0 ;;
     *) die "unknown argument: $1" ;;
   esac
   shift
@@ -50,10 +85,11 @@ if [[ -z "${DEPLOY_LOG_FILE:-}" ]]; then
     printf '[deploy] FAILED (exit %s); see the messages above and %s\n' "$status" "$relative_log" | tee -a "$DEPLOY_LOG_FILE" >&2
   fi
   # Started by a double-click or from PowerShell, the window would close before the output can be read.
-  if [[ "${SHLVL:-1}" -le 1 && -t 0 ]]; then read -r -p "Press Enter to close this window. " _ || true; fi
+  if [[ "$DEPLOY_OWN_WINDOW" == true ]]; then read -r -p "Press Enter to close this window. " _ || true; fi
   exit "$status"
 fi
 log "log file: ${DEPLOY_LOG_FILE#"$REPO_ROOT"/}"
+log "deploying $(git -C "$REPO_ROOT" log -1 --format='%h %s' 2>/dev/null || echo 'an unknown revision')"
 
 # Fail before the long build when a step's settings are missing.
 needed="$(has_step database && echo "local.env server.env"; has_step server && echo "local.env server.env"

@@ -1,12 +1,14 @@
 # Deployment
 
-[deploy.sh](../deploy.sh) builds what the selected steps need and runs the three deployment
-scripts in order: database check, backend, website. Each script also runs on its own. The
+[deploy.sh](../deploy.sh) first fetches and fast-forwards the current branch (`--no-pull` skips
+this; a failed pull stops the run), then builds what the selected steps need and runs the three
+deployment scripts in order: database check, backend, website. The pull runs from a temporary copy
+of the script, because Git for Windows cannot replace a script that a running shell holds open. Each script also runs on its own. The
 backend needs `buildServerDeploy`, the website `buildClientDeploy buildWorkerDeploy`. MathWorld
 is not built for the deployment; its `dist/` is uploaded only if it was built separately.
 
 ```sh
-./deploy.sh                       # build + database check + server + client
+./deploy.sh                       # pull + build + database check + server + client
 ./deploy.sh --skip-build          # deploy already built artifacts
 ./deploy.sh --only=client -- --dry-run
 ./deploy.sh --database=setup      # create the schema (asks before re-creating tables)
@@ -45,8 +47,10 @@ An encrypted SSH key is unlocked once through a private `ssh-agent` that is stop
 targets only `SQL_DATABASE` from `server.env`; [setup.sql](../deployment/database/setup.sql) remains the
 single schema source (see the [database guide](database/README.md)).
 
-- `check` (default) builds a reference schema from `setup.sql` in a throwaway MySQL container
-  and diffs tables, columns, indexes, foreign keys, routines and the seed row with the live database.
+- `check` (default) creates the tables of `setup.sql` in an empty database. It then builds a
+  reference schema from `setup.sql` in a throwaway MySQL container and diffs tables, columns,
+  indexes, foreign keys, routines and the seed row with the live database. If they differ, it asks
+  at the terminal `[y/N]` whether to run `setup` now (`--yes` never answers this question).
 - `setup` runs `setup.sql`, then `check`. If tables of `setup.sql` already exist, it lists them and
   asks `[y/N]` (`--yes` answers yes); on yes it dumps them to ignored
   `tmp/work/deployment/database-backups/` (unless `--no-backup`), drops them and creates them again.
