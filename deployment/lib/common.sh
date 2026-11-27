@@ -100,6 +100,11 @@ git_version() { git -C "$REPO_ROOT" describe --always --dirty --tags 2>/dev/null
 ssh_options() {
   local key="${SERVER_SSH_KEY/#\~/$HOME}"
   [[ -f "$key" ]] || die "SERVER_SSH_KEY does not point to a file: $SERVER_SSH_KEY"
+  if head -n 1 "$key" | grep -q '^PuTTY-User-Key-File'; then
+    die "SERVER_SSH_KEY is a PuTTY key (.ppk), which OpenSSH cannot read. Convert it once: PuTTYgen ->" \
+      "load the key -> Conversions -> Export OpenSSH key (keep the passphrase), or run" \
+      "'puttygen key.ppk -O private-openssh -o key'; then point SERVER_SSH_KEY to the exported file."
+  fi
   SSH_OPTS=(-i "$key" -o IdentitiesOnly=yes -o ServerAliveInterval=30
     -o "StrictHostKeyChecking=${SERVER_SSH_STRICT_HOST_KEY_CHECKING:-accept-new}")
   if [[ -n "${SERVER_SSH_KNOWN_HOSTS:-}" ]]; then
@@ -119,12 +124,21 @@ ssh_init() {
     eval "$(ssh-agent -s)" >/dev/null
     DEPLOY_SSH_AGENT_STARTED=true
     local askpass="$DEPLOY_TMP/askpass.sh"
-    # shellcheck disable=SC2016  # The askpass script expands the variable itself.
-    printf '#!/bin/sh\nprintf "%%s\\n" "$SERVER_SSH_KEY_PASSPHRASE"\n' > "$askpass"
+    # Answer only once: ssh-add asks again after a wrong passphrase and would loop forever.
+    # shellcheck disable=SC2016  # The askpass script expands its variables itself.
+    printf '#!/bin/sh\n[ -e "$0.used" ] && exit 1\n: > "$0.used"\nprintf "%%s\\n" "$SERVER_SSH_KEY_PASSPHRASE"\n' > "$askpass"
     chmod 700 "$askpass"
-    SSH_ASKPASS="$askpass" SSH_ASKPASS_REQUIRE=force DISPLAY="${DISPLAY:-none}" \
-      ssh-add "${SERVER_SSH_KEY/#\~/$HOME}" < /dev/null >/dev/null 2>&1 \
-      || die "could not unlock SERVER_SSH_KEY with SERVER_SSH_KEY_PASSPHRASE (OpenSSH 8.4+ needed)"
+    if ! SSH_ASKPASS="$askpass" SSH_ASKPASS_REQUIRE=force DISPLAY="${DISPLAY:-none}" \
+        ssh-add "${SERVER_SSH_KEY/#\~/$HOME}" < /dev/null > "$DEPLOY_TMP/ssh-add.txt" 2>&1; then
+      local reason hint="check SERVER_SSH_KEY_PASSPHRASE (single-quote it if it contains \$, spaces or quotes)"
+      reason="$(tr -d '\r' < "$DEPLOY_TMP/ssh-add.txt")"
+      case "$reason" in
+        *"too open"*|*"bad permissions"*) hint="the key file is readable by others; in Git Bash run: chmod 600 '$SERVER_SSH_KEY'" ;;
+        *"invalid format"*|*"error in libcrypto"*) hint="the file is not an OpenSSH private key (export it in OpenSSH format)" ;;
+      esac
+      die "could not unlock SERVER_SSH_KEY with SERVER_SSH_KEY_PASSPHRASE: $hint." \
+        "ssh-add said: ${reason:-nothing} ($(ssh -V 2>&1 | tr -d '\r'))"
+    fi
     SSH_OPTS+=(-o BatchMode=yes)
   fi
 }
