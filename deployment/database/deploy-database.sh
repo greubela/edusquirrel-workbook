@@ -25,6 +25,11 @@ done
 
 load_env local.env
 load_env database.env
+# The connection comes from server.env, the backend's own configuration; nothing else is read from it.
+env_file_entries "$SECRETS_DIR/server.env" > /dev/null
+for key in SQL_HOST SQL_PORT SQL_DATABASE SQL_USER SQL_PW; do
+  if value="$(env_file_value "$SECRETS_DIR/server.env" "$key")"; then export "$key=$value"; fi
+done
 require_vars SQL_HOST SQL_DATABASE SQL_USER SQL_PW
 SQL_PORT="${SQL_PORT:-3306}"
 MYSQL_IMAGE="${DATABASE_MYSQL_IMAGE:-mysql:8.4}"

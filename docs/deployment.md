@@ -24,8 +24,8 @@ The files are authoritative: exported shell variables (such as development `SQL_
 | File | Content |
 | --- | --- |
 | `local.env` | SSH host/user/key/passphrase and remote directory, FTP login and webspace root, database tool host |
-| `database.env` | `SQL_*` connection, `DATABASE_PROTECTED`, `DATABASE_ALLOW_RESET`, reference MySQL image |
-| `server.env` | The backend's Compose `.env` (`SERVER_SECRET`, `SQL_*`, `OPENAI_*`, …); `SQL_*` must equal `database.env` |
+| `database.env` | `DATABASE_PROTECTED`, `DATABASE_ALLOW_RESET`, reference MySQL image |
+| `server.env` | The backend's Compose `.env` (`SERVER_SECRET`, `SQL_*`, `OPENAI_*`, …); the single source of the database connection, also used by `deploy-database.sh` |
 | `client.env` | Client runtime configuration, published as `deployment/client/.env`; **public**, so credential-like keys are refused |
 
 An encrypted SSH key is unlocked once through a private `ssh-agent` that is stopped on exit.
@@ -50,21 +50,24 @@ single schema source (see the [database guide](database/README.md)).
 [deploy-server.sh](../deployment/server/deploy-server.sh) uploads `artifacts/newest/server.jar`,
 [docker-compose.yml](../deployment/server/docker-compose.yml), `server.env` (plus
 `SERVER_VERSION` from `git describe`) and [update-docker.sh](../deployment/server/update-docker.sh)
-to `SERVER_REMOTE_DIR` as `*.upload` files. `update-docker.sh` keeps the active files as
+as `*.upload` files. `SERVER_REMOTE_DIR` mirrors the repository root: the jar goes to
+`artifacts/newest/`, the other files to `deployment/server/`, where Compose runs. `update-docker.sh` keeps the active files as
 `*.previous`, activates the uploads, runs `docker compose down` / `up -d` and waits for the
 container health check. If the backend stays unhealthy, it keeps the new files as `*.failed`
 and restores the previous version; `sh update-docker.sh --rollback` does this manually.
 Finally `SERVER_HEALTH_URL` must report the deployed version.
 
-Compose names the project after `SERVER_REMOTE_DIR`. Before the first scripted deployment,
-stop a backend started from another directory (`docker compose down` there); otherwise
-ports 80/443 are still taken.
+Compose names the project after its directory (`server`), so a backend previously started from
+`deployment/server/` is replaced in place; one started elsewhere must be stopped first
+(`docker compose down` there), or ports 80/443 stay taken.
 
 ## Website
 
 [deploy-client.sh](../deployment/client/deploy-client.sh) assembles `_site/` with
 [assemble-pages.mjs](../tools/dev/assemble-pages.mjs) (homepage, resources, newest client/worker,
-root redirects), adds `client.env` and uploads to `CLIENT_FTP_ROOT` over FTPS with curl.
+root redirects), adds the stable client/worker and `client.env` and uploads to `CLIENT_FTP_ROOT`
+over FTPS with curl. `artifacts/history/` is never uploaded, neither here nor to the server,
+which receives only `artifacts/newest/server.jar`.
 
 [sync-plan.mjs](../deployment/client/sync-plan.mjs) compares SHA-256 hashes with
 `.deploy-manifest.sha256`, the manifest of the last deployment stored on the webspace:

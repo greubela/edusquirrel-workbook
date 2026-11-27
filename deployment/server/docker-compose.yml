@@ -35,8 +35,8 @@ services:
       - .env
     volumes:
       - type: bind
-        # Relative to this file; deploy-server.sh uploads both into SERVER_REMOTE_DIR.
-        source: ./artifacts/newest/server.jar
+        # Relative to this file: the server directory mirrors the repository layout.
+        source: ../../artifacts/newest/server.jar
         target: /app/server.jar
         read_only: true
         bind:
