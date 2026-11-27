@@ -1,6 +1,7 @@
 {
   "imageLoadingMap": "[Image is loading!]",
   "missingContent": "[No Content Available]",
+  "programmingHintNoChange": "I don’t have another hint for this version.",
   "noSectionSelected": "[No section selected!]",
   "downloadEverything": "Download All",
   "settings": "Settings",

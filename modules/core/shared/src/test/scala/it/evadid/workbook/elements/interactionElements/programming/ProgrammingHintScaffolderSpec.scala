@@ -33,7 +33,7 @@ class ProgrammingHintScaffolderSpec extends FunSuite {
       |  public static void main(String[] args) {
       |  }
       |}""".stripMargin
-  private val reply = """{"hints":[{"question":"What does `sum` return when a is smaller than b?","evidenceIds":["source-3","task"]}]}"""
+  private val reply = """{"hints":[{"text":"What does `sum` return when a is smaller than b?","evidenceIds":["source-3","task"]}]}"""
 
   /** The LLM backend double: requests arrive through the real command codec; each answer is the next reply. */
   private class LlmBackend(replies: String*) extends LocalExecutionClient[LLMCommands.FeedbackLlmRequest, String] {
@@ -68,6 +68,8 @@ class ProgrammingHintScaffolderSpec extends FunSuite {
     new LanguageMapIdResolver(State[HumanLanguage](language).observable) {
       override def resolveMap(id: LanguageMapContentId): Future[LanguageMap[HumanLanguage]] =
         if id == task then Future.successful(LanguageMap.mapBasedLanguageMap(texts))
+        else if id == LanguageMapContentId("basic/programmingHintNoChange") then
+          Future.successful(LanguageMap.mapBasedLanguageMap(Map(German -> "Zu diesem Stand habe ich keinen weiteren Hinweis.")))
         else Future.failed(java.util.NoSuchElementException(id.fullId))
     }
 
@@ -90,7 +92,7 @@ class ProgrammingHintScaffolderSpec extends FunSuite {
       assertEquals(backend.requests.size, 1)
       val request = backend.requests.head
       assertEquals(request.llmConfiguration, configuration, "the session's own model configuration is forwarded")
-      assert(request.systemPrompt.contains("Return exactly one short question"), request.systemPrompt.take(80))
+      assert(request.systemPrompt.contains("\"evidenceIds\"") && request.systemPrompt.contains("{\"hints\":[]}"))
       val prompt = backend.prompts.head
       assertEquals(prompt("feedbackLanguage").str, German.name)
       assertEquals(prompt("task"), ujson.Obj("id" -> "task", "text" -> "Gib die Summe zweier positiver Zahlen zurück."))
@@ -143,7 +145,7 @@ class ProgrammingHintScaffolderSpec extends FunSuite {
   }
 
   test("public check results are part of the prompt and may be cited") {
-    val backend = new LlmBackend("""{"hints":[{"question":"Which result does check one report for this method?","evidenceIds":["check-1"]}]}""")
+    val backend = new LlmBackend("""{"hints":[{"text":"Which result does check one report for this method?","evidenceIds":["check-1"]}]}""")
     val answer = ProgrammingStateRaw(Java, source)
     val element = exercise(answer, tests = true)
     val grader = element.gradingElements.head
@@ -157,8 +159,40 @@ class ProgrammingHintScaffolderSpec extends FunSuite {
     }
   }
 
+  test("a passing public requirement skips the model; an ungraded answer may receive no hint") {
+    val backend = new LlmBackend("""{"hints":[]}""")
+    val answer = ProgrammingStateRaw(Python, "def total(a, b):\n    return a + b")
+    val graded = exercise(answer, tests = true)
+    val grader = graded.gradingElements.head
+    graded.interactionVariable.updateHistory(_.addGrading(GradingResult(grader, answer, GradingStatus.Correct)), TestExecutionContext())
+    for {
+      passed <- graded.interactionVariable.control.getOrCalculateScaffolding(context(backend))
+      _ = assertEquals(backend.requests.size, 0)
+      noEvidence <- exercise(answer).interactionVariable.control.getOrCalculateScaffolding(context(backend))
+    } yield {
+      assertEquals(backend.requests.size, 1)
+      assertEquals(passed.scaffoldingStatus, noEvidence.scaffoldingStatus)
+      assertEquals(passed.scaffoldingEntity, it.evadid.workbook.abstractions.FeedbackEntity.TestEntity)
+      assertEquals(noEvidence.scaffoldingEntity, it.evadid.workbook.abstractions.FeedbackEntity.SystemEntity)
+    }
+  }
+
+  test("a hint can explain a public mismatch without asking a question") {
+    val backend = new LlmBackend("""{"hints":[{"text":"Trace the two arguments through the return expression.","evidenceIds":["check-1","source-3"]}]}""")
+    val answer = ProgrammingStateRaw(Java, source)
+    val element = exercise(answer, tests = true)
+    val grader = element.gradingElements.head
+    val feedback = LanguageMap.mapBasedLanguageMap(Map[HumanLanguage,String](English -> "The result was negative."))
+    element.interactionVariable.updateHistory(_.addGrading(GradingResult(grader, answer, GradingStatus.Incorrect, feedback, None)), TestExecutionContext())
+    element.interactionVariable.control.getOrCalculateScaffolding(context(backend, language = English)).map { result =>
+      assertEquals(backend.prompts.head("checks")(0)("feedback").str, "The result was negative.")
+      assertEquals(result.scaffoldingStatus, ScaffoldingStatus.ScaffoldingFeedback(
+        LanguageMap.mapBasedLanguageMap(Map(English -> "1. Trace the two arguments through the return expression."))))
+    }
+  }
+
   test("a check without a result is listed as unavailable and cannot be cited") {
-    val backend = new LlmBackend("""{"hints":[{"question":"Why does check one fail?","evidenceIds":["check-1"]}]}""")
+    val backend = new LlmBackend("""{"hints":[{"text":"Why does check one fail?","evidenceIds":["check-1"]}]}""")
     exercise(ProgrammingStateRaw(Java, source), tests = true).interactionVariable.control
       .getOrCalculateScaffolding(context(backend)).map { result =>
         assertEquals(backend.prompts.head("checks")(0), ujson.Obj("id" -> "check-1", "required" -> true, "status" -> "unavailable"))
@@ -168,10 +202,10 @@ class ProgrammingHintScaffolderSpec extends FunSuite {
 
   test("replies outside the hint contract are rejected") {
     val invalid = List(
-      """{"hints":[{"question":"No question mark","evidenceIds":["source-3"]}]}""",
-      """{"hints":[{"question":"Which line?","evidenceIds":["source-99"]}]}""",
-      """{"hints":[{"question":"Which line?","evidenceIds":["source-3"],"answer":"line 3"}]}""",
-      """{"hints":[]}""",
+      """{"hints":[{"text":"Check source-3","evidenceIds":["source-3"]}]}""",
+      """{"hints":[{"text":"Which line?","evidenceIds":["source-99"]}]}""",
+      """{"hints":[{"text":"Which line?","evidenceIds":["source-3"],"answer":"line 3"}]}""",
+      """{"hints":[{"text":"","evidenceIds":["task"]}]}""",
       """Sure! Here is a hint: which line?""")
     Future.traverse(invalid) { raw =>
       val backend = new LlmBackend(raw)
@@ -199,6 +233,27 @@ class ProgrammingHintScaffolderSpec extends FunSuite {
     shape.interactionVariable.control.getOrCalculateScaffolding(context(backend)).map { _ =>
       assertEquals(backend.prompts.map(_("task")("text").str), Vector("Gib die Summe zweier positiver Zahlen zurück."))
       assertEquals(backend.prompts.head("source")("code").str, "forward(10)\n")
+    }
+  }
+
+  test("a matching drawing still allows a hint about a required method") {
+    import it.evadid.core.datastructures.vectorShapes.svg.TurtleCommand
+    import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseTurtle.*
+    val answer = ProgrammingStateRaw(Python, "forward(10)\n")
+    val shape = TurtleRecreateShapeInteraction("hint-same-drawing", answer,
+      TurtleGraphic(List(TurtleCommand.Forward(10.0))), instructionText = Some(task))
+    val backend = new LlmBackend("""{"hints":[{"text":"Compare where the drawing happens with the requested method.","evidenceIds":["source-1","task"]}]}""")
+    val ctx = context(backend, language = English, texts = Map(English -> "Use a helper method to draw a line."))
+    val grader = shape.gradingElements.head
+    for {
+      grade <- grader.gradeStateSafe(answer, true, UpdateImportance.MAJOR, ctx)
+      _ = assertEquals(grade.gradingStatus, GradingStatus.Correct)
+      _ = shape.interactionVariable.updateHistory(_.addGrading(grade), ctx)
+      hint <- shape.scaffoldingElement.get.handleFeedbackGeneration(answer, ctx)
+    } yield {
+      assert(!hint.scaffoldingStatus.isError)
+      assertEquals(backend.prompts.head("checks")(0)("scope").str, "drawing")
+      assertEquals(backend.prompts.head("checks")(0)("status").str, "correct")
     }
   }
 

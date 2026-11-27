@@ -155,7 +155,7 @@ private[evadid] object ProgrammingTestRunner {
                         isinstance(selected.slice, ast.Constant) and selected.slice.value == "commands"):
                     expected = ast.literal_eval(literal)
                     if type(expected) is list and all(type(command) is list for command in expected):
-                        invocation_capture["expected_commands"] = command_snapshot(expected, 128)
+                        invocation_capture["expected_commands"] = command_snapshot(evidence_commands(expected), 128)
             return call.func.id
         except Exception:
             invocation_capture["bad"] = True
@@ -206,7 +206,7 @@ private[evadid] object ProgrammingTestRunner {
                 record["complete"] = True
                 expected = invocation_capture["expected_commands"]
                 if expected is not None:
-                    actual = command_snapshot(commands, 128)
+                    actual = command_snapshot(evidence_commands(commands), 128)
                     if actual is not None and actual != expected:
                         index = next((i for i, pair in enumerate(zip(actual, expected)) if pair[0] != pair[1]), min(len(actual), len(expected)))
                         record["packet"]["commandComparison"] = {"actualCount": len(actual), "expectedCount": len(expected),
@@ -265,10 +265,18 @@ private[evadid] object ProgrammingTestRunner {
                 return None
         return tuple(tuple(command) for command in commands)
 
+    def evidence_commands(commands):
+        if not compiled:
+            return commands
+        # Java reports include a reserved zero for each parameterless pen control.
+        return [command[:1] if len(command) == 2 and command[0] in ("penup", "pendown")
+                and type(command[1]) in (int, float) and command[1] == 0 else command
+                for command in commands]
+
     def observe(commands):
         if not observe_program or not observation_allowed[0]:
             return
-        frozen = command_snapshot(commands, 10000)
+        frozen = command_snapshot(evidence_commands(commands), 10000)
         if frozen is None:
             suppress_observation()
             return

@@ -103,6 +103,37 @@ class ProgrammingUnitTestGraderSpec extends FunSuite {
     }
   }
 
+  test("Java pen controls have canonical arity in public evidence") {
+    def drawing(commands: String) = ProgrammingStateRaw(Java,
+      s"class Drawing { public static void main(String[] args) { $commands } }")
+    val bothPenControls = drawing("Turtle.penUp(); Turtle.forward(20); Turtle.penDown();")
+    val onlyPenDown = drawing("Turtle.forward(20); Turtle.penDown();")
+    val matching = """assert run_program()["commands"] == [["penup", 0], ["forward", 20], ["pendown", 0]]"""
+    val forward = """assert run_program()["commands"] == [["forward", 20]]"""
+    val wrongDistance = matching.replace("20", "19")
+    val invalidPenSlot = wrongDistance.replace("0]", "1]")
+    for {
+      same <- grader(matching, observe = true).gradeState(bothPenControls, python)
+      up <- grader(forward, invocation = true, comparison = true).gradeState(bothPenControls, python)
+      down <- grader(forward, invocation = true, comparison = true).gradeState(onlyPenDown, python)
+      distance <- grader(wrongDistance, invocation = true, comparison = true).gradeState(bothPenControls, python)
+      invalid <- grader(invalidPenSlot, invocation = true, comparison = true).gradeState(bothPenControls, python)
+      privateResult <- grader(forward, GradingImportance.HIDDEN_TEST, observe = true, invocation = true, comparison = true)
+        .gradeState(bothPenControls, python)
+    } yield {
+      assert(same.gradingStatus.isCorrect)
+      val commands = same.additionalData.flatMap(_.programObservation).getOrElse(fail("no output")).commands
+      assertEquals(commands.toList, List(TurtleCommand.PenUp, TurtleCommand.Forward(20.0), TurtleCommand.PenDown))
+      val differences = List(up, down, distance).map(_.additionalData.flatMap(_.testInvocation)
+        .flatMap(_.commandComparison).getOrElse(fail("no comparison")))
+      assertEquals(differences.map(_.commandIndex), List(0, 1, 1))
+      val expected: List[Option[TurtleCommand[Double]]] = List(Some(TurtleCommand.PenUp), Some(TurtleCommand.PenDown), Some(TurtleCommand.Forward(20.0)))
+      assertEquals(differences.map(_.actual), expected)
+      assertEquals(invalid.additionalData.flatMap(_.testInvocation).flatMap(_.commandComparison), None)
+      assertEquals(privateResult.additionalData, None)
+    }
+  }
+
   test("a failed test publishes the observed drawing only when the test is visible") {
     val wrong = ProgrammingStateRaw(Python, "forward(10)\nright(90)\n")
     for {
