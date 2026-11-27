@@ -106,6 +106,7 @@ ssh_options() {
       "load the key -> Conversions -> Export OpenSSH key (keep the passphrase), or run" \
       "'puttygen key.ppk -O private-openssh -o key'; then point SERVER_SSH_KEY to the exported file."
   fi
+  # The identity stays at index 1; ssh_init replaces it with the agent's public key.
   SSH_OPTS=(-i "$key" -o IdentitiesOnly=yes -o ServerAliveInterval=30
     -o "StrictHostKeyChecking=${SERVER_SSH_STRICT_HOST_KEY_CHECKING:-accept-new}")
   if [[ -n "${SERVER_SSH_KNOWN_HOSTS:-}" ]]; then
@@ -140,6 +141,10 @@ ssh_init() {
       die "could not unlock SERVER_SSH_KEY with SERVER_SSH_KEY_PASSPHRASE: $hint." \
         "ssh-add said: ${reason:-nothing} ($(ssh -V 2>&1 | tr -d '\r'))"
     fi
+    # Offer the agent's key by its public half: ssh cannot read the public key from an encrypted
+    # PEM file (PuTTYgen's "Export OpenSSH key"), and with IdentitiesOnly it would offer nothing.
+    ssh-add -L > "$DEPLOY_TMP/agent-key.pub" || die "the unlocked key is missing from the ssh-agent"
+    SSH_OPTS[1]="$DEPLOY_TMP/agent-key.pub"
     SSH_OPTS+=(-o BatchMode=yes)
   fi
   # Test the login once, so a rejected user or key stops here with an explanation.
