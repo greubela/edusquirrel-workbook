@@ -323,7 +323,7 @@ class RemoteInteractionCacheControlSpec extends EditorDomSuite {
     fixture.withHttp {
       synchronizedAndRead(fixture).flatMap { _ =>
         val report = fixture.info.syncControl.createReportFor(fixture.elements.head).observe(using unsafeWindowOwner)
-        val sharedReporter = fixture.info.signals.reportersFor(fixture.elements.head).sync
+        val sharedReporter = fixture.info.reporters.reportersFor(fixture.elements.head).sync
         val summary = sharedReporter.report.observe(using unsafeWindowOwner)
         assertEquals(report.now().get.destinationsWithSufficientWrites.size, 2)
         assertEquals(summary.now().confirmed, 2)
@@ -347,7 +347,7 @@ class RemoteInteractionCacheControlSpec extends EditorDomSuite {
       .exists(_.typedAs(TextInteractionFormat).allStates.exists(_.newState == answer))
     fixture.withHttp {
       synchronizedAndRead(fixture).flatMap(_ => settled(fixture)).flatMap { _ =>
-        val summary = fixture.info.signals.reportersFor(fixture.elements.head).sync.report.observe(using owner)
+        val summary = fixture.info.reporters.reportersFor(fixture.elements.head).sync.report.observe(using owner)
         variable.setStateFromUserInteraction("half-typed", UpdateImportance.TEMPORARY, context = fixture.info.workbookContextInformation)
         settled(fixture).flatMap(_ => fixture.info.syncControl.fetchAll(true)).flatMap { _ =>
           assert(!written("half-typed"), "a temporary answer is not sent to SYNC_MAJOR destinations")
@@ -709,7 +709,7 @@ class RemoteInteractionCacheControlSpec extends EditorDomSuite {
             fixture.elements.foreach(_.interactionVariable.setStateFromUserInteraction(replacementAnswer, UpdateImportance.MAJOR,
               context = ExecutionContextInformation.default))
             val report = fixture.info.syncControl.createReportFor(fixture.elements.head).observe(using owner)
-            val sharedReporter = fixture.info.signals.reportersFor(fixture.elements.head).sync
+            val sharedReporter = fixture.info.reporters.reportersFor(fixture.elements.head).sync
             val summary = sharedReporter.report.observe(using owner)
             val replacement = fixture.info.syncControl.storeAll(true)
             newGate.arrived.flatMap { _ =>
@@ -790,7 +790,7 @@ class RemoteInteractionCacheControlSpec extends EditorDomSuite {
         fixture.elements.foreach(_.interactionVariable.setStateFromUserInteraction("after destination change", UpdateImportance.MAJOR,
           context = ExecutionContextInformation.default))
         val report = fixture.info.syncControl.createReportFor(fixture.elements.head).observe(using owner)
-        val sharedReporter = fixture.info.signals.reportersFor(fixture.elements.head).sync
+        val sharedReporter = fixture.info.reporters.reportersFor(fixture.elements.head).sync
         val summary = sharedReporter.report.observe(using owner)
         fixture.requests.set(Vector.empty)
         fixture.info.syncControl.ensureSynced().flatMap { _ =>
@@ -818,7 +818,7 @@ class RemoteInteractionCacheControlSpec extends EditorDomSuite {
     fixture.withHttp {
       synchronizedAndRead(fixture).flatMap { _ =>
         val report = fixture.info.syncControl.createReportFor(fixture.elements.head).observe(using owner)
-        val sharedReporter = fixture.info.signals.reportersFor(fixture.elements.head).sync
+        val sharedReporter = fixture.info.reporters.reportersFor(fixture.elements.head).sync
         val summary = sharedReporter.report.observe(using owner)
         assertEquals(report.now().get.destinationsWithSufficientWrites.size, 2)
         assertEquals(summary.now().confirmed, 2)

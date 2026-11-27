@@ -1,5 +1,7 @@
 package it.evadid.homepage.workbook.htmlRenderer.interactionRenderer.plot
 
+import it.evadid.homepage.control.model.FullInfo
+
 import com.raquo.laminar.api.L.*
 import it.evadid.core.datastructures.state.StateHelper.StateBasedVar
 import it.evadid.homepage.webElements.editor.plot.CoordinatePlotEditor
@@ -9,8 +11,8 @@ import it.evadid.workbook.elements.interactionElements.plot.CoordinatePlotIntera
 import it.evadid.workbook.interaction.sync.UpdateImportance
 
 case object CoordinatePlotRenderer extends LineBasedRenderingFactory[CoordinatePlotInteraction] {
-  override protected def createRendering(e: CoordinatePlotInteraction): AtomarLineRendering = {
+  override protected def createRendering(fullInfo: FullInfo, e: CoordinatePlotInteraction): AtomarLineRendering = {
     val state = e.interactionVariable.createBoundStateWithUpdateImportance(UpdateImportance.MAJOR, fullInfo.workbookContextInformation).toAirstreamVar
-    AtomarLineRendering.basicLine(e, CoordinatePlotEditor(e, state, e.isDisabledState.toAirstreamVar).getDomElement())
+    AtomarLineRendering.basicLine(fullInfo, e, CoordinatePlotEditor(fullInfo, e, state, e.isDisabledState.toAirstreamVar).getDomElement())
   }
 }

@@ -1,10 +1,11 @@
 package it.evadid.homepage.workbook.htmlRenderer.controlElements.interactionInfo
 
+import it.evadid.homepage.control.model.FullInfo
+
 import com.raquo.laminar.api.L.{child, div, *}
 import org.scalajs.dom.{HTMLDivElement, MouseEvent}
 import com.raquo.laminar.nodes.{ReactiveHtmlElement, ReactiveSvgElement}
 import it.evadid.core.datastructures.language.LanguageMapContentId
-import it.evadid.homepage.control.singletons.HtmlFullWorkbookApp.fullInfo
 import it.evadid.homepage.webElements.HtmlAppElement
 import it.evadid.homepage.workbook.htmlRenderer.LaminarRenderHelper
 import it.evadid.homepage.workbook.htmlRenderer.controlElements.interactionInfo.InteractionInfoPanel.interactionInfoCssString
@@ -12,12 +13,13 @@ import it.evadid.workbook.abstractions.{InteractionFormat, WorkbookDisplayElemen
 import it.evadid.homepage.control.info.interaction.GradingReporter
 
 case class InteractionInfoPanel[F <: InteractionFormat](
+                                 fullInfo: FullInfo,
                                  workbookInteractionElement: WorkbookInteractionElement[F],
                                  gradingReporter: GradingReporter)
   extends HtmlAppElement {
 
-  val iconGradingScaffolding = IconGradingAndScaffolding(fullInfo, laminarHelper, workbookInteractionElement, gradingReporter)
-  val iconSync = IconSync(fullInfo, laminarHelper, workbookInteractionElement)
+  val iconGradingScaffolding = IconGradingAndScaffolding(fullInfo, laminarHelper(fullInfo), workbookInteractionElement, gradingReporter)
+  val iconSync = IconSync(fullInfo, laminarHelper(fullInfo), workbookInteractionElement)
 
   val classSignalCss: Signal[String] = gradingReporter.report.map { report =>
     if report.grading.status.isCorrect then
@@ -41,7 +43,7 @@ case class InteractionInfoPanel[F <: InteractionFormat](
 
   /** Shown on the green strip of a solved exercise: the checked answers up to the correct one. */
   private def attemptsTracker(count: Int): Element = {
-    def label(key: String) = laminarHelper.plaintextStringSignal(LanguageMapContentId("basic/" + key))
+    def label(key: String) = laminarHelper(fullInfo).plaintextStringSignal(LanguageMapContentId("basic/" + key))
     val unit = label(if count == 1 then "gradingAttempt" else "gradingAttempts")
     div(cls := "interaction-info__attempts", role := "status",
       title <-- label("gradingAttemptsTooltip").map(_.replace("{count}", count.toString)),
@@ -59,10 +61,10 @@ object InteractionInfoPanel {
 
   /* Tooltip functionality */
 
-  def infoPanelIcon(additionalCssStr: String, svgIcon: ReactiveSvgElement[org.scalajs.dom.SVGSVGElement], tooltipSignal: Signal[String], onMouseClick: Option[MouseEvent => Any]): ReactiveHtmlElement[HTMLDivElement] = {
+  def infoPanelIcon(fullInfo: FullInfo, additionalCssStr: String, svgIcon: ReactiveSvgElement[org.scalajs.dom.SVGSVGElement], tooltipSignal: Signal[String], onMouseClick: Option[MouseEvent => Any]): ReactiveHtmlElement[HTMLDivElement] = {
     div(
       cls := s"info-svg-container ${additionalCssStr} ${if (onMouseClick.nonEmpty) "clickable" else ""}",
-      LaminarRenderHelper.singleton.createTooltip(tooltipSignal),
+      LaminarRenderHelper(fullInfo).createTooltip(tooltipSignal),
       svgIcon,
       onClick --> (mouseEvent => if (onMouseClick.nonEmpty) onMouseClick.get.apply(mouseEvent))
     )

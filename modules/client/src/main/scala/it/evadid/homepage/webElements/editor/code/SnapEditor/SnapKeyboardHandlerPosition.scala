@@ -25,7 +25,7 @@ private[SnapEditor] object SnapKeyboardHandlerPosition:
       val wrapped: js.ThisFunction1[js.Dynamic, js.Any, js.Any] = (self, argument) =>
         val result = original.call(self, argument)
         val textarea = textareaOf(self)
-        if !js.isUndefined(textarea) && textarea != null then
+        if !SnapJs.isAbsent(textarea) then
           toContainingBlock(textarea.asInstanceOf[dom.HTMLElement])
         result
       wrapped.asInstanceOf[js.Dynamic].updateDynamic(PatchedMarker)(true)

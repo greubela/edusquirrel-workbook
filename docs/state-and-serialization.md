@@ -50,15 +50,14 @@ A renderer obtains a bound state from the interaction:
 
 ```scala
 import com.raquo.laminar.api.L.*
-import it.evadid.core.datastructures.state.StateHelper.StateBasedVar
+import it.evadid.core.datastructures.state.StateHelper.InteractionVariableOnJS
 import it.evadid.homepage.control.model.FullInfo
 import it.evadid.workbook.elements.interactionElements.basic.TextInteraction
 import it.evadid.workbook.interaction.sync.UpdateImportance
 
-def answerInput(element: TextInteraction, fullInfo: FullInfo): Element = {
+def answerInput(fullInfo: FullInfo, element: TextInteraction): Element = {
   val answer = element.interactionVariable
-    .createBoundStateWithUpdateImportance(UpdateImportance.MAJOR, fullInfo.workbookContextInformation)
-    .toAirstreamVar
+    .createBoundVarWithUpdateImportance(UpdateImportance.MAJOR, fullInfo.workbookContextInformation)
   div(
     textArea(value <-- answer.signal, onInput.mapToValue --> answer.writer),
     p(text <-- answer.signal)
@@ -66,7 +65,9 @@ def answerInput(element: TextInteraction, fullInfo: FullInfo): Element = {
 }
 ```
 
-Pass this same `Var` to an editor and observe its signal for previews. Prefer
+The bound `Var` is a view of the interaction: it reads and writes the history and
+observes it only while its signal has observers, so creating one per mount leaks
+nothing. Pass this same `Var` to an editor and observe its signal for previews. Prefer
 `text <--`, `child <--` and `children <--` to rebuilding the workbook imperatively.
 Use mount-owned subscriptions for side effects, so closing a component cancels its
 observation:

@@ -1,13 +1,15 @@
 package it.evadid.homepage.webElements.editor.plot
 
+import it.evadid.homepage.control.model.FullInfo
+
 import com.raquo.laminar.api.L.*
 import it.evadid.homepage.webElements.HtmlAppElement
 import it.evadid.workbook.elements.interactionElements.plot.CoordinatePlotInteraction
 import it.evadid.workbook.model.plot.*
 
 /** Inline editor: numeric controls also make the graph usable without a mouse. */
-case class CoordinatePlotEditor(config: CoordinatePlotInteraction, answer: Var[PlotAnswer], locked: Var[Boolean]) extends HtmlAppElement {
-  private def textFor(key: String) = laminarHelper.plaintextStringSignal(s"digitalWorkbooks/$key")
+case class CoordinatePlotEditor(fullInfo: FullInfo, config: CoordinatePlotInteraction, answer: Var[PlotAnswer], locked: Var[Boolean]) extends HtmlAppElement {
+  private def textFor(key: String) = laminarHelper(fullInfo).plaintextStringSignal(s"digitalWorkbooks/$key")
   private val xDraft = Var("")
   private val yDraft = Var("")
   private def parsePoint(x: String, y: String): Option[PlotPoint] =
@@ -18,7 +20,7 @@ case class CoordinatePlotEditor(config: CoordinatePlotInteraction, answer: Var[P
   private def py(y: Double): Double = 320 - config.yAxis.fraction(y) * 300
   private def number(value: Double): String = BigDecimal(value).bigDecimal.stripTrailingZeros.toPlainString
   private val graph = svg.svg(svg.viewBox := "0 0 640 380", svg.cls := "coordinate-plot__graph",
-    svg.titleTag(text <-- laminarHelper.plaintextStringSignal(config.title)),
+    svg.titleTag(text <-- laminarHelper(fullInfo).plaintextStringSignal(config.title)),
     config.xAxis.ticks.map(x => svg.g(
       svg.line(svg.cls := "coordinate-plot__grid", svg.x1 := px(x).toString, svg.x2 := px(x).toString, svg.y1 := "20", svg.y2 := "320"),
       svg.text(svg.cls := "coordinate-plot__tick-x", svg.x := px(x).toString, svg.y := "342", number(x)))),
@@ -26,7 +28,7 @@ case class CoordinatePlotEditor(config: CoordinatePlotInteraction, answer: Var[P
       svg.line(svg.cls := "coordinate-plot__grid", svg.x1 := "60", svg.x2 := "580", svg.y1 := py(y).toString, svg.y2 := py(y).toString),
       svg.text(svg.cls := "coordinate-plot__tick-y", svg.x := "50", svg.y := (py(y) + 5).toString, number(y)))),
     svg.polyline(svg.cls := "coordinate-plot__axes", svg.points := "60,20 60,320 580,320"),
-    svg.text(svg.cls := "coordinate-plot__label-x", svg.x := "320", svg.y := "370", text <-- laminarHelper.plaintextStringSignal(config.xLabel)),
+    svg.text(svg.cls := "coordinate-plot__label-x", svg.x := "320", svg.y := "370", text <-- laminarHelper(fullInfo).plaintextStringSignal(config.xLabel)),
     children <-- answer.signal.map(a => {
       val line = if (a.connected && a.points.size >= 2) List(svg.polyline(svg.cls := "coordinate-plot__curve",
         svg.points := a.points.sortBy(_.x).map(p => s"${px(p.x)},${py(p.y)}").mkString(" "))) else Nil
@@ -35,13 +37,13 @@ case class CoordinatePlotEditor(config: CoordinatePlotInteraction, answer: Var[P
     }))
 
   override def getDomElement(): Element = fieldSet(cls := "coordinate-plot",
-    legend(text <-- laminarHelper.plaintextStringSignal(config.title)),
+    legend(text <-- laminarHelper(fullInfo).plaintextStringSignal(config.title)),
     p(text <-- textFor("plotInstructions")),
-    div(cls := "coordinate-plot__axis-label", text <-- laminarHelper.plaintextStringSignal(config.yLabel)), graph,
+    div(cls := "coordinate-plot__axis-label", text <-- laminarHelper(fullInfo).plaintextStringSignal(config.yLabel)), graph,
     div(cls := "coordinate-plot__controls",
-      label(span(text <-- laminarHelper.plaintextStringSignal(config.xLabel)), input(typ := "text", disabled <-- locked.signal,
+      label(span(text <-- laminarHelper(fullInfo).plaintextStringSignal(config.xLabel)), input(typ := "text", disabled <-- locked.signal,
         controlled(value <-- xDraft.signal, onInput.mapToValue --> xDraft.writer))),
-      label(span(text <-- laminarHelper.plaintextStringSignal(config.yLabel)), input(typ := "text", disabled <-- locked.signal,
+      label(span(text <-- laminarHelper(fullInfo).plaintextStringSignal(config.yLabel)), input(typ := "text", disabled <-- locked.signal,
         controlled(value <-- yDraft.signal, onInput.mapToValue --> yDraft.writer))),
       button(typ := "button", text <-- textFor("plotAdd"),
         disabled <-- draft.combineWith(answer.signal, locked.signal).map((p, a, l) => l || p.isEmpty ||
@@ -54,7 +56,7 @@ case class CoordinatePlotEditor(config: CoordinatePlotInteraction, answer: Var[P
       .replace("{ymin}", number(config.yAxis.min)).replace("{ymax}", number(config.yAxis.max)))),
     div(cls := "coordinate-plot__table", table(
       caption(text <-- textFor("plotPoints")),
-      thead(tr(th(text <-- laminarHelper.plaintextStringSignal(config.xLabel)), th(text <-- laminarHelper.plaintextStringSignal(config.yLabel)),
+      thead(tr(th(text <-- laminarHelper(fullInfo).plaintextStringSignal(config.xLabel)), th(text <-- laminarHelper(fullInfo).plaintextStringSignal(config.yLabel)),
         th(text <-- textFor("plotAction")))),
       tbody(children <-- answer.signal.map(_.points.sortBy(_.x).map(p => tr(td(number(p.x)), td(number(p.y)),
         td(button(typ := "button", disabled <-- locked.signal, text <-- textFor("plotRemove"),

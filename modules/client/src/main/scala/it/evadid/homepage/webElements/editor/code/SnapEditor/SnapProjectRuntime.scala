@@ -19,7 +19,7 @@ private[SnapEditor] object SnapProjectRuntime:
         catch case _: Throwable => Nil
       if names.nonEmpty then
         val declarations = definition.selectDynamic("declarations")
-        if !js.isUndefined(declarations) && declarations != null then
+        if !SnapJs.isAbsent(declarations) then
           names.foreach { name =>
             val present =
               try declarations.applyDynamic("has")(name).asInstanceOf[Boolean]
@@ -28,16 +28,16 @@ private[SnapEditor] object SnapProjectRuntime:
               declarations.applyDynamic("set")(name, js.Array[js.Any]("%n", "", js.undefined, false, false))
           }
         val body = definition.selectDynamic("body")
-        if !js.isUndefined(body) && body != null then
+        if !SnapJs.isAbsent(body) then
           body.updateDynamic("inputs")(names.toJSArray)
     }
 
   def customBlockDefinitions(ide: IDEMorph): List[js.Dynamic] = {
     def definitionsOf(owner: js.Dynamic, field: String): List[js.Dynamic] =
-      if js.isUndefined(owner) || owner == null then Nil
+      if SnapJs.isAbsent(owner) then Nil
       else
         val blocks = owner.selectDynamic(field)
-        if js.isUndefined(blocks) || blocks == null then Nil
+        if SnapJs.isAbsent(blocks) then Nil
         else blocks.asInstanceOf[js.Array[js.Dynamic]].toList
 
     val dynamicIde = ide.asInstanceOf[js.Dynamic]
@@ -94,13 +94,13 @@ private[SnapEditor] object SnapProjectRuntime:
     if sprite == null then return
     val spriteDyn = sprite.asInstanceOf[js.Dynamic]
     val globals = spriteDyn.applyDynamic("globalVariables")()
-    if js.isUndefined(globals) || globals == null then return
+    if SnapJs.isAbsent(globals) then return
     val vars = globals.asInstanceOf[js.Dynamic].selectDynamic("vars")
     val added = names.foldLeft(false) { (previouslyAdded, name) =>
       val existing =
-        if js.isUndefined(vars) || vars == null then js.undefined
+        if SnapJs.isAbsent(vars) then js.undefined
         else vars.asInstanceOf[js.Dynamic].selectDynamic(name)
-      val missing = js.isUndefined(existing) || existing == null
+      val missing = SnapJs.isAbsent(existing)
       if missing then
         spriteDyn.applyDynamic("addVariable")(name, true)
       previouslyAdded || missing

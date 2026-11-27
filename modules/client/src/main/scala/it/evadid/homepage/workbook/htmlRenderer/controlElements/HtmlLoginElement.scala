@@ -1,5 +1,7 @@
 package it.evadid.homepage.workbook.htmlRenderer.controlElements
 
+import it.evadid.homepage.control.model.FullInfo
+
 import com.raquo.laminar.api.L.*
 import com.raquo.laminar.nodes.ReactiveHtmlElement
 import it.evadid.core.datastructures.user.User.SingleAccessToken
@@ -14,7 +16,7 @@ import org.scalajs.dom.HTMLInputElement
 
 import scala.concurrent.{ExecutionContext, Future, Promise}
 
-case class HtmlLoginElement() extends HtmlAppElement {
+case class HtmlLoginElement(fullInfo: FullInfo) extends HtmlAppElement {
 
   private given ExecutionContext = ExecutionContext.global
 
@@ -35,12 +37,12 @@ case class HtmlLoginElement() extends HtmlAppElement {
     def normalizedLevel: Int = math.max(0, math.min(5, level))
 
     val heading = normalizedLevel match {
-      case 0 => h1(text <-- laminarHelper.plaintextStringSignal(id))
-      case 1 => h2(text <-- laminarHelper.plaintextStringSignal(id))
-      case 2 => h3(text <-- laminarHelper.plaintextStringSignal(id))
-      case 3 => h4(text <-- laminarHelper.plaintextStringSignal(id))
-      case 4 => h5(text <-- laminarHelper.plaintextStringSignal(id))
-      case _ => h6(text <-- laminarHelper.plaintextStringSignal(id))
+      case 0 => h1(text <-- laminarHelper(fullInfo).plaintextStringSignal(id))
+      case 1 => h2(text <-- laminarHelper(fullInfo).plaintextStringSignal(id))
+      case 2 => h3(text <-- laminarHelper(fullInfo).plaintextStringSignal(id))
+      case 3 => h4(text <-- laminarHelper(fullInfo).plaintextStringSignal(id))
+      case 4 => h5(text <-- laminarHelper(fullInfo).plaintextStringSignal(id))
+      case _ => h6(text <-- laminarHelper(fullInfo).plaintextStringSignal(id))
     }
     div(
       cls := s"container-title container-title-level-${normalizedLevel} structure-element title-login",
@@ -102,9 +104,9 @@ case class HtmlLoginElement() extends HtmlAppElement {
     val action = new LoginActionState
     Seq[Element](
       ul(
-        li(text <-- laminarHelper.plaintextStringSignal("login/onlineBenefit1")),
-        li(text <-- laminarHelper.plaintextStringSignal("login/onlineBenefit2")),
-        li(text <-- laminarHelper.plaintextStringSignal("login/onlineBenefit3")),
+        li(text <-- laminarHelper(fullInfo).plaintextStringSignal("login/onlineBenefit1")),
+        li(text <-- laminarHelper(fullInfo).plaintextStringSignal("login/onlineBenefit2")),
+        li(text <-- laminarHelper(fullInfo).plaintextStringSignal("login/onlineBenefit3")),
       ),
 
       createTextInput(nameVar, "login/insertNamePlaceholder", identity.changeName),
@@ -122,27 +124,27 @@ case class HtmlLoginElement() extends HtmlAppElement {
   private val localStartBody: Seq[Element] = {
     List(
       ul(
-        li(text <-- laminarHelper.plaintextStringSignal("login/localBenefit1")),
-        li(text <-- laminarHelper.plaintextStringSignal("login/localBenefit2")),
-        li(text <-- laminarHelper.plaintextStringSignal("login/localBenefit3")),
+        li(text <-- laminarHelper(fullInfo).plaintextStringSignal("login/localBenefit1")),
+        li(text <-- laminarHelper(fullInfo).plaintextStringSignal("login/localBenefit2")),
+        li(text <-- laminarHelper(fullInfo).plaintextStringSignal("login/localBenefit3")),
       ),
-      HtmlButtonElement.withTextLabel("login/buttonLocalLogin", _ => fullInfo.userSessionControl.tryLocalRegistration(None, None)).getDomElement()
+      HtmlButtonElement.withTextLabel(fullInfo, "login/buttonLocalLogin", _ => fullInfo.userSessionControl.tryLocalRegistration(None, None)).getDomElement()
     )
   }
 
   private val localContinueBody: Seq[Element] = {
 
-    val uploadInput: ReactiveHtmlElement[HTMLInputElement] = laminarHelper.sessionFileUploadInput(logger, loadedFile => fullInfo.userSessionControl.tryContinueWithSessionFile(loadedFile))
+    val uploadInput: ReactiveHtmlElement[HTMLInputElement] = laminarHelper(fullInfo).sessionFileUploadInput(logger, loadedFile => fullInfo.userSessionControl.tryContinueWithSessionFile(loadedFile))
 
     List(
       uploadInput,
-      HtmlButtonElement.withTextLabel("login/buttonLocalUpload", _ => uploadInput.ref.click()).getDomElement()
+      HtmlButtonElement.withTextLabel(fullInfo, "login/buttonLocalUpload", _ => uploadInput.ref.click()).getDomElement()
     )
   }
 
   private def createFileInput(): Element = {
     input(
-      label(text <-- laminarHelper.plaintextStringSignal("login/uploadFile")),
+      label(text <-- laminarHelper(fullInfo).plaintextStringSignal("login/uploadFile")),
       typ := "file"
     )
   }
@@ -150,8 +152,8 @@ case class HtmlLoginElement() extends HtmlAppElement {
   private def createTextInput(underlyingVar: Var[String], labelId: String, updateValue: String => Unit): Element = {
     input(
       cls := "login-name-input",
-      label(text <-- laminarHelper.plaintextStringSignal(labelId)),
-      placeholder <-- laminarHelper.plaintextStringSignal(labelId),
+      label(text <-- laminarHelper(fullInfo).plaintextStringSignal(labelId)),
+      placeholder <-- laminarHelper(fullInfo).plaintextStringSignal(labelId),
       typ := "text",
       controlled(
         value <-- underlyingVar.signal,
@@ -164,8 +166,8 @@ case class HtmlLoginElement() extends HtmlAppElement {
   private def createEmailInput(underlyingVar: Var[String], labelId: String): Element = {
     input(
       cls := "login-email-input",
-      label(text <-- laminarHelper.plaintextStringSignal(labelId)),
-      placeholder <-- laminarHelper.plaintextStringSignal(labelId),
+      label(text <-- laminarHelper(fullInfo).plaintextStringSignal(labelId)),
+      placeholder <-- laminarHelper(fullInfo).plaintextStringSignal(labelId),
       required := true,
       typ := "email",
       controlled(
@@ -193,7 +195,7 @@ case class HtmlLoginElement() extends HtmlAppElement {
       createEmailInput(emailVar, "login/enterMail"),
       actionButton("login/buttonRequestToken", action) {
         action.run(
-          UserCommands.authMailCommand.sendCommandTo(fullInfo.defaults.backendExecutor,
+          UserCommands.authMailCommand.sendCommandTo(fullInfo.backendExecutor,
             AuthMailRequest(validatedEmail), Some(logger)).flatMap { response =>
             if (response.result.sent) Future.successful(())
             else if (response.result.associatedUser.isEmpty) Future.failed(AuthenticationFailure("login/errorUnknownUser"))
@@ -216,7 +218,7 @@ case class HtmlLoginElement() extends HtmlAppElement {
   private def actionButton(labelId: String, state: LoginActionState)(action: => Future[Unit]): Element =
     button(
       typ := "button",
-      text <-- laminarHelper.plaintextStringSignal(labelId),
+      text <-- laminarHelper(fullInfo).plaintextStringSignal(labelId),
       disabled <-- state.pending.signal,
       onClick --> { _ => action }
     )
@@ -227,7 +229,7 @@ case class HtmlLoginElement() extends HtmlAppElement {
       cls("login-status-error") <-- state.failed.signal,
       role := "status",
       child.text <-- state.messageKey.signal.flatMapSwitch { key =>
-        if (key.isEmpty) Val("") else laminarHelper.plaintextStringSignal(key)
+        if (key.isEmpty) Val("") else laminarHelper(fullInfo).plaintextStringSignal(key)
       }
     )
 

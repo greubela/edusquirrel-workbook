@@ -1,5 +1,6 @@
 package it.evadid.homepage.webElements.basic
 
+
 import com.raquo.laminar.api.L.*
 import it.evadid.core.datastructures.user.{AllUserInfo, UserConfig, UserCredentials}
 import it.evadid.homepage.control.singletons.HtmlFullWorkbookApp
@@ -12,7 +13,7 @@ import scala.concurrent.{ExecutionContext, Future}
 /** The session-connection form edits drafts and applies them to the signed-in user's credentials only. */
 class SessionCredentialsEditorSpec extends UiDomSuite {
   private given ExecutionContext = ExecutionContext.global
-  private val page = HtmlFullWorkbookApp.fullInfo
+  private lazy val page = HtmlFullWorkbookApp.fullInfo
   private val database = DatabaseConfigWithCredentials("mysql", "db.school.example", "3307", "lessons", "teacher", "secret")
   private val user = AllUserInfo.createNewUser("Connections", "connections@school.example", UserConfig(Nil, isOnlineAccount = false))
     .copy(credentials = UserCredentials(databaseConfig = Some(database)))
@@ -28,7 +29,7 @@ class SessionCredentialsEditorSpec extends UiDomSuite {
   test("the form starts from the current connections and applies validated changes before closing") {
     signedIn {
       val closed = Var(0)
-      mountedAsync(SessionCredentialsEditor(() => closed.update(_ + 1)).getDomElement()) { root =>
+      mountedAsync(SessionCredentialsEditor(page, () => closed.update(_ + 1)).getDomElement()) { root =>
         assertEquals(List("Host", "Port", "Database", "User").map(caption => valueOf(field(root, caption))),
           List("db.school.example", "3307", "lessons", "teacher"))
         assertEquals(field(root, "Password").getAttribute("type"), "password")
@@ -70,7 +71,7 @@ class SessionCredentialsEditorSpec extends UiDomSuite {
   test("disabling a custom connection removes it; cancelling leaves the credentials unchanged") {
     signedIn {
       val closed = Var(0)
-      mountedAsync(SessionCredentialsEditor(() => closed.update(_ + 1)).getDomElement()) { root =>
+      mountedAsync(SessionCredentialsEditor(page, () => closed.update(_ + 1)).getDomElement()) { root =>
         typeInto(field(root, "Host"), "changed.example")
         click(buttonNamed(root, "Cancel"))
         assertEquals(closed.now(), 1)
@@ -85,7 +86,7 @@ class SessionCredentialsEditorSpec extends UiDomSuite {
 
   test("without a profile the form explains that one is needed") {
     page.userSessionControl.changeUser(None).map { _ =>
-      mounted(SessionCredentialsEditor(() => ()).getDomElement()) { root =>
+      mounted(SessionCredentialsEditor(page, () => ()).getDomElement()) { root =>
         assertEquals(withText(root, "label", "Host").size, 0, "no current database connection")
         click(buttonNamed(root, "Apply"))
         assert(status(root).endsWith("Create or log in to a profile first"), status(root))

@@ -33,7 +33,7 @@ class WorkbookRenderingSpec extends EditorDomSuite {
       try workbook.sections.foreach { section =>
         section.sectionContent.foreach { element =>
           current.set(s"${section.elementId}/${element.elementId}")
-          Try(HtmlRenderFactory.render(element).getDomElement()).fold(error => report(String.valueOf(error)), { root =>
+          Try(HtmlRenderFactory.render(pageInfo, element).getDomElement()).fold(error => report(String.valueOf(error)), { root =>
             val unmount = mount(div(root))
             val text = root.ref.textContent
             if root.ref.childNodes.length == 0 && root.ref.textContent.trim.isEmpty then report("renders no content")

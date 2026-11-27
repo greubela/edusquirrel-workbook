@@ -24,7 +24,7 @@ class HomepageWorkerDefaultsSpec extends EditorDomSuite {
       EDUSQUIRREL_BACKEND_MODULE_WORKERS = "1", EDUSQUIRREL_BACKEND_MODULE_WORKER_SCRIPT = "https://example.test/worker.js"))
     root.updateDynamic("Worker")(js.constructorOf[FakeWorker])
     try {
-      val defaults = HomepageDefaults(null)
+      val defaults = HomepageDefaults()
       val client = defaults.workerExecuter
       assert(client eq defaults.workerExecuter)
       assert(created.now() <= 1, "reuse the shared preheated worker or create a single worker")

@@ -1,5 +1,7 @@
 package it.evadid.homepage.workbook.htmlRenderer.controlElements
 
+import it.evadid.homepage.control.model.FullInfo
+
 import it.evadid.workbook.session.AllWorkbookInfo
 import com.raquo.laminar.api.L.*
 import it.evadid.homepage.webElements.basic.LabelSelection
@@ -19,7 +21,7 @@ import org.scalajs.dom
 import it.evadid.core.datastructures.state.StateHelper.RichObservableValue
 import it.evadid.workbook.interaction.sync.SyncResetState
 
-case class DropdownMenuControl(curWorkbook: Option[AllWorkbookInfo], curUser: Option[AllUserInfo]) extends HtmlAppElement {
+case class DropdownMenuControl(fullInfo: FullInfo, curWorkbook: Option[AllWorkbookInfo], curUser: Option[AllUserInfo]) extends HtmlAppElement {
 
   private val isOpen: Var[Boolean] = Var(false)
   private val credentialsOpen = Var(false)
@@ -27,7 +29,7 @@ case class DropdownMenuControl(curWorkbook: Option[AllWorkbookInfo], curUser: Op
 
   private val resetState = fullInfo.syncControl.resetState
   private val resetLabel: Signal[String] = LabelSelection(resetState,
-    Seq("basic/resetAllData", "basic/resetAllDataRunning", "basic/resetAllDataRetry"), laminarHelper.plaintextStringSignal) {
+    Seq("basic/resetAllData", "basic/resetAllDataRunning", "basic/resetAllDataRetry"), laminarHelper(fullInfo).plaintextStringSignal) {
       case SyncResetState.Idle | SyncResetState.Completed => Some("basic/resetAllData")
       case _: SyncResetState.Running => Some("basic/resetAllDataRunning")
       case _: SyncResetState.Failed => Some("basic/resetAllDataRetry")
@@ -83,30 +85,30 @@ case class DropdownMenuControl(curWorkbook: Option[AllWorkbookInfo], curUser: Op
   )
 
   private def createDefaultMenu(): Seq[HtmlAppElement] = List(
-    HtmlDropdownMenu.menuItem("workbookSelection/backToCatalogue", _ => {
+    HtmlDropdownMenu.menuItem(fullInfo, "workbookSelection/backToCatalogue", _ => {
       fullInfo.workbookNavigationControl.changeWorkbook(None)
       closeMenu()
     })
   )
 
 
-  private val uploadInput: ReactiveHtmlElement[HTMLInputElement] = laminarHelper.sessionFileUploadInput(logger, loadedFile => fullInfo.userSessionControl.tryContinueWithSessionFile(loadedFile))
+  private val uploadInput: ReactiveHtmlElement[HTMLInputElement] = laminarHelper(fullInfo).sessionFileUploadInput(logger, loadedFile => fullInfo.userSessionControl.tryContinueWithSessionFile(loadedFile))
 
   private def createSessionMenu(): Seq[HtmlAppElement] =
     List(
       HtmlDropdownMenu.menuLabel(userNameOrNobodySignal),
-      HtmlDropdownMenu.menuItem("basic/downloadEverything", _ => downloadAll())
+      HtmlDropdownMenu.menuItem(fullInfo, "basic/downloadEverything", _ => downloadAll())
     ) ++ Option.when(curUser.nonEmpty)(HtmlDropdownMenu.menuItem(resetLabel, _ => resetAllData())).toSeq ++ List(
-      HtmlDropdownMenu.menuItem("login/buttonLocalUpload", _ => uploadInput.ref.click()),
+      HtmlDropdownMenu.menuItem(fullInfo, "login/buttonLocalUpload", _ => uploadInput.ref.click()),
       HtmlDropdownMenu.menuItem(Val("Session connections"), _ => { closeMenu(); credentialsOpen.set(true) }),
-      HtmlDropdownMenu.menuItem("basic/logout", _ => logout())
+      HtmlDropdownMenu.menuItem(fullInfo, "basic/logout", _ => logout())
     )
 
 
 
   /*private def createDemoMenu(): Seq[HtmlAppElement] = {
     List(
-      HtmlDropdownMenu.menuLabel(laminarHelper.plaintextStringSignal("basic/switchUser"))
+      HtmlDropdownMenu.menuLabel(laminarHelper(fullInfo).plaintextStringSignal("basic/switchUser"))
     ) ++
       HomepageDefaults.selectableUsers.map(user => HtmlDropdownMenu.menuItem(Var(user.user.name).signal, _ => switchUser(Some(user))))
   }*/
@@ -115,7 +117,7 @@ case class DropdownMenuControl(curWorkbook: Option[AllWorkbookInfo], curUser: Op
     cls := "workbook-user-menu",
     uploadInput,
     child.maybe <-- resetState.map(state => Option.when(state.isInstanceOf[SyncResetState.Failed])(
-      p(role := "alert", child.text <-- laminarHelper.plaintextStringSignal("basic/resetAllDataError")))),
+      p(role := "alert", child.text <-- laminarHelper(fullInfo).plaintextStringSignal("basic/resetAllDataError")))),
     div(
       cls := "workbook-user-menu-button",
       typ := "button",
@@ -128,7 +130,7 @@ case class DropdownMenuControl(curWorkbook: Option[AllWorkbookInfo], curUser: Op
       span(cls := "workbook-user-menu-icon", child.text <-- currentUserInitials),
       span(cls := "workbook-user-menu-caret", "▾")
     ),
-    child.maybe <-- credentialsOpen.signal.map(open => Option.when(open)(SessionCredentialsEditor(() => credentialsOpen.set(false)).getDomElement())),
+    child.maybe <-- credentialsOpen.signal.map(open => Option.when(open)(SessionCredentialsEditor(fullInfo, () => credentialsOpen.set(false)).getDomElement())),
     child.maybe <-- isOpen.signal.map(open => Option.when(open)(menu.getDomElement()))
   )
 

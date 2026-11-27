@@ -13,7 +13,7 @@ class CompressionEditorSpec extends UiDomSuite {
   private def text(key: String) = loadingText(s"CompressionWorkbook/$key")
   private def editor(initial: CompressionExperiment, locked: Signal[Boolean] = Val(false)): (Var[CompressionExperiment], Element) = {
     val answer = Var(initial)
-    val created = CompressionEditor(answer, initial, locked)
+    val created = CompressionEditor(pageInfo, answer, initial, locked)
     assert(!created.dismissOnOutsideClick)
     answer -> created.getDomElement()
   }

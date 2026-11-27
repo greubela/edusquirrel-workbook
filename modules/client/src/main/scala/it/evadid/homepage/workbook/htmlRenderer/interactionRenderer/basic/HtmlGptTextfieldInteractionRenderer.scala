@@ -1,13 +1,13 @@
 package it.evadid.homepage.workbook.htmlRenderer.interactionRenderer.basic
 
-import it.evadid.workbook.abstractions.InteractionFormat.{MessagingInteractionFormat}
+import it.evadid.homepage.control.model.FullInfo
 
 import com.raquo.laminar.api.L.*
 import com.raquo.laminar.nodes.ReactiveSvgElement
-import it.evadid.core.datastructures.chat.{Message, MessengerModel, ChatParticipant}
+import it.evadid.core.datastructures.chat.{ChatParticipant, Message, MessengerModel, SenderRole}
 import it.evadid.core.datastructures.language.AppLanguage.*
 import it.evadid.core.datastructures.language.LanguageMapContentId
-import it.evadid.core.datastructures.state.State
+import it.evadid.core.datastructures.state.StateHelper.InteractionVariableOnJS
 import it.evadid.distribution.commandTypes.LLMCommands
 import it.evadid.distribution.commandTypes.LLMCommands.MessengerChatCompletionRequest
 import it.evadid.homepage.webElements.basic.HtmlButtonElement
@@ -17,7 +17,6 @@ import it.evadid.homepage.workbook.htmlRenderer.atomarLineRenderings.AtomarLineR
 import it.evadid.workbook.elements.interactionElements.basic.MessagingInteraction.MessengerModelScaffolding
 import it.evadid.workbook.elements.interactionElements.gpt.GptInteractionElement
 import it.evadid.workbook.interaction.sync.UpdateImportance.MAJOR
-import it.evadid.workbook.interaction.variable.InteractionVariable
 import org.scalajs.dom.SVGSVGElement
 
 import java.time.LocalDateTime
@@ -30,29 +29,19 @@ object HtmlGptTextfieldInteractionRenderer extends LineBasedRenderingFactory[Gpt
 
   private val systemPromptId: LanguageMapContentId = LanguageMapContentId("prompts/scaffolding-system-prompt")
 
-  private def sendError(err: Throwable, mmState: State[MessengerModel]): Unit = {
-    laminarHelper.uiAndDomLogger.logExceptionWarn(s"error while sending message to LLM, a error message will appear in the chat", err)
+  private def sendError(fullInfo: FullInfo, err: Throwable, mmState: Var[MessengerModel]): Unit = {
+    laminarHelper(fullInfo).uiAndDomLogger.logExceptionWarn(s"error while sending message to LLM, a error message will appear in the chat", err)
     val errText: String = s"@student: Unfortunately, I could not generate an answer. The error I got was ${err.getMessage}. I printed additional information on the browser console!"
     val errMsg = Message(errText, MessengerModel.pWorkbook, LocalDateTime.now())
     mmState.update(_.addMessage(errMsg))
   }
 
-  private def onUserSendMessage(messageState: MessengerModel, mmState: State[MessengerModel]): Unit = {
-    requestCompletion(messageState, mmState)
-  }
-
-  private def requestCompletion(messageState: MessengerModel, mmState: State[MessengerModel]): Unit = {
+  private def requestCompletion(fullInfo: FullInfo, messageState: MessengerModel, mmState: Var[MessengerModel]): Unit = {
     val systemPromptFuture = fullInfo.workbookContextInformation.languageMapIdResolver.get.resolveMap(systemPromptId)
-    /*val curValTextarea = textInteraction.interactionVariable.currentValue
-    val inputStr = if (curValTextarea.trim.nonEmpty) s"@assistant: the textarea for the solution reads '$curValTextarea'" else s"@assistant: currently no text in solution area"
-    val languageStr = s", please answer in ${fullInfo.signals.currentLanguage.now()}"
-    val currentStateMsg = Message(inputStr + languageStr, LLMCommands.workbookPerson, LocalDateTime.now())
-    val nextMessageState = messageState.addMessage(currentStateMsg)*/
-
     val requestFuture = systemPromptFuture.map { systemPrompt => MessengerChatCompletionRequest(systemPrompt.getWithLanguagePreference(langPreferences), messageState, fullInfo.workbookContextInformation.llmConfiguration) }(using ExecutionContext.global)
-    LLMCommands.completeLLMCommandFactory.waitAndSendCommandTo(fullInfo.defaults.backendExecutor, requestFuture, None).onComplete {
+    LLMCommands.completeLLMCommandFactory.waitAndSendCommandTo(fullInfo.backendExecutor, requestFuture, None).onComplete {
       case Success(result) => mmState.update(_.addMessage(result.result))
-      case Failure(err) => sendError(err, mmState)
+      case Failure(err) => sendError(fullInfo, err, mmState)
     }(using ExecutionContext.global)
 
   }
@@ -77,28 +66,30 @@ object HtmlGptTextfieldInteractionRenderer extends LineBasedRenderingFactory[Gpt
     )
   }
 
-  override protected def createRendering(workbookElement: GptInteractionElement): AtomarLineRendering = {
+  override protected def createRendering(fullInfo: FullInfo, workbookElement: GptInteractionElement): AtomarLineRendering = {
 
     // The chat button exists only for exercises with a scaffolding conversation.
     val elements: Seq[Element] = workbookElement.scaffoldingInteractionOp.toList.map { scaffolding =>
-      val boundState = scaffolding.interactionVariable
-        .createBoundStateWithUpdateImportance( MAJOR, fullInfo.workbookContextInformation)
-        .biMap(_.messengerModel, MessengerModelScaffolding.apply)
-      val scaffoldingChat = SimpleChatEditor(boundState, State(""), msg => onUserSendMessage(msg, boundState))
+      val chat: Var[MessengerModel] = scaffolding.interactionVariable
+        .createBoundVarWithUpdateImportance(MAJOR, fullInfo.workbookContextInformation)
+        .bimap(_.messengerModel)(MessengerModelScaffolding.apply)
+      // While the chat is open, every message the student adds asks the assistant for a reply.
+      def openChat(): SimpleChatEditor = SimpleChatEditor(fullInfo, chat, bindings = Seq(
+        chat.signal.changes.filter(_.orderedMessages.lastOption.exists(_.author.role == SenderRole.USER)) --> (requestCompletion(fullInfo, _, chat))))
       val openChatButton = HtmlButtonElement.withSvgContent(createScaffoldingButtonSvg(), event => {
 
         val currentUser: ChatParticipant = fullInfo.current.userInfo.map(_.user).getOrElse(MessengerModel.pFallbackStudent)
 
         workbookElement.initScaffoldingIfEmpty(fullInfo.workbookContextInformation, currentUser, fullInfo.workbookContextInformation.languageMapIdResolver.get).onComplete {
-          case Success(bool) => if (bool) requestCompletion(scaffolding.interactionVariable.currentValue.messengerModel, boundState)
+          case Success(bool) => if (bool) requestCompletion(fullInfo, chat.now(), chat)
           case e: Any => fullInfo.loggerSystemInfo.workbookElementLogger.logWarn(s"HtmlGptTextfieldInteractionRenderer::createRendering -> error of some sort..: ${e.toString}")
         }(using ExecutionContext.global)
-        fullInfo.displayControl.setFullscreen(scaffoldingChat)
+        fullInfo.displayControl.setFullscreen(openChat())
       })
       openChatButton.getDomElement()
     }
 
-    AtomarLineRendering.basicLine(workbookElement, elements, "button-line")
+    AtomarLineRendering.basicLine(fullInfo, workbookElement, elements, "button-line")
   }
 
 }

@@ -1,5 +1,7 @@
 package it.evadid.homepage.workbook.htmlRenderer.interactionRenderer.text
 
+import it.evadid.homepage.control.model.FullInfo
+
 import com.raquo.laminar.api.L.*
 import it.evadid.homepage.webElements.basic.LabelSelection
 import it.evadid.core.datastructures.state.StateHelper.StateBasedVar
@@ -10,10 +12,10 @@ import it.evadid.workbook.model.text.UnicodeText
 import it.evadid.workbook.interaction.sync.UpdateImportance
 
 case object UnicodeComparisonRenderer extends LineBasedRenderingFactory[UnicodeComparisonInteraction] {
-  override protected def createRendering(e: UnicodeComparisonInteraction): AtomarLineRendering = {
+  override protected def createRendering(fullInfo: FullInfo, e: UnicodeComparisonInteraction): AtomarLineRendering = {
     val state = e.interactionVariable.createBoundStateWithUpdateImportance(UpdateImportance.MAJOR, fullInfo.workbookContextInformation).toAirstreamVar
     val locked = e.isDisabledState.toAirstreamVar.signal
-    def localized(key: String): Signal[String] = laminarHelper.plaintextStringSignal(s"digitalWorkbooks/$key")
+    def localized(key: String): Signal[String] = laminarHelper(fullInfo).plaintextStringSignal(s"digitalWorkbooks/$key")
     def inputField(first: Boolean): Element = label(
       span(text <-- localized(if first then "unicodeFirst" else "unicodeSecond")),
       textArea(maxLength := UnicodeComparisonInteraction.maxTextLength, disabled <-- locked,
@@ -30,7 +32,7 @@ case object UnicodeComparisonRenderer extends LineBasedRenderingFactory[UnicodeC
         }
       }))
     val dom = fieldSet(cls := "unicode-comparison",
-      legend(text <-- laminarHelper.plaintextStringSignal(e.title)),
+      legend(text <-- laminarHelper(fullInfo).plaintextStringSignal(e.title)),
       p(text <-- localized("unicodeExplanation")),
       div(cls := "unicode-controls", inputField(true), inputField(false),
         button(typ := "button", disabled <-- locked, text <-- localized("unicodeReset"), onClick --> (_ => state.set(e.initial)))),
@@ -38,6 +40,6 @@ case object UnicodeComparisonRenderer extends LineBasedRenderingFactory[UnicodeC
         text <-- LabelSelection(state.signal, Seq("unicodeEqual", "unicodeDifferent"), localized)(a =>
           Some(if a.first == a.second then "unicodeEqual" else "unicodeDifferent"))),
       div(cls := "unicode-tables", codeTable(true), codeTable(false)))
-    AtomarLineRendering.basicLine(e, dom)
+    AtomarLineRendering.basicLine(fullInfo, e, dom)
   }
 }

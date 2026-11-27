@@ -1,15 +1,17 @@
 package it.evadid.homepage.webElements.editor.compression
 
+import it.evadid.homepage.control.model.FullInfo
+
 import com.raquo.laminar.api.L.*
 import it.evadid.homepage.webElements.basic.LabelSelection
 import it.evadid.homepage.webElements.HtmlAppElement
 import it.evadid.workbook.model.compression.*
 
 /** Edits the renderer's bound value; invalid numeric drafts never replace saved settings. */
-case class CompressionEditor(answer: Var[CompressionExperiment], initial: CompressionExperiment, locked: Signal[Boolean])
+case class CompressionEditor(fullInfo: FullInfo, answer: Var[CompressionExperiment], initial: CompressionExperiment, locked: Signal[Boolean])
     extends HtmlAppElement {
   import CompressionExperimentView.{localized, summary, format}
-  private lazy val activities = CompressionActivitiesEditor(answer, initial, locked)
+  private lazy val activities = CompressionActivitiesEditor(fullInfo, answer, initial, locked)
   private val resetDrafts = new EventBus[Unit]
   private def numberControl(key: String, get: CompressionExperiment => Double, set: (CompressionExperiment, Double) => CompressionExperiment,
       min: Double, max: Double, integer: Boolean = true): Element = {
@@ -18,7 +20,7 @@ case class CompressionEditor(answer: Var[CompressionExperiment], initial: Compre
     val invalid = Var(false)
     def parsed(text: String): Option[Double] =
       text.toDoubleOption.filter(v => v.isFinite && v >= min && v <= max && (!integer || v == math.floor(v)))
-    label(cls := "compression-control", span(text <-- localized(key)),
+    label(cls := "compression-control", span(text <-- localized(fullInfo, key)),
       input(typ := "number", minAttr := min.toString, maxAttr := max.toString, stepAttr := (if integer then "1" else "any"),
         disabled <-- locked, aria.invalid <-- invalid.signal.map(_.toString),
         // A draft that already reads as the saved value is kept (e.g. "0.50"); other values replace it.
@@ -35,14 +37,14 @@ case class CompressionEditor(answer: Var[CompressionExperiment], initial: Compre
           invalid.set(valid.isEmpty)
           valid.foreach(v => answer.update(a => set(a, v)))
         })),
-      child <-- invalid.signal.map(bad => if bad then span(cls := "compression-error", text <-- localized("invalidNumber")) else span()))
+      child <-- invalid.signal.map(bad => if bad then span(cls := "compression-error", text <-- localized(fullInfo, "invalidNumber")) else span()))
   }
   private def textControl(get: CompressionExperiment => String, set: (CompressionExperiment, String) => CompressionExperiment): Element =
-    label(cls := "compression-control", span(text <-- localized("experimentText")),
+    label(cls := "compression-control", span(text <-- localized(fullInfo, "experimentText")),
       textArea(maxLength := 2000, disabled <-- locked,
         controlled(value <-- answer.signal.map(get), onInput.mapToValue --> (value => answer.update(a => set(a, value))))))
   private def blockControl(key: String, get: CompressionExperiment => Int, set: (CompressionExperiment, Int) => CompressionExperiment): Element =
-    label(cls := "compression-control", span(text <-- localized(key)), select(disabled <-- locked,
+    label(cls := "compression-control", span(text <-- localized(fullInfo, key)), select(disabled <-- locked,
       value <-- answer.signal.map(a => get(a).toString),
       CompressionAlgorithms.blockSizes.map(size => option(value := size.toString, s"$size × $size")),
       onChange.mapToValue --> (v => answer.update(a => set(a, v.toInt)))))
@@ -58,9 +60,9 @@ case class CompressionEditor(answer: Var[CompressionExperiment], initial: Compre
       textControl(_.asInstanceOf[RunLengthText].text, (a, text) => a.asInstanceOf[RunLengthText].edit(text)),
       pre(cls := "compression-output", text <-- answer.signal.map(a => CompressionAlgorithms.runs(a.asInstanceOf[RunLengthText].text)
         .map(r => s"(${r.symbol},${r.count})").mkString(" "))),
-      p(text <-- localized("rleCostNote")),
-      child <-- answer.signal.map(a => { val v=a.asInstanceOf[RunLengthText]; ul(List("save50","negativeSaving","longRun").zipWithIndex.map((key,i) => li(if v.achieved.contains(i) then "✓ " else "○ ", text <-- localized(s"src_widget_rle_challenges_$key")))) }),
-      h3(text <-- localized("decodedText")), pre(cls := "compression-output", text <-- answer.signal.map(a =>
+      p(text <-- localized(fullInfo, "rleCostNote")),
+      child <-- answer.signal.map(a => { val v=a.asInstanceOf[RunLengthText]; ul(List("save50","negativeSaving","longRun").zipWithIndex.map((key,i) => li(if v.achieved.contains(i) then "✓ " else "○ ", text <-- localized(fullInfo, s"src_widget_rle_challenges_$key")))) }),
+      h3(text <-- localized(fullInfo, "decodedText")), pre(cls := "compression-output", text <-- answer.signal.map(a =>
         CompressionAlgorithms.decodeRuns(CompressionAlgorithms.runs(a.asInstanceOf[RunLengthText].text)))))
     case _: DictionaryText => div(
       dictionaryPlayback,
@@ -74,25 +76,25 @@ case class CompressionEditor(answer: Var[CompressionExperiment], initial: Compre
       },
       textControl(_.asInstanceOf[DictionaryText].text, (a, text) => DictionaryText(text)),
       div(cls := "compression-controls",
-        button(typ := "button", text <-- localized("previousStep"), disabled <-- locked.combineWith(answer.signal).map((l, a) => l || a.asInstanceOf[DictionaryText].step == 0),
+        button(typ := "button", text <-- localized(fullInfo, "previousStep"), disabled <-- locked.combineWith(answer.signal).map((l, a) => l || a.asInstanceOf[DictionaryText].step == 0),
           onClick --> (_ => answer.update(a => { val v = a.asInstanceOf[DictionaryText]; v.copy(step = v.step - 1) }))),
-        button(typ := "button", text <-- localized("nextStep"), disabled <-- locked.combineWith(answer.signal).map((l, a) => { val v = a.asInstanceOf[DictionaryText]; l || v.step == CompressionAlgorithms.wordCount(v.text) }),
+        button(typ := "button", text <-- localized(fullInfo, "nextStep"), disabled <-- locked.combineWith(answer.signal).map((l, a) => { val v = a.asInstanceOf[DictionaryText]; l || v.step == CompressionAlgorithms.wordCount(v.text) }),
           onClick --> (_ => answer.update(a => { val v = a.asInstanceOf[DictionaryText]; v.copy(step = v.step + 1) }))),
-        button(typ := "button", text <-- localized("allSteps"), disabled <-- locked,
+        button(typ := "button", text <-- localized(fullInfo, "allSteps"), disabled <-- locked,
           onClick --> (_ => answer.update(a => { val v = a.asInstanceOf[DictionaryText]; v.copy(step = CompressionAlgorithms.wordCount(v.text)) })))),
-      button(typ := "button", text <-- localized("tableExpand"), onClick --> (_ => tableExpanded.update(!_))),
+      button(typ := "button", text <-- localized(fullInfo, "tableExpand"), onClick --> (_ => tableExpanded.update(!_))),
       child <-- answer.signal.combineWith(tableExpanded.signal).map { (a,expanded) =>
         val v = a.asInstanceOf[DictionaryText]
         val result = CompressionAlgorithms.dictionary(v.text, v.step)
         val entries = result.dictionary.zipWithIndex.filter((word,i) => v.step < CompressionAlgorithms.wordCount(v.text) || result.encoded.exists(_.reference.contains(i+1)))
         val shown = if expanded || entries.size <= 6 then entries else entries.take(3) ++ entries.takeRight(2)
-        div(div(cls := "compression-table-wrap", table(thead(tr(th(text <-- localized("dictionaryIndex")), th(text <-- localized("dictionaryWord")))),
+        div(div(cls := "compression-table-wrap", table(thead(tr(th(text <-- localized(fullInfo, "dictionaryIndex")), th(text <-- localized(fullInfo, "dictionaryWord")))),
           tbody(shown.map((word, i) => tr(td(s"W${i+1}"), td(word)))))),
-          if shown.size < entries.size then p(text <-- format("moreDictionaryEntries", "count" -> (entries.size - shown.size).toString)) else span(),
-          pre(cls := "compression-output", result.display), h3(text <-- localized("decodedText")), pre(cls := "compression-output", result.decoded),
-          p(text <-- localized("dictionaryCostNote").map(_.replace("{size}", result.modelBytes.toString))))
+          if shown.size < entries.size then p(text <-- format(fullInfo, "moreDictionaryEntries", "count" -> (entries.size - shown.size).toString)) else span(),
+          pre(cls := "compression-output", result.display), h3(text <-- localized(fullInfo, "decodedText")), pre(cls := "compression-output", result.decoded),
+          p(text <-- localized(fullInfo, "dictionaryCostNote").map(_.replace("{size}", result.modelBytes.toString))))
       })
-    case v: TextBits => div(p(text <-- localized("bitsNote")),
+    case v: TextBits => div(p(text <-- localized(fullInfo, "bitsNote")),
       div(cls := "compression-bit-grid",
         v.original.zipWithIndex.map { (character, index) => div(cls := "compression-byte",
           code(character.toString), (0 until 8).map { bit =>
@@ -108,31 +110,31 @@ case class CompressionEditor(answer: Var[CompressionExperiment], initial: Compre
     case v: ImageBlocks => div(
       if v.comparison.nonEmpty then div(
         p(s"test.txt: ${v.comparison.get.textBytes} Bytes · Screenshot.jpg: ${v.comparison.get.imageBytes} Bytes"),
-        v.comparison.get.note.fold[Element](span())(note => p(text <-- laminarHelper.plaintextStringSignal(note))),
+        v.comparison.get.note.fold[Element](span())(note => p(text <-- laminarHelper(fullInfo).plaintextStringSignal(note))),
         numberControl("src_widget_textVsJpeg_zoomLabel", _.asInstanceOf[ImageBlocks].zoom, (a,z) => a.asInstanceOf[ImageBlocks].copy(zoom = z.toInt),100,400)) else span(),
       div(cls := "compression-controls", blockControl("brightnessBlocks", _.asInstanceOf[ImageBlocks].luminanceBlock, (a, b) => {
         val v = a.asInstanceOf[ImageBlocks]; v.copy(luminanceBlock = b, chromaBlock = if v.separateChannels then v.chromaBlock else b)
       }), if v.separateChannels then blockControl("colorBlocks", _.asInstanceOf[ImageBlocks].chromaBlock, (a, b) => a.asInstanceOf[ImageBlocks].copy(chromaBlock = b)) else span()),
-      CompressionImageView(v.imageResource, answer.signal.map(_.asInstanceOf[ImageBlocks])).getDomElement(),
-      if v.comparison.nonEmpty then p(text <-- localized("imageTextComparison").combineWith(answer.signal).map { (template, a) =>
+      CompressionImageView(fullInfo, v.imageResource, answer.signal.map(_.asInstanceOf[ImageBlocks])).getDomElement(),
+      if v.comparison.nonEmpty then p(text <-- localized(fullInfo, "imageTextComparison").combineWith(answer.signal).map { (template, a) =>
         val state=a.asInstanceOf[ImageBlocks]
         val bytes=math.max(1L,math.round(v.comparison.get.imageBytes * state.estimatePercent / 100.0))
         val textBytes=v.comparison.get.textBytes
         LabelSelection.fill(template, Seq("size" -> bytes.toString, "textSize" -> textBytes.toString, "difference" -> (bytes-textBytes).toString))
       }) else span(),
-      p(text <-- localized("jpegModelNote")),
-      child <-- answer.signal.map(a => { val v=a.asInstanceOf[ImageBlocks]; if v.comparison.nonEmpty then p(text <-- format("estimatedSize", "percent" -> v.estimatePercent.toString)) else if v.separateChannels then ul(v.challenges.zipWithIndex.map((done,i) => li(if done then "✓ " else "○ ", text <-- localized(s"src_lossy_task3_challenge${i+1}"))),li(text <-- format("estimatedSize", "percent" -> v.estimatePercent.toString))) else p(text <-- format("blockSizeSummary", "original" -> (v.imageWidth*v.imageHeight*24).toString, "encoded" -> (v.sampleBytes*8).toString, "saving" -> ((v.imageWidth*v.imageHeight*3-v.sampleBytes)*8).toString)) }))
+      p(text <-- localized(fullInfo, "jpegModelNote")),
+      child <-- answer.signal.map(a => { val v=a.asInstanceOf[ImageBlocks]; if v.comparison.nonEmpty then p(text <-- format(fullInfo, "estimatedSize", "percent" -> v.estimatePercent.toString)) else if v.separateChannels then ul(v.challenges.zipWithIndex.map((done,i) => li(if done then "✓ " else "○ ", text <-- localized(fullInfo, s"src_lossy_task3_challenge${i+1}"))),li(text <-- format(fullInfo, "estimatedSize", "percent" -> v.estimatePercent.toString))) else p(text <-- format(fullInfo, "blockSizeSummary", "original" -> (v.imageWidth*v.imageHeight*24).toString, "encoded" -> (v.sampleBytes*8).toString, "saving" -> ((v.imageWidth*v.imageHeight*3-v.sampleBytes)*8).toString)) }))
     case _: ArchiveBudget => div(cls := "compression-controls",
       numberControl("fileCount", _.asInstanceOf[ArchiveBudget].fileCount, (a, v) => a.asInstanceOf[ArchiveBudget].copy(fileCount = v.toInt), 1, 10000),
       numberControl("fileSize", _.asInstanceOf[ArchiveBudget].bytesPerFile, (a, v) => a.asInstanceOf[ArchiveBudget].copy(bytesPerFile = v.toInt), 1, 10000000),
       numberControl("archiveOverhead", _.asInstanceOf[ArchiveBudget].archiveOverhead, (a, v) => a.asInstanceOf[ArchiveBudget].copy(archiveOverhead = v.toInt), 0, 10000000),
       numberControl("openTime", _.asInstanceOf[ArchiveBudget].openMilliseconds, (a, v) => a.asInstanceOf[ArchiveBudget].copy(openMilliseconds = v.toInt), 0, 10000),
       numberControl("transferRate", _.asInstanceOf[ArchiveBudget].bytesPerSecond, (a, v) => a.asInstanceOf[ArchiveBudget].copy(bytesPerSecond = v.toInt), 1, 1000000000),
-      p(text <-- localized("archiveCostNote")))
+      p(text <-- localized(fullInfo, "archiveCostNote")))
     case v: StorageStudy => div(
-      label(span(text <-- localized("storageScenario")), select(disabled <-- locked,
+      label(span(text <-- localized(fullInfo, "storageScenario")), select(disabled <-- locked,
         value <-- answer.signal.map(_.asInstanceOf[StorageStudy].selected.toString),
-        v.packages.zipWithIndex.map((p, i) => option(value := i.toString, text <-- laminarHelper.plaintextStringSignal(p.label))),
+        v.packages.zipWithIndex.map((p, i) => option(value := i.toString, text <-- laminarHelper(fullInfo).plaintextStringSignal(p.label))),
         onChange.mapToValue --> (value => answer.update(a => a.asInstanceOf[StorageStudy].copy(selected = value.toInt))))),
       child <-- answer.signal.map { a =>
         val v = a.asInstanceOf[StorageStudy]
@@ -142,9 +144,9 @@ case class CompressionEditor(answer: Var[CompressionExperiment], initial: Compre
           svg.g(svg.titleTag(s"${f.name}: ${f.megabytes} MB"),
             svg.rect(svg.x := left.toString, svg.y := "0", svg.width := widths(i).toString, svg.height := "120", svg.cls := s"compression-area compression-area-${i % 4}"))
         }
-        div(div(role := "img", aria.label <-- localized("storageMap"), svg.svg(svg.viewBox := "0 0 1000 120", svg.cls := "compression-treemap", blocks)),
-          div(cls := "compression-table-wrap", table(thead(tr(List("storageName", "storageSize", "storageInformation").map(k => th(text <-- localized(k))))),
-            tbody(v.current.files.map(f => tr(td(f.name), td(f.megabytes.toString), td(text <-- laminarHelper.plaintextStringSignal(f.information))))))))
+        div(div(role := "img", aria.label <-- localized(fullInfo, "storageMap"), svg.svg(svg.viewBox := "0 0 1000 120", svg.cls := "compression-treemap", blocks)),
+          div(cls := "compression-table-wrap", table(thead(tr(List("storageName", "storageSize", "storageInformation").map(k => th(text <-- localized(fullInfo, k))))),
+            tbody(v.current.files.map(f => tr(td(f.name), td(f.megabytes.toString), td(text <-- laminarHelper(fullInfo).plaintextStringSignal(f.information))))))))
       })
     case _ => activities.getDomElement()
   }
@@ -152,8 +154,8 @@ case class CompressionEditor(answer: Var[CompressionExperiment], initial: Compre
   private val playing = Var(false)
   private val speed = Var(700)
   private def dictionaryPlayback: Element = div(
-    button(typ := "button", disabled <-- locked, text <-- LabelSelection(playing.signal, Seq("pause", "play"), localized)(p => Some(if p then "pause" else "play")), onClick --> (_ => playing.update(!_))),
-    label(span(text <-- localized("speed")), input(typ := "range", minAttr := "200", maxAttr := "1400", stepAttr := "100", value <-- speed.signal.map(_.toString), disabled <-- locked, onInput.mapToValue --> (v => speed.set(v.toInt)))),
+    button(typ := "button", disabled <-- locked, text <-- LabelSelection(playing.signal, Seq("pause", "play"), localized(fullInfo, _))(p => Some(if p then "pause" else "play")), onClick --> (_ => playing.update(!_))),
+    label(span(text <-- localized(fullInfo, "speed")), input(typ := "range", minAttr := "200", maxAttr := "1400", stepAttr := "100", value <-- speed.signal.map(_.toString), disabled <-- locked, onInput.mapToValue --> (v => speed.set(v.toInt)))),
     onMountCallback(ctx => {
       val elapsed = Var(0)
       EventStream.periodic(100).withCurrentValueOf(locked).foreach { (_,isLocked) => if playing.now() && !isLocked then {
@@ -163,8 +165,8 @@ case class CompressionEditor(answer: Var[CompressionExperiment], initial: Compre
     }))
   override def getDomElement(): Element = div(onUnmountCallback(_ => unmount()),cls := "compression-editor",
     controls,
-    p(cls := "compression-summary", role := "status", aria.live := "polite", text <-- summary(answer.signal)),
-    button(typ := "button", disabled <-- locked, text <-- localized("resetExperiment"), onClick --> (_ => {
+    p(cls := "compression-summary", role := "status", aria.live := "polite", text <-- summary(fullInfo, answer.signal)),
+    button(typ := "button", disabled <-- locked, text <-- localized(fullInfo, "resetExperiment"), onClick --> (_ => {
       playing.set(false); activities.stop(); answer.set(initial); resetDrafts.writer.onNext(())
     })))
   private def unmount(): Unit = { playing.set(false); activities.stop() }

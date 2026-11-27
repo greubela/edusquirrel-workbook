@@ -1,5 +1,7 @@
 package it.evadid.homepage.webElements.basic
 
+import it.evadid.homepage.control.model.FullInfo
+
 import com.raquo.laminar.api.L.*
 import com.raquo.laminar.nodes.ReactiveSvgElement
 import it.evadid.core.datastructures.language.LanguageMapContentId
@@ -40,22 +42,22 @@ object HtmlButtonElement {
   }
 
 
-  def withTextLabel(contentId: LanguageMapContentId, handleOnAction: MouseEvent => Any, config: Signal[ButtonConfig]): HtmlButtonElement = {
-    val labelSignal: Signal[String] = LaminarRenderHelper.singleton.plaintextStringSignal(contentId)
+  def withTextLabel(fullInfo: FullInfo, contentId: LanguageMapContentId, handleOnAction: MouseEvent => Any, config: Signal[ButtonConfig]): HtmlButtonElement = {
+    val labelSignal: Signal[String] = LaminarRenderHelper(fullInfo).plaintextStringSignal(contentId)
     val elementSignal: Signal[Element] = labelSignal.map(span(_))
     HtmlButtonElement(elementSignal, "button-labeled", handleOnAction, config)
   }
 
-  def withTextLabel(contentId: LanguageMapContentId, handleOnAction: MouseEvent => Any, config: ButtonConfig): HtmlButtonElement = {
-    withTextLabel(contentId, handleOnAction, Signal.fromValue(config))
+  def withTextLabel(fullInfo: FullInfo, contentId: LanguageMapContentId, handleOnAction: MouseEvent => Any, config: ButtonConfig): HtmlButtonElement = {
+    withTextLabel(fullInfo, contentId, handleOnAction, Signal.fromValue(config))
   }
 
-  def withTextLabel(contentId: String, onAction: MouseEvent => Any = _ => {}, config: ButtonConfig = stdConfig): HtmlButtonElement = {
-    withTextLabel(LanguageMapContentId(contentId), onAction, Signal.fromValue(config))
+  def withTextLabel(fullInfo: FullInfo, contentId: String, onAction: MouseEvent => Any = _ => {}, config: ButtonConfig = stdConfig): HtmlButtonElement = {
+    withTextLabel(fullInfo, LanguageMapContentId(contentId), onAction, Signal.fromValue(config))
   }
 
-  def withTextLabel(contentId: String, onAction: MouseEvent => Any, config: Signal[ButtonConfig]): HtmlButtonElement = {
-    withTextLabel(LanguageMapContentId(contentId), onAction, config)
+  def withTextLabel(fullInfo: FullInfo, contentId: String, onAction: MouseEvent => Any, config: Signal[ButtonConfig]): HtmlButtonElement = {
+    withTextLabel(fullInfo, LanguageMapContentId(contentId), onAction, config)
   }
 
 

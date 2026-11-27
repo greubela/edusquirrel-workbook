@@ -1,5 +1,7 @@
 package it.evadid.homepage.workbook.htmlRenderer.controlElements
 
+import it.evadid.homepage.control.model.FullInfo
+
 import com.raquo.laminar.api.L.*
 import it.evadid.core.datastructures.user.{AllUserInfo, User}
 import it.evadid.distribution.commandTypes.SubmissionCommands.{SubmitSessionEvent, SubmitSessionResponse}
@@ -18,7 +20,7 @@ import scala.util.{Failure, Success, Try}
   * @param sessionFor the open workbook's current session, handed in by the given submitter
   * @param submit     sends the event to the backend
   */
-final class HtmlSubmissionForm(sessionFor: User => Option[SessionData], currentUser: Signal[Option[AllUserInfo]],
+final class HtmlSubmissionForm(val fullInfo: FullInfo, sessionFor: User => Option[SessionData], currentUser: Signal[Option[AllUserInfo]],
                                submit: SubmitSessionEvent => Future[SubmitSessionResponse], logger: Logger) extends HtmlAppElement {
   import HtmlSubmissionForm.*
 
@@ -49,7 +51,7 @@ final class HtmlSubmissionForm(sessionFor: User => Option[SessionData], currentU
       }
   }
 
-  private def label(id: String): Signal[String] = laminarHelper.plaintextStringSignal(id)
+  private def label(id: String): Signal[String] = laminarHelper(fullInfo).plaintextStringSignal(id)
 
   private def field(variable: Var[String], labelId: String, inputType: String, cssClass: String): Element =
     input(cls := cssClass, typ := inputType, placeholder <-- label(labelId), aria.label <-- label(labelId),

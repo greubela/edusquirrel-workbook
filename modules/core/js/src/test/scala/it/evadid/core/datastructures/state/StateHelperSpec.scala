@@ -3,6 +3,7 @@ package it.evadid.core.datastructures.state
 import com.raquo.airstream.core.{Observer, Signal}
 import com.raquo.airstream.ownership.ManualOwner
 import com.raquo.airstream.state.Var
+import com.raquo.laminar.api.L.unsafeWindowOwner
 import it.evadid.core.datastructures.state.StateHelper.*
 import it.evadid.core.datastructures.state.async.AsyncDataState.{AsyncDataLoading, AsyncDataSuccess}
 import it.evadid.core.datastructures.state.async.AsyncValue
@@ -78,7 +79,7 @@ class StateHelperSpec extends JsDomSuite {
 
   test("shared states and Airstream Vars mirror each other in both directions") {
     val source = Var("a")
-    val window = StateHelper.fromAirstreamVarToState(source)
+    val window = StateHelper.fromAirstreamVarToState(source, unsafeWindowOwner)
     window.set("b")
     assertEquals(source.now(), "b", "states created with the page-lifetime owner write through")
     val state = State(1)
@@ -123,7 +124,8 @@ class StateHelperSpec extends JsDomSuite {
     assertEquals(seen.now(), Vector(Success("first"), Success("second"), Failure(failure)))
   }
 
-  test("signals become observable values and asynchronous data") {
+  test("signals become observable values and asynchronous data for as long as their owner lives") {
+    given owner: ManualOwner = new ManualOwner
     val store = Var(2)
     val strict = store.signal.toObservableValue
     val derived = store.signal.map(_ * 10).toObservableValue
@@ -135,23 +137,29 @@ class StateHelperSpec extends JsDomSuite {
     val computed = Promise[String]()
     val async = store.signal.mapAsync(value => computed.future.map(_ + value))
     computed.success("value ")
-    waitUntil(async.stateNow() == AsyncDataSuccess("value 3"))
+    waitUntil(async.stateNow() == AsyncDataSuccess("value 3")).map { _ =>
+      owner.killSubscriptions()
+      store.set(4)
+      assertEquals(strict.now(), Some(3), "a released mirror no longer follows the signal")
+    }
   }
 
-  test("asynchronous data exposes every state as a strict signal") {
+  test("asynchronous data exposes every state as a signal while observed") {
+    val owner = new ManualOwner
     val pending = Promise[Int]()
-    val signal = it.evadid.core.datastructures.state.async.AsyncData.forFuture(pending.future).toStateSignal
+    val signal = it.evadid.core.datastructures.state.async.AsyncData.forFuture(pending.future).toStateSignal.observe(using owner)
     assert(signal.now().isInstanceOf[AsyncDataLoading[?, ?]])
     pending.success(8)
-    assertEquals(AsyncValue(AsyncDataSuccess[Nothing, Int](1)).toStateSignal.now(), AsyncDataSuccess(1))
-    waitUntil(signal.now() == AsyncDataSuccess(8))
+    assertEquals(AsyncValue(AsyncDataSuccess[Nothing, Int](1)).toStateSignal.observe(using owner).now(), AsyncDataSuccess(1))
+    waitUntil(signal.now() == AsyncDataSuccess(8)).map(_ => owner.killSubscriptions())
   }
 
   test("interaction variables bind to Vars and signals that follow every history change") {
     val variable = InteractionVariable(TextInteraction("state-helper-answer"))
     val context = ExecutionContextInformation.default
     val bound = variable.createBoundVarWithUpdateImportance(UpdateImportance.MAJOR, context)
-    val signal = variable.createInteractionSignal(context)
+    val owner = new ManualOwner
+    val signal = variable.createInteractionSignal.observe(using owner)
     assertEquals((bound.now(), signal.now()), ("", ""))
     bound.set("typed")
     assertEquals(variable.currentValue, "typed")
@@ -160,5 +168,24 @@ class StateHelperSpec extends JsDomSuite {
     variable.updateHistory(_.addState(InteractionVariableState("restored", UpdateImportance.MAJOR,
       LocalDateTime.now().plusSeconds(5))), context)
     assertEquals((bound.now(), signal.now()), ("restored", "restored"))
+    owner.killSubscriptions()
+  }
+
+  test("bound Vars read and write the variable unobserved and stop observing it when their owner ends") {
+    val variable = InteractionVariable(TextInteraction("released-answer"))
+    val context = ExecutionContextInformation.default
+    val bound = variable.createBoundVarWithUpdateImportance(UpdateImportance.MAJOR, context)
+    bound.update(_ + "unobserved")
+    assertEquals(variable.currentValue, "unobserved", "writes reach the variable without any observer")
+    val owner = new ManualOwner
+    val seen = recording(bound.signal, owner)
+    bound.set("mounted")
+    assertEquals(seen.now().last, Success("mounted"))
+    owner.killSubscriptions()
+    val received = seen.now().size
+    variable.updateHistory(_.addState(InteractionVariableState("later", UpdateImportance.MAJOR,
+      LocalDateTime.now().plusSeconds(10))), context)
+    assertEquals(seen.now().size, received, "an unmounted Var no longer observes the variable")
+    assertEquals(bound.now(), "later", "reads follow the variable without any observer")
   }
 }

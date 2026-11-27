@@ -1,5 +1,7 @@
 package it.evadid.homepage.workbook.htmlRenderer.displayRenderer
 
+import it.evadid.homepage.control.model.FullInfo
+
 import com.raquo.laminar.api.L.*
 import it.evadid.homepage.workbook.htmlRenderer.HtmlRenderFactory.LineBasedRenderingFactory
 import it.evadid.homepage.workbook.htmlRenderer.atomarLineRenderings.AtomarLineRendering
@@ -7,7 +9,7 @@ import it.evadid.workbook.elements.displayElements.CollapsibleInstructionElement
 
 object HtmlCollapsibleInstructionRenderer extends LineBasedRenderingFactory[CollapsibleInstructionElement] {
 
-  override protected def createRendering(workbookElement: CollapsibleInstructionElement): AtomarLineRendering = {
+  override protected def createRendering(fullInfo: FullInfo, workbookElement: CollapsibleInstructionElement): AtomarLineRendering = {
     val collapsedVar = Var(workbookElement.initiallyCollapsed)
 
     val toggleIconSignal: Signal[String] = collapsedVar.signal.map {
@@ -32,12 +34,12 @@ object HtmlCollapsibleInstructionRenderer extends LineBasedRenderingFactory[Coll
           ),
           span(
             cls := "collapsible-title",
-            text <-- laminarHelper.plaintextStringSignal(workbookElement.titleLabel)
+            text <-- laminarHelper(fullInfo).plaintextStringSignal(workbookElement.titleLabel)
           )
         ),
         div(
           cls <-- bodyClsSignal,
-          child <-- laminarHelper.plaintextStringSignal(workbookElement.bodyContent).map { bodyText =>
+          child <-- laminarHelper(fullInfo).plaintextStringSignal(workbookElement.bodyContent).map { bodyText =>
             div(
               cls := "collapsible-body__text",
               bodyText
@@ -46,6 +48,6 @@ object HtmlCollapsibleInstructionRenderer extends LineBasedRenderingFactory[Coll
         )
       )
 
-    AtomarLineRendering.basicLine(workbookElement, dom, "collapsible-instruction")
+    AtomarLineRendering.basicLine(fullInfo, workbookElement, dom, "collapsible-instruction")
   }
 }

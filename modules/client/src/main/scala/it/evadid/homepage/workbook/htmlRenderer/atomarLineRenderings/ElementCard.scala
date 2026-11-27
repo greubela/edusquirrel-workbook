@@ -1,5 +1,7 @@
 package it.evadid.homepage.workbook.htmlRenderer.atomarLineRenderings
 
+import it.evadid.homepage.control.model.FullInfo
+
 import com.raquo.laminar.api.L
 import com.raquo.laminar.api.L.{children, *}
 import it.evadid.core.datastructures.language.LanguageMapContentId
@@ -7,11 +9,11 @@ import it.evadid.homepage.webElements.HtmlAppElement
 import it.evadid.homepage.workbook.htmlRenderer.DomElementCollection
 
 /** Titled card. A `collapsible` card starts expanded; its headline toggles the content. */
-case class ElementCard(headline: LanguageMapContentId, content: DomElementCollection, collapsible: Boolean = false) extends HtmlAppElement {
+case class ElementCard(fullInfo: FullInfo, headline: LanguageMapContentId, content: DomElementCollection, collapsible: Boolean = false) extends HtmlAppElement {
 
   private lazy val collapsed: Var[Boolean] = Var(false)
 
-  private def headlineText: Modifier[HtmlElement] = text <-- laminarHelper.plaintextStringSignal(headline)
+  private def headlineText: Modifier[HtmlElement] = text <-- laminarHelper(fullInfo).plaintextStringSignal(headline)
 
   lazy val labelElement: Element =
     if collapsible then h3(

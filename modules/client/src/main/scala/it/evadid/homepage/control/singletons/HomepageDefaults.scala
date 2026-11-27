@@ -4,11 +4,11 @@ import it.evadid.core.datastructures.language.AppLanguage.{English, German, Huma
 import it.evadid.core.datastructures.user.UserTokenInfo.SignedToken
 import it.evadid.distribution.clients.{ExecutionClient, RemoteExecutionConfig, WebWorkerExecutionClient}
 import it.evadid.facades.Workers
-import it.evadid.homepage.control.model.FullInfo
 import it.evadid.homepage.control.startup.ClientRuntimeConfig
 
 
-case class HomepageDefaults(fullInfo: FullInfo) {
+/** Page-independent defaults: languages, the backend address and the shared worker. */
+case class HomepageDefaults() {
 
   lazy val defaultLanguagesAvailable: Seq[HumanLanguage] = List(German, English)
 
@@ -21,9 +21,4 @@ case class HomepageDefaults(fullInfo: FullInfo) {
 
   def backendExecutorWithCredentials(signedToken: Option[SignedToken]): ExecutionClient =
     defaultBackend.executor(signedToken)
-
-  def backendExecutor: ExecutionClient =
-    backendExecutorWithCredentials(fullInfo.homepageInfoNow().userInfo.flatMap(_.credentials.signedBackendToken))
-
-
 }

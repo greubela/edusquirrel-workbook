@@ -1,5 +1,7 @@
 package it.evadid.homepage.workbook.htmlRenderer.interactionRenderer.basic
 
+import it.evadid.homepage.control.model.FullInfo
+
 import it.evadid.workbook.interaction.sync.UpdateImportance
 
 import it.evadid.workbook.abstractions.InteractionFormat.{ProgrammingExerciseWithLlmScaffoldingAndGrading}
@@ -24,10 +26,11 @@ import it.evadid.workbook.abstractions.{LangMapContentIdType, RoleInWorkbook, Ty
 import it.evadid.workbook.elements.displayElements.DisplayLangMapContent
 
 case object HtmlProgrammingExerciseFullJavaRenderer extends LineBasedRenderingFactory[ProgrammingExerciseFullJava] {
-  private[homepage] def editorState(element: ProgrammingExerciseFullJava, syncControl: SyncControl): Var[ProgrammingState] =
+  private[homepage] def editorState(fullInfo: FullInfo, element: ProgrammingExerciseFullJava, syncControl: SyncControl): Var[ProgrammingState] =
     element.interactionVariable.createBoundStateWithUpdateImportance(UpdateImportance.MAJOR, fullInfo.workbookContextInformation).toAirstreamVar
 
   private[homepage] def createNewEditor(
+                                         fullInfo: FullInfo,
                                          element: ProgrammingExerciseFullJava,
                                          boundVar: Var[ProgrammingState],
                                          gradingReporter: GradingReporter
@@ -35,29 +38,29 @@ case object HtmlProgrammingExerciseFullJavaRenderer extends LineBasedRenderingFa
   EditorWithWorkbookPanel[ProgrammingExerciseWithLlmScaffoldingAndGrading.type, EvaEditorConfig] = {
 
     val previewCards = element.dataView.toSeq.map { view =>
-      ElementCard(LanguageMapContentId("basic/programDataTitle"),
-        new ProgramDataPreview(boundVar, view, key => laminarHelper.plaintextStringSignal(LanguageMapContentId(s"basic/$key"))).getDomElement())
+      ElementCard(fullInfo, LanguageMapContentId("basic/programDataTitle"),
+        new ProgramDataPreview(boundVar, view, key => laminarHelper(fullInfo).plaintextStringSignal(LanguageMapContentId(s"basic/$key"))).getDomElement())
     } ++ element.gradingElements.collect {
       case grader: it.evadid.workbook.elements.interactionElements.programming.programmingExerciseTurtle.RecreateShapeGrader =>
-        ElementCard(LanguageMapContentId("basic/turtleGradingPanel"),
+        ElementCard(fullInfo, LanguageMapContentId("basic/turtleGradingPanel"),
           it.evadid.homepage.workbook.htmlRenderer.interactionRenderer.turtleStitch.CompareShapePreview(
-            boundVar.signal, grader.desiredResult, grader.comparisonPolicy, element.environment).getDomElement())
+            fullInfo, boundVar.signal, grader.desiredResult, grader.comparisonPolicy, element.environment).getDomElement())
     }
     val instruction = element.instructionText.map(WorkbookEvaEditor.instruction(element.elementId, _))
     val evaEditor = WorkbookEvaEditor(fullInfo, element, boundVar, EvaEditorConfig(enabledLanguages = List(AppLanguage.Java)))
-    EditorWithWorkbookPanel(element, instruction, gradingReporter, previewCards, evaEditor)
+    EditorWithWorkbookPanel(fullInfo, element, instruction, gradingReporter, previewCards, evaEditor)
   }
 
-  override protected def createRendering(workbookElement: ProgrammingExerciseFullJava): AtomarLineRendering = {
-    val boundVar = editorState(workbookElement, fullInfo.syncControl)
-    val gradingReporter = fullInfo.signals.reportersFor(workbookElement).grading
+  override protected def createRendering(fullInfo: FullInfo, workbookElement: ProgrammingExerciseFullJava): AtomarLineRendering = {
+    val boundVar = editorState(fullInfo, workbookElement, fullInfo.syncControl)
+    val gradingReporter = fullInfo.reporters.reportersFor(workbookElement).grading
 
     val openButton = HtmlButtonElement.withTextLabel(
-      "basic/OpenEditor", _ => fullInfo.displayControl.setFullscreen(createNewEditor(workbookElement, boundVar, gradingReporter))
+      fullInfo, "basic/OpenEditor", _ => fullInfo.displayControl.setFullscreen(createNewEditor(fullInfo, workbookElement, boundVar, gradingReporter))
     )
-    val buttonCard = ElementCard(LanguageMapContentId("basic/openEditor"), openButton.getDomElement())
+    val buttonCard = ElementCard(fullInfo, LanguageMapContentId("basic/openEditor"), openButton.getDomElement())
     val editorCard = ElementCard(
-      LanguageMapContentId("basic/staticPreviewProgram"),
+      fullInfo, LanguageMapContentId("basic/staticPreviewProgram"),
       div(
         cls := "java-full-editor-preview",
         h3("Java program"),
@@ -65,6 +68,6 @@ case object HtmlProgrammingExerciseFullJavaRenderer extends LineBasedRenderingFa
       )
     )
 
-    AtomarLineRendering.cardLine(workbookElement, List(buttonCard, editorCard))
+    AtomarLineRendering.cardLine(fullInfo, workbookElement, List(buttonCard, editorCard))
   }
 }

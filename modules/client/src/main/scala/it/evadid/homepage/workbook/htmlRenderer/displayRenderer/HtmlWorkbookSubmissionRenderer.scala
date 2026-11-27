@@ -1,5 +1,7 @@
 package it.evadid.homepage.workbook.htmlRenderer.displayRenderer
 
+import it.evadid.homepage.control.model.FullInfo
+
 import it.evadid.distribution.commandTypes.SubmissionCommands
 import it.evadid.homepage.workbook.htmlRenderer.HtmlRenderFactory.LineBasedRenderingFactory
 import it.evadid.homepage.workbook.htmlRenderer.atomarLineRenderings.AtomarLineRendering
@@ -12,11 +14,11 @@ import scala.concurrent.ExecutionContext
 object HtmlWorkbookSubmissionRenderer extends LineBasedRenderingFactory[WorkbookSubmissionElement] {
   private given ExecutionContext = ExecutionContext.global
 
-  override protected def createRendering(element: WorkbookSubmissionElement): AtomarLineRendering = {
+  override protected def createRendering(fullInfo: FullInfo, element: WorkbookSubmissionElement): AtomarLineRendering = {
     val logger = fullInfo.loggerSystemInfo.uiAndDomLogger
-    val form = HtmlSubmissionForm(submitter => fullInfo.homepageInfoNow().toSubmissionBy(submitter), fullInfo.signals.user,
+    val form = HtmlSubmissionForm(fullInfo, submitter => fullInfo.homepageInfoNow().toSubmissionBy(submitter), fullInfo.signals.user,
       event => SubmissionCommands.submitSessionCommand.sendCommandTo(fullInfo.defaults.backendExecutorWithCredentials(None),
         event, Some(logger)).map(_.result), logger)
-    AtomarLineRendering.basicLine(element, form.getDomElement())
+    AtomarLineRendering.basicLine(fullInfo, element, form.getDomElement())
   }
 }

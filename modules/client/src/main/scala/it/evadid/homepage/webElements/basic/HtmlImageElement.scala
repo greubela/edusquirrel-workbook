@@ -2,82 +2,56 @@ package it.evadid.homepage.webElements.basic
 
 import com.raquo.laminar.api.L.*
 import it.evadid.core.datastructures.file.*
-import it.evadid.core.datastructures.language.AppLanguage.HumanLanguage
-import it.evadid.core.datastructures.language.{LanguageMap, LanguageMapContentId}
-import it.evadid.core.datastructures.state.StateHelper.*
+import it.evadid.core.datastructures.language.LanguageMapContentId
+import it.evadid.core.datastructures.state.async.AsyncDataState
 import it.evadid.core.datastructures.state.async.AsyncDataState.*
-import it.evadid.core.datastructures.state.async.{AsyncData, AsyncDataState, AsyncState, AsyncValue}
-import it.evadid.core.datastructures.state.observable.ObservableValue
+import it.evadid.distribution.command.SerializedException
 import it.evadid.homepage.control.model.FullInfo
-import it.evadid.homepage.control.singletons.HtmlFullWorkbookApp
 import it.evadid.homepage.webElements.*
+import it.evadid.homepage.webElements.basic.FullImage.*
 import it.evadid.workbook.elements.displayElements.WorkbookImageElement
-import todomove.datastructures.web.file.FullImage.*
-import todomove.datastructures.web.file.FullImage
 
-import scala.concurrent.ExecutionContext
+import scala.concurrent.Future
+import scala.concurrent.ExecutionContext.Implicits.global
+import scala.util.{Failure, Success}
 
-case class HtmlImageElement(imageSignal: AsyncData[Nothing, FullImage], underlyingImage: Option[WorkbookImageElement] = None) extends HtmlAppElement {
+/** An image whose loading states come from `images`; nothing is observed while the element is unmounted. */
+case class HtmlImageElement(fullInfo: FullInfo, images: Signal[AsyncDataState[?, FullImage]], underlyingImage: Option[WorkbookImageElement] = None) extends HtmlAppElement {
 
-  private def stringSignal(id: LanguageMapContentId): Signal[String] =
-    HtmlFullWorkbookApp.fullInfo.signals.stringFromLanguageMapId(id)
-
-  private def stringSignal(map: LanguageMap[HumanLanguage]): Signal[String] =
-    HtmlFullWorkbookApp.fullInfo.signals.stringFromLanguageMap(map)
-
-  private def renderImageLoading(): Element = {
-    div(text <-- stringSignal(LanguageMapContentId("basic/imageLoadingMap")))
-  }
-  private def renderImageFailed(cause: Throwable): Element = {
-    //val map = WorkbookContentControl.languageMapImageError(underlyingImage, cause)
-    //div("Image loading failed: " + cause.getMessage)
-    div(text <-- stringSignal(LanguageMapContentId("basic/missingContent")))
-  }
+  private def message(id: String): Element = div(text <-- fullInfo.signals.stringFromLanguageMapId(LanguageMapContentId(id)))
 
   def render(img: AsyncDataState[?, FullImage]): Element = img.match {
     case AsyncDataSuccess(img) => img.newDomImage
-    case AsyncDataLoading(_) => renderImageLoading()
-    case AsyncDataFailed(cause, data) => renderImageFailed(cause)
+    case AsyncDataLoading(_) => message("basic/imageLoadingMap")
+    case AsyncDataFailed(_, _) => message("basic/missingContent")
   }
-
-  private val domSignal: Signal[Element] = imageSignal.toStateSignal.map(render)
-  def getDomSignal: Signal[Element] = domSignal
 
   /** The element ID lets workbook styles address a single figure. */
   override def getDomElement(): Element = div(cls := "workbook-image",
-    underlyingImage.map(image => dataAttr("element-id") := image.elementId), child <-- domSignal)
+    underlyingImage.map(image => dataAttr("element-id") := image.elementId), child <-- images.map(render))
 }
 
 object HtmlImageElement {
 
-  private val signals = HtmlFullWorkbookApp.fullInfo.signals
-
-  private def getImageSignal(fullInfo: FullInfo, image: WorkbookImageElement): AsyncData[Nothing, FullImage] = {
-    val fileSignal: AsyncData[Nothing, LoadedFile] = image.match {
-      /*case ImageElement.FileBasedImageElement(_, fileDescription) =>
-        AsyncData.forFuture(fileDescription.loadData()).observeAllStates*/
-      case i@WorkbookImageElement.LanguageMapBasedWorkbookImageElement(elId, languageMapContentId, howToResolveUrl, descOp, copyOp) =>
-        val srcSignal: Signal[String] = signals.stringFromLanguageMapId(languageMapContentId)
-        val srcFile: Signal[FileDescription] = srcSignal.map(fullInfo.contentControl.fileFactory.resolveFromTypeAndLanguageMapContent(howToResolveUrl, _))
-        val res = srcFile.mapAsync(_.loadData())(using ExecutionContext.global)
-        res
+  /** Loading, then the loaded file or its failure. */
+  private def loading(file: Future[LoadedFile]): Signal[AsyncDataState[Nothing, FullImage]] =
+    Signal.fromFuture(file.transform(Success(_))).map {
+      case None => AsyncDataLoading[Nothing, FullImage]()
+      case Some(Success(loaded)) => AsyncDataSuccess[Nothing, FullImage](LoadedFileImage(loaded))
+      case Some(Failure(error)) => AsyncDataFailed[Nothing, FullImage](SerializedException(error), None)
     }
-    fileSignal.map(loadedFile => LoadedFileImage(loadedFile))
-  }
 
-  def apply(fullImage: FullImage): HtmlImageElement = {
-    HtmlImageElement(AsyncValue(fullImage), None)
-  }
+  def apply(fullInfo: FullInfo, fullImage: FullImage): HtmlImageElement =
+    HtmlImageElement(fullInfo, Signal.fromValue(AsyncDataSuccess[Nothing, FullImage](fullImage)), None)
 
-  def apply(fileDescription: FileDescription): HtmlImageElement = {
-    HtmlImageElement(
-      AsyncData.forFuture(fileDescription.loadData()).observeAllStates.map(LoadedFileImage(_)),
-      None
-    )
-  }
+  def apply(fullInfo: FullInfo, fileDescription: FileDescription): HtmlImageElement =
+    HtmlImageElement(fullInfo, loading(fileDescription.loadData()), None)
 
-  def apply(workbookImageElement: WorkbookImageElement): HtmlImageElement = {
-    HtmlImageElement(getImageSignal(HtmlFullWorkbookApp.fullInfo, workbookImageElement), Some(workbookImageElement))
+  /** A workbook image follows its language-map entry: a changed source loads the new file. */
+  def apply(fullInfo: FullInfo, image: WorkbookImageElement): HtmlImageElement = image match {
+    case WorkbookImageElement.LanguageMapBasedWorkbookImageElement(_, contentId, howToResolveUrl, _, _) =>
+      val files = fullInfo.signals.stringFromLanguageMapId(contentId).distinct
+        .map(fullInfo.contentControl.fileFactory.resolveFromTypeAndLanguageMapContent(howToResolveUrl, _))
+      HtmlImageElement(fullInfo, files.flatMapSwitch(file => loading(file.loadData())), Some(image))
   }
-
 }

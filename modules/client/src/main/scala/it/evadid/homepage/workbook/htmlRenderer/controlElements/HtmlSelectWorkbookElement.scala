@@ -1,5 +1,7 @@
 package it.evadid.homepage.workbook.htmlRenderer.controlElements
 
+import it.evadid.homepage.control.model.FullInfo
+
 import org.scalajs.dom
 import com.raquo.laminar.api.L.*
 import it.evadid.homepage.webElements.HtmlAppElement
@@ -9,8 +11,8 @@ import it.evadid.homepage.workbook.content.DigitalWorkbookCatalog
   * Links open the existing entry pages, which load their own editor dependencies
   * and restore the current session. Browsing itself does not require login.
   */
-case class HtmlSelectWorkbookElement() extends HtmlAppElement {
-  private def textFor(key: String): Signal[String] = laminarHelper.plaintextStringSignal(key)
+case class HtmlSelectWorkbookElement(fullInfo: FullInfo) extends HtmlAppElement {
+  private def textFor(key: String): Signal[String] = laminarHelper(fullInfo).plaintextStringSignal(key)
 
   private def card(entry: DigitalWorkbookCatalog.Entry): Element = {
     val imageUrl = if (entry.image.startsWith("https://")) entry.image

@@ -79,16 +79,19 @@ final class InteractionVariable[F <: InteractionFormat](val underlyingInteractio
     AsyncState(obsState)
   }
 
-  def createBoundStateWithUpdateLogic(relevanceFunc: InteractionVariableStateChanged[InteractionFormat.State[F]] => UpdateImportance, context: ExecutionContextInformation): State[InteractionFormat.State[F]] = this.synchronized {
-    val outerState = State[InteractionFormat.State[F]](currentValue)
-    observableValue.addObserver(newValue => if (newValue != outerState.now()) outerState.set(currentValue))
-    outerState.observable.addObserver(newValue => if (newValue != currentValue) {
-      val last = safeLastState
+  /** A view of the current answer for editors: it reads the history and records each write as a user change
+    * whose importance `relevanceFunc` decides. The view registers no observers, so editors may create and drop it freely.
+    */
+  def createBoundStateWithUpdateLogic(relevanceFunc: InteractionVariableStateChanged[InteractionFormat.State[F]] => UpdateImportance, context: ExecutionContextInformation): State[InteractionFormat.State[F]] =
+    State.fromStorage(() => currentValue, applyUserChange(_, relevanceFunc, context),
+      transform => applyUserChange(transform(currentValue), relevanceFunc, context), observableValue)
+
+  private def applyUserChange(newValue: InteractionFormat.State[F],
+      relevanceFunc: InteractionVariableStateChanged[InteractionFormat.State[F]] => UpdateImportance, context: ExecutionContextInformation): Unit = this.synchronized {
+    if newValue != currentValue then {
       val newState = DesignatedInteractionState(newValue, LocalDateTime.now())
-      val importance = relevanceFunc(InteractionVariableStateChanged(last, newState))
-      setStateFromUserInteraction(newValue, importance, newState.timestamp, context)
-    })
-    outerState
+      setStateFromUserInteraction(newValue, relevanceFunc(InteractionVariableStateChanged(safeLastState, newState)), newState.timestamp, context)
+    }
   }
 
   def createBoundStateWithUpdateImportance(importance: UpdateImportance, context: ExecutionContextInformation): State[InteractionFormat.State[F]] = this.synchronized {

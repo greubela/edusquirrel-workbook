@@ -25,7 +25,7 @@ private[SnapEditor] final class SnapExerciseCategories(mountedCanvas: () => Opti
       val tabNames = libraries.map(_.name).toSet
       val retagged = customBlockDefinitions(ide).count { definition =>
         val category = definition.selectDynamic("category")
-        val current = if js.isUndefined(category) || category == null then "" else category.toString
+        val current = if SnapJs.isAbsent(category) then "" else category.toString
         // Predefined module blocks are shown where the palette lists them.
         if tabNames.contains(current) || SnapCustomBlocks.moduleBlockOf(definition).nonEmpty then false
         else
@@ -46,7 +46,7 @@ private[SnapEditor] final class SnapExerciseCategories(mountedCanvas: () => Opti
     libraries.foreach { tab =>
       val resolved = blockColor.selectDynamic(tab.color.snapKey)
       val color =
-        if js.isUndefined(resolved) || resolved == null then blockColor.selectDynamic("other")
+        if SnapJs.isAbsent(resolved) then blockColor.selectDynamic("other")
         else resolved
       customCategories.applyDynamic("set")(tab.name, color)
       // eduLibraryTabs also look up colors via blockColor[name] for prim-category buttons.
@@ -74,7 +74,7 @@ private[SnapEditor] final class SnapExerciseCategories(mountedCanvas: () => Opti
   /** Make visible category tabs taller and restack them after Snap's default layout. */
   def enlargeTabs(ide: IDEMorph): Unit =
     val categories = ide.asInstanceOf[js.Dynamic].selectDynamic("categories")
-    if js.isUndefined(categories) || categories == null then return
+    if SnapJs.isAbsent(categories) then return
     val buttons = categories.selectDynamic("buttons").asInstanceOf[js.UndefOr[js.Array[js.Dynamic]]]
       .toOption
       .getOrElse(js.Array())
@@ -96,9 +96,9 @@ private[SnapEditor] final class SnapExerciseCategories(mountedCanvas: () => Opti
       button.updateDynamic("labelShadowOffset")(new SnapPoint(0, 0))
       button.updateDynamic("labelShadowColor")(new SnapColor(0, 0, 0, 0))
       val label = button.selectDynamic("label")
-      if !js.isUndefined(label) && label != null then
+      if !SnapJs.isAbsent(label) then
         val fontSize = label.selectDynamic("fontSize")
-        if !js.isUndefined(fontSize) && fontSize != null then
+        if !SnapJs.isAbsent(fontSize) then
           label.updateDynamic("fontSize")(fontSize.asInstanceOf[Double] + dimensions(3).get)
         if label.selectDynamic("fixLayout").asInstanceOf[js.UndefOr[js.Function0[Unit]]].isDefined then
           label.applyDynamic("fixLayout")()

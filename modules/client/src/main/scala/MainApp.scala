@@ -1,6 +1,7 @@
 
 import com.raquo.laminar.api.L
 import com.raquo.laminar.api.L.renderOnDomContentLoaded
+import it.evadid.homepage.control.singletons.HtmlFullWorkbookApp
 import it.evadid.homepage.control.startup.HomepageStartupLogic
 import it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.feedback.ui.FeedbackDemoElement
 
@@ -39,7 +40,7 @@ def demoStartupLogic(): Unit = {
     scala.util.Try(dom.window.localStorage.setItem("fd-theme", next))
     scala.scalajs.js.timers.setTimeout(380) { dom.document.body.classList.remove("fd-theme-switching") }
   }))
-  val domElement = FeedbackDemoElement.element()
+  val domElement = FeedbackDemoElement.element(HtmlFullWorkbookApp.fullInfo)
   val container = dom.document.getElementById("feedbackDemoRoot")
   if (dom.document.readyState == "loading") renderOnDomContentLoaded(container, domElement)
   else L.render(container, domElement)

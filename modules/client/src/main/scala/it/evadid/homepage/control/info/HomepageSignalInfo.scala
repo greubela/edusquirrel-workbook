@@ -9,22 +9,8 @@ import it.evadid.core.datastructures.storage.remote.WorkbookSyncEnvironment
 import it.evadid.core.datastructures.user.AllUserInfo
 import it.evadid.homepage.control.model.*
 import it.evadid.workbook.elements.structureElements.WorkbookSection
-import it.evadid.workbook.abstractions.{InteractionFormat, WorkbookInteractionElement}
-import it.evadid.homepage.control.info.interaction.InteractionReporters
 
 case class HomepageSignalInfo(fullInfo: FullInfo) {
-
-  /** Only replacing the loaded workbook replaces its reporter instances. */
-  lazy val interactionReporters: StrictSignal[Map[WorkbookInteractionElement[? <: InteractionFormat], InteractionReporters[? <: InteractionFormat]]] =
-    baseSignal.map(_.workbookInfo.map(_.loadedWorkbook))
-      .distinctByFn((previous, next) => previous.zip(next).exists((a, b) => a eq b) || (previous.isEmpty && next.isEmpty))
-      .map(_.toSeq.flatMap(_.allContainedInteractionsById.values).map { interaction =>
-        interaction -> new InteractionReporters(interaction, fullInfo)
-      }.toMap).observe(using unsafeWindowOwner)
-
-  def reportersFor(interaction: WorkbookInteractionElement[? <: InteractionFormat]): InteractionReporters[? <: InteractionFormat] =
-    interactionReporters.now().get(interaction).filter(entry => entry.interaction eq interaction).getOrElse(
-      throw new IllegalArgumentException(s"Interaction ${interaction.elementId} does not belong to the loaded workbook"))
 
   lazy val syncEnvironmentSignal: StrictSignal[Option[WorkbookSyncEnvironment]] = {
     fullInfo.homepageInfoState.signal.distinctByFn((previous, next) =>
@@ -40,7 +26,7 @@ case class HomepageSignalInfo(fullInfo: FullInfo) {
         curHomepageInfo.workbookInfo.toSet.flatMap(_.loadedWorkbook.allContainedInteractionsById.values),
         curHomepageInfo.syncDestinations(fullInfo).toSet
       ))
-    }).observe(using unsafeWindowOwner)
+    }).observe(using fullInfo.owner)
   }
 
   private def baseSignal: StrictSignal[HomepageInfo] = fullInfo.homepageInfoState.signal

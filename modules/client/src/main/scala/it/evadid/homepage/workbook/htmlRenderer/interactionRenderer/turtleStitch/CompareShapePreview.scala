@@ -1,5 +1,7 @@
 package it.evadid.homepage.workbook.htmlRenderer.interactionRenderer.turtleStitch
 
+import it.evadid.homepage.control.model.FullInfo
+
 import it.evadid.vm.conversion.dependencies.ProgrammingEnvironment
 import com.raquo.airstream.state.Var
 import com.raquo.laminar.api.L
@@ -22,7 +24,7 @@ import scala.util.{Failure, Try}
   * comparison with the target runs here. All views of one preview share its prepared assessment, while each
   * mounted view owns and reuses one JSXGraph board.
   */
-final case class CompareShapePreview(source: Signal[ProgrammingState], expected: TurtleGraphic, policy: TurtleDrawingPolicy,
+final case class CompareShapePreview(fullInfo: FullInfo, source: Signal[ProgrammingState], expected: TurtleGraphic, policy: TurtleDrawingPolicy,
     environment: ProgrammingEnvironment, delay: FiniteDuration = DeferredRendering.defaultDelay, analyzer: ProgramAnalyzer = ProgramAnalyzer.shared) extends HtmlAppElement {
 
   private given ExecutionContext = ExecutionContext.global
@@ -46,5 +48,5 @@ final case class CompareShapePreview(source: Signal[ProgrammingState], expected:
   }
 
   override def getDomElement(): L.Element =
-    rendering.element(id => laminarHelper.plaintextStringSignal(id))(view)
+    rendering.element(id => laminarHelper(fullInfo).plaintextStringSignal(id))(view)
 }

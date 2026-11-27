@@ -1,4 +1,4 @@
-package todomove.datastructures.web.file
+package it.evadid.homepage.webElements.basic
 
 import com.raquo.laminar.api.L
 import com.raquo.laminar.api.L.*
@@ -6,13 +6,9 @@ import it.evadid.core.datastructures.canvas.AppImage
 import it.evadid.core.datastructures.file.*
 import it.evadid.core.datastructures.vectorShapes.svg.SvgPathBuilder
 import it.evadid.util.JsHelpers
-import todomove.webElementsOld.webElements.svg.AppSvgElement
 
 sealed trait FullImage extends AppImage {
-  //def download(): Unit
-
   def newDomImage: Element
-
 }
 
 
@@ -58,12 +54,9 @@ object FullImage {
     override def newDomImage: Element = img(
       src := imageSourceString
     )
-    //override def download(): Unit = HomepageFileStore.downloadFile(s"unknown.$fileFormat", dataSource)
   }
 
   case class LoadedFileImage(loadedFile: LoadedFile) extends FullImage {
-
-    //def download(): Unit = HomepageFileStore.downloadFile(loadedFile.description.filenameWithExtension, loadedFile.data)
 
     override lazy val imageSourceString: String = {
       val b64str = JsHelpers.byteArrayToBase64String(loadedFile.data)
@@ -86,10 +79,6 @@ object FullImage {
 
   def apply(path: SvgPathBuilder[Double]): FullImage = {
     SvgBasedImage(path)
-  }
-
-  def apply(element: AppSvgElement): FullImage = {
-    ???
   }
 
 }

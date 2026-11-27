@@ -7,6 +7,9 @@ import scala.scalajs.js
 
 /** Real mount ownership for editor tests, including unmount cleanup. */
 trait EditorDomSuite extends FunSuite {
+  /** UI elements under test belong to the page's state, as on a page. */
+  protected def pageInfo: it.evadid.homepage.control.model.FullInfo = it.evadid.homepage.control.singletons.HtmlFullWorkbookApp.fullInfo
+
   private val globals = js.Dynamic.global.globalThis
   /** jsdom window properties installed as globals for the suite; a suite may add the ones its components use. */
   protected def jsdomGlobals: List[String] = List("window", "document", "Element", "HTMLElement", "Node", "HTMLInputElement", "HTMLTextAreaElement", "HTMLSelectElement", "HTMLButtonElement", "ResizeObserver")

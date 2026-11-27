@@ -1,5 +1,7 @@
 package it.evadid.homepage.workbook.htmlRenderer.interactionRenderer.slideshow
 
+import it.evadid.homepage.control.model.FullInfo
+
 import com.raquo.laminar.api.L.{child, *}
 import it.evadid.core.datastructures.state.StateHelper.StateBasedVar
 import it.evadid.homepage.workbook.htmlRenderer.HtmlRenderFactory
@@ -16,7 +18,7 @@ object HtmlSlideshowEditor extends LineBasedRenderingFactory[Slideshow] {
    * Creates the slideshow DOM with localized navigation buttons and a reactive current-panel view.
    * When navigation succeeds, the method updates the bound interaction state through the model-level transition recorder instead of constructing event data directly.
    */
-  override protected def createRendering(workbookElement: Slideshow): AtomarLineRendering = {
+  override protected def createRendering(fullInfo: FullInfo, workbookElement: Slideshow): AtomarLineRendering = {
     val stateVar = workbookElement.interactionVariable.createBoundStateWithUpdateImportance(MAJOR, fullInfo.workbookContextInformation).toAirstreamVar
     val totalSlides = workbookElement.panelSize
 
@@ -41,7 +43,7 @@ object HtmlSlideshowEditor extends LineBasedRenderingFactory[Slideshow] {
       div(
         cls := "slide-deck-navigation",
         button(
-          child.text <-- laminarHelper.plaintextStringSignal("PlantWorkshop/slideshowBack"),
+          child.text <-- laminarHelper(fullInfo).plaintextStringSignal("PlantWorkshop/slideshowBack"),
           disabled <-- currentIndex.map(_ == 0),
           onClick.mapTo(-1) --> navigateBy
         ),
@@ -50,7 +52,7 @@ object HtmlSlideshowEditor extends LineBasedRenderingFactory[Slideshow] {
           child.text <-- currentIndex.map(i => s"${i + 1}/$totalSlides")
         ),
         button(
-          child.text <-- laminarHelper.plaintextStringSignal("PlantWorkshop/slideshowNext"),
+          child.text <-- laminarHelper(fullInfo).plaintextStringSignal("PlantWorkshop/slideshowNext"),
           disabled <-- currentIndex.map(_ >= totalSlides - 1),
           onClick.mapTo(1) --> navigateBy
         )
@@ -64,12 +66,12 @@ object HtmlSlideshowEditor extends LineBasedRenderingFactory[Slideshow] {
       },
       div(
         cls := "slide-deck-content slide-deck-image" ,
-        child <-- currentIndex.map(curIndex => createSlideshowPanelDom(workbookElement, curIndex))
+        child <-- currentIndex.map(curIndex => createSlideshowPanelDom(fullInfo, workbookElement, curIndex))
       ),
       navigation()
     )
 
-    AtomarLineRendering.basicLine(workbookElement, dom, "slide-deck")
+    AtomarLineRendering.basicLine(fullInfo, workbookElement, dom, "slide-deck")
 
   }
 
@@ -79,10 +81,10 @@ object HtmlSlideshowEditor extends LineBasedRenderingFactory[Slideshow] {
    * Navigation is placed directly under the slide image. Unsupported panel implementations
    * receive an explicit fallback element so newly added panel types fail visibly instead of silently disappearing.
    */
-  def createSlideshowPanelDom(workbookElement: Slideshow, index: Int): Element = {
+  def createSlideshowPanelDom(fullInfo: FullInfo, workbookElement: Slideshow, index: Int): Element = {
 
-    val panelOp: Option[AtomarLineRendering] = workbookElement.getPanel(index).map(HtmlRenderFactory.renderWorkbookElement).map(_.rendering)
-    val place = placeholder(workbookElement, "no content for slideshow available!")
+    val panelOp: Option[AtomarLineRendering] = workbookElement.getPanel(index).map(HtmlRenderFactory.renderWorkbookElement(fullInfo, _)).map(_.rendering)
+    val place = placeholder(fullInfo, workbookElement, "no content for slideshow available!")
 
     div(
       cls := "slide-deck-container",

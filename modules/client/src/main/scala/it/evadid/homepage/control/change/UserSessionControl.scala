@@ -39,7 +39,7 @@ final class UserSessionControl(val fullInfo: FullInfo) {
   private def tryServerLoginWith(userMail: String, token: Either[SingleAccessToken, SignedToken], cachedCredentials: UserCredentials = UserCredentials()): Future[?] = {
     val loginReq = LoginRequest(userMail.trim.toLowerCase, token)
     val backend = token match {
-      case Left(_) => fullInfo.defaults.backendExecutor
+      case Left(_) => fullInfo.backendExecutor
       case Right(signed) => fullInfo.defaults.backendExecutorWithCredentials(Some(signed))
     }
     val loginRes: Future[ExecutionSuccess[LoginResponse]] = UserCommands.loginCommand.sendCommandTo(backend, loginReq)
@@ -135,7 +135,7 @@ final class UserSessionControl(val fullInfo: FullInfo) {
       val userConfig = UserConfig.defaults(isLocalAccount = false)
       val user = AllUserInfo.createNewUser(name.trim, normalizedEmail, userConfig)
       UserCommands.createAccountCommand
-        .sendCommandTo(fullInfo.defaults.backendExecutor, CreateAccountRequest(user))
+        .sendCommandTo(fullInfo.backendExecutor, CreateAccountRequest(user))
         .flatMap { exInfo =>
           val result = exInfo.result
           result.token match {

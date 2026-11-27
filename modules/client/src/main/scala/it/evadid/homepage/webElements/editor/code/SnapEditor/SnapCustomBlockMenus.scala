@@ -36,16 +36,16 @@ private[SnapEditor] final class SnapCustomBlockMenus(mountedEditor: () => Option
   def restore(): Unit =
     customBlockMorphs.flatMap(customBlockPrototype).foreach { proto =>
       val original = proto.selectDynamic(OriginalUserMenuField)
-      if !js.isUndefined(original) && original != null then
+      if !SnapJs.isAbsent(original) then
         proto.updateDynamic("userMenu")(original)
         js.Dynamic.global.Reflect.applyDynamic("deleteProperty")(proto, OriginalUserMenuField)
     }
 
   private def customBlockPrototype(ctor: js.Dynamic): Option[js.Dynamic] =
-    if js.isUndefined(ctor) || ctor == null then None
+    if SnapJs.isAbsent(ctor) then None
     else
       val proto = ctor.selectDynamic("prototype")
-      if js.isUndefined(proto) || proto == null then None else Some(proto)
+      if SnapJs.isAbsent(proto) then None else Some(proto)
 
   private def wrapCustomBlockUserMenu(ctor: js.Dynamic): Unit =
     customBlockPrototype(ctor).foreach(wrapUserMenuOnPrototype)
@@ -53,20 +53,20 @@ private[SnapEditor] final class SnapCustomBlockMenus(mountedEditor: () => Option
   private def wrapUserMenuOnPrototype(proto: js.Dynamic): Unit = {
     val stored = proto.selectDynamic(OriginalUserMenuField)
     val original =
-      if !js.isUndefined(stored) && stored != null then stored
+      if !SnapJs.isAbsent(stored) then stored
       else
         val orig = proto.selectDynamic("userMenu")
-        if js.isUndefined(orig) || orig == null then null.asInstanceOf[js.Dynamic]
+        if SnapJs.isAbsent(orig) then null.asInstanceOf[js.Dynamic]
         else
           proto.updateDynamic(OriginalUserMenuField)(orig)
           orig
-    if original == null || js.isUndefined(original) then return
+    if SnapJs.isAbsent(original) then return
     val wrapped: js.ThisFunction0[js.Dynamic, js.Any] = (self: js.Dynamic) => {
       val config = ideConfigOf(self)
       val hadNoOwnBlocks =
-        config != null && !js.isUndefined(config) && {
+        !SnapJs.isAbsent(config) && {
           val flag = config.selectDynamic("noOwnBlocks")
-          !js.isUndefined(flag) && flag != null && flag.asInstanceOf[Boolean]
+          !SnapJs.isAbsent(flag) && flag.asInstanceOf[Boolean]
         }
       if hadNoOwnBlocks then config.updateDynamic("noOwnBlocks")(false)
       try original.applyDynamic("call")(self)
@@ -83,11 +83,9 @@ private[SnapEditor] final class SnapCustomBlockMenus(mountedEditor: () => Option
   private def ideConfigOf(block: js.Dynamic): js.Dynamic = {
     val ideMorph = js.Dynamic.global.IDE_Morph
 
-    def defined(value: js.Dynamic): Option[js.Dynamic] =
-      if js.isUndefined(value) || value == null then None else Some(value)
 
     def attempt(resolve: () => js.Dynamic): Option[js.Dynamic] =
-      try defined(resolve())
+      try SnapJs.present(resolve())
       catch case _: Throwable => None
 
     val viaScriptTarget = attempt(() => block.applyDynamic("scriptTarget")(true))
@@ -98,6 +96,6 @@ private[SnapEditor] final class SnapCustomBlockMenus(mountedEditor: () => Option
     viaScriptTarget
       .orElse(viaParent)
       .orElse(mounted)
-      .flatMap(ide => defined(ide.selectDynamic("config")))
+      .flatMap(ide => SnapJs.present(ide.selectDynamic("config")))
       .getOrElse(null.asInstanceOf[js.Dynamic])
   }

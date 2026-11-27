@@ -1,5 +1,7 @@
 package it.evadid.homepage.workbook.htmlRenderer.controlElements
 
+import it.evadid.homepage.control.model.FullInfo
+
 import it.evadid.workbook.session.AllWorkbookInfo
 import com.raquo.laminar.api.L
 import com.raquo.laminar.api.L.*
@@ -7,7 +9,7 @@ import it.evadid.homepage.webElements.HtmlAppElement
 import it.evadid.workbook.elements.structureElements.WorkbookSection
 
 
-private case class SectionSelectionLine(workbook: AllWorkbookInfo) extends HtmlAppElement {
+private case class SectionSelectionLine(fullInfo: FullInfo, workbook: AllWorkbookInfo) extends HtmlAppElement {
 
   private def sections: Seq[WorkbookSection] = workbook.loadedWorkbook.sections
 

@@ -1,5 +1,7 @@
 package it.evadid.homepage.workbook.htmlRenderer.interactionRenderer.steps
 
+import it.evadid.homepage.control.model.FullInfo
+
 import it.evadid.workbook.interaction.sync.UpdateImportance
 
 import com.raquo.laminar.api.L.*
@@ -30,26 +32,26 @@ case object HtmlSortListExerciseRenderer extends LineBasedRenderingFactory[SortL
   }
 
   /** Overview card and editor side module replaying the sort function's list operations. */
-  private[homepage] def sortStepsCard(element: SortListExercise, boundVar: Var[ProgrammingState]): ElementCard =
-    ElementCard(LanguageMapContentId("basic/sortStepsTitle"), new SortStepPanel(boundVar, element.sortFunction, element.exampleList,
-      key => laminarHelper.plaintextStringSignal(LanguageMapContentId(s"basic/$key"))).getDomElement())
+  private[homepage] def sortStepsCard(fullInfo: FullInfo, element: SortListExercise, boundVar: Var[ProgrammingState]): ElementCard =
+    ElementCard(fullInfo, LanguageMapContentId("basic/sortStepsTitle"), new SortStepPanel(boundVar, element.sortFunction, element.exampleList,
+      key => laminarHelper(fullInfo).plaintextStringSignal(LanguageMapContentId(s"basic/$key"))).getDomElement())
 
-  override protected def createRendering(element: SortListExercise): AtomarLineRendering = {
+  override protected def createRendering(fullInfo: FullInfo, element: SortListExercise): AtomarLineRendering = {
     val boundVar = element.interactionVariable.createBoundStateWithUpdateImportance(UpdateImportance.MAJOR, fullInfo.workbookContextInformation).toAirstreamVar
-    val gradingReporter = fullInfo.signals.reportersFor(element).grading
-    def stepsCard = sortStepsCard(element, boundVar)
+    val gradingReporter = fullInfo.reporters.reportersFor(element).grading
+    def stepsCard = sortStepsCard(fullInfo, element, boundVar)
 
     def openEditor(): Unit = {
       val instruction = element.instructionText.map(WorkbookEvaEditor.instruction(element.elementId, _))
       val editor = WorkbookEvaEditor(fullInfo, element, boundVar, EvaEditorConfig(enabledLanguages = element.allowedLanguages.toList,
         snapConfig = SnapCodeEditorConfig.forPalette(ProgrammingEditorPalette.NumberList)))
-      fullInfo.displayControl.setFullscreen(EditorWithWorkbookPanel(element, instruction, gradingReporter, List(stepsCard), editor))
+      fullInfo.displayControl.setFullscreen(EditorWithWorkbookPanel(fullInfo, element, instruction, gradingReporter, List(stepsCard), editor))
     }
 
-    val open = HtmlButtonElement.withTextLabel("basic/OpenEditor", _ => openEditor())
-    AtomarLineRendering.cardLine(element, List(
-      ElementCard(LanguageMapContentId("basic/openEditor"), open.getDomElement()),
-      ElementCard(LanguageMapContentId("basic/staticPreviewProgram"),
+    val open = HtmlButtonElement.withTextLabel(fullInfo, "basic/OpenEditor", _ => openEditor())
+    AtomarLineRendering.cardLine(fullInfo, element, List(
+      ElementCard(fullInfo, LanguageMapContentId("basic/openEditor"), open.getDomElement()),
+      ElementCard(fullInfo, LanguageMapContentId("basic/staticPreviewProgram"),
         div(cls := "java-full-editor-preview", pre(code(child.text <-- boundVar.signal.map(source))))),
       stepsCard))
   }
