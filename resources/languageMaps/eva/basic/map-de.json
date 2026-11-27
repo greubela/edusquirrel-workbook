@@ -125,8 +125,6 @@
   "stepPosition": "Schritt {step} von {total}",
   "stepCommand": "Schritt {step}: {command}",
   "turtleStepsTitle": "Schritt für Schritt",
-  "turtleRun": "Programm ausführen",
-  "turtleRunOutdated": "Dein Programm wurde geändert. Führe es aus, um die neue Zeichnung zu sehen.",
   "turtleStepStart": "Start: Die Turtle steht im Ursprung und hat noch nichts gezeichnet.",
   "renderingWaiting": "Warte auf das Zeichnen …",
   "renderingInProgress": "Wird gezeichnet …",

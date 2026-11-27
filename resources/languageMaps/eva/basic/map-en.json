@@ -126,8 +126,6 @@
   "stepPosition": "Step {step} of {total}",
   "stepCommand": "Step {step}: {command}",
   "turtleStepsTitle": "Step by step",
-  "turtleRun": "Run program",
-  "turtleRunOutdated": "Your program has changed. Run it to see the new drawing.",
   "turtleStepStart": "Start: the turtle is at the origin and has not drawn anything yet.",
   "renderingWaiting": "Waiting for rendering …",
   "renderingInProgress": "Rendering …",

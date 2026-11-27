@@ -128,9 +128,6 @@ test('monk stories and revised tasks work with the current editor and interactio
     assert.match(await codeText(), /Turtle\.turnLeft\(90\)/);
     await code.fill('public static void main(String[] args) {\nTurtle.forward(60);\nTurtle.turnLeft(90);\nTurtle.forward(20);\n' +
       'Turtle.turnLeft(90);\nTurtle.forward(60);\nTurtle.turnLeft(90);\nTurtle.forward(20);\n}');
-    await dialog.getByRole('button', {name:basic.turtleRun,exact:true}).click();
-    // Running the changed program hides the hint that the drawing is outdated.
-    await dialog.locator('.turtle-run__hint').first().waitFor({state:'hidden'});
     await dialog.getByRole('tab', {name:'Snap!',exact:true}).click();
     await dialog.getByRole('tab', {name:'Java',exact:true}).click();
     await code.waitFor();

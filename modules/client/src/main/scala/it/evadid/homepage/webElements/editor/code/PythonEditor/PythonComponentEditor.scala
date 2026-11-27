@@ -147,7 +147,7 @@ final class PythonComponentEditor(state: Var[ProgrammingStatePythonStructured], 
 
   /** Mode tabs, then showing or hiding the class diagram. */
   override lazy val toolbarControls: Element = div(cls := "eva-editor__controls",
-    EvaToolbarControls.segments(labels("pythonModes"), "tablist", Seq("class", "function", "full").map(value =>
+    EvaToolbarControls.segments(labels("pythonModes"), "tablist", Seq("function", "class", "full").map(value =>
       button(typ := "button", role := "tab", child.text <-- labels("pythonMode" + value.capitalize),
         aria.selected <-- mode.signal.map(_ == value), onClick --> (_ => mode.set(value))))),
     structure.toggle(labels("classDiagram"), labels("javaShowClasses"), labels("javaHideClasses"), diagramId))

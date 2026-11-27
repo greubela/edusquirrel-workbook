@@ -43,8 +43,9 @@ final class JavaEditorNavigation(state: Var[ProgrammingStateJavaStructured]) {
 
 object JavaEditorNavigation {
   enum Mode(val label: Key) {
-    case Class extends Mode(Key.javaModeClass)
+    // From the smallest fragment to the whole program, as the tabs show them.
     case Function extends Mode(Key.javaModeFunction)
+    case Class extends Mode(Key.javaModeClass)
     case Full extends Mode(Key.javaModeFull)
   }
 
