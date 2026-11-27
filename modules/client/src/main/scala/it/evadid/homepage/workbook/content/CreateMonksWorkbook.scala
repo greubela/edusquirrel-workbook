@@ -119,9 +119,8 @@ case class CreateMonksWorkbook(override val fullInfo: FullInfo) extends Workbook
   override lazy val createWorkbook: Workbook = workbook(
     key("workbooktitle"),
     List(
-      section("welcomeTitle", key("welcomeTitle"), List[WorkbookElement](
-        text("welcome"),
-      )),
+      section("welcomeTitle", key("welcomeTitle"), List(
+        container(key("welcomeTitle"), List(text("welcome"))))),
       section("monks-story", key("parta"), List(
         container(key("parta"), List(
           text("parta-bridge"),
