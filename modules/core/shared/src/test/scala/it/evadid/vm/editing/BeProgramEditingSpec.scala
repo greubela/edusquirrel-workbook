@@ -2,9 +2,9 @@ package it.evadid.vm.editing
 
 import it.evadid.vm.parsing.source.SourceParsing
 import it.evadid.vm.parsing.source.SourceParsing.SourceLanguage
-
 import it.evadid.core.datastructures.language.AppLanguage.{BlockDisplay, Python}
 import it.evadid.vm.BeProgram
+import it.evadid.vm.code.abstractions.BeExpression
 import it.evadid.vm.code.controlStructures.{BeRepeatNr, BeWhile}
 import it.evadid.vm.code.usage.{BeFunctionCall, BeUseValue}
 import it.evadid.vm.types.BeChildRole.{BodySequence, ConditionInControlStructure, ExpressionInSequence, FunctionParameter}
@@ -23,6 +23,11 @@ class BeProgramEditingSpec extends FunSuite {
   private val forward = template("forward")
   private val right = template("right")
   private val repeat = BeBlockLibrary.turtle.templates.map(_.statement).collectFirst { case loop: BeRepeatNr => loop }.get
+  /** The blocks inserted one after another into the main sequence of an empty program. */
+  private def programWith(blocks: BeExpression*): BeProgram =
+    blocks.zipWithIndex.foldLeft(BeProgram.empty) { case (current, (block, index)) =>
+      BeProgramEditing.insert(current, BeSequenceSlot(main, index), block).toOption.get
+    }
 
   test("library templates are parsed statements with an editable loop") {
     assert(BeBlockLibrary.turtle.templates.exists(_.statement.isInstanceOf[BeWhile]))
@@ -31,15 +36,13 @@ class BeProgramEditingSpec extends FunSuite {
   }
 
   test("inserting into the empty program produces convertible source") {
-    val edited = BeProgramEditing.insert(BeProgram.empty, BeSequenceSlot(main, 0), forward).toOption.get
+    val edited = programWith(forward)
     assert(python(edited).contains("forward(100)"), python(edited))
     assertEquals(BeProgramEditing.find(edited, statement(0)), Some(forward))
   }
 
   test("slots interleave sequence positions with nested bodies in source order") {
-    val program = Seq(forward, repeat, right).zipWithIndex.foldLeft(BeProgram.empty) { case (current, (block, index)) =>
-      BeProgramEditing.insert(current, BeSequenceSlot(main, index), block).toOption.get
-    }
+    val program = programWith(forward, repeat, right)
     val loopBody = statement(1) / BodySequence(0)
     val slots = BeProgramEditing.slots(program)
     assertEquals(slots.filter(_.sequence == main).map(_.index), Seq(0, 1, 2, 3))
@@ -48,9 +51,7 @@ class BeProgramEditingSpec extends FunSuite {
   }
 
   test("moving a statement into a later loop adjusts the loop's path after removal") {
-    val program = Seq(forward, repeat).zipWithIndex.foldLeft(BeProgram.empty) { case (current, (block, index)) =>
-      BeProgramEditing.insert(current, BeSequenceSlot(main, index), block).toOption.get
-    }
+    val program = programWith(forward, repeat)
     val moved = BeProgramEditing.move(program, statement(0), BeSequenceSlot(statement(1) / BodySequence(0), 0)).toOption.get
     val loop = BeProgramEditing.find(moved, statement(0)).collect { case loop: BeRepeatNr => loop }.get
     assertEquals(loop.body.body, Seq(forward))
@@ -58,16 +59,14 @@ class BeProgramEditingSpec extends FunSuite {
   }
 
   test("moving within one sequence keeps the requested position") {
-    val program = Seq(forward, right).zipWithIndex.foldLeft(BeProgram.empty) { case (current, (block, index)) =>
-      BeProgramEditing.insert(current, BeSequenceSlot(main, index), block).toOption.get
-    }
+    val program = programWith(forward, right)
     val moved = BeProgramEditing.move(program, statement(0), BeSequenceSlot(main, 2)).toOption.get
     assertEquals(BeProgramEditing.find(moved, statement(0)), Some(right))
     assertEquals(BeProgramEditing.find(moved, statement(1)), Some(forward))
   }
 
   test("illegal edits leave a reason instead of a changed program") {
-    val program = BeProgramEditing.insert(BeProgram.empty, BeSequenceSlot(main, 0), repeat).toOption.get
+    val program = programWith(repeat)
     assert(BeProgramEditing.move(program, statement(0), BeSequenceSlot(statement(0) / BodySequence(0), 0)).isLeft)
     assert(BeProgramEditing.insert(program, BeSequenceSlot(main, 5), forward).isLeft)
     val whileLoop = SourceParsing.parse("while True:\n    forward(1)\n", SourceLanguage.Python).parsed().program
@@ -77,14 +76,14 @@ class BeProgramEditingSpec extends FunSuite {
   }
 
   test("removing a statement deletes only that statement") {
-    val program = BeProgramEditing.insert(BeProgram.empty, BeSequenceSlot(main, 0), forward).toOption.get
+    val program = programWith(forward)
     assertEquals(BeProgramEditing.remove(program, statement(0)).map(python), Right(python(BeProgram.empty)))
   }
 
   private def valueAt(program: BeProgram, path: BeNodePath) = BeProgramEditing.find(program, path)
 
   test("values are typed expressions checked against the parameter type") {
-    val program = BeProgramEditing.insert(BeProgram.empty, BeSequenceSlot(main, 0), forward).toOption.get
+    val program = programWith(forward)
     val distance = statement(0) / FunctionParameter(0)
     assert(BeValueInput.isValuePosition(program, distance))
     assertEquals(BeValueInput.expectedType(program, distance), BeDataType.Numeric)
@@ -97,7 +96,7 @@ class BeProgramEditingSpec extends FunSuite {
   }
 
   test("operators on literals are computed and other calls keep their folded arguments") {
-    val program = BeProgramEditing.insert(BeProgram.empty, BeSequenceSlot(main, 0), forward).toOption.get
+    val program = programWith(forward)
     val distance = statement(0) / FunctionParameter(0)
     val sum = BeValueInput.update(program, distance, "3+5").toOption.get
     assertEquals(BeValueInput.textAt(sum, distance), Some("8"))
@@ -127,7 +126,7 @@ class BeProgramEditingSpec extends FunSuite {
   }
 
   test("repeat counts must be whole numbers and literals keep their typed meaning") {
-    val program = BeProgramEditing.insert(BeProgram.empty, BeSequenceSlot(main, 0), repeat).toOption.get
+    val program = programWith(repeat)
     val count = statement(0) / ExpressionInSequence(0)
     assertEquals(BeValueInput.update(program, count, "2.5").left.map(_.expected), Left(BeValueInput.Kind.Integer))
     assertEquals(BeValueInput.update(program, count, "2*3").map(BeProgramEditing.find(_, statement(0)).collect { case r: BeRepeatNr => r.fixedAmount }),

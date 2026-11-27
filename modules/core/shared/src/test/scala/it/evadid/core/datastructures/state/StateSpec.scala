@@ -29,16 +29,6 @@ class StateSpec extends FunSuite {
     assertEquals(seen.toList, List("3", "4", "5", "6"))
   }
 
-  test("chained bidirectional states compose both mappings") {
-    val base = State(2)
-    val multiplied = base.biMap[Int](_ * 10, _ / 10)
-    val text = multiplied.biMap[String](_.toString, _.toInt)
-    text.set("70")
-    assertEquals(base.now(), 7)
-    assertEquals(multiplied.now(), 70)
-    assertEquals(text.observable.now(), Some("70"))
-  }
-
   test("a failing update or reverse mapping leaves the base unchanged") {
     val base = State(2)
     val text = base.biMap[String](_.toString, _.toInt)

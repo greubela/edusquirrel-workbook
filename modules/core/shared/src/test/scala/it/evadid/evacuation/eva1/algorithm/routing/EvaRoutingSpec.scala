@@ -6,6 +6,7 @@ import it.evadid.evacuation.core.datastructures.graphs.Position
 import it.evadid.evacuation.eva1.model.evagraph.*
 import it.evadid.evacuation.eva1.algorithm.events.eventtypes.*
 import it.evadid.evacuation.eva1.algorithm.strategy.*
+import it.evadid.evacuation.core.datastructures.maps.MultiHashMapList
 import munit.FunSuite
 import upickle.default.*
 
@@ -15,10 +16,6 @@ class EvaRoutingSpec extends FunSuite {
   private val edge = new PositionableEdge(start, exit, ConnectionInfo(2, 100))
   private val graph = EvaGraphModel(List(start, exit), List(edge))
   private val person = EvaPerson(7, Seq(exit))
-  private def roundTrip[T: ReadWriter](value: T): Unit = {
-    assertEquals(read[T](write(value)), value)
-    assertEquals(readBinary[T](writeBinary(value)), value)
-  }
   test("router edits preserve unrelated fields and do not mutate the original") {
     assertEquals(start.changeX(8), start.copy(pos = Position(8, 0)))
     assertEquals(start.changeY(9), start.copy(pos = Position(0, 9)))
@@ -87,7 +84,7 @@ class EvaRoutingSpec extends FunSuite {
     }
   }
   test("event-driven evacuation delivers a person to safety and terminates") {
-    val routes = new it.evadid.evacuation.core.datastructures.maps.MultiHashMapList[Router, RoutingOption[Router]]()
+    val routes = new MultiHashMapList[Router, RoutingOption[Router]]()
     routes.addElement(start, RoutingOption(start, Some(exit), exit, 100))
     val routing = new FlowRoutingMap.FlowRoutingMap(routes)
     val insertion = PersonInsertedEvent(person, start, graph, 0, 0)
@@ -104,7 +101,7 @@ class EvaRoutingSpec extends FunSuite {
     val insertion = new PersonInsertedEvent(person, start, graph, 0, 0) { override val timestampInMs = 9999L }
     val received = new PersonReceivedEvent(person, edge, graph, 100, 0) { override val timestampInMs = 9998L }
     val finished = new PersonFinishedEvent(person, exit, graph, 100, 0) { override val timestampInMs = 1L }
-    val routes = new it.evadid.evacuation.core.datastructures.maps.MultiHashMapList[Router, RoutingOption[Router]]()
+    val routes = new MultiHashMapList[Router, RoutingOption[Router]]()
     val state = EvacuationState(PositionStateMap.getEmpty(graph), Set(person), new FlowRoutingMap.FlowRoutingMap(routes), 100,
       List(insertion, received, finished), Set.empty)
     assertEquals(state.lastEventMap()(person), finished)

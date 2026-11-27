@@ -4,21 +4,21 @@ import it.evadid.core.util.io.Serializer
 
 import it.evadid.facades.Algebrite
 import scala.util.control.NonFatal
-import upickle.default.{ReadWriter, macroRW}
+import upickle.default.ReadWriter
 
 final class AlgebriteNumber private(private val expr: String, private val canonical: String):
 
   def +(that: AlgebriteNumber): AlgebriteNumber =
-    AlgebriteNumber(s"(${this.canonical})+(${that.canonical})")
+    AlgebriteNumber(combined("+", that))
 
   def -(that: AlgebriteNumber): AlgebriteNumber =
-    AlgebriteNumber(s"(${this.canonical})-(${that.canonical})")
+    AlgebriteNumber(combined("-", that))
 
   def *(that: AlgebriteNumber): AlgebriteNumber =
-    AlgebriteNumber(s"(${this.canonical})*(${that.canonical})")
+    AlgebriteNumber(combined("*", that))
 
   def /(that: AlgebriteNumber): AlgebriteNumber =
-    AlgebriteNumber(s"(${this.canonical})/(${that.canonical})")
+    AlgebriteNumber(combined("/", that))
 
   def unary_- : AlgebriteNumber =
     AlgebriteNumber(s"-(${this.canonical})")
@@ -36,7 +36,10 @@ final class AlgebriteNumber private(private val expr: String, private val canoni
     if value.isFinite then Some(value) else None
 
   def equivalentTo(that: AlgebriteNumber): Boolean =
-    AlgebriteNumber.simplifyExpression(s"(${this.canonical})-(${that.canonical})") == "0"
+    AlgebriteNumber.simplifyExpression(combined("-", that)) == "0"
+
+  /** Both canonical expressions, each parenthesized, joined by `operator`. */
+  private def combined(operator: String, that: AlgebriteNumber): String = s"(${this.canonical})$operator(${that.canonical})"
 
   override def equals(obj: Any): Boolean = {
     obj match {
@@ -86,11 +89,7 @@ object AlgebriteNumber:
     def fromInt(x: Int): AlgebriteNumber = AlgebriteNumber(x.toString)
 
     def parseString(str: String): Option[AlgebriteNumber] =
-      try {
-        val res = Some(AlgebriteNumber(str))
-        if(res.isEmpty || res.get.toFiniteDoubleOption.isEmpty) None
-        else res
-      }
+      try Some(AlgebriteNumber(str)).filter(_.toFiniteDoubleOption.nonEmpty)
       catch case NonFatal(_) => None
 
     def toInt(x: AlgebriteNumber): Int = x.toDouble.toInt
@@ -102,15 +101,12 @@ object AlgebriteNumber:
     def toDouble(x: AlgebriteNumber): Double = x.toDouble
 
     def compare(x: AlgebriteNumber, y: AlgebriteNumber): Int =
-      val diff = parseNumericLiteral(
-        runFloat(s"(${x.canonical})-(${y.canonical})")
-      )
+      val diff = parseNumericLiteral(runFloat(x.combined("-", y)))
       if diff.isNaN then 0
       else if diff < 0 then -1
       else if diff > 0 then 1
       else 0
 
-  Serializer
   given ReadWriter[AlgebriteNumber] = Serializer.constructorLikeSerializer[AlgebriteNumber]("AlgebriteNumber")(_.canonical)(str => AlgebriteNumber(str)).uPickleReadWrite
 
   private def simplifyExpression(input: String): String =

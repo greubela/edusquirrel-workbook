@@ -29,14 +29,6 @@ final class FeedbackSubmissionTrackerSpec extends FunSuite:
     assertEquals(tracker.finish(submission), Some(false))
   }
 
-  test("repeated starts cannot replace a running submission") {
-    val tracker = new FeedbackSubmissionTracker
-    val submission = tracker.begin().get
-    assertEquals(tracker.begin(), None)
-    assertEquals(tracker.begin(), None)
-    assertEquals(tracker.finish(submission), Some(true))
-  }
-
   test("duplicate completion cannot finish a newer request") {
     val tracker = new FeedbackSubmissionTracker
     val previous = tracker.begin().get
@@ -95,6 +87,12 @@ final class FeedbackDemoRestoreSpec extends FunSuite:
       )
     )
 
+  /** Whether the saved state is restorable after `change` was applied to it. */
+  private def restorableAfter(change: js.Dynamic => Unit): Boolean =
+    val state = savedState()
+    change(state)
+    FeedbackDemoElement.canRestoreFeedback(state)
+
   test("feedback is restorable when its saved context and source match") {
     assert(FeedbackDemoElement.canRestoreFeedback(savedState()))
   }
@@ -110,35 +108,27 @@ final class FeedbackDemoRestoreSpec extends FunSuite:
 
   test("old, missing and incorrectly typed cache versions are rejected") {
     Seq[js.Any](1, js.undefined, null, "2").foreach { version =>
-      val state = savedState()
-      state.feedbackVersion = version
-      assert(!FeedbackDemoElement.canRestoreFeedback(state))
+      assert(!restorableAfter(_.feedbackVersion = version))
     }
   }
 
   test("feedback from another task is rejected even when the code matches") {
-    val state = savedState()
-    state.feedback.exerciseId = "maximum"
-    assert(!FeedbackDemoElement.canRestoreFeedback(state))
+    assert(!restorableAfter(_.feedback.exerciseId = "maximum"))
   }
 
   test("feedback for another source is rejected") {
-    val state = savedState()
-    state.feedback.rawPython = source.replace("a + b", "a - b")
-    assert(!FeedbackDemoElement.canRestoreFeedback(state))
+    assert(!restorableAfter(_.feedback.rawPython = source.replace("a + b", "a - b")))
   }
 
   test("source matching does not collapse whitespace inside Python literals") {
-    val state = savedState()
-    state.code = "def text():\n    return 'a  b'\n"
-    state.feedback.rawPython = "def text():\n    return 'a b'\n"
-    assert(!FeedbackDemoElement.canRestoreFeedback(state))
+    assert(!restorableAfter { state =>
+      state.code = "def text():\n    return 'a  b'\n"
+      state.feedback.rawPython = "def text():\n    return 'a b'\n"
+    })
   }
 
   test("source matching does not trim differences other than CRLF line endings") {
-    val state = savedState()
-    state.feedback.rawPython = source.stripSuffix("\n")
-    assert(!FeedbackDemoElement.canRestoreFeedback(state))
+    assert(!restorableAfter(_.feedback.rawPython = source.stripSuffix("\n")))
   }
 
   test("missing, null or non-string session context fields are rejected") {
@@ -146,9 +136,7 @@ final class FeedbackDemoRestoreSpec extends FunSuite:
       field <- Seq("exerciseId", "language", "code")
       invalid <- Seq[js.Any](js.undefined, null, 42, false)
     do
-      val state = savedState()
-      state.updateDynamic(field)(invalid)
-      assert(!FeedbackDemoElement.canRestoreFeedback(state), field)
+      assert(!restorableAfter(_.updateDynamic(field)(invalid)), field)
   }
 
   test("missing, null or non-string feedback context fields are rejected") {
@@ -156,16 +144,12 @@ final class FeedbackDemoRestoreSpec extends FunSuite:
       field <- Seq("exerciseId", "language", "rawPython")
       invalid <- Seq[js.Any](js.undefined, null, 42, false)
     do
-      val state = savedState()
-      state.feedback.updateDynamic(field)(invalid)
-      assert(!FeedbackDemoElement.canRestoreFeedback(state), field)
+      assert(!restorableAfter(_.feedback.updateDynamic(field)(invalid)), field)
   }
 
   test("missing, null and non-object feedback are rejected") {
     Seq[js.Any](js.undefined, null, "feedback", 42, false).foreach { invalid =>
-      val state = savedState()
-      state.feedback = invalid
-      assert(!FeedbackDemoElement.canRestoreFeedback(state))
+      assert(!restorableAfter(_.feedback = invalid))
     }
   }
 

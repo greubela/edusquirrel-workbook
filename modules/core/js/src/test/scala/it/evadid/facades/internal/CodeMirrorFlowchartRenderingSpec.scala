@@ -39,6 +39,13 @@ class CodeMirrorFlowchartRenderingSpec extends CodeMirrorSuite {
       .filter(_ != null)
       .map(row => row.getAttribute("title") -> row.querySelectorAll("image").toList.map(_.getAttribute("href")))
 
+  /** Answers the editor's first analysis request with [[chart]] and waits until its rows are shown. */
+  private def showChart(parent: dom.Element, analysis: Analysis): Future[Unit] =
+    waitUntil(analysis.requests.length == 1).flatMap { _ =>
+      analysis.answer(0, chart)
+      waitUntil(rows(parent).nonEmpty)
+    }
+
   private def edit(view: js.Dynamic, insert: String): Unit =
     view.dispatch(js.Dynamic.literal(changes = js.Dynamic.literal(from = view.state.doc.length, insert = insert)))
 
@@ -66,10 +73,7 @@ class CodeMirrorFlowchartRenderingSpec extends CodeMirrorSuite {
 
   test("edits request a new chart after a pause and stale results are ignored") {
     withEditor("x") { (view, parent, analysis) =>
-      waitUntil(analysis.requests.length == 1).flatMap { _ =>
-        analysis.answer(0, chart)
-        waitUntil(rows(parent).nonEmpty)
-      }.flatMap { _ =>
+      showChart(parent, analysis).flatMap { _ =>
         edit(view, " = 1")
         tick(50).flatMap { _ =>
           assertEquals(analysis.requests.length, 1, "edits are debounced")
@@ -90,10 +94,7 @@ class CodeMirrorFlowchartRenderingSpec extends CodeMirrorSuite {
 
   test("failed analyses clear the chart and identical charts are not dispatched again") {
     withEditor("x") { (view, parent, analysis) =>
-      waitUntil(analysis.requests.length == 1).flatMap { _ =>
-        analysis.answer(0, chart)
-        waitUntil(rows(parent).nonEmpty)
-      }.flatMap { _ =>
+      showChart(parent, analysis).flatMap { _ =>
         edit(view, "1")
         waitUntil(analysis.requests.length == 2)
       }.flatMap { _ =>
@@ -112,10 +113,7 @@ class CodeMirrorFlowchartRenderingSpec extends CodeMirrorSuite {
 
   test("the chart of a line being written waits until the cursor leaves the line") {
     withEditor("x\ny") { (view, parent, analysis) =>
-      waitUntil(analysis.requests.length == 1).flatMap { _ =>
-        analysis.answer(0, chart)
-        waitUntil(rows(parent).nonEmpty)
-      }.flatMap { _ =>
+      showChart(parent, analysis).flatMap { _ =>
         view.focus()
         assert(view.hasFocus.asInstanceOf[Boolean], "the editor has focus while typing")
         view.dispatch(js.Dynamic.literal(changes = js.Dynamic.literal(from = 1, insert = " = 1"), selection = js.Dynamic.literal(anchor = 5),

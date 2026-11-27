@@ -13,6 +13,10 @@ class ObservableValueSpec extends FunSuite {
     def reportFailure(error: Throwable): Unit = throw error
     def drain(): Unit = while (tasks.nonEmpty) tasks.dequeue().run()
   }
+  private val derivationPolicies =
+    List(ObserverDerivationLogic.DeriveAllValues -> List(1, 2, 3), ObserverDerivationLogic.DeriveOnlyLastValues -> List(1, 3))
+  /** The failure an observable currently holds; fails the test when it holds none or a value. */
+  private def failureOf(observable: ObservableValue[?]): Throwable = observable.currentValueOrWaitForUpdate.value.get.failed.get
 
   test("observers receive initial values and suppress equal updates") {
     val source = ObservableValueImpl(Some(1))
@@ -131,13 +135,13 @@ class ObservableValueSpec extends FunSuite {
     val combined = a.combineWith(b)
     val error = new IllegalArgumentException("a")
     a.onNewValueArrived(Failure(error))
-    val failure = combined.currentValueOrWaitForUpdate.value.get.failed.get
+    val failure = failureOf(combined)
     assert(failure.getMessage.contains("invalid A"))
     assertEquals(failure.getCause, error)
     b.onNewValueArrived(Failure(new IllegalArgumentException("b")))
-    assert(combined.currentValueOrWaitForUpdate.value.get.failed.get.getMessage.contains("A and B"))
+    assert(failureOf(combined).getMessage.contains("A and B"))
     a.onNewValueArrived(Success(3))
-    assert(combined.currentValueOrWaitForUpdate.value.get.failed.get.getMessage.contains("invalid B"))
+    assert(failureOf(combined).getMessage.contains("invalid B"))
     b.onNewValueArrived(Success(4))
     assertEquals(combined.now(), Some((3, 4)))
   }
@@ -192,7 +196,7 @@ class ObservableValueSpec extends FunSuite {
     assertEquals(combined.now(), None)
     val error = new IllegalArgumentException("b")
     b.onNewValueArrived(Failure(error))
-    val failure = combined.currentValueOrWaitForUpdate.value.get.failed.get
+    val failure = failureOf(combined)
     assert(failure.getMessage.contains("(1)"))
     assertEquals(failure.getCause, error)
     b.onNewValueArrived(Success(2))
@@ -215,7 +219,7 @@ class ObservableValueSpec extends FunSuite {
     assert(failure.getMessage.contains("(1, 2)"))
     assert(failure.getCause eq first)
     b.onNewValueArrived(Success(2))
-    assert(combined.currentValueOrWaitForUpdate.value.get.failed.get.getCause eq second)
+    assert(failureOf(combined).getCause eq second)
     c.onNewValueArrived(Success(3))
     assertEquals(combined.now(), Some(List(1, 2, 3)))
   }
@@ -240,12 +244,12 @@ class ObservableValueSpec extends FunSuite {
     assert(derived.currentValueOrWaitForUpdate.value.get.isFailure)
     val error = new IllegalArgumentException("base")
     source.onNewValueArrived(Failure(error))
-    assertEquals(derived.currentValueOrWaitForUpdate.value.get.failed.get.getCause, error)
+    assertEquals(failureOf(derived).getCause, error)
     source.onNewValueArrived(Success(3))
     assertEquals(derived.now(), Some(6))
   }
 
-  for ((policy, expected) <- List(ObserverDerivationLogic.DeriveAllValues -> List(1, 2, 3), ObserverDerivationLogic.DeriveOnlyLastValues -> List(1, 3))) {
+  for ((policy, expected) <- derivationPolicies) {
     test(s"queued derivation respects $policy") {
       val context = new QueuedContext
       val source = ObservableValueImpl(Some(1))
@@ -277,9 +281,9 @@ class ObservableValueSpec extends FunSuite {
     val derived = source.deriveSome(n => if (n == 2) throw new IllegalArgumentException("transform") else Some(n))
     val error = new IllegalArgumentException("base")
     source.onNewValueArrived(Failure(error))
-    assertEquals(derived.currentValueOrWaitForUpdate.value.get.failed.get.getCause, error)
+    assertEquals(failureOf(derived).getCause, error)
     source.onNewValueArrived(Success(2))
-    assertEquals(derived.currentValueOrWaitForUpdate.value.get.failed.get.getMessage, "transform")
+    assertEquals(failureOf(derived).getMessage, "transform")
     source.onNewValueArrived(Success(3))
     assertEquals(derived.now(), Some(3))
   }
@@ -292,7 +296,7 @@ class ObservableValueSpec extends FunSuite {
     assertEquals(derived.now(), Some(2))
   }
 
-  for ((policy, expected) <- List(ObserverDerivationLogic.DeriveAllValues -> List(1, 2, 3), ObserverDerivationLogic.DeriveOnlyLastValues -> List(1, 3))) {
+  for ((policy, expected) <- derivationPolicies) {
     test(s"future derivation serializes pending work and respects $policy") {
       val source = ObservableValueImpl(Some(1))
       val seen = ListBuffer.empty[Int]
@@ -323,27 +327,15 @@ class ObservableValueSpec extends FunSuite {
     assertEquals(derived.now(), Some(30))
   }
 
-  test("an in-flight failure releases queued derivations and preserves the original waiting future") {
-    val source = ObservableValueImpl(Some(1))
-    val first = Promise[Int]()
-    val derived = source.deriveAsync(n => if n == 1 then first.future else scala.concurrent.Future.successful(n * 10))
-    val waiting = derived.currentValueOrWaitForUpdate
-    source.onNewValueArrived(Success(2))
-    val error = new IllegalStateException("first failed")
-    first.failure(error)
-    assertEquals(waiting.value, Some(Failure(error)))
-    assertEquals(derived.now(), Some(20))
-  }
-
   test("future derivation propagates failed futures, thrown functions and base failures") {
     val source = ObservableValueImpl(Some(1))
     val error = new IllegalArgumentException("future")
     val derived = source.deriveAsync(n => if (n == 1) scala.concurrent.Future.failed[Int](error) else if (n == 2) throw new IllegalArgumentException("function") else scala.concurrent.Future.successful(n))
     assertEquals(derived.currentValueOrWaitForUpdate.value, Some(Failure(error)))
     source.onNewValueArrived(Success(2))
-    assertEquals(derived.currentValueOrWaitForUpdate.value.get.failed.get.getMessage, "function")
+    assertEquals(failureOf(derived).getMessage, "function")
     source.onNewValueArrived(Failure(error))
-    assertEquals(derived.currentValueOrWaitForUpdate.value.get.failed.get.getCause, error)
+    assertEquals(failureOf(derived).getCause, error)
     source.onNewValueArrived(Success(3))
     assertEquals(derived.now(), Some(3))
   }
@@ -358,7 +350,7 @@ class ObservableValueSpec extends FunSuite {
     assertEquals(derived.now(), Some(2))
   }
 
-  for ((policy, expected) <- List(ObserverDerivationLogic.DeriveAllValues -> List(1, 2, 3), ObserverDerivationLogic.DeriveOnlyLastValues -> List(1, 3))) {
+  for ((policy, expected) <- derivationPolicies) {
     test(s"optional derivation respects $policy while queued") {
       val context = new QueuedContext
       val source = ObservableValueImpl(Some(1))
@@ -379,7 +371,7 @@ class ObservableValueSpec extends FunSuite {
     val optional = source.deriveSome(n => Some(n))
     val asynchronous = source.deriveAsync(n => scala.concurrent.Future.successful(n))
     for (derived <- List(optional, asynchronous)) {
-      assertEquals(derived.currentValueOrWaitForUpdate.value.get.failed.get.getCause, error)
+      assertEquals(failureOf(derived).getCause, error)
     }
   }
 

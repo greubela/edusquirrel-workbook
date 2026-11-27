@@ -57,30 +57,7 @@ private[SnapEditor] final class SnapPaletteInstaller(resources: Var[SnapSessionR
     SnapExtraPrimitives.install()
     SnapCustomBlocks.installModuleBlocks(ide, moduleIds.flatMap(SnapModuleBlocks.byId).distinct)
 
-    // Snap calls blockTemplates(category) or blockTemplates(category, forSearch).
-    // Exercise-only: only library tab names return blocks; everything else is empty.
-    val blockTemplates: js.Function2[String, js.UndefOr[Boolean], js.Array[js.Any]] =
-      (category: String, forSearch: js.UndefOr[Boolean]) =>
-        libraries.find(_.name == category).toList.flatMap { tab =>
-          if tab.useNativeCategory then
-            val native = nativeCategoryPaletteItems(ide, tab.color.snapKey, forSearch)
-            val extras =
-              if tab.name == tab.color.snapKey then Nil
-              else SnapCustomBlocks.paletteItems(ide, tab.name)
-            native ++ extras
-          else
-            val controls =
-              (if tab.includeVariableControls then SnapVariableButtons.paletteItems(ide) else Nil) ++
-                (if tab.includeMakeBlockButton then nativeMakeBlockButton(ide) else Nil)
-            val blocks = tab.selectableElements.flatMap { data =>
-              SnapModuleBlocks.byId(data.id).fold(createTemplateBlock(data))(SnapCustomBlocks.moduleTemplateBlock(ide, _)) match
-                case Some(block) => List(block)
-                case None =>
-                  println(s"Snap library: skipping unknown block selector '${data.id}'")
-                  Nil
-            }
-            controls ++ blocks ++ SnapCustomBlocks.paletteItems(ide, tab.name)
-        }.toJSArray
+    val blockTemplates = exerciseBlockTemplates(libraries, ide)
 
     // The palette's primitive selectors; custom and module blocks are matched by their definitions instead.
     lazy val offeredSelectors: Set[String] = libraries.flatMap(tab => blockTemplates(tab.name, true).toList).flatMap { item =>
@@ -89,21 +66,52 @@ private[SnapEditor] final class SnapPaletteInstaller(resources: Var[SnapSessionR
     }.toSet
     val blocksMatching = searchWithinPalette(offeredSelectors)
 
-    sprite.asInstanceOf[js.Dynamic].updateDynamic("blockTemplates")(blockTemplates)
-    sprite.asInstanceOf[js.Dynamic].updateDynamic("blocksMatching")(blocksMatching)
-    sprite.asInstanceOf[js.Dynamic].updateDynamic("primitivesCache")(js.Dictionary.empty[js.Any])
+    overridePalette(sprite.asInstanceOf[js.Dynamic], blockTemplates, blocksMatching)
     sprite.paletteCache = js.Dictionary.empty
     val stage = ide.asInstanceOf[js.Dynamic].selectDynamic("stage")
-    if !js.isUndefined(stage) && stage != null then
-      stage.updateDynamic("blockTemplates")(blockTemplates)
-      stage.updateDynamic("blocksMatching")(blocksMatching)
-      stage.updateDynamic("primitivesCache")(js.Dictionary.empty[js.Any])
+    if !isAbsent(stage) then overridePalette(stage, blockTemplates, blocksMatching)
     SnapVariableButtons.flushWithExerciseTabs(ide, libraries.filter(needsVariablePaletteFlush).map(_.name))
     menus.wrap()
     categories.register(libraries)
     ide.createCategories()
     categories.enlargeTabs(ide)
     ide.refreshPalette(true)
+
+  /** Snap calls blockTemplates(category) or blockTemplates(category, forSearch).
+    * Exercise-only: only library tab names return blocks; everything else is empty.
+    */
+  private def exerciseBlockTemplates(libraries: Seq[LibraryTab], ide: IDEMorph)
+      : js.Function2[String, js.UndefOr[Boolean], js.Array[js.Any]] =
+    (category: String, forSearch: js.UndefOr[Boolean]) =>
+      libraries.find(_.name == category).toList.flatMap(tabPaletteItems(ide, _, forSearch)).toJSArray
+
+  private def tabPaletteItems(ide: IDEMorph, tab: LibraryTab, forSearch: js.UndefOr[Boolean]): List[js.Any] =
+    if tab.useNativeCategory then
+      val native = nativeCategoryPaletteItems(ide, tab.color.snapKey, forSearch)
+      val extras =
+        if tab.name == tab.color.snapKey then Nil
+        else SnapCustomBlocks.paletteItems(ide, tab.name)
+      native ++ extras
+    else
+      val controls =
+        (if tab.includeVariableControls then SnapVariableButtons.paletteItems(ide) else Nil) ++
+          (if tab.includeMakeBlockButton then nativeMakeBlockButton(ide) else Nil)
+      val blocks = tab.selectableElements.flatMap { data =>
+        SnapModuleBlocks.byId(data.id).fold(createTemplateBlock(data))(SnapCustomBlocks.moduleTemplateBlock(ide, _)) match
+          case Some(block) => List(block)
+          case None =>
+            println(s"Snap library: skipping unknown block selector '${data.id}'")
+            Nil
+      }
+      controls ++ blocks ++ SnapCustomBlocks.paletteItems(ide, tab.name)
+
+  /** Exercise palette lookups on a sprite or the stage; their cached primitives are rebuilt. */
+  private def overridePalette(target: js.Dynamic, blockTemplates: js.Any, blocksMatching: js.Any): Unit =
+    target.updateDynamic("blockTemplates")(blockTemplates)
+    target.updateDynamic("blocksMatching")(blocksMatching)
+    target.updateDynamic("primitivesCache")(js.Dictionary.empty[js.Any])
+
+  private def isAbsent(value: js.Any): Boolean = js.isUndefined(value) || value == null
 
   /**
    * Snap's block search lists every primitive it knows, including those the exercise palette leaves out
@@ -117,7 +125,7 @@ private[SnapEditor] final class SnapPaletteInstaller(resources: Var[SnapSessionR
       original.applyDynamic("call")(self, search, strictly, types, varNames).asInstanceOf[js.Array[js.Dynamic]].filter { block =>
         val definition = block.selectDynamic("definition")
         val selector = block.selectDynamic("selector")
-        (!js.isUndefined(definition) && definition != null) ||
+        !isAbsent(definition) ||
           (js.typeOf(selector) == "string" && (selector.toString == "reportGetVar" || offeredSelectors.contains(selector.toString)))
       }
 
@@ -135,7 +143,7 @@ private[SnapEditor] final class SnapPaletteInstaller(resources: Var[SnapSessionR
     val raw =
       if forSearch.isDefined then templates.call(sprite, snapKey, forSearch)
       else templates.call(sprite, snapKey)
-    if js.isUndefined(raw) || raw == null then Nil
+    if isAbsent(raw) then Nil
     else raw.asInstanceOf[js.Array[js.Any]].toList
   }
 
@@ -152,10 +160,7 @@ private[SnapEditor] final class SnapPaletteInstaller(resources: Var[SnapSessionR
   private def ensurePrimitiveSelectors(ids: Seq[String]): Unit =
     val proto = spriteMorphPrototype
     val blocks = proto.selectDynamic("blocks")
-    val missing = ids.filter { id =>
-      val info = blocks.selectDynamic(id)
-      js.isUndefined(info) || info == null
-    }
+    val missing = ids.filter(id => isAbsent(blocks.selectDynamic(id)))
     if missing.nonEmpty then
       proto.applyDynamic("initBlocks")()
     SnapExtraPrimitives.install()
@@ -163,7 +168,7 @@ private[SnapEditor] final class SnapPaletteInstaller(resources: Var[SnapSessionR
   private def nativeMakeBlockButton(ide: IDEMorph): List[js.Any] = {
     val sprite = ide.currentSprite.asInstanceOf[js.Dynamic]
     val button = sprite.applyDynamic("makeBlockButton")("other")
-    if js.isUndefined(button) || button == null then Nil
+    if isAbsent(button) then Nil
     else List(button.asInstanceOf[js.Any])
   }
 
@@ -174,19 +179,19 @@ private[SnapEditor] final class SnapPaletteInstaller(resources: Var[SnapSessionR
       proto.selectDynamic("blockForSelector").call(proto, data.id, true)
 
     val first = invoke()
-    val raw = if js.isUndefined(first) || first == null then
+    val raw = if isAbsent(first) then
       proto.applyDynamic("initBlocks")()
       SnapExtraPrimitives.install()
       invoke()
     else first
-    if js.isUndefined(raw) || raw == null then None
+    if isAbsent(raw) then None
     else
       val block = raw.asInstanceOf[BlockMorph]
       block.isDraggable = false
       block.isTemplate = true
       if data.snap_description_line.nonEmpty then
         val spec = block.asInstanceOf[js.Dynamic].selectDynamic("blockSpec")
-        val specStr = if js.isUndefined(spec) || spec == null then "" else spec.toString
+        val specStr = if isAbsent(spec) then "" else spec.toString
         block.setSpec(descriptionWithNativeInputs(data.snap_description_line, specStr))
       Some(block)
 

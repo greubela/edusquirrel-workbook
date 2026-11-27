@@ -3,7 +3,6 @@ package it.evadid.vm.analysis.feedback
 import it.evadid.core.datastructures.language.AppLanguage
 import it.evadid.core.datastructures.language.AppLanguage.*
 
-import scala.collection.mutable
 import scala.util.matching.Regex
 
 /**
@@ -22,242 +21,168 @@ object PythonStaticRules {
 
   def runAll(rawCode: String, humanLanguage: HumanLanguage = AppLanguage.default()): Seq[RuleResult] = {
     val normalized = Option(rawCode).getOrElse("").replace("\r\n", "\n")
-    val trimmed    = normalized.trim
 
-    val results = mutable.ListBuffer.empty[RuleResult]
-
-    if trimmed.isEmpty then {
-      results += RuleResult(
-        id = "PY_EMPTY",
-        category = "PYTHON_STRUCTURE",
-        severity = RuleSeverity.Error,
-        passed = false,
-        message = t(humanLanguage)(
-          "Es wurde kein Python-Code gefunden. Füge zunächst eine Lösung ein, bevor weitere Analysen sinnvoll sind.",
-          "No Python code found. Add a solution first before further analysis makes sense."
-        ),
-        details = Some("Leerer oder nur aus Whitespace bestehender Code.")
-      )
-      return results.toList
+    if normalized.trim.isEmpty then List(emptyCodeRule(humanLanguage))
+    else {
+      val lines = normalized.split("\n", -1).toIndexedSeq
+      List(
+        nonEmptyRule(humanLanguage),
+        lineCountRule(lines, humanLanguage),
+        longLinesRule(lines, humanLanguage),
+        trailingWhitespaceRule(lines, humanLanguage),
+        blankLinesRule(lines, humanLanguage),
+        incompleteCodeRule(humanLanguage),
+        printSpamRule(normalized, humanLanguage)
+      ) ++ PatternWarnings.flatMap(_.check(normalized, humanLanguage)) ++
+        unusedImportsRule(lines, humanLanguage) ++
+        missingReturnRule(lines, humanLanguage)
     }
+  }
 
-    // Code is non-empty
-    results += RuleResult(
-      id = "PY_NON_EMPTY",
+  private def passedRule(id: String, category: String, message: String, details: Option[String] = None): RuleResult =
+    RuleResult(id = id, category = category, severity = RuleSeverity.Info, passed = true, message = message, details = details)
+
+  private def failedRule(id: String, category: String, severity: RuleSeverity, message: String, details: Option[String]): RuleResult =
+    RuleResult(id = id, category = category, severity = severity, passed = false, message = message, details = details)
+
+  /** 1-based numbers of the selected lines, as the style rules report them. */
+  private def lineNumbersDetail(selected: Seq[(String, Int)]): String =
+    selected.map { case (_, idx) => idx + 1 }.mkString("Zeilen: ", ", ", "")
+
+  private def emptyCodeRule(lang: HumanLanguage): RuleResult =
+    RuleResult(
+      id = "PY_EMPTY",
       category = "PYTHON_STRUCTURE",
-      severity = RuleSeverity.Info,
-      passed = true,
-      message = t(humanLanguage)("Es liegt ausführbarer Python-Code vor.", "Executable Python code is present."),
-      details = None
+      severity = RuleSeverity.Error,
+      passed = false,
+      message = t(lang)(
+        "Es wurde kein Python-Code gefunden. Füge zunächst eine Lösung ein, bevor weitere Analysen sinnvoll sind.",
+        "No Python code found. Add a solution first before further analysis makes sense."
+      ),
+      details = Some("Leerer oder nur aus Whitespace bestehender Code.")
     )
 
-    val lines = normalized.split("\n", -1).toIndexedSeq
+  private def nonEmptyRule(lang: HumanLanguage): RuleResult =
+    passedRule("PY_NON_EMPTY", "PYTHON_STRUCTURE",
+      t(lang)("Es liegt ausführbarer Python-Code vor.", "Executable Python code is present."))
 
-    // Line count (only non-empty lines)
+  /** Counts only non-empty lines. */
+  private def lineCountRule(lines: IndexedSeq[String], lang: HumanLanguage): RuleResult = {
     val nonEmptyLineCount = lines.count(_.trim.nonEmpty)
-    results += RuleResult(
-      id = "PY_LINECOUNT",
-      category = "PYTHON_METRICS",
-      severity = RuleSeverity.Info,
-      passed = true,
-      message = t(humanLanguage)(
+    passedRule("PY_LINECOUNT", "PYTHON_METRICS",
+      t(lang)(
         s"Dein Python-Code enthält $nonEmptyLineCount nicht-leere Zeile(n).",
         s"Your Python code contains $nonEmptyLineCount non-empty line(s)."
       ),
-      details = Some(nonEmptyLineCount.toString)
-    )
+      Some(nonEmptyLineCount.toString))
+  }
 
-    // Long lines
+  private def longLinesRule(lines: IndexedSeq[String], lang: HumanLanguage): RuleResult = {
     val longLines = lines.zipWithIndex.filter { case (line, _) => line.length > MaxRecommendedLineLength }
     if longLines.nonEmpty then {
       val count = longLines.size
-      val linesStr = longLines.map { case (_, idx) => idx + 1 }.mkString("Zeilen: ", ", ", "")
-      results += RuleResult(
-        id = "PY_LONG_LINES",
-        category = "PYTHON_STYLE",
-        severity = RuleSeverity.Warning,
-        passed = false,
-        message = t(humanLanguage)(
+      failedRule("PY_LONG_LINES", "PYTHON_STYLE", RuleSeverity.Warning,
+        t(lang)(
           s"$count Zeile(n) sind länger als $MaxRecommendedLineLength Zeichen. Kürzere Zeilen verbessern die Lesbarkeit.",
           s"$count line(s) are longer than $MaxRecommendedLineLength characters. Shorter lines improve readability."
         ),
-        details = Some(linesStr)
-      )
-    } else {
-      results += RuleResult(
-        id = "PY_LONG_LINES",
-        category = "PYTHON_STYLE",
-        severity = RuleSeverity.Info,
-        passed = true,
-        message = t(humanLanguage)(
+        Some(lineNumbersDetail(longLines)))
+    } else
+      passedRule("PY_LONG_LINES", "PYTHON_STYLE",
+        t(lang)(
           s"Keine Zeile überschreitet die empfohlene maximale Länge von $MaxRecommendedLineLength Zeichen.",
           s"No line exceeds the recommended maximum length of $MaxRecommendedLineLength characters."
-        ),
-        details = None
-      )
-    }
+        ))
+  }
 
-    // Trailing whitespace
+  private def trailingWhitespaceRule(lines: IndexedSeq[String], lang: HumanLanguage): RuleResult = {
     val trailing = lines.zipWithIndex.filter { case (line, _) =>
       line.nonEmpty && (line.endsWith(" ") || line.endsWith("\t"))
     }
-    if trailing.nonEmpty then {
-      val linesStr = trailing.map { case (_, idx) => idx + 1 }.mkString("Zeilen: ", ", ", "")
-      results += RuleResult(
-        id = "PY_TRAILING_WHITESPACE",
-        category = "PYTHON_STYLE",
-        severity = RuleSeverity.Info,
-        passed = false,
-        message = t(humanLanguage)(
+    if trailing.nonEmpty then
+      failedRule("PY_TRAILING_WHITESPACE", "PYTHON_STYLE", RuleSeverity.Info,
+        t(lang)(
           "Einige Zeilen enthalten Leerzeichen am Zeilenende. Diese kannst du normalerweise entfernen.",
           "Some lines contain trailing whitespace. You can usually remove it."
         ),
-        details = Some(linesStr)
-      )
-    } else {
-      results += RuleResult(
-        id = "PY_TRAILING_WHITESPACE",
-        category = "PYTHON_STYLE",
-        severity = RuleSeverity.Info,
-        passed = true,
-        message = t(humanLanguage)(
+        Some(lineNumbersDetail(trailing)))
+    else
+      passedRule("PY_TRAILING_WHITESPACE", "PYTHON_STYLE",
+        t(lang)(
           "Es wurden keine unnötigen Leerzeichen am Zeilenende gefunden.",
           "No trailing whitespace found."
-        ),
-        details = None
-      )
-    }
+        ))
+  }
 
-    // Consecutive blank lines
+  /** Consecutive blank lines. */
+  private def blankLinesRule(lines: IndexedSeq[String], lang: HumanLanguage): RuleResult = {
     val maxBlankStreak = computeMaxBlankStreak(lines)
-    if maxBlankStreak > MaxRecommendedBlankStreak then {
-      results += RuleResult(
-        id = "PY_BLANK_LINES",
-        category = "PYTHON_STYLE",
-        severity = RuleSeverity.Info,
-        passed = false,
-        message = t(humanLanguage)(
+    if maxBlankStreak > MaxRecommendedBlankStreak then
+      failedRule("PY_BLANK_LINES", "PYTHON_STYLE", RuleSeverity.Info,
+        t(lang)(
           s"Es gibt Blöcke mit mehr als $MaxRecommendedBlankStreak aufeinanderfolgenden Leerzeilen. Versuche, leere Zeilen sparsamer einzusetzen.",
           s"There are blocks with more than $MaxRecommendedBlankStreak consecutive blank lines. Try to use blank lines more sparingly."
         ),
-        details = Some(s"Maximaler Block leerer Zeilen: $maxBlankStreak")
-      )
-    } else {
-      results += RuleResult(
-        id = "PY_BLANK_LINES",
-        category = "PYTHON_STYLE",
-        severity = RuleSeverity.Info,
-        passed = true,
-        message = t(humanLanguage)("Leerzeilen werden moderat eingesetzt.", "Blank lines are used moderately."),
-        details = None
-      )
-    }
+        Some(s"Maximaler Block leerer Zeilen: $maxBlankStreak"))
+    else
+      passedRule("PY_BLANK_LINES", "PYTHON_STYLE",
+        t(lang)("Leerzeilen werden moderat eingesetzt.", "Blank lines are used moderately."))
+  }
 
-    results += RuleResult(
-      id = "PY_INCOMPLETE_CODE",
-      category = "PYTHON_SEMANTICS",
-      severity = RuleSeverity.Info,
-      passed = true,
-      message = t(humanLanguage)(
+  private def incompleteCodeRule(lang: HumanLanguage): RuleResult =
+    passedRule("PY_INCOMPLETE_CODE", "PYTHON_SEMANTICS",
+      t(lang)(
         "Es wurden keine offensichtlichen Platzhalter gefunden.",
         "No obvious placeholders found."
-      ),
-      details = None
-    )
+      ))
 
-    // print spam
-    val printRegex: Regex = """\bprint\s*\(""".r
-    val printCount        = printRegex.findAllMatchIn(normalized).length
+  private val PrintPattern: Regex = """\bprint\s*\(""".r
 
-    if printCount > MaxRecommendedPrintStatements then {
-      results += RuleResult(
-        id = "PY_PRINT_SPAM",
-        category = "PYTHON_STYLE",
-        severity = RuleSeverity.Warning,
-        passed = false,
-        message = t(humanLanguage)(
+  private def printSpamRule(code: String, lang: HumanLanguage): RuleResult = {
+    val printCount = PrintPattern.findAllMatchIn(code).length
+    if printCount > MaxRecommendedPrintStatements then
+      failedRule("PY_PRINT_SPAM", "PYTHON_STYLE", RuleSeverity.Warning,
+        t(lang)(
           s"Es wurden $printCount 'print'-Anweisungen gefunden. Entferne Debug-Ausgaben oder reduziere die Anzahl deutlich.",
           s"Found $printCount print statements. Remove debug output or reduce it significantly."
         ),
-        details = Some(printCount.toString)
-      )
-    } else {
-      results += RuleResult(
-        id = "PY_PRINT_SPAM",
-        category = "PYTHON_STYLE",
-        severity = RuleSeverity.Info,
-        passed = true,
-        message = t(humanLanguage)(
+        Some(printCount.toString))
+    else
+      passedRule("PY_PRINT_SPAM", "PYTHON_STYLE",
+        t(lang)(
           s"Die Anzahl von 'print'-Ausgaben ($printCount) ist moderat.",
           s"The number of print statements ($printCount) is moderate."
         ),
-        details = Some(printCount.toString)
-      )
-    }
+        Some(printCount.toString))
+  }
 
-    // input() usage (non-deterministic / blocks in many graders)
-    val inputRegex: Regex = """\binput\s*\(""".r
-    if inputRegex.findFirstIn(normalized).nonEmpty then {
-      results += RuleResult(
-        id = "PY_INPUT_USAGE",
-        category = "PYTHON_SEMANTICS",
-        severity = RuleSeverity.Warning,
-        passed = false,
-        message = t(humanLanguage)(
-          "Dein Code nutzt input(). In automatischen Tests gibt es oft keine interaktive Eingabe; nutze stattdessen Funktionsparameter.",
-          "Your code uses input(). In automated tests there is often no interactive input; use function parameters instead."
-        ),
-        details = None
-      )
-    }
+  /** A semantic warning reported only when its pattern occurs in the code. */
+  private final case class PatternWarning(id: String, pattern: Regex, de: String, en: String) {
+    def check(code: String, lang: HumanLanguage): Option[RuleResult] =
+      Option.when(pattern.findFirstIn(code).nonEmpty)(
+        failedRule(id, "PYTHON_SEMANTICS", RuleSeverity.Warning, t(lang)(de, en), None))
+  }
 
-    // while True loop (often infinite)
-    val whileTrueRegex: Regex = """\bwhile\s+True\b""".r
-    if whileTrueRegex.findFirstIn(normalized).nonEmpty then {
-      results += RuleResult(
-        id = "PY_WHILE_TRUE",
-        category = "PYTHON_SEMANTICS",
-        severity = RuleSeverity.Warning,
-        passed = false,
-        message = t(humanLanguage)(
-          "Es wurde 'while True' gefunden. Prüfe, ob die Schleife sicher beendet wird (sonst droht Timeout).",
-          "Found 'while True'. Make sure the loop terminates safely (otherwise you may hit a timeout)."
-        ),
-        details = None
-      )
-    }
+  private val PatternWarnings: List[PatternWarning] = List(
+    // input() is non-deterministic and blocks in many graders.
+    PatternWarning("PY_INPUT_USAGE", """\binput\s*\(""".r,
+      "Dein Code nutzt input(). In automatischen Tests gibt es oft keine interaktive Eingabe; nutze stattdessen Funktionsparameter.",
+      "Your code uses input(). In automated tests there is often no interactive input; use function parameters instead."),
+    // A while True loop is often infinite.
+    PatternWarning("PY_WHILE_TRUE", """\bwhile\s+True\b""".r,
+      "Es wurde 'while True' gefunden. Prüfe, ob die Schleife sicher beendet wird (sonst droht Timeout).",
+      "Found 'while True'. Make sure the loop terminates safely (otherwise you may hit a timeout)."),
+    // time.sleep is slow and may cause timeouts.
+    PatternWarning("PY_SLEEP_USAGE", """\btime\s*\.\s*sleep\s*\(""".r,
+      "time.sleep() verlangsamt Tests und kann zu Timeouts führen. Entferne Sleeps in Abgaben.",
+      "time.sleep() slows down tests and may cause timeouts. Remove sleeps from submissions."),
+    PatternWarning("PY_RANDOM_USAGE", """\brandom\s*\.""".r,
+      "Zufall (random) kann Tests nicht-deterministisch machen. Falls nötig, setze einen festen Seed oder vermeide Randomness.",
+      "Randomness (random) can make tests non-deterministic. If needed, set a fixed seed or avoid randomness.")
+  )
 
-    // time.sleep usage (slow / may cause timeout)
-    val sleepRegex: Regex = """\btime\s*\.\s*sleep\s*\(""".r
-    if sleepRegex.findFirstIn(normalized).nonEmpty then {
-      results += RuleResult(
-        id = "PY_SLEEP_USAGE",
-        category = "PYTHON_SEMANTICS",
-        severity = RuleSeverity.Warning,
-        passed = false,
-        message = t(humanLanguage)(
-          "time.sleep() verlangsamt Tests und kann zu Timeouts führen. Entferne Sleeps in Abgaben.",
-          "time.sleep() slows down tests and may cause timeouts. Remove sleeps from submissions."
-        ),
-        details = None
-      )
-    }
-
-    val randomUsageRegex: Regex = """\brandom\s*\.""".r
-    if randomUsageRegex.findFirstIn(normalized).nonEmpty then {
-      results += RuleResult(
-        id = "PY_RANDOM_USAGE",
-        category = "PYTHON_SEMANTICS",
-        severity = RuleSeverity.Warning,
-        passed = false,
-        message = t(humanLanguage)(
-          "Zufall (random) kann Tests nicht-deterministisch machen. Falls nötig, setze einen festen Seed oder vermeide Randomness.",
-          "Randomness (random) can make tests non-deterministic. If needed, set a fixed seed or avoid randomness."
-        ),
-        details = None
-      )
-    }
-
+  /** Reported only when the code imports something. */
+  private def unusedImportsRule(lines: IndexedSeq[String], lang: HumanLanguage): Option[RuleResult] = {
     val importLines = lines.zipWithIndex.filter { case (line, _) =>
       val tr = line.trim
       (tr.startsWith("import ") || tr.startsWith("from ")) && !tr.startsWith("#")
@@ -271,68 +196,57 @@ object PythonStaticRules {
     }
     if unusedImports.nonEmpty then {
       val detail = unusedImports.map { case (ln, m) => s"line $ln: '$m'" }.mkString(", ")
-      results += RuleResult(
-        id = "PY_UNUSED_IMPORTS", category = "PYTHON_STYLE", severity = RuleSeverity.Warning, passed = false,
-        message = t(humanLanguage)(
+      Some(failedRule("PY_UNUSED_IMPORTS", "PYTHON_STYLE", RuleSeverity.Warning,
+        t(lang)(
           s"${unusedImports.size} nicht verwendete(r) Import(s): $detail.",
           s"${unusedImports.size} unused import(s): $detail."
         ),
-        details = Some(detail)
-      )
-    } else if importLines.nonEmpty then {
-      results += RuleResult(
-        id = "PY_UNUSED_IMPORTS", category = "PYTHON_STYLE", severity = RuleSeverity.Info, passed = true,
-        message = t(humanLanguage)("Alle Importe werden verwendet.", "All imports are used."),
-        details = None
-      )
-    }
+        Some(detail)))
+    } else Option.when(importLines.nonEmpty)(
+      passedRule("PY_UNUSED_IMPORTS", "PYTHON_STYLE", t(lang)("Alle Importe werden verwendet.", "All imports are used.")))
+  }
 
+  private val DefPattern = """^(?:async\s+)?def\s+([a-zA-Z_]\w*)\s*\(""".r
+  private val ReturnPattern = """\breturn\b""".r
+
+  /** Reported only when the code defines top-level functions; stub bodies need no `return`. */
+  private def missingReturnRule(lines: IndexedSeq[String], lang: HumanLanguage): Option[RuleResult] = {
     val defLineIndices = lines.zipWithIndex.collect {
       case (line, idx) if line.startsWith("def ") || line.startsWith("async def ") => idx
     }
-    if defLineIndices.nonEmpty then {
-      val DefPat = """^(?:async\s+)?def\s+([a-zA-Z_]\w*)\s*\(""".r
-      val ReturnPat = """\breturn\b""".r
-      val missingReturn = defLineIndices.flatMap { start =>
-          // The body ends at the next unindented code line.
-          val bodyLines = lines.drop(start + 1).takeWhile(l =>
-            l.trim.isEmpty || l.head.isWhitespace || l.trim.startsWith("#")
-          )
-          val hasReturn = bodyLines.exists(l => ReturnPat.findFirstIn(l.takeWhile(_ != '#')).nonEmpty)
-          if !hasReturn then {
-            val isStub = bodyLines.forall(l =>
-              l.trim.isEmpty || l.trim == "pass" || l.trim == "..." || l.trim.startsWith("#")
-            )
-            if isStub then None
-            else {
-              val name = DefPat.findFirstMatchIn(lines(start).trim).map(_.group(1)).getOrElse("?")
-              Some(s"'$name' (line ${start + 1})")
-            }
-          } else None
-      }
+    Option.when(defLineIndices.nonEmpty) {
+      val missingReturn = defLineIndices.flatMap(start => functionWithoutReturn(lines, start))
       if missingReturn.nonEmpty then {
         val detail = missingReturn.mkString(", ")
-        results += RuleResult(
-          id = "PY_MISSING_RETURN", category = "PYTHON_SEMANTICS", severity = RuleSeverity.Warning, passed = false,
-          message = t(humanLanguage)(
+        failedRule("PY_MISSING_RETURN", "PYTHON_SEMANTICS", RuleSeverity.Warning,
+          t(lang)(
             s"Folgende Funktion(en) fehlt ein 'return': $detail.",
             s"The following function(s) appear to have no 'return': $detail."
           ),
-          details = Some(detail)
-        )
-      } else {
-        results += RuleResult(
-          id = "PY_MISSING_RETURN", category = "PYTHON_SEMANTICS", severity = RuleSeverity.Info, passed = true,
-          message = t(humanLanguage)(
+          Some(detail))
+      } else
+        passedRule("PY_MISSING_RETURN", "PYTHON_SEMANTICS",
+          t(lang)(
             "Alle Funktionen enthalten mindestens ein 'return'.",
             "All functions contain at least one 'return' statement."
-          ),
-          details = None
-        )
-      }
+          ))
     }
+  }
 
-    results.toList
+  /** The function defined at line `start`, described for the report, when its body has no `return` and is not a stub. */
+  private def functionWithoutReturn(lines: IndexedSeq[String], start: Int): Option[String] = {
+    // The body ends at the next unindented code line.
+    val bodyLines = lines.drop(start + 1).takeWhile(l =>
+      l.trim.isEmpty || l.head.isWhitespace || l.trim.startsWith("#")
+    )
+    val hasReturn = bodyLines.exists(l => ReturnPattern.findFirstIn(l.takeWhile(_ != '#')).nonEmpty)
+    val isStub = bodyLines.forall(l =>
+      l.trim.isEmpty || l.trim == "pass" || l.trim == "..." || l.trim.startsWith("#")
+    )
+    Option.when(!hasReturn && !isStub) {
+      val name = DefPattern.findFirstMatchIn(lines(start).trim).map(_.group(1)).getOrElse("?")
+      s"'$name' (line ${start + 1})"
+    }
   }
 
   /** Names an import statement binds: aliases, top-level packages of plain imports, nothing for `*`. */
@@ -356,19 +270,9 @@ object PythonStaticRules {
   }
 
   private def computeMaxBlankStreak(lines: IndexedSeq[String]): Int = {
-    var current = 0
-    var max     = 0
-
-    lines.foreach { line =>
-      if line.trim.isEmpty then
-        current += 1
-      else {
-        if current > max then max = current
-        current = 0
-      }
+    val (longest, current) = lines.foldLeft((0, 0)) { case ((max, streak), line) =>
+      if line.trim.isEmpty then (max, streak + 1) else (math.max(max, streak), 0)
     }
-
-    if current > max then max = current
-    max
+    math.max(longest, current)
   }
 }

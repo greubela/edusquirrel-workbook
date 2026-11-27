@@ -1,49 +1,18 @@
 package it.evadid.homepage.webElements.editor.code
 
-import it.evadid.core.datastructures.language.AppLanguage.{Java, Python, SnapLanguage}
-
 import com.raquo.laminar.api.L.*
-import com.raquo.airstream.ownership.ManualOwner
-import it.evadid.core.datastructures.language.{LanguageMap, LanguageMapContentId}
+import it.evadid.core.datastructures.language.AppLanguage.{Java, Python, SnapLanguage}
 import it.evadid.core.datastructures.language.AppLanguage.*
-import it.evadid.core.datastructures.language.control.LanguageMapIdResolver
-import it.evadid.core.datastructures.state.StateHelper.*
-import it.evadid.distribution.clients.{ExecutionClient, RoutedExecutionClient}
-import it.evadid.distribution.command.ExecutionCommand
-import it.evadid.distribution.commandTypes.LLMCommands
-import it.evadid.homepage.control.singletons.HtmlFullWorkbookApp.fullInfo
 import it.evadid.homepage.webElements.HtmlAppElement
 import it.evadid.homepage.webElements.editor.code.EvaEditor.*
-import it.evadid.homepage.workbook.htmlRenderer.DomElementCollection.DomElementSingle
-import it.evadid.util.logging.Logger
-import it.evadid.util.logging.derived.PrintToStdLogger
-import it.evadid.workbook.abstractions.{FeedbackEntity, WorkbookElement}
-import it.evadid.workbook.abstractions.grading.*
-import it.evadid.workbook.abstractions.scaffolding.{AdditionalInfoLlmScaffolding, ScaffoldingResult, ScaffoldingStatus, WorkbookInteractionScaffolder}
-import it.evadid.workbook.meta.ExecutionContextInformation
-import it.evadid.workbook.interaction.variable.{InteractionVariableGradingHistory, InteractionVariableScaffoldingHistory}
-import it.evadid.workbook.elements.interactionElements.basic.TextInteraction
-import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseRegular.ProgrammingHintScaffolder
 import it.evadid.workbook.elements.interactionElements.programming.state.*
 import org.scalajs.dom
 import scala.concurrent.{Future, Promise}
 import scala.scalajs.concurrent.JSExecutionContext.Implicits.queue
 import scala.scalajs.js
-import scala.scalajs.js.timers.setTimeout
-import scala.util.Try
-import upickle.default.*
 
 class EvaEditorSpec extends EditorDomSuite {
-  private def executionContext(clients: List[ExecutionClient], resolver: LanguageMapIdResolver): ExecutionContextInformation = new ExecutionContextInformation {
-    override val availableExecutionClients = clients
-    override val languageMapIdResolver = Some(resolver)
-    override val syncControl = None
-    override def getCurrentLanguage = resolver.languageFuture().value.flatMap(_.toOption).getOrElse(English)
-    override val futureExecutionContext = queue
-  }
-
   private val specLabels = EvaEditorLabels.fromContent(_ => Val("_"))
-  private val logger = Logger.withNameAndPrefixes(Some("EvaEditorSpec"), PrintToStdLogger.printNothing)
 
   private class Fixture(source: ProgrammingState, languages: List[ProgrammingLanguage] = List(SnapLanguage, Python, Java)) {
     val state = Var(source)

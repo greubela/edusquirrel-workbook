@@ -55,14 +55,15 @@ class PythonEditorSpec extends EditorDomSuite {
     def native: NativeEditor = created.now().last
     def loadNative(): Unit = ready.now().get.trySuccess(native.handle)
     def failNative(): Unit = ready.now().get.tryFailure(IllegalStateException("CodeMirror unavailable"))
+    /** Completes the native editor once it is requested and waits until it replaces the fallback. */
+    def nativeLoaded(): Future[Unit] = until(created.now().nonEmpty).map(_ => loadNative()).flatMap(_ => until(hidden(fallback)))
   }
 
   private def pause(millis: Int): Future[Unit] = { val done = Promise[Unit](); setTimeout(millis.toDouble)(done.success(())); done.future }
-  private def tick(): Future[Unit] = { val done = Promise[Unit](); setTimeout(5)(done.success(())); done.future }
   private def until(condition: => Boolean, attempts: Int = 400): Future[Unit] =
     if condition then Future.unit
     else if attempts == 0 then Future.failed(AssertionError("condition not reached"))
-    else tick().flatMap(_ => until(condition, attempts - 1))
+    else pause(5).flatMap(_ => until(condition, attempts - 1))
   private def fallback = dom.document.querySelector(".code-mirror-editor__fallback").asInstanceOf[dom.html.TextArea]
   private def loading = dom.document.querySelector(".code-mirror-editor__loading").asInstanceOf[dom.html.Element]
   private def hidden(element: dom.Element): Boolean = element.hasAttribute("hidden")
@@ -92,7 +93,7 @@ class PythonEditorSpec extends EditorDomSuite {
   test("native typing writes the answer and answer changes reach the native document exactly once") {
     val fixture = Fixture("x = 1")
     finish(fixture.close) {
-      until(fixture.created.now().nonEmpty).map(_ => fixture.loadNative()).flatMap(_ => until(hidden(fallback))).flatMap { _ =>
+      fixture.nativeLoaded().flatMap { _ =>
         val native = fixture.native
         native.type_("x = 2")
         assertEquals(fixture.text.now(), "x = 1", "the answer follows once typing pauses")
@@ -110,7 +111,7 @@ class PythonEditorSpec extends EditorDomSuite {
 
   test("typing writes the answer once per pause, and at once when the editor loses focus or is unmounted") {
     val fixture = Fixture("x = 1")
-    until(fixture.created.now().nonEmpty).map(_ => fixture.loadNative()).flatMap(_ => until(hidden(fallback))).flatMap { _ =>
+    fixture.nativeLoaded().flatMap { _ =>
       val native = fixture.native
       native.type_("x = 2")
       native.type_("x = 23")
@@ -131,7 +132,7 @@ class PythonEditorSpec extends EditorDomSuite {
     val same = (a: String, b: String) => a.trim == b.trim
     val fixture = Fixture("y = 1", sameSource = same)
     finish(fixture.close) {
-      until(fixture.created.now().nonEmpty).map(_ => fixture.loadNative()).flatMap(_ => until(hidden(fallback))).map { _ =>
+      fixture.nativeLoaded().map { _ =>
         fixture.native.type_("y = 1\n\n")
         assertEquals(fixture.text.now(), "y = 1", "an equivalent edit does not change the answer")
         fixture.text.set("  y = 1")
@@ -142,7 +143,7 @@ class PythonEditorSpec extends EditorDomSuite {
 
   test("typed text never overwrites an answer change that arrived while it was pending") {
     val fixture = Fixture("x = 1")
-    until(fixture.created.now().nonEmpty).map(_ => fixture.loadNative()).flatMap(_ => until(hidden(fallback))).flatMap { _ =>
+    fixture.nativeLoaded().flatMap { _ =>
       val native = fixture.native
       native.type_("x = 2")
       fixture.text.set("restored = 1")
@@ -160,7 +161,7 @@ class PythonEditorSpec extends EditorDomSuite {
   test("hiding the page writes the typed text at once") {
     val fixture = Fixture("x = 1")
     finish(fixture.close) {
-      until(fixture.created.now().nonEmpty).map(_ => fixture.loadNative()).flatMap(_ => until(hidden(fallback))).map { _ =>
+      fixture.nativeLoaded().map { _ =>
         fixture.native.type_("x = 2")
         dom.document.dispatchEvent(js.Dynamic.newInstance(js.Dynamic.global.window.Event)("visibilitychange",
           js.Dynamic.literal(bubbles = true)).asInstanceOf[dom.Event])
@@ -171,7 +172,7 @@ class PythonEditorSpec extends EditorDomSuite {
 
   test("typing goes on over an answer change that equals the typed text") {
     val fixture = Fixture("x = 1")
-    until(fixture.created.now().nonEmpty).map(_ => fixture.loadNative()).flatMap(_ => until(hidden(fallback))).flatMap { _ =>
+    fixture.nativeLoaded().flatMap { _ =>
       val native = fixture.native
       native.type_("x = 2")
       // e.g. the same edit synchronized from another tab
@@ -205,7 +206,7 @@ class PythonEditorSpec extends EditorDomSuite {
       }
     }.flatMap { _ =>
       val mounted = Fixture("b = 1")
-      until(mounted.created.now().nonEmpty).map(_ => mounted.loadNative()).flatMap(_ => until(hidden(fallback))).map { _ =>
+      mounted.nativeLoaded().map { _ =>
         mounted.close()
         assert(mounted.native.destroyed.now())
         mounted.native.type_("after unmount")
@@ -218,7 +219,7 @@ class PythonEditorSpec extends EditorDomSuite {
     val marker = Var(Option.empty[ProgrammingConversionError])
     val fixture = Fixture("for", diagnostics = marker.signal.map(_.toSeq.flatMap(CodeMirrorEditor.mark(_, "cannot convert"))))
     finish(fixture.close) {
-      until(fixture.created.now().nonEmpty).map(_ => fixture.loadNative()).flatMap(_ => until(hidden(fallback))).map { _ =>
+      fixture.nativeLoaded().map { _ =>
         marker.set(Some(ProgrammingConversionError(ProgrammingConversionKind.UnsupportedConstruct, Some(2), Some(4))))
         val marked = fixture.native.diagnostics.now()
         assertEquals(marked.map(d => (d.line.asInstanceOf[Int], d.fromCh.asInstanceOf[Int], d.toCh.asInstanceOf[Int],
@@ -248,10 +249,5 @@ class PythonEditorSpec extends EditorDomSuite {
       assertEquals(answer.now(), ProgrammingStateRaw(Java, "int x = 1;"): ProgrammingState)
       }
     }
-  }
-
-  test("languages map to their native CodeMirror modes") {
-    assertEquals(CodeMirrorEditor.languageToJs(Python), "python")
-    assertEquals(CodeMirrorEditor.languageToJs(Java), "java")
   }
 }

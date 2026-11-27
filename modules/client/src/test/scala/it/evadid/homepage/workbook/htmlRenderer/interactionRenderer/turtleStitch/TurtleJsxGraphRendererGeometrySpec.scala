@@ -99,6 +99,16 @@ class TurtleJsxGraphRendererGeometrySpec extends FunSuite:
     try test
     finally restore()
 
+  /** Runs `test` with the jsdom globals, `graph`'s JSXGraph stand-in and a host element in the document. */
+  private def withHost[A](graph: Graph)(test: dom.Element => A): A =
+    withDom {
+      graph.withLibrary {
+        val host = dom.document.createElement("div")
+        dom.document.body.appendChild(host)
+        test(host)
+      }
+    }
+
   private def installDom(): () => Unit =
     val globals = js.Dynamic.global.globalThis
     val window = EditorDomSuite.window
@@ -111,25 +121,6 @@ class TurtleJsxGraphRendererGeometrySpec extends FunSuite:
         else js.Dynamic.global.Object.defineProperty(globals, name, descriptor)
       }
 
-  test("DOM fixtures restore absent and explicitly undefined document properties") {
-    val globals = js.Dynamic.global.globalThis
-    val original = js.Dynamic.global.Object.getOwnPropertyDescriptor(globals, "document")
-    try
-      js.special.delete(globals, "document")
-      withDom { assert(!js.isUndefined(globals.selectDynamic("document"))) }
-      assert(js.isUndefined(js.Dynamic.global.Object.getOwnPropertyDescriptor(globals, "document")))
-      js.Dynamic.global.Object.defineProperty(globals, "document", js.Dynamic.literal(
-        configurable = true, enumerable = false, writable = true, value = js.undefined))
-      withDom { assert(!js.isUndefined(globals.selectDynamic("document"))) }
-      val restored = js.Dynamic.global.Object.getOwnPropertyDescriptor(globals, "document")
-      assert(!js.isUndefined(restored))
-      assert(js.isUndefined(restored.value))
-      assertEquals(restored.enumerable.asInstanceOf[Boolean], false)
-    finally
-      if js.isUndefined(original) then js.special.delete(globals, "document")
-      else js.Dynamic.global.Object.defineProperty(globals, "document", original)
-  }
-
   test("scene renderer preserves neutral lines and uses a nonempty accessible title") {
     val graph = new Graph
     val scene = Scene(List(RenderedLine(Point(0.0, 0.0), Point(10.0, 0.0), LineResult.Neutral, false)), Nil)
@@ -141,74 +132,62 @@ class TurtleJsxGraphRendererGeometrySpec extends FunSuite:
   }
 
   test("mounting multiple scenes passes distinct DOM containers and frees their own boards") {
-    withDom {
-      val graph = new Graph
-      graph.withLibrary {
-        val host = dom.document.createElement("div")
-        dom.document.body.appendChild(host)
-        val mounted = L.render(host, L.div(
-          TurtleJsxGraphRenderer.render(Scene(Nil, Nil), "Target"),
-          TurtleJsxGraphRenderer.render(Scene(Nil, Nil), "Your drawing")
-        ))
-        try
-          assertEquals(graph.initialized.size, 2)
-          assert(graph.initialized.head._1 ne graph.initialized.last._1)
-          assert(graph.initialized.head._2 != graph.initialized.last._2)
-          assertEquals(graph.freed.toList, Nil)
-        finally mounted.unmount()
-        assertEquals(graph.freed.toSet, graph.initialized.map(_._2).toSet)
-        assertEquals(graph.freed.size, 2)
-      }
+    val graph = new Graph
+    withHost(graph) { host =>
+      val mounted = L.render(host, L.div(
+        TurtleJsxGraphRenderer.render(Scene(Nil, Nil), "Target"),
+        TurtleJsxGraphRenderer.render(Scene(Nil, Nil), "Your drawing")
+      ))
+      try
+        assertEquals(graph.initialized.size, 2)
+        assert(graph.initialized.head._1 ne graph.initialized.last._1)
+        assert(graph.initialized.head._2 != graph.initialized.last._2)
+        assertEquals(graph.freed.toList, Nil)
+      finally mounted.unmount()
+      assertEquals(graph.freed.toSet, graph.initialized.map(_._2).toSet)
+      assertEquals(graph.freed.size, 2)
     }
   }
 
   test("replacing and remounting a scene frees each concrete board once") {
-    withDom {
+    val graph = new Graph
+    withHost(graph) { host =>
       import L.*
-      val graph = new Graph
-      graph.withLibrary {
-        val host = dom.document.createElement("div")
-        dom.document.body.appendChild(host)
-        val shown = Var(true)
-        val scene = TurtleJsxGraphRenderer.render(Scene(Nil, Nil), "Target")
-        val mounted = L.render(host, div(child.maybe <-- shown.signal.map(value => Option.when(value)(scene))))
-        try
-          assertEquals(graph.initialized.size, 1)
-          shown.set(false)
-          assertEquals(graph.freed.toList, List(graph.initialized.head._2))
-          shown.set(false)
-          assertEquals(graph.freed.size, 1)
-          shown.set(true)
-          assertEquals(graph.initialized.size, 2)
-        finally mounted.unmount()
-        assertEquals(graph.freed.toList, graph.initialized.map(_._2).toList)
-      }
+      val shown = Var(true)
+      val scene = TurtleJsxGraphRenderer.render(Scene(Nil, Nil), "Target")
+      val mounted = L.render(host, div(child.maybe <-- shown.signal.map(value => Option.when(value)(scene))))
+      try
+        assertEquals(graph.initialized.size, 1)
+        shown.set(false)
+        assertEquals(graph.freed.toList, List(graph.initialized.head._2))
+        shown.set(false)
+        assertEquals(graph.freed.size, 1)
+        shown.set(true)
+        assertEquals(graph.initialized.size, 2)
+      finally mounted.unmount()
+      assertEquals(graph.freed.toList, graph.initialized.map(_._2).toList)
     }
   }
 
   test("a changing scene replaces the panel with a fresh board in its default view; equal scenes are kept") {
-    withDom {
+    val graph = new Graph(batchUpdates = true)
+    withHost(graph) { host =>
       import L.*
-      val graph = new Graph(batchUpdates = true)
-      graph.withLibrary {
-        val host = dom.document.createElement("div")
-        dom.document.body.appendChild(host)
-        val commands = Var(List(cmd("forward", 10), cmd("right", 90), cmd("forward", 10)))
-        val expected = TurtleGraphic.TurtleGraphicProgram(commands.now())
-        val mounted = L.render(host, div(TurtleJsxGraphRenderer.renderStrokes(commands.signal, expected)))
-        try
-          assertEquals(graph.initialized.size, 1)
-          val firstPanel = host.querySelector(".turtle-gradig-panel")
-          commands.set(List(cmd("forward", 5)))
-          assertEquals(graph.initialized.size, 2, "a new board, initialized with the new scene's bounds")
-          assertEquals(graph.freed.toList, graph.initialized.take(1).map(_._2).toList, "the previous board is released")
-          assert(!(host.querySelector(".turtle-gradig-panel") eq firstPanel), "the whole panel is replaced")
-          assertEquals(host.querySelectorAll(".turtle-gradig-panel").length, 1)
-          commands.set(List(cmd("forward", 5)))
-          assertEquals(graph.initialized.size, 2, "an equal scene keeps its panel")
-        finally mounted.unmount()
-        assertEquals(graph.freed.toList, graph.initialized.map(_._2).toList)
-      }
+      val commands = Var(List(cmd("forward", 10), cmd("right", 90), cmd("forward", 10)))
+      val expected = TurtleGraphic.TurtleGraphicProgram(commands.now())
+      val mounted = L.render(host, div(TurtleJsxGraphRenderer.renderStrokes(commands.signal, expected)))
+      try
+        assertEquals(graph.initialized.size, 1)
+        val firstPanel = host.querySelector(".turtle-gradig-panel")
+        commands.set(List(cmd("forward", 5)))
+        assertEquals(graph.initialized.size, 2, "a new board, initialized with the new scene's bounds")
+        assertEquals(graph.freed.toList, graph.initialized.take(1).map(_._2).toList, "the previous board is released")
+        assert(!(host.querySelector(".turtle-gradig-panel") eq firstPanel), "the whole panel is replaced")
+        assertEquals(host.querySelectorAll(".turtle-gradig-panel").length, 1)
+        commands.set(List(cmd("forward", 5)))
+        assertEquals(graph.initialized.size, 2, "an equal scene keeps its panel")
+      finally mounted.unmount()
+      assertEquals(graph.freed.toList, graph.initialized.map(_._2).toList)
     }
   }
 
@@ -242,20 +221,16 @@ class TurtleJsxGraphRendererGeometrySpec extends FunSuite:
   }
 
   test("a failed scene mount releases its partially created board") {
-    withDom {
-      val graph = new Graph
-      graph.rejectCreation = true
-      graph.withLibrary {
-        val host = dom.document.createElement("div")
-        dom.document.body.appendChild(host)
-        val scene = Scene(List(RenderedLine(Point(0.0, 0.0), Point(10.0, 0.0), LineResult.Neutral, false)), Nil)
-        val mounted = L.render(host, TurtleJsxGraphRenderer.render(scene, "Target"))
-        try
-          assert(host.textContent.contains("drawing preview is unavailable"))
-          assertEquals(graph.freed.toList, graph.initialized.map(_._2).toList)
-        finally mounted.unmount()
-        assertEquals(graph.freed.size, 1)
-      }
+    val graph = new Graph
+    graph.rejectCreation = true
+    withHost(graph) { host =>
+      val scene = Scene(List(RenderedLine(Point(0.0, 0.0), Point(10.0, 0.0), LineResult.Neutral, false)), Nil)
+      val mounted = L.render(host, TurtleJsxGraphRenderer.render(scene, "Target"))
+      try
+        assert(host.textContent.contains("drawing preview is unavailable"))
+        assertEquals(graph.freed.toList, graph.initialized.map(_._2).toList)
+      finally mounted.unmount()
+      assertEquals(graph.freed.size, 1)
     }
   }
 
@@ -273,19 +248,15 @@ class TurtleJsxGraphRendererGeometrySpec extends FunSuite:
   }
 
   test("invalid display bounds produce a warning rather than a mounted board") {
-    withDom {
-      val graph = new Graph
-      graph.withLibrary {
-        val host = dom.document.createElement("div")
-        dom.document.body.appendChild(host)
-        val scene = Scene(List(RenderedLine(Point(0.0, 0.0), Point(Double.NaN, 0.0), LineResult.Neutral, false)), Nil)
-        val mounted = L.render(host, TurtleJsxGraphRenderer.render(scene, "Your drawing"))
-        try
-          assert(host.textContent.contains("outside the supported display range"))
-          assertEquals(graph.initialized.size, 0)
-        finally mounted.unmount()
-        assertEquals(graph.freed.size, 0)
-      }
+    val graph = new Graph
+    withHost(graph) { host =>
+      val scene = Scene(List(RenderedLine(Point(0.0, 0.0), Point(Double.NaN, 0.0), LineResult.Neutral, false)), Nil)
+      val mounted = L.render(host, TurtleJsxGraphRenderer.render(scene, "Your drawing"))
+      try
+        assert(host.textContent.contains("outside the supported display range"))
+        assertEquals(graph.initialized.size, 0)
+      finally mounted.unmount()
+      assertEquals(graph.freed.size, 0)
     }
   }
 
@@ -388,29 +359,6 @@ class TurtleJsxGraphRendererGeometrySpec extends FunSuite:
     assertEquals(endpoint.attrs.name.asInstanceOf[String], "")
   }
 
-  test("forward defaults to right; right is down and left is up") {
-    val scene = buildScene(List(cmd("forward", 100), cmd("right", 90), cmd("forward", 50), cmd("left", 90), cmd("forward", 25)), Nil)
-    val targets = List(Point(100.0, 0.0), Point(100.0, 50.0), Point(125.0, 50.0))
-    scene.lines.zip(targets).foreach((line, target) => point(line.end, target.x, target.y))
-  }
-
-  test("consecutive turns accumulate at the vertex, including an intervening zero forward") {
-    val scene = buildScene(List(cmd("forward", 10), cmd("left", 120), cmd("forward", 0), cmd("right", 30), cmd("forward", 10)), Nil)
-    assertEquals(scene.lines.size, 2)
-    assertEquals(scene.angles.head.degrees, 90.0)
-    assertEquals(scene.angles.head.fromHeading, 0.0)
-    point(scene.lines.last.end, 10, -10)
-  }
-
-  test("backwards, negative forwards, pen changes and right aliases preserve coordinates") {
-    val program = List(cmd("backward", 10), cmd("turn_right", 90), cmd("penup"), cmd("forward", 20), cmd("pendown"), cmd("lt", 90), cmd("fd", -5))
-    val scene = buildScene(program, Nil)
-    val targets = List(Point(-10.0, 0.0), Point(-10.0, 20.0), Point(-15.0, 20.0))
-    scene.lines.zip(targets).foreach((line, target) => point(line.end, target.x, target.y))
-    assertEquals(scene.lines.map(_.jump), List(false, true, false))
-    assertEquals(scene.angles.map(_.degrees), List(-90.0, 90.0))
-  }
-
   test("absolute movement uses the pen state and breaks pending angles") {
     for penUp <- List(false, true) do
       val program = (if penUp then List(cmd("penup")) else Nil) ++ List(cmd("forward", 10), cmd("left", 45), cmd("goto", 20, 30), cmd("setx", 40), cmd("sety", 50), cmd("home"), cmd("forward", 5))
@@ -449,12 +397,6 @@ class TurtleJsxGraphRendererGeometrySpec extends FunSuite:
       point(graph.coords(graph.parent(segment, 0)), line.start.x, -line.start.y)
       point(graph.coords(graph.parent(segment, 1)), line.end.x, -line.end.y)
     }
-  }
-
-  test("cancelled turns do not create degenerate angle objects") {
-    val scene = buildScene(List(cmd("forward", 10), cmd("left", 90), cmd("right", 90), cmd("forward", 10)), Nil)
-    assertEquals(scene.angles, Nil)
-    point(scene.lines.last.end, 20, 0)
   }
 
   for

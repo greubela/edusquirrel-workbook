@@ -29,12 +29,10 @@ final class RemoteHistoryCache[K, F <: InteractionFormat, RW <: RemoteHistoryRea
   val reports: ObservableValue[Map[K, CacheReportForKey[K, F, RW]]] = state.observable.deriveValue { current =>
     current.histories.map { (key, history) =>
       val known = current.destinations.flatMap((cache, values) => values.get(key).map(cache -> _))
-      val pending = cacheStrategies.map { (cache, strategy) =>
-        cache -> missing(history, known.getOrElse(cache, RemoteHistoryValue.empty).history, strategy)
-      }
+      def knownHistory(cache: RW): History = known.getOrElse(cache, RemoteHistoryValue.empty).history
+      val pending = cacheStrategies.map((cache, strategy) => cache -> missing(history, knownHistory(cache), strategy))
       val required = history.latestAnswerEvents
-      val synced = cacheStrategies.keySet.filter(cache =>
-        required.subsetOf(known.getOrElse(cache, RemoteHistoryValue.empty).history.events.values))
+      val synced = cacheStrategies.keySet.filter(cache => required.subsetOf(knownHistory(cache).events.values))
       key -> CacheReportForKey(key, history, known, pending, synced)
     }
   }
@@ -119,24 +117,28 @@ final class RemoteHistoryCache[K, F <: InteractionFormat, RW <: RemoteHistoryRea
             starting.forall(from => !event.timestamp.isBefore(from)) && !event.timestamp.isAfter(until))
           key -> InteractionVariableHistory(InteractionEvents(bounded.toSet))
         }.toMap
-        state.update { current =>
-          val remote = received.foldLeft(current.destinations(cache)) { case (values, (key, history)) =>
-            val previous = values.getOrElse(key, RemoteHistoryValue.empty)
-            values.updated(key, previous.copy(
-              history = previous.history.mergeWith(history),
-              fullFetchCompleted = if trackProgress && starting.isEmpty then later(previous.fullFetchCompleted, Some(completed)) else previous.fullFetchCompleted,
-              fetchCompleted = if trackProgress then later(previous.fetchCompleted, Some(completed)) else previous.fetchCompleted,
-              fetchedThrough = if trackProgress then later(previous.fetchedThrough, history.events.timestampLastChanged) else previous.fetchedThrough))
-          }
-          val histories = received.foldLeft(current.histories) { case (histories, (key, history)) =>
-            histories.updated(key, histories.getOrElse(key, empty).mergeWith(history).cleanedHistory())
-          }
-          current.copy(histories = histories, destinations = current.destinations.updated(cache, remote))
-        }
+        state.update(withFetched(_, cache, received, completed, trackProgress, fullRead = starting.isEmpty))
         received
       }
     }
   }.andThen { case Failure(error) => syncLogger.logExceptionWarn(s"Could not fetch event histories for ${keys.size} keys", error) }
+
+  /** Merges a read into the local and destination histories; only tracked reads advance the destination's progress. */
+  private def withFetched(current: CacheState[K, F, RW], cache: RW, received: Map[K, History], completed: LocalDateTime,
+      trackProgress: Boolean, fullRead: Boolean): CacheState[K, F, RW] = {
+    val remote = received.foldLeft(current.destinations(cache)) { case (values, (key, history)) =>
+      val previous = values.getOrElse(key, RemoteHistoryValue.empty)
+      values.updated(key, previous.copy(
+        history = previous.history.mergeWith(history),
+        fullFetchCompleted = if trackProgress && fullRead then later(previous.fullFetchCompleted, Some(completed)) else previous.fullFetchCompleted,
+        fetchCompleted = if trackProgress then later(previous.fetchCompleted, Some(completed)) else previous.fetchCompleted,
+        fetchedThrough = if trackProgress then later(previous.fetchedThrough, history.events.timestampLastChanged) else previous.fetchedThrough))
+    }
+    val histories = received.foldLeft(current.histories) { case (histories, (key, history)) =>
+      histories.updated(key, histories.getOrElse(key, empty).mergeWith(history).cleanedHistory())
+    }
+    current.copy(histories = histories, destinations = current.destinations.updated(cache, remote))
+  }
 
   def requestStore(cache: RW, histories: Map[K, History], forceFlush: Boolean = false): Future[Unit] = attempt {
     require(cacheStrategies.contains(cache), "Cannot store to an unconfigured history destination")

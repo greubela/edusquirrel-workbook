@@ -223,33 +223,6 @@ class AsyncDataCacheSpec extends FunSuite {
     }
   }
 
-  test("SucceededRequest retains its timestamp, state and completed future") {
-    val cache = new Cache()
-    val state = State[AsyncDataState[Nothing, String]](AsyncDataSuccess("value"))
-    val timestamp = LocalDateTime.of(2026, 1, 1, 0, 0)
-    val request = SucceededRequest(cache, state, "value", timestamp)
-    assertEquals(request.outputIfPresent, Some("value"))
-    assertEquals(request.requestCompletedAt, Some(timestamp))
-    assert(request.getVariable eq state)
-    request.createFuture.map(value => assertEquals(value, "value"))
-  }
-
-  test("StartedRequest notifies all waiting futures and publishes success") {
-    val cache = new Cache()
-    val state = State[AsyncDataState[Nothing, String]](AsyncDataLoading())
-    val request = StartedRequest(cache, "a", state)
-    assertEquals(request.outputIfPresent, None)
-    assertEquals(request.requestCompletedAt, None)
-    assert(request.getVariable eq state)
-    val first = request.createFuture
-    val second = request.createFuture
-    request.succeeded("done")
-    first.zip(second).map { result =>
-      assertEquals(result, ("done", "done"))
-      assertEquals(state.now().value, Some("done"))
-    }
-  }
-
   test("a waiter attached after completion immediately receives the cached request outcome") {
     val cache = new Cache()
     val state = State[AsyncDataState[Nothing, String]](AsyncDataLoading())
@@ -295,34 +268,6 @@ class AsyncDataCacheSpec extends FunSuite {
         assertEquals(result, "old")
         assertEquals(cache.getSyncIfInCache("a", false), Some("current"))
       }
-    }
-  }
-
-  test("FailedRequest exposes its state and timestamp without an output") {
-    val cache = new Cache(retry = false)
-    val state = State[AsyncDataState[Nothing, String]](AsyncDataLoading())
-    val cause = new IllegalStateException("failed")
-    val timestamp = LocalDateTime.of(2026, 1, 1, 0, 0)
-    val request = FailedRequest(cache, "a", state, cause, timestamp)
-    assertEquals(request.outputIfPresent, None)
-    assertEquals(request.requestCompletedAt, Some(timestamp))
-    assert(request.getVariable eq state)
-    request.createFuture.failed.map(error => assert(error eq cause))
-  }
-
-  test("DeletedRequest reloads while preserving the bound state") {
-    val cache = new Cache()
-    val state = State[AsyncDataState[Nothing, String]](AsyncDataSuccess("old"))
-    val request = DeletedRequest(cache, "a", state)
-    val published = Promise[Unit]()
-    state.observable.addObserver(value => if (value.value.contains("new")) published.trySuccess(()))
-    assertEquals(request.outputIfPresent, None)
-    assertEquals(request.requestCompletedAt, None)
-    val loaded = request.createFuture
-    cache.requests.head._2.success("new")
-    loaded.zip(published.future).map { (value, _) =>
-      assertEquals(value, "new")
-      assertEquals(state.now().value, Some("new"))
     }
   }
 

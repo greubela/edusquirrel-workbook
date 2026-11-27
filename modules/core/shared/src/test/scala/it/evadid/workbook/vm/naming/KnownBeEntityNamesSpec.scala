@@ -41,15 +41,7 @@ class KnownBeEntityNamesSpec extends FunSuite {
   }
 
   test("symbolic and Python word operator aliases de-duplicate to the same BeEntityName object") {
-    val symbolicAnd = KnownBeEntityNames.byName("&&").get
-    val pythonAnd = KnownBeEntityNames.byName("and").get
-    val symbolicOr = KnownBeEntityNames.byName("||").get
-    val pythonOr = KnownBeEntityNames.byName("or").get
-    val symbolicNot = KnownBeEntityNames.byName("!").get
-    val pythonNot = KnownBeEntityNames.byName("not").get
-
-    assert(symbolicAnd eq pythonAnd)
-    assert(symbolicOr eq pythonOr)
-    assert(symbolicNot eq pythonNot)
+    for (symbolic, word) <- List("&&" -> "and", "||" -> "or", "!" -> "not") do
+      assert(KnownBeEntityNames.byName(symbolic).get eq KnownBeEntityNames.byName(word).get, clue = symbolic)
   }
 }

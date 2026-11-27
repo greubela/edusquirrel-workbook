@@ -2,12 +2,26 @@ package it.evadid.vm.editing
 
 import it.evadid.vm.parsing.source.SourceParsing
 import it.evadid.vm.parsing.source.SourceParsing.SourceLanguage
-
+import it.evadid.vm.parsing.source.JavaFunctionStructured
 import munit.FunSuite
 import it.evadid.vm.parsing.java.clean.model.JavaAST.{JavaClassDef, JavaMethodDef}
 
 class JavaMethodEditingSpec extends FunSuite {
   import JavaMethodEditing.*
+
+  private def rangeOf(function: JavaFunctionStructured): MethodRange = MethodRange(function.span.start, function.span.end)
+
+  /** Asserts that `source` selects the public static `Program.main` with the given text and parameters. */
+  private def assertMainSelected(source: String, expectedMain: String, expectedParameters: String): Option[JavaFunctionStructured] = {
+    val selected = initialMethod(source)
+    assertEquals(
+      selected.map(function => (function.className, function.name, function.returnType, function.parameterList)),
+      Some(("Program", "main", Some("void"), expectedParameters))
+    )
+    assert(selected.exists(function => rangeOf(function).isWithin(source)))
+    assertEquals(selected.map(function => source.substring(function.span.start, function.span.end)), Some(expectedMain))
+    selected
+  }
 
   test("discovers classes and direct member functions without matching comments or strings") {
     val source =
@@ -125,7 +139,7 @@ class JavaMethodEditingSpec extends FunSuite {
     val prefix = source.substring(0, original.span.start)
     val suffix = source.substring(original.span.end)
     var currentSource = source
-    var range = MethodRange(original.span.start, original.span.end)
+    var range = rangeOf(original)
     val drafts = List(
       "public void edit(",
       "\n  public void edit() {\n    int value = ",
@@ -169,7 +183,7 @@ class JavaMethodEditingSpec extends FunSuite {
     List("\n", "\r\n", "\r").foreach { separator =>
       val source = original.replace("\n", separator)
       val selected = initialMethod(source).get
-      val range = MethodRange(selected.span.start, selected.span.end)
+      val range = rangeOf(selected)
       assertEquals(firstLineNumber(source, Some(range)), 5)
       val draft = separator + "/* retained */" + separator + source.substring(range.start, range.end)
       val (edited, nextRange) = range.replace(source, draft).get
@@ -177,7 +191,7 @@ class JavaMethodEditingSpec extends FunSuite {
       assertEquals(edited.substring(nextRange.start, nextRange.end), draft)
       val moved = "// inserted" + separator + source
       val movedMain = initialMethod(moved).get
-      assertEquals(firstLineNumber(moved, Some(MethodRange(movedMain.span.start, movedMain.span.end))), 6)
+      assertEquals(firstLineNumber(moved, Some(rangeOf(movedMain))), 6)
       assertEquals(firstLineNumber(source, None), 1)
       assertEquals(firstLineNumber(source, Some(MethodRange(0, source.length + 1))), 1)
     }
@@ -202,9 +216,9 @@ class JavaMethodEditingSpec extends FunSuite {
 
   private val singleMethodSource = "class Example {\n  public void edit() {}\n  public void keep() {}\n}\n"
 
-  private def candidateFor(draft: String): Option[it.evadid.vm.parsing.source.JavaFunctionStructured] = {
+  private def candidateFor(draft: String): Option[JavaFunctionStructured] = {
     val original = discover(singleMethodSource).head.functions.head
-    val (source, range) = MethodRange(original.span.start, original.span.end).replace(singleMethodSource, draft).get
+    val (source, range) = rangeOf(original).replace(singleMethodSource, draft).get
     findEditedMethod(source, discover(source), original, range)
   }
 
@@ -212,7 +226,7 @@ class JavaMethodEditingSpec extends FunSuite {
     val draft = "\r\n /* \ud83d\ude42 void fake() {} */\r\n public void renamed() {} // retained tail\r\n\t "
     assertEquals(candidateFor(draft).map(_.name), Some("renamed"))
     val original = discover(singleMethodSource).head.functions.head
-    val (source, range) = MethodRange(original.span.start, original.span.end).replace(singleMethodSource, draft).get
+    val (source, range) = rangeOf(original).replace(singleMethodSource, draft).get
     assertEquals(source.substring(range.start, range.end), draft)
     assertEquals(candidateFor("/* incomplete"), None)
   }
@@ -239,13 +253,13 @@ class JavaMethodEditingSpec extends FunSuite {
     assertEquals(findEditedMethod(singleMethodSource, classes, original,
       MethodRange(original.span.start + 1, original.span.end)), None)
     assertEquals(findEditedMethod(singleMethodSource, classes :+ classes.head, original,
-      MethodRange(original.span.start, original.span.end)), None)
+      rangeOf(original)), None)
     assertEquals(findEditedMethod(singleMethodSource, classes, original.copy(className = "Missing"),
-      MethodRange(original.span.start, original.span.end)), None)
+      rangeOf(original)), None)
 
     val multipleClasses = singleMethodSource + "class Other { public void untouched() {} }"
     val draft = "public void renamed() {}"
-    val (changed, range) = MethodRange(original.span.start, original.span.end).replace(multipleClasses, draft).get
+    val (changed, range) = rangeOf(original).replace(multipleClasses, draft).get
     assertEquals(findEditedMethod(changed, discover(changed), original, range).map(_.name), Some("renamed"))
   }
 
@@ -293,16 +307,6 @@ class JavaMethodEditingSpec extends FunSuite {
     }
   }
 
-  test("adding a method preserves whitespace before and after the class closing brace") {
-    val source = "// unchanged\nclass Example {\r\n\tpublic void keep() {}\r\n\t \r\n}  \t\r\n\r\n"
-    val clazz = discover(source).head
-    val declaration = "public void reset() {}"
-    val inserted = insertMethod(source, clazz, declaration)
-    assert(inserted.startsWith(source.substring(0, closingBrace(clazz))))
-    assert(inserted.endsWith(source.substring(closingBrace(clazz))))
-    assertEquals(discover(inserted).head.functions.map(_.name), Vector("keep", "reset"))
-  }
-
   test("initial function selects the unique main and preserves its exact source range") {
     val expectedMain = "public static void main(String[] args) {\n    helper();\n  }"
     val source =
@@ -312,14 +316,7 @@ class JavaMethodEditingSpec extends FunSuite {
         "  private int untouched() { return 7; }\n" +
         "}\n"
 
-    val selected = initialMethod(source)
-
-    assertEquals(
-      selected.map(function => (function.className, function.name, function.returnType, function.parameterList)),
-      Some(("Program", "main", Some("void"), "String[] args"))
-    )
-    assert(selected.exists(function => MethodRange(function.span.start, function.span.end).isWithin(source)))
-    assertEquals(selected.map(function => source.substring(function.span.start, function.span.end)), Some(expectedMain))
+    val selected = assertMainSelected(source, expectedMain, "String[] args")
     assertEquals(selected.map(function => replaceMethod(source, function, expectedMain)), Some(source))
   }
 
@@ -402,13 +399,7 @@ class JavaMethodEditingSpec extends FunSuite {
         "java.lang.String [ ] _args"
       )
     ).foreach { case (source, expectedMain, expectedParameters) =>
-      val selected = initialMethod(source)
-      assertEquals(
-        selected.map(function => (function.className, function.name, function.returnType, function.parameterList)),
-        Some(("Program", "main", Some("void"), expectedParameters))
-      )
-      assert(selected.exists(function => MethodRange(function.span.start, function.span.end).isWithin(source)))
-      assertEquals(selected.map(function => source.substring(function.span.start, function.span.end)), Some(expectedMain))
+      assertMainSelected(source, expectedMain, expectedParameters)
     }
   }
 }

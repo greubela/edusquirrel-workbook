@@ -3,12 +3,15 @@ package it.evadid.vm.conversion.snapexpression
 import it.evadid.workbook.elements.interactionElements.programming.state.snap.{SnapModuleBlocks, SnapTurtleCatalog, SnapVocabulary}
 
 import it.evadid.core.datastructures.language.AppLanguage.English
-import it.evadid.vm.code.abstractions.BeExpression
+import it.evadid.core.datastructures.vectorShapes.svg.TurtleCommand
+import it.evadid.vm.BeProgram
+import it.evadid.vm.code.abstractions.{BeControlStructure, BeExpression}
 import it.evadid.vm.code.controlStructures.*
-import it.evadid.vm.code.defining.{BeDefineFunction, BeDefineVariable}
+import it.evadid.vm.code.defining.{BeDefineFunction, BeDefineVariable, BeIntrinsic}
 import it.evadid.vm.code.errors.{BeExpressionUnparsable, BeExpressionUnsupported, BeSingleLineComment}
 import it.evadid.vm.code.others.{BeReturn, BeStartProgram}
-import it.evadid.vm.code.usage.{BeAssignVariable, BeFunctionCall, BeUseValue}
+import it.evadid.vm.code.usage.{BeAssignVariable, BeCallTarget, BeFunctionCall, BeUseValue}
+import it.evadid.vm.conversion.parsed.DefaultDefinitions
 import it.evadid.vm.naming.{BeEntityName, NamingStyle}
 import it.evadid.vm.types.{BeDataType, BeDataValueLiteral, BeUseValueReference}
 import it.evadid.workbook.elements.interactionElements.programming.state.snap.SnapTurtleCatalog.SnapInputKind
@@ -120,7 +123,7 @@ object SnapControlFlow {
       case assign: BeAssignVariable =>
         isSupportedAssignment(assign, userFunctions)
       case BeReturn(Some(value)) =>
-        isSupportedValue(value, userFunctions) || isSupportedCondition(value, userFunctions)
+        isSupportedArgument(value, userFunctions)
       case BeReturn(None) => true
       case ifElse: BeIfElse =>
         isSupportedConditionSequence(ifElse.condition, userFunctions) &&
@@ -138,7 +141,7 @@ object SnapControlFlow {
       case defn: BeDefineFunction =>
         bodyHasSupported(defn.body, userFunctions)
       case seq: BeSequence =>
-        isPassSequence(seq) || seq.body.forall(containsSupportedStatement(_, userFunctions))
+        bodyHasSupported(seq, userFunctions)
       case _ => false
 
   def validateStatements(expressions: List[BeExpression]): Either[String, List[BeExpression]] =
@@ -162,7 +165,7 @@ object SnapControlFlow {
         if isSupportedAssignment(assign, userFunctions) then None
         else Some(s"${variableName(assign.target)} = ...")
       case BeReturn(Some(value)) =>
-        if isSupportedValue(value, userFunctions) || isSupportedCondition(value, userFunctions) then None
+        if isSupportedArgument(value, userFunctions) then None
         else Some("return ...")
       case BeReturn(None) => None
       case variable: BeDefineVariable =>
@@ -181,15 +184,13 @@ object SnapControlFlow {
         if !isSupportedValue(forExpr.start, userFunctions) || !isSupportedValue(forExpr.end, userFunctions) then Some("for range")
         else bodyProblems(forExpr.body, userFunctions)
       case defn: BeDefineFunction =>
-        if it.evadid.vm.BeProgram.isUnusedCode(defn) && (defn.inputs.nonEmpty || defn.outputs.exists(_.variableType != BeDataType.Unit)) then
+        if BeProgram.isUnusedCode(defn) && (defn.inputs.nonEmpty || defn.outputs.exists(_.variableType != BeDataType.Unit)) then
           Some("unusedCode must have no parameters or return value")
         else if defn.outputs.isEmpty && returnsValue(defn.body) then
           Some(s"${defn.functionTypeInfo.displayName.universalInterpretation()} returns a value but declares no result type")
         else bodyProblems(defn.body, userFunctions)
-      case seq: BeSequence if isPassSequence(seq) =>
-        None
       case seq: BeSequence =>
-        seq.body.flatMap(describeUnsupportedStatement(_, userFunctions)).headOption
+        bodyProblems(seq, userFunctions)
       case _: BeSingleLineComment => None
       case u: BeExpressionUnsupported =>
         Some(preview(u.originalSource))
@@ -203,7 +204,7 @@ object SnapControlFlow {
     case BeReturn(Some(_)) => true
     case _: BeDefineFunction => false
     case sequence: BeSequence => sequence.body.exists(returnsValue)
-    case structure: it.evadid.vm.code.abstractions.BeControlStructure => structure.allPossibleBodies.exists(returnsValue)
+    case structure: BeControlStructure => structure.allPossibleBodies.exists(returnsValue)
     case _ => false
   }
 
@@ -239,12 +240,8 @@ object SnapControlFlow {
           case innerCall: BeFunctionCall => conditionFromSnapReporter(innerCall)
           case other => other
         operatorCall("not", List(parsedInner))
-      case snap if SnapReporterToOperator.contains(snap) =>
-        val op = SnapReporterToOperator(snap)
-        val args = call.arguments
-        operatorCall(op, args)
-      case _ =>
-        call
+      case snap =>
+        SnapReporterToOperator.get(snap).map(operatorCall(_, call.arguments)).getOrElse(call)
   }
 
   /** @param userFunctions the program's own functions (name -> arity); those returning a value are Snap reporters */
@@ -286,9 +283,16 @@ object SnapControlFlow {
 
   /** A call of one of the program's own functions that returns a value: a custom reporter block in Snap. */
   private def isUserReporterCall(call: BeFunctionCall, userFunctions: Map[String, Int]): Boolean =
-    call.funcDef.outputs.nonEmpty && call.target.isInstanceOf[it.evadid.vm.code.usage.BeCallTarget.Function] &&
-      userFunctions.get(SnapExpressionSupport.pythonName(call)).exists(arity =>
-        call.arguments.take(arity).forall(argument => isSupportedValue(argument, userFunctions) || isSupportedCondition(argument, userFunctions)))
+    call.funcDef.outputs.nonEmpty && call.target.isInstanceOf[BeCallTarget.Function] &&
+      userFunctions.get(SnapExpressionSupport.pythonName(call)).exists(arity => hasSupportedArguments(call, arity, userFunctions))
+
+  /** A value or condition, as user-function arguments and returned values may be. */
+  private def isSupportedArgument(expression: BeExpression, userFunctions: Map[String, Int]): Boolean =
+    isSupportedValue(expression, userFunctions) || isSupportedCondition(expression, userFunctions)
+
+  /** Extra call arguments are dropped on write-back; missing ones become empty slots. */
+  private def hasSupportedArguments(call: BeFunctionCall, arity: Int, userFunctions: Map[String, Int]): Boolean =
+    call.arguments.take(arity).forall(isSupportedArgument(_, userFunctions))
 
   def isSupportedAssignment(assign: BeAssignVariable, userFunctions: Map[String, Int] = Map.empty): Boolean =
     variableName(assign.target).nonEmpty &&
@@ -410,19 +414,19 @@ object SnapControlFlow {
 
   /** `sqrt(value)` and `random()`, which Snap writes as `sqrt of` and `pick random`. */
   def isMathReporter(call: BeFunctionCall): Boolean =
-    call.funcDef.intrinsic.exists(Set(it.evadid.vm.code.defining.BeIntrinsic.SquareRoot, it.evadid.vm.code.defining.BeIntrinsic.Random))
+    call.funcDef.intrinsic.exists(Set(BeIntrinsic.SquareRoot, BeIntrinsic.Random))
 
   /** `sqrt(value)` or `random()` as the program's built-in call. */
   def mathCall(name: String, arguments: List[BeExpression]): BeFunctionCall = {
-    val definition = it.evadid.vm.conversion.parsed.DefaultDefinitions.builtinFunctionsByName(name)
+    val definition = DefaultDefinitions.builtinFunctionsByName(name)
     BeFunctionCall.fromDefinition(definition, definition.inputs.zip(arguments).toMap)
   }
 
   /** `str(value)`; Snap's `join` converts on its own. */
-  def isToText(call: BeFunctionCall): Boolean = call.funcDef.intrinsic.contains(it.evadid.vm.code.defining.BeIntrinsic.ToText)
+  def isToText(call: BeFunctionCall): Boolean = call.funcDef.intrinsic.contains(BeIntrinsic.ToText)
 
   private def toText(value: BeExpression): BeFunctionCall = {
-    val definition = it.evadid.vm.conversion.parsed.DefaultDefinitions.builtinFunctionsByName("str")
+    val definition = DefaultDefinitions.builtinFunctionsByName("str")
     BeFunctionCall.fromDefinition(definition, definition.inputs.map(_ -> value).toMap)
   }
 
@@ -440,21 +444,20 @@ object SnapControlFlow {
 
   /** Problems of a call that stands alone as a command; inputs are checked by [[isSupportedValue]]. */
   private def callProblems(call: BeFunctionCall, userFunctions: Map[String, Int]): Option[String] = {
-    if SnapExpressionSupport.pythonName(call) == it.evadid.vm.BeProgram.unusedCodeName.universalInterpretation() then
+    val name = SnapExpressionSupport.pythonName(call)
+    if name == BeProgram.unusedCodeName.universalInterpretation() then
       Some("unusedCode is reserved for detached scripts and cannot be called")
     else if SnapModuleBlocks.of(call.funcDef).nonEmpty then moduleCallProblems(call, userFunctions)
-    else if !call.target.isInstanceOf[it.evadid.vm.code.usage.BeCallTarget.Function] &&
-        !it.evadid.core.datastructures.vectorShapes.svg.TurtleCommand.isTurtleMethod(call.funcDef) &&
-        !call.funcDef.intrinsic.contains(it.evadid.vm.code.defining.BeIntrinsic.Print) then
+    else if !call.target.isInstanceOf[BeCallTarget.Function] &&
+        !TurtleCommand.isTurtleMethod(call.funcDef) &&
+        !call.funcDef.intrinsic.contains(BeIntrinsic.Print) then
       Some("object methods and constructors have no Snap block representation")
-    else if call.isOperator then Some(s"${SnapExpressionSupport.pythonName(call)}(...)")
+    else if call.isOperator then Some(s"$name(...)")
     else
-      val name = SnapExpressionSupport.pythonName(call)
-      val args = call.arguments
       SnapTurtleCatalog.primitiveByPythonName.get(name) match
         case Some(primitive) =>
-          SnapTurtleCatalog.validateCallArity(name, args.size).orElse {
-            val invalidSlot = args.zip(primitive.inputKinds).find { (arg, kind) =>
+          SnapTurtleCatalog.validateCallArity(name, call.arguments.size).orElse {
+            val invalidSlot = call.arguments.zip(primitive.inputKinds).find { (arg, kind) =>
               !SnapInputCodec.isValidForKind(kind, arg, userFunctions)
             }
             invalidSlot match
@@ -466,12 +469,8 @@ object SnapControlFlow {
           userFunctions.get(name) match
             case Some(_) if call.funcDef.outputs.nonEmpty =>
               Some(s"$name(...) reports a value; Snap has no command block for a reporter")
-            case Some(expected) =>
-              // Extra call args are dropped on write-back; missing ones become empty slots.
-              if args.take(expected).forall(argument => isSupportedValue(argument, userFunctions) || isSupportedCondition(argument, userFunctions)) then None
-              else Some(s"$name(...)")
-            case None =>
-              Some(s"$name(...)")
+            case Some(arity) if hasSupportedArguments(call, arity, userFunctions) => None
+            case _ => Some(s"$name(...)")
   }
 
   private def bodyHasSupported(sequence: BeSequence, userFunctions: Map[String, Int] = Map.empty): Boolean =

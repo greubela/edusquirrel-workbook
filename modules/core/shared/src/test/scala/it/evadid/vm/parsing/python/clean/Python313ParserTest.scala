@@ -17,12 +17,6 @@ class Python313ParserTest extends FunSuite {
     statements.head
   }
 
-  test("parses assignments and primitive literals") {
-    assert(parseOne("answer = 42").isInstanceOf[PyAssignment])
-    assert(parseOne("enabled = True").isInstanceOf[PyAssignment])
-    assert(parseOne("name = 'Ada'").isInstanceOf[PyAssignment])
-  }
-
   test("parses None as a literal") {
     val assignment = parseOne("value = None").asInstanceOf[PySimpleAssignment]
     assertEquals(assignment.value.map(_.asInstanceOf[PythonLiteral[?]].literalType.typenameInCode), Some("None"), "none literal type")

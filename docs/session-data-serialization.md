@@ -59,12 +59,12 @@ See [interaction formats](interaction-format.md) and [state ownership](state-and
 Round-trip coverage lives in `WorkbookSerializerSpec` (JSON, MessagePack, nested
 structure, prerequisites, wrong-root rejection and definition/history separation)
 and `WorkbookDefinitionsSpec` (every authored catalogue workbook plus the design
-workbook). `SessionDataRoundTripSpec` exports answers, reads the file back and continues
-the session in a fresh client. Shared tests run on both JVM and Scala.js:
+workbook). `SessionFileJourneySpec` downloads a session file and continues it in a fresh page
+with nobody signed in. Shared tests run on both JVM and Scala.js:
 
 ```sh
 sbt 'coreJVM/testOnly *WorkbookSerializerSpec' 'coreJS/testOnly *WorkbookSerializerSpec'
-sbt 'client/testOnly *WorkbookDefinitionsSpec *SessionDataRoundTripSpec'
+sbt 'client/testOnly *WorkbookDefinitionsSpec *SessionFileJourneySpec'
 ```
 
 ## Client ownership

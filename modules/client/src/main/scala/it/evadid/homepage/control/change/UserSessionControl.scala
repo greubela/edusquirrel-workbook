@@ -35,37 +35,37 @@ final class UserSessionControl(val fullInfo: FullInfo) {
 
   private def tryServerLoginWith(userMail: String, token: Either[SingleAccessToken, SignedToken], cachedCredentials: UserCredentials = UserCredentials()): Future[?] = {
     val loginReq = LoginRequest(userMail.trim.toLowerCase, token)
-    val backend = token.match {
-      case Left(sat) => fullInfo.defaults.backendExecutor
-      case Right(sig) => fullInfo.defaults.backendExecutorWithCredentials(Some(sig))
+    val backend = token match {
+      case Left(_) => fullInfo.defaults.backendExecutor
+      case Right(signed) => fullInfo.defaults.backendExecutorWithCredentials(Some(signed))
     }
     val loginRes: Future[ExecutionSuccess[LoginResponse]] = UserCommands.loginCommand.sendCommandTo(backend, loginReq)
-    loginRes.flatMap {
-      case (exInfo: ExecutionSuccess[LoginResponse]) =>
-        val loginResponse = exInfo.result
-        val userInfoOp = loginResponse.allUserInfo
-        if (!loginResponse.userKnown) {
+    loginRes.flatMap { exInfo =>
+      val loginResponse = exInfo.result
+      loginFailureKey(loginResponse) match {
+        case Some(messageKey) =>
           clearSavedLogin()
-          throw AuthenticationFailure("login/errorUnknownUser")
-        } else if (!loginResponse.tokenValid) {
-          clearSavedLogin()
-          throw AuthenticationFailure("login/errorInvalidToken")
-        } else if (userInfoOp.isEmpty) {
-          clearSavedLogin()
-          throw AuthenticationFailure("login/errorLogin")
-        } else {
-          logger.logInfo(s"Successfully logged in for ${userInfoOp.get.user}")
-          changeUser(userInfoOp.map { info =>
+          throw AuthenticationFailure(messageKey)
+        case None =>
+          logger.logInfo(s"Successfully logged in for ${loginResponse.allUserInfo.get.user}")
+          changeUser(loginResponse.allUserInfo.map { info =>
             info.copy(credentials = cachedCredentials.copy(
               signedBackendToken = info.credentials.signedBackendToken,
               singleAccessToken = token.left.toOption.orElse(cachedCredentials.singleAccessToken)))
           })
-        }
+      }
     }.recoverWith { case err =>
       logger.logExceptionWarn("login attempt failed", err)
       Future.failed(err)
     }
   }
+
+  /** The login page's message for a response that does not sign the user in. */
+  private def loginFailureKey(response: LoginResponse): Option[String] =
+    if !response.userKnown then Some("login/errorUnknownUser")
+    else if !response.tokenValid then Some("login/errorInvalidToken")
+    else if response.allUserInfo.isEmpty then Some("login/errorLogin")
+    else None
 
   private def clearSavedLogin(): Unit = {
     storage.saveSession(None)
@@ -105,18 +105,17 @@ final class UserSessionControl(val fullInfo: FullInfo) {
   /** An online account is never continued as a local profile: if it cannot be signed in, the login page
     * shows its name and email.
     */
-  def tryLoginOrLocalRegistration(withUser: Option[User], withConfig: Option[UserConfig]): Future[Unit] = {
-    if (withUser.nonEmpty && withConfig.nonEmpty && withConfig.get.isOnlineAccount) {
-      logger.logInfo("TryLoginOrLocalRegistration -> requested with online account, trying to log in")
-      tryOnlineRegistration(withUser.get.name, withUser.get.mail).recoverWith { case err =>
-        logger.logExceptionWarn(s"Could not sign in ${withUser.get}; the login page shows the account instead", err)
-        rememberIdentity(withUser.get)
-        Future.failed(err)
-      }
-    } else {
-      tryLocalRegistration(withUser, withConfig)
+  def tryLoginOrLocalRegistration(withUser: Option[User], withConfig: Option[UserConfig]): Future[Unit] =
+    (withUser, withConfig) match {
+      case (Some(user), Some(config)) if config.isOnlineAccount =>
+        logger.logInfo("TryLoginOrLocalRegistration -> requested with online account, trying to log in")
+        tryOnlineRegistration(user.name, user.mail).recoverWith { case err =>
+          logger.logExceptionWarn(s"Could not sign in $user; the login page shows the account instead", err)
+          rememberIdentity(user)
+          Future.failed(err)
+        }
+      case _ => tryLocalRegistration(withUser, withConfig)
     }
-  }
 
   /** Completes once the local profile is the page's user. */
   def tryLocalRegistration(withUser: Option[User], withConfig: Option[UserConfig]): Future[Unit] = Future {
@@ -136,14 +135,14 @@ final class UserSessionControl(val fullInfo: FullInfo) {
         .sendCommandTo(fullInfo.defaults.backendExecutor, CreateAccountRequest(user))
         .flatMap { exInfo =>
           val result = exInfo.result
-          if (!result.accountCreated) {
-            logger.logWarn("registration refused: account already exists")
-            Future.failed(AuthenticationFailure("login/errorAccountExists"))
-          } else if (result.token.isEmpty) {
-            Future.failed(AuthenticationFailure("login/errorRegistration"))
-          } else {
-            val aui = AllUserInfo(result.token.get.info.user, UserCredentials(signedBackendToken = result.token), user.config)
-            changeUser(Some(aui)).map(_ => ())
+          result.token match {
+            case _ if !result.accountCreated =>
+              logger.logWarn("registration refused: account already exists")
+              Future.failed(AuthenticationFailure("login/errorAccountExists"))
+            case None => Future.failed(AuthenticationFailure("login/errorRegistration"))
+            case Some(token) =>
+              val aui = AllUserInfo(token.info.user, UserCredentials(signedBackendToken = result.token), user.config)
+              changeUser(Some(aui)).map(_ => ())
           }
         }.recoverWith { case err =>
           logger.logExceptionWarn("registration attempt failed", err)

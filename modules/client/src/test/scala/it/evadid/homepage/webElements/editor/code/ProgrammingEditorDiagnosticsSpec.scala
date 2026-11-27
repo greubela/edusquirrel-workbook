@@ -2,25 +2,13 @@ package it.evadid.homepage.webElements.editor.code
 
 import it.evadid.core.datastructures.language.AppLanguage.{Java, Python, SnapLanguage}
 import munit.FunSuite
-import com.raquo.airstream.state.Var
-import com.raquo.airstream.ownership.ManualOwner
 import it.evadid.core.datastructures.language.AppLanguage
-import it.evadid.core.datastructures.vectorShapes.svg.TurtleCommand
-import it.evadid.workbook.elements.interactionElements.programming.state.*
-import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseRegular.*
-import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseTurtle.*
 import scala.concurrent.{Future, Promise}
-import scala.scalajs.concurrent.JSExecutionContext.Implicits.queue
 import scala.scalajs.js
 import it.evadid.homepage.webElements.editor.code.codemirror.CodeMirrorEditor
 import it.evadid.facades.internal.CodeMirrorDiagnostics
 
 class ProgrammingEditorDiagnosticsSpec extends FunSuite {
-  test("ProgrammingState converts itself at the Snap editor boundary") {
-    val snap = ProgrammingStateRaw(Python, "forward(10)").toSnapXml
-    assert(snap.code.contains("<project"), clue = snap.code.take(120))
-    assert(snap.code.contains("forward"), clue = snap.code)
-  }
 
   test("CodeMirror maps Java and Python independently") {
     assertEquals(CodeMirrorEditor.languageToJs(AppLanguage.Java), "java")

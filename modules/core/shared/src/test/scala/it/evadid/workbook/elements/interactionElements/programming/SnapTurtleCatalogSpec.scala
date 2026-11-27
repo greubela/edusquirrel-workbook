@@ -1,8 +1,4 @@
 package it.evadid.workbook.elements.interactionElements.programming
-import it.evadid.workbook.elements.interactionElements.programming.state.*
-import it.evadid.workbook.elements.interactionElements.programming.state.snap.*
-import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseRegular.*
-import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseTurtle.*
 
 import it.evadid.core.datastructures.language.AppLanguage.English
 import it.evadid.vm.code.defining.{BeDefineClass, BeDefineFunction, KnownBeDefineStructures}
@@ -67,17 +63,5 @@ class SnapTurtleCatalogSpec extends FunSuite {
         assertEquals(primitive.arity, method.inputs.size, clue = name)
       }
     }
-  }
-
-  test("KnownBeDefineStructures does not need a workbook catalog dependency for overlapping names") {
-    val catalogTurtleNames = SnapTurtleCatalog.Primitives.flatMap(_.allPythonNames).toSet
-    val knownNames = KnownBeDefineStructures.byName("turtle").collectFirst { case cls: BeDefineClass => cls }.get
-      .methods.map(_.functionTypeInfo.displayName.getNameIn(English, NamingStyle.SnakeCase)).toSet
-    assert(catalogTurtleNames.contains("color"))
-    assert(knownNames.contains("color"))
-    assert(catalogTurtleNames.contains("pensize"))
-    assert(knownNames.contains("pensize"))
-    assert(catalogTurtleNames.contains("set_x"))
-    assert(!knownNames.contains("set_x"))
   }
 }

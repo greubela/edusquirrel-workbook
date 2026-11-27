@@ -19,7 +19,7 @@ class SqlSchemaSpec extends FunSuite {
     assertEquals(samples.map(_.ordinal).toSet, (0 until constValue[Tuple.Size[mirror.MirroredElemLabels]]).toSet)
   }
 
-  test("each type's canonical SQL reads back to the same type, and its codec round-trips") {
+  test("each type's canonical SQL reads back to the same type") {
     samples.foreach { sample =>
       assertEquals(sample.problem, None, sample.toString)
       assertEquals(MySqlType.fromSql(sample.sql), Some(sample), sample.sql)
@@ -60,7 +60,7 @@ class SqlSchemaSpec extends FunSuite {
   }
 
   test("column and table identifiers are restricted to safe SQL identifiers") {
-    List("1abc", "a-b", "a b", "a;DROP TABLE x", "", "x" * 65).foreach { name =>
+    List("1abc", "a-b", "a b", "a;DROP TABLE x", "commandLog`; DROP TABLE user; --", "", "x" * 65).foreach { name =>
       intercept[IllegalArgumentException](DatabaseColumn(name, Json))
       intercept[IllegalArgumentException](DatabaseTable(name))
     }

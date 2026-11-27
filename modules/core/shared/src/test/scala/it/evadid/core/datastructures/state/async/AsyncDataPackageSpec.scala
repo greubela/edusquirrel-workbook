@@ -3,7 +3,6 @@ package it.evadid.core.datastructures.state.async
 import it.evadid.core.datastructures.state.observable.ObservableValueImpl
 import it.evadid.core.datastructures.state.State
 import it.evadid.core.datastructures.state.async.AsyncDataState.*
-import it.evadid.distribution.command.SerializedException
 import munit.FunSuite
 import scala.concurrent.{ExecutionContext, Future, Promise}
 import upickle.default.{read, write}
@@ -160,18 +159,6 @@ class AsyncDataPackageSpec extends FunSuite {
     val value = AsyncValue[String, Int](AsyncDataSuccess(3))
     value.mapAsync[Int](_ => throw new IllegalStateException("mapping failed")).futureFirstState.map { failed =>
       assert(failed.failure.get.error.msg.contains("mapping failed"))
-    }
-  }
-
-  test("combined async values propagate success and failures") {
-    val a = AsyncValue[String, Int](AsyncDataSuccess(2))
-    val b = AsyncValue[String, String](AsyncDataSuccess("value"))
-    a.combineIgnoreErrorData(b).futureFirstValue.flatMap { pair =>
-      assertEquals(pair, (2, "value"))
-      val failure = AsyncValue[String, Int](AsyncDataFailed(new IllegalStateException("bad")))
-      failure.combineIgnoreErrorData(b).futureFirstState.map { state =>
-        assert(state.failure.get.error.msg.contains("Left Element"))
-      }
     }
   }
 

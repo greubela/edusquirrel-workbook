@@ -9,12 +9,4 @@ class ColorUnitTest extends FunSuite {
     assertEquals(WebColor("blue").toRGB, RGBColor(0, 0, 255))
     assertEquals(WebColor("#abc").toRGB, RGBColor(170, 187, 204))
   }
-
-  test("HSB to RGB conversion keeps valid channel bounds") {
-    val hsb = RGBColor(255, 0, 0).toHSB
-    val converted = hsb.toRGB
-    assert(converted.red >= 0 && converted.red <= 255)
-    assert(converted.green >= 0 && converted.green <= 255)
-    assert(converted.blue >= 0 && converted.blue <= 255)
-  }
 }

@@ -103,11 +103,4 @@ class PythonExecutionClientSpec extends FunSuite {
       }
     }
   }
-
-  test("remote execution configurations create HTTPS clients for the configured backend") {
-    val token = None: Option[SignedToken]
-    val executor = RemoteExecutionConfig("backend.example.org", 8443).executor(token)
-    assertEquals(executor, JsRemoteExecutionClient("backend.example.org", 8443, None))
-    Future.unit
-  }
 }

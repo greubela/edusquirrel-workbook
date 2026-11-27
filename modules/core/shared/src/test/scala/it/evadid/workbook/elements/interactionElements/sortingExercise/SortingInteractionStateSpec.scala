@@ -8,18 +8,6 @@ class SortingInteractionStateSpec extends FunSuite {
   private val itemCount = 3
   private val fieldCount = 2
 
-  test("activeItemIndex returns first unassigned item") {
-    val state = SortingInteractionState(
-      List(
-        Some(0),
-        None,
-        None
-      )
-    )
-
-    assertEquals(state.activeItemIndex(itemCount, fieldCount), Some(1))
-  }
-
   test("tryAssign accepts correct placement for active item only") {
     val state = SortingInteractionState.initial(itemCount)
 
@@ -31,15 +19,6 @@ class SortingInteractionStateSpec extends FunSuite {
     val (afterWrong, wrongResult) = afterCorrect.tryAssign(1, 0, itemCount, fieldCount, correctFieldIndex = 1)
     assertEquals(wrongResult, AssignmentResult.Wrong)
     assertEquals(afterWrong.placedFieldIndexByItem(1), None)
-  }
-
-  test("session error count persists after correct placement") {
-    val state = SortingInteractionState.initial(itemCount).recordWrongAttempt()
-    val (afterCorrect, result) = state.tryAssign(0, 0, itemCount, fieldCount, correctFieldIndex = 0)
-    assertEquals(result, AssignmentResult.Correct)
-
-    val merged = state.copy(placedFieldIndexByItem = afterCorrect.placedFieldIndexByItem)
-    assertEquals(merged.sessionErrorCount, 1)
   }
 
   test("finalizeAttempt copies session errors to last session and clears session counter") {

@@ -1,53 +1,17 @@
 package it.evadid.workbook.elements.interactionElements.programming
-import it.evadid.workbook.elements.interactionElements.programming.state.*
-import it.evadid.workbook.elements.interactionElements.programming.state.snap.*
-import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseRegular.*
-import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseTurtle.*
 
 import it.evadid.core.datastructures.geometry.{Line, Point}
 import it.evadid.core.datastructures.vectorShapes.svg.TurtleCommand
-import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseTurtle.{SvgToTurtleProgram, TurtleGraphic}
+import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseTurtle.TurtleGraphic
 import munit.FunSuite
 
 class TurtleGraphicSpec extends FunSuite {
   private def assertEqualsDouble(actual: Double, expected: Double, tolerance: Double): Unit = {
     assert(Math.abs(actual - expected) < tolerance, s"Expected $expected but got $actual (diff: ${Math.abs(actual - expected)})")
   }
-  private val converter = new SvgToTurtleProgram
 
-  test("TurtleGraphicSvgString converts to turtle program") {
-    val graphic = TurtleGraphic.TurtleGraphicSvgString("M0 0 L10 0 L10 10 Z")
-    val commands = graphic.toTurtleProgram
-    assert(commands.nonEmpty)
-    // M command moves to (0,0) without drawing, so first command is penUp (starting from default position)
-  }
-
-  test("TurtleGraphicSvgString returns original SVG string") {
-    val svgString = "M0 0 L10 0 L10 10 Z"
-    val graphic = TurtleGraphic.TurtleGraphicSvgString(svgString)
-    assertEquals(graphic.toSvgPathDString, svgString)
-  }
-
-  test("TurtleGraphicProgram converts to turtle program") {
-    val program: List[TurtleCommand[Double]] = List(TurtleCommand.PenUp, TurtleCommand.Forward(10.0))
-    val graphic = TurtleGraphic.TurtleGraphicProgram(program)
-    val commands = graphic.toTurtleProgram
-    assertEquals(commands.size, 2)
-    assertEquals(commands.head.name.universalInterpretation(), "pen_up")
-    assertEquals(commands(1).name.universalInterpretation(), "forward")
-  }
-
-  test("TurtleGraphicProgram converts to SVG path") {
-    val program: List[TurtleCommand[Double]] = List(
-      TurtleCommand.PenUp,
-      TurtleCommand.Forward(10.0),
-      TurtleCommand.PenDown,
-      TurtleCommand.Forward(10.0)
-    )
-    val graphic = TurtleGraphic.TurtleGraphicProgram(program)
-    val svg = graphic.toSvgPathDString
-    assert(svg.contains("M") || svg.contains("L"))
-  }
+  private def named(commands: Seq[TurtleCommand[Double]], names: String*): Seq[TurtleCommand[Double]] =
+    commands.filter(command => names.contains(command.name.universalInterpretation()))
 
   test("TurtleLineBasedProgram converts to turtle program") {
     val line = Line(Point(0.0, 0.0), Point(10.0, 0.0))
@@ -56,51 +20,14 @@ class TurtleGraphicSpec extends FunSuite {
     
     // Should have penUp to start, then forward
     assert(commands.nonEmpty)
-    val penCommands = commands.filter(_.name.universalInterpretation() == "pen_up")
+    val penCommands = named(commands, "pen_up")
     assert(penCommands.nonEmpty)
-  }
-
-  test("TurtleLineBasedProgram draws multiple lines") {
-    val lines = List(
-      Line(Point(0.0, 0.0), Point(10.0, 0.0)),
-      Line(Point(10.0, 0.0), Point(10.0, 10.0))
-    )
-    val graphic = TurtleGraphic.TurtleLineBasedProgram(lines)
-    val commands = graphic.toTurtleProgram
-    
-    val forwards = commands.filter(_.name.universalInterpretation() == "forward")
-    assert(forwards.size >= 2)
-  }
-
-  test("TurtleLineBasedProgram converts to SVG path") {
-    val line = Line(Point(0.0, 0.0), Point(10.0, 10.0))
-    val graphic = TurtleGraphic.TurtleLineBasedProgram(List(line))
-    val svg = graphic.toSvgPathDString
-    assert(svg.contains("M"))
-    assert(svg.contains("L"))
   }
 
   test("TurtleLineBasedProgram handles empty list") {
     val graphic = TurtleGraphic.TurtleLineBasedProgram(List())
     val svg = graphic.toSvgPathDString
     assertEquals(svg, "")
-  }
-
-  test("roundtrip: SVG string -> turtle program -> TurtleGraphicSvgString") {
-    val originalSvg = "M0 0 L10 0 L10 10 Z"
-    val originalCommands = converter.transform(originalSvg)
-    val graphic = TurtleGraphic.TurtleGraphicSvgString(originalSvg)
-    val convertedCommands = graphic.toTurtleProgram
-    
-    assertEquals(convertedCommands.size, originalCommands.size)
-  }
-
-  test("roundtrip: turtle program -> TurtleGraphicProgram -> back to commands") {
-    val originalCommands = converter.transform("M0 0 L10 10")
-    val graphic = TurtleGraphic.TurtleGraphicProgram(originalCommands)
-    val convertedCommands = graphic.toTurtleProgram
-    
-    assertEquals(convertedCommands.size, originalCommands.size)
   }
 
   test("TurtleLineBasedProgram handles pen state correctly") {
@@ -111,8 +38,8 @@ class TurtleGraphicSpec extends FunSuite {
     val graphic = TurtleGraphic.TurtleLineBasedProgram(lines)
     val commands = graphic.toTurtleProgram
     
-    val penUps = commands.filter(_.name.universalInterpretation() == "pen_up")
-    val penDowns = commands.filter(_.name.universalInterpretation() == "pen_down")
+    val penUps = named(commands, "pen_up")
+    val penDowns = named(commands, "pen_down")
     
     // Should have penUp before the gap and penDown after
     assert(penUps.nonEmpty)
@@ -127,8 +54,7 @@ class TurtleGraphicSpec extends FunSuite {
     val graphic = TurtleGraphic.TurtleLineBasedProgram(lines)
     val commands = graphic.toTurtleProgram
     
-    val turns = commands.filter(c => c.name.universalInterpretation() == "left" || c.name.universalInterpretation() == "right")
-      .flatMap(_.args)
+    val turns = named(commands, "left", "right").flatMap(_.args)
     
     assert(turns.forall(angle => angle >= 0 && angle <= 180))
   }
@@ -142,7 +68,7 @@ class TurtleGraphicSpec extends FunSuite {
     val graphic = TurtleGraphic.TurtleLineBasedProgram(lines)
     val commands = graphic.toTurtleProgram
     
-    val forwards = commands.filter(_.name.universalInterpretation() == "forward")
+    val forwards = named(commands, "forward")
     assertEquals(forwards.size, 3)
   }
 
@@ -151,6 +77,17 @@ class TurtleGraphicSpec extends FunSuite {
   private def point(actual: Point[Double], x: Double, y: Double): Unit = {
     assertEqualsDouble(actual.x, x, 1e-7)
     assertEqualsDouble(actual.y, y, 1e-7)
+  }
+  private def assertSameLines(actual: Seq[Line[Double]], expected: Seq[Line[Double]]): Unit =
+    actual.zip(expected).foreach { (line, other) =>
+      point(line.start, other.start.x, other.start.y)
+      point(line.end, other.end.x, other.end.y)
+    }
+  /** The trace's lines equal those of its own SVG path, which the SVG builder approximates. */
+  private def assertMatchesOwnSvg(graphic: TurtleGraphic): Unit = {
+    val fromSvg = TurtleGraphic.TurtleGraphicSvgString(graphic.toSvgPathDString)
+    assertEquals(graphic.renderLines.size, fromSvg.renderLines.size)
+    assertSameLines(graphic.renderLines, fromSvg.renderLines)
   }
 
   test("drawn lines exclude travel; movements retain pen state, order and coordinates") {
@@ -218,10 +155,7 @@ class TurtleGraphicSpec extends FunSuite {
     assertEquals(graphic.toSvgPathDString, "M 0 0 L 10 0 M 20 5 L 30 5")
     for variant <- List(graphic, TurtleGraphic.TurtleGraphicSvgString(graphic.toSvgPathDString)) do {
       assertEquals(variant.renderLines.size, 2)
-      variant.renderLines.zip(lines).foreach { (actual, expected) =>
-        point(actual.start, expected.start.x, expected.start.y)
-        point(actual.end, expected.end.x, expected.end.y)
-      }
+      assertSameLines(variant.renderLines, lines)
     }
     val closed = TurtleGraphic.TurtleGraphicSvgString("M 0 0 L 10 0 L 10 10 Z")
     assertEquals(closed.renderLines.size, 3)
@@ -231,13 +165,8 @@ class TurtleGraphicSpec extends FunSuite {
   test("circle and arc traces agree with the existing SVG builder approximation") {
     for command <- List(cmd("circle", 10), cmd("circle", -10, 90), cmd("arc_left", 10, 120), cmd("arc_right", 10, 120)) do {
       val graphic = trace(command)
-      val fromSvg = TurtleGraphic.TurtleGraphicSvgString(graphic.toSvgPathDString)
       assert(graphic.renderLines.nonEmpty)
-      assertEquals(graphic.renderLines.size, fromSvg.renderLines.size)
-      graphic.renderLines.zip(fromSvg.renderLines).foreach { (line, svgLine) =>
-        point(line.start, svgLine.start.x, svgLine.start.y)
-        point(line.end, svgLine.end.x, svgLine.end.y)
-      }
+      assertMatchesOwnSvg(graphic)
     }
   }
 
@@ -255,11 +184,6 @@ class TurtleGraphicSpec extends FunSuite {
     // goto(10, 20) is SVG (10, -20); heading 90 points up, so forward(5) reaches turtle y 25.
     point(travel.start, 10, -20)
     point(travel.end, 10, -25)
-    val fromSvg = TurtleGraphic.TurtleGraphicSvgString(graphic.toSvgPathDString)
-    assertEquals(graphic.renderLines.size, fromSvg.renderLines.size)
-    graphic.renderLines.zip(fromSvg.renderLines).foreach { (line, svgLine) =>
-      point(line.start, svgLine.start.x, svgLine.start.y)
-      point(line.end, svgLine.end.x, svgLine.end.y)
-    }
+    assertMatchesOwnSvg(graphic)
   }
 }

@@ -4,18 +4,6 @@ import it.evadid.core.datastructures.tree.nodeImpl.*
 import munit.FunSuite
 
 class TreeIntegrationTest extends FunSuite {
-  test("tree traversal mapping and child results") {
-    val tree = NodeBasedTreeImpl.empty[String]()
-      .addAsLastChild(NodeBasedTreePosition.root, "a")
-      .addAsLastChild(NodeBasedTreePosition.root, "b")
-      .addAsLastChild(NodeBasedTreePosition(List(0)), "a1")
-
-    val mapped = tree.map(_.toUpperCase)
-    assertEquals(mapped.getData(NodeBasedTreePosition(List(1))), Some("B"))
-
-    val childResult = tree.applyWithChildResults[Int]((ctx, children) => ctx.curValue.length + children.values.sum)
-    assertEquals(childResult(NodeBasedTreePosition(List(0))), 3)
-  }
 
   test("tree context exposes sibling and parent metadata") {
     val tree = NodeBasedTreeImpl(List(

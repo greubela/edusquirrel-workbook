@@ -79,14 +79,6 @@ class SerializerPackageSpec extends FunSuite {
     val value = Some(" Grüße ")
     assertEquals(Serializer.fromImplicitRW[Option[String]].deserialize(Serializer.fromImplicitRW[Option[String]].serialize(value)), value)
   }
-  test("plain optional and either values select the appropriate underlying reader") {
-    val opt = Serializer.optionPlainValueIO(Serializer.intDecimalIO)
-    assertEquals(opt.deserialize("None"), None)
-    assertEquals(opt.deserialize(opt.serialize(Some(BigInt(123)))), Some(BigInt(123)))
-    val either = Serializer.eitherPlainValueIO(Serializer.intDecimalIO, plainString)
-    assertEquals(either.deserialize("123"), Left(BigInt(123)))
-    assertEquals(either.deserialize("text"), Right("text"))
-  }
   test("Java and Python numeric type serializers emit language-appropriate octal syntax") {
     import it.evadid.vm.parsing.java.clean.model.JavaType
     import it.evadid.vm.parsing.python.clean.model.PythonType

@@ -90,27 +90,10 @@ object TurtleDrawingGrading {
   private def checkedDrawing(graphic: TurtleGraphic): Drawing = {
     val commands = graphic.toTurtleProgram
     if commands.size > maxCommands then tooLarge()
-    var traceWork = 0L
-    commands.foreach { command =>
-      val name = command.name.universalInterpretation()
-      val geometry = commandArity.get(name).exists(_.contains(command.args.size)) && command.stringArgs.isEmpty
-      val decoration = SnapTurtleCatalog.primitiveByPythonName.get(name).exists { primitive =>
-        Set(SnapTurtleCatalog.PaletteTab.Pen, SnapTurtleCatalog.PaletteTab.Control).contains(primitive.tab) &&
-          command.args.size + command.stringArgs.size == primitive.arity
-      } || Set("color", "pencolor", "setcolor").contains(name) && command.args.size == 3 && command.stringArgs.isEmpty ||
-        Set("showturtle", "st", "hideturtle", "ht").contains(name) && command.args.isEmpty && command.stringArgs.isEmpty
-      if (!geometry && !decoration) || command.args.exists(!_.isFinite) then
-        throw IllegalArgumentException("This drawing uses commands that cannot be compared yet.")
-      val work = name match {
-        case "circle" | "arc" | "arcleft" | "arc_left" | "arcright" | "arc_right" =>
-          val steps = math.max(8L, math.round(math.abs(command.args.lift(1).getOrElse(360.0)) / 10.0))
-          if steps > 10000 then tooLarge()
-          steps
-        case "dot" => 256L
-        case _ => if geometry then 1L else 0L
-      }
-      traceWork += work
+    commands.foldLeft(0L) { (total, command) =>
+      val traceWork = total + checkedTraceWork(command)
       if traceWork > maxSamples then tooLarge()
+      traceWork
     }
     val movements = graphic.renderMovements.toList
     if movements.size > maxSamples then tooLarge()
@@ -119,7 +102,36 @@ object TurtleDrawingGrading {
     }
     val lines = selected.map((movement, _) => Segment(movement.start, movement.end))
     val lineIndexes = selected.zipWithIndex.map { case ((_, original), rendered) => original -> rendered }.toMap
-    val points = movements.flatMap(movement => List(movement.start, movement.end)) :+ Point(0.0, 0.0)
+    checkDisplayRange(movements.flatMap(movement => List(movement.start, movement.end)) :+ Point(0.0, 0.0))
+    Drawing(graphic, lines, lineIndexes)
+  }
+
+  /** The tracing work of one comparable command; rejects commands that cannot be compared or are too large. */
+  private def checkedTraceWork(command: TurtleCommand[Double]): Long = {
+    val name = command.name.universalInterpretation()
+    val geometry = commandArity.get(name).exists(_.contains(command.args.size)) && command.stringArgs.isEmpty
+    if (!geometry && !isDecoration(name, command)) || command.args.exists(!_.isFinite) then
+      throw IllegalArgumentException("This drawing uses commands that cannot be compared yet.")
+    name match {
+      case "circle" | "arc" | "arcleft" | "arc_left" | "arcright" | "arc_right" =>
+        val steps = math.max(8L, math.round(math.abs(command.args.lift(1).getOrElse(360.0)) / 10.0))
+        if steps > 10000 then tooLarge()
+        steps
+      case "dot" => 256L
+      case _ => if geometry then 1L else 0L
+    }
+  }
+
+  /** Pen, control, color and visibility commands do not change the compared geometry. */
+  private def isDecoration(name: String, command: TurtleCommand[Double]): Boolean =
+    SnapTurtleCatalog.primitiveByPythonName.get(name).exists { primitive =>
+      Set(SnapTurtleCatalog.PaletteTab.Pen, SnapTurtleCatalog.PaletteTab.Control).contains(primitive.tab) &&
+        command.args.size + command.stringArgs.size == primitive.arity
+    } || Set("color", "pencolor", "setcolor").contains(name) && command.args.size == 3 && command.stringArgs.isEmpty ||
+      Set("showturtle", "st", "hideturtle", "ht").contains(name) && command.args.isEmpty && command.stringArgs.isEmpty
+
+  /** Rejects drawings whose padded bounding box cannot be displayed. */
+  private def checkDisplayRange(points: List[Point[Double]]): Unit = {
     val xs = points.map(_.x)
     val ys = points.map(_.y)
     val span = math.max(math.max(xs.max - xs.min, ys.max - ys.min), 1.0)
@@ -127,6 +139,5 @@ object TurtleDrawingGrading {
     if points.exists(point => !point.x.isFinite || !point.y.isFinite) ||
       List(xs.min - padding, xs.max + padding, ys.min - padding, ys.max + padding).exists(!_.isFinite) then
       throw IllegalArgumentException("Your drawing exceeds the display range. Check its distances and angles.")
-    Drawing(graphic, lines, lineIndexes)
   }
 }

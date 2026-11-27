@@ -44,9 +44,7 @@ class SvgPathRoundTripSuite extends FunSuite {
     }
 
     val canonical = canonicalAbsoluteString(immutableBuilder)
-    val reparsed = parsePath(immutableBuilder.toSvgPathD)
-    val reparsedCanonical = canonicalAbsoluteString(reparsed)
-    assertEquals(reparsedCanonical, canonical)
+    assertEquals(canonicalAbsoluteString(parsePath(immutableBuilder.toSvgPathD)), canonical)
   }
 
   private val sampleAbsolutePath =
@@ -55,17 +53,7 @@ class SvgPathRoundTripSuite extends FunSuite {
   test("absolute -> relative -> absolute round trip keeps canonical absolute path") {
     val parsed = parsePath(sampleAbsolutePath)
     val relative = toRelative(parsed)
-    val reparsed = parsePath(relative.toSvgPathD)
-    val reparsedAbsolute = canonicalAbsoluteString(reparsed)
-    val originalAbsolute = canonicalAbsoluteString(parsed)
-    assertEquals(reparsedAbsolute, originalAbsolute)
-  }
-
-  test("absolute input canonicalises to same absolute representation") {
-    val parsed = parsePath(sampleAbsolutePath)
-    val canonical1 = canonicalAbsoluteString(parsed)
-    val canonical2 = canonicalAbsoluteString(parsed)
-    assertEquals(canonical2, canonical1)
+    assertEquals(canonicalAbsoluteString(parsePath(relative.toSvgPathD)), canonicalAbsoluteString(parsed))
   }
 
   test("builder -> path -> builder round trip keeps absolute representation") {
@@ -75,29 +63,15 @@ class SvgPathRoundTripSuite extends FunSuite {
       .cubicBezierToAbs(Point(25.0, 20.0), Point(28.0, 22.0), Point(30.0, 18.0))
       .arcToAbs(4.0, 10.0, 45.0, largeArc = true, sweep = true, Point(32.0, 28.0))
       .closePath()
-
-    val immutableBuilder = builder match {
-      case imm: SvgPathBuilderImmutable[Double] => imm
-      case other => fail(s"Unexpected builder implementation: ${other.getClass}")
-    }
-
-    val originalPath = builder.toSvgPathD
-    val canonical = canonicalAbsoluteString(immutableBuilder)
-    val reparsed = parsePath(originalPath)
-    val reparsedCanonical = canonicalAbsoluteString(reparsed)
-    assertEquals(reparsedCanonical, canonical)
+    assertBuilderRoundTrip(builder)
   }
 
   test("duck shape from shape factory keeps canonical representation after round trip") {
-    val bounds = Bounds(Point(0.0, 0.0), Dimension(125.0, 50.0))
-    val builder = TestShapeFactoryAccess.duck(bounds)
-    assertBuilderRoundTrip(builder)
+    assertBuilderRoundTrip(TestShapeFactoryAccess.duck(Bounds(Point(0.0, 0.0), Dimension(125.0, 50.0))))
   }
 
   test("literal shape from shape factory keeps canonical representation after round trip") {
-    val bounds = Bounds(Point(10.0, 5.0), Dimension(120.0, 80.0))
-    val builder = TestShapeFactoryAccess.literal(bounds)
-    assertBuilderRoundTrip(builder)
+    assertBuilderRoundTrip(TestShapeFactoryAccess.literal(Bounds(Point(10.0, 5.0), Dimension(120.0, 80.0))))
   }
 
   test("Snap command outline keeps canonical representation after round trip") {
@@ -138,15 +112,13 @@ class SvgPathRoundTripSuite extends FunSuite {
     assert(path.toSvgPathD.contains("C 70 0 70 12 119 12"), path.toSvgPathD)
   }
 
+  private def decorationFactory = FlowDecorationPaths[Double](BlockRenderingConfig().segmentSize)
+
   test("data arrow left from decoration factory keeps canonical representation after round trip") {
-    val decorationFactory = FlowDecorationPaths[Double](BlockRenderingConfig().segmentSize)
-    val builder = decorationFactory.dataArrowLeft(Point(32.0, 24.0))
-    assertBuilderRoundTrip(builder)
+    assertBuilderRoundTrip(decorationFactory.dataArrowLeft(Point(32.0, 24.0)))
   }
 
   test("data arrow right from decoration factory keeps canonical representation after round trip") {
-    val decorationFactory = FlowDecorationPaths[Double](BlockRenderingConfig().segmentSize)
-    val builder = decorationFactory.dataArrowRight(Point(12.0, 18.0))
-    assertBuilderRoundTrip(builder)
+    assertBuilderRoundTrip(decorationFactory.dataArrowRight(Point(12.0, 18.0)))
   }
 }

@@ -24,6 +24,13 @@ class RelationalHistoryStorage(connection: Connection, logger: Logger) extends H
 
   private val tables = List("answer_event", "grading_event", "scaffolding_event")
 
+  /** The relational table holding events of this kind. */
+  private def tableFor[F <: InteractionFormat](event: InteractionEvent[F]): String = event match {
+    case _: AnswerChangedEvent[F] => "answer_event"
+    case _: GradingEvent[F] => "grading_event"
+    case _: ScaffoldingEvent[F] => "scaffolding_event"
+  }
+
   def store(request: StoreToDbRequest): SyncSuccess = transaction {
     val context = request.syncContext
     val format = request.history.format
@@ -38,11 +45,7 @@ class RelationalHistoryStorage(connection: Connection, logger: Logger) extends H
   }
 
   private def storeEvent[F <: InteractionFormat](sync: Long, format: F)(event: InteractionEvent[F]): Int = {
-    val table = event match {
-      case _: AnswerChangedEvent[F] => "answer_event"
-      case _: GradingEvent[F] => "grading_event"
-      case _: ScaffoldingEvent[F] => "scaffolding_event"
-    }
+    val table = tableFor(event)
     val serialized = InteractionFormat.codecsFor(format).eventSerializer.serialize(event)
     val eventId = event.eventId
     val existing = query(s"SELECT serialized_data FROM $table WHERE sync_id=? AND event_id=?", List(sync, eventId))(_.getString(1)).headOption
@@ -81,11 +84,7 @@ class RelationalHistoryStorage(connection: Connection, logger: Logger) extends H
           require(eventId == event.eventId, "Stored event_id must match the serialized client eventId")
           require(row.getString("timestamp_nano") == timestampText(event.timestamp),
             "timestamp_nano must match the serialized event as canonical ISO 8601 with nanosecond precision")
-          require(table == (event match {
-            case _: AnswerChangedEvent[F] => "answer_event"
-            case _: GradingEvent[F] => "grading_event"
-            case _: ScaffoldingEvent[F] => "scaffolding_event"
-          }), "Event stored in the wrong table")
+          require(table == tableFor(event), "Event stored in the wrong table")
           event
         }.fold(error => { logger.logExceptionWarn(s"Discarded the unreadable $table row $eventId", error); None }, Some(_))
       }.flatten

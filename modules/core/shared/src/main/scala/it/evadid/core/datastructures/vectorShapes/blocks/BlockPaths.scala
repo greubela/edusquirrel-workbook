@@ -7,16 +7,6 @@ import it.evadid.core.datastructures.vectorShapes.svg.SvgPathBuilder
 /** Outline paths of the block shapes, fitted to the bounds they are drawn in. */
 object BlockPaths {
 
-  private def intToT[T: Fractional](number: Int): T = {
-    val N = summon[Fractional[T]]
-    import N.*
-    fromInt(number)
-  }
-
-  private def intDim[T: Fractional](width: Int, height: Int): Dimension[T] = Dimension[T](intToT(width), intToT(height))
-
-  private def intPoint[T: Fractional](x: Int, y: Int): Point[T] = Point[T](intToT(x), intToT(y))
-
   def buildCommandShape[T: Fractional](pBounds: Bounds[T], segmentWidth: T): SvgPathBuilder[T] = {
     val N = summon[Fractional[T]]
     import N.*
@@ -29,13 +19,11 @@ object BlockPaths {
     val two: T = one + one
 
     SvgPathBuilder(pBounds.startPoint)
-      //.moveToRel(Dimension(bracketWidth, fromInt(0)))
       .addCommandBracketDown(segmentWidth, height)
       .horizontalLineWithWidth(pBounds.width - bracketWidth - bracketWidth)
       .cubicBezierToRel(Dimension(one, zero), Dimension(two, -one), Dimension(two, -two))
       .verticalLineWithHeight(-height + rightSideCornerHeight + rightSideCornerHeight)
       .cubicBezierToRel(Dimension(zero, -one), Dimension(-one, -two), Dimension(-two, -two))
-      //.verticalLineWithHeight(-height)
       .closePath()
   }
 
@@ -52,7 +40,6 @@ object BlockPaths {
     val straightLineWidth = bounds.width - halfHeight - d
 
     SvgPathBuilder(fitIntoBounds.startPoint)
-      //.drawBoundRectangle(bounds)
       // base shape
       .moveToRel(new Dimension[T](fromInt(0), halfHeight))
       .lineToRel(new Dimension[T](halfHeight, -halfHeight))
@@ -88,11 +75,6 @@ object BlockPaths {
     def scaledDim(width: Int, height: Int): Dimension[T] = Dimension[T](transformY(width), transformY(height))
 
     SvgPathBuilder(fitIntoBounds.startPoint)
-      /* test rectangle
-      .horizontalLineWithWidth(fitIntoBounds.width)
-      .verticalLineWithHeight(fitIntoBounds.height)
-      .horizontalLineWithWidth(-fitIntoBounds.width)
-      .verticalLineWithHeight(-fitIntoBounds.height)*/
       // left elements
       .moveToRel(scaledDim(15, 25))
 
@@ -152,25 +134,17 @@ object BlockPaths {
     val circleNrWidth = (pBounds.width / circleD).toInt
     val circleNrHeight = (pBounds.height / circleD).toInt
 
-    var res = SvgPathBuilder(bounds.startPoint)
-      //.moveToRel(Dimension(circleR + widthEmpty / fromInt(2), circleR + heightEmpty / fromInt(2)))
-      .moveToRel(Dimension(circleR, circleR))
+    def repeated(path: SvgPathBuilder[T], times: Int)(step: SvgPathBuilder[T] => SvgPathBuilder[T]): SvgPathBuilder[T] =
+      (0 until times).foldLeft(path)((current, _) => step(current))
 
-    for (curNr <- 0.until(circleNrWidth - 1)) {
-      res = res.addArcToTheTopMoveRight(circleR)
-    }
-    for (curNr <- 0.until(circleNrHeight - 1)) {
-      res = res.addArcToTheRightMoveBottom(circleR)
-    }
+    val start = SvgPathBuilder(bounds.startPoint).moveToRel(Dimension(circleR, circleR))
+    val alongTop = repeated(start, circleNrWidth - 1)(_.addArcToTheTopMoveRight(circleR))
+    val alongRight = repeated(alongTop, circleNrHeight - 1)(_.addArcToTheRightMoveBottom(circleR))
     // and back
-    for (curNr <- 0.until(circleNrWidth - 1)) {
-      res = res.addArcToTheTopMoveRight(-circleR)
-    }
-    for (curNr <- 0.until(circleNrHeight - 1)) {
-      res = res.addArcToTheRightMoveBottom(-circleR)
-    }
+    val alongBottom = repeated(alongRight, circleNrWidth - 1)(_.addArcToTheTopMoveRight(-circleR))
+    val alongLeft = repeated(alongBottom, circleNrHeight - 1)(_.addArcToTheRightMoveBottom(-circleR))
 
-    res
+    alongLeft
       .closePath()
 
   }
@@ -233,11 +207,8 @@ object BlockPaths {
   }
 
 
-  def buildRectangle[T: Fractional](pBounds: Bounds[T]): SvgPathBuilder[T] = {
-    // AppRectangleSvgElement[T](pBounds)
-    val bounds = pBounds
-    SvgPathBuilder(bounds.startPoint).drawBoundRectangle(bounds)
-  }
+  def buildRectangle[T: Fractional](pBounds: Bounds[T]): SvgPathBuilder[T] =
+    SvgPathBuilder(pBounds.startPoint).drawBoundRectangle(pBounds)
 
   def buildControlFlowShapeDown[T: Fractional](pBounds: Bounds[T], segmentWidth: T): SvgPathBuilder[T] = {
     val N = summon[Fractional[T]]
@@ -266,8 +237,6 @@ object BlockPaths {
 
     val circleCenter = pBounds.startPoint.moveWithDimension(Dimension(bounds.width - centerCircleRadius / fromInt(2), bounds.height - centerCircleRadius / fromInt(2)))
 
-    val missingWidth = bounds.width - segmentWidth * fromInt(6)
-
     buildControlFlowShapeDown(pBounds, segmentWidth)
       // add shape center
       .moveToAbs(circleCenter)
@@ -285,14 +254,8 @@ object BlockPaths {
     val minLength: T = fromInt(2) * segmentSize
     val bounds = pBounds.ensureAtLeastAsBigAs(Dimension(minLength, minLength))
 
-    def segScaledDim(width: Double, height: Double): Dimension[T] = {
+    def segScaledDim(width: Double, height: Double): Dimension[T] =
       Dimension(SvgPathBuilder.fromDouble(width), SvgPathBuilder.fromDouble(height))
-      //Dimension[T](segmentSize  * fromInt(width) / fromInt(5), segmentSize / fromInt(5) * fromInt(height))
-    }
-
-    val one = segmentSize / fromInt(5)
-    val tenth = one / fromInt(10)
-    val two = one + one
 
     SvgPathBuilder(bounds.startPoint)
       .moveToRel(segScaledDim(10, 0))

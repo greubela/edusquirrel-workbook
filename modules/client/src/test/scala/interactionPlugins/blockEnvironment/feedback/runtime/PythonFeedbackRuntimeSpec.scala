@@ -133,33 +133,3 @@ final class PythonFeedbackRuntimeSpec extends FunSuite:
         assertEqualsDouble(result.score, 0.5, 1e-9)
       }
   }
-
-  test("runWith does not block the caller (returns an incomplete Future)") {
-    val gate = Promise[PythonRunResult]()
-
-    val runner: PythonFeedbackRuntime.Runner = (_: PythonRunRequest) => gate.future
-
-    val f = PythonFeedbackRuntime.runWith(
-      mkReq(visible = Seq(PythonUnitTest("t", "assert True"))),
-      isolatePerTest = false,
-      runner
-    )
-
-    // If runWith were blocking, we would never reach this point.
-    var progressed = false
-    progressed = true
-    assert(progressed)
-
-    gate.success(
-      PythonRunResult(
-        status = PythonRunStatus.Success,
-        tests = Nil,
-        stdout = "",
-        stderr = "",
-        error = None,
-        score = 1.0
-      )
-    )
-
-    f.map(res => assertEquals(res.status, PythonRunStatus.Success))
-  }

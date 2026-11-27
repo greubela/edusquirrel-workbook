@@ -6,21 +6,22 @@ import it.evadid.workbook.elements.interactionElements.programming.state.snap.Sn
 import it.evadid.workbook.elements.interactionElements.programming.state.snap.SnapCanvasScript
 import it.evadid.workbook.elements.interactionElements.programming.state.snap.SnapModuleBlocks
 import it.evadid.workbook.elements.interactionElements.programming.state.snap.SnapTurtleCatalog
+import it.evadid.workbook.elements.interactionElements.programming.state.snap.SnapVocabulary
 
 import it.evadid.vm.conversion.snapexpression.SnapControlFlow
 import it.evadid.vm.conversion.snapexpression.SnapCustomBlockRules
 import it.evadid.vm.conversion.snapexpression.SnapExpressionSupport
 import it.evadid.vm.conversion.snapexpression.SnapInputCodec
 
+import it.evadid.core.datastructures.vectorShapes.svg.TurtleCommand
 import it.evadid.vm.BeProgram
 import it.evadid.vm.code.abstractions.BeExpression
 import it.evadid.vm.code.controlStructures.*
-import it.evadid.vm.code.defining
-import it.evadid.vm.code.defining.{BeDefineFunction, BeDefineVariable}
+import it.evadid.vm.code.defining.{BeDefineFunction, BeDefineVariable, BeIntrinsic}
 import it.evadid.vm.code.others.{BeReturn, BeStartProgram}
 import it.evadid.vm.code.usage.{BeAssignVariable, BeFunctionCall, BeUseValue}
 import it.evadid.vm.naming.BeEntityName
-import it.evadid.vm.types.{BeDataValueLiteral, BeUseValueReference}
+import it.evadid.vm.types.{BeDataType, BeDataValueLiteral, BeUseValueReference, StringLiteral}
 import it.evadid.workbook.elements.interactionElements.programming.state.snap.SnapTurtleCatalog.SnapInputKind
 import it.evadid.vm.conversion.expressionsnap.SnapCustomBlockMerge.{CustomBlockPlan, CustomBlockPlans}
 
@@ -46,7 +47,7 @@ object SnapProjectXml {
       projectName: String = "fromBeExpression",
       canvasLayout: SnapCanvasLayout = SnapCanvasLayout.empty,
       previousXml: String = "",
-      newBlockCategory: it.evadid.workbook.elements.interactionElements.programming.state.snap.SnapVocabulary.BlockCategory = SnapCustomBlockMerge.DefaultNewBlockCategory
+      newBlockCategory: SnapVocabulary.BlockCategory = SnapCustomBlockMerge.DefaultNewBlockCategory
   ): String = {
     val functionDefs = collectFunctionDefs(expression)
     val plans = SnapCustomBlockMerge.planFor(functionDefs, previousXml, newBlockCategory)
@@ -85,44 +86,49 @@ object SnapProjectXml {
       case other => List(other)
     }
 
-    val detached = body.collect { case function: BeDefineFunction if BeProgram.isUnusedCode(function) => function.body.body }.flatten
+    val detached = body.collect { case function: BeDefineFunction if BeProgram.isUnusedCode(function) => function.body.body }.flatten.toList
     val statements = SnapExpressionSupport.scriptStatements(body.toList)
-    if detached.nonEmpty then {
-      val knownLayout = layout.scripts.toList
-      if knownLayout.filter(_.hasReceiveGo).map(_.callCount).sum == statements.size &&
-          knownLayout.filterNot(_.hasReceiveGo).map(_.callCount).sum == detached.size && knownLayout.nonEmpty then {
-        val (scripts, _, _) = knownLayout.foldLeft((List.empty[ScriptOut], statements, detached.toList)) {
-          case ((scripts, startup, loose), script) =>
-            val (chunk, rest) = (if script.hasReceiveGo then startup else loose).splitAt(script.callCount)
-            val rendered = ScriptOut(script.x, script.y, if script.hasReceiveGo then createReceiveGoCall() :: chunk else chunk)
-            (scripts :+ rendered, if script.hasReceiveGo then rest else startup, if script.hasReceiveGo then loose else rest)
-        }
-        return scripts
-      }
-      return ScriptOut(156, 66, createReceiveGoCall() :: statements) ::
-        ScriptOut(156, 240, detached.toList) :: Nil
-    }
+    if detached.nonEmpty then scriptsWithDetached(statements, detached, layout.scripts.toList)
     // The green flag always marks the main program, even when it has no statements yet.
-    if statements.isEmpty then List(ScriptOut(156, 66, List(createReceiveGoCall())))
+    else if statements.isEmpty then List(ScriptOut(156, 66, List(createReceiveGoCall())))
     else if layout.isEmpty || !layoutMatches(layout, statements.size) then
       List(ScriptOut(156, 66, createReceiveGoCall() :: statements))
     else
       splitByLayout(statements, layout.scripts.toList)
   }
 
+  /**
+   * The green-flag script plus the detached `unusedCode` statements. A saved layout places both when its
+   * green-flag and detached call counts match; otherwise the detached script goes below the main one.
+   */
+  private def scriptsWithDetached(
+      statements: List[BeExpression],
+      detached: List[BeExpression],
+      knownLayout: List[SnapCanvasScript]
+  ): List[ScriptOut] =
+    if knownLayout.filter(_.hasReceiveGo).map(_.callCount).sum == statements.size &&
+        knownLayout.filterNot(_.hasReceiveGo).map(_.callCount).sum == detached.size && knownLayout.nonEmpty then {
+      val (scripts, _, _) = knownLayout.foldLeft((List.empty[ScriptOut], statements, detached)) {
+        case ((scripts, startup, loose), script) =>
+          val (chunk, rest) = (if script.hasReceiveGo then startup else loose).splitAt(script.callCount)
+          val rendered = ScriptOut(script.x, script.y, if script.hasReceiveGo then createReceiveGoCall() :: chunk else chunk)
+          (scripts :+ rendered, if script.hasReceiveGo then rest else startup, if script.hasReceiveGo then loose else rest)
+      }
+      scripts
+    } else List(ScriptOut(156, 66, createReceiveGoCall() :: statements), ScriptOut(156, 240, detached))
+
   private def layoutMatches(layout: SnapCanvasLayout, totalStatements: Int): Boolean =
     layout.scripts.map(_.callCount).sum == totalStatements && layout.scripts.forall(_.callCount > 0)
 
   private def splitByLayout(statements: List[BeExpression], scripts: List[SnapCanvasScript]): List[ScriptOut] = {
-    var remaining = statements
-    scripts.map { script =>
+    val (rendered, _) = scripts.foldLeft((List.empty[ScriptOut], statements)) { case ((done, remaining), script) =>
       val (chunk, rest) = remaining.splitAt(script.callCount)
-      remaining = rest
       val scriptStatements =
         if script.hasReceiveGo then createReceiveGoCall() :: chunk
         else chunk
-      ScriptOut(script.x, script.y, scriptStatements)
+      (done :+ ScriptOut(script.x, script.y, scriptStatements), rest)
     }
+    rendered
   }
 
   private def createReceiveGoCall(): BeFunctionCall = {
@@ -130,7 +136,7 @@ object SnapProjectXml {
       inputs = Nil,
       outputs = None,
       body = BeExpression.pass,
-      functionTypeInfo = defining.BeDefineFunction.functionInfo(
+      functionTypeInfo = BeDefineFunction.functionInfo(
         BeEntityName.fromUniversalNameInParts("receiveGo")
       )
     )
@@ -219,7 +225,7 @@ object SnapProjectXml {
   /** A reported truth value is a predicate input; any other value an ordinary reporter input. */
   private def renderReported(value: BeExpression)(using RenderContext): String = value match {
     case BeUseValue(BeDataValueLiteral("True" | "False"), _) => renderCondition(value)
-    case call: BeFunctionCall if call.isOperator && value.staticInformationExpression.staticType == it.evadid.vm.types.BeDataType.Boolean =>
+    case call: BeFunctionCall if call.isOperator && value.staticInformationExpression.staticType == BeDataType.Boolean =>
       renderCondition(value)
     case _ => renderArgument(value)
   }
@@ -321,12 +327,9 @@ object SnapProjectXml {
     val arguments = call.arguments
     val kinds = SnapTurtleCatalog.inputKindsForSelector(selector)
     if SnapExpressionSupport.isPrimitiveSelector(selector) &&
-        (it.evadid.core.datastructures.vectorShapes.svg.TurtleCommand.isTurtleMethod(call.funcDef) ||
+        (TurtleCommand.isTurtleMethod(call.funcDef) ||
           context.plans.get(SnapExpressionSupport.pythonName(call)).isEmpty) then
-      val inputXml = arguments.zipWithIndex.map { (argument, index) =>
-        renderArgument(argument, kinds.lift(index).getOrElse(SnapInputKind.String))
-      }.mkString
-      s"<block s=\"$selector\">$inputXml</block>"
+      s"<block s=\"$selector\">${renderInputs(arguments, kinds)}</block>"
     else
       val pythonName = SnapExpressionSupport.pythonName(call)
       val plan = context.plans.get(pythonName)
@@ -334,9 +337,7 @@ object SnapProjectXml {
       val aligned = arguments.take(arity) ++ List.fill((arity - arguments.size).max(0))(
         BeUseValue(BeDataValueLiteral(""), None)
       )
-      val inputXml = aligned.zipWithIndex.map { (argument, index) =>
-        renderArgument(argument, kinds.lift(index).getOrElse(SnapInputKind.String))
-      }.mkString
+      val inputXml = renderInputs(aligned, kinds)
       val spec = plan
         .map(_.callSpec)
         .getOrElse(SnapCustomBlockRules.blockSpecOfNewDefinition(
@@ -344,6 +345,12 @@ object SnapProjectXml {
         ))
       s"""<custom-block s="${SnapXmlText.escape(spec)}">$inputXml</custom-block>"""
   }
+
+  /** Arguments in their slots' kinds; slots the catalog does not know take text. */
+  private def renderInputs(arguments: List[BeExpression], kinds: Seq[SnapInputKind])(using RenderContext): String =
+    arguments.zipWithIndex.map { (argument, index) =>
+      renderArgument(argument, kinds.lift(index).getOrElse(SnapInputKind.String))
+    }.mkString
 
   private def renderArgument(argument: BeExpression, kind: SnapInputKind = SnapInputKind.String)(using
       RenderContext
@@ -371,7 +378,7 @@ object SnapProjectXml {
 
   /** `sqrt of value`, or `pick random` over [0, 1) for `random()`. */
   private def renderMath(call: BeFunctionCall)(using RenderContext): String =
-    if call.funcDef.intrinsic.contains(it.evadid.vm.code.defining.BeIntrinsic.Random) then
+    if call.funcDef.intrinsic.contains(BeIntrinsic.Random) then
       s"""<block s="reportRandom"><l>0</l><l>${SnapControlFlow.RandomUpperBound}</l></block>"""
     else s"""<block s="reportMonadic"><l><option>sqrt</option></l>${call.arguments.map(renderConditionValue).mkString}</block>"""
 
@@ -412,7 +419,7 @@ object SnapProjectXml {
 
   private def renderConditionValue(expression: BeExpression)(using RenderContext): String = expression match {
     case BeUseValue(BeDataValueLiteral("True" | "False"), _) => renderCondition(expression)
-    case BeUseValue(BeDataValueLiteral(value), _) => s"<l>${SnapXmlText.escape(it.evadid.vm.types.StringLiteral.content(value))}</l>"
+    case BeUseValue(BeDataValueLiteral(value), _) => s"<l>${SnapXmlText.escape(StringLiteral.content(value))}</l>"
     case BeUseValue(BeUseValueReference(variable), _) => renderVariableReporter(variable)
     case call: BeFunctionCall if call.isOperator => renderOperator(call)
     case call: BeFunctionCall if SnapControlFlow.isToText(call) => renderJoin(call.arguments)

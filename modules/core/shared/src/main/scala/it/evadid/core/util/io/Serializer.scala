@@ -16,13 +16,8 @@ trait Serializer[T] extends TypeConverter[T, String] {
   lazy val safeSeqReadWriter: ReadWriter[Seq[T]] = readwriter[ujson.Value].bimap(
     (seq: Seq[T]) => ujson.Arr(seq.map(item => writeJs(item)(using uPickleReadWrite))*),
     (json: ujson.Value) => json.arr.flatMap { elementBlob =>
-      try {
-        Some(read[T](elementBlob)(using uPickleReadWrite))
-      } catch {
-        case NonFatal(err) =>
-          //    println(s"[UGLY SERIALIZER SAFE-SEQ] cannot parse '$elementBlob': ${err.getMessage}")
-          None
-      }
+      try Some(read[T](elementBlob)(using uPickleReadWrite))
+      catch case NonFatal(_) => None
     }.toSeq
   )
 
@@ -159,8 +154,6 @@ object Serializer {
         if (trimmed.startsWith(constructorName + "(") && trimmed.endsWith(")")) {
           val withoutEnd = trimmed.substring(0, trimmed.length - 1)
           val cleaned = withoutEnd.substring(constructorName.length + 1, withoutEnd.length)
-          //val jsonRemove = read[String](cleaned)
-          // base.deserialize(jsonRemove)
           base.deserialize(cleaned)
         } else {
           throw new IllegalArgumentException(s"ConstructorLikeSerializer for '${constructorName} cannot deserialize ${str}")
@@ -211,16 +204,19 @@ object Serializer {
 
   /** Source-code string literals accept both quote styles; this is not a JSON codec. */
   def stringLiteralIO(parseEverything: Boolean = false): Serializer[String] = new Serializer[String] {
+    private def enclosedBy(value: String, quote: String): Boolean = value.startsWith(quote) && value.endsWith(quote)
+
+    private def isQuoted(value: String): Boolean = enclosedBy(value, "\"") || enclosedBy(value, "'")
+
     override def serialize(value: String): String =
-      if ((value.startsWith("\"") && value.endsWith("\"")) || (value.startsWith("'") && value.endsWith("'")) || parseEverything) value
+      if (isQuoted(value) || parseEverything) value
       else s"\"$value\""
 
     override def deserialize(value: String): String = {
       val trimmed = value.trim
-      if (trimmed.startsWith("\"\"\"") && trimmed.endsWith("\"\"\"") && trimmed.length >= 6)
+      if (enclosedBy(trimmed, "\"\"\"") && trimmed.length >= 6)
         trimmed.substring(3, trimmed.length - 3)
-      else if (((trimmed.startsWith("\"") && trimmed.endsWith("\"")) ||
-        (trimmed.startsWith("'") && trimmed.endsWith("'"))) && trimmed.length >= 2)
+      else if (isQuoted(trimmed) && trimmed.length >= 2)
         trimmed.substring(1, trimmed.length - 1)
       else if (parseEverything) trimmed
       else throw new IllegalArgumentException("Expected a quoted string literal")
@@ -235,14 +231,12 @@ object Serializer {
       val trimmed = str.trim
       val negative = trimmed.startsWith("-")
       val magnitude = if (negative || trimmed.startsWith("+")) trimmed.drop(1) else trimmed
-      val prefixes = (if (prefix.nonEmpty) List(prefix -> base) else Nil).sortBy(-_._1.length)
-      val matched = prefixes.find((p, _) => magnitude.toLowerCase.startsWith(p.toLowerCase))
-      val number = matched match {
-        case Some((p, radix)) =>
-          val digits = magnitude.drop(p.length)
-          BigInt(if (digits.isEmpty && p == "0") "0" else digits, radix)
-        case None => BigInt(magnitude, base)
-      }
+      val hasPrefix = prefix.nonEmpty && magnitude.toLowerCase.startsWith(prefix.toLowerCase)
+      val number =
+        if (hasPrefix) {
+          val digits = magnitude.drop(prefix.length)
+          BigInt(if (digits.isEmpty && prefix == "0") "0" else digits, base)
+        } else BigInt(magnitude, base)
       if (negative) -number else number
     }
   }
@@ -252,7 +246,7 @@ object Serializer {
   val pythonBooleanIO: Serializer[Boolean] = new Serializer[Boolean] {
     override def serialize(obj: Boolean): String = if (obj) "True" else "False"
 
-    override def deserialize(serialized: String): Boolean = if (serialized.toLowerCase().trim == "true") true else false
+    override def deserialize(serialized: String): Boolean = serialized.toLowerCase().trim == "true"
   }
 
 
@@ -264,7 +258,7 @@ object Serializer {
 
     override def deserialize(str: String): Either[A, B] = try {
       Left[A, B](serializerA.deserialize(str))
-    } catch case NonFatal(e) => {
+    } catch case NonFatal(_) => {
       Right[A, B](serializerB.deserialize(str))
     }
   }

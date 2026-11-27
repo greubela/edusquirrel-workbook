@@ -38,7 +38,7 @@ object SvgPathBuilderCommand {
     def relativeMovement: Dimension[T] = Dimension[T](implicitly[Fractional[T]].fromInt(0), implicitly[Fractional[T]].fromInt(0))
   }
 
-  private def num[T: Fractional](x: Double): String =
+  private def num(x: Double): String =
     BigDecimal(x).bigDecimal.stripTrailingZeros.toPlainString
 
   private def flag(b: Boolean): String = if (b) "1" else "0"
@@ -55,17 +55,20 @@ object SvgPathBuilderCommand {
     s"${num(d.width.toDouble)} ${num(d.height.toDouble)}"
   }
 
+  /** The relative movement from `start` to `target`. */
+  private def offset[T: Fractional](start: Point[T], target: Point[T]): Dimension[T] = {
+    val N = summon[Fractional[T]]
+    import N.*
+    Dimension(target.x - start.x, target.y - start.y)
+  }
+
   // Move
   case class MoveAbs[T: Fractional](p: Point[T]) extends AbsoluteCommand[T] {
     def getPathDString(): String = s" M ${pt(p)}"
 
     def positionAfterCommand: Point[T] = p
 
-    override def toRelativeCommand(start: Point[T]): RelativeCommand[T] = {
-      val N = summon[Fractional[T]];
-      import N.*
-      MoveRel(Dimension(p.x - start.x, p.y - start.y))
-    }
+    override def toRelativeCommand(start: Point[T]): RelativeCommand[T] = MoveRel(offset(start, p))
   }
 
   case class MoveRel[T: Fractional](d: Dimension[T]) extends RelativeCommand[T] {
@@ -85,31 +88,13 @@ object SvgPathBuilderCommand {
     def toAbsoluteCommand(start: Point[T]): AbsoluteCommand[T] = AddControlLinesCommand(start, Nil)
   }
 
-  /* ToDo: Close properly
-    case class ClosePath[T: Fractional](start: Point[T]) extends SvgPathBuilderCommand[T], RelativeCommand[T], AbsoluteCommand[T] {
-      def getPathDString(): String = " Z"
-
-      override def toRelativeCommand(start: Point[T]): RelativeCommand[T] = this
-
-      override def toAbsoluteCommand(start: Point[T]): AbsoluteCommand[T] = this
-
-      //override def relativeMovement: Dimension[T] = start
-
-      //override def positionAfterCommand: Point[T] = ???
-    }
-     */
-
   // Lines
   case class LineAbs[T: Fractional](p: Point[T]) extends AbsoluteCommand[T] {
     def getPathDString(): String = s" L ${pt(p)}"
 
     def positionAfterCommand: Point[T] = p
 
-    override def toRelativeCommand(start: Point[T]): RelativeCommand[T] = {
-      val N = summon[Fractional[T]];
-      import N.*
-      LineRel(Dimension(p.x - start.x, p.y - start.y))
-    }
+    override def toRelativeCommand(start: Point[T]): RelativeCommand[T] = LineRel(offset(start, p))
   }
 
   case class LineRel[T: Fractional](d: Dimension[T]) extends RelativeCommand[T] {
@@ -123,7 +108,7 @@ object SvgPathBuilderCommand {
   // H/V (relative)
   case class HorizontalRel[T: Fractional](w: T) extends RelativeCommand[T] {
     def getPathDString(): String = {
-      val N = summon[Fractional[T]];
+      val N = summon[Fractional[T]]
       import N.*
       s" h ${num(w.toDouble)}"
     }
@@ -155,15 +140,8 @@ object SvgPathBuilderCommand {
 
     override val controlPointsAbsolute: List[Point[T]] = List(cp1, cp2)
 
-    override def toRelativeCommand(start: Point[T]): RelativeCommand[T] = {
-      val N = summon[Fractional[T]];
-      import N.*
-      CubicRel(
-        Dimension(cp1.x - start.x, cp1.y - start.y),
-        Dimension(cp2.x - start.x, cp2.y - start.y),
-        Dimension(end.x - start.x, end.y - start.y)
-      )
-    }
+    override def toRelativeCommand(start: Point[T]): RelativeCommand[T] =
+      CubicRel(offset(start, cp1), offset(start, cp2), offset(start, end))
   }
 
   case class CubicRel[T: Fractional](cp1: Dimension[T], cp2: Dimension[T], end: Dimension[T]) extends RelativeCommand[T] {
@@ -187,14 +165,8 @@ object SvgPathBuilderCommand {
 
     override val controlPointsAbsolute: List[Point[T]] = List(cp)
 
-    override def toRelativeCommand(start: Point[T]): RelativeCommand[T] = {
-      val N = summon[Fractional[T]];
-      import N.*
-      QuadRel(
-        Dimension(cp.x - start.x, cp.y - start.y),
-        Dimension(end.x - start.x, end.y - start.y)
-      )
-    }
+    override def toRelativeCommand(start: Point[T]): RelativeCommand[T] =
+      QuadRel(offset(start, cp), offset(start, end))
   }
 
   case class QuadRel[T: Fractional](cp: Dimension[T], end: Dimension[T]) extends RelativeCommand[T] {
@@ -225,18 +197,8 @@ object SvgPathBuilderCommand {
 
     def positionAfterCommand: Point[T] = end
 
-    override def toRelativeCommand(start: Point[T]): RelativeCommand[T] = {
-      val N = summon[Fractional[T]]
-      import N.*
-      ArcRel(
-        rx,
-        ry,
-        xAxisRotationDeg,
-        largeArc,
-        sweep,
-        Dimension(end.x - start.x, end.y - start.y)
-      )
-    }
+    override def toRelativeCommand(start: Point[T]): RelativeCommand[T] =
+      ArcRel(rx, ry, xAxisRotationDeg, largeArc, sweep, offset(start, end))
   }
 
   case class ArcRel[T: Fractional](
@@ -258,11 +220,12 @@ object SvgPathBuilderCommand {
   case class CenteredCircleControl[T: Fractional](radius: T) extends SvgPathBuilderCommand[T] {
     def getPathDString(): String = ""
 
-    def toRelativeCommand(start: Point[T]): RelativeCommand[T] =
+    private def radiusControlLine(start: Point[T]): AddControlLinesCommand[T] =
       AddControlLinesCommand(start, List(Point(summon[Fractional[T]].plus(start.x, radius), start.y)))
 
-    def toAbsoluteCommand(start: Point[T]): AbsoluteCommand[T] =
-      AddControlLinesCommand(start, List(Point(summon[Fractional[T]].plus(start.x, radius), start.y)))
+    def toRelativeCommand(start: Point[T]): RelativeCommand[T] = radiusControlLine(start)
+
+    def toAbsoluteCommand(start: Point[T]): AbsoluteCommand[T] = radiusControlLine(start)
   }
 
   // Raw append (verbatim d-fragment)

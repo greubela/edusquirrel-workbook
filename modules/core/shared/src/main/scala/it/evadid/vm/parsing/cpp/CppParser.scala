@@ -11,6 +11,8 @@ import it.evadid.vm.naming.BeEntityName
 import it.evadid.vm.conversion.parsed.DefaultDefinitions
 import it.evadid.vm.types.{BeDataType, BeDataValueLiteral, BeUseValueReference}
 
+import scala.collection.mutable.ListBuffer
+
 /**
  *
  * c++ parser is currently minimal and only understands a subset of statements
@@ -40,13 +42,8 @@ object CppParser {
       variable
     }
 
-    def assignVariable(name: String, dataType: BeDataType): BeDefineVariable = {
-      lookupVariable(name).getOrElse {
-        val variable = BeDefineVariable(BeEntityName.fromUniversalNameInParts(name), dataType)
-        scopes.head.update(name, variable)
-        variable
-      }
-    }
+    def assignVariable(name: String, dataType: BeDataType): BeDefineVariable =
+      lookupVariable(name).getOrElse(defineVariable(name, dataType))
   }
 
   final case class ParseResult(sequence: BeSequence, unsupportedStatements: List[String])
@@ -106,6 +103,8 @@ object CppParser {
   private val DeclarationPattern = """^(?:const\s+)?([A-Za-z_][A-Za-z0-9_:<>]*)\s+([A-Za-z_][A-Za-z0-9_]*)\s*(?:=\s*(.+))?$""".r
   private val AssignmentPattern = """^([A-Za-z_][A-Za-z0-9_]*)\s*=\s*(.+)$""".r
 
+  private def isQuote(ch: Char): Boolean = ch == '"' || ch == '\''
+
   private def parseStatements(source: String): (List[BeExpression], List[String]) = {
     val context = new ParseContext
     val parser = new Parser(source, context)
@@ -134,6 +133,7 @@ object CppParser {
       beforeOk && afterOk
     }
 
+    /** Reads the content between `open` and the matching `close`, consuming both delimiters. */
     private def readBalanced(open: Char, close: Char): Either[String, String] = {
       if (peek != open) return Left(s"Expected '$open'")
       i += 1
@@ -144,30 +144,19 @@ object CppParser {
 
       while (!eof && depth > 0) {
         val ch = s.charAt(i)
+        i += 1
         inString match {
           case Some(q) =>
-            out.append(ch)
-            i += 1
             if (ch == q) inString = None
-          case None =>
-            ch match {
-              case '"' | '\'' =>
-                inString = Some(ch)
-                out.append(ch)
-                i += 1
-              case c if c == open =>
-                depth += 1
-                out.append(ch)
-                i += 1
-              case c if c == close =>
-                depth -= 1
-                if (depth > 0) out.append(ch)
-                i += 1
-              case _ =>
-                out.append(ch)
-                i += 1
-            }
+          case None if isQuote(ch) =>
+            inString = Some(ch)
+          case None if ch == open =>
+            depth += 1
+          case None if ch == close =>
+            depth -= 1
+          case None => ()
         }
+        if (depth > 0) out.append(ch)
       }
 
       if (depth == 0) Right(out.toString)
@@ -182,55 +171,35 @@ object CppParser {
 
       while (!eof) {
         val ch = s.charAt(i)
-
-        if (inString.nonEmpty) {
-          out.append(ch)
-          i += 1
-          if (ch == inString.get) inString = None
-        } else {
-          ch match {
-            case '"' | '\'' =>
-              inString = Some(ch)
-              out.append(ch)
-              i += 1
-            case '(' =>
-              parenDepth += 1
-              out.append(ch)
-              i += 1
-            case ')' =>
-              parenDepth = math.max(0, parenDepth - 1)
-              out.append(ch)
-              i += 1
-            case '{' =>
-              braceDepth += 1
-              out.append(ch)
-              i += 1
-            case '}' =>
-              // If we're at the end of a nested brace section inside this statement, keep it.
-              if (braceDepth > 0) {
-                braceDepth -= 1
-                out.append(ch)
-                i += 1
-              } else {
-                // End of the surrounding block.
+        inString match {
+          case Some(q) =>
+            if (ch == q) inString = None
+          case None =>
+            ch match {
+              case '"' | '\'' => inString = Some(ch)
+              case '(' => parenDepth += 1
+              case ')' => parenDepth = math.max(0, parenDepth - 1)
+              case '{' => braceDepth += 1
+              // A closing brace of a nested section inside this statement is kept.
+              case '}' if braceDepth > 0 => braceDepth -= 1
+              // End of the surrounding block; the brace is left for the caller.
+              case '}' => return out.toString
+              case ';' if parenDepth == 0 && braceDepth == 0 =>
+                i += 1 // consume ';'
                 return out.toString
-              }
-            case ';' if parenDepth == 0 && braceDepth == 0 =>
-              i += 1 // consume ';'
-              return out.toString
-            case _ =>
-              out.append(ch)
-              i += 1
-          }
+              case _ => ()
+            }
         }
+        out.append(ch)
+        i += 1
       }
 
       out.toString
     }
 
     def parseStatementsUntil(stopChar: Option[Char]): (List[BeExpression], List[String]) = {
-      val expressions = scala.collection.mutable.ListBuffer.empty[BeExpression]
-      val unsupported = scala.collection.mutable.ListBuffer.empty[String]
+      val expressions = ListBuffer.empty[BeExpression]
+      val unsupported = ListBuffer.empty[String]
 
       while (!eof) {
         skipWhitespace()
@@ -269,254 +238,133 @@ object CppParser {
       (expressions.toList, unsupported.toList)
     }
 
-    private def parseWhile(unsupported: scala.collection.mutable.ListBuffer[String]): BeExpression = {
+    /** Consumes `keyword` and returns the index where the statement started. */
+    private def consumeKeyword(keyword: String): Int = {
       val startIndex = i
+      i += keyword.length
+      startIndex
+    }
 
-      // consume 'while'
-      i += "while".length
+    /** Consumes the rest of a malformed statement and reports the statement from `startIndex` as unparsable. */
+    private def unparsableFrom(startIndex: Int, message: String, unsupported: ListBuffer[String]): BeExpression = {
+      val remainder = readUntilStatementEnd().trim
+      val original = s.substring(startIndex, math.min(s.length, i)).trim + remainder
+      unsupported += original
+      BeExpressionUnparsable(original, message, parsedFromLanguage = Some(Cpp))
+    }
+
+    /** Reads a balanced section after optional whitespace, or reports the enclosing statement as unparsable. */
+    private def readSection(
+                             open: Char,
+                             close: Char,
+                             startIndex: Int,
+                             description: String,
+                             unsupported: ListBuffer[String]
+                           ): Either[BeExpression, String] = {
       skipWhitespace()
+      readBalanced(open, close).left.map(err => unparsableFrom(startIndex, s"$description parse error: $err", unsupported))
+    }
 
-      val conditionText = readBalanced('(', ')') match {
-        case Right(text) => text
-        case Left(err) =>
-          val remainder = readUntilStatementEnd().trim
-          val original = s.substring(startIndex, math.min(s.length, i)).trim + (if (remainder.nonEmpty) remainder else "")
-          val msg = s"C++ while: condition parse error: $err"
-          unsupported += original
-          return BeExpressionUnparsable(original, msg, parsedFromLanguage = Some(Cpp))
-      }
-
-      skipWhitespace()
-
-      val bodyText = readBalanced('{', '}') match {
-        case Right(text) => text
-        case Left(err) =>
-          val remainder = readUntilStatementEnd().trim
-          val original = s.substring(startIndex, math.min(s.length, i)).trim + (if (remainder.nonEmpty) remainder else "")
-          val msg = s"C++ while: body parse error: $err"
-          unsupported += original
-          return BeExpressionUnparsable(original, msg, parsedFromLanguage = Some(Cpp))
-      }
-
-      val conditionSeq = parseCondition(conditionText, context)
-
-      // New scope for the while body.
+    /** Parses a block body in a new variable scope; its unsupported statements stay in the body and are also reported. */
+    private def parseScopedBody(bodyText: String, unsupported: ListBuffer[String]): List[BeExpression] = {
       context.pushScope()
       val (bodyExpressions, bodyUnsupported) = new Parser(bodyText, context).parseStatementsUntil(stopChar = None)
       context.popScope()
-      val bodySeq = BeSequence.optionalBody(bodyExpressions)
-
-      // Bubble up diagnostics, but keep the unsupported statements as red blocks in the body.
       bodyUnsupported.foreach(stmt => if (stmt.trim.nonEmpty) unsupported += stmt)
-      BeWhile(conditionSeq, bodySeq)
+      bodyExpressions
     }
 
-    private def parseIfElse(unsupported: scala.collection.mutable.ListBuffer[String]): BeExpression = {
-      val startIndex = i
-
-      // consume 'if'
-      i += "if".length
-      skipWhitespace()
-
-      val conditionText = readBalanced('(', ')') match {
-        case Right(text) => text
-        case Left(err) =>
-          val remainder = readUntilStatementEnd().trim
-          val original = s.substring(startIndex, math.min(s.length, i)).trim + (if (remainder.nonEmpty) remainder else "")
-          val msg = s"C++ if: condition parse error: $err"
-          unsupported += original
-          return BeExpressionUnparsable(original, msg, parsedFromLanguage = Some(Cpp))
+    private def parseWhile(unsupported: ListBuffer[String]): BeExpression = {
+      val startIndex = consumeKeyword("while")
+      val parsed: Either[BeExpression, BeExpression] = for {
+        conditionText <- readSection('(', ')', startIndex, "C++ while: condition", unsupported)
+        bodyText <- readSection('{', '}', startIndex, "C++ while: body", unsupported)
+      } yield {
+        val conditionSeq = parseCondition(conditionText, context)
+        BeWhile(conditionSeq, BeSequence.optionalBody(parseScopedBody(bodyText, unsupported)))
       }
+      parsed.merge
+    }
 
-      skipWhitespace()
-
-      val thenBodyText = readBalanced('{', '}') match {
-        case Right(text) => text
-        case Left(err) =>
-          val remainder = readUntilStatementEnd().trim
-          val original = s.substring(startIndex, math.min(s.length, i)).trim + (if (remainder.nonEmpty) remainder else "")
-          val msg = s"C++ if: body parse error: $err"
-          unsupported += original
-          return BeExpressionUnparsable(original, msg, parsedFromLanguage = Some(Cpp))
-      }
-
-      val conditionSeq = parseCondition(conditionText, context)
-
-      context.pushScope()
-      val (thenExpressions, thenUnsupported) = new Parser(thenBodyText, context).parseStatementsUntil(stopChar = None)
-      context.popScope()
-      thenUnsupported.foreach(stmt => if (stmt.trim.nonEmpty) unsupported += stmt)
-
-      skipWhitespace()
-
-      val elseExpressions: List[BeExpression] =
-        if (startsWithKeyword("else")) {
-          i += "else".length
-          skipWhitespace()
-
-          if (startsWithKeyword("if")) {
-            // else-if chain; parse nested if and keep it as the single expression in else body.
-            List(parseIfElse(unsupported))
-          } else {
-            val elseBodyText = readBalanced('{', '}') match {
-              case Right(text) => text
-              case Left(err) =>
-                val remainder = readUntilStatementEnd().trim
-                val original = s.substring(startIndex, math.min(s.length, i)).trim + (if (remainder.nonEmpty) remainder else "")
-                val msg = s"C++ else: body parse error: $err"
-                unsupported += original
-                return BeExpressionUnparsable(original, msg, parsedFromLanguage = Some(Cpp))
+    private def parseIfElse(unsupported: ListBuffer[String]): BeExpression = {
+      val startIndex = consumeKeyword("if")
+      val parsed: Either[BeExpression, BeExpression] =
+        readSection('(', ')', startIndex, "C++ if: condition", unsupported).flatMap { conditionText =>
+          readSection('{', '}', startIndex, "C++ if: body", unsupported).flatMap { thenBodyText =>
+            val conditionSeq = parseCondition(conditionText, context)
+            val thenExpressions = parseScopedBody(thenBodyText, unsupported)
+            parseElseBranch(startIndex, unsupported).map { elseExpressions =>
+              BeIfElse(conditionSeq, BeSequence.optionalBody(thenExpressions), BeSequence.optionalBody(elseExpressions))
             }
-
-            context.pushScope()
-            val (elseBodyExpressions, elseUnsupported) = new Parser(elseBodyText, context).parseStatementsUntil(stopChar = None)
-            context.popScope()
-            elseUnsupported.foreach(stmt => if (stmt.trim.nonEmpty) unsupported += stmt)
-            elseBodyExpressions
           }
-        } else Nil
-
-      val thenSeq = BeSequence.optionalBody(thenExpressions)
-      val elseSeq = BeSequence.optionalBody(elseExpressions)
-      BeIfElse(conditionSeq, thenSeq, elseSeq)
+        }
+      parsed.merge
     }
 
-    private def parseForLoop(unsupported: scala.collection.mutable.ListBuffer[String]): BeExpression = {
-      val startIndex = i
-
-      // consume 'for'
-      i += "for".length
+    /** Parses an optional `else` branch; an else-if chain becomes the single expression of the else body. */
+    private def parseElseBranch(startIndex: Int, unsupported: ListBuffer[String]): Either[BeExpression, List[BeExpression]] = {
       skipWhitespace()
-
-      val headerText = readBalanced('(', ')') match {
-        case Right(text) => text
-        case Left(err) =>
-          val remainder = readUntilStatementEnd().trim
-          val original = s.substring(startIndex, math.min(s.length, i)).trim + (if (remainder.nonEmpty) remainder else "")
-          val msg = s"C++ for: header parse error: $err"
-          unsupported += original
-          return BeExpressionUnparsable(original, msg, parsedFromLanguage = Some(Cpp))
-      }
-
-      skipWhitespace()
-
-      val bodyText = readBalanced('{', '}') match {
-        case Right(text) => text
-        case Left(err) =>
-          val remainder = readUntilStatementEnd().trim
-          val original = s.substring(startIndex, math.min(s.length, i)).trim + (if (remainder.nonEmpty) remainder else "")
-          val msg = s"C++ for: body parse error: $err"
-          unsupported += original
-          return BeExpressionUnparsable(original, msg, parsedFromLanguage = Some(Cpp))
-      }
-
-      val parts = splitTopLevel(headerText, ';').map(_.trim)
-      if (parts.length != 3) {
-        val original = s"for(${headerText.trim}){...}"
-        unsupported += original
-        return BeExpressionUnsupported(original, parsedFromLanguage = Some(Cpp))
-      }
-
-      val initPart = parts(0)
-      val condPart = parts(1)
-      val incPart = parts(2)
-
-      parseCountedFor(initPart, condPart, incPart) match {
-        case Some(amount) =>
-          context.pushScope()
-          val (bodyExpressions, bodyUnsupported) = new Parser(bodyText, context).parseStatementsUntil(stopChar = None)
-          context.popScope()
-          bodyUnsupported.foreach(stmt => if (stmt.trim.nonEmpty) unsupported += stmt)
-          BeRepeatNr.times(amount, BeSequence.optionalBody(bodyExpressions))
-        case None =>
-          val original = s"for(${headerText.trim}){...}"
-          unsupported += original
-          BeExpressionUnsupported(original, parsedFromLanguage = Some(Cpp))
+      if (!startsWithKeyword("else")) Right(Nil)
+      else {
+        i += "else".length
+        skipWhitespace()
+        if (startsWithKeyword("if")) Right(List(parseIfElse(unsupported)))
+        else readSection('{', '}', startIndex, "C++ else: body", unsupported).map(parseScopedBody(_, unsupported))
       }
     }
 
-    private def parseCountedFor(initPart: String, condPart: String, incPart: String): Option[Int] = {
-      // Accept e.g.: int i = 0; i < 10; i++
-      val init = initPart.trim
-      val initNameAndStart: Option[(String, BigInt)] =
-        init match {
-          case DeclarationPattern(_, varName, initRaw) if initRaw != null =>
-            scala.util.Try(BigInt(initRaw.trim)).toOption.map(v => varName -> v)
-          case AssignmentPattern(varName, rhs) =>
-            scala.util.Try(BigInt(rhs.trim)).toOption.map(v => varName -> v)
+    private def parseForLoop(unsupported: ListBuffer[String]): BeExpression = {
+      val startIndex = consumeKeyword("for")
+      val parsed: Either[BeExpression, BeExpression] = for {
+        headerText <- readSection('(', ')', startIndex, "C++ for: header", unsupported)
+        bodyText <- readSection('{', '}', startIndex, "C++ for: body", unsupported)
+      } yield {
+        val countedAmount = splitTopLevel(headerText, ';').map(_.trim) match {
+          case List(initPart, condPart, incPart) => parseCountedFor(initPart, condPart, incPart)
           case _ => None
         }
-
-      initNameAndStart match {
-        case None => None
-        case Some((loopVar, start)) =>
-          val stepOk: Boolean = {
-            val inc = incPart.trim.replaceAll("\\s+", "")
-            inc == s"${loopVar}++" || inc == s"++${loopVar}" || inc == s"${loopVar}+=1" ||
-              inc == s"${loopVar}=${loopVar}+1" || inc == s"${loopVar}=1+${loopVar}"
-          }
-          if (!stepOk) return None
-
-          val cond = condPart.trim
-          val condMatch = findTopLevelBinaryOperator(cond, List("<=", "<")).flatMap { case (left, op, right) =>
-            if (left.trim.replaceAll("\\s+", "") != loopVar) None
-            else scala.util.Try(BigInt(right.trim)).toOption.map(bound => op -> bound)
-          }
-
-          condMatch match {
-            case None => None
-            case Some((op, bound)) =>
-              val countOpt: Option[BigInt] = op match {
-                case "<" => Some(bound - start)
-                case "<=" => Some((bound - start) + 1)
-                case _ => None
-              }
-
-              countOpt.flatMap { count =>
-                if (count < 0 || count > Int.MaxValue) None
-                else Some(count.toInt)
-              }
-          }
-      }
-    }
-
-    private def splitTopLevel(text: String, separator: Char): List[String] = {
-      val out = scala.collection.mutable.ListBuffer.empty[String]
-      val cur = new StringBuilder
-      var depth = 0
-      var inString: Option[Char] = None
-
-      def flush(): Unit = {
-        out += cur.toString
-        cur.clear()
-      }
-
-      text.foreach { ch =>
-        inString match {
-          case Some(q) =>
-            cur.append(ch)
-            if (ch == q) inString = None
+        countedAmount match {
+          case Some(amount) =>
+            BeRepeatNr.times(amount, BeSequence.optionalBody(parseScopedBody(bodyText, unsupported)))
           case None =>
-            ch match {
-              case '"' | '\'' =>
-                inString = Some(ch)
-                cur.append(ch)
-              case '(' =>
-                depth += 1
-                cur.append(ch)
-              case ')' =>
-                depth = math.max(0, depth - 1)
-                cur.append(ch)
-              case c if c == separator && depth == 0 =>
-                flush()
-              case _ =>
-                cur.append(ch)
-            }
+            val original = s"for(${headerText.trim}){...}"
+            unsupported += original
+            BeExpressionUnsupported(original, parsedFromLanguage = Some(Cpp))
         }
       }
+      parsed.merge
+    }
 
-      flush()
-      out.toList
+    /** Recognizes `start; var < bound; var++`-style headers and returns the repetition count. */
+    private def parseCountedFor(initPart: String, condPart: String, incPart: String): Option[Int] =
+      for {
+        (loopVar, start) <- parseLoopStart(initPart.trim)
+        if isUnitIncrement(incPart, loopVar)
+        (op, bound) <- findTopLevelBinaryOperator(condPart.trim, List("<=", "<")).flatMap { case (left, op, right) =>
+          if (left.trim.replaceAll("\\s+", "") != loopVar) None
+          else scala.util.Try(BigInt(right.trim)).toOption.map(bound => op -> bound)
+        }
+        count <- op match {
+          case "<" => Some(bound - start)
+          case "<=" => Some((bound - start) + 1)
+          case _ => None
+        }
+        if count >= 0 && count <= Int.MaxValue
+      } yield count.toInt
+
+    private def parseLoopStart(init: String): Option[(String, BigInt)] =
+      init match {
+        case DeclarationPattern(_, varName, initRaw) if initRaw != null =>
+          scala.util.Try(BigInt(initRaw.trim)).toOption.map(v => varName -> v)
+        case AssignmentPattern(varName, rhs) =>
+          scala.util.Try(BigInt(rhs.trim)).toOption.map(v => varName -> v)
+        case _ => None
+      }
+
+    private def isUnitIncrement(incPart: String, loopVar: String): Boolean = {
+      val inc = incPart.trim.replaceAll("\\s+", "")
+      inc == s"${loopVar}++" || inc == s"++${loopVar}" || inc == s"${loopVar}+=1" ||
+        inc == s"${loopVar}=${loopVar}+1" || inc == s"${loopVar}=1+${loopVar}"
     }
 
     private def parseSimpleStatement(statement: String): Either[String, BeExpression] = {
@@ -565,12 +413,12 @@ object CppParser {
     findTopLevelBinaryOperator(text, ComparisonOperators).flatMap { case (left, op, right) =>
       val funcOpt = DefaultDefinitions.operatorDefinitionsBySymbolAndArity.get(op -> 2)
       funcOpt.map { funcDef =>
-        val inputs = funcDef.inputs
-        val leftVar = inputs.headOption
-        val rightVar = inputs.drop(1).headOption
+        val leftVar = funcDef.inputs.headOption
+        val rightVar = funcDef.inputs.drop(1).headOption
+        def operandType(input: Option[BeDefineVariable]): BeDataType = input.map(_.variableType).getOrElse(BeDataType.AnyType)
 
-        val leftExpr = leftVar.map(v => parseOperand(left, v.variableType, context)).getOrElse(parseOperand(left, BeDataType.AnyType, context))
-        val rightExpr = rightVar.map(v => parseOperand(right, v.variableType, context)).getOrElse(parseOperand(right, BeDataType.AnyType, context))
+        val leftExpr = parseOperand(left, operandType(leftVar), context)
+        val rightExpr = parseOperand(right, operandType(rightVar), context)
 
         val valueMap: Map[BeDefineVariable, BeExpression] = (leftVar.toList.map(_ -> leftExpr) ++ rightVar.toList.map(_ -> rightExpr)).toMap
         BeSequence.conditionalBody(List(BeFunctionCall.fromDefinition(funcDef, valueMap)))
@@ -591,29 +439,24 @@ object CppParser {
     trimmed match {
       case CallPattern(name, argsText) =>
         parseFunctionCall(name, argsText)
+      // Boolean literals also match the identifier pattern, so they are recognized first.
       case _ if BeDataType.Boolean.isValidLiteral(trimmed) =>
         BeUseValue(BeDataValueLiteral(trimmed), None)
       case ident if ident.matches("^[A-Za-z_][A-Za-z0-9_]*$") =>
         val defVar = context.assignVariable(ident, expectedType)
         BeUseValue(BeUseValueReference(defVar), None)
-      case _ if BeDataType.Numeric.isValidLiteral(trimmed) || scala.util.Try(BigDecimal(trimmed)).isSuccess =>
-        BeUseValue(BeDataValueLiteral(trimmed), None)
-      case _ if BeDataType.String.isValidLiteral(trimmed) =>
-        BeUseValue(BeDataValueLiteral(trimmed), None)
+      // Numeric, string and any other text are kept as literals.
       case _ =>
         BeUseValue(BeDataValueLiteral(trimmed), None)
     }
   }
 
   private def mapCppType(typeNameRaw: String): BeDataType = {
-    val t = typeNameRaw.trim
-    val lower = t.toLowerCase
-    lower match {
+    typeNameRaw.trim.toLowerCase match {
       case "int" | "short" | "long" | "unsigned" | "unsignedint" | "uint8_t" | "uint16_t" | "uint32_t" | "size_t" => BeDataType.Int
       case "float" | "double" => BeDataType.Numeric
       case "bool" | "boolean" => BeDataType.Boolean
-      case "string" | "std::string" | "arduino::string" | "string" | "char*" | "constchar*" => BeDataType.String
-      case _ if t == "String" => BeDataType.String
+      case "string" | "std::string" | "arduino::string" | "char*" | "constchar*" => BeDataType.String
       case _ => BeDataType.AnyType
     }
   }
@@ -663,7 +506,7 @@ object CppParser {
   private def parseFunctionCall(name: String, argsText: String): BeExpression = {
     val args = splitArgs(argsText)
 
-    val parameters: List[BeDefineVariable] = args.zipWithIndex.map { case (_, idx) =>
+    val parameters: List[BeDefineVariable] = args.indices.toList.map { idx =>
       BeDefineVariable(BeEntityName.fromUniversalNameInParts(s"arg${idx + 1}"), BeDataType.AnyType)
     }
 
@@ -682,29 +525,29 @@ object CppParser {
     BeFunctionCall.fromDefinition(funcDef, valueMap)
   }
 
-  private def splitArgs(argsText: String): List[String] = {
-    val trimmed = argsText.trim
-    if (trimmed.isEmpty) return Nil
+  private def splitArgs(argsText: String): List[String] =
+    splitTopLevel(argsText.trim, ',').map(_.trim).filter(_.nonEmpty)
 
-    val out = scala.collection.mutable.ListBuffer.empty[String]
+  /** Splits at `separator` outside parentheses and string literals, keeping empty, untrimmed parts. */
+  private def splitTopLevel(text: String, separator: Char): List[String] = {
+    val out = ListBuffer.empty[String]
     val cur = new StringBuilder
     var depth = 0
     var inString: Option[Char] = None
 
     def flush(): Unit = {
-      val s = cur.toString.trim
-      if (s.nonEmpty) out += s
+      out += cur.toString
       cur.clear()
     }
 
-    trimmed.foreach { ch =>
+    text.foreach { ch =>
       inString match {
-        case Some(quote) =>
+        case Some(q) =>
           cur.append(ch)
-          if (ch == quote) inString = None
+          if (ch == q) inString = None
         case None =>
           ch match {
-            case '"' | '\'' =>
+            case c if isQuote(c) =>
               inString = Some(ch)
               cur.append(ch)
             case '(' =>
@@ -713,7 +556,7 @@ object CppParser {
             case ')' =>
               depth = math.max(0, depth - 1)
               cur.append(ch)
-            case ',' if depth == 0 =>
+            case c if c == separator && depth == 0 =>
               flush()
             case _ =>
               cur.append(ch)

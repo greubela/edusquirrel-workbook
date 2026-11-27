@@ -45,63 +45,55 @@ object BackendCommandHandler {
   ))
 
 
-  private def localHandlerRequiringLogin(userToken: SignedToken): ExecutionClient = ExecutionClientPool(List(
-    localHandlerNoLoginRequired,
+  private def localHandlerRequiringLogin(userToken: SignedToken): ExecutionClient = {
+    val tokenUser = userToken.info.user
+    // Account-bound commands may only address the signed-in user's own records.
+    def mayAccessUser(userId: String): Boolean = AuthHandling.mayAccessIdBased(tokenUser.id, userId)
 
-    // SQL
-    SqlEditorCommands.execute.toLocalExecutionClient(
-      (request, logger) => Future { SqlEditorExecution.handle(request) }
-    ),
-    SQLCommands.StoreToDbCommand.toLocalExecutionClient(
-      (request: StoreToDbRequest, logger: Logger) => Future {
-        UpsertToDatabase.handleRequest(request, logger)
-      },
-      (request: StoreToDbRequest, logger: Logger) => AuthHandling.mayAccessIdBased(userToken.info.user.id, request.syncContext.userId)
+    ExecutionClientPool(List(
+      localHandlerNoLoginRequired,
 
-    ),
+      // SQL
+      SqlEditorCommands.execute.toLocalExecutionClient(
+        (request, logger) => Future { SqlEditorExecution.handle(request) }
+      ),
+      SQLCommands.StoreToDbCommand.toLocalExecutionClient(
+        (request: StoreToDbRequest, logger: Logger) => Future { UpsertToDatabase.handleRequest(request, logger) },
+        (request: StoreToDbRequest, _: Logger) => mayAccessUser(request.syncContext.userId)
+      ),
+      SQLCommands.bulkStoreToDbCommand.toLocalExecutionClient(
+        (request: BulkStoreToDbRequest, logger: Logger) => Future { UpsertToDatabase.handleBulkRequest(request, logger) },
+        (request: BulkStoreToDbRequest, _: Logger) => request.syncContexts.forall(context => mayAccessUser(context.userId))
+      ),
+      SQLCommands.fetchEventsFromDbCommand.toLocalExecutionClient(
+        (request: FetchEventsFromDbRequest, logger: Logger) => Future { FetchFromDatabase.handleRequest(request, logger) },
+        (request: FetchEventsFromDbRequest, _: Logger) => mayAccessUser(request.usageContext.userId)
+      ),
+      SQLCommands.resetUserHistoriesDbCommand.toLocalExecutionClient(
+        (request: DeleteInDbRequest, logger: Logger) => Future {
+          require(request.allWorkbooks, "A full reset requires the all-workbook scope.")
+          DeleteInDatabase.handleRequest(request, logger)
+        },
+        (request: DeleteInDbRequest, _: Logger) => mayAccessUser(request.usageContext.userId)
+      ),
+      SQLCommands.clearValuesDbCommand.toLocalExecutionClient(
+        (request: DeleteInDbRequest, logger: Logger) => Future { DeleteInDatabase.handleRequest(request, logger) },
+        (request: DeleteInDbRequest, _: Logger) => mayAccessUser(request.usageContext.userId)
+      ),
 
-    SQLCommands.bulkStoreToDbCommand.toLocalExecutionClient(
-      (request: BulkStoreToDbRequest, logger: Logger) => Future {
-        UpsertToDatabase.handleBulkRequest(request, logger)
-      },
-      (request: BulkStoreToDbRequest, logger: Logger) => request.syncContexts.forall(context =>
-        AuthHandling.mayAccessIdBased(userToken.info.user.id, context.userId))
-    ),
+      // Mail
+      MailCommands.sendMailCommand.toLocalExecutionClient(
+        (request: SendMailRequest, logger: Logger) => SendMailCommand.handleSendMailRequest(request, logger),
+        (request: SendMailRequest, _: Logger) => AuthHandling.mayAccessMailBased(tokenUser.mail, request.recipientMail)
+      ),
 
-    SQLCommands.fetchEventsFromDbCommand.toLocalExecutionClient(
-      (request: FetchEventsFromDbRequest, logger: Logger) => Future {
-        FetchFromDatabase.handleRequest(request, logger)
-      },
-      (request: FetchEventsFromDbRequest, logger: Logger) => AuthHandling.mayAccessIdBased(userToken.info.user.id, request.usageContext.userId)
-    ),
-    SQLCommands.resetUserHistoriesDbCommand.toLocalExecutionClient(
-      (request: DeleteInDbRequest, logger: Logger) => Future {
-        require(request.allWorkbooks, "A full reset requires the all-workbook scope.")
-        DeleteInDatabase.handleRequest(request, logger)
-      },
-      (request: DeleteInDbRequest, logger: Logger) => AuthHandling.mayAccessIdBased(userToken.info.user.id, request.usageContext.userId)
-    ),
-    SQLCommands.clearValuesDbCommand.toLocalExecutionClient(
-      (request: DeleteInDbRequest, logger: Logger) => Future {
-        DeleteInDatabase.handleRequest(request, logger)
-      },
-      (request: DeleteInDbRequest, logger: Logger) => AuthHandling.mayAccessIdBased(userToken.info.user.id, request.usageContext.userId)
-
-    ),
-    // Mail
-    MailCommands.sendMailCommand.toLocalExecutionClient(
-      (request: SendMailRequest, logger: Logger) => SendMailCommand.handleSendMailRequest(request, logger),
-      (request: SendMailRequest, logger: Logger) => AuthHandling.mayAccessMailBased(userToken.info.user.mail, request.recipientMail)
-    ),
-
-
-
-    UserCommands.updateAccountCommand.toLocalExecutionClient(
-      (request: UpdateAccountRequest, logger: Logger) => SqlUserCommands.handleUpdateAccountCommand(request, logger),
-      (request: UpdateAccountRequest, logger: Logger) => AuthHandling.mayAccessIdBased(userToken.info.user.id, request.allUserInfo.user.id),
-    ),
-
-  ))
+      // User
+      UserCommands.updateAccountCommand.toLocalExecutionClient(
+        (request: UpdateAccountRequest, logger: Logger) => SqlUserCommands.handleUpdateAccountCommand(request, logger),
+        (request: UpdateAccountRequest, _: Logger) => mayAccessUser(request.allUserInfo.user.id)
+      )
+    ))
+  }
 
 
   private[server] def logReceivedCommand(command: ExecutionCommand, logger: Logger): Unit = {
@@ -128,17 +120,17 @@ object BackendCommandHandler {
     validateFeedbackRequest(executionCommand)
     SqlLogCommands.handleLog(commandReceived, executionCommand, verifiedToken, remoteAddress, logger)
 
-    if (verifiedToken.nonEmpty) {
-      val user = verifiedToken.head.info.user
-      logger.logInfo(s"User is authorized as user ${user.name} (${user.id} @ ${user.mail})")
-      localHandlerRequiringLogin(verifiedToken.head).executeResponse(logger, executionCommand).map(_.fixReceived(commandReceived))
-    } else if (localHandlerNoLoginRequired.canExecuteCommand(executionCommand)) {
-      logger.logInfo(s"No authorized user found, only a subset of handlers are available!")
-      localHandlerNoLoginRequired.executeResponse(logger, executionCommand).map(_.fixReceived(commandReceived))
-    } else {
-      throw new IllegalArgumentException(s"Functionality ${executionCommand.name} either does not exist or requires an account!")
+    verifiedToken match {
+      case Some(token) =>
+        val user = token.info.user
+        logger.logInfo(s"User is authorized as user ${user.name} (${user.id} @ ${user.mail})")
+        localHandlerRequiringLogin(token).executeResponse(logger, executionCommand).map(_.fixReceived(commandReceived))
+      case None if localHandlerNoLoginRequired.canExecuteCommand(executionCommand) =>
+        logger.logInfo(s"No authorized user found, only a subset of handlers are available!")
+        localHandlerNoLoginRequired.executeResponse(logger, executionCommand).map(_.fixReceived(commandReceived))
+      case None =>
+        throw new IllegalArgumentException(s"Functionality ${executionCommand.name} either does not exist or requires an account!")
     }
-
   }
 
 

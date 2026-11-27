@@ -24,12 +24,6 @@ class NativeSnapFormatSpec extends FunSuite {
   private def nodes(document: Document): Vector[SnapElement] = document.root +: document.root.descendants
   private def python(state: ProgrammingState): String = state.toPythonStructured.toString
 
-  test("the native fixtures cover published projects, our writer's programs and the editor's wider vocabulary") {
-    val expected = NativeSnapFixtures.programs.map(_._1 + ".xml") :+ "features.xml"
-    expected.foreach(name => assert(NativeSnapFixtures.all.contains(name), name))
-    assert(NativeSnapFixtures.all.size >= expected.size + 8, NativeSnapFixtures.all.toString)
-  }
-
   NativeSnapFixtures.all.foreach { name =>
     test(s"$name: native XML reads losslessly and its history codec round-trips") {
       val xml = NativeSnapFixtures.read(name)

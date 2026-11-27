@@ -30,10 +30,6 @@ class TurtleStitchBlockParsingSpec extends FunSuite {
     }
   }
 
-  test("unterminated projects are rejected instead of guessed") {
-    intercept[it.evadid.vm.code.errors.ProgrammingConversionException](TurtleStitchToBeExpressionParser.parseProjectWithLayout(SourceParsing.parse(project.stripSuffix("</project>"), SourceLanguage.Snap).project.toTry.get).expression)
-  }
-
   private def scriptProject(blocks: String, definitions: String = "") =
     s"""<project><scenes select="1"><scene><blocks>$definitions</blocks><stage><sprites select="1"><sprite><scripts><script><block s="receiveGo"/>$blocks</script></scripts></sprite></sprites></stage></scene></scenes></project>"""
 

@@ -4,15 +4,17 @@ import it.evadid.vm.conversion.snapexpression.SnapControlFlow
 import it.evadid.vm.conversion.snapexpression.SnapExpressionSupport
 import it.evadid.vm.conversion.snapexpression.SnapInputCodec
 import it.evadid.vm.conversion.turtlestitchexpression.TurtleStitchProgramModel.{BlockLike, BoolLiteral, ColorLiteral, CustomBlockCall, CustomBlockDefinition, InputValue, ListLiteral, Literal, NestedBlock, NestedScript, PrimitiveBlock, Project, Script}
-import it.evadid.vm.code.abstractions.BeExpression
+import it.evadid.core.datastructures.vectorShapes.svg.TurtleCommand
+import it.evadid.vm.code.abstractions.{BeControlStructure, BeExpression}
 import it.evadid.vm.code.controlStructures.*
 import it.evadid.vm.code.defining.{BeDefineFunction, BeDefineVariable}
+import it.evadid.vm.code.errors.ProgrammingConversionException
 import it.evadid.vm.code.others.{BeReturn, BeStartProgram}
 import it.evadid.vm.code.usage.{BeFunctionCall, BeUseValue}
+import it.evadid.vm.conversion.parsed.DefaultDefinitions
 import it.evadid.vm.naming.BeEntityName
-import it.evadid.vm.types.{BeDataType, BeDataValueLiteral}
+import it.evadid.vm.types.{BeDataType, BeDataValueLiteral, StringLiteral}
 import it.evadid.workbook.elements.interactionElements.programming.state.snap.*
-import scala.collection.mutable.ListBuffer
 
 object TurtleStitchToBeExpressionParser {
   final case class ParseWithLayout(expression: BeExpression, canvasLayout: SnapCanvasLayout)
@@ -83,7 +85,6 @@ object TurtleStitchToBeExpressionParser {
       .orElse(inputs.collectFirst { case Literal(value) if value.trim.nonEmpty => value.trim })
       .getOrElse("x")
 
-  /** The first slot of set/change is the variable, either `<l>name</l>` or `<block var="name"/>`. */
   /** A variable reporter is a value, not a command. Snap does not keep it in a script stack. */
   private def commandStatements(statements: List[BeExpression]): List[BeExpression] =
     statements.filterNot(_.isInstanceOf[BeUseValue])
@@ -115,21 +116,21 @@ object TurtleStitchToBeExpressionParser {
     inputs.flatMap {
       // An empty slot keeps its position: it is 0 in a number slot (see slotLiteral), not a missing argument.
       case Literal(value) => List(slotLiteral(value, numeric = true))
-      case BoolLiteral(value) => List(BeUseValue(BeDataValueLiteral(booleanRaw(value)), None))
+      case BoolLiteral(value) => List(literalValue(booleanRaw(value)))
       case ListLiteral(items) => expandModelInputsToExpressions(items.toList, phaseOne)
       case NestedBlock(block) => parseBlock(block, phaseOne).toList
       case NestedScript(script) => List(parseScriptBody(script, phaseOne))
       case ColorLiteral(value) =>
-        List(BeUseValue(BeDataValueLiteral(colorLiteralToPython(value)), None))
+        List(literalValue(colorLiteralToPython(value)))
     }
 
   /** A Snap slot literal. Variables are separate reporters (`<block var="x"/>`), so slot text is text:
     * numbers stay numbers, other text is a text literal, and an empty number slot is 0, as in Snap.
     */
   private def slotLiteral(value: String, numeric: Boolean): BeExpression =
-    if value.trim.toDoubleOption.nonEmpty then BeUseValue(BeDataValueLiteral(value.trim), None)
-    else if value.isEmpty && numeric then BeUseValue(BeDataValueLiteral("0"), None)
-    else BeUseValue(BeDataValueLiteral(it.evadid.vm.types.StringLiteral.quote(value)), None)
+    if value.trim.toDoubleOption.nonEmpty then literalValue(value.trim)
+    else if value.isEmpty && numeric then literalValue("0")
+    else literalValue(StringLiteral.quote(value))
 
   /** The result of a reporter (of `valueType`) or a predicate (a truth value); commands return nothing. */
   private def reportedResult(blockType: SnapVocabulary.BlockType, valueType: BeDataType): Option[BeDefineVariable] = blockType match {
@@ -143,7 +144,7 @@ object TurtleStitchToBeExpressionParser {
     def reports(expression: BeExpression): List[BeExpression] = expression match {
       case BeReturn(Some(value)) => List(value)
       case sequence: BeSequence => sequence.body.toList.flatMap(reports)
-      case structure: it.evadid.vm.code.abstractions.BeControlStructure => structure.allPossibleBodies.toList.flatMap(reports)
+      case structure: BeControlStructure => structure.allPossibleBodies.toList.flatMap(reports)
       case _ => Nil
     }
     reports(body).map(snapValueType).distinct match {
@@ -168,16 +169,10 @@ object TurtleStitchToBeExpressionParser {
   /** Snap-native body is a direct `<script>` child; `<scripts>` holds extras / legacy bodies. */
   private def buildDefinitions(project: Project): PhaseOneResult = {
     val customDefs = project.customDefinitions.toList
-    val fromCalls = collectSignatures(project)
-    val fromCustoms = customDefs.map { defn =>
-      val arity = math.max(defn.inputs.size, SnapTurtleCatalog.arityFromSpec(defn.spec))
-      Signature(customSignatureName(defn.spec), arity, false, isCustom = true)
-    }
-    val signatures = (fromCalls ++ fromCustoms).distinct
+    val signatures = (collectSignatures(project) ++ customDefs.map(customSignature)).distinct
     // Reporters and predicates return a value; their calls, also inside definitions, are expressions.
     val reported = customDefs.flatMap { defn =>
-      val arity = math.max(defn.inputs.size, SnapTurtleCatalog.arityFromSpec(defn.spec))
-      reportedResult(defn.blockType, BeDataType.AnyType).map(Signature(customSignatureName(defn.spec), arity, false, isCustom = true) -> _)
+      reportedResult(defn.blockType, BeDataType.AnyType).map(customSignature(defn) -> _)
     }.toMap
     val stubs = signatures.map { signature =>
       val stub = createDefinition(signature)
@@ -187,37 +182,39 @@ object TurtleStitchToBeExpressionParser {
     val stubMap = signatures.zip(stubs).toMap
     val phaseOneStubs = PhaseOneResult(stubs, stubMap, Nil)
     val userDefinitions = customDefs.flatMap { defn =>
-      val arity = math.max(defn.inputs.size, SnapTurtleCatalog.arityFromSpec(defn.spec))
-      val sig = Signature(customSignatureName(defn.spec), arity, false, isCustom = true)
-      stubMap.get(sig).map { stub =>
-        val specNames = SnapTurtleCatalog.inputNamesFromSpec(defn.spec)
-        val params =
-          if specNames.nonEmpty then
-            specNames.zipWithIndex.map((name, index) => BeDefineVariable(BeEntityName.fromCodeString(name), slotDataType(defn.inputs.lift(index).map(_.inputType).getOrElse("%s"))))
-          else if defn.inputs.nonEmpty then
-            defn.inputs.toList.zipWithIndex.map { (inp, idx) =>
-              val name =
-                if inp.name.trim.nonEmpty then inp.name.trim
-                else s"arg${idx + 1}"
-              BeDefineVariable(BeEntityName.fromCodeString(name), BeDataType.AnyType)
-            }
-          else stub.inputs
+      stubMap.get(customSignature(defn)).map { stub =>
         val body = defn.body.headOption.map(parseScriptBody(_, phaseOneStubs)).getOrElse(BeSequence.optionalBody(Nil))
-        val named = BeDefineFunction(
-          params.toList,
+        BeDefineFunction(
+          customParameters(defn, stub),
           reportedResult(defn.blockType, reportedType(body)),
           body,
           BeDefineFunction.functionInfo(BeEntityName.fromUniversalNameInParts(SnapTurtleCatalog.pythonNameFromCustomSpec(defn.spec)))
         )
-        named
       }
     }
-    val userBySpec = customDefs.zip(userDefinitions).map { (defn, fn) =>
-      val arity = math.max(defn.inputs.size, SnapTurtleCatalog.arityFromSpec(defn.spec))
-      Signature(customSignatureName(defn.spec), arity, false, isCustom = true) -> fn
-    }.toMap
+    val userBySpec = customDefs.zip(userDefinitions).map((defn, fn) => customSignature(defn) -> fn).toMap
     val merged = stubMap ++ userBySpec
     PhaseOneResult(merged.values.toList, merged, userDefinitions)
+  }
+
+  private def customSignature(defn: CustomBlockDefinition): Signature = {
+    val arity = math.max(defn.inputs.size, SnapTurtleCatalog.arityFromSpec(defn.spec))
+    Signature(customSignatureName(defn.spec), arity, false, isCustom = true)
+  }
+
+  /** Parameters named by the spec, else by the declared inputs (`argN` when unnamed), else the stub's. */
+  private def customParameters(defn: CustomBlockDefinition, stub: BeDefineFunction): List[BeDefineVariable] = {
+    val specNames = SnapTurtleCatalog.inputNamesFromSpec(defn.spec)
+    if specNames.nonEmpty then
+      specNames.zipWithIndex.map((name, index) => BeDefineVariable(BeEntityName.fromCodeString(name), slotDataType(defn.inputs.lift(index).map(_.inputType).getOrElse("%s")))).toList
+    else if defn.inputs.nonEmpty then
+      defn.inputs.toList.zipWithIndex.map { (inp, idx) =>
+        val name =
+          if inp.name.trim.nonEmpty then inp.name.trim
+          else s"arg${idx + 1}"
+        BeDefineVariable(BeEntityName.fromCodeString(name), BeDataType.AnyType)
+      }
+    else stub.inputs
   }
 
   private def parsePhaseTwoScripts(project: Project, phaseOne: PhaseOneResult): List[ScriptParse] = {
@@ -257,7 +254,7 @@ object TurtleStitchToBeExpressionParser {
           case "doChangeVar" => Some(parseDoChangeVar(block, phaseOne))
           case "doStopThis" => block.inputs.toList match {
             case List(Literal("this block")) => Some(BeReturn(None))
-            case _ => throw it.evadid.vm.code.errors.ProgrammingConversionException.unsupported(
+            case _ => throw ProgrammingConversionException.unsupported(
               "Only stop this block can be converted to a function return.")
           }
           // `say … for … secs` prints like `say`; the bubble's duration has no counterpart in text output.
@@ -268,14 +265,14 @@ object TurtleStitchToBeExpressionParser {
           case "reportMonadic" => block.inputs.toList match {
             case Literal(function) :: value if function.trim == "sqrt" =>
               Some(SnapControlFlow.mathCall("sqrt", expandModelInputsToExpressions(value, phaseOne)))
-            case Literal(function) :: _ => throw it.evadid.vm.code.errors.ProgrammingConversionException.unsupported(
+            case Literal(function) :: _ => throw ProgrammingConversionException.unsupported(
               s"Snap's '${function.trim} of' has no translation; only 'sqrt of' has.")
-            case _ => throw it.evadid.vm.code.errors.ProgrammingConversionException.unsupported("Snap's function reporter needs a chosen function.")
+            case _ => throw ProgrammingConversionException.unsupported("Snap's function reporter needs a chosen function.")
           }
           case "reportRandom" => block.inputs.toList match {
             case List(Literal(low), Literal(high)) if low.trim.toDoubleOption.contains(0.0) && high.trim == SnapControlFlow.RandomUpperBound =>
               Some(SnapControlFlow.mathCall("random", Nil))
-            case _ => throw it.evadid.vm.code.errors.ProgrammingConversionException.unsupported(
+            case _ => throw ProgrammingConversionException.unsupported(
               s"Snap's 'pick random' translates only as random(), from 0 to ${SnapControlFlow.RandomUpperBound}.")
           }
           case "reportJoinWords" => Some(SnapControlFlow.textJoin(expandModelInputsToExpressions(block.inputs.toList, phaseOne)))
@@ -292,21 +289,20 @@ object TurtleStitchToBeExpressionParser {
   private def parseDoRepeat(block: BlockLike, phaseOne: PhaseOneResult): BeExpression = {
     val inputs = block.inputs.toList
     // The count is a number or a reporter; an empty slot repeats zero times, as in Snap.
-    val amount = valueFromModelInputs(inputs.take(1), phaseOne).getOrElse(BeUseValue(BeDataValueLiteral("0"), None))
-    val body = inputs.collectFirst { case NestedScript(script) => script }.map(parseScriptBody(_, phaseOne)).getOrElse(BeSequence.optionalBody(Nil))
-    BeRepeatNr(amount, body)
+    val amount = valueFromModelInputs(inputs.take(1), phaseOne).getOrElse(literalValue("0"))
+    BeRepeatNr(amount, firstScriptBody(inputs, phaseOne))
   }
 
   private def parseDoFor(block: BlockLike, phaseOne: PhaseOneResult): BeExpression = {
     val inputs = block.inputs.toList
     val name = literalNameFromModelInputs(inputs).getOrElse("i")
     val rest = dropNameModelInput(inputs)
-    val start = valueFromModelInputs(rest, phaseOne).getOrElse(BeUseValue(BeDataValueLiteral("1"), None))
+    val start = valueFromModelInputs(rest, phaseOne).getOrElse(literalValue("1"))
     val endInputs = rest match
       case _ :: tail => tail
       case Nil => Nil
-    val end = valueFromModelInputs(endInputs, phaseOne).getOrElse(BeUseValue(BeDataValueLiteral("1"), None))
-    val body = inputs.collectFirst { case NestedScript(script) => script }.map(parseScriptBody(_, phaseOne)).getOrElse(BeSequence.optionalBody(Nil))
+    val end = valueFromModelInputs(endInputs, phaseOne).getOrElse(literalValue("1"))
+    val body = firstScriptBody(inputs, phaseOne)
     BeFor(currentVars.intern(name), start, end, body)
   }
 
@@ -314,37 +310,36 @@ object TurtleStitchToBeExpressionParser {
     val inputs = block.inputs.toList
     val condition = conditionFromModelInputs(inputs, phaseOne)
     val scripts = inputs.collect { case NestedScript(script) => script }
-    val thenBody = scripts.headOption.map(parseScriptBody(_, phaseOne)).getOrElse(BeSequence.optionalBody(Nil))
-    val elseBody = scripts.drop(1).headOption.map(parseScriptBody(_, phaseOne)).getOrElse(BeSequence.optionalBody(Nil))
+    val thenBody = scriptBody(scripts.headOption, phaseOne)
+    val elseBody = scriptBody(scripts.drop(1).headOption, phaseOne)
     BeIfElse(BeSequence.conditionalBody(List(condition)), thenBody, elseBody)
   }
 
   private def parseDoIf(block: BlockLike, phaseOne: PhaseOneResult): BeExpression = {
     val inputs = block.inputs.toList
     val condition = conditionFromModelInputs(inputs, phaseOne)
-    val thenBody = inputs.collectFirst { case NestedScript(script) => script }.map(parseScriptBody(_, phaseOne)).getOrElse(BeSequence.optionalBody(Nil))
-    BeIfElse(BeSequence.conditionalBody(List(condition)), thenBody, BeSequence.optionalBody(Nil))
+    BeIfElse(BeSequence.conditionalBody(List(condition)), firstScriptBody(inputs, phaseOne), BeSequence.optionalBody(Nil))
   }
 
   private def parseDoUntil(block: BlockLike, phaseOne: PhaseOneResult): BeExpression = {
     val inputs = block.inputs.toList
     val condition = SnapControlFlow.invertCondition(conditionFromModelInputs(inputs, phaseOne))
-    val body = inputs.collectFirst { case NestedScript(script) => script }.map(parseScriptBody(_, phaseOne)).getOrElse(BeSequence.optionalBody(Nil))
-    BeWhile(BeSequence.conditionalBody(List(condition)), body)
+    BeWhile(BeSequence.conditionalBody(List(condition)), firstScriptBody(inputs, phaseOne))
   }
 
   private def parseDoSetVar(block: BlockLike, phaseOne: PhaseOneResult): BeExpression = {
     val (name, valueInputs) = assignmentNameAndRestModel(block.inputs.toList)
-    val value = valueFromModelInputs(valueInputs, phaseOne).getOrElse(BeUseValue(BeDataValueLiteral("0"), None))
+    val value = valueFromModelInputs(valueInputs, phaseOne).getOrElse(literalValue("0"))
     SnapControlFlow.assignVariable(currentVars.intern(name), value)
   }
 
   private def parseDoChangeVar(block: BlockLike, phaseOne: PhaseOneResult): BeExpression = {
     val (name, amountInputs) = assignmentNameAndRestModel(block.inputs.toList)
-    val amount = valueFromModelInputs(amountInputs, phaseOne).getOrElse(BeUseValue(BeDataValueLiteral("1"), None))
+    val amount = valueFromModelInputs(amountInputs, phaseOne).getOrElse(literalValue("1"))
     SnapControlFlow.changeVariable(currentVars.intern(name), amount)
   }
 
+  /** The first slot of set/change is the variable, either `<l>name</l>` or `<block var="name"/>`. */
   private def assignmentNameAndRestModel(inputs: List[InputValue]): (String, List[InputValue]) =
     inputs match
       case Literal(value) :: rest if value.trim.nonEmpty => (value.trim, rest)
@@ -370,17 +365,17 @@ object TurtleStitchToBeExpressionParser {
   private def valueFromModelInputs(inputs: List[InputValue], phaseOne: PhaseOneResult): Option[BeExpression] =
     inputs.headOption.map {
       case Literal(value) => slotLiteral(value, numeric = false)
-      case BoolLiteral(value) => BeUseValue(BeDataValueLiteral(booleanRaw(value)), None)
-      case NestedBlock(nested) => parseBlock(nested, phaseOne).getOrElse(BeUseValue(BeDataValueLiteral("0"), None))
-      case ListLiteral(items) => valueFromModelInputs(items.toList, phaseOne).getOrElse(BeUseValue(BeDataValueLiteral("0"), None))
+      case BoolLiteral(value) => literalValue(booleanRaw(value))
+      case NestedBlock(nested) => parseBlock(nested, phaseOne).getOrElse(literalValue("0"))
+      case ListLiteral(items) => valueFromModelInputs(items.toList, phaseOne).getOrElse(literalValue("0"))
       case other => parseInputValue(other, None, phaseOne)
     }
 
   /** The condition slot: a predicate, a boolean literal, or empty, which Snap treats as false. */
   private def conditionFromModelInputs(inputs: List[InputValue], phaseOne: PhaseOneResult): BeExpression = inputs.headOption match {
-    case Some(NestedBlock(nested)) => parseBlock(nested, phaseOne).getOrElse(BeUseValue(BeDataValueLiteral("False"), None))
-    case Some(BoolLiteral(value)) => BeUseValue(BeDataValueLiteral(booleanRaw(value)), None)
-    case _ => BeUseValue(BeDataValueLiteral("False"), None)
+    case Some(NestedBlock(nested)) => parseBlock(nested, phaseOne).getOrElse(literalValue("False"))
+    case Some(BoolLiteral(value)) => literalValue(booleanRaw(value))
+    case _ => literalValue("False")
   }
 
   private def parseScriptBody(script: Script, phaseOne: PhaseOneResult): BeSequence =
@@ -410,6 +405,15 @@ object TurtleStitchToBeExpressionParser {
       BeFunctionCall.fromDefinition(defn, mapped)
     }
   }
+
+  private def literalValue(raw: String): BeUseValue = BeUseValue(BeDataValueLiteral(raw), None)
+
+  /** The first nested script among `inputs` as a body; a missing one is empty. */
+  private def firstScriptBody(inputs: List[InputValue], phaseOne: PhaseOneResult): BeSequence =
+    scriptBody(inputs.collectFirst { case NestedScript(script) => script }, phaseOne)
+
+  private def scriptBody(script: Option[Script], phaseOne: PhaseOneResult): BeSequence =
+    script.map(parseScriptBody(_, phaseOne)).getOrElse(BeSequence.optionalBody(Nil))
 
   /** Snap booleans as the shared tree spells literals (`True`/`False`, as in the other front ends). */
   private def booleanRaw(value: Boolean): String = if value then "True" else "False"
@@ -446,7 +450,7 @@ object TurtleStitchToBeExpressionParser {
 
   private def colorLiteralToPython(value: TurtleStitchProgramModel.Rgba): String = {
     val raw = s"${value.r},${value.g},${value.b},${value.a}"
-    SnapInputCodec.pythonQuotedColorFromRaw(raw).getOrElse(it.evadid.vm.types.StringLiteral.quote(raw))
+    SnapInputCodec.pythonQuotedColorFromRaw(raw).getOrElse(StringLiteral.quote(raw))
   }
 
   private def createDefinition(signature: Signature): BeDefineFunction = {
@@ -455,16 +459,16 @@ object TurtleStitchToBeExpressionParser {
     }
     val displayName = SnapTurtleCatalog.canonicalPythonName(signature.name)
     val entityName = if signature.isCustom then BeEntityName.fromUniversalNameInParts(displayName)
-      else it.evadid.core.datastructures.vectorShapes.svg.TurtleCommand.resolveCanonicalNames(displayName)
+      else TurtleCommand.resolveCanonicalNames(displayName)
         .getOrElse(BeEntityName.fromUniversalNameInParts(displayName))
 
     if (signature.isOperator)
       BeDefineFunction(params, None, BeExpression.pass, BeDefineFunction.operatorInfo(signature.name, if signature.arity <= 1 then 0 else 1))
     else if !signature.isCustom then
-      it.evadid.core.datastructures.vectorShapes.svg.TurtleCommand.resolveTurtleMethod(displayName)
+      TurtleCommand.resolveTurtleMethod(displayName)
         .map(_.copy(inputs = params))
         // Library blocks bind to the same built-in definitions as Python and Java calls.
-        .orElse(it.evadid.vm.conversion.parsed.DefaultDefinitions.builtinFunctionDefinitions.collectFirst {
+        .orElse(DefaultDefinitions.builtinFunctionDefinitions.collectFirst {
           case (`displayName`, builtin) if builtin.inputs.size == params.size => builtin
         })
         .getOrElse(BeDefineFunction(params, None, BeExpression.pass, BeDefineFunction.functionInfo(entityName)))

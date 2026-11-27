@@ -10,19 +10,19 @@ case class FlowDecorationPaths[T: Fractional](segmentSize: T) {
 
   import N.*
 
-  private def intDim(width: Int, height: Int): Dimension[T] = Dimension[T](fromInt(width), fromInt(height))
-
-  private def intPoint(x: Int, y: Int): Point[T] = Point[T](fromInt(x), fromInt(y))
-
   private def intToSeg(nr: Int): T = segmentSize / fromInt(5) * fromInt(nr)
 
   private def tToSeg(nr: T): T = segmentSize / fromInt(5) * nr
 
   private def fromTenths(value: Int): T = fromInt(value) / fromInt(10)
 
-  private def segDim(w: Int, h: Int): Dimension[T] = Dimension(segmentSize / fromInt(5) * fromInt(w), segmentSize / fromInt(5) * fromInt(h))
+  private def tenthsToSeg(value: Int): T = tToSeg(fromTenths(value))
 
-  private def segDim(w: T, h: T): Dimension[T] = Dimension(segmentSize / fromInt(5) * w, segmentSize / fromInt(5) * h)
+  private def segDim(w: Int, h: Int): Dimension[T] = Dimension(intToSeg(w), intToSeg(h))
+
+  private def segDim(w: T, h: T): Dimension[T] = Dimension(tToSeg(w), tToSeg(h))
+
+  private def tenthsDim(w: Int, h: Int): Dimension[T] = segDim(fromTenths(w), fromTenths(h))
 
   val one: T = fromInt(1)
   val two: T = fromInt(2)
@@ -91,27 +91,27 @@ case class FlowDecorationPaths[T: Fractional](segmentSize: T) {
   def controlFlowSplitDown(centeredAround: Point[T], cleanOrigin: Boolean): SvgPathBuilder[T] = {
     val basePath =
       SvgPathBuilder(centeredAround)
-        .moveToRel(segDim(fromTenths(-8), fromTenths(-25)))
-        .verticalLineWithHeight(tToSeg(fromTenths(22)))
-        .lineToRel(segDim(fromTenths(-3), fromTenths(3)))
-        .lineToRel(segDim(fromTenths(-8), fromTenths(8)))
-        .lineToRel(segDim(fromTenths(-6), fromTenths(-5)))
-        .verticalLineWithHeight(tToSeg(fromTenths(22)))
-        .horizontalLineWithWidth(tToSeg(fromTenths(22)))
-        .lineToRel(segDim(fromTenths(-5), fromTenths(-6)))
-        .lineToRel(segDim(fromTenths(8), fromTenths(-8)))
-        .lineToRel(segDim(fromTenths(8), fromTenths(8)))
-        .lineToRel(segDim(fromTenths(-5), fromTenths(6)))
-        .horizontalLineWithWidth(tToSeg(fromTenths(22)))
-        .verticalLineWithHeight(tToSeg(fromTenths(-22)))
-        .lineToRel(segDim(fromTenths(-6), fromTenths(5)))
-        .lineToRel(segDim(fromTenths(-8), fromTenths(-8)))
-        .lineToRel(segDim(fromTenths(-3), fromTenths(-3)))
-        .verticalLineWithHeight(tToSeg(fromTenths(-22)))
+        .moveToRel(tenthsDim(-8, -25))
+        .verticalLineWithHeight(tenthsToSeg(22))
+        .lineToRel(tenthsDim(-3, 3))
+        .lineToRel(tenthsDim(-8, 8))
+        .lineToRel(tenthsDim(-6, -5))
+        .verticalLineWithHeight(tenthsToSeg(22))
+        .horizontalLineWithWidth(tenthsToSeg(22))
+        .lineToRel(tenthsDim(-5, -6))
+        .lineToRel(tenthsDim(8, -8))
+        .lineToRel(tenthsDim(8, 8))
+        .lineToRel(tenthsDim(-5, 6))
+        .horizontalLineWithWidth(tenthsToSeg(22))
+        .verticalLineWithHeight(tenthsToSeg(-22))
+        .lineToRel(tenthsDim(-6, 5))
+        .lineToRel(tenthsDim(-8, -8))
+        .lineToRel(tenthsDim(-3, -3))
+        .verticalLineWithHeight(tenthsToSeg(-22))
 
     val withOptionalOrigin =
       if (cleanOrigin) basePath
-      else basePath.lineToRel(segDim(fromTenths(-8), fromTenths(8)))
+      else basePath.lineToRel(tenthsDim(-8, 8))
 
     withOptionalOrigin.closePath()
   }
@@ -119,207 +119,116 @@ case class FlowDecorationPaths[T: Fractional](segmentSize: T) {
   def controlFlowSplitUp(centeredAround: Point[T], cleanOrigin: Boolean): SvgPathBuilder[T] = {
     val basePath =
       SvgPathBuilder(centeredAround)
-        .moveToRel(segDim(fromTenths(-8), fromTenths(25)))
-        .verticalLineWithHeight(tToSeg(fromTenths(-22)))
-        .lineToRel(segDim(fromTenths(-3), fromTenths(-3)))
-        .lineToRel(segDim(fromTenths(-8), fromTenths(-8)))
-        .lineToRel(segDim(fromTenths(-6), fromTenths(5)))
-        .verticalLineWithHeight(tToSeg(fromTenths(-22)))
-        .horizontalLineWithWidth(tToSeg(fromTenths(22)))
-        .lineToRel(segDim(fromTenths(-5), fromTenths(6)))
-        .lineToRel(segDim(fromTenths(8), fromTenths(8)))
-        .lineToRel(segDim(fromTenths(8), fromTenths(-8)))
-        .lineToRel(segDim(fromTenths(-5), fromTenths(-6)))
-        .horizontalLineWithWidth(tToSeg(fromTenths(22)))
-        .verticalLineWithHeight(tToSeg(fromTenths(22)))
-        .lineToRel(segDim(fromTenths(-6), fromTenths(-5)))
-        .lineToRel(segDim(fromTenths(-8), fromTenths(8)))
-        .lineToRel(segDim(fromTenths(-3), fromTenths(3)))
+        .moveToRel(tenthsDim(-8, 25))
+        .verticalLineWithHeight(tenthsToSeg(-22))
+        .lineToRel(tenthsDim(-3, -3))
+        .lineToRel(tenthsDim(-8, -8))
+        .lineToRel(tenthsDim(-6, 5))
+        .verticalLineWithHeight(tenthsToSeg(-22))
+        .horizontalLineWithWidth(tenthsToSeg(22))
+        .lineToRel(tenthsDim(-5, 6))
+        .lineToRel(tenthsDim(8, 8))
+        .lineToRel(tenthsDim(8, -8))
+        .lineToRel(tenthsDim(-5, -6))
+        .horizontalLineWithWidth(tenthsToSeg(22))
+        .verticalLineWithHeight(tenthsToSeg(22))
+        .lineToRel(tenthsDim(-6, -5))
+        .lineToRel(tenthsDim(-8, 8))
+        .lineToRel(tenthsDim(-3, 3))
+        .verticalLineWithHeight(tenthsToSeg(22))
 
     val withOptionalOrigin =
-      if (cleanOrigin) basePath.verticalLineWithHeight(tToSeg(fromTenths(22)))
-      else basePath
-        .verticalLineWithHeight(tToSeg(fromTenths(22)))
-        .lineToRel(segDim(fromTenths(-8), fromTenths(-8)))
+      if (cleanOrigin) basePath
+      else basePath.lineToRel(tenthsDim(-8, -8))
 
     withOptionalOrigin.closePath()
   }
 
-  def controlFlowCrossDown(centeredAround: Point[T], cleanOrigin: Boolean): SvgPathBuilder[T] = {
-    if (cleanOrigin) {
-      SvgPathBuilder(centeredAround)
-        .moveToRel(segDim(fromTenths(-14), fromTenths(-25)))
-        .lineToRel(segDim(fromTenths(-11), fromTenths(11)))
-        .lineToRel(segDim(fromTenths(14), fromTenths(14)))
-        .lineToRel(segDim(fromTenths(-8), fromTenths(8)))
-        .lineToRel(segDim(fromTenths(-6), fromTenths(-6)))
-        .verticalLineWithHeight(tToSeg(fromTenths(23)))
-        .horizontalLineWithWidth(tToSeg(fromTenths(22)))
-        .lineToRel(segDim(fromTenths(-6), fromTenths(-6)))
-        .lineToRel(segDim(fromTenths(8), fromTenths(-8)))
-        .lineToRel(segDim(fromTenths(8), fromTenths(8)))
-        .lineToRel(segDim(fromTenths(-4), fromTenths(6)))
-        .horizontalLineWithWidth(tToSeg(fromTenths(22)))
-        .verticalLineWithHeight(tToSeg(fromTenths(-22)))
-        .lineToRel(segDim(fromTenths(-6), fromTenths(5)))
-        .lineToRel(segDim(fromTenths(-8), fromTenths(-8)))
-        .lineToRel(segDim(fromTenths(14), fromTenths(-14)))
-        .lineToRel(segDim(fromTenths(-11), fromTenths(-11)))
-        .lineToRel(segDim(fromTenths(-14), fromTenths(14)))
-        .closePath()
-    } else {
-      SvgPathBuilder(centeredAround)
-        .moveToRel(segDim(fromTenths(-14), fromTenths(-25)))
-        .verticalLineWithHeight(tToSeg(fromTenths(11)))
-        .horizontalLineWithWidth(tToSeg(fromTenths(-11)))
-        .lineToRel(segDim(fromTenths(14), fromTenths(14)))
-        .lineToRel(segDim(fromTenths(-8), fromTenths(8)))
-        .lineToRel(segDim(fromTenths(-6), fromTenths(-6)))
-        .verticalLineWithHeight(tToSeg(fromTenths(23)))
-        .horizontalLineWithWidth(tToSeg(fromTenths(22)))
-        .lineToRel(segDim(fromTenths(-6), fromTenths(-6)))
-        .lineToRel(segDim(fromTenths(8), fromTenths(-8)))
-        .lineToRel(segDim(fromTenths(8), fromTenths(8)))
-        .lineToRel(segDim(fromTenths(-4), fromTenths(6)))
-        .horizontalLineWithWidth(tToSeg(fromTenths(22)))
-        .verticalLineWithHeight(tToSeg(fromTenths(-22)))
-        .lineToRel(segDim(fromTenths(-6), fromTenths(5)))
-        .lineToRel(segDim(fromTenths(-8), fromTenths(-8)))
-        .lineToRel(segDim(fromTenths(14), fromTenths(-14)))
-        .horizontalLineWithWidth(tToSeg(fromTenths(-11)))
-        .verticalLineWithHeight(tToSeg(fromTenths(-11)))
-        .lineToRel(segDim(fromTenths(-14), fromTenths(14)))
-        .closePath()
-    }
+  /** A cross or union junction: the corner at the origin is cut diagonally when `cleanOrigin`, otherwise square. */
+  private def junction(centeredAround: Point[T], cleanOrigin: Boolean, goingDown: Boolean)
+                      (body: SvgPathBuilder[T] => SvgPathBuilder[T]): SvgPathBuilder[T] = {
+    val sign = if (goingDown) 1 else -1
+    val start = SvgPathBuilder(centeredAround).moveToRel(tenthsDim(-14, -25 * sign))
+    val entered =
+      if (cleanOrigin) start.lineToRel(tenthsDim(-11, 11 * sign))
+      else start.verticalLineWithHeight(tenthsToSeg(11 * sign)).horizontalLineWithWidth(tenthsToSeg(-11))
+    val drawn = body(entered)
+    val exited =
+      if (cleanOrigin) drawn.lineToRel(tenthsDim(-11, -11 * sign))
+      else drawn.horizontalLineWithWidth(tenthsToSeg(-11)).verticalLineWithHeight(tenthsToSeg(-11 * sign))
+    exited.lineToRel(tenthsDim(-14, 14 * sign)).closePath()
   }
 
-  def controlFlowCrossUp(centeredAround: Point[T], cleanOrigin: Boolean): SvgPathBuilder[T] = {
-    if (cleanOrigin) {
-      SvgPathBuilder(centeredAround)
-        .moveToRel(segDim(fromTenths(-14), fromTenths(25)))
-        .lineToRel(segDim(fromTenths(-11), fromTenths(-11)))
-        .lineToRel(segDim(fromTenths(14), fromTenths(-14)))
-        .lineToRel(segDim(fromTenths(-8), fromTenths(-8)))
-        .lineToRel(segDim(fromTenths(-6), fromTenths(6)))
-        .verticalLineWithHeight(tToSeg(fromTenths(-23)))
-        .horizontalLineWithWidth(tToSeg(fromTenths(22)))
-        .lineToRel(segDim(fromTenths(-6), fromTenths(6)))
-        .lineToRel(segDim(fromTenths(8), fromTenths(8)))
-        .lineToRel(segDim(fromTenths(8), fromTenths(-8)))
-        .lineToRel(segDim(fromTenths(-4), fromTenths(-6)))
-        .horizontalLineWithWidth(tToSeg(fromTenths(22)))
-        .verticalLineWithHeight(tToSeg(fromTenths(22)))
-        .lineToRel(segDim(fromTenths(-6), fromTenths(-5)))
-        .lineToRel(segDim(fromTenths(-8), fromTenths(8)))
-        .lineToRel(segDim(fromTenths(14), fromTenths(14)))
-        .lineToRel(segDim(fromTenths(-11), fromTenths(11)))
-        .lineToRel(segDim(fromTenths(-14), fromTenths(-14)))
-        .closePath()
-    } else {
-      SvgPathBuilder(centeredAround)
-        .moveToRel(segDim(fromTenths(-14), fromTenths(25)))
-        .verticalLineWithHeight(tToSeg(fromTenths(-11)))
-        .horizontalLineWithWidth(tToSeg(fromTenths(-11)))
-        .lineToRel(segDim(fromTenths(14), fromTenths(-14)))
-        .lineToRel(segDim(fromTenths(-8), fromTenths(-8)))
-        .lineToRel(segDim(fromTenths(-6), fromTenths(6)))
-        .verticalLineWithHeight(tToSeg(fromTenths(-23)))
-        .horizontalLineWithWidth(tToSeg(fromTenths(22)))
-        .lineToRel(segDim(fromTenths(-6), fromTenths(6)))
-        .lineToRel(segDim(fromTenths(8), fromTenths(8)))
-        .lineToRel(segDim(fromTenths(8), fromTenths(-8)))
-        .lineToRel(segDim(fromTenths(-4), fromTenths(-6)))
-        .horizontalLineWithWidth(tToSeg(fromTenths(22)))
-        .verticalLineWithHeight(tToSeg(fromTenths(22)))
-        .lineToRel(segDim(fromTenths(-6), fromTenths(-5)))
-        .lineToRel(segDim(fromTenths(-8), fromTenths(8)))
-        .lineToRel(segDim(fromTenths(14), fromTenths(14)))
-        .horizontalLineWithWidth(tToSeg(fromTenths(-11)))
-        .verticalLineWithHeight(tToSeg(fromTenths(11)))
-        .lineToRel(segDim(fromTenths(-14), fromTenths(-14)))
-        .closePath()
+  def controlFlowCrossDown(centeredAround: Point[T], cleanOrigin: Boolean): SvgPathBuilder[T] =
+    junction(centeredAround, cleanOrigin, goingDown = true) { path =>
+      path
+        .lineToRel(tenthsDim(14, 14))
+        .lineToRel(tenthsDim(-8, 8))
+        .lineToRel(tenthsDim(-6, -6))
+        .verticalLineWithHeight(tenthsToSeg(23))
+        .horizontalLineWithWidth(tenthsToSeg(22))
+        .lineToRel(tenthsDim(-6, -6))
+        .lineToRel(tenthsDim(8, -8))
+        .lineToRel(tenthsDim(8, 8))
+        .lineToRel(tenthsDim(-4, 6))
+        .horizontalLineWithWidth(tenthsToSeg(22))
+        .verticalLineWithHeight(tenthsToSeg(-22))
+        .lineToRel(tenthsDim(-6, 5))
+        .lineToRel(tenthsDim(-8, -8))
+        .lineToRel(tenthsDim(14, -14))
     }
-  }
+
+  def controlFlowCrossUp(centeredAround: Point[T], cleanOrigin: Boolean): SvgPathBuilder[T] =
+    junction(centeredAround, cleanOrigin, goingDown = false) { path =>
+      path
+        .lineToRel(tenthsDim(14, -14))
+        .lineToRel(tenthsDim(-8, -8))
+        .lineToRel(tenthsDim(-6, 6))
+        .verticalLineWithHeight(tenthsToSeg(-23))
+        .horizontalLineWithWidth(tenthsToSeg(22))
+        .lineToRel(tenthsDim(-6, 6))
+        .lineToRel(tenthsDim(8, 8))
+        .lineToRel(tenthsDim(8, -8))
+        .lineToRel(tenthsDim(-4, -6))
+        .horizontalLineWithWidth(tenthsToSeg(22))
+        .verticalLineWithHeight(tenthsToSeg(22))
+        .lineToRel(tenthsDim(-6, -5))
+        .lineToRel(tenthsDim(-8, 8))
+        .lineToRel(tenthsDim(14, 14))
+    }
 
   def controlFlowUnionDown(centeredAround: Point[T], cleanOrigin: Boolean): SvgPathBuilder[T] = {
-    if (cleanOrigin) {
-      SvgPathBuilder(centeredAround)
-        .moveToRel(segDim(fromTenths(-14), fromTenths(-25)))
-        .lineToRel(segDim(fromTenths(-11), fromTenths(11)))
-        .lineToRel(segDim(fromTenths(14), fromTenths(14)))
-        .lineToRel(segDim(fromTenths(3), fromTenths(3)))
-        .verticalLineWithHeight(tToSeg(fromTenths(5)))
-        .horizontalLineWithWidth(tToSeg(fromTenths(-9)))
-        .lineToRel(segDim(fromTenths(17), fromTenths(17)))
-        .lineToRel(segDim(fromTenths(17), fromTenths(-17)))
-        .horizontalLineWithWidth(tToSeg(fromTenths(-9)))
-        .verticalLineWithHeight(tToSeg(fromTenths(-6)))
-        .lineToRel(segDim(fromTenths(3), fromTenths(-3)))
-        .lineToRel(segDim(fromTenths(14), fromTenths(-13)))
-        .lineToRel(segDim(fromTenths(-11), fromTenths(-11)))
-        .lineToRel(segDim(fromTenths(-14), fromTenths(14)))
-        .closePath()
-    } else {
-      SvgPathBuilder(centeredAround)
-        .moveToRel(segDim(fromTenths(-14), fromTenths(-25)))
-        .verticalLineWithHeight(tToSeg(fromTenths(11)))
-        .horizontalLineWithWidth(tToSeg(fromTenths(-11)))
-        .lineToRel(segDim(fromTenths(14), fromTenths(14)))
-        .lineToRel(segDim(fromTenths(3), fromTenths(3)))
-        .lineToRel(segDim(zero, fromTenths(5)))
-        .horizontalLineWithWidth(tToSeg(fromTenths(-9)))
-        .lineToRel(segDim(fromTenths(17), fromTenths(17)))
-        .lineToRel(segDim(fromTenths(17), fromTenths(-17)))
-        .horizontalLineWithWidth(tToSeg(fromTenths(-9)))
-        .lineToRel(segDim(zero, fromTenths(-6)))
-        .lineToRel(segDim(fromTenths(3), fromTenths(-3)))
-        .lineToRel(segDim(fromTenths(14), fromTenths(-13)))
-        .horizontalLineWithWidth(tToSeg(fromTenths(-11)))
-        .verticalLineWithHeight(tToSeg(fromTenths(-11)))
-        .lineToRel(segDim(fromTenths(-14), fromTenths(14)))
-        .closePath()
+    // The square-origin variant draws the short vertical steps as relative lines.
+    def verticalStep(path: SvgPathBuilder[T], tenths: Int): SvgPathBuilder[T] =
+      if (cleanOrigin) path.verticalLineWithHeight(tenthsToSeg(tenths))
+      else path.lineToRel(segDim(zero, fromTenths(tenths)))
+
+    junction(centeredAround, cleanOrigin, goingDown = true) { path =>
+      val toArrowBase = verticalStep(path.lineToRel(tenthsDim(14, 14)).lineToRel(tenthsDim(3, 3)), 5)
+        .horizontalLineWithWidth(tenthsToSeg(-9))
+        .lineToRel(tenthsDim(17, 17))
+        .lineToRel(tenthsDim(17, -17))
+        .horizontalLineWithWidth(tenthsToSeg(-9))
+      verticalStep(toArrowBase, -6)
+        .lineToRel(tenthsDim(3, -3))
+        .lineToRel(tenthsDim(14, -13))
     }
   }
 
-  def controlFlowUnionUp(centeredAround: Point[T], cleanOrigin: Boolean): SvgPathBuilder[T] = {
-    if (cleanOrigin) {
-      SvgPathBuilder(centeredAround)
-        .moveToRel(segDim(fromTenths(-14), fromTenths(25)))
-        .lineToRel(segDim(fromTenths(-11), fromTenths(-11)))
-        .lineToRel(segDim(fromTenths(14), fromTenths(-14)))
-        .lineToRel(segDim(fromTenths(3), fromTenths(-3)))
-        .verticalLineWithHeight(tToSeg(fromTenths(-5)))
-        .horizontalLineWithWidth(tToSeg(fromTenths(-9)))
-        .lineToRel(segDim(fromTenths(17), fromTenths(-17)))
-        .lineToRel(segDim(fromTenths(17), fromTenths(17)))
-        .horizontalLineWithWidth(tToSeg(fromTenths(-9)))
-        .verticalLineWithHeight(tToSeg(fromTenths(6)))
-        .lineToRel(segDim(fromTenths(3), fromTenths(3)))
-        .lineToRel(segDim(fromTenths(14), fromTenths(13)))
-        .lineToRel(segDim(fromTenths(-11), fromTenths(11)))
-        .lineToRel(segDim(fromTenths(-14), fromTenths(-14)))
-        .closePath()
-    } else {
-      SvgPathBuilder(centeredAround)
-        .moveToRel(segDim(fromTenths(-14), fromTenths(25)))
-        .verticalLineWithHeight(tToSeg(fromTenths(-11)))
-        .horizontalLineWithWidth(tToSeg(fromTenths(-11)))
-        .lineToRel(segDim(fromTenths(14), fromTenths(-14)))
-        .lineToRel(segDim(fromTenths(3), fromTenths(-3)))
-        .verticalLineWithHeight(tToSeg(fromTenths(-5)))
-        .horizontalLineWithWidth(tToSeg(fromTenths(-9)))
-        .lineToRel(segDim(fromTenths(17), fromTenths(-17)))
-        .lineToRel(segDim(fromTenths(17), fromTenths(17)))
-        .horizontalLineWithWidth(tToSeg(fromTenths(-9)))
-        .verticalLineWithHeight(tToSeg(fromTenths(6)))
-        .lineToRel(segDim(fromTenths(3), fromTenths(3)))
-        .lineToRel(segDim(fromTenths(14), fromTenths(13)))
-        .horizontalLineWithWidth(tToSeg(fromTenths(-11)))
-        .verticalLineWithHeight(tToSeg(fromTenths(11)))
-        .lineToRel(segDim(fromTenths(-14), fromTenths(-14)))
-        .closePath()
+  def controlFlowUnionUp(centeredAround: Point[T], cleanOrigin: Boolean): SvgPathBuilder[T] =
+    junction(centeredAround, cleanOrigin, goingDown = false) { path =>
+      path
+        .lineToRel(tenthsDim(14, -14))
+        .lineToRel(tenthsDim(3, -3))
+        .verticalLineWithHeight(tenthsToSeg(-5))
+        .horizontalLineWithWidth(tenthsToSeg(-9))
+        .lineToRel(tenthsDim(17, -17))
+        .lineToRel(tenthsDim(17, 17))
+        .horizontalLineWithWidth(tenthsToSeg(-9))
+        .verticalLineWithHeight(tenthsToSeg(6))
+        .lineToRel(tenthsDim(3, 3))
+        .lineToRel(tenthsDim(14, 13))
     }
-  }
 
 
   def dataArrowLeft(centeredAround: Point[T]): SvgPathBuilder[T] = {
@@ -357,68 +266,32 @@ case class FlowDecorationPaths[T: Fractional](segmentSize: T) {
 
   def buildControlFlowBackgroundMultipleSize(bounds: Bounds[T], drawConnectors: List[(Boolean, Boolean)], commandBracket: Boolean): SvgPathBuilder[T] = {
     val missingWidth = bounds.width - segmentSize * fromInt(6) * fromInt(drawConnectors.size)
+    val hasMissingWidth = missingWidth > fromInt(0)
 
-    var res = SvgPathBuilder(bounds.startPoint)
+    val top = drawConnectors.map(_._1).foldLeft(SvgPathBuilder(bounds.startPoint)) { (path, connector) =>
+      if (connector) path.addControlFlowConnector(segmentSize)
+      else path.horizontalLineWithWidth(segmentSize * fromInt(6))
+    }
+    val topRight = if (hasMissingWidth) top.horizontalLineWithWidth(missingWidth) else top
 
+    val bottomRight =
+      if (commandBracket) topRight.addCommandBracketDown(segmentSize, bounds.height)
+      else topRight.verticalLineWithHeight(bounds.height)
+    val bottomStart = if (hasMissingWidth) bottomRight.horizontalLineWithWidth(-missingWidth) else bottomRight
 
-    for (curConnector <- drawConnectors.map(_._1)) {
-      res =
-        if (curConnector) res.addControlFlowConnector(segmentSize)
-        else res.horizontalLineWithWidth(segmentSize * fromInt(6))
+    val bottom = drawConnectors.map(_._2).reverse.foldLeft(bottomStart) { (path, connector) =>
+      if (connector) path.addControlFlowConnector(-segmentSize, true)
+      else path.horizontalLineWithWidth(-segmentSize * fromInt(6))
     }
 
-    //res = res.markSpot(fromInt(2))
-
-    if (missingWidth > fromInt(0)){
-      res = res.horizontalLineWithWidth(missingWidth)
-    }
-
-
-    if(commandBracket){
-      res = res.addCommandBracketDown(segmentSize, bounds.height)
-    }else{
-      res = res.verticalLineWithHeight(bounds.height)
-
-    }
-
-
-    if (missingWidth > fromInt(0)) {
-      res = res.horizontalLineWithWidth(-missingWidth)
-    }
-
-    for (curConnector <- drawConnectors.map(_._2).reverse) {
-      res =
-        if (curConnector) res.addControlFlowConnector(-segmentSize, true)
-        else res.horizontalLineWithWidth(-segmentSize * fromInt(6))
-    }
-
-    res
+    bottom
       .verticalLineWithHeight(-bounds.height)
       .closePath()
   }
 
 
-  def buildControlFlowBackground(bounds: Bounds[T], connectorTop: Boolean = true, connectorBottom: Boolean = true): SvgPathBuilder[T] = {
-
-    var res = SvgPathBuilder(bounds.startPoint)
-
-    res = if (connectorTop) res.addControlFlowConnector(segmentSize)
-    else res.horizontalLineWithWidth(segmentSize * fromInt(6))
-
-    val missingWidth = bounds.width - segmentSize * fromInt(6)
-    if (missingWidth > fromInt(0)) res = res.horizontalLineWithWidth(missingWidth)
-
-    res = res.verticalLineWithHeight(bounds.height)
-
-    if (missingWidth > fromInt(0)) res = res.horizontalLineWithWidth(-missingWidth)
-
-    res = if (connectorBottom) res.addControlFlowConnector(-segmentSize, true)
-    else res.horizontalLineWithWidth(-segmentSize * fromInt(6))
-
-    res
-      .verticalLineWithHeight(-bounds.height)
-      .closePath()
-  }
+  def buildControlFlowBackground(bounds: Bounds[T], connectorTop: Boolean = true, connectorBottom: Boolean = true): SvgPathBuilder[T] =
+    buildControlFlowBackgroundMultipleSize(bounds, List(connectorTop -> connectorBottom), commandBracket = false)
 
   def buildControlFlowStop(bounds: Bounds[T]): SvgPathBuilder[T] = {
 
@@ -459,38 +332,6 @@ case class FlowDecorationPaths[T: Fractional](segmentSize: T) {
       .horizontalLineWithWidth(-freeWidth)
       .addControlFlowConnector(-segmentSize, true)
       .closePath()
-
-    /*
-      def buildStarterShape[T: Fractional](pBounds: Bounds[T]): SvgPathBuilder[T] = {
-        val N = summon[Fractional[T]]
-        import N.*
-        val bounds = pBounds
-
-        val offsetDist = fromInt(10) // fromInt(7) + fromInt(1) / fromInt(2)
-
-        SvgPathBuilder(bounds.startPoint + Point[T](fromInt(0), offsetDist))
-          .cubicBezierToRel(
-            new Dimension[T](fromInt(0), -offsetDist),
-            new Dimension[T](offsetDist, -offsetDist),
-            new Dimension[T](fromInt(20), -offsetDist)
-          )
-          .cubicBezierToRel(
-            new Dimension[T](offsetDist, fromInt(0)),
-            new Dimension[T](fromInt(20), fromInt(0)),
-            new Dimension[T](fromInt(20), offsetDist)
-          )
-          .horizontalLineWithWidth(bounds.width - fromInt(40))
-          .verticalLineWithHeight(bounds.height - offsetDist)
-
-          .horizontalLineWithWidth(-bounds.width + fromInt(30))
-          //.addInstructionConnector(fromInt(-20))
-          .horizontalLineWithWidth(fromInt(-20))
-          .horizontalLineWithWidth(fromInt(-10))
-          .closePath()
-
-          .closePath()
-      }*/
-
   }
 
 

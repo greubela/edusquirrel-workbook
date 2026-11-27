@@ -61,8 +61,10 @@ class ProgrammingHintScaffolderSpec extends FunSuite {
       case _ => false
     }
 
-  private def resolver(language: HumanLanguage, texts: Map[HumanLanguage, String] = Map(
-      German -> "Gib die Summe zweier positiver Zahlen zurück.", English -> "Return the sum of two positive integers.")) =
+  private val taskTexts = Map[HumanLanguage, String](
+    German -> "Gib die Summe zweier positiver Zahlen zurück.", English -> "Return the sum of two positive integers.")
+
+  private def resolver(language: HumanLanguage, texts: Map[HumanLanguage, String] = taskTexts) =
     new LanguageMapIdResolver(State[HumanLanguage](language).observable) {
       override def resolveMap(id: LanguageMapContentId): Future[LanguageMap[HumanLanguage]] =
         if id == task then Future.successful(LanguageMap.mapBasedLanguageMap(texts))
@@ -76,7 +78,7 @@ class ProgrammingHintScaffolderSpec extends FunSuite {
     element
   }
   private def context(backend: ExecutionClient, language: HumanLanguage = German, configuration: Option[LlmConfiguration] = None,
-      texts: Map[HumanLanguage, String] = Map(German -> "Gib die Summe zweier positiver Zahlen zurück.", English -> "Return the sum of two positive integers.")) =
+      texts: Map[HumanLanguage, String] = taskTexts) =
     TestExecutionContext(List(backend), languageMapIdResolver = Some(resolver(language, texts)), llmConfiguration = configuration)
 
   test("a Java hint sends one feedback command whose prompt holds the task, numbered source lines and no checks") {

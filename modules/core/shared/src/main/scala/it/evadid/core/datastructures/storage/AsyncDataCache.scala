@@ -105,11 +105,9 @@ abstract class AsyncDataCache[I, O](val baseLogger: Logger, val retryFailedOnNex
 
   def removeFromCache(toDelete: Seq[I] = List()): Unit = syncLock.synchronized {
     cachedRequests.synchronized {
-      toDelete.foreach(curInput => {
-        cachedRequests.get(curInput).foreach(curRequest => {
-          cachedRequests.put(curInput, DeletedRequest(this, curInput, curRequest.getVariable))
-        })
-      })
+      toDelete.foreach(curInput =>
+        cachedRequests.get(curInput).foreach(curRequest =>
+          cachedRequests.put(curInput, DeletedRequest(this, curInput, curRequest.getVariable))))
     }
   }
 
@@ -118,19 +116,17 @@ abstract class AsyncDataCache[I, O](val baseLogger: Logger, val retryFailedOnNex
   }
 
   def loadAllAsFuture(inputs: IterableOnce[I])(implicit ec: ExecutionContext): Future[Map[I, Either[Throwable, O]]] = syncLock.synchronized {
-
-    def handleInput(input: I): Future[(I, Either[Throwable, O])] =
-      loadAsFuture(input)
-        .map(res => input -> Right(res))
-        .recover { case e: Throwable => input -> Left(e) }
-
-    Future.traverse(inputs.iterator.toList)(handleInput).map(_.toMap)
+    loadEach(inputs)(input => loadAsFuture(input))
   }
 
   def loadAllAsFuture(inputs: IterableOnce[I], maximumAge: LocalDateTime)(implicit ec: ExecutionContext): Future[Map[I, Either[Throwable, O]]] = syncLock.synchronized {
+    loadEach(inputs)(input => loadAsFuture(input, maximumAge))
+  }
+
+  private def loadEach(inputs: IterableOnce[I])(load: I => Future[O])(implicit ec: ExecutionContext): Future[Map[I, Either[Throwable, O]]] = {
 
     def handleInput(input: I): Future[(I, Either[Throwable, O])] =
-      loadAsFuture(input, maximumAge)
+      load(input)
         .map(res => input -> Right(res))
         .recover { case e: Throwable => input -> Left(e) }
 
@@ -268,14 +264,17 @@ object AsyncDataCache {
 
     private def stillCurrent: Boolean = associatedStore.cachedRequests.get(input).forall(_ eq this)
 
-    def succeeded(output: O): Unit = {
-      val publish = associatedStore.syncLock.synchronized {
-        if !stillCurrent then false
-        else {
-          associatedStore.cachedRequests.put(input, SucceededRequest(associatedStore, outputVar, output))
-          true
-        }
+    /** Installs the completed request unless a newer request replaced this one; returns whether it was installed. */
+    private def replaceIfCurrent(key: I, completed: => CachedRequest[I, O]): Boolean = associatedStore.syncLock.synchronized {
+      if !stillCurrent then false
+      else {
+        associatedStore.cachedRequests.put(key, completed)
+        true
       }
+    }
+
+    def succeeded(output: O): Unit = {
+      val publish = replaceIfCurrent(input, SucceededRequest(associatedStore, outputVar, output))
       if publish then {
         associatedStore.cacheLogger.logInfo(s"Successfully calculated output: '${associatedStore.formatInputForLogging(input)}' -> '${associatedStore.formatOutputForLogging(output)}'")
         outputVar.set(AsyncDataSuccess(output))
@@ -284,13 +283,7 @@ object AsyncDataCache {
     }
 
     def failed(input: I, cause: Throwable): Unit = {
-      val publish = associatedStore.syncLock.synchronized {
-        if !stillCurrent then false
-        else {
-          associatedStore.cachedRequests.put(input, FailedRequest(associatedStore, input, outputVar, cause))
-          true
-        }
-      }
+      val publish = replaceIfCurrent(input, FailedRequest(associatedStore, input, outputVar, cause))
       if publish then {
         associatedStore.cacheLogger.logExceptionWarn(s"Ignoring since fetching failed for input '${associatedStore.formatInputForLogging(input)}", cause)
         outputVar.set(AsyncDataFailed(SerializedException(cause), None))

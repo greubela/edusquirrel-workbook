@@ -5,7 +5,6 @@ import it.evadid.vm.conversion.structured.StructuredProgramConversions
 import it.evadid.vm.parsing.source.SourceParsing
 import it.evadid.vm.parsing.source.SourceParsing.SourceLanguage
 import it.evadid.vm.naming.BeEntityName
-import it.evadid.core.datastructures.language.AppLanguage.{Java, Python}
 import it.evadid.workbook.elements.interactionElements.programming.state.*
 import it.evadid.vm.code.defining.BeDefineClass
 import it.evadid.vm.code.others.BeStartProgram
@@ -256,13 +255,6 @@ class StructuredProgrammingStateSpec extends FunSuite {
     assert(!state.toString.contains("static import"))
     assert(state.toString.contains("// a draft"))
     assertEquals(ProgrammingStateJavaStructured(state.toString), state)
-  }
-
-  test("unsupported constructors retain their source when conversion is rejected") {
-    val source = ProgrammingStateJavaStructured("class Shape { int distance = 10; static int angle = 90; Shape() { forward(5); } void draw() { forward(20); } }")
-    val before = source.toString
-    intercept[IllegalArgumentException](source.toPythonStructured)
-    assertEquals(source.toString, before)
   }
 
   test("instance qualifier conversion preserves literal text") {

@@ -4,7 +4,6 @@ import com.raquo.laminar.api.L.*
 import it.evadid.homepage.webElements.editor.MailEditor.{MailBody, MailEditorState}
 import it.evadid.workbook.elements.interactionElements.emailSimulator.*
 import it.evadid.homepage.workbook.content.wip.{CreatePhishingWorkbook, PhishingMailboxData}
-import it.evadid.workbook.jsonFactory.WorkbookElementFactory
 import munit.FunSuite
 
 class MailEditorStateSpec extends FunSuite {
@@ -67,10 +66,5 @@ class MailEditorStateSpec extends FunSuite {
     assert(MailBody.allowedImage("pics/telekom.png"))
     for (src <- List("https://attacker/pics/x.png", "//attacker/x.png", "pics/../x.png", "pics/x.svg", "pics/x.png?secret", "data:image/png;base64,abc"))
       assert(!MailBody.allowedImage(src))
-  }
-  test("digital workbook is registered and serializes both mailbox interactions") {
-    val wb = CreatePhishingWorkbook(null).createWorkbook
-    val serializer = WorkbookElementFactory.serializerRegularJsonWorkbook
-    assertEquals(serializer.deserialize(serializer.serialize(wb)), wb)
   }
 }

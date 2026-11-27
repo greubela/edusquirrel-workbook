@@ -10,27 +10,14 @@ class SnapCodeEditorConfigSpec extends FunSuite {
   test("PythonCompatibleSnapCategories lists only Python-safe tabs in order") {
     val tabs = SnapCodeEditorConfig.PythonCompatibleSnapCategories
     assertEquals(tabs.map(_.name), List("Motion", "Pen", "Embroidery", "Control", "Operators", "Variables"))
-    assertEquals(tabs.map(_.color), List(
-      SnapCategoryColor.Motion,
-      SnapCategoryColor.Pen,
-      SnapCategoryColor.Embroidery,
-      SnapCategoryColor.Control,
-      SnapCategoryColor.Operators,
-      SnapCategoryColor.Variables
-    ))
+    assertEquals(tabs.map(_.color), List(SnapCategoryColor.Motion, SnapCategoryColor.Pen, SnapCategoryColor.Embroidery,
+      SnapCategoryColor.Control, SnapCategoryColor.Operators, SnapCategoryColor.Variables))
   }
 
   test("PythonCompatibleSnapCategories uses explicit block lists, not native categories") {
     val tabs = SnapCodeEditorConfig.PythonCompatibleSnapCategories
     assert(tabs.forall(!_.useNativeCategory))
     assert(tabs.forall(tab => tab.selectableElements.nonEmpty || tab.includeMakeBlockButton || tab.includeVariableControls))
-  }
-
-  test("PythonCompatibleSnapCategories excludes unsupported native categories") {
-    val tabNames = SnapCodeEditorConfig.PythonCompatibleSnapCategories.map(_.name).toSet
-    assert(!tabNames.contains("Looks"))
-    assert(!tabNames.contains("Sound"))
-    assert(!tabNames.contains("Sensing"))
   }
 
   test("PythonCompatibleSnapCategories is derived from SnapPaletteCatalog") {
@@ -41,26 +28,14 @@ class SnapCodeEditorConfigSpec extends FunSuite {
     )
     assertEquals(SnapCodeEditorConfig.pythonCompatibleBlockSelectors, SnapPaletteCatalog.pythonCompatibleSelectorSet)
     val selectors = SnapCodeEditorConfig.pythonCompatibleBlockSelectors
-    assert(selectors.contains("turnLeft"))
-    assert(selectors.contains("setColor"))
-    assert(selectors.contains("runningStitch"))
-    assert(selectors.contains("doFor"))
-    assert(selectors.contains("reportVariadicSum"))
-    assert(selectors.contains("circle"))
-    assert(selectors.contains("home"))
-    assert(selectors.contains("backward"))
+    List("turnLeft", "setColor", "runningStitch", "doFor", "reportVariadicSum", "circle", "home", "backward")
+      .foreach(selector => assert(selectors.contains(selector), selector))
   }
 
   test("PythonCompatibleTesting wires the filtered palette into the editor config") {
     val config = SnapCodeEditorConfig.PythonCompatibleTesting
     assertEquals(config.libraryTabs, SnapCodeEditorConfig.PythonCompatibleSnapCategories)
     assertEquals(config.parts, SnapCodeEditorConfig.Testing.parts)
-  }
-
-  test("PythonCompatibleTesting uses the python-compatible palette including stitches") {
-    val config = SnapCodeEditorConfig.PythonCompatibleTesting
-    assertEquals(config.libraryTabs, SnapCodeEditorConfig.PythonCompatibleSnapCategories)
-    assert(SnapCodeEditorConfig.pythonCompatibleBlockSelectors.contains("runningStitch"))
   }
 
   test("Variables tab enables Snap variable controls and make-block") {
@@ -103,38 +78,13 @@ class SnapCodeEditorConfigSpec extends FunSuite {
     assertEquals(tabs.map(_.color), List(SnapCategoryColor.Other))
     assert(tabs.forall(!_.useNativeCategory))
     assert(tabs.forall(!_.includeVariableControls))
-    assertEquals(
-      tabs.head.selectableElements.map(_.id),
-      List(
-        "receiveGo",
-        "doRepeat",
-        "forward",
-        "turn",
-        "gotoXY",
-        "setHeading",
-        "clear",
-        "up",
-        "down"
-      )
-    )
+    assertEquals(tabs.head.selectableElements.map(_.id),
+      List("receiveGo", "doRepeat", "forward", "turn", "gotoXY", "setHeading", "clear", "up", "down"))
   }
 
   test("BeginnerTurtleCategories exposes exactly the nine beginner selectors") {
     val selectors = SnapCodeEditorConfig.beginnerTurtleBlockSelectors
-    assertEquals(
-      selectors,
-      Set(
-        "forward",
-        "turn",
-        "gotoXY",
-        "setHeading",
-        "clear",
-        "down",
-        "up",
-        "receiveGo",
-        "doRepeat"
-      )
-    )
+    assertEquals(selectors, Set("forward", "turn", "gotoXY", "setHeading", "clear", "down", "up", "receiveGo", "doRepeat"))
     assert(selectors.subsetOf(SnapCodeEditorConfig.pythonCompatibleBlockSelectors))
   }
 

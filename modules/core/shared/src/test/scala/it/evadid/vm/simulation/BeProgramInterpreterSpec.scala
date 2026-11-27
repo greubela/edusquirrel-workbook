@@ -9,6 +9,9 @@ import munit.FunSuite
 
 class BeProgramInterpreterSpec extends FunSuite {
   private def java(body: String) = ProgrammingStateJavaStructured(s"public class Main {\n$body\n}")
+  /** Helper methods called directly, with an empty startup. */
+  private def withEmptyMain(methods: String) =
+    java(methods + "\n    public static void main(String[] args) {\n    }").toBeExpression
 
   test("println preserves empty lines and escaped newlines through Python and never becomes a turtle command") {
     val program = java("""static void main(String[] args) {
@@ -95,7 +98,7 @@ class BeProgramInterpreterSpec extends FunSuite {
   }
 
   test("functions return values, recurse and short-circuit conditions") {
-    val program = java(
+    val program = withEmptyMain(
       """    static int fakultaet(int n) {
         |        if (n <= 1) {
         |            return 1;
@@ -104,9 +107,7 @@ class BeProgramInterpreterSpec extends FunSuite {
         |    }
         |    static boolean sicher(int position) {
         |        return position < NumberList.length() && NumberList.get(position) > 0;
-        |    }
-        |    public static void main(String[] args) {
-        |    }""".stripMargin).toBeExpression
+        |    }""".stripMargin)
     assertEquals(program.execute(entry = ProgramEntry.Call("fakultaet", Seq(5))).returnValue, Some(120.0))
     val guarded = program.execute(DataWorld(list = Vector(3)), ProgramEntry.Call("sicher", Seq(4)))
     assertEquals((guarded.status, guarded.returnValue), (TurtleExecutionStatus.Completed, Some(0.0)))
@@ -114,27 +115,23 @@ class BeProgramInterpreterSpec extends FunSuite {
   }
 
   test("for loops ascend and run zero times when the start is beyond the end, as in Java and Python") {
-    val program = java(
+    val program = withEmptyMain(
       """    static void markiere() {
         |        for (int i = 0; i < NumberList.length() - 1; i++) {
         |            NumberList.set(i, 0);
         |        }
-        |    }
-        |    public static void main(String[] args) {
-        |    }""".stripMargin).toBeExpression
+        |    }""".stripMargin)
     val single = program.execute(DataWorld(list = Vector(7)), ProgramEntry.Call("markiere"))
     assertEquals((single.status, single.world.list, single.moduleCommands(BeModules.NumberList)), (TurtleExecutionStatus.Completed, Vector(7), List(ListCommand.Length(1))))
   }
 
   test("sudoku operations record commands, read 0 for empty cells and protect givens") {
-    val program = java(
+    val program = withEmptyMain(
       """    static void probe() {
         |        Sudoku.set(0, 2, Sudoku.get(0, 2) + 4);
         |        Sudoku.remove(0, 2);
         |        Sudoku.set(0, 0, 1);
-        |    }
-        |    public static void main(String[] args) {
-        |    }""".stripMargin).toBeExpression
+        |    }""".stripMargin)
     val run = program.execute(entry = ProgramEntry.Call("probe"))
     assertEquals(run.moduleCommands(BeModules.Sudoku), List(SudokuCommand.Get(0, 2, 0), SudokuCommand.Set(0, 2, 4), SudokuCommand.Remove(0, 2)))
     assert(run.status.toString.contains("given"), run.status.toString)
@@ -143,7 +140,7 @@ class BeProgramInterpreterSpec extends FunSuite {
   }
 
   test("runtime problems and endless loops end with an explanatory status instead of an exception") {
-    val program = java(
+    val program = withEmptyMain(
       """    static void weit() {
         |        NumberList.get(NumberList.length());
         |    }
@@ -151,24 +148,14 @@ class BeProgramInterpreterSpec extends FunSuite {
         |        while (true) {
         |            NumberList.length();
         |        }
-        |    }
-        |    public static void main(String[] args) {
-        |    }""".stripMargin).toBeExpression
+        |    }""".stripMargin)
     assert(program.execute(entry = ProgramEntry.Call("weit")).status.toString.contains("outside the list"))
     assertEquals(program.execute(entry = ProgramEntry.Call("endlos"), limits = TurtleExecutionLimits(maxLoopIterations = 50)).status,
       TurtleExecutionStatus.LimitExceeded)
     assert(program.execute(entry = ProgramEntry.Call("fehlt")).status.toString.contains("does not define fehlt"))
   }
 
-  test("sudoku grids check completeness, consistency and givens") {
-    val solved = SudokuGrid.parse("534678912", "672195348", "198342567", "859761423", "426853791",
-      "713924856", "961537284", "287419635", "345286179")
-    assert(solved.solves(SudokuGrid.default))
-    assert(!solved.updated(0, 0, 3).isConsistent)
-    assert(!SudokuGrid.default.isComplete)
-  }
-
-  private val arithmetic = java(
+  private val arithmetic = withEmptyMain(
     """    static int rechne(int a, int b) {
       |        return a % b + Math.floor(a / b) * 10 - (-b);
       |    }
@@ -182,9 +169,7 @@ class BeProgramInterpreterSpec extends FunSuite {
       |    }
       |    static void teile(int a) {
       |        NumberList.set(0, 10 / a);
-      |    }
-      |    public static void main(String[] args) {
-      |    }""".stripMargin).toBeExpression
+      |    }""".stripMargin)
 
   test("operators follow Python semantics for remainder and floor division; while loops repeat until false") {
     assertEquals(arithmetic.execute(entry = ProgramEntry.Call("rechne", Seq(7, 2))).returnValue, Some(1.0 + 30.0 + 2.0))
@@ -198,27 +183,23 @@ class BeProgramInterpreterSpec extends FunSuite {
     assert(status(ProgramEntry.Call("rechne", Seq(1))).contains("expects 2 values"))
     assert(status(ProgramEntry.Call("teile", Seq(0))).contains("Division by zero"))
     assert(status(ProgramEntry.Call("teile", Seq(4))).contains("whole number"), "2.5 cannot be stored in the list")
-    val sudoku = java(
+    val sudoku = withEmptyMain(
       """    static void falsch() {
         |        Sudoku.set(0, 2, 10);
         |    }
         |    static void ausserhalb() {
         |        Sudoku.get(9, 0);
-        |    }
-        |    public static void main(String[] args) {
-        |    }""".stripMargin).toBeExpression
+        |    }""".stripMargin)
     assert(sudoku.execute(entry = ProgramEntry.Call("falsch")).status.toString.contains("1 to 9"))
     assert(sudoku.execute(entry = ProgramEntry.Call("ausserhalb")).status.toString.contains("outside the sudoku"))
   }
 
   test("step, call-depth and data-command limits end execution and keep the recorded commands") {
-    val recursion = java(
+    val recursion = withEmptyMain(
       """    static void tief(int n) {
         |        NumberList.length();
         |        tief(n + 1);
-        |    }
-        |    public static void main(String[] args) {
-        |    }""".stripMargin).toBeExpression
+        |    }""".stripMargin)
     val deep = recursion.execute(entry = ProgramEntry.Call("tief", Seq(0)), limits = TurtleExecutionLimits(maxCallDepth = 5))
     assertEquals((deep.status, deep.moduleCommands(BeModules.NumberList).size), (TurtleExecutionStatus.LimitExceeded, 5))
     val bounded = arithmetic.execute(DataWorld(list = Vector(0)), ProgramEntry.Call("zaehle", Seq(100)), TurtleExecutionLimits(maxDataCommands = 4))

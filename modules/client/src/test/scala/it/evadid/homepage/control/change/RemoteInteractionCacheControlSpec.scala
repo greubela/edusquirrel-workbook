@@ -139,6 +139,12 @@ class RemoteInteractionCacheControlSpec extends EditorDomSuite {
       }
     }
 
+    /** The decoded store and read requests recorded so far. */
+    def storeRequests: Vector[BulkStoreToDbRequest] = requests.now().filter(_.name == bulkStoreToDbCommand.name)
+      .map(command => read[BulkStoreToDbRequest](command.json))
+    def fetchRequests: Vector[FetchEventsFromDbRequest] = requests.now().filter(_.name == fetchEventsFromDbCommand.name)
+      .map(command => read[FetchEventsFromDbRequest](command.json))
+
     def withHttp[A](run: => Future[A]): Future[A] = {
       val oldFetch = global.selectDynamic("fetch")
       val oldCompression = global.selectDynamic("CompressionStream")
@@ -177,14 +183,14 @@ class RemoteInteractionCacheControlSpec extends EditorDomSuite {
     val fixture = new Fixture
     fixture.withHttp {
       fixture.info.syncControl.ensureSynced().flatMap { _ =>
-        val firstReads = fixture.requests.now().filter(_.name == fetchEventsFromDbCommand.name).map(command => read[FetchEventsFromDbRequest](command.json))
+        val firstReads = fixture.fetchRequests
         assertEquals(firstReads.size, 2)
         assert(firstReads.forall(request => request.keys.size == 2 && request.starting == LocalDateTime.MIN))
         assertEquals(fixture.elements.map(_.interactionVariable.currentValue), Seq("saved-0", "saved-1"))
         fixture.requests.set(Vector.empty)
         fixture.info.syncControl.ensureSynced()
       }.flatMap { _ =>
-        val reads = fixture.requests.now().filter(_.name == fetchEventsFromDbCommand.name).map(command => read[FetchEventsFromDbRequest](command.json))
+        val reads = fixture.fetchRequests
         assertEquals(reads.size, 2)
         assert(reads.forall(_.starting == at))
         fixture.requests.set(Vector.empty)
@@ -192,7 +198,7 @@ class RemoteInteractionCacheControlSpec extends EditorDomSuite {
           s"edited-$index", UpdateImportance.MAJOR, context = ExecutionContextInformation.default))
         fixture.info.syncControl.storeAll(true)
       }.map { _ =>
-        val writes = fixture.requests.now().filter(_.name == bulkStoreToDbCommand.name).map(command => read[BulkStoreToDbRequest](command.json))
+        val writes = fixture.storeRequests
         assertEquals(writes.size, 2)
         assert(writes.forall(_.histories.size == 2))
       }
@@ -206,7 +212,7 @@ class RemoteInteractionCacheControlSpec extends EditorDomSuite {
       context = ExecutionContextInformation.default)
     fixture.withHttp {
       fixture.info.syncControl.ensureSynced().failed.map { _ =>
-        val writes = fixture.requests.now().filter(_.name == bulkStoreToDbCommand.name).map(command => read[BulkStoreToDbRequest](command.json))
+        val writes = fixture.storeRequests
         assert(writes.exists(request => request.databaseFormat == defaultDatabase.format &&
           request.histories.exists(_.typedAs(TextInteractionFormat).allStates.exists(_.newState == "offline edit"))))
         assertEquals(fixture.elements.map(_.interactionVariable.currentValue), Seq("offline edit", "saved-1"))
@@ -229,7 +235,7 @@ class RemoteInteractionCacheControlSpec extends EditorDomSuite {
         assertEquals(fixture.elements.map(_.interactionVariable.currentValue), Seq("", ""))
         fixture.requests.set(Vector.empty)
         fixture.info.syncControl.storeAll(true).map { _ =>
-          val writes = fixture.requests.now().filter(_.name == bulkStoreToDbCommand.name).map(command => read[BulkStoreToDbRequest](command.json))
+          val writes = fixture.storeRequests
           assert(writes.nonEmpty)
           assert(writes.flatMap(_.syncContexts).forall(_.userId == other.user.personId))
           assert(writes.flatMap(_.histories).forall(_.typedAs(TextInteractionFormat).allStates.forall(_.newState.isEmpty)))
@@ -268,9 +274,9 @@ class RemoteInteractionCacheControlSpec extends EditorDomSuite {
         assert(!finished.isCompleted)
         fixture.info.homepageInfoState.update(_.copy(workbookInfo = None))
         finished.future.map { _ =>
-          val writes = fixture.requests.now().filter(_.name == bulkStoreToDbCommand.name)
+          val writes = fixture.storeRequests
           assertEquals(writes.size, 2)
-          assert(writes.forall(command => read[BulkStoreToDbRequest](command.json).histories.size == 2))
+          assert(writes.forall(_.histories.size == 2))
         }
       }
     }
@@ -290,8 +296,7 @@ class RemoteInteractionCacheControlSpec extends EditorDomSuite {
           target().dispatchEvent(js.Dynamic.newInstance(EditorDomSuite.window.Event)(kind,
             js.Dynamic.literal(bubbles = true)).asInstanceOf[dom.Event])
           written.future.map { _ =>
-            val writes = fixture.requests.now().filter(_.name == bulkStoreToDbCommand.name)
-              .map(command => read[BulkStoreToDbRequest](command.json))
+            val writes = fixture.storeRequests
             assert(writes.exists(_.histories.exists(_.typedAs(TextInteractionFormat).allStates.exists(_.newState == s"typed before $kind"))))
           }
         }
@@ -338,8 +343,7 @@ class RemoteInteractionCacheControlSpec extends EditorDomSuite {
       SyncInformation(defaultDatabase, EventSyncStrategy.SYNC_MAJOR), SyncInformation(defaultBlobDatabase, EventSyncStrategy.SYNC_MAJOR)))
     fixture.info.homepageInfoState.update(_.copy(userInfo = Some(fixture.user.copy(config = majorOnly))))
     val variable = fixture.elements.head.interactionVariable
-    def written(answer: String) = fixture.requests.now().filter(_.name == bulkStoreToDbCommand.name)
-      .flatMap(command => read[BulkStoreToDbRequest](command.json).histories)
+    def written(answer: String) = fixture.storeRequests.flatMap(_.histories)
       .exists(_.typedAs(TextInteractionFormat).allStates.exists(_.newState == answer))
     fixture.withHttp {
       synchronizedAndRead(fixture).flatMap(_ => settled(fixture)).flatMap { _ =>
@@ -374,8 +378,7 @@ class RemoteInteractionCacheControlSpec extends EditorDomSuite {
         fixture.requests.set(Vector.empty)
         editing.set(1)
         finished.future.map { _ =>
-          val writes = fixture.requests.now().filter(_.name == bulkStoreToDbCommand.name)
-            .map(command => read[BulkStoreToDbRequest](command.json))
+          val writes = fixture.storeRequests
           assertEquals(writes.size, 2)
           assert(writes.forall(_.histories.forall(_.typedAs(TextInteractionFormat).allStates.exists(_.newState == "transaction edit"))))
         }.andThen { case _ => owner.killSubscriptions() }
@@ -385,7 +388,7 @@ class RemoteInteractionCacheControlSpec extends EditorDomSuite {
 
   /** Event ids each destination format received for each interaction key, from the recorded store commands. */
   private def sentEventIds(fixture: Fixture): Map[(DatabaseHistoryFormat, String), Set[String]] =
-    fixture.requests.now().filter(_.name == bulkStoreToDbCommand.name).map(command => read[BulkStoreToDbRequest](command.json))
+    fixture.storeRequests
       .flatMap(request => request.syncContexts.zip(request.histories).map((key, history) =>
         (request.databaseFormat, key.keyForSerialisation) -> history.typedAs(TextInteractionFormat).events.values.map(_.eventId)))
       .groupMapReduce(_._1)(_._2)(_ ++ _)
@@ -626,8 +629,7 @@ class RemoteInteractionCacheControlSpec extends EditorDomSuite {
           detached.map { _ =>
             assertEquals(fixture.elements.map(_.interactionVariable.currentHistory), initial)
             assertEquals(interactions.map(_.interactionVariable.currentHistory), current)
-            val writes = fixture.requests.now().filter(_.name == bulkStoreToDbCommand.name)
-              .flatMap(command => read[BulkStoreToDbRequest](command.json).entries).map(entry => entry.syncContext -> entry.history)
+            val writes = fixture.storeRequests.flatMap(_.entries).map(entry => entry.syncContext -> entry.history)
             assert(writes.exists(_._1.toUsageContext == context))
             // The detached binding may finish its own pending stores, but never with the detached read's answers.
             assert(writes.forall((key, history) => key.toUsageContext == context ||
@@ -765,8 +767,7 @@ class RemoteInteractionCacheControlSpec extends EditorDomSuite {
         select.set(true)
         // Await the navigation's own reads before making any explicit request for the new binding.
         gate.arrived.flatMap { _ =>
-          val reads = fixture.requests.now().filter(_.name == fetchEventsFromDbCommand.name)
-            .map(command => read[FetchEventsFromDbRequest](command.json))
+          val reads = fixture.fetchRequests
           assertEquals(reads.size, 2)
           assert(reads.forall(_.usageContext == context))
           gate.release()
@@ -793,10 +794,8 @@ class RemoteInteractionCacheControlSpec extends EditorDomSuite {
         val summary = sharedReporter.report.observe(using owner)
         fixture.requests.set(Vector.empty)
         fixture.info.syncControl.ensureSynced().flatMap { _ =>
-          val reads = fixture.requests.now().filter(_.name == fetchEventsFromDbCommand.name)
-            .map(command => read[FetchEventsFromDbRequest](command.json))
-          val writes = fixture.requests.now().filter(_.name == bulkStoreToDbCommand.name)
-            .map(command => read[BulkStoreToDbRequest](command.json))
+          val reads = fixture.fetchRequests
+          val writes = fixture.storeRequests
           assertEquals(reads.size, 1)
           assertEquals(reads.head.databaseFormat, defaultDatabase.format)
           assertEquals(reads.head.starting, LocalDateTime.MIN)
@@ -829,8 +828,7 @@ class RemoteInteractionCacheControlSpec extends EditorDomSuite {
         assertEquals(report.now().get.destinationsWithSufficientWrites.size, 2)
         assertEquals(summary.now().confirmed, 2)
         fixture.info.syncControl.ensureSynced().map { _ =>
-          val reads = fixture.requests.now().filter(_.name == fetchEventsFromDbCommand.name)
-            .map(command => read[FetchEventsFromDbRequest](command.json))
+          val reads = fixture.fetchRequests
           assertEquals(reads.size, 2)
           assert(reads.forall(_.starting == at))
           assert(!fixture.requests.now().exists(_.name == bulkStoreToDbCommand.name))

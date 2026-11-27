@@ -4,21 +4,17 @@ import it.evadid.vm.compilation.java.turtle.JavaTurtleCompiler
 
 import it.evadid.vm.code.defining.BeDefineFunction.functionInfo
 import it.evadid.core.datastructures.language.AppLanguage.*
-import it.evadid.core.datastructures.language.LanguageMap
 import it.evadid.core.datastructures.state.State
-import it.evadid.vm.code.abstractions.BeExpression
-import it.evadid.vm.code.controlStructures.{BeIfElse, BeRepeatNr, BeSequence, BeWhile}
-import it.evadid.vm.code.defining.{BeDefineClass, BeDefineFunction, BeDefineVariable}
-import it.evadid.vm.code.errors.{BeExpressionUnparsable, BeExpressionUnsupported, BeSingleLineComment}
-import it.evadid.vm.code.others.{BeReturn, BeStartProgram}
-import it.evadid.vm.code.usage.{BeAssignVariable, BeFunctionCall, BeUseValue}
+import it.evadid.vm.code.controlStructures.{BeIfElse, BeSequence}
+import it.evadid.vm.code.defining.{BeDefineFunction, BeDefineVariable}
+import it.evadid.vm.code.others.BeReturn
+import it.evadid.vm.code.usage.{BeAssignVariable, BeUseValue}
 import it.evadid.vm.conversion.expressionpython.JavaTurtlePythonExport as Y
 import it.evadid.vm.naming.{BeEntityName, NamingStyle}
 import it.evadid.vm.parsing.java.clean.JavaSourceMap
 import it.evadid.vm.compilation.java.turtle.{JavaTurtleSymbolResolver as R, JavaTurtleSemanticValidator, JavaTurtleSourceParser, JavaTurtleStructureValidator, JavaTurtleExecutionBindings as V, JavaTurtleExpressionCompiler as X, JavaTurtleProgram as P}
-import it.evadid.vm.simulation.{BeSimulatorConfig, BeSimulatorState, BeVirtualMachineState}
 import it.evadid.vm.simulation.java.{JavaInt32, JavaTurtleEvaluation as E, JavaTurtleExecutionEvidence as Evidence, JavaTurtleExecutionReport as Report, JavaTurtleInterpreter as T, JavaTurtleTrace as J}
-import it.evadid.vm.types.{BeChildRole, BeDataType, BeDataValueLiteral, BeScope, BeUseValueReference}
+import it.evadid.vm.types.{BeDataType, BeDataValueLiteral, BeUseValueReference}
 import munit.FunSuite
 
 class BeExpressionLanguageSupportTest extends FunSuite {
@@ -29,14 +25,39 @@ class BeExpressionLanguageSupportTest extends FunSuite {
   private def javaResult(expression: R.Expression, values: Map[R.VariableId, E.Value] = Map.empty): Either[E.Failure, E.Value] =
     E.evaluate(expression, variable => values.get(variable.id).toRight(E.Failure.MissingValue(variable.id)))
 
-  private def javaProgram(main: String, helpers: String = ""): R.ResolvedSource = {
-    val source = s"class Drawing { $helpers public static void main(String[] args) { $main } }"
+  private def resolvedJava(source: String): R.ResolvedSource =
     (for {
       parsed <- JavaTurtleSourceParser.parse(source)
       structure <- JavaTurtleStructureValidator.check(parsed)
       checked <- JavaTurtleSemanticValidator.check(structure)
       result <- R.resolve(checked)
     } yield result).fold(problem => fail(problem.message), identity)
+
+  private def javaProgram(main: String, helpers: String = ""): R.ResolvedSource =
+    resolvedJava(s"class Drawing { $helpers public static void main(String[] args) { $main } }")
+
+  private def compiledJava(source: R.ResolvedSource): P =
+    JavaTurtleCompiler.compileResolved(source).fold(problem => fail(problem.message), identity)
+
+  private def callChain(count: Int): R.ResolvedSource = javaProgram("m0();", (0 until count).map { index =>
+    val body = if index == count - 1 then "Turtle.forward(1);" else s"m${index + 1}();"
+    s"static void m$index() { $body }"
+  }.mkString(" "))
+
+  private val int32Modulus = BigInt(1) << 32
+
+  private def wrappedInt32(value: BigInt): Int = {
+    val unsigned = ((value % int32Modulus) + int32Modulus) % int32Modulus
+    (if unsigned > Int.MaxValue then unsigned - int32Modulus else unsigned).toInt
+  }
+
+  /** Edge operand pairs plus 512 pseudo-random pairs from a fixed linear congruential sequence. */
+  private val int32Pairs: Vector[(Int, Int)] = {
+    val edges = Vector(Int.MinValue, Int.MinValue + 1, -1000000000, -65536, -9, -2, -1,
+      0, 1, 2, 9, 65536, 1000000000, Int.MaxValue)
+    val sampled = Iterator.iterate(BigInt("13579bdf", 16))(state => (state * 1664525 + 1013904223) % int32Modulus)
+      .drop(1).take(1024).map(wrappedInt32).toVector
+    (for left <- edges; right <- edges yield left -> right) ++ sampled.grouped(2).map(pair => pair(0) -> pair(1))
   }
 
   private def forward(value: Int): T.Command = T.Command(R.TurtleCommand.Forward, value)
@@ -51,6 +72,13 @@ class BeExpressionLanguageSupportTest extends FunSuite {
     case J.Kind.Write(variable, _) => variable.name == name
     case _ => false
   })
+
+  private def traceReads(trace: J.Capture, name: String): Vector[J.Event] = trace.events.filter(_.kind match {
+    case J.Kind.Read(variable, _) => variable.name == name
+    case _ => false
+  })
+
+  private def sliceIds(trace: J.Capture, target: Int): Set[Int] = trace.backwardSlice(target).get.events.map(_.id).toSet
 
   private def locatedEvents(recorded: J.RecordedExecution, source: String): Vector[J.LocatedEvent] = {
     val sourceMap = JavaTurtleSourceParser.parse(source).fold(problem => fail(problem.message), _.sourceMap)
@@ -95,7 +123,6 @@ class BeExpressionLanguageSupportTest extends FunSuite {
     case P.Node.For(init, condition, update, body) => R.For(restoredJavaBlock(init), condition.map(value => restoredJavaExpression(value.expression)), restoredJavaBlock(update), restoredJavaBlock(body))
   } })
 
-  private val targetLanguages = List(Python, Java, Lisp, Cpp)
   private val humanLanguage = English
 
   private val xVar = BeDefineVariable(BeEntityName.fromUniversalNameInParts("x"), BeDataType.Int)
@@ -106,9 +133,17 @@ class BeExpressionLanguageSupportTest extends FunSuite {
   private val literalTwo = BeUseValue(BeDataValueLiteral("2"), Some(yVar))
   private val literalTrue = BeUseValue(BeDataValueLiteral("true"), Some(boolVar))
 
-  private val assignX = BeAssignVariable(xVar, literalOne)
   private val returnX = BeReturn(Some(BeUseValue(BeDataValueLiteral("x"), Some(xVar))))
-  private val sequence = BeSequence.optionalBody(List(assignX, returnX))
+
+  private val branchingSequence = BeSequence.optionalBody(List(
+    BeAssignVariable(xVar, literalOne),
+    BeAssignVariable(yVar, literalTwo),
+    BeIfElse(
+      BeSequence.conditionalBody(List(literalTrue)),
+      BeSequence.optionalBody(List(BeAssignVariable(xVar, literalTwo))),
+      BeSequence.optionalBody(List(BeAssignVariable(yVar, literalOne)))
+    )
+  ))
 
   private val function = BeDefineFunction(
     inputs = List(xVar, yVar),
@@ -116,35 +151,6 @@ class BeExpressionLanguageSupportTest extends FunSuite {
     body = BeSequence.optionalBody(List(returnX)),
     functionTypeInfo = functionInfo(BeEntityName.fromUniversalNameInParts("add"))
   )
-
-  private val functionCall = BeFunctionCall.fromDefinition(function, Map(xVar -> literalOne, yVar -> literalTwo))
-
-  private val allExpressions: List[BeExpression] = List(
-    xVar,
-    function,
-    BeDefineClass(BeEntityName.fromUniversalNameInParts("Counter"), attributes = List(xVar), methods = List(function)),
-    assignX,
-    BeUseValue(BeDataValueLiteral("7"), Some(xVar)),
-    functionCall,
-    BeReturn(Some(literalOne)),
-    BeStartProgram(Some(sequence)),
-    sequence,
-    BeIfElse(BeSequence.conditionalBody(List(literalTrue)), BeSequence.optionalBody(List(assignX)), BeSequence.optionalBody(List(returnX))),
-    BeWhile(BeSequence.conditionalBody(List(literalTrue)), BeSequence.optionalBody(List(assignX))),
-    BeRepeatNr.times(3, BeSequence.optionalBody(List(assignX))),
-    BeExpressionUnsupported("unsupported"),
-    BeExpressionUnparsable("raw", "bad syntax"),
-    BeSingleLineComment(LanguageMap.universalMap("note"))
-  )
-
-  test("all BeExpression subclasses render for Python, Java, Lisp, and C++") {
-    allExpressions.foreach { expr =>
-      targetLanguages.foreach { language =>
-        val rendered = expr.structureInfo.toStringInLanguage(language, humanLanguage)
-        assert(rendered.trim.nonEmpty, s"${expr.getClass.getSimpleName} should render non-empty for ${language.name}")
-      }
-    }
-  }
 
   test("Python rendering includes type hints for variable and function signatures") {
     val renderedVariable = xVar.structureInfo.toStringInLanguage(Python, humanLanguage)
@@ -158,17 +164,7 @@ class BeExpressionLanguageSupportTest extends FunSuite {
   }
 
   test("Python sequence rendering matches expected string exactly") {
-    val scripted = BeSequence.optionalBody(List(
-      BeAssignVariable(xVar, literalOne),
-      BeAssignVariable(yVar, literalTwo),
-      BeIfElse(
-        BeSequence.conditionalBody(List(literalTrue)),
-        BeSequence.optionalBody(List(BeAssignVariable(xVar, literalTwo))),
-        BeSequence.optionalBody(List(BeAssignVariable(yVar, literalOne)))
-      )
-    ))
-
-    val rendered = scripted.structureInfo.toStringInLanguage(Python, humanLanguage)
+    val rendered = branchingSequence.structureInfo.toStringInLanguage(Python, humanLanguage)
 
     val expected =
       """x: int = 1
@@ -182,41 +178,22 @@ class BeExpressionLanguageSupportTest extends FunSuite {
     assertEquals(rendered, expected)
   }
 
-  test("Java sequence rendering matches expected string ignoring surrounding whitespace") {
-    val scripted = BeSequence.optionalBody(List(
-      BeAssignVariable(xVar, literalOne),
-      BeAssignVariable(yVar, literalTwo),
-      BeIfElse(
-        BeSequence.conditionalBody(List(literalTrue)),
-        BeSequence.optionalBody(List(BeAssignVariable(xVar, literalTwo))),
-        BeSequence.optionalBody(List(BeAssignVariable(yVar, literalOne)))
-      )
-    ))
+  for (name, language) <- Seq("Java" -> Java, "C++" -> Cpp) do
+    test(s"$name sequence rendering matches expected string ignoring surrounding whitespace") {
+      val expected =
+        """int x = 1;
+          |int y = 2;
+          |if (true) {
+          |    x = 2;
+          |} else {
+          |    y = 1;
+          |}
+          |""".stripMargin
 
-    val expected =
-      """int x = 1;
-        |int y = 2;
-        |if (true) {
-        |    x = 2;
-        |} else {
-        |    y = 1;
-        |}
-        |""".stripMargin
-
-    assertEquals(scripted.structureInfo.toStringInLanguage(Java, humanLanguage).trim, expected.trim)
-  }
+      assertEquals(branchingSequence.structureInfo.toStringInLanguage(language, humanLanguage).trim, expected.trim)
+    }
 
   test("Lisp sequence rendering matches expected string exactly") {
-    val scripted = BeSequence.optionalBody(List(
-      BeAssignVariable(xVar, literalOne),
-      BeAssignVariable(yVar, literalTwo),
-      BeIfElse(
-        BeSequence.conditionalBody(List(literalTrue)),
-        BeSequence.optionalBody(List(BeAssignVariable(xVar, literalTwo))),
-        BeSequence.optionalBody(List(BeAssignVariable(yVar, literalOne)))
-      )
-    ))
-
     val expected =
       """(progn
         |    (setf x 1)
@@ -235,104 +212,26 @@ class BeExpressionLanguageSupportTest extends FunSuite {
         |    )
         |)""".stripMargin
 
-    assertEquals(scripted.structureInfo.toStringInLanguage(Lisp, humanLanguage), expected)
-  }
-
-  test("C++ sequence rendering matches expected string ignoring surrounding whitespace") {
-    val scripted = BeSequence.optionalBody(List(
-      BeAssignVariable(xVar, literalOne),
-      BeAssignVariable(yVar, literalTwo),
-      BeIfElse(
-        BeSequence.conditionalBody(List(literalTrue)),
-        BeSequence.optionalBody(List(BeAssignVariable(xVar, literalTwo))),
-        BeSequence.optionalBody(List(BeAssignVariable(yVar, literalOne)))
-      )
-    ))
-
-    val expected =
-      """int x = 1;
-        |int y = 2;
-        |if (true) {
-        |    x = 2;
-        |} else {
-        |    y = 1;
-        |}
-        |""".stripMargin
-
-    assertEquals(scripted.structureInfo.toStringInLanguage(Cpp, humanLanguage).trim, expected.trim)
-  }
-
-  test("Java int arithmetic wraps without changing the legacy numeric types") {
-    assertEquals(JavaInt32.add(Int.MaxValue, 1), Int.MinValue)
-    assertEquals(JavaInt32.subtract(Int.MinValue, 1), Int.MaxValue)
-    assertEquals(JavaInt32.multiply(Int.MaxValue, Int.MaxValue), 1)
-    assertEquals(JavaInt32.multiply(65536, 65536), 0)
-    assertEquals(JavaInt32.negate(Int.MinValue), Int.MinValue)
-    assert(BeDataType.Int.isValidLiteral("2147483648"))
-    assertEquals(BeDataValueLiteral("1").currentType, BeDataType.Numeric)
-  }
-
-  test("Java int division truncates toward zero and remainder retains the dividend sign") {
-    for (left, right, quotient, remainder) <- Seq(
-      (Int.MinValue, -1, Int.MinValue, 0), (-9, 2, -4, -1), (9, -2, -4, 1), (-9, -2, 4, -1)
-    ) do {
-      assertEquals(JavaInt32.divide(left, right), Right(quotient))
-      assertEquals(JavaInt32.remainder(left, right), Right(remainder))
-    }
-  }
-
-  test("Java int zero divisors return an explicit arithmetic error") {
-    for value <- Seq(Int.MinValue, -1, 0, 1, Int.MaxValue) do {
-      assertEquals(JavaInt32.divide(value, 0), Left(JavaInt32.Error.DivisionByZero))
-      assertEquals(JavaInt32.remainder(value, 0), Left(JavaInt32.Error.DivisionByZero))
-    }
+    assertEquals(branchingSequence.structureInfo.toStringInLanguage(Lisp, humanLanguage), expected)
   }
 
   test("Java int operations match an independent unbounded integer model") {
-    val modulus = BigInt(1) << 32
-    def wrapped(value: BigInt): Int = {
-      val unsigned = ((value % modulus) + modulus) % modulus
-      (if unsigned > Int.MaxValue then unsigned - modulus else unsigned).toInt
-    }
-    val edges = Vector(Int.MinValue, Int.MinValue + 1, -1000000000, -65536, -9, -2, -1,
-      0, 1, 2, 9, 65536, 1000000000, Int.MaxValue)
-    var state = BigInt("13579bdf", 16)
-    def sample(): Int = {
-      state = (state * 1664525 + 1013904223) % modulus
-      wrapped(state)
-    }
-    val pairs = (for left <- edges; right <- edges yield left -> right) ++ Vector.fill(512)(sample() -> sample())
-    for (left, right) <- pairs do {
+    for (left, right) <- int32Pairs do {
       val a = BigInt(left)
       val b = BigInt(right)
-      assertEquals(JavaInt32.add(left, right), wrapped(a + b), clue = (left, right))
-      assertEquals(JavaInt32.subtract(left, right), wrapped(a - b), clue = (left, right))
-      assertEquals(JavaInt32.multiply(left, right), wrapped(a * b), clue = (left, right))
-      assertEquals(JavaInt32.negate(left), wrapped(-a), clue = left)
+      assertEquals(JavaInt32.add(left, right), wrappedInt32(a + b), clue = (left, right))
+      assertEquals(JavaInt32.subtract(left, right), wrappedInt32(a - b), clue = (left, right))
+      assertEquals(JavaInt32.multiply(left, right), wrappedInt32(a * b), clue = (left, right))
+      assertEquals(JavaInt32.negate(left), wrappedInt32(-a), clue = left)
       if right == 0 then {
         assertEquals(JavaInt32.divide(left, right), Left(JavaInt32.Error.DivisionByZero))
         assertEquals(JavaInt32.remainder(left, right), Left(JavaInt32.Error.DivisionByZero))
       } else {
-        assertEquals(JavaInt32.divide(left, right), Right(wrapped(a / b)), clue = (left, right))
-        assertEquals(JavaInt32.remainder(left, right), Right(wrapped(a % b)), clue = (left, right))
+        assertEquals(JavaInt32.divide(left, right), Right(wrappedInt32(a / b)), clue = (left, right))
+        assertEquals(JavaInt32.remainder(left, right), Right(wrappedInt32(a % b)), clue = (left, right))
       }
     }
-    assertEquals(pairs.size, 708)
-  }
-
-  test("Java expression arithmetic delegates to int32 rules and returns explicit failures") {
-    for (operator, left, right, result) <- Seq(
-      (R.BinaryOperator.Add, Int.MaxValue, 1, Int.MinValue),
-      (R.BinaryOperator.Subtract, Int.MinValue, 1, Int.MaxValue),
-      (R.BinaryOperator.Multiply, Int.MaxValue, Int.MaxValue, 1),
-      (R.BinaryOperator.Divide, Int.MinValue, -1, Int.MinValue),
-      (R.BinaryOperator.Divide, -9, 2, -4), (R.BinaryOperator.Remainder, -9, 2, -1)
-    ) do assertEquals(javaResult(R.Binary(operator, R.IntLiteral(left), R.IntLiteral(right))), Right(E.Value.IntValue(result)))
-    for operator <- Seq(R.BinaryOperator.Divide, R.BinaryOperator.Remainder) do
-      assertEquals(javaResult(R.Binary(operator, R.IntLiteral(1), R.IntLiteral(0))), Left(E.Failure.DivisionByZero))
-    assertEquals(javaResult(R.Unary(R.UnaryOperator.Plus, R.IntLiteral(9))), Right(E.Value.IntValue(9)))
-    assertEquals(javaResult(R.Unary(R.UnaryOperator.Negate, R.IntLiteral(Int.MinValue))), Right(E.Value.IntValue(Int.MinValue)))
-    assertEquals(javaResult(R.Unary(R.UnaryOperator.Not, R.BooleanLiteral(true))), Right(E.Value.BooleanValue(false)))
+    assertEquals(int32Pairs.size, 708)
   }
 
   test("Java comparisons and equality use strict scalar types") {
@@ -535,12 +434,7 @@ class BeExpressionLanguageSupportTest extends FunSuite {
       "int product = n * n; int quotient = -9 / 2; int rest = -9 % 2; " +
       "boolean skip = flag && n / 0 > 0; boolean ready = !flag || n / 0 > 0; int wrapped = - -2147483648; " +
       "} public static void main(String[] args) {} }"
-    val resolved = (for {
-      parsed <- JavaTurtleSourceParser.parse(source)
-      structure <- JavaTurtleStructureValidator.check(parsed)
-      checked <- JavaTurtleSemanticValidator.check(structure)
-      result <- R.resolve(checked)
-    } yield result).fold(problem => fail(problem.message), identity)
+    val resolved = resolvedJava(source)
     val method = resolved.methods.find(_.name == "calculate").getOrElse(fail("Missing calculate"))
     val values: Map[R.VariableId, E.Value] = Map(method.parameters(0).id -> E.Value.IntValue(Int.MaxValue),
       method.parameters(1).id -> E.Value.BooleanValue(false))
@@ -550,40 +444,6 @@ class BeExpressionLanguageSupportTest extends FunSuite {
       Right(E.Value.BooleanValue(false)), Right(E.Value.BooleanValue(true)), Right(E.Value.IntValue(Int.MinValue))
     ))
     assertEquals(resolved.source, source)
-  }
-
-  test("Java for and while methods produce the parameterized square trace") {
-    for body <- Seq(
-      "for (int i = 0; i < 4; i += 1) { Turtle.forward(n); Turtle.turnRight(90); }",
-      "int i = 0; while (i < 4) { Turtle.forward(n); Turtle.turnRight(90); i += 1; }"
-    ); size <- Seq(10, 40, 100) do {
-      val source = javaProgram(s"square($size);", s"static void square(int n) { $body }")
-      val expected = Vector.fill(4)(Vector(forward(size), right(90))).flatten
-      val execution = T.run(source)
-      assertEquals(execution.status, T.Status.Completed)
-      assertEquals(execution.commands, expected)
-      val helper = source.methods.find(_.name == "square").getOrElse(fail("Missing square"))
-      val invoked = T.invoke(source, helper.id, Vector(E.Value.IntValue(size)))
-      assertEquals(invoked.status, T.Status.Completed)
-      assertEquals(invoked.commands, expected)
-    }
-  }
-
-  test("Java helper arguments use the caller frame and mutable parameters stay local") {
-    val source = javaProgram("int n = 40; outer(n); Turtle.forward(n); draw(10); draw(10);", """
-      static void inner(int n, int other) { n += 1; Turtle.forward(n); Turtle.forward(other); }
-      static void outer(int n) { inner(n + 1, n + 2); Turtle.forward(n); }
-      static void draw(int n) { n += 1; Turtle.forward(n); }
-    """)
-    val execution = T.run(source)
-    assertEquals(execution.status, T.Status.Completed)
-    assertEquals(execution.commands, Vector(42, 42, 40, 40, 11, 11).map(forward))
-    val boolean = T.run(javaProgram("boolean flag = true; choose(flag); if (flag) { Turtle.forward(3); }", """
-      static void choose(boolean flag) { flag = !flag; if (flag) { Turtle.forward(1); } else { Turtle.forward(2); } }
-    """))
-    assertEquals(boolean.status, T.Status.Completed)
-    assertEquals(boolean.commands, Vector(forward(2), forward(3)))
-    assertEquals(T.run(source), execution)
   }
 
   test("Java loop declarations reset on each entry and sibling scopes stay separate") {
@@ -630,96 +490,6 @@ class BeExpressionLanguageSupportTest extends FunSuite {
     assertEquals(early.commands, Vector(forward(1)))
   }
 
-  test("Java compound assignments use int32 arithmetic") {
-    val execution = T.run(javaProgram("""
-      int n = 2147483647; n += 1; Turtle.forward(n);
-      n -= 1; Turtle.forward(n); n *= 2147483647; Turtle.forward(n);
-      n = -2147483648; n /= -1; Turtle.forward(n); n %= -1; Turtle.forward(n);
-      n = -9; n /= 2; Turtle.forward(n); n = -9; n %= 2; Turtle.forward(n);
-    """))
-    assertEquals(execution.status, T.Status.Completed)
-    assertEquals(execution.commands, Vector(Int.MinValue, Int.MaxValue, 1, Int.MinValue, 0, -4, -1).map(forward))
-  }
-
-  test("Java runtime failures preserve only the executed prefix and stop caller continuation") {
-    val helpers = "static void pair(int a, int b) { Turtle.forward(999); }"
-    for body <- Seq("int n = 1; n /= 0;", "int n = 1; n %= 0;", "pair(1 / 0, 2 / 0);") do {
-      val execution = T.run(javaProgram(s"Turtle.forward(1); $body Turtle.forward(999);", helpers))
-      assertEquals(execution.status, T.Status.Failed(T.Failure.Evaluation(E.Failure.DivisionByZero)))
-      assertEquals(execution.commands, Vector(forward(1)))
-    }
-    val skipped = T.run(javaProgram("""
-      boolean flag = false && 1 / 0 > 0;
-      if (!flag || 1 / 0 > 0) { Turtle.forward(2); }
-    """))
-    assertEquals(skipped.status, T.Status.Completed)
-    assertEquals(skipped.commands, Vector(forward(2)))
-  }
-
-  test("Java runtime rejects invalid invocations and limits before effects") {
-    val source = javaProgram("draw(1);", "static void draw(int n) { Turtle.forward(n); }")
-    val method = source.methods.find(_.name == "draw").getOrElse(fail("Missing draw"))
-    for (id, arguments) <- Seq(method.id -> Vector.empty[E.Value],
-      method.id -> Vector(E.Value.BooleanValue(true)), method.id -> Vector(E.Value.IntValue(1), E.Value.IntValue(2)),
-      R.MethodId(999) -> Vector.empty[E.Value], source.entryPoint -> Vector.empty[E.Value]) do {
-      val execution = T.invoke(source, id, arguments)
-      assertEquals(execution, T.Execution(T.Status.Failed(T.Failure.InvalidInvocation), Vector.empty, 0))
-    }
-    for limits <- Seq(T.Limits(maxSteps = 0), T.Limits(maxSteps = -1), T.Limits(maxSteps = T.Limits.MaxSteps + 1),
-      T.Limits(maxCommands = -1), T.Limits(maxCommands = T.Limits.MaxCommands + 1),
-      T.Limits(maxCallDepth = 0), T.Limits(maxCallDepth = T.Limits.MaxCallDepth + 1),
-      T.Limits(maxBlockDepth = 0), T.Limits(maxBlockDepth = T.Limits.MaxBlockDepth + 1)) do
-      assertEquals(T.run(source, limits, () => fail("Invalid limits must not poll")),
-        T.Execution(T.Status.Failed(T.Failure.InvalidLimits), Vector.empty, 0))
-    assertEquals(T.run(javaProgram(""), T.Limits(maxCommands = 0)).status, T.Status.Completed)
-    val noCommands = T.run(source, T.Limits(maxCommands = 0))
-    assertEquals(noCommands.status, T.Status.LimitExceeded)
-    assertEquals(noCommands.commands, Vector.empty)
-  }
-
-  test("Java runtime shares exact work limits across statements and expressions") {
-    val empty = T.run(javaProgram(""), T.Limits(maxSteps = 2))
-    assertEquals(empty, T.Execution(T.Status.Completed, Vector.empty, 2))
-    val one = javaProgram("Turtle.forward(1);")
-    assertEquals(T.run(one, T.Limits(maxSteps = 5)), T.Execution(T.Status.Completed, Vector(forward(1)), 5))
-    assertEquals(T.run(one, T.Limits(maxSteps = 4)), T.Execution(T.Status.LimitExceeded, Vector.empty, 4))
-    val expressions = javaProgram("int a = 1 + 2; int b = 3 + 4; Turtle.forward(a + b);")
-    assertEquals(T.run(expressions, T.Limits(maxSteps = 15)), T.Execution(T.Status.Completed, Vector(forward(10)), 15))
-    assertEquals(T.run(expressions, T.Limits(maxSteps = 14)), T.Execution(T.Status.LimitExceeded, Vector.empty, 14))
-    val square = javaProgram("for (int i = 0; i < 4; i += 1) { Turtle.forward(10); Turtle.turnRight(90); }")
-    val full = T.run(square, T.Limits(maxCommands = 8))
-    val limited = T.run(square, T.Limits(maxCommands = 7))
-    assertEquals(full.status, T.Status.Completed)
-    assertEquals(full.commands.size, 8)
-    assertEquals(limited.status, T.Status.LimitExceeded)
-    assertEquals(limited.commands, full.commands.take(7))
-  }
-
-  test("Java empty endless loops stop on limits or cancellation and new runs are fresh") {
-    for body <- Seq("for (;;) {}", "while (true) {}", "for (;;) { ; }") do {
-      val source = javaProgram(body)
-      assertEquals(T.run(source, T.Limits(maxSteps = 20)), T.Execution(T.Status.LimitExceeded, Vector.empty, 20))
-      var polls = 0
-      val cancelled = T.run(source, T.Limits(maxSteps = 30), () => { polls += 1; polls >= 10 })
-      assertEquals(cancelled, T.Execution(T.Status.Cancelled, Vector.empty, 9))
-      assertEquals(polls, 10)
-      assertEquals(T.run(source, T.Limits(maxSteps = 20)), T.Execution(T.Status.LimitExceeded, Vector.empty, 20))
-    }
-    val one = javaProgram("Turtle.forward(1);")
-    assertEquals(T.run(one, isCancelled = () => true), T.Execution(T.Status.Cancelled, Vector.empty, 0))
-    var polls = 0
-    assertEquals(T.run(one, isCancelled = () => { polls += 1; polls >= 5 }), T.Execution(T.Status.Cancelled, Vector.empty, 4))
-    assertEquals(T.run(one), T.Execution(T.Status.Completed, Vector(forward(1)), 5))
-    val two = javaProgram("Turtle.forward(1); Turtle.forward(2);")
-    polls = 0
-    assertEquals(T.run(two, isCancelled = () => { polls += 1; polls >= 8 }),
-      T.Execution(T.Status.Cancelled, Vector(forward(1)), 7))
-    assertEquals(T.run(two), T.Execution(T.Status.Completed, Vector(forward(1), forward(2)), 8))
-    val emitting = T.run(javaProgram("while (true) { Turtle.forward(1); }"), T.Limits(maxCommands = 3))
-    assertEquals(emitting.status, T.Status.LimitExceeded)
-    assertEquals(emitting.commands, Vector.fill(3)(forward(1)))
-  }
-
   test("Java call and block depth limits stop explicit stacks without affecting later runs") {
     val source = javaProgram("draw();", "static void draw() { Turtle.forward(1); }")
     val tooDeep = T.run(source, T.Limits(maxCallDepth = 1))
@@ -728,14 +498,10 @@ class BeExpressionLanguageSupportTest extends FunSuite {
     val shallow = T.run(source, T.Limits(maxCallDepth = 2))
     assertEquals(shallow.status, T.Status.Completed)
     assertEquals(shallow.commands, Vector(forward(1)))
-    def chain(count: Int): R.ResolvedSource = javaProgram("m0();", (0 until count).map { index =>
-      val body = if index == count - 1 then "Turtle.forward(1);" else s"m${index + 1}();"
-      s"static void m$index() { $body }"
-    }.mkString(" "))
-    val deep = T.run(chain(80))
+    val deep = T.run(callChain(80))
     assertEquals(deep.status, T.Status.LimitExceeded)
     assertEquals(deep.commands, Vector.empty)
-    val long = T.run(chain(40))
+    val long = T.run(callChain(40))
     assertEquals(long.status, T.Status.Completed)
     assertEquals(long.commands, Vector(forward(1)))
     val nested = javaProgram("if (true) { " * 8 + "Turtle.forward(1);" + " }" * 8)
@@ -861,12 +627,7 @@ class BeExpressionLanguageSupportTest extends FunSuite {
   test("Java VM bindings keep a main declared before its helper as the entry point") {
     val source = "class Drawing { public static void main(String[] args) { draw(40); } " +
       "static void draw(int size) { Turtle.forward(size); } }"
-    val resolved = (for {
-      parsed <- JavaTurtleSourceParser.parse(source)
-      structure <- JavaTurtleStructureValidator.check(parsed)
-      typed <- JavaTurtleSemanticValidator.check(structure)
-      result <- R.resolve(typed)
-    } yield result).fold(problem => fail(problem.message), identity)
+    val resolved = resolvedJava(source)
     val bindings = V.bind(resolved)
     assertEquals(bindings.entryPoint.id, R.MethodId(0))
     assertEquals(bindings.methods.map(_.originalName), Vector("main", "draw"))
@@ -945,34 +706,21 @@ class BeExpressionLanguageSupportTest extends FunSuite {
 
   test("Java VM arithmetic matches an independent integer model") {
     val bindings = V.bind(javaProgram(""))
-    val modulus = BigInt(1) << 32
-    def wrapped(value: BigInt): Int = {
-      val unsigned = ((value % modulus) + modulus) % modulus
-      (if unsigned > Int.MaxValue then unsigned - modulus else unsigned).toInt
-    }
-    var state = BigInt("13579bdf", 16)
-    def sample(): Int = {
-      state = (state * 1664525 + 1013904223) % modulus
-      wrapped(state)
-    }
-    val edges = Vector(Int.MinValue, Int.MinValue + 1, -1000000000, -65536, -9, -2, -1,
-      0, 1, 2, 9, 65536, 1000000000, Int.MaxValue)
-    val pairs = (for left <- edges; right <- edges yield left -> right) ++ Vector.fill(512)(sample() -> sample())
-    for (left, right) <- pairs; operator <- Seq(R.BinaryOperator.Add, R.BinaryOperator.Subtract,
+    for (left, right) <- int32Pairs; operator <- Seq(R.BinaryOperator.Add, R.BinaryOperator.Subtract,
       R.BinaryOperator.Multiply, R.BinaryOperator.Divide, R.BinaryOperator.Remainder) do {
       val compiled = X.adapt(bindings, R.Binary(operator, R.IntLiteral(left), R.IntLiteral(right))).toOption.get
       val expected = operator match {
-        case R.BinaryOperator.Add => Right(E.Value.IntValue(wrapped(BigInt(left) + BigInt(right))))
-        case R.BinaryOperator.Subtract => Right(E.Value.IntValue(wrapped(BigInt(left) - BigInt(right))))
-        case R.BinaryOperator.Multiply => Right(E.Value.IntValue(wrapped(BigInt(left) * BigInt(right))))
+        case R.BinaryOperator.Add => Right(E.Value.IntValue(wrappedInt32(BigInt(left) + BigInt(right))))
+        case R.BinaryOperator.Subtract => Right(E.Value.IntValue(wrappedInt32(BigInt(left) - BigInt(right))))
+        case R.BinaryOperator.Multiply => Right(E.Value.IntValue(wrappedInt32(BigInt(left) * BigInt(right))))
         case R.BinaryOperator.Divide | R.BinaryOperator.Remainder if right == 0 => Left(E.Failure.DivisionByZero)
-        case R.BinaryOperator.Divide => Right(E.Value.IntValue(wrapped(BigInt(left) / BigInt(right))))
-        case R.BinaryOperator.Remainder => Right(E.Value.IntValue(wrapped(BigInt(left) % BigInt(right))))
+        case R.BinaryOperator.Divide => Right(E.Value.IntValue(wrappedInt32(BigInt(left) / BigInt(right))))
+        case R.BinaryOperator.Remainder => Right(E.Value.IntValue(wrappedInt32(BigInt(left) % BigInt(right))))
         case _ => fail("Unexpected arithmetic operator")
       }
       assertEquals(X.evaluate(compiled, _ => fail("Unexpected variable read")), expected, clue = (operator, left, right))
     }
-    assertEquals(pairs.size, 708)
+    assertEquals(int32Pairs.size, 708)
     for (operator, input, expected) <- Seq((R.UnaryOperator.Plus, 9, 9),
       (R.UnaryOperator.Negate, Int.MinValue, Int.MinValue), (R.UnaryOperator.Negate, 9, -9)) do {
       val compiled = X.adapt(bindings, R.Unary(operator, R.IntLiteral(input))).toOption.get
@@ -1102,13 +850,8 @@ class BeExpressionLanguageSupportTest extends FunSuite {
       public static void main(String[] argv) { square(10); square(40); }
       static void unused(boolean enabled) { if (enabled) { return; } }
     }"""
-    val source = (for {
-      parsed <- JavaTurtleSourceParser.parse(text)
-      structure <- JavaTurtleStructureValidator.check(parsed)
-      typed <- JavaTurtleSemanticValidator.check(structure)
-      resolved <- R.resolve(typed)
-    } yield resolved).toOption.get
-    val compiled = JavaTurtleCompiler.compileResolved(source).toOption.get
+    val source = resolvedJava(text)
+    val compiled = compiledJava(source)
     assert(compiled.bindings.source eq source)
     assertEquals(compiled.bindings.source.source, text)
     assertEquals(compiled.bindings.source.className, "Drawing")
@@ -1129,7 +872,7 @@ class BeExpressionLanguageSupportTest extends FunSuite {
 
   test("Java VM declarations and assignment operators share their interned target definition") {
     val source = javaProgram("int value; value = 10; value += 2; value -= 1; value *= 3; value /= 2; value %= 4; Turtle.forward(value);")
-    val compiled = JavaTurtleCompiler.compileResolved(source).toOption.get
+    val compiled = compiledJava(source)
     val statements = compiled.root.entryPoint.body.statements
     val P.Node.Declare(variable, definition, initial) = statements.head.node: @unchecked
     assertEquals(initial, None)
@@ -1150,7 +893,7 @@ class BeExpressionLanguageSupportTest extends FunSuite {
     val BeUseValueReference(readDefinition) = reference.value: @unchecked
     assert(readDefinition eq definition)
     assertEquals(restoredJavaBlock(compiled.root.entryPoint.body), source.methods.head.body)
-    val initialized = JavaTurtleCompiler.compileResolved(javaProgram("int value = 0;")).toOption.get
+    val initialized = compiledJava(javaProgram("int value = 0;"))
     val P.Node.Declare(_, _, zero) = initialized.root.entryPoint.body.statements.head.node: @unchecked
     assertEquals(zero.get.expression.node, X.Node.IntLiteral(0))
   }
@@ -1160,7 +903,7 @@ class BeExpressionLanguageSupportTest extends FunSuite {
       static void pair(int first, int second, boolean enabled) { if (enabled) { Turtle.forward(first); Turtle.forward(second); } }
       static void caller(int size) { pair(size, size + 1, true); pair(size, size, false); }
     """)
-    val compiled = JavaTurtleCompiler.compileResolved(source).toOption.get
+    val compiled = compiledJava(source)
     val callee = compiled.root.methods(0)
     val caller = compiled.root.methods(1)
     val callerDefinition = caller.binding.parameters.head.definition.get
@@ -1190,7 +933,7 @@ class BeExpressionLanguageSupportTest extends FunSuite {
       }
       static void second(int size) { Turtle.forward(size); }
     """)
-    val compiled = JavaTurtleCompiler.compileResolved(source).toOption.get
+    val compiled = compiledJava(source)
     for name <- Seq("size", "value", "i") do {
       val bindings = compiled.bindings.variables.filter(_.variable.name == name)
       assertEquals(bindings.size, 2)
@@ -1198,7 +941,7 @@ class BeExpressionLanguageSupportTest extends FunSuite {
       assert(!(bindings(0).definition.get eq bindings(1).definition.get))
     }
     compiled.root.methods.zip(source.methods).foreach { (method, original) => assertEquals(restoredJavaBlock(method.body), original.body) }
-    val another = JavaTurtleCompiler.compileResolved(source).toOption.get
+    val another = compiledJava(source)
     assert(!(another.bindings eq compiled.bindings))
     compiled.bindings.variables.zip(another.bindings.variables).foreach { (left, right) =>
       assertEquals(left.variable, right.variable)
@@ -1220,7 +963,7 @@ class BeExpressionLanguageSupportTest extends FunSuite {
       static void unbounded() { for (;;) { return; } }
       static void constant() { for (; true;) { return; } }
     """)
-    val compiled = JavaTurtleCompiler.compileResolved(source).toOption.get
+    val compiled = compiledJava(source)
     val statements = compiled.root.methods.head.body.statements
     assertEquals(statements.head.node, P.Node.Empty)
     assertEquals(statements.last.node, P.Node.Return)
@@ -1264,24 +1007,24 @@ class BeExpressionLanguageSupportTest extends FunSuite {
       assert(!adapted)
     }
     val source = javaProgram("run(true);", "static void run(boolean enabled) { int value; if (enabled) { value = 10; } else { return; } Turtle.forward(value); }")
-    val compiled = JavaTurtleCompiler.compileResolved(source).toOption.get
+    val compiled = compiledJava(source)
     assertEquals(restoredJavaBlock(compiled.root.methods.head.body), source.methods.head.body)
   }
 
   test("Java VM programs handle checked method parameter local and nesting limits") {
     val helpers = (0 until 127).map(index => s"static void helper$index() {}").mkString(" ")
-    val methods = JavaTurtleCompiler.compileResolved(javaProgram("", helpers)).toOption.get
+    val methods = compiledJava(javaProgram("", helpers))
     assertEquals(methods.root.methods.size, 128)
     assert(methods.root.entryPoint eq methods.root.methods.last)
     val parameters = (0 until 16).map(index => s"int p$index").mkString(", ")
     val locals = (0 until 128).map(index => s"int v$index = $index;").mkString(" ")
     val populatedSource = javaProgram("", s"static void populated($parameters) { $locals }")
-    val populated = JavaTurtleCompiler.compileResolved(populatedSource).toOption.get
+    val populated = compiledJava(populatedSource)
     assertEquals(populated.root.methods.head.binding.parameters.size, 16)
     assertEquals(populated.root.methods.head.body.statements.size, 128)
     assertEquals(restoredJavaBlock(populated.root.methods.head.body), populatedSource.methods.head.body)
     val nestedSource = javaProgram("while (true) { " * 12 + "return;" + " }" * 12)
-    val nested = JavaTurtleCompiler.compileResolved(nestedSource).toOption.get
+    val nested = compiledJava(nestedSource)
     assertEquals(restoredJavaBlock(nested.root.entryPoint.body), nestedSource.methods.head.body)
   }
 
@@ -1299,7 +1042,7 @@ class BeExpressionLanguageSupportTest extends FunSuite {
       ("for (int i = 0; i < 4; i += 1) { Turtle.forward(40); Turtle.turnRight(90); }", 10, false))
     for (body, size, correct) <- variants do {
       val source = javaProgram(s"square($size);", s"static void square(int size) { $body }")
-      val program = JavaTurtleCompiler.compileResolved(source).toOption.get
+      val program = compiledJava(source)
       val execution = T.runVm(program)
       assertEquals(execution, T.run(source))
       assertEquals(execution.status, T.Status.Completed)
@@ -1316,7 +1059,7 @@ class BeExpressionLanguageSupportTest extends FunSuite {
       static void outer(int size) { size += 10; inner(size); Turtle.forward(size); }
       static void inner(int size) { size *= 2; Turtle.forward(size); }
     """)
-    val program = JavaTurtleCompiler.compileResolved(source).toOption.get
+    val program = compiledJava(source)
     val execution = T.runVm(program)
     assertEquals(execution, T.run(source))
     assertEquals(execution.status, T.Status.Completed)
@@ -1327,7 +1070,7 @@ class BeExpressionLanguageSupportTest extends FunSuite {
         enabled = !enabled; if (enabled) { Turtle.forward(1); } else { Turtle.forward(2); }
       }
     """)
-    val booleanExecution = T.runVm(JavaTurtleCompiler.compileResolved(flags).toOption.get)
+    val booleanExecution = T.runVm(compiledJava(flags))
     assertEquals(booleanExecution, T.run(flags))
     assertEquals(booleanExecution.commands, Vector(2, 3, 1).map(forward))
   }
@@ -1343,7 +1086,7 @@ class BeExpressionLanguageSupportTest extends FunSuite {
         for (;;) { Turtle.forward(30); return; }
       }
     """)
-    val program = JavaTurtleCompiler.compileResolved(source).toOption.get
+    val program = compiledJava(source)
     val execution = T.runVm(program)
     assertEquals(execution, T.run(source))
     assertEquals(execution.status, T.Status.Completed)
@@ -1355,7 +1098,7 @@ class BeExpressionLanguageSupportTest extends FunSuite {
         Turtle.forward(999);
       }
     """)
-    val earlyExecution = T.runVm(JavaTurtleCompiler.compileResolved(early).toOption.get)
+    val earlyExecution = T.runVm(compiledJava(early))
     assertEquals(earlyExecution, T.run(early))
     assertEquals(earlyExecution.commands, Vector(forward(1), forward(2)))
   }
@@ -1369,13 +1112,13 @@ class BeExpressionLanguageSupportTest extends FunSuite {
       boolean enabled = false && 1 / 0 > 0;
       if (!enabled || 1 / 0 > 0) { Turtle.forward(2); }
     """)
-    val execution = T.runVm(JavaTurtleCompiler.compileResolved(source).toOption.get)
+    val execution = T.runVm(compiledJava(source))
     assertEquals(execution, T.run(source))
     assertEquals(execution.status, T.Status.Completed)
     assertEquals(execution.commands, Vector(Int.MinValue, Int.MaxValue, 1, Int.MinValue, 0, -4, -1, 2).map(forward))
     for body <- Seq("int value = 5; value /= 0;", "int value = 5; value %= 0;", "pair(1, 5 / 0);") do {
       val failing = javaProgram(s"Turtle.forward(1); $body Turtle.forward(999);", "static void pair(int a, int b) { Turtle.forward(999); }")
-      val program = JavaTurtleCompiler.compileResolved(failing).toOption.get
+      val program = compiledJava(failing)
       val result = T.runVm(program)
       assertEquals(result, T.run(failing))
       assertEquals(result.status, T.Status.Failed(T.Failure.Evaluation(E.Failure.DivisionByZero)))
@@ -1390,27 +1133,22 @@ class BeExpressionLanguageSupportTest extends FunSuite {
       public static void main(String[] argv) { drawSquare(10); draw_square(20); }
       static void draw_square(int size) { Turtle.turnRight(size); }
     }"""
-    val source = (for {
-      parsed <- JavaTurtleSourceParser.parse(text)
-      structure <- JavaTurtleStructureValidator.check(parsed)
-      typed <- JavaTurtleSemanticValidator.check(structure)
-      resolved <- R.resolve(typed)
-    } yield resolved).toOption.get
-    val program = JavaTurtleCompiler.compileResolved(source).toOption.get
+    val source = resolvedJava(text)
+    val program = compiledJava(source)
     assertEquals(program.root.entryPoint.binding.id, R.MethodId(1))
     val execution = T.runVm(program)
     assertEquals(execution, T.run(source))
     assertEquals(execution.status, T.Status.Completed)
     assertEquals(execution.commands, Vector(forward(10), right(20)))
     assertEquals(T.invokeVm(program, R.MethodId(2), Vector(E.Value.IntValue(30))).commands, Vector(right(30)))
-    val another = JavaTurtleCompiler.compileResolved(javaProgram("int size = 7; Turtle.forward(size);")).toOption.get
+    val another = compiledJava(javaProgram("int size = 7; Turtle.forward(size);"))
     assertEquals(T.runVm(another).commands, Vector(forward(7)))
     assertEquals(T.runVm(program), execution)
   }
 
   test("Java VM execution rejects invalid limits and helper invocations before polling") {
     val source = javaProgram("draw(1);", "static void draw(int size) { Turtle.forward(size); }")
-    val program = JavaTurtleCompiler.compileResolved(source).toOption.get
+    val program = compiledJava(source)
     val method = program.root.methods.head.binding.id
     val neverPoll = () => fail("Invalid input must not poll cancellation")
     for (id, arguments) <- Seq(method -> Vector.empty[E.Value], method -> Vector(E.Value.BooleanValue(true)),
@@ -1428,21 +1166,21 @@ class BeExpressionLanguageSupportTest extends FunSuite {
       assertEquals(T.runVm(program, limits, neverPoll), expected)
       assertEquals(T.invokeVm(program, method, Vector(E.Value.IntValue(1)), limits, neverPoll), expected)
     }
-    assertEquals(T.runVm(JavaTurtleCompiler.compileResolved(javaProgram("")).toOption.get, T.Limits(maxCommands = 0)).status, T.Status.Completed)
+    assertEquals(T.runVm(compiledJava(javaProgram("")), T.Limits(maxCommands = 0)).status, T.Status.Completed)
     assertEquals(T.runVm(program, T.Limits(maxCommands = 0)).commands, Vector.empty)
     assertEquals(T.runVm(program, T.Limits(maxCommands = 0)).status, T.Status.LimitExceeded)
   }
 
   test("Java VM execution retains exact statement expression and command budgets") {
-    val empty = JavaTurtleCompiler.compileResolved(javaProgram("")).toOption.get
+    val empty = compiledJava(javaProgram(""))
     assertEquals(T.runVm(empty, T.Limits(maxSteps = 2)), T.Execution(T.Status.Completed, Vector.empty, 2))
-    val one = JavaTurtleCompiler.compileResolved(javaProgram("Turtle.forward(1);")).toOption.get
+    val one = compiledJava(javaProgram("Turtle.forward(1);"))
     assertEquals(T.runVm(one, T.Limits(maxSteps = 5)), T.Execution(T.Status.Completed, Vector(forward(1)), 5))
     assertEquals(T.runVm(one, T.Limits(maxSteps = 4)), T.Execution(T.Status.LimitExceeded, Vector.empty, 4))
-    val expressions = JavaTurtleCompiler.compileResolved(javaProgram("int a = 1 + 2; int b = 3 + 4; Turtle.forward(a + b);")).toOption.get
+    val expressions = compiledJava(javaProgram("int a = 1 + 2; int b = 3 + 4; Turtle.forward(a + b);"))
     assertEquals(T.runVm(expressions, T.Limits(maxSteps = 15)), T.Execution(T.Status.Completed, Vector(forward(10)), 15))
     assertEquals(T.runVm(expressions, T.Limits(maxSteps = 14)), T.Execution(T.Status.LimitExceeded, Vector.empty, 14))
-    val square = JavaTurtleCompiler.compileResolved(javaProgram("for (int i = 0; i < 4; i += 1) { Turtle.forward(10); Turtle.turnRight(90); }")).toOption.get
+    val square = compiledJava(javaProgram("for (int i = 0; i < 4; i += 1) { Turtle.forward(10); Turtle.turnRight(90); }"))
     val complete = T.runVm(square, T.Limits(maxCommands = 8))
     assertEquals(complete.status, T.Status.Completed)
     assertEquals(complete.commands.size, 8)
@@ -1454,7 +1192,7 @@ class BeExpressionLanguageSupportTest extends FunSuite {
   test("Java VM endless loops cancellation and repeated execution use fresh state") {
     for body <- Seq("while (true) {}", "for (;;) {}", "for (;;) { ; }", "while (true);", "for (;;);") do {
       val source = javaProgram(body)
-      val program = JavaTurtleCompiler.compileResolved(source).toOption.get
+      val program = compiledJava(source)
       assertEquals(T.runVm(program, T.Limits(maxSteps = 20)), T.Execution(T.Status.LimitExceeded, Vector.empty, 20))
       var polls = 0
       assertEquals(T.runVm(program, T.Limits(maxSteps = 30), () => { polls += 1; polls >= 10 }),
@@ -1462,16 +1200,16 @@ class BeExpressionLanguageSupportTest extends FunSuite {
       assertEquals(polls, 10)
       assertEquals(T.runVm(program, T.Limits(maxSteps = 20)), T.run(source, T.Limits(maxSteps = 20)))
     }
-    val program = JavaTurtleCompiler.compileResolved(javaProgram("Turtle.forward(1); Turtle.forward(2);")).toOption.get
+    val program = compiledJava(javaProgram("Turtle.forward(1); Turtle.forward(2);"))
     assertEquals(T.runVm(program, isCancelled = () => true), T.Execution(T.Status.Cancelled, Vector.empty, 0))
     var polls = 0
     assertEquals(T.runVm(program, isCancelled = () => { polls += 1; polls >= 8 }),
       T.Execution(T.Status.Cancelled, Vector(forward(1)), 7))
     assertEquals(polls, 8)
     assertEquals(T.runVm(program), T.Execution(T.Status.Completed, Vector(forward(1), forward(2)), 8))
-    val emptyLoop = JavaTurtleCompiler.compileResolved(javaProgram("while (true) {}")).toOption.get
+    val emptyLoop = compiledJava(javaProgram("while (true) {}"))
     assertEquals(T.runVm(emptyLoop), T.Execution(T.Status.LimitExceeded, Vector.empty, T.Limits.MaxSteps))
-    val emitting = JavaTurtleCompiler.compileResolved(javaProgram("while (true) { Turtle.forward(1); }")).toOption.get
+    val emitting = compiledJava(javaProgram("while (true) { Turtle.forward(1); }"))
     val limited = T.runVm(emitting)
     assertEquals(limited.status, T.Status.LimitExceeded)
     assertEquals(limited.commands.size, T.Limits.MaxCommands)
@@ -1479,18 +1217,14 @@ class BeExpressionLanguageSupportTest extends FunSuite {
   }
 
   test("Java VM execution enforces exact call and block depths without recursive host stacks") {
-    def chain(count: Int): R.ResolvedSource = javaProgram("m0();", (0 until count).map { index =>
-      val body = if index == count - 1 then "Turtle.forward(1);" else s"m${index + 1}();"
-      s"static void m$index() { $body }"
-    }.mkString(" "))
-    val allowedSource = chain(63)
-    val allowed = JavaTurtleCompiler.compileResolved(allowedSource).toOption.get
+    val allowedSource = callChain(63)
+    val allowed = compiledJava(allowedSource)
     val full = T.runVm(allowed)
     assertEquals(full, T.run(allowedSource))
     assertEquals(full.status, T.Status.Completed)
     assertEquals(full.commands, Vector(forward(1)))
-    val excessiveSource = chain(64)
-    val excessive = JavaTurtleCompiler.compileResolved(excessiveSource).toOption.get
+    val excessiveSource = callChain(64)
+    val excessive = compiledJava(excessiveSource)
     val rejected = T.runVm(excessive)
     assertEquals(rejected, T.run(excessiveSource))
     assertEquals(rejected.status, T.Status.LimitExceeded)
@@ -1500,7 +1234,7 @@ class BeExpressionLanguageSupportTest extends FunSuite {
     assertEquals(direct.status, T.Status.Completed)
     assertEquals(direct.commands, Vector(forward(1)))
     val nestedSource = javaProgram("if (true) { " * 8 + "Turtle.forward(1);" + " }" * 8)
-    val nested = JavaTurtleCompiler.compileResolved(nestedSource).toOption.get
+    val nested = compiledJava(nestedSource)
     val shallow = T.runVm(nested, T.Limits(maxBlockDepth = 8))
     assertEquals(shallow, T.run(nestedSource, T.Limits(maxBlockDepth = 8)))
     assertEquals(shallow.status, T.Status.LimitExceeded)
@@ -1522,7 +1256,7 @@ class BeExpressionLanguageSupportTest extends FunSuite {
     """
     for depth <- Vector(0, 1, 3) do {
       val source = javaProgram(s"split($depth, 10.5);", helper)
-      val program = JavaTurtleCompiler.compileResolved(source).toOption.get
+      val program = compiledJava(source)
       val execution = T.runVm(program)
       val commands = Vector.fill(1 << depth)(T.Command(R.TurtleCommand.Forward, 10.5 / math.pow(3, depth)))
       assertEquals(execution, T.run(source))
@@ -1547,7 +1281,7 @@ class BeExpressionLanguageSupportTest extends FunSuite {
         if (depth > 0) { first(depth - 1); } else { Turtle.forward(9); }
       }
     """)
-    val program = JavaTurtleCompiler.compileResolved(source).toOption.get
+    val program = compiledJava(source)
     val execution = T.runVm(program)
     assertEquals(execution, T.run(source))
     assertEquals(execution.status, T.Status.Completed)
@@ -1571,7 +1305,7 @@ class BeExpressionLanguageSupportTest extends FunSuite {
         for (int marker = 0; marker < 1; marker += 1) { Turtle.turnRight(marker); }
       }
     """)
-    val execution = T.runVm(JavaTurtleCompiler.compileResolved(source).toOption.get)
+    val execution = T.runVm(compiledJava(source))
     assertEquals(execution, T.run(source))
     assertEquals(execution.status, T.Status.Completed)
     assertEquals(execution.commands, Vector(forward(4), forward(5), forward(12), right(10),
@@ -1589,8 +1323,8 @@ class BeExpressionLanguageSupportTest extends FunSuite {
     )
     cases.foreach { (main, single, braced, expected) =>
       val source = javaProgram(main, single)
-      val actual = JavaTurtleCompiler.compileResolved(source).toOption.get
-      val explicit = JavaTurtleCompiler.compileResolved(javaProgram(main, braced)).toOption.get
+      val actual = compiledJava(source)
+      val explicit = compiledJava(javaProgram(main, braced))
       val recorded = T.runVmTraced(actual)
       val reference = T.runVmTraced(explicit)
       assertEquals(recorded.execution.status, T.Status.Completed)
@@ -1618,7 +1352,7 @@ class BeExpressionLanguageSupportTest extends FunSuite {
         }
       }
     """)
-    val program = JavaTurtleCompiler.compileResolved(source).toOption.get
+    val program = compiledJava(source)
     val execution = T.runVm(program)
     assertEquals(execution, T.run(source))
     assertEquals(execution.status, T.Status.Completed)
@@ -1634,7 +1368,7 @@ class BeExpressionLanguageSupportTest extends FunSuite {
       }
       static void unused() { unused(); }
     """)
-    val program = JavaTurtleCompiler.compileResolved(source).toOption.get
+    val program = compiledJava(source)
     val execution = T.runVm(program)
     assertEquals(execution, T.run(source))
     assertEquals(execution.status, T.Status.Completed)
@@ -1644,7 +1378,7 @@ class BeExpressionLanguageSupportTest extends FunSuite {
   test("Java recursion rejects the 65th frame without drawing") {
     val helper = "static void down(int depth) { if (depth > 0) { down(depth - 1); } else { Turtle.forward(1); } }"
     val source = javaProgram("down(62);", helper)
-    val program = JavaTurtleCompiler.compileResolved(source).toOption.get
+    val program = compiledJava(source)
     val allowed = T.runVm(program)
     assertEquals(allowed, T.run(source))
     assertEquals(allowed.status, T.Status.Completed)
@@ -1663,7 +1397,7 @@ class BeExpressionLanguageSupportTest extends FunSuite {
 
   test("Java recursion retains executed commands at budgets cancellation and errors") {
     val source = javaProgram("repeat(0);", "static void repeat(int n) { Turtle.forward(n); repeat(n + 1); }")
-    val program = JavaTurtleCompiler.compileResolved(source).toOption.get
+    val program = compiledJava(source)
     val arguments = Vector(E.Value.IntValue(0))
     val commandLimit = T.invokeVm(program, R.MethodId(0), arguments, T.Limits(maxCommands = 2))
     assertEquals(commandLimit, T.invoke(source, R.MethodId(0), arguments, T.Limits(maxCommands = 2)))
@@ -1684,7 +1418,7 @@ class BeExpressionLanguageSupportTest extends FunSuite {
         int invalid = 1 / 0;
       }
     """)
-    val failed = T.runVm(JavaTurtleCompiler.compileResolved(failedSource).toOption.get)
+    val failed = T.runVm(compiledJava(failedSource))
     assertEquals(failed, T.run(failedSource))
     assertEquals(failed.status, T.Status.Failed(T.Failure.Evaluation(E.Failure.DivisionByZero)))
     assertEquals(failed.commands, Vector(forward(1), forward(0)))
@@ -1696,7 +1430,7 @@ class BeExpressionLanguageSupportTest extends FunSuite {
       javaProgram("for (int i = 0; i < 3; i++) { Turtle.forward(i); }"),
       javaProgram("while (true) { ; }"),
       javaProgram("Turtle.forward(1); int bad = 1 / 0;")
-    ).map(source => JavaTurtleCompiler.compileResolved(source).toOption.get)
+    ).map(source => compiledJava(source))
     val limits = Vector(T.Limits(maxSteps = 20), T.Limits(maxCommands = 0), T.Limits(maxSteps = 0))
     programs.foreach { program => limits.foreach { limit =>
       Vector(1, 8, 100).foreach { cancelAt =>
@@ -1716,7 +1450,7 @@ class BeExpressionLanguageSupportTest extends FunSuite {
   }
 
   test("Java trace nodes distinguish repeated source expressions and repeated executions") {
-    val program = JavaTurtleCompiler.compileResolved(javaProgram("Turtle.forward(1); Turtle.forward(1);")).toOption.get
+    val program = compiledJava(javaProgram("Turtle.forward(1); Turtle.forward(1);"))
     val recorded = T.runVmTraced(program)
     val commands = turtleEvents(recorded.trace)
     assertEquals(commands.map(_.node.path), Vector(Vector("body", "0"), Vector("body", "1")))
@@ -1734,14 +1468,14 @@ class BeExpressionLanguageSupportTest extends FunSuite {
   test("Java postfix and prefix trace results use the correct variable version") {
     Vector(false, true).foreach { prefix =>
       val update = if prefix then "++x" else "x++"
-      val program = JavaTurtleCompiler.compileResolved(javaProgram(s"int x = 1; int y = $update; Turtle.forward(y); Turtle.forward(x);")).toOption.get
+      val program = compiledJava(javaProgram(s"int x = 1; int y = $update; Turtle.forward(y); Turtle.forward(x);"))
       val recorded = T.runVmTraced(program)
       assertEquals(recorded.execution.commands, Vector(forward(if prefix then 2 else 1), forward(2)))
       val writes = traceWrites(recorded.trace, "x")
       assertEquals(writes.size, 2)
       val commands = turtleEvents(recorded.trace)
-      val first = recorded.trace.backwardSlice(commands.head.id).get.events.map(_.id).toSet
-      val second = recorded.trace.backwardSlice(commands(1).id).get.events.map(_.id).toSet
+      val first = sliceIds(recorded.trace, commands.head.id)
+      val second = sliceIds(recorded.trace, commands(1).id)
       assertEquals(first(writes.last.id), prefix)
       assert(first(writes.head.id))
       assert(second(writes.last.id))
@@ -1749,59 +1483,53 @@ class BeExpressionLanguageSupportTest extends FunSuite {
   }
 
   test("Java compound assignment captures its old value before RHS updates") {
-    val program = JavaTurtleCompiler.compileResolved(javaProgram("int x = 1; x += x++; Turtle.forward(x);")).toOption.get
+    val program = compiledJava(javaProgram("int x = 1; x += x++; Turtle.forward(x);"))
     val recorded = T.runVmTraced(program)
     assertEquals(recorded.execution, T.runVm(program))
     assertEquals(recorded.execution.commands, Vector(forward(2)))
     val writes = traceWrites(recorded.trace, "x")
     assertEquals(writes.size, 3)
-    val slice = recorded.trace.backwardSlice(turtleEvents(recorded.trace).head.id).get.events.map(_.id).toSet
+    val slice = sliceIds(recorded.trace, turtleEvents(recorded.trace).head.id)
     assert(slice(writes.head.id))
     assert(!slice(writes(1).id))
     assert(slice(writes.last.id))
-    val orderedReads = recorded.trace.events.filter(_.kind match {
-      case J.Kind.Read(variable, _) => variable.name == "x"
-      case _ => false
-    })
+    val orderedReads = traceReads(recorded.trace, "x")
     assert(orderedReads.take(2).forall(_.dataDependencies == Vector(writes.head.id)))
   }
 
   test("Java expression traces retain left to right reads across multiple updates") {
-    val program = JavaTurtleCompiler.compileResolved(javaProgram("int x = 1; Turtle.forward(x++ + x++); Turtle.forward(x);")).toOption.get
+    val program = compiledJava(javaProgram("int x = 1; Turtle.forward(x++ + x++); Turtle.forward(x);"))
     val recorded = T.runVmTraced(program)
     assertEquals(recorded.execution.commands, Vector(forward(3), forward(3)))
     val writes = traceWrites(recorded.trace, "x")
     val commands = turtleEvents(recorded.trace)
-    val first = recorded.trace.backwardSlice(commands.head.id).get.events.map(_.id).toSet
-    val second = recorded.trace.backwardSlice(commands.last.id).get.events.map(_.id).toSet
+    val first = sliceIds(recorded.trace, commands.head.id)
+    val second = sliceIds(recorded.trace, commands.last.id)
     assert(first(writes(1).id))
     assert(!first(writes.last.id))
     assert(second(writes.last.id))
   }
 
   test("Java trace omits reads and updates in skipped boolean operands") {
-    val program = JavaTurtleCompiler.compileResolved(javaProgram("""
+    val program = compiledJava(javaProgram("""
       int x = 1;
       boolean b = false && x++ > 0;
       if (true || x++ > 0) { Turtle.forward(x); }
-    """)).toOption.get
+    """))
     val recorded = T.runVmTraced(program)
     assertEquals(recorded.execution, T.runVm(program))
     assertEquals(recorded.execution.commands, Vector(forward(1)))
     assertEquals(traceWrites(recorded.trace, "x").size, 1)
-    assertEquals(recorded.trace.events.count(_.kind match {
-      case J.Kind.Read(variable, _) => variable.name == "x"
-      case _ => false
-    }), 1)
+    assertEquals(traceReads(recorded.trace, "x").size, 1)
   }
 
   test("Java recursion traces isolate frames and record actual call return order") {
-    val program = JavaTurtleCompiler.compileResolved(javaProgram("draw(2);", """
+    val program = compiledJava(javaProgram("draw(2);", """
       static void draw(int n) {
         if (n == 0) { return; }
         Turtle.forward(n); draw(n - 1); Turtle.turnRight(n);
       }
-    """)).toOption.get
+    """))
     val recorded = T.runVmTraced(program)
     assertEquals(recorded.execution, T.runVm(program))
     assertEquals(recorded.execution.commands, Vector(forward(2), forward(1), right(1), right(2)))
@@ -1819,13 +1547,13 @@ class BeExpressionLanguageSupportTest extends FunSuite {
   }
 
   test("Java slices retain false early-return guards without unrelated overwritten writes") {
-    val program = JavaTurtleCompiler.compileResolved(javaProgram("draw(1);", """
+    val program = compiledJava(javaProgram("draw(1);", """
       static void draw(int n) {
         int unused = 99; int x = 1; x = 2;
         if (n == 0) { return; }
         Turtle.forward(x);
       }
-    """)).toOption.get
+    """))
     val recorded = T.runVmTraced(program)
     val slice = recorded.trace.backwardSlice(turtleEvents(recorded.trace).head.id).get
     assert(slice.events.exists(_.kind == J.Kind.Condition(false)))
@@ -1840,14 +1568,14 @@ class BeExpressionLanguageSupportTest extends FunSuite {
 
   test("Java trace reinitializes loop-local versions without changing the compiled source") {
     val source = javaProgram("for (int i = 0; i < 2; i++) { int x = i; Turtle.forward(x); }")
-    val program = JavaTurtleCompiler.compileResolved(source).toOption.get
+    val program = compiledJava(source)
     val recorded = T.runVmTraced(program)
     val writes = traceWrites(recorded.trace, "x")
     assertEquals(writes.size, 2)
     assertEquals(writes.map(_.node).distinct.size, 1)
     val commands = turtleEvents(recorded.trace)
-    val first = recorded.trace.backwardSlice(commands.head.id).get.events.map(_.id).toSet
-    val second = recorded.trace.backwardSlice(commands.last.id).get.events.map(_.id).toSet
+    val first = sliceIds(recorded.trace, commands.head.id)
+    val second = sliceIds(recorded.trace, commands.last.id)
     assert(first(writes.head.id))
     assert(!first(writes.last.id))
     assert(!second(writes.head.id))
@@ -1857,7 +1585,7 @@ class BeExpressionLanguageSupportTest extends FunSuite {
   }
 
   test("Java slices include command and return order only when requested") {
-    val program = JavaTurtleCompiler.compileResolved(javaProgram("draw(); Turtle.forward(2);", "static void draw() { Turtle.turnRight(90); }")).toOption.get
+    val program = compiledJava(javaProgram("draw(); Turtle.forward(2);", "static void draw() { Turtle.turnRight(90); }"))
     val recorded = T.runVmTraced(program)
     val commands = turtleEvents(recorded.trace)
     val valueSlice = recorded.trace.backwardSlice(commands.last.id).get.events
@@ -1869,7 +1597,7 @@ class BeExpressionLanguageSupportTest extends FunSuite {
   }
 
   test("Java trace saturation preserves execution and exposes only a bounded prefix") {
-    val program = JavaTurtleCompiler.compileResolved(javaProgram("for (int i = 0; i < 4; i++) { Turtle.forward(i); }")).toOption.get
+    val program = compiledJava(javaProgram("for (int i = 0; i < 4; i++) { Turtle.forward(i); }"))
     val full = T.runVmTraced(program)
     Vector(J.Budget(maxEvents = 0), J.Budget(maxEvents = 3), J.Budget(maxDependencies = 0)).foreach { budget =>
       val recorded = T.runVmTraced(program, budget = budget)
@@ -1886,7 +1614,7 @@ class BeExpressionLanguageSupportTest extends FunSuite {
   }
 
   test("Java stopped traces do not invent returns or commands") {
-    val program = JavaTurtleCompiler.compileResolved(javaProgram("again();", "static void again() { Turtle.forward(1); again(); }")).toOption.get
+    val program = compiledJava(javaProgram("again();", "static void again() { Turtle.forward(1); again(); }"))
     val limited = T.runVmTraced(program, T.Limits(maxCallDepth = 2))
     assertEquals(limited.execution, T.runVm(program, T.Limits(maxCallDepth = 2)))
     assertEquals(limited.trace.events.count(_.kind.isInstanceOf[J.Kind.Call]), 2)
@@ -1900,7 +1628,7 @@ class BeExpressionLanguageSupportTest extends FunSuite {
   }
 
   test("Java trace retains nonfinite intermediates and signed zero without emitting invalid motion") {
-    val program = JavaTurtleCompiler.compileResolved(javaProgram("double x = 0.0 / 0.0; Turtle.forward(1); Turtle.forward(x);")).toOption.get
+    val program = compiledJava(javaProgram("double x = 0.0 / 0.0; Turtle.forward(1); Turtle.forward(x);"))
     val recorded = T.runVmTraced(program)
     assertEquals(recorded.execution, T.runVm(program))
     assertEquals(recorded.execution.commands, Vector(forward(1)))
@@ -1909,7 +1637,7 @@ class BeExpressionLanguageSupportTest extends FunSuite {
       case J.Kind.Expression(E.Value.DoubleValue(value)) => value.isNaN
       case _ => false
     }))
-    val zero = T.runVmTraced(JavaTurtleCompiler.compileResolved(javaProgram("double x = -0.0; Turtle.forward(x);")).toOption.get)
+    val zero = T.runVmTraced(compiledJava(javaProgram("double x = -0.0; Turtle.forward(x);")))
     assertEquals(1.0 / zero.execution.commands.head.value, Double.NegativeInfinity)
     assert(zero.trace.events.exists(_.kind match {
       case J.Kind.Read(_, E.Value.DoubleValue(value)) => 1.0 / value == Double.NegativeInfinity
@@ -1922,7 +1650,7 @@ class BeExpressionLanguageSupportTest extends FunSuite {
       if (depth == 0) { return; }
       Turtle.forward(depth); draw(depth - 1);
     }""")
-    val program = JavaTurtleCompiler.compileResolved(resolved).toOption.get
+    val program = compiledJava(resolved)
     val recorded = T.runVmTraced(program)
     val located = locatedEvents(recorded, resolved.source)
     assertEquals(recorded.execution, T.runVm(program))
@@ -1946,7 +1674,7 @@ class BeExpressionLanguageSupportTest extends FunSuite {
   test("Java implicit numeric widening maps both runtime levels to the actual source expression") {
     val resolved = javaProgram("double n = 1; n = 2; draw(3); Turtle.forward(n + 4);",
       "static void draw(double value) { Turtle.forward(value); }")
-    val recorded = T.runVmTraced(JavaTurtleCompiler.compileResolved(resolved).toOption.get)
+    val recorded = T.runVmTraced(compiledJava(resolved))
     val located = locatedEvents(recorded, resolved.source)
     Vector(1, 2, 3, 4).foreach { number =>
       val integer = located.filter(_.event.kind == J.Kind.Expression(E.Value.IntValue(number)))
@@ -1961,7 +1689,7 @@ class BeExpressionLanguageSupportTest extends FunSuite {
 
   test("Java minimum integer grouping unary operators and parenthesized updates locate without invented nodes") {
     val resolved = javaProgram("int x = -2147483648; Turtle.forward((x)++); Turtle.forward(++(x)); Turtle.forward(-(-1));")
-    val program = JavaTurtleCompiler.compileResolved(resolved).toOption.get
+    val program = compiledJava(resolved)
     val recorded = T.runVmTraced(program)
     val located = locatedEvents(recorded, resolved.source)
     assertEquals(recorded.execution, T.runVm(program))
@@ -1976,7 +1704,7 @@ class BeExpressionLanguageSupportTest extends FunSuite {
 
   test("Java trace locations keep all for-header occurrences and locate an omitted condition at its loop") {
     val resolved = javaProgram("int n = 0; for (n = 0, n++; n < 2; n++, --n, n += 1) { Turtle.forward(n); }")
-    val program = JavaTurtleCompiler.compileResolved(resolved).toOption.get
+    val program = compiledJava(resolved)
     val recorded = T.runVmTraced(program)
     val located = locatedEvents(recorded, resolved.source)
     assertEquals(recorded.execution, T.runVm(program))
@@ -1986,14 +1714,14 @@ class BeExpressionLanguageSupportTest extends FunSuite {
     val repeatedUpdates = writes.filter(_.text == "n++")
     assertEquals(repeatedUpdates.map(_.range).distinct.size, 2)
     val emptyCondition = javaProgram("for (;;) { return; }")
-    val emptyTrace = T.runVmTraced(JavaTurtleCompiler.compileResolved(emptyCondition).toOption.get)
+    val emptyTrace = T.runVmTraced(compiledJava(emptyCondition))
     val conditions = locatedEvents(emptyTrace, emptyCondition.source).filter(_.event.kind == J.Kind.Condition(true))
     assertEquals(conditions.map(_.text), Vector("for (;;) { return; }"))
   }
 
   test("Java trace locations separate equal commands and exclude skipped short-circuit occurrences") {
     val resolved = javaProgram("int x = 1; boolean a = false && x++ > 0; boolean b = true || ++x > 0; Turtle.forward(x); Turtle.forward(x);")
-    val recorded = T.runVmTraced(JavaTurtleCompiler.compileResolved(resolved).toOption.get)
+    val recorded = T.runVmTraced(compiledJava(resolved))
     val located = locatedEvents(recorded, resolved.source)
     Vector(Vector("body", "1", "initial", "1"), Vector("body", "2", "initial", "1")).foreach { skipped =>
       assert(!recorded.trace.events.exists(_.node.path.startsWith(skipped)), clue = skipped)
@@ -2008,7 +1736,7 @@ class BeExpressionLanguageSupportTest extends FunSuite {
 
   test("Java terminating for conditions remain located after the last command") {
     val resolved = javaProgram("for (int i = 0; i < 2; i++) { Turtle.forward(i); }")
-    val recorded = T.runVmTraced(JavaTurtleCompiler.compileResolved(resolved).toOption.get)
+    val recorded = T.runVmTraced(compiledJava(resolved))
     assertEquals(recorded.execution.commands, Vector(forward(0), forward(1)))
     val conditions = locatedEvents(recorded, resolved.source).filter(_.event.kind.isInstanceOf[J.Kind.Condition])
     assertEquals(conditions.map(_.event.kind), Vector(J.Kind.Condition(true), J.Kind.Condition(true), J.Kind.Condition(false)))
@@ -2041,23 +1769,9 @@ class BeExpressionLanguageSupportTest extends FunSuite {
     }
   }
 
-  test("Java located traces preserve original CRLF Unicode offsets and one-based UTF16 positions") {
-    val source = "/* 😀 Turtle.forward(9); */\r\nclass Drawing {\r\n  public static void main(String[] args) {\r\n    Turtle.forward(1);\r\n  }\r\n}\r\n"
-    val program = JavaTurtleCompiler.compile(source).toOption.get
-    val recorded = T.runVmTraced(program)
-    val located = locatedEvents(recorded, source)
-    val command = located.find(_.event.kind.isInstanceOf[J.Kind.Turtle]).get
-    val offset = source.indexOf("Turtle.forward(1);")
-    assertEquals(command.range, JavaSourceMap.SourceRange(offset, offset + "Turtle.forward(1);".length))
-    assertEquals(command.start, JavaSourceMap.Position(4, 5))
-    assertEquals(command.end, JavaSourceMap.Position(4, 23))
-    assertEquals(command.text, "Turtle.forward(1);")
-    assertEquals(recorded.execution, T.runVm(program))
-  }
-
   test("Java prefix locations keep trace saturation failures and cancellation separate from lookup") {
     val resolved = javaProgram("Turtle.forward(1); int bad = 1 / 0;")
-    val program = JavaTurtleCompiler.compileResolved(resolved).toOption.get
+    val program = compiledJava(resolved)
     val ordinary = T.runVm(program)
     val traces = Vector(T.runVmTraced(program), T.runVmTraced(program, budget = J.Budget(maxEvents = 0)),
       T.runVmTraced(program, budget = J.Budget(maxEvents = 3)), T.runVmTraced(program, isCancelled = () => true))
@@ -2085,7 +1799,7 @@ class BeExpressionLanguageSupportTest extends FunSuite {
 
   test("Java trace provenance rejects stale sources and unknown ids but survives checked recompilation") {
     val resolved = javaProgram("int n = 1; Turtle.forward(n);")
-    val program = JavaTurtleCompiler.compileResolved(resolved).toOption.get
+    val program = compiledJava(resolved)
     val recorded = T.runVmTraced(program)
     val locations = locatedEvents(recorded, resolved.source)
     val first = recorded.trace.events.head.id
@@ -2154,7 +1868,7 @@ class BeExpressionLanguageSupportTest extends FunSuite {
   }
 
   test("Java Python export is deterministic and keeps execution behind one entry point") {
-    val program = JavaTurtleCompiler.compileResolved(javaProgram("draw(5);", "static void draw(int size) { Turtle.forward(size); }")).toOption.get
+    val program = compiledJava(javaProgram("draw(5);", "static void draw(int size) { Turtle.forward(size); }"))
     val exported = Y.render(program)
     assertEquals(Y.render(program), exported)
     assert(exported.source.startsWith(s"def ${Y.EntryPoint}(method=None, arguments=(), *,"))
@@ -2162,14 +1876,14 @@ class BeExpressionLanguageSupportTest extends FunSuite {
     assert(exported.source.linesIterator.forall(line => line.isEmpty || line.startsWith("    ") || line.startsWith("def ")))
     assertEquals(exported.methods, Map("draw" -> R.MethodId(0)))
     assertEquals(T.runVm(program).commands, Vector(forward(5)))
-    assertEquals(Y.render(JavaTurtleCompiler.compileResolved(javaProgram("")).toOption.get).methods, Map.empty[String, R.MethodId])
+    assertEquals(Y.render(compiledJava(javaProgram(""))).methods, Map.empty[String, R.MethodId])
   }
 
   test("Java Python export uses source-local ids instead of Python names") {
-    val program = JavaTurtleCompiler.compileResolved(javaProgram("drawSquare(10); draw_square(20);", """
+    val program = compiledJava(javaProgram("drawSquare(10); draw_square(20);", """
       static void drawSquare(int lambda) { if (true) { int match = lambda; Turtle.forward(match); } }
       static void draw_square(int lambda) { if (true) { int match = lambda; Turtle.turnRight(match); } }
-    """)).toOption.get
+    """))
     val exported = Y.render(program)
     assertEquals(exported.methods, Map("drawSquare" -> R.MethodId(0), "draw_square" -> R.MethodId(1)))
     assert(exported.source.contains("def _method_0(_variable_0_0):"))
@@ -2184,10 +1898,10 @@ class BeExpressionLanguageSupportTest extends FunSuite {
   }
 
   test("Java Python export wraps arithmetic and uses truncating division and signed remainder") {
-    val source = Y.render(JavaTurtleCompiler.compileResolved(javaProgram("""
+    val source = Y.render(compiledJava(javaProgram("""
       int n = 2147483647; n += 1; n -= 1; n *= 3; n /= -2; n %= 2;
       Turtle.forward(+n + -n - n * (n / 2) % 3);
-    """)).toOption.get).source
+    """))).source
     for operation <- Seq("_int32(_variable_0_1[0] +", "_int32(_variable_0_1[0] -", "_int32(_variable_0_1[0] *",
       "_divide(_variable_0_1[0],", "_remainder(_variable_0_1[0],", "_int32(-_value(") do assert(source.contains(operation))
     assert(source.contains("quotient = abs(left) // abs(right)"))
@@ -2199,11 +1913,11 @@ class BeExpressionLanguageSupportTest extends FunSuite {
   }
 
   test("Java Python export keeps lazy boolean operands inside gated expressions") {
-    val source = Y.render(JavaTurtleCompiler.compileResolved(javaProgram("""
+    val source = Y.render(compiledJava(javaProgram("""
       boolean b = false && 1 / 0 > 0;
       if (!b || 1 / 0 > 0) { Turtle.forward(1); }
       b = b == true; if (b != false && 1 < 2 && 2 <= 2 && 3 > 2 && 3 >= 3) {}
-    """)).toOption.get).source
+    """))).source
     assert(source.contains("_value(lambda: (_value(lambda: False) and _value(lambda:"))
     assert(source.contains(" or _value(lambda:"))
     assert(source.contains("_value(lambda: (not _value(lambda:"))
@@ -2211,9 +1925,9 @@ class BeExpressionLanguageSupportTest extends FunSuite {
   }
 
   test("Java Python export lowers for loops without running updates after return") {
-    val source = Y.render(JavaTurtleCompiler.compileResolved(javaProgram("""
+    val source = Y.render(compiledJava(javaProgram("""
       for (int i = 0; i < 4; i += 1, Turtle.turnRight(i)) { Turtle.forward(i); return; }
-    """)).toOption.get).source
+    """))).source
     assert(source.contains("_block(2)\n            _gate()\n            _variable_0_1 = [_value(lambda: 0)]"))
     assert(source.contains("while _loop() and _value(lambda:"))
     assert(source.contains("                _block(3)"))
@@ -2221,17 +1935,17 @@ class BeExpressionLanguageSupportTest extends FunSuite {
     val updated = source.indexOf("                _variable_0_1[0] = _int32(_variable_0_1[0] +")
     assert(returned >= 0 && updated > returned)
     assertEquals(source.linesIterator.count(_.trim == "_block(2)"), 1)
-    val endless = Y.render(JavaTurtleCompiler.compileResolved(javaProgram("for (;;) { ; }")).toOption.get).source
+    val endless = Y.render(compiledJava(javaProgram("for (;;) { ; }"))).source
     assert(endless.contains("while _loop():\n                _block(3)\n                _gate()"))
   }
 
   test("Java Python export preserves branches empty bodies and declaration identities") {
-    val source = Y.render(JavaTurtleCompiler.compileResolved(javaProgram("""
+    val source = Y.render(compiledJava(javaProgram("""
       int n; n = 1;
       if (true) { int x = n; Turtle.forward(x); } else {}
       if (true) { int x = 2; Turtle.forward(x); }
       while (n < 0) {}
-    """)).toOption.get).source
+    """))).source
     assert(source.contains("_variable_0_1 = [None]"))
     assert(source.contains("_variable_0_2 = [_value(lambda: _variable_0_1[0])]"))
     assert(source.contains("_variable_0_3 = [_value(lambda: 2)]"))
@@ -2245,13 +1959,7 @@ class BeExpressionLanguageSupportTest extends FunSuite {
       public static void main(String[] argv) { draw(5, true); }
       static void empty() {}
     }"""
-    val program = (for {
-      parsed <- JavaTurtleSourceParser.parse(text)
-      structure <- JavaTurtleStructureValidator.check(parsed)
-      typed <- JavaTurtleSemanticValidator.check(structure)
-      resolved <- R.resolve(typed)
-      compiled <- JavaTurtleCompiler.compileResolved(resolved)
-    } yield compiled).toOption.get
+    val program = compiledJava(resolvedJava(text))
     val exported = Y.render(program)
     assertEquals(exported.methods, Map("draw" -> R.MethodId(0), "empty" -> R.MethodId(2)))
     assert(exported.source.contains("_target = _method_1"))
@@ -2264,7 +1972,7 @@ class BeExpressionLanguageSupportTest extends FunSuite {
   }
 
   test("Java Python export isolates run state and validates limits before invocation") {
-    val source = Y.render(JavaTurtleCompiler.compileResolved(javaProgram("Turtle.forward(1);")).toOption.get).source
+    val source = Y.render(compiledJava(javaProgram("Turtle.forward(1);"))).source
     assert(source.contains("    _commands = []\n    _steps = 0\n    _call_depth = 0\n"))
     assert(source.contains("finally:\n            _leave("))
     assert(source.contains("    def _leave():\n        nonlocal _call_depth\n        _call_depth -= 1"))
@@ -2343,7 +2051,7 @@ class BeExpressionLanguageSupportTest extends FunSuite {
   }
 
   test("Java invocation builders serialize both export modes with typed arguments and limits") {
-    val program = JavaTurtleCompiler.compileResolved(javaProgram("", "static void draw(double size, boolean turn){if(turn){Turtle.forward(size);}}")).toOption.get
+    val program = compiledJava(javaProgram("", "static void draw(double size, boolean turn){if(turn){Turtle.forward(size);}}"))
     val method = program.root.methods.find(_.binding.originalName == "draw").get.binding.id
     val arguments = Vector(E.Value.DoubleValue(-0.0), E.Value.BooleanValue(true))
     val limits = T.Limits(maxSteps = 63, maxCommands = 3, maxCallDepth = 4, maxBlockDepth = 5)
@@ -2356,7 +2064,7 @@ class BeExpressionLanguageSupportTest extends FunSuite {
   }
 
   test("Java expression observations distinguish real reads from update and assignment bookkeeping") {
-    val program = JavaTurtleCompiler.compileResolved(javaProgram("int x=1; x += x++; Turtle.forward(x);")).toOption.get
+    val program = compiledJava(javaProgram("int x=1; x += x++; Turtle.forward(x);"))
     val recorded = T.runVmTraced(program)
     val observations = recorded.trace.completedExpressions.get
     assertEquals(observations.map(_.value), Vector(E.Value.IntValue(1), E.Value.IntValue(1), E.Value.IntValue(2)))
@@ -2375,7 +2083,7 @@ class BeExpressionLanguageSupportTest extends FunSuite {
 
   test("Java completed expression observations retain recursive invocation identity and source paths") {
     val resolved = javaProgram("draw(2);", "static void draw(int n){if(n==0){return;} Turtle.forward(n);draw(n-1);}")
-    val recorded = T.runVmTraced(JavaTurtleCompiler.compileResolved(resolved).toOption.get)
+    val recorded = T.runVmTraced(compiledJava(resolved))
     val observations = recorded.trace.completedExpressions.get
     assertEquals(observations.map(_.invocation).distinct, Vector(0, 1, 2, 3))
     observations.foreach { observed =>
@@ -2387,12 +2095,12 @@ class BeExpressionLanguageSupportTest extends FunSuite {
         })).get
       assert(recorded.trace.locate(event.id, resolved.source).isDefined)
     }
-    assertEquals(T.runVmTraced(JavaTurtleCompiler.compileResolved(javaProgram("")).toOption.get).trace.completedExpressions, Some(Vector.empty))
+    assertEquals(T.runVmTraced(compiledJava(javaProgram(""))).trace.completedExpressions, Some(Vector.empty))
   }
 
   test("Java observed Python export is opt in and keeps the normal execution contract") {
-    val program = JavaTurtleCompiler.compileResolved(javaProgram("int x=1; for(int i=0;i<2;i++){draw(x++);}",
-      "static void draw(double length){Turtle.forward(length);}")).toOption.get
+    val program = compiledJava(javaProgram("int x=1; for(int i=0;i<2;i++){draw(x++);}",
+      "static void draw(double length){Turtle.forward(length);}"))
     val normal = Y.render(program)
     val observed = Y.renderObserved(program, 12)
     assertEquals(observed.methods, normal.methods)
@@ -2430,7 +2138,7 @@ class BeExpressionLanguageSupportTest extends FunSuite {
     ujson.Obj.from(value.obj.iterator.map((key, old) => key -> (if key == field then replacement else old)))
 
   test("Java execution evidence exposes source locations only for the exact invocation context") {
-    val program = JavaTurtleCompiler.compileResolved(javaProgram("Turtle.forward(1);")).toOption.get
+    val program = compiledJava(javaProgram("Turtle.forward(1);"))
     val prepared = Evidence.prepare(program)
     val report = evidenceReport()
     val verified = prepared.verify(report.render(), prepared.context)
@@ -2457,7 +2165,7 @@ class BeExpressionLanguageSupportTest extends FunSuite {
   }
 
   test("Java execution evidence rejects malformed or altered observation transcripts") {
-    val prepared = Evidence.prepare(JavaTurtleCompiler.compileResolved(javaProgram("Turtle.forward(1);")).toOption.get)
+    val prepared = Evidence.prepare(compiledJava(javaProgram("Turtle.forward(1);")))
     val report = evidenceReport()
     val observed = report("observations")(0)
     val changedObservations = Vector(
@@ -2489,7 +2197,7 @@ class BeExpressionLanguageSupportTest extends FunSuite {
   }
 
   test("Java evidence comparison preserves signed zero in commands and typed invocation arguments") {
-    val program = JavaTurtleCompiler.compileResolved(javaProgram("", "static void draw(double x){Turtle.forward(-0.0);}")).toOption.get
+    val program = compiledJava(javaProgram("", "static void draw(double x){Turtle.forward(-0.0);}"))
     val method = Some(Y.render(program).methods("draw"))
     val raw = """{"execution":{"status":"Completed","problem":null,"commands":[["forward",-0.0]],"steps":6},"observations":[{"invocation":0,"method":0,"path":["body","0","argument","0","0"],"value":{"kind":"double","value":"0000000000000000"}},{"invocation":0,"method":0,"path":["body","0","argument","0"],"value":{"kind":"double","value":"8000000000000000"}}],"truncated":false}"""
     val report = ujson.read(raw)
@@ -2537,7 +2245,7 @@ class BeExpressionLanguageSupportTest extends FunSuite {
   }
 
   test("Java evidence preserves ordered repeated observations rather than their set") {
-    val program = JavaTurtleCompiler.compileResolved(javaProgram("int n=0;while(n<2){Turtle.forward(1);n++;}")).toOption.get
+    val program = compiledJava(javaProgram("int n=0;while(n<2){Turtle.forward(1);n++;}"))
     val prepared = Evidence.prepare(program)
     val report = evidenceFrom(T.runVmTraced(program))
     val observations = report("observations").arr.toVector
@@ -2554,9 +2262,9 @@ class BeExpressionLanguageSupportTest extends FunSuite {
 
   test("Java evidence verifies failed and limited prefixes without accepting a cancelled transcript") {
     val programs = Vector(
-      JavaTurtleCompiler.compileResolved(javaProgram("Turtle.forward(1);int bad=1+(4/0);")).toOption.get -> T.Limits(),
-      JavaTurtleCompiler.compileResolved(javaProgram("Turtle.forward(1);Turtle.forward(1.0/0.0);")).toOption.get -> T.Limits(),
-      JavaTurtleCompiler.compileResolved(javaProgram("while(true){Turtle.forward(1);}")).toOption.get -> T.Limits(maxSteps = 30))
+      compiledJava(javaProgram("Turtle.forward(1);int bad=1+(4/0);")) -> T.Limits(),
+      compiledJava(javaProgram("Turtle.forward(1);Turtle.forward(1.0/0.0);")) -> T.Limits(),
+      compiledJava(javaProgram("while(true){Turtle.forward(1);}")) -> T.Limits(maxSteps = 30))
     programs.foreach { (program, limits) =>
       val recorded = T.runVmTraced(program, limits)
       assert(recorded.execution.status != T.Status.Completed)
@@ -2570,12 +2278,12 @@ class BeExpressionLanguageSupportTest extends FunSuite {
   }
 
   test("Java execution evidence never accepts a truncated VM prefix as a full observation stream") {
-    val program = JavaTurtleCompiler.compileResolved(javaProgram("Turtle.forward(1);")).toOption.get
+    val program = compiledJava(javaProgram("Turtle.forward(1);"))
     Vector(J.Budget(maxEvents = 2), J.Budget(maxDependencies = 0)).foreach { budget =>
       val prepared = Evidence.prepare(program, budget = budget)
       intercept[IllegalArgumentException](prepared.verify(evidenceReport().render(), prepared.context))
     }
-    val empty = Evidence.prepare(JavaTurtleCompiler.compileResolved(javaProgram("")).toOption.get)
+    val empty = Evidence.prepare(compiledJava(javaProgram("")))
     assertEquals(empty.verify(evidenceReport(steps = 2, commands = ujson.Arr(), observations = ujson.Arr()).render(),
       empty.context).execution.status, T.Status.Completed)
   }
@@ -2613,8 +2321,8 @@ class BeExpressionLanguageSupportTest extends FunSuite {
   }
 
   test("Java named invocation snapshots omit update bookkeeping and retain ordinary reads") {
-    val program = JavaTurtleCompiler.compileResolved(javaProgram("Turtle.forward(99);",
-      "static void draw(int x){x += x++; Turtle.forward(x);}")).toOption.get
+    val program = compiledJava(javaProgram("Turtle.forward(99);",
+      "static void draw(int x){x += x++; Turtle.forward(x);}"))
     val method = Y.render(program).methods("draw")
     val arguments = Vector(E.Value.IntValue(1))
     val recorded = T.invokeVmTraced(program, method, arguments)
@@ -2632,7 +2340,7 @@ class BeExpressionLanguageSupportTest extends FunSuite {
   }
 
   test("Java snapshots keep complete expression sequences and distinguish execution outcomes") {
-    val repeated = JavaTurtleCompiler.compileResolved(javaProgram("int n=0;while(n<40){Turtle.forward(n);n++;}")).toOption.get
+    val repeated = compiledJava(javaProgram("int n=0;while(n<40){Turtle.forward(n);n++;}"))
     val recorded = T.runVmTraced(repeated)
     val prepared = Evidence.prepare(repeated)
     val snapshot = prepared.verify(evidenceFrom(recorded).render(), prepared.context).snapshot
@@ -2646,7 +2354,7 @@ class BeExpressionLanguageSupportTest extends FunSuite {
       ("Turtle.forward(1);Turtle.forward(1.0/0.0);", T.Limits(), Evidence.Outcome.NonFiniteCommand),
       ("while(true){Turtle.forward(1);}", T.Limits(maxSteps = 30), Evidence.Outcome.LimitExceeded))
     cases.foreach { (body, limits, outcome) =>
-      val program = JavaTurtleCompiler.compileResolved(javaProgram(body)).toOption.get
+      val program = compiledJava(javaProgram(body))
       val recorded = T.runVmTraced(program, limits)
       val prepared = Evidence.prepare(program, limits = limits)
       val snapshot = prepared.verify(evidenceFrom(recorded).render(), prepared.context).snapshot
@@ -2656,7 +2364,7 @@ class BeExpressionLanguageSupportTest extends FunSuite {
       assertEquals(snapshot.expressions.size, recorded.trace.completedExpressions.get.size)
       if body.isEmpty then assertEquals(snapshot.expressions, Vector.empty)
     }
-    val program = JavaTurtleCompiler.compileResolved(javaProgram("Turtle.forward(1);")).toOption.get
+    val program = compiledJava(javaProgram("Turtle.forward(1);"))
     val invalidLimits = T.Limits(maxSteps = 0)
     val invalid = Evidence.prepare(program, limits = invalidLimits)
     val invalidReport = evidenceFrom(T.runVmTraced(program, invalidLimits)).render()

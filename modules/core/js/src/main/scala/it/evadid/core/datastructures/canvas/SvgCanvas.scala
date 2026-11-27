@@ -13,8 +13,6 @@ class SvgCanvas(width: Int, height: Int) extends AppCanvas[Element] {
 
   private val elements: Var[List[Element]] = Var(List())
 
-  //private val elements: ListBuffer[Element] = new mutable.ListBuffer[Element]()
-
   private val canvasElement: Element = div(
     idAttr := "this-svg",
     children <-- elements.signal.map(elements => List(createSvg(elements)))
@@ -32,17 +30,24 @@ class SvgCanvas(width: Int, height: Int) extends AppCanvas[Element] {
     svg.svg(
       svg.width := "" + width,
       svg.height := "" + height,
-      /*svg.rect(
-        svg.x := "0",
-        svg.y := "0",
-        svg.width := "" + width,
-        svg.height := "" + height,
-        svg.fill := "white"
-      )*/
-      elements.toList
+      elements
     )
 
   def addSvgElement(element: L.SvgElement): Unit = elements.update(_ :+ element)
+
+  /** Position and size attributes of rectangles and images. */
+  private def bounds(x: Double, y: Double, width: Double, height: Double): Seq[SvgAttrSetter[String]] = List(
+    svg.x := "" + x,
+    svg.y := "" + y,
+    svg.width := "" + width,
+    svg.height := "" + height
+  )
+
+  private def circleGeometry(x: Double, y: Double, diameter: Double): Seq[SvgAttrSetter[String]] = List(
+    svg.cx := "" + x,
+    svg.cy := "" + y,
+    svg.r := "" + diameter / 2
+  )
 
   private def getStrokeConfig(
                                strokeWidth: Double,
@@ -84,32 +89,15 @@ class SvgCanvas(width: Int, height: Int) extends AppCanvas[Element] {
 
   override def getHeight: Double = height
 
-  private def alphaStringFromCol(col: AppColor): String = "" + fillColor.toRGB.alpha / 255.0
+  private def alphaStringFromCol(col: AppColor): String = "" + col.toRGB.alpha / 255.0
 
 
-  override def fillRect(x: Double, y: Double, width: Double, height: Double): Unit = {
-
-    val newRect = svg.rect(
-      svg.x := "" + x,
-      svg.y := "" + y,
-      svg.width := "" + width,
-      svg.height := "" + height,
-      getFillConfig()
-    )
-    elements.update(_ :+ newRect)
-  }
+  override def fillRect(x: Double, y: Double, width: Double, height: Double): Unit =
+    addSvgElement(svg.rect(bounds(x, y, width, height), getFillConfig()))
 
 
-  override def drawRect(x: Double, y: Double, width: Double, height: Double, strokeWidth: Double = 1): Unit = {
-    val newRect = svg.rect(
-      svg.x := "" + x,
-      svg.y := "" + y,
-      svg.width := "" + width,
-      svg.height := "" + height,
-      getStrokeConfig(strokeWidth)
-    )
-    elements.update(_ :+ newRect)
-  }
+  override def drawRect(x: Double, y: Double, width: Double, height: Double, strokeWidth: Double = 1): Unit =
+    addSvgElement(svg.rect(bounds(x, y, width, height), getStrokeConfig(strokeWidth)))
 
 
   private def calcArcStrings(x: Double, y: Double, diameter: Double, startAngle: Double, arcAngle: Double): (String, String) = {
@@ -135,14 +123,11 @@ class SvgCanvas(width: Int, height: Int) extends AppCanvas[Element] {
    * @param arcAngle    the arc angle (0-360, positive = clockwise)
    * @param strokeWidth the width of the stroke (-1 = default)
    */
-  override def drawArc(x: Double, y: Double, diameter: Double, startAngle: Double, arcAngle: Double, strokeWidth: Double): Unit = {
-    val newPath = svg.path(
+  override def drawArc(x: Double, y: Double, diameter: Double, startAngle: Double, arcAngle: Double, strokeWidth: Double): Unit =
+    addSvgElement(svg.path(
       svg.d := calcArcStrings(x, y, diameter, startAngle, arcAngle)._1,
       getStrokeConfig(strokeWidth)
-    )
-
-    elements.update(_ :+ newPath)
-  }
+    ))
 
   /**
    * Fills an Arc on the Canvas
@@ -153,25 +138,21 @@ class SvgCanvas(width: Int, height: Int) extends AppCanvas[Element] {
    * @param startAngle the start angle (0-360, 0 = top)
    * @param arcAngle   the arc angle (0-360, positive = clockwise)
    */
-  override def fillArc(x: Double, y: Double, diameter: Double, startAngle: Double, arcAngle: Double): Unit = {
-    val newPath = svg.path(
+  override def fillArc(x: Double, y: Double, diameter: Double, startAngle: Double, arcAngle: Double): Unit =
+    addSvgElement(svg.path(
       svg.d := calcArcStrings(x, y, diameter, startAngle, arcAngle)._2,
       getFillConfig()
-    )
-    elements.update(_ :+ newPath)
-  }
+    ))
 
 
-  override def drawLine(x1: Double, y1: Double, x2: Double, y2: Double, width: Double): Unit = {
-    val newLine = svg.line(
+  override def drawLine(x1: Double, y1: Double, x2: Double, y2: Double, width: Double): Unit =
+    addSvgElement(svg.line(
       svg.x1 := "" + x1,
       svg.y1 := "" + y1,
       svg.x2 := "" + x2,
       svg.y2 := "" + y2,
       getStrokeConfig(width)
-    )
-    elements.update(_ :+ newLine)
-  }
+    ))
 
   override def drawCubicBezier(
                                 startX: Double,
@@ -184,47 +165,25 @@ class SvgCanvas(width: Int, height: Int) extends AppCanvas[Element] {
                                 endY: Double,
                                 strokeWidth: Double,
                                 dashPattern: Option[Seq[Double]]
-                              ): Unit = {
-    val newPath = svg.path(
+                              ): Unit =
+    addSvgElement(svg.path(
       svg.d := f"M $startX $startY C $control1X $control1Y $control2X $control2Y $endX $endY",
       getStrokeConfig(strokeWidth, dashPattern)
-    )
-    elements.update(_ :+ newPath)
-  }
+    ))
 
-  override def drawCircle(x: Double, y: Double, diameter: Double, strokeWidth: Double): Unit = {
-    val newCircle = svg.circle(
-      svg.cx := "" + x,
-      svg.cy := "" + y,
-      svg.r := "" + diameter / 2,
-      getStrokeConfig(strokeWidth)
-    )
-    elements.update(_ :+ newCircle)
-  }
+  override def drawCircle(x: Double, y: Double, diameter: Double, strokeWidth: Double): Unit =
+    addSvgElement(svg.circle(circleGeometry(x, y, diameter), getStrokeConfig(strokeWidth)))
 
-  override def fillCircle(x: Double, y: Double, diameter: Double): Unit = {
-    val newCircle = svg.circle(
-      svg.cx := "" + x,
-      svg.cy := "" + y,
-      svg.r := "" + diameter / 2,
-      getFillConfig()
-    )
-    elements.update(_ :+ newCircle)
-  }
+  override def fillCircle(x: Double, y: Double, diameter: Double): Unit =
+    addSvgElement(svg.circle(circleGeometry(x, y, diameter), getFillConfig()))
 
-  override def drawImage(x: Double, y: Double, width: Double, height: Double, image: AppImage, alphaUpTo255: Double = 255): Unit = {
-    val newImg = svg.image(
-      svg.x := "" + x,
-      svg.y := "" + y,
-      svg.width := "" + width,
-      svg.height := "" + height,
-      //svg.href := "data:image/" + img.fileInfo.fileType + ";base64," + img.base64String,
+  override def drawImage(x: Double, y: Double, width: Double, height: Double, image: AppImage, alphaUpTo255: Double = 255): Unit =
+    addSvgElement(svg.image(
+      bounds(x, y, width, height),
       svg.href := image.imageSourceString,
       svg.opacity := s"${alphaUpTo255 / 255.0}",
       svg.preserveAspectRatio := "none"
-    )
-    elements.update(_ :+ newImg)
-  }
+    ))
 
   private var selectedFont = AppFont.Aptos
 
@@ -232,8 +191,8 @@ class SvgCanvas(width: Int, height: Int) extends AppCanvas[Element] {
 
 
   //src: url(data:font/woff2;charset=utf-8;base64,$base64Font) format('woff2');
-  override def drawStringCentered(x: Double, y: Double, content: String): Unit = {
-    val newText = svg.text(
+  override def drawStringCentered(x: Double, y: Double, content: String): Unit =
+    addSvgElement(svg.text(
       svg.x := "" + x,
       svg.y := "" + y,
       svg.textAnchor := "middle",
@@ -242,9 +201,7 @@ class SvgCanvas(width: Int, height: Int) extends AppCanvas[Element] {
       svg.fontSize := s"${selectedFont.sizeInPx}px",
       svg.fill := fillColor.toRGB.toHex(),
       content
-    )
-    elements.update(_ :+ newText)
-  }
+    ))
 
   override def clear(clearColor: AppColor): Unit = {
     elements.update(_ => List())

@@ -6,7 +6,6 @@ import it.evadid.core.datastructures.language.control.LanguageMapStorage
 import it.evadid.core.datastructures.user.{AllUserInfo, UserConfig}
 import it.evadid.homepage.control.model.*
 import it.evadid.homepage.webElements.editor.code.EditorDomSuite
-import it.evadid.workbook.abstractions.InteractionFormat.TextInteractionFormat
 import it.evadid.workbook.elements.interactionElements.basic.TextInteraction
 import it.evadid.workbook.elements.structureElements.{Workbook, WorkbookSection}
 import it.evadid.workbook.elements.structureElements.Workbook.WorkbookMetadata
@@ -44,15 +43,6 @@ class SessionDataRoundTripSpec extends EditorDomSuite {
       AllDisplayInfo(false, None), LanguageMapStorage.empty)).get
     assert(!write(session).contains("signedBackendToken\":{"), "credentials are not exported")
     write(session)
-  }
-
-  test("a session file opens its workbook in a fresh client and restores every answer") {
-    val restoredClient = client(None)
-    restoredClient.userSessionControl.continueWithSession(read[SessionData](downloaded())).map { _ =>
-      val opened = restoredClient.current.workbookInfo.get
-      assertEquals(opened.loadedWorkbook.workbookId, "workbook/part-1")
-      assertEquals(answers(opened), Map("first" -> "my first answer", "second" -> "my second answer"))
-    }
   }
 
   test("an open instance of the same workbook is kept and receives the answers") {

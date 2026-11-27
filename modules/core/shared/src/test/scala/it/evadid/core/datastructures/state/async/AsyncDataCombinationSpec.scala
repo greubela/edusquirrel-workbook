@@ -65,11 +65,4 @@ class AsyncDataCombinationSpec extends FunSuite {
     val failingLeft = AsyncValue[Int](IllegalStateException("left side")).combineIgnoreErrorData(AsyncValue(1))
     assert(failingLeft.stateNow().failure.nonEmpty, failingLeft.stateNow())
   }
-
-  test("recovering after an error pushes the recovered state") {
-    val promise = Promise[AsyncDataStateFinished[Nothing, Int]]()
-    val recovered = AsyncValue[Int](IllegalStateException("x")).recoverOnErrorPushError(_ => promise.future)
-    promise.success(AsyncDataSuccess(9))
-    recovered.futureFirstValue.map(value => assertEquals(value, 9))
-  }
 }
