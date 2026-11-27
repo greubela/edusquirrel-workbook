@@ -21,5 +21,9 @@ case class InteractionEvents[F <: InteractionFormat](values: Set[InteractionEven
 }
 
 object InteractionEvents {
+  /** The events tied for the latest timestamp (empty for no events). */
+  def latestTies[E <: InteractionEvent[?]](events: Set[E]): Set[E] =
+    events.map(_.timestamp).maxOption.fold(Set.empty[E])(latest => events.filter(_.timestamp == latest))
+
   def empty[F <: InteractionFormat]: InteractionEvents[F] = InteractionEvents(Set.empty)
 }

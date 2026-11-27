@@ -18,7 +18,7 @@ object WorkbookEvaEditor {
 
   def environment(fullInfo: FullInfo, exercise: Exercise): EvaEditorEnvironment = EvaEditorEnvironment(
     fullInfo.loggerSystemInfo.uiAndDomLogger,
-    EvaEditorLabels.fromContent(LaminarRenderHelper.singleton.plaintextStringSignal),
+    EvaEditorLabels.fromContent(LaminarRenderHelper(fullInfo).plaintextStringSignal),
     fullInfo.signals.currentLanguage,
     exercise.environment,
     exercise.elementId)

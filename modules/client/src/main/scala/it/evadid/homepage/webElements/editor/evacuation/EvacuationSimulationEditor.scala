@@ -1,5 +1,7 @@
 package it.evadid.homepage.webElements.editor.evacuation
 
+import it.evadid.homepage.control.model.FullInfo
+
 import com.raquo.laminar.api.L.*
 import it.evadid.homepage.webElements.basic.LabelSelection
 import it.evadid.homepage.webElements.HtmlAppElement
@@ -7,7 +9,7 @@ import it.evadid.workbook.model.evacuation.*
 import org.scalajs.dom
 import scala.util.Try
 
-case class EvacuationSimulationEditor(answer: Var[EvacuationExperiment], initial: EvacuationExperiment, locked: Signal[Boolean])
+case class EvacuationSimulationEditor(fullInfo: FullInfo, answer: Var[EvacuationExperiment], initial: EvacuationExperiment, locked: Signal[Boolean])
     extends HtmlAppElement {
   private val editing = Var(true)
   private val plan = Var(answer.now().floor)
@@ -18,7 +20,7 @@ case class EvacuationSimulationEditor(answer: Var[EvacuationExperiment], initial
     val timer = dom.window.setTimeout(() => callback(), 350)
     () => dom.window.clearTimeout(timer)
   })
-  private def textFor(key: String): Signal[String] = laminarHelper.plaintextStringSignal(s"digitalWorkbooks/$key")
+  private def textFor(key: String): Signal[String] = laminarHelper(fullInfo).plaintextStringSignal(s"digitalWorkbooks/$key")
   private def resetPlayback(): Unit = { playback.clear(); editing.set(true); error.set("") }
   private def settingsSpeed(value: String): Option[Double] = EvacuationSettings.parseSpeed(value)
   override def getDomElement(): Element = div(cls := "evacuation-experiment",
@@ -57,7 +59,7 @@ case class EvacuationSimulationEditor(answer: Var[EvacuationExperiment], initial
     p(cls := "evacuation-error", role := "alert", text <-- LabelSelection(error.signal.combineWith(speedDraft.signal),
       Seq("evacuationSpeedInvalid", "evacuationRunLimit"), textFor)((key, draft) =>
         if (settingsSpeed(draft).isEmpty) Some("evacuationSpeedInvalid") else Option.when(key.nonEmpty)(key))),
-    child <-- editing.signal.map(edit => if (edit) ScenarioEditor(plan, initial.floor, locked).getDomElement()
+    child <-- editing.signal.map(edit => if (edit) ScenarioEditor(fullInfo, plan, initial.floor, locked).getDomElement()
       else div(cls := "evacuation-editor evacuation-playback",
         div(cls := "evacuation-tools",
           button(typ := "button", text <-- textFor("evacuationPrevious"), disabled <-- locked.combineWith(playback.step.signal).map((disabled, step) => disabled || step == 0), onClick --> (_ => playback.previous())),
@@ -69,7 +71,7 @@ case class EvacuationSimulationEditor(answer: Var[EvacuationExperiment], initial
           playback.step.signal.combineWith(playback.floor.signal, playback.atEnd.signal, playback.result.signal),
           "evacuationPlaying" +: EvacuationOutcome.values.toSeq.map(outcome => s"evacuation$outcome"), textFor)((step, floor, done, result) =>
             Some(result.filter(_ => done).fold("evacuationPlaying")(run => s"evacuation${run.outcome}") -> Seq("steps" -> step.toString, "remaining" -> floor.persons.size.toString)))),
-        EvacuationFloorView(playback.floor.signal, Val(true), _ => ()).getDomElement())),
+        EvacuationFloorView(fullInfo, playback.floor.signal, Val(true), _ => ()).getDomElement())),
     div(cls := "evacuation-tools", label(span(text <-- textFor("evacuationRunLabel")),
       input(typ := "text", maxLength := 80, disabled <-- locked, value <-- labelDraft.signal, onInput.mapToValue --> labelDraft)),
       button(typ := "button", text <-- textFor("evacuationRecord"),

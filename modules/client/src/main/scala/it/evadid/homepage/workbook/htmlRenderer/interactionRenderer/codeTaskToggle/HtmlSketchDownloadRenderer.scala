@@ -1,5 +1,7 @@
 package it.evadid.homepage.workbook.htmlRenderer.interactionRenderer.codeTaskToggle
 
+import it.evadid.homepage.control.model.FullInfo
+
 import com.raquo.laminar.api.L.*
 import it.evadid.core.datastructures.state.StateHelper.InteractionVariableOnJS
 import it.evadid.core.util.InfoUtil
@@ -12,12 +14,12 @@ import java.time.LocalDateTime
 
 object HtmlSketchDownloadRenderer extends LineBasedRenderingFactory[SketchDownloadInteraction] {
 
-  override protected def createRendering(download: SketchDownloadInteraction): AtomarLineRendering = {
+  override protected def createRendering(fullInfo: FullInfo, download: SketchDownloadInteraction): AtomarLineRendering = {
     val enabledSignal = fullInfo.signals.workbook.flatMapSwitch {
       case Some(workbookInfo) =>
         workbookInfo.loadedWorkbook.allContainedInteractionsById.get(download.unlockWhenReorderCorrect) match {
           case Some(reorder: ReorderInteraction.ReorderCodeInteraction) =>
-            fullInfo.signals.reportersFor(reorder).grading.summary.map(_.status.isCorrect)
+            fullInfo.reporters.reportersFor(reorder).grading.summary.map(_.status.isCorrect)
           case _ =>
             Val(false)
         }
@@ -30,12 +32,12 @@ object HtmlSketchDownloadRenderer extends LineBasedRenderingFactory[SketchDownlo
       button(
         cls := "btn-primary",
         disabled <-- enabledSignal.map(enabled => !enabled),
-        text <-- laminarHelper.plaintextStringSignal(download.buttonLabel),
+        text <-- laminarHelper(fullInfo).plaintextStringSignal(download.buttonLabel),
         onClick --> { _ => fullInfo.contentControl.downloadToDisc.downloadFile(HtmlSketchDownloadRenderer.fileName(download), download.sketchContent) }
       )
     )
 
-    AtomarLineRendering.basicLine(download, dom, "sketch-download")
+    AtomarLineRendering.basicLine(fullInfo, download, dom, "sketch-download")
   }
 
   /** The sketch's own name, dated like every download (`2026-11-27_13-05-09_sensor-auslesen.ino`). */

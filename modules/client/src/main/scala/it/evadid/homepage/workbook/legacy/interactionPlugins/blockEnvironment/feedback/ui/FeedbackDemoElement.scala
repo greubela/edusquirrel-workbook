@@ -1,5 +1,7 @@
 package it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.feedback.ui
 
+import it.evadid.homepage.control.model.FullInfo
+
 import com.raquo.laminar.api.L.*
 import it.evadid.core.datastructures.language.LanguageMapContentId
 import it.evadid.homepage.workbook.htmlRenderer.LaminarRenderHelper
@@ -8,7 +10,6 @@ import it.evadid.core.datastructures.language.AppLanguage.*
 import it.evadid.homepage.control.singletons.*
 import it.evadid.homepage.webElements.editor.code.codemirror.CodeMirrorEditor
 import it.evadid.homepage.webElements.editor.config.CodeMirrorEditorConfig
-import it.evadid.homepage.webElements.sqlEditor.HtmlSqlCommandExerciseRenderer.fullInfo
 import it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.feedback.BlockFeedbackTestResultFormatter
 import it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.feedback.ai.CommandLlmClient
 import it.evadid.homepage.workbook.legacy.interactionPlugins.blockEnvironment.feedback.config.BlockFeedbackExerciseRegistry
@@ -29,7 +30,7 @@ import scala.util.{Failure, Success}
 
 object FeedbackDemoElement:
 
-  private def demoLlmClient = CommandLlmClient(HtmlFullWorkbookApp.fullInfo.defaults.backendExecutor, HtmlFullWorkbookApp.fullInfo.workbookContextInformation.llmConfiguration)
+  private def demoLlmClient(fullInfo: FullInfo) = CommandLlmClient(fullInfo.backendExecutor, fullInfo.workbookContextInformation.llmConfiguration)
 
   private val defaultLanguage: HumanLanguage = AppLanguage.English
 
@@ -309,7 +310,7 @@ object FeedbackDemoElement:
       if last < text.length then result += span(text.substring(last))
       if result.isEmpty then Seq(span(text)) else result.toSeq
 
-  def element(): HtmlElement =
+  def element(fullInfo: FullInfo): HtmlElement =
     // Start loading Pyodide in the background immediately so it is ready
     // by the time the user submits their first code (execution timeout is ~4s).
     PythonRuntimeService.warmup()
@@ -327,10 +328,10 @@ object FeedbackDemoElement:
     val showEditorVar = Var(true)
     val editorDiagnostics = Var(Seq.empty[CodeMirrorEditor.Diagnostic])
     lazy val pythonEditor: CodeMirrorEditor = CodeMirrorEditor(
-      HtmlFullWorkbookApp.fullInfo.loggerSystemInfo.uiAndDomLogger,
+      fullInfo.loggerSystemInfo.uiAndDomLogger,
       pythonCodeVar,
       language = Python,
-      Var(CodeMirrorEditorConfig.Default), LaminarRenderHelper.singleton.plaintextStringSignal(LanguageMapContentId("blockeditor/loading")),
+      Var(CodeMirrorEditorConfig.Default), LaminarRenderHelper(fullInfo).plaintextStringSignal(LanguageMapContentId("blockeditor/loading")),
       diagnostics = editorDiagnostics.signal
     )
 
@@ -578,7 +579,7 @@ object FeedbackDemoElement:
           .copy(pythonSourceOverride = Some(pythonCodeVar.now()))
 
       BlockFeedbackService
-        .generateFeedback(req, demoLlmClient)
+        .generateFeedback(req, demoLlmClient(fullInfo))
         .onComplete { result =>
           submissions.finish(submission).foreach { isCurrent =>
             isRunningVar.set(false)

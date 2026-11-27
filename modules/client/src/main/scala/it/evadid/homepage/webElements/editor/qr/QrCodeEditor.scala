@@ -1,16 +1,20 @@
 package it.evadid.homepage.webElements.editor.qr
 
+import it.evadid.homepage.control.model.FullInfo
+
+import it.evadid.homepage.workbook.htmlRenderer.LaminarRenderHelper
+
 import com.raquo.laminar.api.L.*
 import it.evadid.homepage.webElements.HtmlAppElement
 import it.evadid.workbook.elements.interactionElements.qr.QrCodeRequirements
 import it.evadid.workbook.model.qr.{QrCode, QrCodeRegion, QrErrorCorrection}
 
 /** Text edits are live. Invalid drafts stay visible but never replace the last valid saved symbol. */
-case class QrCodeEditor(state: Var[QrCode], requirements: QrCodeRequirements) extends HtmlAppElement {
+case class QrCodeEditor(fullInfo: FullInfo, state: Var[QrCode], requirements: QrCodeRequirements) extends HtmlAppElement {
   private val editorState = new QrCodeEditorState(state)
   import editorState.*
 
-  private def labelText(id: String): Signal[String] = laminarHelper.plaintextStringSignal(s"basic/$id")
+  private def labelText(id: String): Signal[String] = laminarHelper(fullInfo).plaintextStringSignal(s"basic/$id")
   private def choice(labelId: String, current: Var[Option[Int]], choices: Range): Element = label(
     span(text <-- labelText(labelId)),
     select(
@@ -53,7 +57,7 @@ case class QrCodeEditor(state: Var[QrCode], requirements: QrCodeRequirements) ex
     div(cls := "qr-editor__result",
       child <-- error.signal.map(invalid => if invalid then
         div(cls := "qr-editor__invalid", text <-- labelText("qrInvalidPreview"))
-      else QrCodeView.preview(state.signal, requirements))
+      else QrCodeView.preview(fullInfo, state.signal, requirements))
     )
   )
   override def dismissOnOutsideClick: Boolean = false
@@ -77,8 +81,8 @@ object QrCodeView {
     QrCodeRegion.values.toList.map(region =>
       svg.path(svg.cls := regionClass(region), svg.d := pathData(code, Some(region))))
   )
-  def preview(code: Signal[QrCode], requirements: QrCodeRequirements): Element = {
-    val helper = it.evadid.homepage.workbook.htmlRenderer.LaminarRenderHelper.singleton
+  def preview(fullInfo: FullInfo, code: Signal[QrCode], requirements: QrCodeRequirements): Element = {
+    val helper = LaminarRenderHelper(fullInfo)
     div(cls := "qr-preview",
       child <-- code.map(symbol),
       ul(cls := "qr-legend",

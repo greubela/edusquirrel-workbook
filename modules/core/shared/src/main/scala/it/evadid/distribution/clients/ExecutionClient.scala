@@ -34,8 +34,6 @@ trait ExecutionClient {
     handleCommand(defaultLogger, executionCommand)
   }
 
-  def makeSynchronized(ec: ExecutionContext): ExecutionClient = SynchronizedExecutionClient(this, ec)
-
   def allUnderlyingClients: Seq[ExecutionClient] = List(this)
 
   def pooledWith(other: ExecutionClient): ExecutionClient = ExecutionClientPool(allUnderlyingClients ++ other.allUnderlyingClients)

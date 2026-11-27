@@ -19,7 +19,7 @@ class CoordinatePlotEditorSpec extends UiDomSuite {
 
   test("points typed with either decimal separator are added, replaced by x, plotted and removed") {
     val answer = Var(PlotAnswer())
-    mounted(CoordinatePlotEditor(config, answer, Var(false)).getDomElement()) { root =>
+    mounted(CoordinatePlotEditor(pageInfo, config, answer, Var(false)).getDomElement()) { root =>
       assertEquals(all(root, ".coordinate-plot__tick-x").map(_.textContent), List("0", "2", "4", "6", "8", "10"))
       assertEquals(all(root, ".coordinate-plot__tick-y").map(_.textContent), List("0", "25", "50", "75", "100"))
       assert(isDisabled(add(root)), "nothing entered yet")
@@ -50,7 +50,7 @@ class CoordinatePlotEditorSpec extends UiDomSuite {
   test("the connect option toggles the curve and locking disables every control") {
     val answer = Var(PlotAnswer(Seq(PlotPoint(0, 0), PlotPoint(10, 100))))
     val locked = Var(false)
-    mounted(CoordinatePlotEditor(config, answer, locked).getDomElement()) { root =>
+    mounted(CoordinatePlotEditor(pageInfo, config, answer, locked).getDomElement()) { root =>
       val connect = one(root, "input[type=checkbox]")
       assert(connect.asInstanceOf[dom.html.Input].checked)
       click(connect)

@@ -15,7 +15,7 @@ class BlockchainEditorSpec extends UiDomSuite {
 
   test("each block shows its predecessor and hash; editing data or nonce changes the chain and later blocks") {
     val state = Var(initial)
-    val editor = BlockchainEditor(state, initial, 1, Val(false))
+    val editor = BlockchainEditor(pageInfo, state, initial, 1, Val(false))
     assert(!editor.dismissOnOutsideClick)
     mounted(editor.getDomElement()) { root =>
       val List(first, second) = blocks(root): @unchecked
@@ -47,7 +47,7 @@ class BlockchainEditorSpec extends UiDomSuite {
 
   test("mining finds a nonce for a block, which then counts as valid") {
     val state = Var(initial)
-    mountedAsync(BlockchainEditor(state, initial, 1, Val(false)).getDomElement()) { root =>
+    mountedAsync(BlockchainEditor(pageInfo, state, initial, 1, Val(false)).getDomElement()) { root =>
       assert(miningStatus(root).contains(text("miningIdle")))
       click(buttonNamed(blocks(root).head, text("blockMine")))
       assert(miningStatus(root).contains(text("miningRunning")))
@@ -68,7 +68,7 @@ class BlockchainEditorSpec extends UiDomSuite {
   test("a hard search can be stopped; editing or locking also stops it") {
     val state = Var(initial)
     val locked = Var(false)
-    mountedAsync(BlockchainEditor(state, initial, 4, locked.signal).getDomElement()) { root =>
+    mountedAsync(BlockchainEditor(pageInfo, state, initial, 4, locked.signal).getDomElement()) { root =>
       val mine = buttonNamed(blocks(root).head, text("blockMine"))
       click(mine)
       assert(isDisabled(mine), "a block is not mined twice at once")

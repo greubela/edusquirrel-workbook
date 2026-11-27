@@ -1,19 +1,19 @@
 package it.evadid.homepage.workbook.htmlRenderer.controlElements
 
+import it.evadid.homepage.control.model.FullInfo
+
 import com.raquo.laminar.api.L
 import com.raquo.laminar.api.L.*
 import it.evadid.core.datastructures.language.AppLanguage
 import it.evadid.core.datastructures.language.AppLanguage.HumanLanguage
-import it.evadid.homepage.control.singletons.HtmlFullWorkbookApp
-import it.evadid.homepage.control.singletons.HtmlFullWorkbookApp.fullInfo
 import it.evadid.homepage.webElements.HtmlAppElement
 import it.evadid.workbook.elements.structureElements.Workbook
 
-private case class LanguageSelectionLine() extends HtmlAppElement {
+private case class LanguageSelectionLine(fullInfo: FullInfo) extends HtmlAppElement {
 
   private def createDomForLanguageSelectionFlag(currentLanguage: HumanLanguage): Element = div(
     onClick --> { _ => fullInfo.displayControl.changeLanguage(currentLanguage) },
-    LanguageSelectionLine.flagImgMap(30)(currentLanguage)
+    LanguageSelectionLine.flagImgMap(fullInfo, 30)(currentLanguage)
   )
 
 
@@ -28,10 +28,10 @@ private case class LanguageSelectionLine() extends HtmlAppElement {
 
 object LanguageSelectionLine {
 
-  def flagImgMap(width: Double): Map[HumanLanguage, Element] = Map(
+  def flagImgMap(fullInfo: FullInfo, width: Double): Map[HumanLanguage, Element] = Map(
     AppLanguage.German -> deFlag(width),
     AppLanguage.English -> enFlag(width),
-    AppLanguage.Spanish -> esFlag(width),
+    AppLanguage.Spanish -> esFlag(fullInfo, width),
     AppLanguage.Danish -> dkFlag(width),
     AppLanguage.Russian -> ruFlag(width),
     AppLanguage.Ukrainian -> ukFlag(width),
@@ -39,9 +39,9 @@ object LanguageSelectionLine {
     AppLanguage.French -> frFlag(width)
   )
 
-  private def esFlag(width: Double): Element = {
+  private def esFlag(fullInfo: FullInfo, width: Double): Element = {
     img(
-      src := HtmlFullWorkbookApp.fullInfo.contentControl.fileFactory.relativeToTechnicalResources("/img/flags/esFlag.svg").asUrlString,
+      src := fullInfo.contentControl.fileFactory.relativeToTechnicalResources("/img/flags/esFlag.svg").asUrlString,
       widthAttr := width.toInt,
       heightAttr := (width / 3 * 2).toInt,
     )

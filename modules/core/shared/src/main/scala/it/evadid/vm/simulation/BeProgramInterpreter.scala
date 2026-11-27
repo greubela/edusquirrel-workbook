@@ -61,25 +61,14 @@ object BeProgramInterpreter {
   def run(expression: BeExpression, world: DataWorld = DataWorld(), entry: ProgramEntry = ProgramEntry.Startup,
       limits: TurtleExecutionLimits = TurtleExecutionLimits(), isCancelled: () => Boolean = () => false): ProgramExecution = {
     val initial = State.initial(expression, world)
+    val run = Run(limits, isCancelled)
     val finished = guarded(initial) {
       entry match {
-        case ProgramEntry.Startup => interpret(expression, initial, limits, isCancelled)
-        case ProgramEntry.Call(name, arguments) => callEntry(name, arguments, initial, limits, isCancelled)
+        case ProgramEntry.Startup => run.interpret(expression, initial)
+        case ProgramEntry.Call(name, arguments) => run.callEntry(name, arguments, initial)
       }
     }
     ProgramExecution(finished.recorded.toList, finished.world, finished.returned.collect { case Value.Num(number) => number }, finished.status)
-  }
-
-  /** Calls the program's function `name` directly; module variables are initialized by startup code, which this does not run. */
-  private def callEntry(name: String, arguments: Seq[Double], initial: State, limits: TurtleExecutionLimits,
-      isCancelled: () => Boolean): State = {
-    val wanted = BeEntityName.fromCodeString(name).universalInterpretation()
-    val definition = initial.defs.values.find(_.functionTypeInfo.displayName.universalInterpretation() == wanted)
-      .getOrElse(throw IllegalArgumentException(s"The program does not define $name."))
-    if definition.inputs.size != arguments.size then
-      throw IllegalArgumentException(s"$name expects ${definition.inputs.size} values, the test passes ${arguments.size}.")
-    val (returned, after) = invoke(definition, arguments.map(Value.Num(_)).toList, initial, limits, isCancelled)
-    after.copy(returned = Some(returned))
   }
 
   private val booleanOperators = Set("<", ">", "==", "<=", ">=", "!=", "and", "or", "not")
@@ -149,109 +138,182 @@ object BeProgramInterpreter {
       case NonFatal(error) => state.copy(status = TurtleExecutionStatus.Failed(Option(error.getMessage).getOrElse(error.getClass.getSimpleName)))
     }
 
-  // Statements
-
-  private def interpret(expression: BeExpression, state: State, limits: TurtleExecutionLimits, isCancelled: () => Boolean): State =
-    if !state.running then state
-    else if isCancelled() then state.copy(status = TurtleExecutionStatus.Cancelled)
-    else if state.steps >= limits.maxSteps then state.copy(status = TurtleExecutionStatus.LimitExceeded)
-    else guarded(state)(interpretNode(expression, state.copy(steps = state.steps + 1), limits, isCancelled))
-
-  private def interpretNode(expression: BeExpression, state: State, limits: TurtleExecutionLimits, isCancelled: () => Boolean): State =
-    expression match {
-      case BeStartProgram(Some(seq)) => interpret(seq, state, limits, isCancelled)
-      case BeStartProgram(None) => state
-      case seq: BeSequence => seq.body.foldLeft(state)((current, child) => interpret(child, current, limits, isCancelled))
-      case _: BeObjectExpression => unsupportedObjectExecution()
-      case _: BeDefineFunction => state
-      // A declared variable exists before it is assigned (Java fields and Python `x: float` start at 0); an initializer sets it.
-      case variable: BeDefineVariable =>
-        variable.initValue match {
-          case Some(value) =>
-            val (resolved, evaluated) = resolveCalls(value, state, limits, isCancelled)
-            evaluated.bind(SnapControlFlow.variableName(variable), eval(resolved, evaluated))
-          case None =>
-            val name = SnapControlFlow.variableName(variable)
-            state.bind(name, state.env.getOrElse(name, Value.Num(0.0)))
-        }
-      case assign: BeAssignVariable =>
-        val (value, evaluated) = resolveCalls(assign.value, state, limits, isCancelled)
-        evaluated.bind(SnapControlFlow.variableName(assign.target), eval(value, evaluated))
-      case BeReturn(value) =>
-        val (resolved, evaluated) = value.fold((Option.empty[BeExpression], state))(value =>
-          resolveCalls(value, state, limits, isCancelled) match { case (resolved, evaluated) => (Some(resolved), evaluated) })
-        evaluated.copy(returned = Some(resolved.map(eval(_, evaluated)).getOrElse(Value.Num(0.0))))
-      case repeat: BeRepeatNr =>
-        // Like Python's range and Snap's repeat, a fractional count rounds down and a negative one repeats nothing.
-        val (amount, evaluated) = resolveCalls(repeat.amount, state, limits, isCancelled)
-        repeatBody(repeat.body, math.max(0, math.floor(evalNumber(amount, evaluated)).toInt), evaluated, limits, isCancelled)
-      case loop: BeFor =>
-        val (first, afterStart) = resolveCalls(loop.start, state, limits, isCancelled)
-        val (last, bounded) = resolveCalls(loop.end, afterStart, limits, isCancelled)
-        val start = evalNumber(first, bounded).round.toInt.toLong
-        val end = evalNumber(last, bounded).round.toInt.toLong
-        val step = loop.direction match {
-          case BeFor.Direction.Up => 1L
-          case BeFor.Direction.Down => -1L
-          case BeFor.Direction.Either => if start <= end then 1L else -1L
-        }
-        forBody(loop, start, end, step, bounded, limits, isCancelled)
-      case branch: BeIfElse =>
-        val (condition, evaluated) = resolveCalls(branch.condition.body.headOption.getOrElse(BeUseValue(BeDataValueLiteral("True"), None)),
-          state, limits, isCancelled)
-        interpret(if evalBool(condition, evaluated) then branch.thenBody else branch.elseBody, evaluated, limits, isCancelled)
-      case loop: BeWhile => whileBody(loop, 0, state, limits, isCancelled)
-      case call: BeFunctionCall => interpretCall(call, state, limits, isCancelled)
-      case placeholder: BeSourcePlaceholder => cannotRun(placeholder)
-      case _ => state
+  /** One execution: its limits and cancellation check are fixed while each step returns a new [[State]]. */
+  private final class Run(limits: TurtleExecutionLimits, isCancelled: () => Boolean) {
+    /** Calls the program's function `name` directly; module variables are initialized by startup code, which this does not run. */
+    def callEntry(name: String, arguments: Seq[Double], initial: State): State = {
+      val wanted = BeEntityName.fromCodeString(name).universalInterpretation()
+      val definition = initial.defs.values.find(_.functionTypeInfo.displayName.universalInterpretation() == wanted)
+        .getOrElse(throw IllegalArgumentException(s"The program does not define $name."))
+      if definition.inputs.size != arguments.size then
+        throw IllegalArgumentException(s"$name expects ${definition.inputs.size} values, the test passes ${arguments.size}.")
+      val (returned, after) = invoke(definition, arguments.map(Value.Num(_)).toList, initial)
+      after.copy(returned = Some(returned))
     }
+
+    def interpret(expression: BeExpression, state: State): State =
+      if !state.running then state
+      else if isCancelled() then state.copy(status = TurtleExecutionStatus.Cancelled)
+      else if state.steps >= limits.maxSteps then state.copy(status = TurtleExecutionStatus.LimitExceeded)
+      else guarded(state)(interpretNode(expression, state.copy(steps = state.steps + 1)))
+
+    private def interpretNode(expression: BeExpression, state: State): State =
+      expression match {
+        case BeStartProgram(Some(seq)) => interpret(seq, state)
+        case BeStartProgram(None) => state
+        case seq: BeSequence => seq.body.foldLeft(state)((current, child) => interpret(child, current))
+        case _: BeObjectExpression => unsupportedObjectExecution()
+        case _: BeDefineFunction => state
+        // A declared variable exists before it is assigned (Java fields and Python `x: float` start at 0); an initializer sets it.
+        case variable: BeDefineVariable =>
+          variable.initValue match {
+            case Some(value) =>
+              val (resolved, evaluated) = resolveCalls(value, state)
+              evaluated.bind(SnapControlFlow.variableName(variable), eval(resolved, evaluated))
+            case None =>
+              val name = SnapControlFlow.variableName(variable)
+              state.bind(name, state.env.getOrElse(name, Value.Num(0.0)))
+          }
+        case assign: BeAssignVariable =>
+          val (value, evaluated) = resolveCalls(assign.value, state)
+          evaluated.bind(SnapControlFlow.variableName(assign.target), eval(value, evaluated))
+        case BeReturn(value) =>
+          val (resolved, evaluated) = value.fold((Option.empty[BeExpression], state))(value =>
+            resolveCalls(value, state) match { case (resolved, evaluated) => (Some(resolved), evaluated) })
+          evaluated.copy(returned = Some(resolved.map(eval(_, evaluated)).getOrElse(Value.Num(0.0))))
+        case repeat: BeRepeatNr =>
+          // Like Python's range and Snap's repeat, a fractional count rounds down and a negative one repeats nothing.
+          val (amount, evaluated) = resolveCalls(repeat.amount, state)
+          repeatBody(repeat.body, math.max(0, math.floor(evalNumber(amount, evaluated)).toInt), evaluated)
+        case loop: BeFor =>
+          val (first, afterStart) = resolveCalls(loop.start, state)
+          val (last, bounded) = resolveCalls(loop.end, afterStart)
+          val start = evalNumber(first, bounded).round.toInt.toLong
+          val end = evalNumber(last, bounded).round.toInt.toLong
+          val step = loop.direction match {
+            case BeFor.Direction.Up => 1L
+            case BeFor.Direction.Down => -1L
+            case BeFor.Direction.Either => if start <= end then 1L else -1L
+          }
+          forBody(loop, start, end, step, bounded)
+        case branch: BeIfElse =>
+          val (condition, evaluated) = resolveCalls(branch.condition.body.headOption.getOrElse(BeUseValue(BeDataValueLiteral("True"), None)), state)
+          interpret(if evalBool(condition, evaluated) then branch.thenBody else branch.elseBody, evaluated)
+        case loop: BeWhile => whileBody(loop, 0, state)
+        case call: BeFunctionCall => interpretCall(call, state)
+        case placeholder: BeSourcePlaceholder => cannotRun(placeholder)
+        case _ => state
+      }
+
+    @tailrec private def repeatBody(body: BeExpression, remaining: Int, state: State): State =
+      if remaining <= 0 || !state.running then state
+      else repeatBody(body, remaining - 1, interpret(body, state))
+
+    @tailrec private def forBody(loop: BeFor, index: Long, end: Long, step: Long, state: State): State =
+      if !state.running || (if step > 0 then index > end else index < end) then state
+      else {
+        val bound = state.bind(SnapControlFlow.variableName(loop.variable), Value.Num(index.toDouble))
+        forBody(loop, index + step, end, step, interpret(loop.body, bound))
+      }
+
+    @tailrec private def whileBody(loop: BeWhile, iterations: Int, state: State): State =
+      if !state.running then state
+      else {
+        val (condition, evaluated) = resolveCalls(loop.condition.body.headOption.getOrElse(BeUseValue(BeDataValueLiteral("False"), None)), state)
+        if !evaluated.running || !evalBool(condition, evaluated) then evaluated
+        else if iterations >= limits.maxLoopIterations then evaluated.copy(status = TurtleExecutionStatus.LimitExceeded)
+        else whileBody(loop, iterations + 1, interpret(loop.body, evaluated))
+      }
+
+    private def interpretCall(unresolved: BeFunctionCall, before: State): State = {
+      val library = isDataModule(unresolved.funcDef)
+      if isObjectOperation(unresolved) && !library && !BeModules.System.owns(unresolved.funcDef) then
+        unsupportedObjectExecution()
+      else if unresolved.isOperator then before
+      else {
+        val (call, state) = resolveArguments(unresolved, before)
+        if BeModules.System.owns(call.funcDef) then recordPrint(call, state)
+        else if library then dataOperation(call.funcDef, call.arguments.map(evalNumber(_, state)), state, limits)._2
+        else userDefinition(call, state) match {
+          case Some(definition) => invoke(definition, call.arguments.map(eval(_, state)), state)._2
+          case None if TurtleCommand.isTurtleMethod(call.funcDef) => turtleCommand(call, state)
+          case None => throw IllegalArgumentException(s"Unsupported function: ${call.funcDef.functionTypeInfo.displayName.universalInterpretation()}")
+        }
+      }
+    }
+
+    private def turtleCommand(call: BeFunctionCall, state: State): State = {
+      val python = SnapExpressionSupport.pythonName(call)
+      val name = SnapTurtleCatalog.turtleCommandByPythonName.getOrElse(python, python)
+      val command = TurtleCommand.fromCall(BeEntityName.fromCodeString(name),
+        call.arguments.flatMap(numericArg(_, state)), call.arguments.flatMap(stringArg))
+      if !command.args.forall(_.isFinite) then state.copy(status = TurtleExecutionStatus.Failed("A drawing command needs finite numbers."))
+      else if state.turtleCount >= limits.maxCommands then state.copy(status = TurtleExecutionStatus.LimitExceeded)
+      else state.copy(recorded = state.recorded :+ ModuleCommand.Turtle(command), turtleCount = state.turtleCount + 1)
+    }
+
+    /** Runs one of the program's own functions on argument values; returns what it returned. */
+    private def invoke(definition: BeDefineFunction, arguments: List[Value], state: State): (Value, State) =
+      if state.callDepth >= limits.maxCallDepth then (Value.Num(0.0), state.copy(status = TurtleExecutionStatus.LimitExceeded))
+      else {
+        val bound = definition.inputs.zip(arguments).map((parameter, value) => SnapControlFlow.variableName(parameter) -> value).toMap
+        val child = state.copy(env = state.env ++ bound, callDepth = state.callDepth + 1)
+        val after = interpret(definition.body, child)
+        // A function updates module variables; its parameters and own locals end with the call, so a recursive
+        // call cannot change its caller's locals (such as loop counters).
+        val updated = after.env.filter((name, _) => state.globals.contains(name) && !bound.contains(name))
+        (after.returned.getOrElse(Value.Num(0.0)), after.copy(env = state.env ++ updated, callDepth = state.callDepth, returned = None))
+      }
+
+    /** Runs the calls inside an expression, innermost and left to right, and replaces each by its value; drawing and
+      * data operations they perform happen before the expression's own statement. `and`/`or` stop once decided.
+      */
+    private def resolveCalls(expression: BeExpression, state: State): (BeExpression, State) =
+      if state.status != TurtleExecutionStatus.Completed then (expression, state)
+      else expression match {
+        case call: BeFunctionCall if call.isOperator && call.arguments.size == 2 &&
+            Set("and", "or")(SnapControlFlow.operatorSymbol(call)) =>
+          val isAnd = SnapControlFlow.operatorSymbol(call) == "and"
+          val (left, afterLeft) = resolveCalls(call.arguments.head, state)
+          val leftTrue = evalBool(left, afterLeft)
+          if leftTrue != isAnd then (literal(truth(leftTrue)), afterLeft)
+          else {
+            val (right, afterRight) = resolveCalls(call.arguments(1), afterLeft)
+            (literal(truth(evalBool(right, afterRight))), afterRight)
+          }
+        case call: BeFunctionCall =>
+          val (resolved, evaluated) = resolveArguments(call, state)
+          if isDataModule(resolved.funcDef) then {
+            val (value, after) = dataOperation(resolved.funcDef, resolved.arguments.map(evalNumber(_, evaluated)), evaluated, limits)
+            (literal(Value.Num(value)), after)
+          } else userDefinition(resolved, evaluated) match {
+            case Some(definition) =>
+              val (value, after) = invoke(definition, resolved.arguments.map(eval(_, evaluated)), evaluated)
+              (literal(value), after)
+            case None => (resolved, evaluated)
+          }
+        case sequence: BeSequence =>
+          val (body, evaluated) = resolveAll(sequence.body.toList, state)
+          (sequence.copy(body = body), evaluated)
+        case other => (other, state)
+      }
+
+    private def resolveArguments(call: BeFunctionCall, state: State): (BeFunctionCall, State) = {
+      val parameters = call.funcDef.inputs.filter(call.parameterValueMap.contains)
+      val (values, evaluated) = resolveAll(parameters.map(call.parameterValueMap), state)
+      (call.copy(parameterValueMap = call.parameterValueMap ++ parameters.zip(values)), evaluated)
+    }
+
+    private def resolveAll(expressions: List[BeExpression], state: State): (List[BeExpression], State) =
+      expressions.foldLeft((List.empty[BeExpression], state)) { case ((done, current), expression) =>
+        val (resolved, next) = resolveCalls(expression, current)
+        (done :+ resolved, next)
+      }
+  }
 
   /** Unfinished or unsupported source stops the run rather than being skipped. */
   private def cannotRun(placeholder: BeSourcePlaceholder): Nothing =
     throw IllegalArgumentException(s"This part of the program cannot run: ${placeholder.originalSource.trim.linesIterator.nextOption().getOrElse("")}")
-
-  @tailrec private def repeatBody(body: BeExpression, remaining: Int, state: State,
-      limits: TurtleExecutionLimits, isCancelled: () => Boolean): State =
-    if remaining <= 0 || !state.running then state
-    else repeatBody(body, remaining - 1, interpret(body, state, limits, isCancelled), limits, isCancelled)
-
-  @tailrec private def forBody(loop: BeFor, index: Long, end: Long, step: Long, state: State,
-      limits: TurtleExecutionLimits, isCancelled: () => Boolean): State =
-    if !state.running || (if step > 0 then index > end else index < end) then state
-    else {
-      val bound = state.bind(SnapControlFlow.variableName(loop.variable), Value.Num(index.toDouble))
-      forBody(loop, index + step, end, step, interpret(loop.body, bound, limits, isCancelled), limits, isCancelled)
-    }
-
-  @tailrec private def whileBody(loop: BeWhile, iterations: Int, state: State,
-      limits: TurtleExecutionLimits, isCancelled: () => Boolean): State =
-    if !state.running then state
-    else {
-      val (condition, evaluated) = resolveCalls(loop.condition.body.headOption.getOrElse(BeUseValue(BeDataValueLiteral("False"), None)),
-        state, limits, isCancelled)
-      if !evaluated.running || !evalBool(condition, evaluated) then evaluated
-      else if iterations >= limits.maxLoopIterations then evaluated.copy(status = TurtleExecutionStatus.LimitExceeded)
-      else whileBody(loop, iterations + 1, interpret(loop.body, evaluated, limits, isCancelled), limits, isCancelled)
-    }
-
-  // Calls
-
-  private def interpretCall(unresolved: BeFunctionCall, before: State, limits: TurtleExecutionLimits, isCancelled: () => Boolean): State = {
-    val library = isDataModule(unresolved.funcDef)
-    if !unresolved.target.isInstanceOf[BeCallTarget.Function] && !TurtleCommand.isTurtleMethod(unresolved.funcDef) && !library && !BeModules.System.owns(unresolved.funcDef) then
-      unsupportedObjectExecution()
-    else if unresolved.isOperator then before
-    else {
-      val (call, state) = resolveArguments(unresolved, before, limits, isCancelled)
-      if BeModules.System.owns(call.funcDef) then recordPrint(call, state)
-      else if library then dataOperation(call.funcDef, call.arguments.map(evalNumber(_, state)), state, limits)._2
-      else userDefinition(call, state) match {
-        case Some(definition) => invoke(definition, call.arguments.map(eval(_, state)), state, limits, isCancelled)._2
-        case None if TurtleCommand.isTurtleMethod(call.funcDef) => turtleCommand(call, state, limits)
-        case None => throw IllegalArgumentException(s"Unsupported function: ${call.funcDef.functionTypeInfo.displayName.universalInterpretation()}")
-      }
-    }
-  }
 
   /** Records a print: its arguments' text, separated by spaces and ending the line. */
   private def recordPrint(call: BeFunctionCall, state: State): State = {
@@ -261,86 +323,20 @@ object BeProgramInterpreter {
     state.copy(recorded = state.recorded :+ ModuleCommand.System(command))
   }
 
-  private def turtleCommand(call: BeFunctionCall, state: State, limits: TurtleExecutionLimits): State = {
-    val python = SnapExpressionSupport.pythonName(call)
-    val name = SnapTurtleCatalog.turtleCommandByPythonName.getOrElse(python, python)
-    val command = TurtleCommand.fromCall(BeEntityName.fromCodeString(name),
-      call.arguments.flatMap(numericArg(_, state)), call.arguments.flatMap(stringArg))
-    if !command.args.forall(_.isFinite) then state.copy(status = TurtleExecutionStatus.Failed("A drawing command needs finite numbers."))
-    else if state.turtleCount >= limits.maxCommands then state.copy(status = TurtleExecutionStatus.LimitExceeded)
-    else state.copy(recorded = state.recorded :+ ModuleCommand.Turtle(command), turtleCount = state.turtleCount + 1)
-  }
-
   private def userDefinition(call: BeFunctionCall, state: State): Option[BeDefineFunction] =
     if call.isOperator || !call.target.isInstanceOf[BeCallTarget.Function] || TurtleCommand.isTurtleMethod(call.funcDef) ||
       isDataModule(call.funcDef) then None
     else state.defs.get(SnapExpressionSupport.pythonName(call))
 
-  /** Runs one of the program's own functions on argument values; returns what it returned. */
-  private def invoke(definition: BeDefineFunction, arguments: List[Value], state: State, limits: TurtleExecutionLimits,
-      isCancelled: () => Boolean): (Value, State) =
-    if state.callDepth >= limits.maxCallDepth then (Value.Num(0.0), state.copy(status = TurtleExecutionStatus.LimitExceeded))
-    else {
-      val bound = definition.inputs.zip(arguments).map((parameter, value) => SnapControlFlow.variableName(parameter) -> value).toMap
-      val child = state.copy(env = state.env ++ bound, callDepth = state.callDepth + 1)
-      val after = interpret(definition.body, child, limits, isCancelled)
-      // A function updates module variables; its parameters and own locals end with the call, so a recursive
-      // call cannot change its caller's locals (such as loop counters).
-      val updated = after.env.filter((name, _) => state.globals.contains(name) && !bound.contains(name))
-      (after.returned.getOrElse(Value.Num(0.0)), after.copy(env = state.env ++ updated, callDepth = state.callDepth, returned = None))
-    }
-
-  /** Runs the calls inside an expression, innermost and left to right, and replaces each by its value; drawing and
-    * data operations they perform happen before the expression's own statement. `and`/`or` stop once decided.
-    */
-  private def resolveCalls(expression: BeExpression, state: State, limits: TurtleExecutionLimits,
-      isCancelled: () => Boolean): (BeExpression, State) =
-    if state.status != TurtleExecutionStatus.Completed then (expression, state)
-    else expression match {
-      case call: BeFunctionCall if call.isOperator && call.arguments.size == 2 &&
-          Set("and", "or")(SnapControlFlow.operatorSymbol(call)) =>
-        val isAnd = SnapControlFlow.operatorSymbol(call) == "and"
-        val (left, afterLeft) = resolveCalls(call.arguments.head, state, limits, isCancelled)
-        val leftTrue = evalBool(left, afterLeft)
-        if leftTrue != isAnd then (literal(truth(leftTrue)), afterLeft)
-        else {
-          val (right, afterRight) = resolveCalls(call.arguments(1), afterLeft, limits, isCancelled)
-          (literal(truth(evalBool(right, afterRight))), afterRight)
-        }
-      case call: BeFunctionCall =>
-        val (resolved, evaluated) = resolveArguments(call, state, limits, isCancelled)
-        if isDataModule(resolved.funcDef) then {
-          val (value, after) = dataOperation(resolved.funcDef, resolved.arguments.map(evalNumber(_, evaluated)), evaluated, limits)
-          (literal(Value.Num(value)), after)
-        } else userDefinition(resolved, evaluated) match {
-          case Some(definition) =>
-            val (value, after) = invoke(definition, resolved.arguments.map(eval(_, evaluated)), evaluated, limits, isCancelled)
-            (literal(value), after)
-          case None => (resolved, evaluated)
-        }
-      case sequence: BeSequence =>
-        val (body, evaluated) = resolveAll(sequence.body.toList, state, limits, isCancelled)
-        (sequence.copy(body = body), evaluated)
-      case other => (other, state)
-    }
-
-  private def resolveArguments(call: BeFunctionCall, state: State, limits: TurtleExecutionLimits,
-      isCancelled: () => Boolean): (BeFunctionCall, State) = {
-    val parameters = call.funcDef.inputs.filter(call.parameterValueMap.contains)
-    val (values, evaluated) = resolveAll(parameters.map(call.parameterValueMap), state, limits, isCancelled)
-    (call.copy(parameterValueMap = call.parameterValueMap ++ parameters.zip(values)), evaluated)
-  }
-
-  private def resolveAll(expressions: List[BeExpression], state: State, limits: TurtleExecutionLimits,
-      isCancelled: () => Boolean): (List[BeExpression], State) =
-    expressions.foldLeft((List.empty[BeExpression], state)) { case ((done, current), expression) =>
-      val (resolved, next) = resolveCalls(expression, current, limits, isCancelled)
-      (done :+ resolved, next)
-    }
+  private val stringLiterals = Serializer.stringLiteralIO(parseEverything = true)
 
   private def literal(value: Value): BeExpression = value match
     case Value.Num(number) => BeUseValue(BeDataValueLiteral(number.toString), None)
-    case Value.Text(text) => BeUseValue(BeDataValueLiteral(Serializer.stringLiteralIO(parseEverything = true).serialize(text)), None)
+    case Value.Text(text) => BeUseValue(BeDataValueLiteral(stringLiterals.serialize(text)), None)
+
+  /** A method call on an object other than the turtle; the simulator runs only functions and turtle commands. */
+  private def isObjectOperation(call: BeFunctionCall): Boolean =
+    !call.target.isInstanceOf[BeCallTarget.Function] && !TurtleCommand.isTurtleMethod(call.funcDef)
 
   private def unsupportedObjectExecution(): Nothing =
     throw UnsupportedOperationException("The program simulator does not support object operations.")
@@ -350,7 +346,7 @@ object BeProgramInterpreter {
   private def numericArg(expression: BeExpression, state: State): Option[Double] =
     expression match
       case _: BeObjectExpression => unsupportedObjectExecution()
-      case call: BeFunctionCall if !call.target.isInstanceOf[BeCallTarget.Function] && !TurtleCommand.isTurtleMethod(call.funcDef) => unsupportedObjectExecution()
+      case call: BeFunctionCall if isObjectOperation(call) => unsupportedObjectExecution()
       case BeUseValue(BeDataValueLiteral(value), _) => numericLiteral(value)
       case BeUseValue(BeUseValueReference(_), _) => Some(evalNumber(expression, state))
       case call: BeFunctionCall if call.isOperator || call.funcDef.intrinsic.exists(numericIntrinsics) => Some(evalNumber(call, state))
@@ -361,8 +357,8 @@ object BeProgramInterpreter {
     expression match
       case BeUseValue(BeDataValueLiteral(value), _) if numericLiteral(value).isEmpty =>
         Some(if value.trim.startsWith("\"") then scala.util.Try(ujson.read(value).str)
-          .getOrElse(Serializer.stringLiteralIO(parseEverything = true).deserialize(value))
-        else Serializer.stringLiteralIO(parseEverything = true).deserialize(value))
+          .getOrElse(stringLiterals.deserialize(value))
+        else stringLiterals.deserialize(value))
       case _ => None
 
   private def numericLiteral(value: String): Option[Double] =
@@ -371,7 +367,7 @@ object BeProgramInterpreter {
   private def eval(expression: BeExpression, state: State): Value =
     expression match
       case _: BeObjectExpression => unsupportedObjectExecution()
-      case call: BeFunctionCall if !call.target.isInstanceOf[BeCallTarget.Function] && !TurtleCommand.isTurtleMethod(call.funcDef) => unsupportedObjectExecution()
+      case call: BeFunctionCall if isObjectOperation(call) => unsupportedObjectExecution()
       case BeUseValue(BeDataValueLiteral(value), _) =>
         value.trim.toDoubleOption.map(Value.Num(_))
           .orElse(stringArg(expression).filterNot(_ => isTruthy(value) || value.trim.equalsIgnoreCase("false")).map(Value.Text(_)))

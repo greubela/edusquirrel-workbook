@@ -75,7 +75,7 @@ class DataExerciseRenderersSpec extends EditorDomSuite {
     val element = ProgrammingExerciseFullJava("java-data", instructionText = Some(LanguageMapContentId("test/task")), dataView = Some(ExerciseDataView.NumberList))
     load(element)
     val state: Var[ProgrammingState] = Var(java("NumberList.swap(0, 1);"))
-    val side = HtmlProgrammingExerciseFullJavaRenderer.createNewEditor(element, state, GradingReporter(element)).sidePanel.getDomElement()
+    val side = HtmlProgrammingExerciseFullJavaRenderer.createNewEditor(fullInfo, element, state, GradingReporter(element)).sidePanel.getDomElement()
     val close = mount(side)
     try {
       assert(side.ref.querySelector(".program-data-preview") != null)
@@ -88,7 +88,7 @@ class DataExerciseRenderersSpec extends EditorDomSuite {
   test("full Java exercises without a data view or shape grader do not invent a drawing panel") {
     val element = ProgrammingExerciseFullJava("java-drawing")
     load(element)
-    val side = HtmlProgrammingExerciseFullJavaRenderer.createNewEditor(element, Var(java("")), GradingReporter(element)).sidePanel.getDomElement()
+    val side = HtmlProgrammingExerciseFullJavaRenderer.createNewEditor(fullInfo, element, Var(java("")), GradingReporter(element)).sidePanel.getDomElement()
     val close = mount(side)
     try {
       assert(!side.ref.textContent.toLowerCase.contains("drawtitle"), side.ref.textContent)
@@ -102,7 +102,7 @@ class DataExerciseRenderersSpec extends EditorDomSuite {
 
   test("the sort exercise overview shows the source, the replay and one result row per test list") {
     load(sortExercise)
-    val element = HtmlSortListExerciseRenderer.renderAppElement(sortExercise).getDomElement()
+    val element = HtmlSortListExerciseRenderer.renderAppElement(fullInfo, sortExercise).getDomElement()
     val close = mount(element)
     eventually(all(element.ref, ".step-navigator__position") == Seq("1 / 1"), element.ref.textContent).map { _ =>
       assert(all(element.ref, ".java-full-editor-preview").exists(_.contains("def sortiere()")))
@@ -120,8 +120,8 @@ class DataExerciseRenderersSpec extends EditorDomSuite {
 
   test("the editor side modules replay sorting and turtle drawings") {
     load(sortExercise)
-    val sortCard = HtmlSortListExerciseRenderer.sortStepsCard(sortExercise, Var(sortExercise.initProgram)).getDomElement()
-    val turtleCard = HtmlTurtleRecreateShapeRenderer.turtleStepsCard(Var(ProgrammingStateRaw(Python, "forward(10)\nright(90)\n")).signal,
+    val sortCard = HtmlSortListExerciseRenderer.sortStepsCard(fullInfo, sortExercise, Var(sortExercise.initProgram)).getDomElement()
+    val turtleCard = HtmlTurtleRecreateShapeRenderer.turtleStepsCard(fullInfo, Var(ProgrammingStateRaw(Python, "forward(10)\nright(90)\n")).signal,
       it.evadid.workbook.elements.interactionElements.programming.programmingExerciseTurtle.TurtleRecreateShapeInteraction.defaultEnvironment,
       it.evadid.homepage.webElements.editor.code.worker.LocalWorker.analyzer()).getDomElement()
     val close = mount(div(sortCard, turtleCard))
@@ -137,8 +137,8 @@ class DataExerciseRenderersSpec extends EditorDomSuite {
   test("the overview feedback panel appears only for interactions with grading or hints") {
     val plain = TextInteraction("plain-text")
     load(plain, sortExercise)
-    val graded = AtomarLineRendering.basicLine(sortExercise, DomElementSingle(div("content"))).getDomElement()
-    val ungraded = AtomarLineRendering.basicLine(plain, DomElementSingle(div("content"))).getDomElement()
+    val graded = AtomarLineRendering.basicLine(fullInfo, sortExercise, DomElementSingle(div("content"))).getDomElement()
+    val ungraded = AtomarLineRendering.basicLine(fullInfo, plain, DomElementSingle(div("content"))).getDomElement()
     val close = mount(div(graded, ungraded))
     try {
       assertEquals(graded.ref.querySelectorAll(".feedback-panel--overview").length, 1)

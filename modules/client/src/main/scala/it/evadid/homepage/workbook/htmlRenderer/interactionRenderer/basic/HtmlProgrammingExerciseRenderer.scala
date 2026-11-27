@@ -1,5 +1,7 @@
 package it.evadid.homepage.workbook.htmlRenderer.interactionRenderer.basic
 
+import it.evadid.homepage.control.model.FullInfo
+
 import it.evadid.workbook.interaction.sync.UpdateImportance
 
 import com.raquo.laminar.api.L.*
@@ -23,26 +25,26 @@ import scala.util.Try
 
 case object HtmlProgrammingExerciseRenderer extends LineBasedRenderingFactory[ProgrammingExercise] {
 
-  override protected def createRendering(workbookElement: ProgrammingExercise): AtomarLineRendering = {
+  override protected def createRendering(fullInfo: FullInfo, workbookElement: ProgrammingExercise): AtomarLineRendering = {
 
     val boundVar = workbookElement.interactionVariable.createBoundStateWithUpdateImportance(UpdateImportance.MAJOR, fullInfo.workbookContextInformation).toAirstreamVar
 
     val editorConfig: SnapCodeEditorConfig = SnapCodeEditorConfig.forPalette(workbookElement.editorPalette)
 
-    val gradingReporter = fullInfo.signals.reportersFor(workbookElement).grading
+    val gradingReporter = fullInfo.reporters.reportersFor(workbookElement).grading
 
     def editor = WorkbookEvaEditor(fullInfo, workbookElement, boundVar, EvaEditorConfig(snapConfig = editorConfig))
 
     def buttonPressed(): Unit = {
-      val wrappedEditor = EditorWithWorkbookPanel(workbookElement, None, gradingReporter, List(), editor)
+      val wrappedEditor = EditorWithWorkbookPanel(fullInfo, workbookElement, None, gradingReporter, List(), editor)
       fullInfo.displayControl.setFullscreen(wrappedEditor)
     }
 
-    val button: HtmlButtonElement = HtmlButtonElement.withTextLabel("basic/OpenEditor", event => buttonPressed())
-    val buttonCard = ElementCard(LanguageMapContentId("basic/openEditor"), button.getDomElement())
+    val button: HtmlButtonElement = HtmlButtonElement.withTextLabel(fullInfo, "basic/OpenEditor", event => buttonPressed())
+    val buttonCard = ElementCard(fullInfo, LanguageMapContentId("basic/openEditor"), button.getDomElement())
 
     val previewEditor = SnapPreviewEditor(boundVar, editorConfig, fullInfo.signals.currentLanguage)
-    val canvasCard = ElementCard(LanguageMapContentId("basic/canvas"), previewEditor.getDomElement())
+    val canvasCard = ElementCard(fullInfo, LanguageMapContentId("basic/canvas"), previewEditor.getDomElement())
 
     // static preview based on the custom display engine (not working yet, for test purposes)
     val shapeLogger = Logger.withNameAndPrefixes(
@@ -50,16 +52,16 @@ case object HtmlProgrammingExerciseRenderer extends LineBasedRenderingFactory[Pr
       PrintToStdLogger.printEverything
     )
     val staticRendering = ElementCard(
-      LanguageMapContentId("basic/staticPreviewProgram"),
+      fullInfo, LanguageMapContentId("basic/staticPreviewProgram"),
       Try(SvgLaminarRenderer.render(shapeLogger, VmToSvg.renderBeExpression(shapeLogger, boundVar.now().inEnvironment(workbookElement.environment).expression.expression)))
-        .getOrElse(div(child.text <-- laminarHelper.plaintextStringSignal(LanguageMapContentId("basic/gradingError"))))
+        .getOrElse(div(child.text <-- laminarHelper(fullInfo).plaintextStringSignal(LanguageMapContentId("basic/gradingError"))))
     )
 
     // Drawings are static: the worker derives them from the shared BeExpression for every language.
-    val runCard = ElementCard(LanguageMapContentId("basic/turtleOutput"),
+    val runCard = ElementCard(fullInfo, LanguageMapContentId("basic/turtleOutput"),
       StaticTurtleDrawing(boundVar.signal, workbookElement.environment).getDomElement())
 
-    AtomarLineRendering.cardLine(workbookElement,
+    AtomarLineRendering.cardLine(fullInfo, workbookElement,
       List(buttonCard, canvasCard, staticRendering, runCard))
   }
 }

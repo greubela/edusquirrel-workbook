@@ -1,5 +1,7 @@
 package it.evadid.homepage.webElements.editor.evacuation
 
+import it.evadid.homepage.control.model.FullInfo
+
 import com.raquo.laminar.api.L.*
 import it.evadid.evacuation.eva2.control.modes.ScenarioEditorMode
 import it.evadid.evacuation.eva2.model.EvaFloorMap
@@ -8,13 +10,13 @@ import it.evadid.workbook.model.evacuation.*
 import it.evadid.workbook.elements.interactionElements.evacuation.EvacuationFloorRequirements
 
 /** Local EVA2 state; no standalone ProgramState, resource downloads or simulation timers. */
-case class ScenarioEditor(answer: Var[EvacuationFloorPlan], initial: EvacuationFloorPlan, locked: Signal[Boolean],
+case class ScenarioEditor(fullInfo: FullInfo, answer: Var[EvacuationFloorPlan], initial: EvacuationFloorPlan, locked: Signal[Boolean],
     requirements: EvacuationFloorRequirements = EvacuationFloorRequirements())
     extends HtmlAppElement {
   val floorMap: Var[EvaFloorMap] = Var(EvacuationFloorAdapter.decode(answer.now()))
   private val selected = Var(0)
   private val isLocked = Var(false)
-  private def textFor(key: String): Signal[String] = laminarHelper.plaintextStringSignal(s"digitalWorkbooks/$key")
+  private def textFor(key: String): Signal[String] = laminarHelper(fullInfo).plaintextStringSignal(s"digitalWorkbooks/$key")
   private val mode = ScenarioEditorMode(
     () => floorMap.now(),
     map => { val normalized = EvacuationFloorAdapter.encode(map)
@@ -51,7 +53,7 @@ case class ScenarioEditor(answer: Var[EvacuationFloorPlan], initial: EvacuationF
       button(typ := "button", disabled <-- locked, text <-- textFor("evacuationReset"), onClick --> (_ => {
         floorMap.set(EvacuationFloorAdapter.decode(initial)); answer.set(initial)
       }))),
-    EvacuationFloorView(floorMap.signal, locked, pos => mode.mainAreaTileMapController.onMouseClickingOnTile(pos)).getDomElement())
+    EvacuationFloorView(fullInfo, floorMap.signal, locked, pos => mode.mainAreaTileMapController.onMouseClickingOnTile(pos)).getDomElement())
   private def unmount(): Unit = mode.onLeavingMode()
   override def dismissOnOutsideClick: Boolean = false
 }

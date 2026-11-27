@@ -1,5 +1,7 @@
 package it.evadid.homepage.workbook.htmlRenderer.displayRenderer
 
+import it.evadid.homepage.control.model.FullInfo
+
 import it.evadid.homepage.workbook.htmlRenderer.HtmlRenderFactory.LineBasedRenderingFactory
 import it.evadid.homepage.workbook.htmlRenderer.atomarLineRenderings.{AtomarLineRendering, RenderingWithLabel}
 import it.evadid.homepage.workbook.htmlRenderer.{HtmlRenderFactory, HtmlWorkbookElement}
@@ -20,9 +22,9 @@ case class HtmlLabeledWorkbookElementRenderer[T <: WorkbookElement](entry: Label
     )
   )*/
 
-  override protected def createRendering(workbookElement: LabeledWorkbookElement[T]): AtomarLineRendering = {
-    val base: HtmlWorkbookElement[WorkbookElement, AtomarLineRendering] = HtmlRenderFactory.renderWorkbookElement(workbookElement.baseElement)
-    RenderingWithLabel(workbookElement, base.rendering, workbookElement.label)
+  override protected def createRendering(fullInfo: FullInfo, workbookElement: LabeledWorkbookElement[T]): AtomarLineRendering = {
+    val base: HtmlWorkbookElement[WorkbookElement, AtomarLineRendering] = HtmlRenderFactory.renderWorkbookElement(fullInfo, workbookElement.baseElement)
+    RenderingWithLabel(fullInfo, workbookElement, base.rendering, workbookElement.label)
   }
 
 }

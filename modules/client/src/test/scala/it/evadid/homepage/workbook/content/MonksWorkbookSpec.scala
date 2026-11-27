@@ -83,7 +83,7 @@ class MonksWorkbookSpec extends FunSuite {
 
   private val editorIds = List("e1", "e3", "e4", "e5", "e6b", "k4")
   private def checked(code: String): JavaTurtleInterpreter.Execution =
-    JavaTurtleInterpreter.runVm(JavaTurtleCompiler.compile(code).fold(problem => fail(problem.message), identity))
+    JavaTurtleInterpreter.execute(JavaTurtleCompiler.compile(code).fold(problem => fail(problem.message), identity))
 
   test("all drawing tasks retain the workbook's Snap, Python and Java editor choices") {
     val tasks = workbook.allChildrenFullSubtree.collect {

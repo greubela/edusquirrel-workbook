@@ -40,7 +40,7 @@ class ContentChoiceRendererSpec extends EditorDomSuite {
     }
     val exercise = WorkbookContentChoiceInteraction("renderer-choice", ChoiceConfig(LanguageMapContentId("test/prompt"), Some(true), GraderRunningBehavior.RUN_ALWAYS), options)
     load(exercise)
-    val element = WorkbookContentChoiceInteractionRenderer.renderAppElement(exercise).getDomElement()
+    val element = WorkbookContentChoiceInteractionRenderer.renderAppElement(fullInfo, exercise).getDomElement()
     val close = mount(element)
     Future.unit.flatMap { _ =>
       val inputs = element.ref.querySelectorAll("input[type=checkbox]")
@@ -67,7 +67,7 @@ class ContentChoiceRendererSpec extends EditorDomSuite {
     }
     val exercise = WorkbookContentChoiceInteraction("checked-choice", ChoiceConfig(LanguageMapContentId("test/prompt"), Some(false), GraderRunningBehavior.RUN_ONLY_MANUALLY), options)
     load(exercise)
-    val element = WorkbookContentChoiceInteractionRenderer.renderAppElement(exercise).getDomElement()
+    val element = WorkbookContentChoiceInteractionRenderer.renderAppElement(fullInfo, exercise).getDomElement()
     val close = mount(element)
     val control = exercise.interactionVariable.control
     val context = fullInfo.workbookContextInformation

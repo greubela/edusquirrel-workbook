@@ -35,23 +35,27 @@ shares one value between preview and fullscreen editor:
 
 ```scala
 import com.raquo.laminar.api.L.*
-import it.evadid.core.datastructures.state.StateHelper.StateBasedVar
+import it.evadid.core.datastructures.state.StateHelper.InteractionVariableOnJS
 import it.evadid.homepage.control.model.FullInfo
 import it.evadid.homepage.webElements.editor.qr.{QrCodeEditor, QrCodeView}
 import it.evadid.workbook.elements.interactionElements.qr.CreateQrCodeInteraction
 import it.evadid.workbook.interaction.sync.UpdateImportance
 
-def qrControls(element: CreateQrCodeInteraction, fullInfo: FullInfo): Element = {
+def qrControls(fullInfo: FullInfo, element: CreateQrCodeInteraction): Element = {
   val answer = element.interactionVariable
-    .createBoundStateWithUpdateImportance(UpdateImportance.MAJOR, fullInfo.workbookContextInformation)
-    .toAirstreamVar
+    .createBoundVarWithUpdateImportance(UpdateImportance.MAJOR, fullInfo.workbookContextInformation)
   div(
-    QrCodeView.preview(answer.signal, element.requirements),
+    QrCodeView.preview(fullInfo, answer.signal, element.requirements),
     button("Edit", onClick --> (_ =>
-      fullInfo.displayControl.setFullscreen(QrCodeEditor(answer, element.requirements))))
+      fullInfo.displayControl.setFullscreen(QrCodeEditor(fullInfo, answer, element.requirements))))
   )
 }
 ```
+
+Renderers, editors and UI elements receive the page's `FullInfo` as an explicit
+first parameter; only the composition root (`HtmlFullWorkbookApp`, startup) holds
+the page instance. `AtomarLineRendering.editorCardLine` builds the common
+"preview + open editor" line.
 
 Create only the selected editor. Closing fullscreen unmounts it; native handles
 and subscriptions belong to that mount. Reopening starts from the saved answer.
@@ -129,8 +133,8 @@ only as status rows ("hidden test"), never with descriptions, feedback or times.
 Public descriptions and localized feedback are rendered as text; internal test
 programs and LLM instructions are not displayed (LLM criteria are titled "AI assessment").
 
-`fullInfo.signals.interactionReporters` holds one registry per loaded workbook
-instance. `reportersFor(element)` returns its shared `grading` and `sync` reporters;
+`fullInfo.reporters` (an `InteractionReporterRegistry`) holds one set of reporters
+per loaded workbook instance. `reportersFor(element)` returns its shared `grading` and `sync` reporters;
 icons, inline panels, sidebars and editors consume these reporters rather than
 constructing their own. Lookup rejects elements from another workbook instance,
 even if their IDs and definitions match.
@@ -142,7 +146,7 @@ The core `GradingSummary` owns test grouping, counts and aggregate status;
 For example:
 
 ```scala
-val reporters = fullInfo.signals.reportersFor(exercise)
+val reporters = fullInfo.reporters.reportersFor(exercise)
 val score = reporters.grading.summary.map(_.score)
 val syncStatus = reporters.sync.report.map(_.status)
 ```

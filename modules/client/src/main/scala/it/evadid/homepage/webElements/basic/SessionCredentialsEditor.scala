@@ -1,5 +1,7 @@
 package it.evadid.homepage.webElements.basic
 
+import it.evadid.homepage.control.model.FullInfo
+
 import com.raquo.laminar.api.L.*
 import it.evadid.homepage.webElements.HtmlAppElement
 import it.evadid.llm.LlmConfiguration
@@ -8,7 +10,7 @@ import scala.concurrent.ExecutionContext.Implicits.global
 import scala.util.{Failure, Success, Try}
 
 /** Draft values exist only while this form is open. Applying never writes preferences. */
-case class SessionCredentialsEditor(close: () => Unit) extends HtmlAppElement {
+case class SessionCredentialsEditor(fullInfo: FullInfo, close: () => Unit) extends HtmlAppElement {
   private val current = fullInfo.current.userInfo.map(_.credentials)
   private val database = current.flatMap(_.databaseConfig)
   private val llm = current.flatMap(_.llmApiConfig)

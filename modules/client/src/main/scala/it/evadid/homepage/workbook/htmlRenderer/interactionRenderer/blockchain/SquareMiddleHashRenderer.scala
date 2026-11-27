@@ -1,5 +1,7 @@
 package it.evadid.homepage.workbook.htmlRenderer.interactionRenderer.blockchain
 
+import it.evadid.homepage.control.model.FullInfo
+
 import com.raquo.laminar.api.L.*
 import it.evadid.homepage.webElements.basic.LabelSelection
 import it.evadid.core.datastructures.state.StateHelper.StateBasedVar
@@ -10,10 +12,10 @@ import it.evadid.workbook.model.blockchain.SquareMiddleHash
 import it.evadid.workbook.interaction.sync.UpdateImportance
 
 case object SquareMiddleHashRenderer extends LineBasedRenderingFactory[SquareMiddleHashInteraction] {
-  override protected def createRendering(e: SquareMiddleHashInteraction): AtomarLineRendering = {
+  override protected def createRendering(fullInfo: FullInfo, e: SquareMiddleHashInteraction): AtomarLineRendering = {
     val state = e.interactionVariable.createBoundStateWithUpdateImportance(UpdateImportance.MAJOR, fullInfo.workbookContextInformation).toAirstreamVar
     val disabledSignal = e.isDisabledState.toAirstreamVar.signal
-    def textFor(key: String): Signal[String] = laminarHelper.plaintextStringSignal(s"blockchainworkbook/$key")
+    def textFor(key: String): Signal[String] = laminarHelper(fullInfo).plaintextStringSignal(s"blockchainworkbook/$key")
     def numberField(first: Boolean): Element = label(
       span(text <-- textFor(if first then "firstInput" else "secondInput")),
       input(typ := "text", maxLength := SquareMiddleHash.maxInputDigits,
@@ -27,7 +29,7 @@ case object SquareMiddleHashRenderer extends LineBasedRenderingFactory[SquareMid
     }
     val target = e.task match { case FindHashPreimage(value) => value; case _ => "" }
     val dom = fieldSet(cls := "square-middle-hash",
-      legend(text <-- laminarHelper.plaintextStringSignal(e.title)),
+      legend(text <-- laminarHelper(fullInfo).plaintextStringSignal(e.title)),
       p(text <-- textFor(taskKey).map(_.replace("{target}", target))),
       div(cls := "hash-controls", numberField(true),
         Option.when(!e.task.isInstanceOf[FindHashPreimage])(numberField(false)),
@@ -50,6 +52,6 @@ case object SquareMiddleHashRenderer extends LineBasedRenderingFactory[SquareMid
             case Some(false) => "tryAgain"
           })))
     )
-    AtomarLineRendering.basicLine(e, dom)
+    AtomarLineRendering.basicLine(fullInfo, e, dom)
   }
 }

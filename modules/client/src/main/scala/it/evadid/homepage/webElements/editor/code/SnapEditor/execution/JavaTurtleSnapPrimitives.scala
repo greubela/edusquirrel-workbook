@@ -1,5 +1,7 @@
 package it.evadid.homepage.webElements.editor.code.SnapEditor.execution
 
+import it.evadid.homepage.webElements.editor.code.SnapEditor.SnapJs
+
 import it.evadid.vm.compilation.java.turtle.JavaTurtleSymbolResolver as R
 import it.evadid.vm.simulation.java.{JavaInt32, JavaTurtleEvaluation as E}
 import scala.scalajs.js
@@ -21,7 +23,6 @@ object JavaTurtleSnapPrimitives {
   private def fail(message: String): Nothing =
     throw js.JavaScriptException(js.Dynamic.newInstance(js.Dynamic.global.Error)(message))
 
-  private def isAbsent(value: js.Any): Boolean = js.isUndefined(value) || value == null
 
   private def number(value: js.Any): Double =
     if js.typeOf(value) != "number" then fail("Java arithmetic needs numeric operands.")
@@ -35,7 +36,7 @@ object JavaTurtleSnapPrimitives {
 
   private def receiver(process: js.Dynamic): js.Dynamic = {
     val target = process.applyDynamic("blockReceiver")()
-    if isAbsent(target) then fail("A Java turtle command needs a sprite receiver.")
+    if SnapJs.isAbsent(target) then fail("A Java turtle command needs a sprite receiver.")
     target
   }
 
@@ -178,7 +179,7 @@ object JavaTurtleSnapPrimitives {
 
   private def installSpecs(prototype: js.Dynamic): Unit = {
     val blocks = prototype.selectDynamic("blocks")
-    if !isAbsent(blocks) then {
+    if !SnapJs.isAbsent(blocks) then {
       val specs = blockSpecs
       specs.foreach((selector, spec) => blocks.updateDynamic(selector)(spec))
       // Internal targets of converted Java programs, not blocks to offer: Snap's block search skips `dev` primitives.
@@ -190,7 +191,7 @@ object JavaTurtleSnapPrimitives {
     val globals = js.Dynamic.global.globalThis
     val process = globals.selectDynamic("Process")
     val sprite = globals.selectDynamic("SpriteMorph")
-    if !isAbsent(process) && !isAbsent(sprite) then installPrimitives(process.selectDynamic("prototype"), sprite.selectDynamic("prototype"))
+    if !SnapJs.isAbsent(process) && !SnapJs.isAbsent(sprite) then installPrimitives(process.selectDynamic("prototype"), sprite.selectDynamic("prototype"))
   }
 
   private def installPrimitives(processPrototype: js.Dynamic, spritePrototype: js.Dynamic): Unit = {
@@ -214,7 +215,7 @@ object JavaTurtleSnapPrimitives {
     ).foreach((selector, primitive) => processPrototype.updateDynamic(selector)(primitive))
     val stored = spritePrototype.selectDynamic(OriginalInitBlocks)
     val original = spritePrototype.selectDynamic("initBlocks")
-    if isAbsent(stored) && js.typeOf(original) == "function" then {
+    if SnapJs.isAbsent(stored) && js.typeOf(original) == "function" then {
       spritePrototype.updateDynamic(OriginalInitBlocks)(original)
       val wrapped: js.ThisFunction0[js.Dynamic, js.Any] = (self: js.Dynamic) => {
         val value = original.applyDynamic("call")(self)

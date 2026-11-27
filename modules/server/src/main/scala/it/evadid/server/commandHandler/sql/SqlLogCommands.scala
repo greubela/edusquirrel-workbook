@@ -1,10 +1,13 @@
 package it.evadid.server.commandHandler.sql
 
+import it.evadid.server.database.newConnection
+
 import it.evadid.core.datastructures.user.UserTokenInfo.SignedToken
 import it.evadid.core.datastructures.user.User
 import it.evadid.distribution.command.ExecutionCommand
 import it.evadid.distribution.commandTypes.SubmissionCommands.SubmitSessionEvent
-import it.evadid.sql.{CommandLog, DatabaseTable}
+import it.evadid.server.database.{DatabaseRequestConnection, SqlStatements}
+import it.evadid.sql.{BackendDatabase, CommandLog, DatabaseConfigWithCredentials, DatabaseTable}
 import it.evadid.util.logging.Logger
 
 import java.net.InetAddress
@@ -25,9 +28,8 @@ object SqlLogCommands {
 
   def handleLog(commandReceived: LocalDateTime, executionCommand: ExecutionCommand, verifiedToken: Option[SignedToken], remoteAddress: InetAddress, logger: Logger): Unit = {
     executionCommand.storeLogIntoTable.foreach { log =>
-      try Using.resource(it.evadid.server.database.DatabaseRequestConnection.resolve(
-        log.table.inDatabase.getOrElse(it.evadid.sql.DatabaseConfigWithCredentials.readFromEnv()),
-        it.evadid.sql.DatabaseConfigWithCredentials.readFromEnv()).newConnection()) { connection =>
+      try Using.resource(DatabaseRequestConnection.resolve(log.table.inDatabase.getOrElse(BackendDatabase),
+        DatabaseConfigWithCredentials.readFromEnv()).newConnection()) { connection =>
         handleLog(commandReceived, executionCommand, verifiedToken, remoteAddress, logger, connection)
       }
       catch case NonFatal(error) => logger.logExceptionWarn("Could not store command log for " + executionCommand.name, error)
@@ -43,12 +45,9 @@ object SqlLogCommands {
 
 }
 
-class SqlLogCommands(
-                      connection: Connection,
-                      logger: Logger,
-                    ) {
+class SqlLogCommands(connection: Connection, logger: Logger) {
 
-  private lazy val generic: GenericSqlFunctionality = new GenericSqlFunctionality(logger)
+  private val statements = SqlStatements(connection, logger)
 
   def logCommand(commandReceived: LocalDateTime, executionCommand: ExecutionCommand, verifiedToken: Option[SignedToken],
                  remoteAddress: InetAddress, storeLogIntoTable: Option[CommandLog]): Int = {
@@ -65,16 +64,8 @@ class SqlLogCommands(
   }
 
   /** Inserts one row; column names are fixed by [[CommandLog]] and the table name is a validated identifier. */
-  private def insert(table: DatabaseTable, row: Seq[(String, Timestamp | String)]): Int = {
-    val sql = s"INSERT INTO `${table.name}` (${row.map(column => s"`${column._1}`").mkString(", ")}) " +
-      s"VALUES (${row.map(_ => "?").mkString(", ")})"
-    Using.resource(connection.prepareStatement(sql)) { stmt =>
-      row.map(_._2).zipWithIndex.foreach {
-        case (timestamp: Timestamp, index) => stmt.setTimestamp(index + 1, timestamp)
-        case (text: String, index) => stmt.setString(index + 1, text)
-      }
-      generic.executeUpdate(stmt)
-    }
-  }
+  private def insert(table: DatabaseTable, row: Seq[(String, Timestamp | String)]): Int =
+    statements.update(s"INSERT INTO `${table.name}` (${row.map(column => s"`${column._1}`").mkString(", ")}) " +
+      s"VALUES (${row.map(_ => "?").mkString(", ")})", row.map(_._2)*)
 
 }

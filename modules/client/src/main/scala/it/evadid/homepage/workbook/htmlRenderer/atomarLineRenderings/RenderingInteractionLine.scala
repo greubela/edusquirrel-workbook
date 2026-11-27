@@ -1,5 +1,7 @@
 package it.evadid.homepage.workbook.htmlRenderer.atomarLineRenderings
 
+import it.evadid.homepage.control.model.FullInfo
+
 import com.raquo.laminar.api.L.*
 import it.evadid.homepage.workbook.htmlRenderer.DomElementCollection
 import it.evadid.homepage.workbook.htmlRenderer.controlElements.interactionInfo.{InteractionFeedbackPanel, InteractionInfoPanel}
@@ -7,13 +9,14 @@ import it.evadid.workbook.abstractions.{InteractionFormat, WorkbookInteractionEl
 import it.evadid.homepage.control.info.interaction.GradingReporter
 
 case class RenderingInteractionLine[F <: InteractionFormat](
+                                             fullInfo: FullInfo,
                                              interactionElement: WorkbookInteractionElement[F],
                                              content: DomElementCollection,
                                              additionalCssStr: String
                                            ) extends AtomarLineRendering {
 
-  lazy val gradingReporter: GradingReporter = fullInfo.signals.reportersFor(interactionElement).grading
-  lazy val interactionInfoPanel: InteractionInfoPanel[F] = InteractionInfoPanel(interactionElement, gradingReporter)
+  lazy val gradingReporter: GradingReporter = fullInfo.reporters.reportersFor(interactionElement).grading
+  lazy val interactionInfoPanel: InteractionInfoPanel[F] = InteractionInfoPanel(fullInfo, interactionElement, gradingReporter)
 
   protected val lineCssStr: String = getCssString(interactionElement)
 
@@ -22,7 +25,7 @@ case class RenderingInteractionLine[F <: InteractionFormat](
   /** Every interaction with grading or hints shows the shared feedback panel below its content. */
   private lazy val feedbackPanel: Option[Element] =
     Option.when(gradingReporter.isGradingSupported || gradingReporter.isScaffoldingSupported)(
-      InteractionFeedbackPanel(interactionElement, gradingReporter).getDomElement())
+      InteractionFeedbackPanel(fullInfo, interactionElement, gradingReporter).getDomElement())
 
   override lazy val render: Element = {
     div(

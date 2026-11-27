@@ -1,17 +1,20 @@
 package it.evadid.server.commandHandler.sql.sync
 
 import it.evadid.util.logging.Logger
-import it.evadid.distribution.commandTypes.SQLCommands.{BulkStoreToDbRequest, DeleteInDbRequest, StoreToDbRequest}
+import it.evadid.distribution.commandTypes.SQLCommands.{BulkStoreToDbRequest, DbFetchResponse, DbRequest, DeleteInDbRequest, FetchEventsFromDbRequest, StoreToDbRequest}
+import it.evadid.sql.DatabaseHistoryFormat
 import it.evadid.workbook.interaction.sync.{SyncContext, SyncSuccess}
 import it.evadid.workbook.interaction.variable.events.EventId
-import it.evadid.server.database.SqlFailure
-import it.evadid.core.util.io.ParsingContext
-import java.sql.{Connection, PreparedStatement, ResultSet}
-import scala.util.Using
+import it.evadid.server.database.{DatabaseRequestConnection, SqlStatements}
+import java.sql.Connection
 
-/** Shared JDBC resource handling and transaction ownership for both history layouts. */
+/** Shared statements and transaction ownership for both history layouts. */
 abstract class HistorySql(connection: Connection, logger: Logger) {
+  protected final val statements = SqlStatements(connection, logger)
+
   def store(request: StoreToDbRequest): SyncSuccess[EventId]
+  def fetch(request: FetchEventsFromDbRequest): DbFetchResponse
+  def delete(request: DeleteInDbRequest): SyncSuccess[SyncContext]
 
   /** One transaction and deterministic lock order across the entire network batch. */
   final def storeAll(request: BulkStoreToDbRequest): SyncSuccess[EventId] = transaction {
@@ -26,28 +29,12 @@ abstract class HistorySql(connection: Connection, logger: Logger) {
     val filter = "WHERE program_id=? AND user_id=?" + (if request.allWorkbooks then "" else " AND scenario_id=?") +
       request.limitToKey.map(_ => " AND variable_id=?").getOrElse("")
     val parameters = List(context.programId, context.userId) ++ Option.unless(request.allWorkbooks)(context.scenarioId).toList ++ request.limitToKey.toList
-    val removed = query(s"SELECT scenario_id,variable_id FROM $table $filter FOR UPDATE", parameters)(row =>
+    val removed = statements.query(s"SELECT scenario_id,variable_id FROM $table $filter FOR UPDATE", parameters*)(row =>
       SyncContext(context.programId, row.getString(1), context.userId, row.getString(2))).toSet
-    update(s"DELETE FROM $table $filter", parameters*)
+    statements.update(s"DELETE FROM $table $filter", parameters*)
     SyncSuccess.removed(removed)
   }
 
-  private def prepared[A](sql: String, values: Seq[String | Long])(run: PreparedStatement => A): A =
-    SqlFailure(s"executing history SQL ${ParsingContext.preview(sql)}", logger) {
-      require(values.forall(_ != null), "History SQL parameters must not be null")
-      Using.resource(connection.prepareStatement(sql)) { statement =>
-        values.zipWithIndex.foreach { (value, index) => value match {
-          case number: Long => statement.setLong(index + 1, number)
-          case text: String => statement.setString(index + 1, text)
-        }}
-        run(statement)
-      }
-    }
-  protected def update(sql: String, values: (String | Long)*): Int = prepared(sql, values)(_.executeUpdate())
-  protected def query[A](sql: String, values: Seq[String | Long])(read: ResultSet => A): Seq[A] =
-    prepared(sql, values) { statement =>
-      Using.resource(statement.executeQuery())(rows => Iterator.continually(rows.next()).takeWhile(identity).map(_ => read(rows)).toList)
-    }
   protected def transaction[A](run: => A): A = {
     val own = connection.getAutoCommit
     val isolation = connection.getTransactionIsolation
@@ -68,5 +55,15 @@ abstract class HistorySql(connection: Connection, logger: Logger) {
       connection.setTransactionIsolation(isolation)
     }
   }
+}
 
+object HistorySql {
+  /** Opens the request's validated connection and runs `operation` on the storage for its history layout. */
+  def forRequest[A](request: DbRequest, logger: Logger)(operation: HistorySql => A): A =
+    DatabaseRequestConnection.use(request, logger) { connection =>
+      operation(request.databaseFormat match {
+        case DatabaseHistoryFormat.RelationalFormat => RelationalHistoryStorage(connection, logger)
+        case DatabaseHistoryFormat.BlobFormat => BlobHistoryStorage(connection, logger)
+      })
+    }
 }

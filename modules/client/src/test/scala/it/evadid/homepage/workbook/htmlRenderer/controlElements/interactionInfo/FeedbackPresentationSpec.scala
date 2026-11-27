@@ -55,7 +55,7 @@ class FeedbackPresentationSpec extends EditorDomSuite {
 
   test("AI criteria are titled as one assessment, or numbered when there are several") {
     def titles(exercise: TextInputWithScaffoldingAndGrading): Seq[String] = {
-      val panel = InteractionFeedbackPanel(exercise, GradingReporter(exercise)).getDomElement()
+      val panel = InteractionFeedbackPanel(pageInfo, exercise, GradingReporter(exercise)).getDomElement()
       val close = mount(panel)
       try (0 until panel.ref.querySelectorAll(".feedback-test-description").length)
         .map(panel.ref.querySelectorAll(".feedback-test-description")(_).textContent.toLowerCase)
@@ -72,7 +72,7 @@ class FeedbackPresentationSpec extends EditorDomSuite {
     val hinted = TextInputWithScaffoldingAndGrading("hinted", LanguageMapContentId("test/task"), contentGrading = Nil,
       contentScaffolding = Some(ContentForLlmInteraction(LanguageMapContentId("test/hint"), Map.empty)))
     def buttons(exercise: TextInputWithScaffoldingAndGrading): (Int, Int, Int) = {
-      val panel = InteractionFeedbackPanel(exercise, GradingReporter(exercise)).getDomElement()
+      val panel = InteractionFeedbackPanel(pageInfo, exercise, GradingReporter(exercise)).getDomElement()
       val close = mount(panel)
       try (panel.ref.querySelectorAll("button.feedback-action--primary:not([disabled])").length,
         panel.ref.querySelectorAll("button.scaffolding-info").length, panel.ref.querySelectorAll(".feedback-grading").length)

@@ -1,15 +1,17 @@
 package it.evadid.homepage.webElements.editor.MailEditor
 
+import it.evadid.homepage.control.model.FullInfo
+
 import com.raquo.laminar.api.L.*
 import it.evadid.homepage.webElements.basic.LabelSelection
 import it.evadid.homepage.webElements.HtmlAppElement
 import it.evadid.workbook.elements.interactionElements.emailSimulator.*
 
-case class MailEditor(underlyingVar: Var[InboxStateScaffolding], account: String = "opa.jürgen@gmail.com",
+case class MailEditor(fullInfo: FullInfo, underlyingVar: Var[InboxStateScaffolding], account: String = "opa.jürgen@gmail.com",
                       allowCompose: Boolean = true) extends HtmlAppElement {
   private val controller = new MailEditorState(underlyingVar, allowCompose)
   import controller.*
-  private def labelText(key: String): Signal[String] = laminarHelper.plaintextStringSignal(s"emailSimulator/$key")
+  private def labelText(key: String): Signal[String] = laminarHelper(fullInfo).plaintextStringSignal(s"emailSimulator/$key")
   private def action(key: String, enabled: Signal[Boolean])(run: => Unit): Element = button(
     typ := "button", text <-- labelText(key), disabled <-- enabled.map(!_), onClick --> (_ => run))
   private val hasSelection = selected.map(_.isDefined)

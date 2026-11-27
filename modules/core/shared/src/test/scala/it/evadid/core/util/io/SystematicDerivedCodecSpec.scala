@@ -11,7 +11,6 @@ import it.evadid.distribution.commandTypes.MailCommands.SendMailRequest
 import it.evadid.vm.BeProgram
 import it.evadid.vm.parsing.java.clean.model.{JavaAST, JavaType}
 import it.evadid.vm.parsing.python.clean.model.{PyAST, PythonType}
-import it.evadid.vm.simulation.BeSimulatorState
 import it.evadid.workbook.abstractions.{WorkbookElement, WorkbookInteractionElement}
 import it.evadid.workbook.elements.displayElements.TwoColumnPanel
 import it.evadid.workbook.elements.interactionElements.basic.TextInteraction

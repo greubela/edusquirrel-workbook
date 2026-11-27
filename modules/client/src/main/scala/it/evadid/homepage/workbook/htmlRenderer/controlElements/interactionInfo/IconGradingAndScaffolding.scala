@@ -17,6 +17,7 @@ case class IconGradingAndScaffolding[F <: InteractionFormat](
                                       gradingReporter: GradingReporter) {
 
 
+
   def deriveScaffoldingSymbol(report: ScaffoldingReport): Element = {
     import ScaffoldingReport.Status
     if !gradingReporter.isScaffoldingSupported then div()
@@ -36,7 +37,7 @@ case class IconGradingAndScaffolding[F <: InteractionFormat](
           case Status.Ready => "basic/scaffoldingReady"
         })
       }
-      InteractionInfoPanel.infoPanelIcon("scaffolding-info", icon, tooltip, Some(_ => onScaffoldingRequested())).amend(
+      InteractionInfoPanel.infoPanelIcon(fullInfo, "scaffolding-info", icon, tooltip, Some(_ => onScaffoldingRequested())).amend(
         role := "img", tabIndex := 0, aria.label <-- tooltip,
         span(aria.hidden := true, child.text <-- laminarHelper.plaintextStringSignal("basic/scaffoldingLabel")))
     }
@@ -61,7 +62,7 @@ case class IconGradingAndScaffolding[F <: InteractionFormat](
         case _ => ("basic/gradingInfoTooltipNrCorrect", Seq(report.correct.toString, report.total.toString))
       }
       val tooltip = laminarHelper.contentIdStringSignal(key, PLAINTEXT_UNDERSCORE_REPLACABLE, arguments)
-      InteractionInfoPanel.infoPanelIcon("grading-info", icon, tooltip, Some(_ => onGradingRequested())).amend(
+      InteractionInfoPanel.infoPanelIcon(fullInfo, "grading-info", icon, tooltip, Some(_ => onGradingRequested())).amend(
         role := "img", tabIndex := 0, aria.label <-- tooltip,
         span(aria.hidden := true, child.text <-- laminarHelper.plaintextStringSignal("basic/gradingInfoLabel")))
     }

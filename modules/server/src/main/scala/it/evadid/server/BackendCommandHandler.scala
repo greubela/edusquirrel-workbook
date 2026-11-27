@@ -10,7 +10,7 @@ import it.evadid.distribution.commandTypes.SQLCommands.*
 import it.evadid.distribution.commandTypes.SubmissionCommands.SubmitSessionEvent
 import it.evadid.distribution.commandTypes.UserCommands.{AuthMailRequest, LoginRequest, *}
 import it.evadid.distribution.formats.ExecutionClientResponse
-import it.evadid.server.commandHandler.sql.sync.{DeleteInDatabase, FetchFromDatabase, UpsertToDatabase}
+import it.evadid.server.commandHandler.sql.sync.HistorySql
 import it.evadid.server.commandHandler.sql.{SqlEditorExecution, SqlLogCommands, SqlUserCommands}
 import it.evadid.util.logging.Logger
 
@@ -67,26 +67,26 @@ object BackendCommandHandler {
         (request, logger) => Future { SqlEditorExecution.handle(request) }
       ),
       SQLCommands.StoreToDbCommand.toLocalExecutionClient(
-        (request: StoreToDbRequest, logger: Logger) => Future { UpsertToDatabase.handleRequest(request, logger) },
+        (request: StoreToDbRequest, logger: Logger) => Future { HistorySql.forRequest(request, logger)(_.store(request)) },
         (request: StoreToDbRequest, _: Logger) => mayAccessUser(request.syncContext.userId)
       ),
       SQLCommands.bulkStoreToDbCommand.toLocalExecutionClient(
-        (request: BulkStoreToDbRequest, logger: Logger) => Future { UpsertToDatabase.handleBulkRequest(request, logger) },
+        (request: BulkStoreToDbRequest, logger: Logger) => Future { HistorySql.forRequest(request, logger)(_.storeAll(request)) },
         (request: BulkStoreToDbRequest, _: Logger) => request.syncContexts.forall(context => mayAccessUser(context.userId))
       ),
       SQLCommands.fetchEventsFromDbCommand.toLocalExecutionClient(
-        (request: FetchEventsFromDbRequest, logger: Logger) => Future { FetchFromDatabase.handleRequest(request, logger) },
+        (request: FetchEventsFromDbRequest, logger: Logger) => Future { HistorySql.forRequest(request, logger)(_.fetch(request)) },
         (request: FetchEventsFromDbRequest, _: Logger) => mayAccessUser(request.usageContext.userId)
       ),
       SQLCommands.resetUserHistoriesDbCommand.toLocalExecutionClient(
         (request: DeleteInDbRequest, logger: Logger) => Future {
           require(request.allWorkbooks, "A full reset requires the all-workbook scope.")
-          DeleteInDatabase.handleRequest(request, logger)
+          HistorySql.forRequest(request, logger)(_.delete(request))
         },
         (request: DeleteInDbRequest, _: Logger) => mayAccessUser(request.usageContext.userId)
       ),
       SQLCommands.clearValuesDbCommand.toLocalExecutionClient(
-        (request: DeleteInDbRequest, logger: Logger) => Future { DeleteInDatabase.handleRequest(request, logger) },
+        (request: DeleteInDbRequest, logger: Logger) => Future { HistorySql.forRequest(request, logger)(_.delete(request)) },
         (request: DeleteInDbRequest, _: Logger) => mayAccessUser(request.usageContext.userId)
       ),
 

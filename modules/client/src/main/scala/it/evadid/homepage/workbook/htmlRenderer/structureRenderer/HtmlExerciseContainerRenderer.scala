@@ -1,5 +1,7 @@
 package it.evadid.homepage.workbook.htmlRenderer.structureRenderer
 
+import it.evadid.homepage.control.model.FullInfo
+
 import com.raquo.laminar.api.L.*
 import it.evadid.homepage.webElements.HtmlAppElement
 import it.evadid.homepage.workbook.htmlRenderer.atomarLineRenderings.{AtomarLineRendering, RenderingAsContainerTitle}
@@ -20,9 +22,9 @@ object HtmlExerciseContainerRenderer extends HtmlRenderFactory[ExerciseContainer
 
   
   
-  private def renderAllChildren(container: ExerciseContainer): Seq[Element] = try {
-    val title = AtomarLineRendering.exerciseContainerTitleLine(container.containerTitle).render
-    val rest = container.childrenOfThisElement.map(HtmlRenderFactory.render).map(_.getDomElement())
+  private def renderAllChildren(fullInfo: FullInfo, container: ExerciseContainer): Seq[Element] = try {
+    val title = AtomarLineRendering.exerciseContainerTitleLine(fullInfo, container.containerTitle).render
+    val rest = container.childrenOfThisElement.map(HtmlRenderFactory.render(fullInfo, _)).map(_.getDomElement())
     List(title) ++ rest
   } catch case (err: Throwable) => {
     val errMsg = "Error at drawing HtmlExerciseContainer: " + err.getLocalizedMessage
@@ -31,11 +33,11 @@ object HtmlExerciseContainerRenderer extends HtmlRenderFactory[ExerciseContainer
   }
 
 
-  protected def createDomElement(workbookElement: ExerciseContainer): Element = div(
+  protected def createDomElement(fullInfo: FullInfo, workbookElement: ExerciseContainer): Element = div(
     //L.cls := "container-exercise style-vbox",
     // L.cls := s"container-level-$normalizedLevel",
     cls := clsStringContainer,
-    children <-- Var(renderAllChildren(workbookElement)).signal
+    children <-- Var(renderAllChildren(fullInfo, workbookElement)).signal
   )
 
 
@@ -46,9 +48,9 @@ object HtmlExerciseContainerRenderer extends HtmlRenderFactory[ExerciseContainer
     L.children <-- children.map(_.map(_.getDomElement()))
   )*/
 
-  override def renderAppElement(workbookElement: ExerciseContainer): HtmlWorkbookElement[ExerciseContainer, HtmlAppElement] = {
+  override def renderAppElement(fullInfo: FullInfo, workbookElement: ExerciseContainer): HtmlWorkbookElement[ExerciseContainer, HtmlAppElement] = {
 
-    val appElement = HtmlAppElement(createDomElement(workbookElement))
+    val appElement = HtmlAppElement(createDomElement(fullInfo, workbookElement))
     HtmlWorkbookElement[ExerciseContainer, HtmlAppElement](workbookElement, appElement)
 
   }

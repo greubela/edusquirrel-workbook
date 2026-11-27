@@ -30,7 +30,7 @@ class HtmlSubmissionFormSpec extends UiDomSuite {
       _ => Future.successful(SubmitSessionResponse(1, confirmationSent = true))) {
     val currentUser: Var[Option[AllUserInfo]] = Var(user)
     val sent: Var[Seq[SubmitSessionEvent]] = Var(Seq.empty)
-    val form: HtmlSubmissionForm = HtmlSubmissionForm(submitter => fullInfo.homepageInfoNow().toSubmissionBy(submitter),
+    val form: HtmlSubmissionForm = HtmlSubmissionForm(fullInfo, submitter => fullInfo.homepageInfoNow().toSubmissionBy(submitter),
       currentUser.signal, event => { sent.update(_ :+ event); reply(event) }, BasicLogger())
   }
 
@@ -134,7 +134,7 @@ class HtmlSubmissionFormSpec extends UiDomSuite {
   }
 
   test("workbooks render submission elements as the submission form") {
-    val rendering = HtmlRenderFactory.renderWorkbookElement(WorkbookSubmissionElement("rendered-submission"))
+    val rendering = HtmlRenderFactory.renderWorkbookElement(fullInfo, WorkbookSubmissionElement("rendered-submission"))
     mounted(div(rendering.getDomElement())) { root =>
       assertEquals(all(root, "input.login-name-input").size, 1)
       assertEquals(all(root, "input.login-email-input").size, 1)

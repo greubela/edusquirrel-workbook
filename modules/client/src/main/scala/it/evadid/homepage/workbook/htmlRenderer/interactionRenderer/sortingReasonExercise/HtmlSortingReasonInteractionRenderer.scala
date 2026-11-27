@@ -1,5 +1,7 @@
 package it.evadid.homepage.workbook.htmlRenderer.interactionRenderer.sortingReasonExercise
 
+import it.evadid.homepage.control.model.FullInfo
+
 import com.raquo.laminar.api.L.*
 import it.evadid.core.datastructures.language.LanguageMapContentId
 import it.evadid.core.datastructures.state.StateHelper.InteractionVariableOnJS
@@ -12,9 +14,9 @@ object HtmlSortingReasonInteractionRenderer extends LineBasedRenderingFactory[So
 
   private val errorCountLabelId = LanguageMapContentId("basic/sortingLastErrorCount")
 
-  override protected def createRendering(interaction: SortingReasonInteraction): AtomarLineRendering = {
+  override protected def createRendering(fullInfo: FullInfo, interaction: SortingReasonInteraction): AtomarLineRendering = {
     val errorCountSignal =
-      interaction.interactionVariable.createInteractionSignal(fullInfo.workbookContextInformation)
+      interaction.interactionVariable.createInteractionSignal
         .combineWith(fullInfo.signals.stringFromLanguageMapId(errorCountLabelId))
         .map { case (state, template) =>
           val totalErrors = state.lastSessionErrorCount + state.sessionErrorCount
@@ -27,8 +29,8 @@ object HtmlSortingReasonInteractionRenderer extends LineBasedRenderingFactory[So
         div(
           cls := "sorting-interaction__controls",
           HtmlButtonElement.withTextLabel(
-            interaction.openButtonLabel,
-            _ => fullInfo.displayControl.setFullscreen(HtmlSortingReasonExerciseFullscreenElement(interaction)),
+            fullInfo, interaction.openButtonLabel,
+            _ => fullInfo.displayControl.setFullscreen(HtmlSortingReasonExerciseFullscreenElement(fullInfo, interaction)),
             HtmlButtonElement.stdConfig
           ).getDomElement(),
           span(
@@ -38,6 +40,6 @@ object HtmlSortingReasonInteractionRenderer extends LineBasedRenderingFactory[So
         )
       )
 
-    AtomarLineRendering.basicLine(interaction, dom, "sorting-interaction sorting-reason-interaction")
+    AtomarLineRendering.basicLine(fullInfo, interaction, dom, "sorting-interaction sorting-reason-interaction")
   }
 }

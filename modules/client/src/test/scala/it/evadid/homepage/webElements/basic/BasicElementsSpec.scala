@@ -10,9 +10,9 @@ class BasicElementsSpec extends UiDomSuite {
     val chosen = Var(List.empty[String])
     val menu = HtmlDropdownMenu(Var(true), List(
       HtmlDropdownMenu.menuLabel(Val("Signed in as Ada")),
-      HtmlDropdownMenu.menuLabel("menu/heading"),
-      HtmlDropdownMenu.menuItem("menu/catalogue", _ => chosen.update(_ :+ "catalogue")),
-      HtmlDropdownMenu.menuItem(LanguageMapContentId("menu/reset"), _ => chosen.update(_ :+ "reset")),
+      HtmlDropdownMenu.menuLabel(pageInfo, "menu/heading"),
+      HtmlDropdownMenu.menuItem(pageInfo, "menu/catalogue", _ => chosen.update(_ :+ "catalogue")),
+      HtmlDropdownMenu.menuItem(pageInfo, LanguageMapContentId("menu/reset"), _ => chosen.update(_ :+ "reset")),
       HtmlDropdownMenu.menuItem(Val("Log out"))))
     mounted(menu.getDomElement()) { root =>
       assertEquals(root.getAttribute("role"), "menu")
@@ -30,10 +30,10 @@ class BasicElementsSpec extends UiDomSuite {
   test("buttons show their label or icon, follow their visibility and styles, and report clicks") {
     val config = Var(HtmlButtonElement.stdConfig)
     val clicks = Var(0)
-    val labeled = HtmlButtonElement.withTextLabel("basic/save", _ => clicks.update(_ + 1), config.signal)
+    val labeled = HtmlButtonElement.withTextLabel(pageInfo, "basic/save", _ => clicks.update(_ + 1), config.signal)
     val icon = HtmlButtonElement.withSvgContent(svg.svg(svg.cls := "icon"), _ => clicks.update(_ + 10))
-    val fixed = HtmlButtonElement.withTextLabel(LanguageMapContentId("basic/open"), _ => (), ButtonConfig(false, List("wide")))
-    mounted(div(labeled.getDomElement(), icon.getDomElement(), fixed.getDomElement(), HtmlButtonElement.withTextLabel("basic/plain").getDomElement())) { root =>
+    val fixed = HtmlButtonElement.withTextLabel(pageInfo, LanguageMapContentId("basic/open"), _ => (), ButtonConfig(false, List("wide")))
+    mounted(div(labeled.getDomElement(), icon.getDomElement(), fixed.getDomElement(), HtmlButtonElement.withTextLabel(pageInfo, "basic/plain").getDomElement())) { root =>
       val List(save, svgButton, open, plain) = all(root, "button"): @unchecked
       assert(save.textContent.contains(loadingText("basic/save")))
       assert(save.classList.contains("button-labeled"))

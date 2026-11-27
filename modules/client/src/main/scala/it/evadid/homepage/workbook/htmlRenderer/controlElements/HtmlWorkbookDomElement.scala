@@ -1,5 +1,7 @@
 package it.evadid.homepage.workbook.htmlRenderer.controlElements
 
+import it.evadid.homepage.control.model.FullInfo
+
 import it.evadid.workbook.session.AllWorkbookInfo
 import it.evadid.homepage.webElements.basic.PageScrollLock
 import com.raquo.laminar.api.L.*
@@ -12,7 +14,7 @@ import it.evadid.workbook.abstractions.TypeOfTextDisplay.PLAINTEXT_UNDERSCORE_RE
 import org.scalajs.dom
 import org.scalajs.dom.HTMLDivElement
 
-case class HtmlWorkbookDomElement() extends HtmlAppElement {
+case class HtmlWorkbookDomElement(fullInfo: FullInfo) extends HtmlAppElement {
 
   override def getDomElement(): Element = workbookDomElement
 
@@ -40,12 +42,12 @@ case class HtmlWorkbookDomElement() extends HtmlAppElement {
       previous == next && previous.zip(next).forall((a, b) => a.loadedWorkbook eq b.loadedWorkbook))
     val userSignal = fullInfo.signals.user.distinct
     // Construct the registry before any view asks for an interaction's reporters.
-    val watchSignal = workbookSignal.combineWith(userSignal, fullInfo.signals.interactionReporters)
+    val watchSignal = workbookSignal.combineWith(userSignal, fullInfo.reporters.all)
 
     watchSignal.map {
-      case (None, _, _) => HtmlSelectWorkbookElement().getDomElement()
-      case (_, None, _) => HtmlLoginElement().getDomElement()
-      case (Some(workbookInfo), Some(userInfo), _) => HtmlWorkbookBodyElement(workbookInfo, userInfo).getDomElement()
+      case (None, _, _) => HtmlSelectWorkbookElement(fullInfo).getDomElement()
+      case (_, None, _) => HtmlLoginElement(fullInfo).getDomElement()
+      case (Some(workbookInfo), Some(userInfo), _) => HtmlWorkbookBodyElement(fullInfo, workbookInfo, userInfo).getDomElement()
     }
   }
 
@@ -57,10 +59,10 @@ case class HtmlWorkbookDomElement() extends HtmlAppElement {
   lazy val privacyFooterStringSignal: Signal[String] = {
 
     fullInfo.signals.user.flatMapSwitch(allUserInfoOp => {
-      if (allUserInfoOp.isEmpty) laminarHelper.plaintextStringSignal("login/privacyFooterNoLogin")
+      if (allUserInfoOp.isEmpty) laminarHelper(fullInfo).plaintextStringSignal("login/privacyFooterNoLogin")
       else if (!allUserInfoOp.get.config.isOnlineAccount) {
         val syncDest = allUserInfoOp.get.config.syncDestinations.map(_.syncDestination)
-        laminarHelper.contentIdStringSignal(
+        laminarHelper(fullInfo).contentIdStringSignal(
           "login/privacyFooterLocalLogin",
           PLAINTEXT_UNDERSCORE_REPLACABLE,
           List(syncDest.mkString("(", ", ", ")"))
@@ -70,7 +72,7 @@ case class HtmlWorkbookDomElement() extends HtmlAppElement {
         val syncDest = allUserInfoOp.get.config.syncDestinations.map(_.syncDestination)
 
 
-        laminarHelper.contentIdStringSignal(
+        laminarHelper(fullInfo).contentIdStringSignal(
           LanguageMapContentId("login/privacyFooterOnlineLogin"),
           PLAINTEXT_UNDERSCORE_REPLACABLE,
           List(syncDest.size.toString, syncDest.count(!_.isRemote).toString, syncDest.count(_.isRemote).toString))
@@ -97,8 +99,8 @@ case class HtmlWorkbookDomElement() extends HtmlAppElement {
         button(
           typ := "button",
           cls := "workbook-footer-close",
-          aria.label <-- laminarHelper.plaintextStringSignal("login/privacyFooterClose"),
-          title <-- laminarHelper.plaintextStringSignal("login/privacyFooterClose"),
+          aria.label <-- laminarHelper(fullInfo).plaintextStringSignal("login/privacyFooterClose"),
+          title <-- laminarHelper(fullInfo).plaintextStringSignal("login/privacyFooterClose"),
           "×",
           onClick --> { _ => privacyFooterClosed.set(true) }
         )
@@ -113,8 +115,8 @@ case class HtmlWorkbookDomElement() extends HtmlAppElement {
         // Collapsed, only the toggle remains, so the workbook gets the whole screen.
         if (collapsed) List(createDomToggleButton())
         else {
-          val section: Seq[Element] = if (workbook.isEmpty || user.isEmpty) List() else List(SectionSelectionLine(workbook.get).getDomElement())
-          List(createTitleLine(workbook, user), DropdownMenuControl(workbook, user).getDomElement(), LanguageSelectionLine().getDomElement()) ++
+          val section: Seq[Element] = if (workbook.isEmpty || user.isEmpty) List() else List(SectionSelectionLine(fullInfo, workbook.get).getDomElement())
+          List(createTitleLine(workbook, user), DropdownMenuControl(fullInfo, workbook, user).getDomElement(), LanguageSelectionLine(fullInfo).getDomElement()) ++
             section ++ List(createDomToggleButton())
         }
       })
@@ -127,8 +129,8 @@ case class HtmlWorkbookDomElement() extends HtmlAppElement {
     onClick --> { _ => fullInfo.displayControl.updateDisplay(displayInfo => displayInfo.copy(collapsedNavigation = !displayInfo.collapsedNavigation)) },
     span(
       child <-- collapsedSignal.map { c =>
-        if (c) span(text <-- laminarHelper.plaintextStringSignal("basic/showHeader"))
-        else span(text <-- laminarHelper.plaintextStringSignal("basic/hideHeader"))
+        if (c) span(text <-- laminarHelper(fullInfo).plaintextStringSignal("basic/showHeader"))
+        else span(text <-- laminarHelper(fullInfo).plaintextStringSignal("basic/hideHeader"))
       }
     )
   )
@@ -137,18 +139,18 @@ case class HtmlWorkbookDomElement() extends HtmlAppElement {
     if (workbook.isEmpty) {
       div(
         cls := "workbook-title-line",
-        h1(text <-- laminarHelper.plaintextStringSignal("workbookSelection/title")),
+        h1(text <-- laminarHelper(fullInfo).plaintextStringSignal("workbookSelection/title")),
       )
     }
     else if (user.isEmpty)
       div(
         cls := "workbook-title-line",
-        h1(text <-- laminarHelper.plaintextStringSignal("login/titleLoginPage")),
+        h1(text <-- laminarHelper(fullInfo).plaintextStringSignal("login/titleLoginPage")),
       )
     else {
       div(
         cls := "workbook-title-line",
-        h1(text <-- laminarHelper.plaintextStringSignal(workbook.get.loadedWorkbook.metadata.workbookTitle)),
+        h1(text <-- laminarHelper(fullInfo).plaintextStringSignal(workbook.get.loadedWorkbook.metadata.workbookTitle)),
       )
     }
   }
@@ -156,13 +158,13 @@ case class HtmlWorkbookDomElement() extends HtmlAppElement {
   // FULLSCREEN STUFF
 
 
-  private lazy val fullscreenActiveElementSignal: Signal[Option[HtmlAppElement]] = fullInfo.signals.currentDisplayInfo.map(_.fullscreenElement).distinct
+  private lazy val fullscreenActiveElementSignal: Signal[Option[HtmlAppElement]] = fullInfo.signals.display.map(_.fullscreenElement).distinct
 
   private val onCloseDialog = new EventProp[dom.Event]("close")
   private val onCancelDialog = new EventProp[dom.Event]("cancel")
 
   private def currentAllowsOutsideDismiss: Boolean =
-    fullInfo.signals.currentDisplayInfo.now().fullscreenElement match
+    fullInfo.signals.display.now().fullscreenElement match
       case Some(element) => element.dismissOnOutsideClick
       case _ => true
 
@@ -176,7 +178,7 @@ case class HtmlWorkbookDomElement() extends HtmlAppElement {
       onCancelDialog --> { ev =>
         if !currentAllowsOutsideDismiss then ev.preventDefault()
       },
-      laminarHelper.onClickedOutside { _ =>
+      laminarHelper(fullInfo).onClickedOutside { _ =>
         if currentAllowsOutsideDismiss then fullInfo.displayControl.closeFullscreen()
       },
       onMountCallback { ctx =>

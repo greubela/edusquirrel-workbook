@@ -36,7 +36,7 @@ object AuthHandling {
   }
 
   def isTokenValid(logger: Logger, givenToken: SignedToken): Boolean = {
-    JwtJson.decodeJson(givenToken.tokenStringWithSignature, serverSecret, Seq(JwtAlgorithm.HS256)) match {
+    JwtJson.decodeJson(givenToken.tokenStringWithSignature, serverSecret, Seq(algo)) match {
       case Success(jsonClaims) => try {
         val parsedUserInfo = upickle.default.read[UserTokenInfo](jsonClaims.toString)
 

@@ -13,12 +13,12 @@ import it.evadid.workbook.interaction.variable.InteractionVariableState.{Designa
 import it.evadid.workbook.meta.ExecutionContextInformation
 
 import java.time.LocalDateTime
-import scala.concurrent.ExecutionContext
 import scala.util.Try
 
-case class InteractionVariable[F <: InteractionFormat](underlyingInteraction: WorkbookInteractionElement[F], debug: Boolean = false) {
-
-  given ec: ExecutionContext = ExecutionContext.global
+/** The live answer and event history of one interaction instance; identity, not definition equality, distinguishes
+  * instances. It creates the feedback control for each user session and replaces it when the session changes.
+  */
+final class InteractionVariable[F <: InteractionFormat](val underlyingInteraction: WorkbookInteractionElement[F]) {
 
   def currentHistory: InteractionVariableHistory[F] = this.synchronized {
     innerState.now()
@@ -36,11 +36,9 @@ case class InteractionVariable[F <: InteractionFormat](underlyingInteraction: Wo
 
   private val innerState: State[InteractionVariableHistory[F]] = State(defaultHistory)
 
-  private val feedbackGeneration = State(0L)
   private val feedbackOwner = State(Option.empty[AnyRef])
   private val feedbackControl = State(new InteractionScaffoldingAndGradingControl(this))
   def control: InteractionScaffoldingAndGradingControl[F] = feedbackControl.now()
-  private[variable] def currentFeedbackGeneration: Long = feedbackGeneration.now()
 
   /** Bind reused workbook instances to the current user; their computation caches are session-owned. */
   def bindFeedbackSession(owner: AnyRef): Unit = synchronized {
@@ -51,19 +49,17 @@ case class InteractionVariable[F <: InteractionFormat](underlyingInteraction: Wo
     }
   }
 
-  private def invalidateFeedback(): Unit = {
-    feedbackGeneration.update(_ + 1)
-    feedbackControl.set(new InteractionScaffoldingAndGradingControl(this))
-  }
+  private def invalidateFeedback(): Unit = feedbackControl.set(new InteractionScaffoldingAndGradingControl(this))
 
   def resetForNewSession(): Unit = synchronized {
     invalidateFeedback()
     innerState.set(defaultHistory)
   }
 
-  private[variable] def publishFeedback(generation: Long, context: ExecutionContextInformation)
+  /** Records feedback only while `publisher` is still this session's control and its context is current. */
+  private[variable] def publishFeedback(publisher: InteractionScaffoldingAndGradingControl[F], context: ExecutionContextInformation)
       (update: InteractionVariableHistory[F] => InteractionVariableHistory[F]): Unit = synchronized {
-    if generation == currentFeedbackGeneration && context.isCurrent then updateHistory(update, context)
+    if (publisher eq control) && context.isCurrent then updateHistory(update, context)
   }
 
   val keyForSerialization: String = underlyingInteraction.elementId + "_history"
@@ -83,16 +79,19 @@ case class InteractionVariable[F <: InteractionFormat](underlyingInteraction: Wo
     AsyncState(obsState)
   }
 
-  def createBoundStateWithUpdateLogic(relevanceFunc: InteractionVariableStateChanged[InteractionFormat.State[F]] => UpdateImportance, context: ExecutionContextInformation): State[InteractionFormat.State[F]] = this.synchronized {
-    val outerState = State[InteractionFormat.State[F]](currentValue)
-    observableValue.addObserver(newValue => if (newValue != outerState.now()) outerState.set(currentValue))
-    outerState.observable.addObserver(newValue => if (newValue != currentValue) {
-      val last = safeLastState
+  /** A view of the current answer for editors: it reads the history and records each write as a user change
+    * whose importance `relevanceFunc` decides. The view registers no observers, so editors may create and drop it freely.
+    */
+  def createBoundStateWithUpdateLogic(relevanceFunc: InteractionVariableStateChanged[InteractionFormat.State[F]] => UpdateImportance, context: ExecutionContextInformation): State[InteractionFormat.State[F]] =
+    State.fromStorage(() => currentValue, applyUserChange(_, relevanceFunc, context),
+      transform => applyUserChange(transform(currentValue), relevanceFunc, context), observableValue)
+
+  private def applyUserChange(newValue: InteractionFormat.State[F],
+      relevanceFunc: InteractionVariableStateChanged[InteractionFormat.State[F]] => UpdateImportance, context: ExecutionContextInformation): Unit = this.synchronized {
+    if newValue != currentValue then {
       val newState = DesignatedInteractionState(newValue, LocalDateTime.now())
-      val importance = relevanceFunc(InteractionVariableStateChanged(last, newState))
-      setStateFromUserInteraction(newValue, importance, newState.timestamp, context)
-    })
-    outerState
+      setStateFromUserInteraction(newValue, relevanceFunc(InteractionVariableStateChanged(safeLastState, newState)), newState.timestamp, context)
+    }
   }
 
   def createBoundStateWithUpdateImportance(importance: UpdateImportance, context: ExecutionContextInformation): State[InteractionFormat.State[F]] = this.synchronized {

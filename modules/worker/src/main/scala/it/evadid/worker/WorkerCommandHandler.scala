@@ -6,7 +6,6 @@ import it.evadid.distribution.commandTypes.WorkerCommands.*
 import it.evadid.core.datastructures.vectorShapes.renderer.FlowchartGutter
 import it.evadid.vm.parsing.source.SourceParsing
 import it.evadid.workbook.model.qr.QrCode
-import it.evadid.util.logging.BasicLogger
 import scala.concurrent.{ExecutionContext, Future}
 
 /** Runs only inside worker.js; jobs never access DOM or server credentials. */
@@ -23,8 +22,8 @@ object WorkerCommandHandler {
     flowchart.toLocalExecutionClient((request, _) => Future(FlowchartGutter.of(request.language, request.source))),
     programAnalysis.toLocalExecutionClient((request, _) => Future(it.evadid.vm.analysis.ProgramAnalysis.of(request.state, request.environment))),
     runPython.toLocalExecutionClient((request, logger) => PyodideCommandRuntime.run(request, logger)),
-    javaExecutionEvidence.toLocalExecutionClient((request, _) =>
-      JavaTurtleEvidenceJob.run(request, python => PyodideCommandRuntime.run(python, BasicLogger()))),
+    javaExecutionEvidence.toLocalExecutionClient((request, logger) =>
+      JavaTurtleEvidenceJob.run(request, python => PyodideCommandRuntime.run(python, logger))),
     calculateQrCode.toLocalExecutionClient((request, _) => Future {
       val code = QrCode.fromText(request.text, request.errorCorrection, request.version, request.mask)
       CalculateQrCodeResult(code, code.modules)

@@ -1,5 +1,7 @@
 package it.evadid.homepage.webElements.editor.compression
 
+import it.evadid.homepage.control.model.FullInfo
+
 import com.raquo.laminar.api.L.*
 import it.evadid.homepage.webElements.basic.LabelSelection
 import it.evadid.homepage.webElements.HtmlAppElement
@@ -9,7 +11,7 @@ import scala.scalajs.js.typedarray.Float64Array
 import scala.util.Try
 
 /** Full-resolution source pixels and partial edge blocks; canvas data is never saved as an answer. */
-case class CompressionImageView(imageResource: String, settings: Signal[ImageBlocks]) extends HtmlAppElement {
+case class CompressionImageView(fullInfo: FullInfo, imageResource: String, settings: Signal[ImageBlocks]) extends HtmlAppElement {
   override def getDomElement(): Element = {
     val failed = Var(false)
     /** The loaded image's pixels; set once it has been drawn. */
@@ -26,8 +28,8 @@ case class CompressionImageView(imageResource: String, settings: Signal[ImageBlo
       }
     div(cls := "compression-image-comparison",
       img(src := fullInfo.contentControl.fileFactory.relativeToTechnicalResources(imageResource).asUrlString,
-        alt <-- CompressionExperimentView.localized("src_widget_blockSize_original"),cls := "compression-original-image"),
-      div(cls := "compression-image-viewport", canvasTag(aria.label <-- CompressionExperimentView.localized("imagePreview"),
+        alt <-- CompressionExperimentView.localized(fullInfo, "src_widget_blockSize_original"),cls := "compression-original-image"),
+      div(cls := "compression-image-viewport", canvasTag(aria.label <-- CompressionExperimentView.localized(fullInfo, "imagePreview"),
         onMountCallback(ctx => {
           val canvas=ctx.thisNode.ref;val context=canvas.getContext("2d").asInstanceOf[dom.CanvasRenderingContext2D]
           settings.combineWith(source.signal).foreach { (value, loaded) => loaded.foreach { source =>
@@ -61,6 +63,6 @@ case class CompressionImageView(imageResource: String, settings: Signal[ImageBlo
           loading.src=fullInfo.contentControl.fileFactory.relativeToTechnicalResources(imageResource).asUrlString
         }),onUnmountCallback(_ => {image.now().foreach(_.onload=null);image.set(None)}))),
       p(role := "status", text <-- LabelSelection(failed.signal.combineWith(source.signal.map(_.nonEmpty)), Seq("imageLoadFailed", "imageLoading"),
-        CompressionExperimentView.localized)((error,loaded) => if error then Some("imageLoadFailed") else Option.when(!loaded)("imageLoading"))))
+        CompressionExperimentView.localized(fullInfo, _))((error,loaded) => if error then Some("imageLoadFailed") else Option.when(!loaded)("imageLoading"))))
   }
 }

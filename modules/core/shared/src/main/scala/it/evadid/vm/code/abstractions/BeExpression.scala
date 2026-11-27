@@ -8,7 +8,6 @@ import it.evadid.vm.code.others.{BeReturn, BeStartProgram}
 import it.evadid.vm.code.tree.*
 import it.evadid.vm.code.usage.*
 import it.evadid.vm.io.BeExpressionStructureInfo
-import it.evadid.vm.simulation.*
 import it.evadid.vm.static.BeExpressionStaticInformation
 import it.evadid.vm.types.*
 import it.evadid.vm.types.BeScope.GlobalScope
@@ -78,17 +77,6 @@ trait BeExpression {
 
   lazy val structureInfo: BeExpressionStructureInfo[?]
 
-  def expressionExecutor(simulatorConfig: BeSimulatorConfig, stateBeforeExecution: BeSimulatorState): BeExpressionExecutor = {
-    println("[WARN] Execution support is not implemented for " + getClass.getSimpleName + " (defaulting to NoOp)")
-    new BeExpressionExecutor(simulatorConfig, stateBeforeExecution, this) {
-      protected def childExpressionsToExecute(stateBeforeExecution: BeSimulatorState): Seq[BeExpression] = List()
-
-      protected def applySideEffectsOfThisBlock(stateBeforeExecution: BeSimulatorState, childrenResults: Seq[(BeSimulatorState, BeDataValue)]): BeSimulatorState = stateBeforeExecution
-
-      protected def executeThisBlockInSimulatorAndGetValue(stateBeforeExecution: BeSimulatorState, childrenResults: Seq[(BeSimulatorState, BeDataValue)]): (BeSimulatorState, BeDataValue) = (stateBeforeExecution, BeDataValueUnit())
-    }
-  }
-
   /** This expression and its descendants, depth first in source order. */
   def subtree: Vector[BeExpression] =
     this +: structureInfo.getChildren(false, GlobalScope()).toVector.flatMap {
@@ -108,18 +96,13 @@ trait BeExpression {
       case exprNode@BeExtensionPoint(isRequired, childPosition, willBeUsedAsType) => (exprNode, None)
     }
 
-    var tree: BeExpressionTree = NodeBasedTreeImpl.empty[BeExpressionNode]()
-    tree = tree.addAsLastChild(tree.rootPosition, root)
-    children.foreach((expr, opTree) => opTree match {
-      case Some(expressionTree: BeExpressionTree) => tree = tree.addSubtreeAsLastChild(tree.rootPosition.forChild(0), expressionTree)
-      case _ => tree = tree.addAsLastChild(tree.rootPosition.forChild(0), expr)
-    })
-
-    tree
+    val empty: BeExpressionTree = NodeBasedTreeImpl.empty[BeExpressionNode]()
+    val rooted: BeExpressionTree = empty.addAsLastChild(empty.rootPosition, root)
+    children.foldLeft(rooted) { case (tree, (expr, opTree)) => opTree match {
+      case Some(expressionTree: BeExpressionTree) => tree.addSubtreeAsLastChild(tree.rootPosition.forChild(0), expressionTree)
+      case _ => tree.addAsLastChild(tree.rootPosition.forChild(0), expr)
+    }}
   }
-
-
-  def stopExecutionBeforeThisBlock: Boolean = false
 
   def staticInformationSubtree: BeExpressionStaticInformation = new BeExpressionStaticInformation() {
 

@@ -1,19 +1,21 @@
 package it.evadid.homepage.webElements.editor.blockchain
 
+import it.evadid.homepage.control.model.FullInfo
+
 import com.raquo.laminar.api.L.*
 import it.evadid.homepage.webElements.basic.LabelSelection
 import it.evadid.homepage.webElements.HtmlAppElement
 import it.evadid.workbook.model.blockchain.*
 import org.scalajs.dom
 
-case class BlockchainEditor(state: Var[TeachingChain], initial: TeachingChain, zeros: Int, locked: Signal[Boolean])
+case class BlockchainEditor(fullInfo: FullInfo, state: Var[TeachingChain], initial: TeachingChain, zeros: Int, locked: Signal[Boolean])
     extends HtmlAppElement {
   private val invalidNonceDrafts = Var(Map.empty[Int, String])
   private val mining = new BlockchainMiningController(state, zeros, callback => {
     val timer = dom.window.setTimeout(() => callback(), 0)
     () => dom.window.clearTimeout(timer)
   })
-  private def textFor(key: String): Signal[String] = laminarHelper.plaintextStringSignal(s"blockchainworkbook/$key")
+  private def textFor(key: String): Signal[String] = laminarHelper(fullInfo).plaintextStringSignal(s"blockchainworkbook/$key")
   private def blockCard(index: Int): Element = articleTag(
     cls := "blockchain-block",
     cls <-- state.signal.map(chain => if chain.validPrefixLength(zeros) > index then "blockchain-block--valid" else "blockchain-block--invalid"),

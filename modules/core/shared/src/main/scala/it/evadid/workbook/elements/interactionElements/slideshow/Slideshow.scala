@@ -52,8 +52,6 @@ object Slideshow {
     override def idsRequiredForDeserialization(element: WorkbookElementSerializable): Set[String] =
       element.getElementsAs[WorkbookElementReference]("panels").map(_.referencedId).toSet
 
-    override def serializedElementContainsOtherSerializations(element: WorkbookElementSerializable): Seq[WorkbookElementSerializable] = Seq.empty
-
     override def fromSerializedElement(element: WorkbookElementSerializable, parsedElements: Map[String, WorkbookElement]): Slideshow =
       Slideshow(element.elementId, element.getAndResolveWorkbookElements("panels", parsedElements))
 

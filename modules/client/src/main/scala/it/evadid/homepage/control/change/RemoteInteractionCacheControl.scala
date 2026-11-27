@@ -43,8 +43,8 @@ case class RemoteInteractionCacheControl(fullInfo: FullInfo) extends SyncControl
   }
 
   private val userBinding: StrictSignal[UserBinding] = fullInfo.signals.user
-    .map(_.map(_.user.personId)).distinct.map(_ => new UserBinding).observe(using unsafeWindowOwner)
-  val resetState: StrictSignal[SyncResetState] = userBinding.flatMapSwitch(_.state.signal.map(_.reset)).observe(using unsafeWindowOwner)
+    .map(_.map(_.user.personId)).distinct.map(_ => new UserBinding).observe(using fullInfo.owner)
+  val resetState: StrictSignal[SyncResetState] = userBinding.flatMapSwitch(_.state.signal.map(_.reset)).observe(using fullInfo.owner)
 
   private trait Restoration {
     def publish(context: ExecutionContextInformation): Unit
@@ -125,14 +125,14 @@ case class RemoteInteractionCacheControl(fullInfo: FullInfo) extends SyncControl
   private final case class DeferredStore(completion: Promise[Unit], run: () => Future[Unit])
   private val deferredStores = Var(Map.empty[(WorkbookBinding, String), DeferredStore])
 
-  private val environments = fullInfo.signals.syncEnvironmentSignal.combineWith(userBinding).observe(using unsafeWindowOwner)
+  private val environments = fullInfo.signals.syncEnvironmentSignal.combineWith(userBinding).observe(using fullInfo.owner)
   private val binding: StrictSignal[WorkbookBinding] = environments.changes
     .scanLeft(new WorkbookBinding(environments.now()._1, environments.now()._2)) { (previous, next) =>
       val replacement = new WorkbookBinding(next._1, next._2)
       deferredStores.now().keys.filter(_._1 eq previous).foreach(runDeferred)
       previous.detach()
       replacement
-    }.observe(using unsafeWindowOwner)
+    }.observe(using fullInfo.owner)
 
   // Switching subscriptions prevents old reads from publishing into a replacement workbook.
   binding.flatMapSwitch(current => current.restorations.map(updates => (current, updates)))
@@ -140,7 +140,7 @@ case class RemoteInteractionCacheControl(fullInfo: FullInfo) extends SyncControl
       // Each restoration is isolated: one interaction that cannot be restored never blocks the others.
       if current.user.enabled then updates.foreach(update => Try(update.publish(current.context)).failed.foreach(error =>
         syncLogger.logExceptionWarn("Could not restore an interaction history", error)))
-    }(using unsafeWindowOwner)
+    }(using fullInfo.owner)
 
   /** A hidden page may be closed without running another task: deferred stores would never start and buffered
     * destinations never send. So when the page is hidden or left, pending stores run at once and every destination
@@ -152,8 +152,8 @@ case class RemoteInteractionCacheControl(fullInfo: FullInfo) extends SyncControl
     Try(binding.now().flush()).failed.foreach(error => syncLogger.logExceptionWarn("Could not send buffered histories", error))
   }
   windowEvents(_ => RemoteInteractionCacheControl.onVisibilityChange).filter(_ => dom.document.hidden)
-    .foreach(_ => storePendingNow())(using unsafeWindowOwner)
-  windowEvents(_.onPageHide).foreach(_ => storePendingNow())(using unsafeWindowOwner)
+    .foreach(_ => storePendingNow())(using fullInfo.owner)
+  windowEvents(_.onPageHide).foreach(_ => storePendingNow())(using fullInfo.owner)
 
   override def storeAll(forceFlush: Boolean): Future[Unit] = {
     val current = binding.now()

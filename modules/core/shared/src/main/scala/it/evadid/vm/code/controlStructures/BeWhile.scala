@@ -5,7 +5,6 @@ import it.evadid.vm.code.tree.{BeExpressionNode, BeExpressionReference}
 import it.evadid.vm.controlflow.ControlFlowType.{ControlFlowUp, RepeatBranch, RepeatUnion}
 import it.evadid.vm.io.BeSegmentedCodeElement.BeControlFlowLine
 import it.evadid.vm.io.{BeExpressionStructureInfo, BeSegmentedCodeElement}
-import it.evadid.vm.simulation.*
 import it.evadid.vm.static.BeExpressionStaticInformation
 import it.evadid.vm.types.*
 import it.evadid.vm.types.BeChildRole.ConditionInControlStructure
@@ -40,14 +39,6 @@ case class BeWhile(
     )
   }
 
-
-  override def expressionExecutor(simulatorConfig: BeSimulatorConfig, stateBeforeExecution: BeSimulatorState): BeExpressionExecutor = new BeExpressionExecutor(simulatorConfig, stateBeforeExecution, this) {
-    override protected def childExpressionsToExecute(stateBeforeExecution: BeSimulatorState): List[BeExpression] = ???
-
-    override protected def applySideEffectsOfThisBlock(stateBeforeExecution: BeSimulatorState, childrenResults: Seq[(BeSimulatorState, BeDataValue)]): BeSimulatorState = ???
-
-    override protected def executeThisBlockInSimulatorAndGetValue(stateBeforeExecution: BeSimulatorState, childrenResults: Seq[(BeSimulatorState, BeDataValue)]): (BeSimulatorState, BeDataValue) = ???
-  }
 
   /*
     override def getChildren(withExtensions: Boolean, myScope: BeScope): List[BeExpressionNode] = {

@@ -1,14 +1,14 @@
 package it.evadid.homepage.workbook.htmlRenderer.interactionRenderer.turtleStitch
 
+import it.evadid.homepage.control.model.FullInfo
+
 import it.evadid.workbook.abstractions.InteractionFormat.{TurtleProjectFormat}
 
 import com.raquo.laminar.api.L.*
 import com.raquo.laminar.nodes.ReactiveHtmlElement
 import it.evadid.core.datastructures.language.LanguageMapContentId
-import it.evadid.homepage.control.singletons.HtmlFullWorkbookApp.fullInfo
 import it.evadid.homepage.webElements.HtmlAppElement
 import it.evadid.homepage.webElements.basic.HtmlButtonElement
-import it.evadid.homepage.workbook.htmlRenderer.interactionRenderer.codeTaskToggle.HtmlSketchDownloadRenderer.fullInfo
 import it.evadid.workbook.abstractions.WorkbookInteractionElement
 import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseTurtle.TurtleStitchProjectState
 import it.evadid.workbook.interaction.sync.UpdateImportance
@@ -20,7 +20,7 @@ import scala.concurrent.{ExecutionContext, Future}
 import scala.util.{Failure, Success}
 
 
-private[turtleStitch] case class HtmlTurtleStitchFileUploadCard(workbookInteraction: WorkbookInteractionElement[TurtleProjectFormat.type], label: LanguageMapContentId) extends HtmlAppElement {
+private[turtleStitch] case class HtmlTurtleStitchFileUploadCard(fullInfo: FullInfo, workbookInteraction: WorkbookInteractionElement[TurtleProjectFormat.type], label: LanguageMapContentId) extends HtmlAppElement {
 
   private val acceptedTypes: Seq[String] = List("text/turtle", "text/xml")
 
@@ -33,7 +33,7 @@ private[turtleStitch] case class HtmlTurtleStitchFileUploadCard(workbookInteract
       if (inputElement.files.length > 0) onNewFileSelected(inputElement.files.item(0))
     }
   )
-  private lazy val buttonElement: Element = HtmlButtonElement.withTextLabel(label, event => uploadInput.ref.click(), HtmlButtonElement.stdConfig).getDomElement()
+  private lazy val buttonElement: Element = HtmlButtonElement.withTextLabel(fullInfo, label, event => uploadInput.ref.click(), HtmlButtonElement.stdConfig).getDomElement()
 
   private def onFileReadSuccessfully(bytes: Array[Byte]): Unit = {
     println("file read successfully, content has " + bytes.length + " bytes!")

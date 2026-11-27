@@ -45,44 +45,44 @@ object JavaTurtleInterpreter {
         maxBlockDepth > 0 && maxBlockDepth <= Limits.MaxBlockDepth
   }
 
-  def run(source: R.ResolvedSource, limits: Limits = Limits(),
-      isCancelled: () => Boolean = () => false): Execution =
-    execute(source.methods, source.entryPoint, source.entryPoint, Vector.empty, true, limits, isCancelled)
-
-  def invoke(source: R.ResolvedSource, method: R.MethodId, arguments: Vector[E.Value],
-      limits: Limits = Limits(), isCancelled: () => Boolean = () => false): Execution =
-    execute(source.methods, source.entryPoint, method, arguments, false, limits, isCancelled)
-
-  def runVm(program: P, limits: Limits = Limits(),
-      isCancelled: () => Boolean = () => false): Execution =
-    execute(program.resolvedMethods, program.root.entryPoint.binding.id, program.root.entryPoint.binding.id,
-      Vector.empty, true, limits, isCancelled)
-
-  def invokeVm(program: P, method: R.MethodId, arguments: Vector[E.Value],
-      limits: Limits = Limits(), isCancelled: () => Boolean = () => false): Execution =
-    execute(program.resolvedMethods, program.root.entryPoint.binding.id, method, arguments, false, limits, isCancelled)
-
-  def runVmTraced(program: P, limits: Limits = Limits(),
-      isCancelled: () => Boolean = () => false, budget: J.Budget = J.Budget()): J.RecordedExecution =
-    recorded(program, budget)(recorder => execute(program.resolvedMethods, program.root.entryPoint.binding.id,
-      program.root.entryPoint.binding.id, Vector.empty, true, limits, isCancelled, Some(recorder)))
-
-  def invokeVmTraced(program: P, method: R.MethodId, arguments: Vector[E.Value],
-      limits: Limits = Limits(), isCancelled: () => Boolean = () => false,
-      budget: J.Budget = J.Budget()): J.RecordedExecution =
-    recorded(program, budget)(recorder => execute(program.resolvedMethods, program.root.entryPoint.binding.id,
-      method, arguments, false, limits, isCancelled, Some(recorder)))
-
-  private def recorded(program: P, budget: J.Budget)(run: J.Recorder => Execution): J.RecordedExecution = {
-    val recorder = new J.Recorder(budget, program.bindings.source)
-    val execution = run(recorder)
-    J.RecordedExecution(execution, recorder.capture)
+  /** Where a run starts: the program's `main`, or one of its methods with argument values. */
+  enum Entry {
+    case Main
+    case Method(id: R.MethodId, arguments: Vector[E.Value] = Vector.empty)
   }
 
-  private def execute(methods: Vector[R.Method], entryPoint: R.MethodId, method: R.MethodId, arguments: Vector[E.Value],
-      main: Boolean, limits: Limits, isCancelled: () => Boolean, recorder: Option[J.Recorder] = None): Execution =
+  /** What runs: a compiled program, or a resolved source as is (which tests compare with its compilation). */
+  type Program = P | R.ResolvedSource
+
+  def execute(program: Program, entry: Entry = Entry.Main, limits: Limits = Limits(),
+      isCancelled: () => Boolean = () => false): Execution =
+    start(program, entry, limits, isCancelled, None)
+
+  /** Like [[execute]], also recording the run's trace within `budget`. */
+  def executeTraced(program: Program, entry: Entry = Entry.Main, limits: Limits = Limits(),
+      isCancelled: () => Boolean = () => false, budget: J.Budget = J.Budget()): J.RecordedExecution = {
+    val recorder = new J.Recorder(budget, origin(program))
+    J.RecordedExecution(start(program, entry, limits, isCancelled, Some(recorder)), recorder.capture)
+  }
+
+  private def origin(program: Program): R.ResolvedSource = program match {
+    case compiled: P => compiled.bindings.source
+    case source: R.ResolvedSource => source
+  }
+
+  private def start(program: Program, entry: Entry, limits: Limits, isCancelled: () => Boolean,
+      recorder: Option[J.Recorder]): Execution = {
+    val (methods, entryPoint) = program match {
+      case compiled: P => (compiled.resolvedMethods, compiled.root.entryPoint.binding.id)
+      case source: R.ResolvedSource => (source.methods, source.entryPoint)
+    }
+    val (method, arguments, main) = entry match {
+      case Entry.Main => (entryPoint, Vector.empty, true)
+      case Entry.Method(id, values) => (id, values, false)
+    }
     if !limits.isValid then Execution(Status.Failed(Failure.InvalidLimits), Vector.empty, 0)
     else new Runner(methods, entryPoint, limits, isCancelled, recorder).execute(method, arguments, main)
+  }
 
   private type Result[A] = Either[Status, A]
   private type Scope = mutable.Set[R.VariableId]

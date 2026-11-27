@@ -22,8 +22,6 @@ object LabeledWorkbookElement {
     override def idsRequiredForDeserialization(element: WorkbookElementSerializable): Set[String] =
       Set(element.getElementAs[WorkbookElementReference]("baseElement").referencedId)
 
-    override def serializedElementContainsOtherSerializations(element: WorkbookElementSerializable): Seq[WorkbookElementSerializable] = List()
-
     override def toSerializableElement(element: LabeledWorkbookElement[WorkbookElement]): WorkbookElementSerializable = {
       toFactoryBase(element)
         .withElementAddedAs[WorkbookElementReference]("baseElement", element.baseElement.asRef)

@@ -1,5 +1,7 @@
 package it.evadid.homepage.workbook.htmlRenderer.displayRenderer
 
+import it.evadid.homepage.control.model.FullInfo
+
 import com.raquo.laminar.DomApi
 import com.raquo.laminar.api.L.*
 import it.evadid.core.datastructures.language.LanguageMapContentId
@@ -13,18 +15,18 @@ import it.evadid.workbook.elements.displayElements.DisplayLangMapContent
 
 object HtmlDisplayLangMapContentRenderer extends LineBasedRenderingFactory[DisplayLangMapContent] {
 
-  override protected def createRendering(workbookElement: DisplayLangMapContent): AtomarLineRendering = {
+  override protected def createRendering(fullInfo: FullInfo, workbookElement: DisplayLangMapContent): AtomarLineRendering = {
     val contentId: LanguageMapContentId = workbookElement.content
 
     workbookElement.contentType match {
       case LangMapContentIdType(EXERCISE_DESCRIPTION, textType) =>
-        instructionElement(workbookElement, contentId, textType)
+        instructionElement(fullInfo, workbookElement, contentId, textType)
       //case LangMapContentIdType(CONTAINER_TITLE, PLAINTEXT) =>        AtomarLineRendering.exerciseContainerTitleLine(contentId)
-      case _ => placeholder(workbookElement, "LangMapContentRenderer::createRendering cannot yet handle objects of type '" + workbookElement.contentType + "'!")
+      case _ => placeholder(fullInfo, workbookElement, "LangMapContentRenderer::createRendering cannot yet handle objects of type '" + workbookElement.contentType + "'!")
     }
   }
 
-  private def instructionElement(workbookElement: WorkbookElement, contentId: LanguageMapContentId, typeOfTextContent: TypeOfTextDisplay): AtomarLineRendering = {
+  private def instructionElement(fullInfo: FullInfo, workbookElement: WorkbookElement, contentId: LanguageMapContentId, typeOfTextContent: TypeOfTextDisplay): AtomarLineRendering = {
     def instructionPlaintextToElement(text: String): Element = {
       div(cls := "instruction-content", text)
     }
@@ -46,9 +48,9 @@ object HtmlDisplayLangMapContentRenderer extends LineBasedRenderingFactory[Displ
       case _ => instructionPlaintextToElement
     }
 
-    val signal: Signal[Seq[Element]] = laminarHelper.plaintextStringSignal(contentId).map(transformFunction).map(List(_))
+    val signal: Signal[Seq[Element]] = laminarHelper(fullInfo).plaintextStringSignal(contentId).map(transformFunction).map(List(_))
 
-    AtomarLineRendering.basicLine(workbookElement, signal)
+    AtomarLineRendering.basicLine(fullInfo, workbookElement, signal)
   }
 
 

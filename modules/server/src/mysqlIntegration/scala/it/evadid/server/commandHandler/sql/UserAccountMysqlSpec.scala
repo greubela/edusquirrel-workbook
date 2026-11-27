@@ -1,5 +1,8 @@
 package it.evadid.server.commandHandler.sql
 
+import it.evadid.server.database.{UserAccountRows, newConnection}
+
+
 import it.evadid.core.datastructures.user.UserCredentials
 
 import it.evadid.core.datastructures.user.{AllUserInfo, User, UserConfig}
@@ -36,8 +39,8 @@ class UserAccountMysqlSpec extends FunSuite {
   private def withDatabase[A](run: Connection => A): A =
     Using.resource(DatabaseConfigWithCredentials.readFromEnv().newConnection())(run)
 
-  private def queries[A](run: SqlUserCommands => A): A =
-    withDatabase(connection => run(SqlUserCommands(connection, logger)))
+  private def queries[A](run: UserAccountRows => A): A =
+    withDatabase(connection => run(UserAccountRows(connection, logger)))
 
   private def register(user: User = alice): CreateAccountResponse =
     Await.result(SqlUserCommands.handleCreateAccountCommand(
@@ -65,7 +68,7 @@ class UserAccountMysqlSpec extends FunSuite {
       statement.executeUpdate("DELETE FROM `loginTokens`")
       statement.executeUpdate("DELETE FROM `user`")
     }
-    SqlUserCommands(connection, logger).upsertUser(User.Anonymous, UserConfig(Nil, isOnlineAccount = false))
+    UserAccountRows(connection, logger).upsertUser(User.Anonymous, UserConfig(Nil, isOnlineAccount = false))
   }
 
   test("registration persists Unicode identity, normalized email and current account settings") {

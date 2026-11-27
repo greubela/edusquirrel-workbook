@@ -1,10 +1,13 @@
 package it.evadid.homepage.webElements.editor
 
+import it.evadid.homepage.control.model.FullInfo
+
 import com.raquo.laminar.api.L.*
 import it.evadid.homepage.webElements.editor.abstractions.SimpleWebEditor
 import it.evadid.homepage.webElements.editor.config.TextEditorConfig
 
 case class SimpleTextEditor(
+                             fullInfo: FullInfo,
                              underlyingVar: Var[String],
                              config: Var[TextEditorConfig] = Var(TextEditorConfig.defaultConfig),
                            ) extends SimpleWebEditor[String, TextEditorConfig] {
@@ -16,7 +19,7 @@ case class SimpleTextEditor(
   def createTextEditor(config: Signal[TextEditorConfig]): Element = textArea(
     rows <-- config.map(_.rowsCount),
     cols <-- config.map(_.colsCount),
-    placeholder <-- config.flatMapSwitch(curConfig => laminarHelper.plaintextStringSignal(curConfig.placeholder)),
+    placeholder <-- config.flatMapSwitch(curConfig => laminarHelper(fullInfo).plaintextStringSignal(curConfig.placeholder)),
     cls <-- config.map(_.inputCssClassStr(List("simple-text-editor-textarea"))),
     controlled(
       value <-- underlyingVar.signal,

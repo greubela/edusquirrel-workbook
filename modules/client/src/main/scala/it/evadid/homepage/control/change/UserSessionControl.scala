@@ -25,21 +25,21 @@ final class UserSessionControl(val fullInfo: FullInfo) {
   private given ExecutionContext = ExecutionContext.global
   private def interactions: Seq[WorkbookInteractionElement[? <: InteractionFormat]] = fullInfo.current.allAvailableInteractions
   private val logger = fullInfo.loggerSystemInfo.contentControlLogger
-  private lazy val storage = new UserSessionStorage(logger, fullInfo.syncControl.syncLogger)
+  private val storage = new UserSessionStorage(logger, fullInfo.loggerSystemInfo.syncControlLogger)
 
   def loadSavedProfile(): Option[AllUserInfo] = storage.loadSavedProfile()
 
   /** Name and email the login page pre-fills: the last user (also an anonymous local one), kept after its cached
     * login is cleared.
     */
-  lazy val loginIdentity: Var[Option[User]] = Var(loadSavedProfile().map(_.user))
+  val loginIdentity: Var[Option[User]] = Var(loadSavedProfile().map(_.user))
 
   private def rememberIdentity(user: User): Unit = loginIdentity.set(Some(user))
 
   private def tryServerLoginWith(userMail: String, token: Either[SingleAccessToken, SignedToken], cachedCredentials: UserCredentials = UserCredentials()): Future[?] = {
     val loginReq = LoginRequest(userMail.trim.toLowerCase, token)
     val backend = token match {
-      case Left(_) => fullInfo.defaults.backendExecutor
+      case Left(_) => fullInfo.backendExecutor
       case Right(signed) => fullInfo.defaults.backendExecutorWithCredentials(Some(signed))
     }
     val loginRes: Future[ExecutionSuccess[LoginResponse]] = UserCommands.loginCommand.sendCommandTo(backend, loginReq)
@@ -135,7 +135,7 @@ final class UserSessionControl(val fullInfo: FullInfo) {
       val userConfig = UserConfig.defaults(isLocalAccount = false)
       val user = AllUserInfo.createNewUser(name.trim, normalizedEmail, userConfig)
       UserCommands.createAccountCommand
-        .sendCommandTo(fullInfo.defaults.backendExecutor, CreateAccountRequest(user))
+        .sendCommandTo(fullInfo.backendExecutor, CreateAccountRequest(user))
         .flatMap { exInfo =>
           val result = exInfo.result
           result.token match {
@@ -173,7 +173,7 @@ final class UserSessionControl(val fullInfo: FullInfo) {
     }
   }
 
-  def changeUser(newUserInfo: Option[AllUserInfo]): Future[?] = fullInfo.synchronized {
+  def changeUser(newUserInfo: Option[AllUserInfo]): Future[?] = {
     val oldUser = fullInfo.homepageInfoNow().userInfo
     logger.logInfo(s"Change User: ${oldUser.map(_.user.mail).getOrElse("none")} -> ${newUserInfo.map(_.user.mail).getOrElse("none")}")
 

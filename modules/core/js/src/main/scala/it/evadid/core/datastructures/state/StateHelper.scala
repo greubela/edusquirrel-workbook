@@ -11,7 +11,8 @@ import it.evadid.workbook.interaction.variable.{InteractionVariable, Interaction
 import it.evadid.workbook.meta.ExecutionContextInformation
 
 import scala.concurrent.{ExecutionContext, Future}
-import scala.util.{Failure, Success}
+import com.raquo.airstream.state.{LazyDerivedVar, LazyStrictSignal}
+import scala.util.{Failure, Success, Try}
 
 object StateHelper {
 
@@ -19,12 +20,6 @@ object StateHelper {
     def toAirstreamVar: Var[T] = fromStateToAirstreamVar(state)
 
     def toSignal: Signal[T] = toAirstreamVar.signal
-  }
-
-  implicit class VarBasedState[T](airstreamVar: Var[T]) {
-    def toState: State[T] = fromAirstreamVarToState(airstreamVar)
-
-    def toObservableValue: ObservableValue[T] = toState.observable
   }
 
   implicit class RichInteractionVariable[F <: InteractionFormat](underlying: InteractionVariable[F]) {
@@ -86,57 +81,28 @@ object StateHelper {
 
   implicit class RichSignal[T](underlying: Signal[T]) {
 
-    def toObservableValue: ObservableValue[T] = {
+    /** Mirrors the signal for as long as `owner` lives. */
+    def toObservableValue(using owner: Owner): ObservableValue[T] = {
       val res = underlying match {
         case strict: StrictSignal[? <: T] => ObservableValueImpl[T](Some(strict.now()))
         case _ => ObservableValueImpl[T](None)
       }
-      underlying.foreach(next => res.onNewValueArrived(Success.apply(next)))(using unsafeWindowOwner)
+      underlying.foreach(next => res.onNewValueArrived(Success.apply(next)))
       res
     }
 
-    def toAsync: AsyncData[Nothing, T] = underlying.toObservableValue.toAsync
+    def toAsync(using Owner): AsyncData[Nothing, T] = underlying.toObservableValue.toAsync
 
-    def mapAsync[O](func: T => Future[O])(implicit ec: ExecutionContext): AsyncData[Nothing, O] = toAsync.mapAsync(func)
+    def mapAsync[O](func: T => Future[O])(using ExecutionContext, Owner): AsyncData[Nothing, O] = toAsync.mapAsync(func)
 
   }
 
 
   implicit class RichAsyncData[F, S](underlying: AsyncData[F, S]) {
 
-    def toStateSignal: StrictSignal[AsyncDataState[?, S]] = {
-      val res: Var[AsyncDataState[?, S]] = Var(AsyncDataLoading[Nothing, S]())
-      underlying.observeAllStates.addObserver(onNext => res.set(onNext))
-      res.signal
-    }
-
-  }
-
-  implicit class ObservableValueAsync[T](underlying: ObservableValue[T]) {
-    /*
-    def toSignal: Signal[AsyncData[T]] = {
-      val res: Var[AsyncData[T]] = Var(AsyncData.AsyncDataLoading[T]())
-      underlying.addObserver(onNext => res.set(onNext))
-      res.signal
-    }
-
-    def mapAsync[O](func: T => Future[O])(ec: ExecutionContext): ObservableValue[AsyncData[O]] = {
-      val tmp: State[AsyncData[O]] = State(AsyncData.AsyncDataLoading[O]())
-      underlying.addObserver(onNext => onNext.match {
-      case AsyncData.AsyncDataLoading() => tmp.set(AsyncData.AsyncDataLoading[O]())
-      case AsyncData.AsyncDataFailed(cause) => tmp.set(AsyncData.AsyncDataFailed[O](cause))
-      case AsyncDataSuccess(dataValue) => func(dataValue).onComplete {
-        case scala.util.Success(result) => tmp.set(AsyncDataSuccess(result))
-        case scala.util.Failure(cause) => tmp.set(AsyncData.AsyncDataFailed[O](new Exception("Failure during ObservableValueAsync::mapAsync", cause)))
-      }(using ec)
-      })
-      tmp.observable
-    }
-
-    def map[O](func: T => O): ObservableValue[AsyncData[O]] = {
-      underlying.deriveValue(_.map(func))
-    }*/
-
+    /** Observes the data only while the signal has observers. */
+    def toStateSignal: Signal[AsyncDataState[?, S]] =
+      underlying.observeAllStates.toSignal(AsyncDataLoading[F, S]())
 
   }
 
@@ -146,27 +112,28 @@ object StateHelper {
       interactionVariable.createBoundStateWithUpdateImportance(updateImportance, context).toAirstreamVar
 
 
-    def createInteractionSignal(context: ExecutionContextInformation): StrictSignal[InteractionFormat.State[F]] =
-      interactionVariable.observableValue.toSignal(interactionVariable.currentValue).observe(using unsafeWindowOwner)
+    /** The current answer; it observes the variable only while the signal has observers. */
+    def createInteractionSignal: Signal[InteractionFormat.State[F]] =
+      interactionVariable.observableValue.toSignal(interactionVariable.currentValue)
 
   }
 
-  def fromStateToAirstreamVar[T](state: State[T]): Var[T] = {
-    val airstreamVar = Var(state.now())
-    bindTogether(state, airstreamVar)
-    airstreamVar
+  /** A Var backed by `state`: reads come from the state, writes go to it, and its signal observes the state only
+    * while it has observers. Nothing outlives the elements that use the Var, so mounts need no explicit release.
+    */
+  def fromStateToAirstreamVar[T](state: State[T]): Var[T] =
+    new LazyDerivedVar[Unit, T](Var(()), StateSignal(state), (unit, next) => { if state.now() != next then state.set(next); unit }, ".state")
+
+  /** A lazily observing signal whose current value is always the state's value. */
+  private final class StateSignal[T](state: State[T]) extends LazyStrictSignal[Option[T], T](
+    state.observable.toOptionSignal(), _.getOrElse(state.now()), "State", ".signal") {
+    override def tryNow(): Try[T] = Try(state.now())
   }
 
-  def fromAirstreamVarToState[T](airstreamVar: Var[T], owner: Owner = unsafeWindowOwner): State[T] = {
+  /** Mirrors `airstreamVar` into a State for as long as `owner` lives. */
+  def fromAirstreamVarToState[T](airstreamVar: Var[T], owner: Owner): State[T] = {
     val changes = ObservableValueImpl[T](Some(airstreamVar.now()))
     airstreamVar.signal.distinct.foreach(next => changes.onNewValueArrived(Success(next)))(using owner)
     State.fromStorage(() => airstreamVar.now(), airstreamVar.set, transform => airstreamVar.update(transform), changes)
   }
-
-  def bindTogether[T](state: State[T], airstreamVar: Var[T]): Unit = {
-    state.observable.addObserver(nextValue => if (airstreamVar.now() != nextValue) airstreamVar.set(nextValue))
-    airstreamVar.signal.distinct.foreach(nextValue => if (state.now() != nextValue) state.set(nextValue))(using unsafeWindowOwner)
-  }
-
-
 }

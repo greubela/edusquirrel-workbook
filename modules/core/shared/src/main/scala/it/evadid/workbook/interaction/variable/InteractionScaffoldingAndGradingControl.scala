@@ -19,8 +19,6 @@ import java.time.LocalDateTime
 import scala.concurrent.{ExecutionContext, Future}
 
 final class InteractionScaffoldingAndGradingControl[F <: InteractionFormat](val interactionVariable: InteractionVariable[F]) {
-  private val generation = interactionVariable.currentFeedbackGeneration
-
   // Type members for convenience
   type InteractionStateType = InteractionFormat.State[F]
   type GradingInfoType = InteractionFormat.Grading[F]
@@ -84,9 +82,11 @@ final class InteractionScaffoldingAndGradingControl[F <: InteractionFormat](val 
     }
   }
 
-  /** Feedback computed for an earlier user session or context must not be requested or published. */
+  /** Feedback computed for an earlier user session or context must not be requested or published;
+    * a session change replaces this control.
+    */
   private def feedbackSessionEnded(contextInformation: ExecutionContextInformation): Boolean =
-    !contextInformation.isCurrent || generation != interactionVariable.currentFeedbackGeneration
+    !contextInformation.isCurrent || !(interactionVariable.control eq this)
 
   private def sessionEndedFailure[A]: Future[A] = Future.failed(new java.util.concurrent.CancellationException("Feedback session ended"))
 
@@ -103,7 +103,7 @@ final class InteractionScaffoldingAndGradingControl[F <: InteractionFormat](val 
       contextInformation: ExecutionContextInformation): Future[GradedState[InteractionStateType, GradingInfoType]] = {
     val ec = contextInformation.futureExecutionContext
     val published = grading.map { gradedState =>
-      interactionVariable.publishFeedback(generation, contextInformation)(_.addGrading(gradedState))
+      interactionVariable.publishFeedback(this, contextInformation)(_.addGrading(gradedState))
       gradedState
     }(using ec)
     gradingCache.informAboutExistingFuture(forState, published, true)
@@ -157,7 +157,7 @@ final class InteractionScaffoldingAndGradingControl[F <: InteractionFormat](val 
       case Some(scaffolder) =>
         interactionVariable.updateHistory(_.addEvent(ScaffoldingStartedEvent[F](forState, LocalDateTime.now(), scaffolder.scaffoldingEntity)), contextInformation)
         val published = scaffolder.generateFeedbackSafe(forState, contextInformation).map { scaffResult =>
-          interactionVariable.publishFeedback(generation, contextInformation)(_.addScaffolding(scaffResult))
+          interactionVariable.publishFeedback(this, contextInformation)(_.addScaffolding(scaffResult))
           scaffResult
         }(using ec)
         scaffoldingCache.informAboutExistingFuture(forState, published)
