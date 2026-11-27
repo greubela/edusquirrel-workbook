@@ -2,11 +2,11 @@
 # Checks or (re)creates the EduSquirrel schema in the dedicated MySQL database.
 #
 #   deploy-database.sh check   Compare the live schema with setup.sql (default; changes nothing)
-#   deploy-database.sh setup   Run setup.sql on an empty database, then check
-#   deploy-database.sh reset   Back up, drop every table/view/routine, run setup.sql, then check
+#   deploy-database.sh setup   Create the tables of setup.sql, then check. If some of them already
+#                              exist, ask [y/N] whether to back them up, drop them and create them again.
 #
 # The target is SQL_DATABASE from server.env, the backend's own database; nothing else is touched.
-# Options: --yes (skip the confirmation prompt), --no-backup (reset without a dump).
+# Options: --yes (answer yes), --no-backup (drop without a dump first).
 # MySQL clients run in Docker on DATABASE_TOOLS_HOST: "server" (the backend host via SSH,
 # default) or "local". The reference schema for "check" is built from setup.sql in a
 # throwaway MySQL container on the same host, so no database other than SQL_DATABASE is touched.
@@ -17,7 +17,7 @@ LOG_PREFIX=database
 mode=check backup=true
 for arg in "$@"; do
   case "$arg" in
-    check|setup|reset) mode=$arg ;;
+    check|setup) mode=$arg ;;
     --yes) DEPLOY_ASSUME_YES=true ;;
     --no-backup) backup=false ;;
     *) die "unknown argument: $arg" ;;
@@ -109,39 +109,62 @@ check_schema() {
   if diff -u --label "expected (setup.sql)" --label "actual ($SQL_DATABASE)" "$expected" "$actual" >&2; then
     log "schema of $SQL_DATABASE matches setup.sql"
   else
-    die "schema of $SQL_DATABASE differs from setup.sql (- expected, + actual). Run 'deploy-database.sh reset' to recreate it."
+    die "schema of $SQL_DATABASE differs from setup.sql (- expected, + actual). Run 'deploy-database.sh setup' to recreate it."
   fi
+}
+
+# The tables setup.sql creates, one per line.
+# shellcheck disable=SC2016  # The backticks are part of the sed pattern.
+setup_tables() {
+  sed -n '/^-- BEGIN APPLICATION TABLES/,$p' "$SETUP_SQL" | sed -nE 's/^CREATE TABLE `([^`]+)`.*/\1/p'
 }
 
 run_setup() {
-  log "running setup.sql on $SQL_DATABASE (it refuses databases that are not empty)"
-  remote_sql < "$SETUP_SQL" || die "setup.sql failed; the database must be completely empty"
+  log "running setup.sql on $SQL_DATABASE"
+  remote_sql < "$SETUP_SQL" || die "setup.sql failed (see above)"
 }
 
-backup_database() {
+backup_tables() {
   local dir="$REPO_ROOT/tmp/work/deployment/database-backups" file
   mkdir -p "$dir"
   file="$dir/$SQL_DATABASE-$(date +%Y%m%d-%H%M%S).sql"
-  log "backing up the tables of $SQL_DATABASE to ${file#"$REPO_ROOT"/}"
+  log "backing up the tables to ${file#"$REPO_ROOT"/}"
   if ! (umask 077 && remote_client mysqldump --single-transaction --no-tablespaces --default-character-set=utf8mb4 \
-      "$SQL_DATABASE" < /dev/null > "$file"); then
+      "$SQL_DATABASE" "$@" < /dev/null > "$file"); then
     rm -f "$file"
-    die "backup failed; nothing was dropped (use --no-backup to reset without one)"
+    die "backup failed; nothing was dropped (use --no-backup to drop without one)"
   fi
 }
 
-drop_everything() {
-  local objects statements="SET FOREIGN_KEY_CHECKS = 0;" kind name
-  objects="$(remote_sql <<'SQL'
-SELECT IF(TABLE_TYPE = 'VIEW', 'VIEW', 'TABLE'), TABLE_NAME FROM information_schema.TABLES WHERE TABLE_SCHEMA = DATABASE();
-SELECT ROUTINE_TYPE, ROUTINE_NAME FROM information_schema.ROUTINES WHERE ROUTINE_SCHEMA = DATABASE();
-SQL
-)"
+# Creates the schema. Existing tables of setup.sql are dropped only after a yes; other tables
+# are never touched, and since setup.sql refuses a non-empty database they stop the setup first.
+setup_schema() {
+  local existing kind name drop=() drop_sql="SET FOREIGN_KEY_CHECKS = 0;" others=()
+  existing="$(echo "SELECT TABLE_TYPE, TABLE_NAME FROM information_schema.TABLES WHERE TABLE_SCHEMA = DATABASE();" \
+    | remote_sql)" || die "cannot connect to $SQL_DATABASE on $SQL_HOST"
   while IFS=$'\t' read -r kind name; do
-    [[ -n "$kind" ]] && statements+=" DROP $kind IF EXISTS \`${name//\`/\`\`}\`;"
-  done <<< "$objects"
-  log "dropping $(grep -c . <<< "$objects" || true) objects from $SQL_DATABASE"
-  printf "%s\n" "$statements" | remote_sql || die "dropping objects failed; run reset again after fixing the cause"
+    [[ -n "$name" ]] || continue
+    if grep -qxF "$name" <(setup_tables); then
+      drop+=("$name")
+      if [[ "$kind" == VIEW ]]; then kind=VIEW; else kind=TABLE; fi
+      drop_sql+=" DROP $kind IF EXISTS \`${name//\`/\`\`}\`;"
+    else
+      others+=("$name")
+    fi
+  done <<< "$existing"
+
+  if [[ ${#others[@]} -gt 0 ]]; then
+    die "$SQL_DATABASE contains tables that setup.sql does not create: ${others[*]}. Remove them yourself; nothing was changed."
+  fi
+  if [[ ${#drop[@]} -gt 0 ]]; then
+    warn "$SQL_DATABASE on $SQL_HOST is not empty. These tables would be dropped with all their data and created again:"
+    printf '  %s\n' "${drop[@]}" >&2
+    ask_yes_no "Drop and re-create these ${#drop[@]} tables?" || die "aborted; nothing was changed"
+    if [[ "$backup" == true ]]; then backup_tables "${drop[@]}"; fi
+    log "dropping ${#drop[@]} tables from $SQL_DATABASE"
+    printf '%s\n' "$drop_sql" | remote_sql || die "dropping the tables failed (see above)"
+  fi
+  run_setup
 }
 
 case "$mode" in
@@ -149,15 +172,7 @@ case "$mode" in
     check_schema
     ;;
   setup)
-    run_setup
-    check_schema
-    ;;
-  reset)
-    warn "this permanently deletes every table, view and routine in $SQL_DATABASE on $SQL_HOST"
-    confirm "Reset database $SQL_DATABASE?" "$SQL_DATABASE"
-    if [[ "$backup" == true ]]; then backup_database; fi
-    drop_everything
-    run_setup
+    setup_schema
     check_schema
     ;;
 esac

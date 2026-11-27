@@ -7,7 +7,7 @@ order: database check, backend, website. Each script also runs on its own.
 ./deploy.sh                       # build + database check + server + client
 ./deploy.sh --skip-build          # deploy already built artifacts
 ./deploy.sh --only=client -- --dry-run
-./deploy.sh --database=reset      # recreate the schema (asks for confirmation)
+./deploy.sh --database=setup      # create the schema (asks before re-creating tables)
 ```
 
 Requirements on the deploying machine: Bash, OpenSSH 8.4+ (`ssh`, `ssh-agent`), curl,
@@ -31,16 +31,17 @@ An encrypted SSH key is unlocked once through a private `ssh-agent` that is stop
 
 ## Database
 
-[deploy-database.sh](../deployment/database/deploy-database.sh) `check | setup | reset`
+[deploy-database.sh](../deployment/database/deploy-database.sh) `check | setup`
 targets only `SQL_DATABASE` from `server.env`; [setup.sql](../deployment/database/setup.sql) remains the
 single schema source (see the [database guide](database/README.md)).
 
 - `check` (default) builds a reference schema from `setup.sql` in a throwaway MySQL container
   and diffs tables, columns, indexes, foreign keys, routines and the seed row with the live database.
-- `setup` runs `setup.sql` on an empty database; its guard refuses any existing table.
-- `reset` asks you to type the database name (or takes `--yes`), dumps the tables to ignored
-  `tmp/work/deployment/database-backups/`, drops every table, view and routine, then runs
-  `setup` and `check`.
+- `setup` runs `setup.sql`, then `check`. If tables of `setup.sql` already exist, it lists them and
+  asks `[y/N]` (`--yes` answers yes); on yes it dumps them to ignored
+  `tmp/work/deployment/database-backups/` (unless `--no-backup`), drops them and creates them again.
+  Tables that `setup.sql` does not create are never dropped: they stop the setup before any change,
+  because `setup.sql` itself refuses a non-empty database.
 
 ## Backend server
 
@@ -60,7 +61,12 @@ Compose names the project after its directory (`server`), so a backend previousl
 
 ## Local backend
 
-To try client and server changes together (for example workbook submissions), run the
+[locally-test-server.sh](../deployment/client/locally-test-server.sh) serves the pages at
+`http://localhost:8000` (127.0.0.1 only) and generates `deployment/client/.env` from
+`client.env`; `--with-backend` also runs the local `server.jar` on port 9000 with the settings
+of `server.env` (its database, real mail) and points the pages at it.
+
+To try client and server changes together by hand (for example workbook submissions), run the
 server directly and point the local page at it:
 
 ```sh

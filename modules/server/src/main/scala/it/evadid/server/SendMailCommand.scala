@@ -31,7 +31,7 @@ object SendMailCommand {
     MailConfig(
       email = requiredEnv("MAIL_EMAIL", envProvider),
       password = requiredEnv("MAIL_PW", envProvider),
-      host = envProvider("MAIL_SMTP_HOST").map(_.trim).filter(_.nonEmpty).getOrElse("smtp.lima-city.de"),
+      host = envProvider("MAIL_SMTP_HOST").map(_.trim).filter(_.nonEmpty).getOrElse("mail.lima-city.de"),
       port = envProvider("MAIL_SMTP_PORT").map(_.trim).filter(_.nonEmpty).getOrElse("587")
     )
 

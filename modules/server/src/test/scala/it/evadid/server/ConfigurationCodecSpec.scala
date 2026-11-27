@@ -58,7 +58,7 @@ class ConfigurationCodecSpec extends FunSuite {
       assert(!error.getMessage.contains("private-mail-password"))
     }
     val settings = SendMailCommand.readMailConfig(configured.get)
-    assertEquals(settings.host, "smtp.lima-city.de")
+    assertEquals(settings.host, "mail.lima-city.de")
     assertEquals(settings.port, "587")
   }
 
