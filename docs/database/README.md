@@ -127,7 +127,8 @@ IPv4/IPv6 forwarding and spoof rejection.
 
 Parsing errors identify the request/history entity and include a bounded, privacy-filtered
 preview and parser reason. Command pools report attempted handlers and their last failure.
-`SqlFailure` supplies an operation, SQLState explanation and vendor error code. Original
+Server SQL runs through `SqlStatements`, which binds typed values, closes every statement and
+result set, and wraps failures in `SqlFailure`: an operation, SQLState explanation and vendor error code. Original
 JDBC errors stay in server logs; their cause chains are omitted from browser responses
 because they can contain bound values or credentials. Unsupported formats and incompatible
 schemas fail explicitly, without fallback readers or automatic repair.

@@ -2,6 +2,7 @@ package it.evadid.vm.parsing.java.clean.model
 
 import it.evadid.core.util.io.Serializer
 import it.evadid.core.util.io.Serializer.rawStringIO
+import it.evadid.vm.parsing.TopLevelSplitter
 import it.evadid.vm.parsing.generic.abstractions.GenericAST.*
 import it.evadid.vm.parsing.java.clean.model.JavaAST.JavaLiteral
 
@@ -17,6 +18,9 @@ abstract class JavaType[ScalaType](
 }
 
 object JavaType {
+  /** Java literals also nest inside generic type arguments. */
+  private val literals = TopLevelSplitter(Set('[', '(', '{', '<'), Set(']', ')', '}', '>'))
+
   case object JAVA_INTEGER extends JavaType[BigInt]("int", Serializer.intDecimalIO, Serializer.intDecimalIO) with GenericNumericalInteger
 
   case object JAVA_INTEGER_HEX extends JavaType[BigInt]("int", Serializer.intHexIO, Serializer.intHexIO) with GenericNumericalInteger
@@ -35,14 +39,14 @@ object JavaType {
 
   final case class JAVA_LIST[Element](elementType: JavaType[Element]) extends JavaType[List[Element]](
     s"List<${elementType.typenameInCode}>",
-    JavaCollectionSerializers.collectionSerializer(elementType.serializerJavaValue, "List.of(", ")"),
-    JavaCollectionSerializers.collectionSerializer(elementType.serializerScalaValue, "List(", ")")
+    literals.collectionSerializer(elementType.serializerJavaValue, "List.of(", ")"),
+    literals.collectionSerializer(elementType.serializerScalaValue, "List(", ")")
   )
 
   final case class JAVA_ARRAY[Element](elementType: JavaType[Element]) extends JavaType[List[Element]](
     s"${elementType.typenameInCode}[]",
-    JavaCollectionSerializers.collectionSerializer(elementType.serializerJavaValue, "{", "}"),
-    JavaCollectionSerializers.collectionSerializer(elementType.serializerScalaValue, "List(", ")")
+    literals.collectionSerializer(elementType.serializerJavaValue, "{", "}"),
+    literals.collectionSerializer(elementType.serializerScalaValue, "List(", ")")
   )
 
   final case class JAVA_UNPARSABLE_TYPE(str: String) extends JavaType[String](str, rawStringIO, rawStringIO)
