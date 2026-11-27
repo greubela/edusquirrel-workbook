@@ -37,5 +37,13 @@
   "errorLogin": "Anmeldung fehlgeschlagen. Bitte versuche es später erneut.",
   "insertNamePlaceholder": "Dein Name",
   "enterMail": "E-Mail-Adresse",
-  "uploadFile": "Fortschrittsdatei hochladen"
+  "uploadFile": "Fortschrittsdatei hochladen",
+  "submissionTitle": "Lösung abgeben",
+  "submissionExplanation": "Deine Antworten in diesem Arbeitsheft werden mit dem hier eingegebenen Namen und der Adresse zur Bewertung per E-Mail gesendet und im Abgabeprotokoll gespeichert. Es wird kein Konto angelegt. Du erhältst eine Zusammenfassung an diese Adresse.",
+  "buttonSubmit": "Abgeben",
+  "submissionSent": "Abgegeben. Eine Zusammenfassung wurde an deine E-Mail-Adresse gesendet.",
+  "submissionSentWithoutConfirmation": "Abgegeben, aber die Zusammenfassung konnte nicht an deine E-Mail-Adresse gesendet werden.",
+  "submissionErrorName": "Bitte gib deinen Namen ein.",
+  "submissionErrorNoWorkbook": "Öffne vor der Abgabe ein Arbeitsheft.",
+  "submissionError": "Die Abgabe ist fehlgeschlagen. Deine Antworten bleiben erhalten; bitte versuche es später erneut."
 }

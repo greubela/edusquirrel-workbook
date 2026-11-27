@@ -3,7 +3,7 @@ package it.evadid.homepage.control.model
 import it.evadid.workbook.session.{AllWorkbookInfo, SessionData}
 import it.evadid.core.datastructures.language.AppLanguage.*
 import it.evadid.core.datastructures.language.control.LanguageMapStorage
-import it.evadid.core.datastructures.user.AllUserInfo
+import it.evadid.core.datastructures.user.{AllUserInfo, User, UserConfig}
 import it.evadid.homepage.workbook.syncDestination.{DatabaseSyncViaBackendServerHandler, LocalIndexedDbStorageSyncHandler, LocalStorageSyncHandler}
 import it.evadid.workbook.interaction.sync.destination.SyncDestinationDefinition.{LocalIndexedDbSyncDefinition, LocalStorageSyncDefinition, SyncDestinationBasedOnHistoryDatabase}
 import it.evadid.workbook.interaction.sync.destination.{SyncDestinationDefinition, SyncDestinationHistoryHandler}
@@ -31,12 +31,21 @@ case class HomepageInfo(
   def toSessionData: Option[SessionData] = for {
     workbook <- workbookInfo
     user <- userInfo.map(_.withoutCredentials())
-  } yield {
+  } yield sessionOf(workbook, user.user, user.config)
+
+  /** The open workbook handed in by `submitter` instead of the bound user; `None` without a workbook. Every current
+    * history is kept under its bound context, and the configuration is local-only, so continuing the copy never
+    * syncs to or creates an account in a database. The bound user and its bindings are not changed.
+    */
+  def toSubmissionBy(submitter: User): Option[SessionData] =
+    workbookInfo.map(sessionOf(_, submitter, UserConfig.defaults(isLocalAccount = true)))
+
+  private def sessionOf(workbook: AllWorkbookInfo, user: User, config: UserConfig): SessionData = {
     val histories = workbook.loadedWorkbook.allContainedInteractionsById.values.map { interaction =>
       toContext.toSyncContext(interaction.interactionVariable.keyForSerialization) ->
         InteractionHistoryJson.fromHistory(interaction.interactionFormat, interaction.interactionVariable.currentHistory)
     }.toMap
-    SessionData(LocalDateTime.now(), histories, user.user, Some(user.config), workbook)
+    SessionData(LocalDateTime.now(), histories, user, Some(config), workbook)
   }
 
   def syncDestinations(fullInfo: FullInfo): Seq[SyncInformationWithContext] = {

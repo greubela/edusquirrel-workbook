@@ -9,7 +9,7 @@ import it.evadid.core.util.io.serializer.ConstructorLikeSerializer.VariableDispl
 import it.evadid.distribution.command.SerializedException
 import it.evadid.workbook.abstractions.WorkbookElement
 import it.evadid.workbook.elements.displayElements.WorkbookImageElement.LanguageMapBasedWorkbookImageElement
-import it.evadid.workbook.elements.displayElements.{CollapsibleInstructionElement, DisplayLangMapContent, LabeledWorkbookElement, TwoColumnPanel, WorkbookImageElement}
+import it.evadid.workbook.elements.displayElements.{CollapsibleInstructionElement, DisplayLangMapContent, LabeledWorkbookElement, TwoColumnPanel, WorkbookImageElement, WorkbookSubmissionElement}
 import it.evadid.workbook.elements.interactionElements.qr.CreateQrCodeInteraction
 import it.evadid.workbook.elements.interactionElements.basic.{LabeledCheckboxInteraction, LabeledNumberInteraction, MessagingInteraction, TextInteraction}
 import it.evadid.workbook.elements.interactionElements.codeTaskToggle.{CodeTaskToggleInteraction, SketchDownloadInteraction}
@@ -162,6 +162,7 @@ object WorkbookElementFactory {
     classOf[LabeledWorkbookElement[?]].getSimpleName -> LabeledWorkbookElement.factory,
     classOf[CollapsibleInstructionElement].getSimpleName -> CollapsibleInstructionElement.factory,
     classOf[DisplayLangMapContent].getSimpleName -> DisplayLangMapContent.factory,
+    classOf[WorkbookSubmissionElement].getSimpleName -> WorkbookSubmissionElement.factory,
     classOf[TextInteraction].getSimpleName -> TextInteraction.factory,
     classOf[MessagingInteraction].getSimpleName -> MessagingInteraction.factory,
     classOf[LabeledCheckboxInteraction].getSimpleName -> LabeledCheckboxInteraction.factory,

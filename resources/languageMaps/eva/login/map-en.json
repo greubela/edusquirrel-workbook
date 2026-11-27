@@ -37,5 +37,13 @@
   "errorLogin": "Login failed. Please try again later.",
   "insertNamePlaceholder": "Your name",
   "enterMail": "Email address",
-  "uploadFile": "Upload progress file"
+  "uploadFile": "Upload progress file",
+  "submissionTitle": "Submit Your Solution",
+  "submissionExplanation": "Your answers in this workbook are sent by e-mail for grading together with the name and address entered here, and kept in the submission log. No account is created. You receive a summary at this address.",
+  "buttonSubmit": "Submit",
+  "submissionSent": "Submitted. A summary has been sent to your e-mail address.",
+  "submissionSentWithoutConfirmation": "Submitted, but the summary could not be sent to your e-mail address.",
+  "submissionErrorName": "Please enter your name.",
+  "submissionErrorNoWorkbook": "Open a workbook before submitting.",
+  "submissionError": "Submission failed. Your answers are kept; please try again later."
 }

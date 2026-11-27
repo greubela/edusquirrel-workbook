@@ -55,24 +55,6 @@ Only the current saved schema is supported.
 
 See [interaction formats](interaction-format.md) and [state ownership](state-and-serialization.md).
 
-## Session submission
-
-`SubmissionCommands.submitSessionCommand` (`submit-session-event`) carries
-`SubmitSessionEvent(sessionData)` and needs no account. The backend logs it in
-`submissionLog` ([database guide](database/README.md#logging-and-proxy-addresses)), then
-[SubmitSessionCommand](../modules/server/src/main/scala/it/evadid/server/SubmitSessionCommand.scala):
-
-1. derives a [SimpleSubmission](../modules/server/src/main/scala/it/evadid/server/SimpleSubmission.scala):
-   the claimed user and request address, plus the latest answer and combined authored-grader
-   status of each answered interaction of the session's own workbook, in workbook order;
-   unreadable histories are logged and left out;
-2. mails the full credential-free session (`.eva`, importable via session continuation) and
-   the summary to the archive address; failure fails the command;
-3. mails the summary to the session's address, only if it is one plain address. The response
-   reports the number of summarized interactions and whether this confirmation was sent.
-
-Coverage: `SubmitSessionCommandSpec`, `BackendCommandHttpSpec` and `UserAccountMysqlSpec`.
-
 Round-trip coverage lives in `WorkbookSerializerSpec` (JSON, MessagePack, nested
 structure, prerequisites, wrong-root rejection and definition/history separation)
 and `WorkbookDefinitionsSpec` (every authored catalogue workbook plus the design
@@ -92,3 +74,28 @@ workbook/section changes, and `displayControl` handles display and language chan
 Call these owners directly. User transitions still invalidate feedback and reset
 interaction bindings when the person changes; browser storage keys and schemas
 are unchanged by this separation.
+
+## Session submission
+
+A `WorkbookSubmissionElement` renders [HtmlSubmissionForm](../modules/client/src/main/scala/it/evadid/homepage/workbook/htmlRenderer/controlElements/HtmlSubmissionForm.scala):
+name and address fields in the login style, prefilled only for online accounts. Its button
+sends `HomepageInfo.toSubmissionBy(submitter)` for a new, never-registered user built from
+those fields: every current history under its bound context and a local-only configuration.
+It does not sign in, switch users or change bindings, and sends no backend token, so
+submissions stay out of the account and history tables.
+
+`SubmissionCommands.submitSessionCommand` (`submit-session-event`) carries
+`SubmitSessionEvent(sessionData)` and needs no account. The backend logs it in
+`submissionLog` ([database guide](database/README.md#logging-and-proxy-addresses)), then
+[SubmitSessionCommand](../modules/server/src/main/scala/it/evadid/server/SubmitSessionCommand.scala):
+
+1. derives a [SimpleSubmission](../modules/server/src/main/scala/it/evadid/server/SimpleSubmission.scala):
+   the claimed user and request address, plus the latest answer and combined authored-grader
+   status of each answered interaction of the session's own workbook, in workbook order;
+   unreadable histories are logged and left out;
+2. mails the full credential-free session (`.eva`, importable via session continuation) and
+   the summary to the archive address; failure fails the command;
+3. mails the summary to the session's address, only if it is one plain address. The response
+   reports the number of summarized interactions and whether this confirmation was sent.
+
+Coverage: `HtmlSubmissionFormSpec`, `SubmitSessionCommandSpec`, `BackendCommandHttpSpec` and `UserAccountMysqlSpec`.
