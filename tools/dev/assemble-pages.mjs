@@ -15,11 +15,13 @@ function redirect(target) {
 `;
 }
 
-export function assemblePages(project = process.cwd()) {
+// GitHub Pages requires the MathWorld build; the webspace deployment may leave it out.
+export function assemblePages(project = process.cwd(), { requireMathWorld = true } = {}) {
   const root = realpathSync(project);
   const out = join(root, "_site");
-  for (const file of ["homepage/index.html", "artifacts/newest/client.js", "artifacts/newest/worker.js",
-    "resources/programs/20260907MathworldMain/dist/index.html"]) {
+  const inputs = ["homepage/index.html", "artifacts/newest/client.js", "artifacts/newest/worker.js"];
+  if (requireMathWorld) inputs.push("resources/programs/20260907MathworldMain/dist/index.html");
+  for (const file of inputs) {
     if (!existsSync(join(root, file)) || !lstatSync(join(root, file)).isFile()) {
       throw new Error(`Missing build input: ${file}`);
     }
@@ -65,7 +67,8 @@ export function assemblePages(project = process.cwd()) {
 
 if (process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1])).href) {
   try {
-    console.log(`Pages assembled: ${assemblePages()}`);
+    const requireMathWorld = !process.argv.slice(2).includes("--without-mathworld");
+    console.log(`Pages assembled: ${assemblePages(process.cwd(), { requireMathWorld })}`);
   } catch (error) {
     console.error(error.message);
     process.exitCode = 1;

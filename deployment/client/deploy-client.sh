@@ -42,7 +42,8 @@ done < "$DEPLOY_TMP/client-env"
 
 if [[ "$assemble" == true ]]; then
   log "assembling the site"
-  (cd "$REPO_ROOT" && node tools/dev/assemble-pages.mjs) >&2
+  # MathWorld is not built for the deployment; its dist/ is included only if it already exists.
+  (cd "$REPO_ROOT" && node tools/dev/assemble-pages.mjs --without-mathworld) >&2
 fi
 [[ -f "$SITE/homepage/index.html" ]] || die "missing _site/; run without --skip-assemble"
 # Publish the stable client and worker (client.env's fallback) beside newest; never the history archive.

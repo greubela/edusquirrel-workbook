@@ -16,6 +16,7 @@
 source "$(dirname "${BASH_SOURCE[0]}")/deployment/lib/common.sh"
 LOG_PREFIX=deploy
 
+original_args=("$@")
 steps=",build,database,server,client," database_mode=check yes=() client_args=()
 while [[ $# -gt 0 ]]; do
   case "$1" in
@@ -33,21 +34,26 @@ while [[ $# -gt 0 ]]; do
 done
 has_step() { [[ "$steps" == *",$1,"* ]]; }
 
-# Log everything, including the child scripts, to a file as well as the console.
-log_file="$REPO_ROOT/tmp/work/deployment/logs/deploy-$(date +%Y%m%d-%H%M%S)-$$.log"
-mkdir -p "${log_file%/*}"
-exec > >(tee -a "$log_file") 2>&1
-export NO_COLOR=1
-log "log file: ${log_file#"$REPO_ROOT"/}"
-report_result() {
-  local status=$1
+# Log everything to a file as well as the console: the deployment runs as a child whose output is
+# piped through tee. (Redirecting this shell with exec > >(tee ...) loses output in Git Bash on Windows.)
+if [[ -z "${DEPLOY_LOG_FILE:-}" ]]; then
+  DEPLOY_LOG_FILE="$REPO_ROOT/tmp/work/deployment/logs/deploy-$(date +%Y%m%d-%H%M%S)-$$.log"
+  mkdir -p "${DEPLOY_LOG_FILE%/*}"
+  export DEPLOY_LOG_FILE NO_COLOR=1
+  set +e
+  bash "$REPO_ROOT/deploy.sh" ${original_args[@]+"${original_args[@]}"} 2>&1 | tee -a "$DEPLOY_LOG_FILE"
+  status=${PIPESTATUS[0]}
+  set -e
+  relative_log="${DEPLOY_LOG_FILE#"$REPO_ROOT"/}"
+  if [[ ! -s "$DEPLOY_LOG_FILE" ]]; then warn "the log file $relative_log could not be written"; fi
   if [[ "$status" -ne 0 ]]; then
-    printf '[deploy] FAILED (exit %s); see the messages above and %s\n' "$status" "${log_file#"$REPO_ROOT"/}" >&2
+    printf '[deploy] FAILED (exit %s); see the messages above and %s\n' "$status" "$relative_log" | tee -a "$DEPLOY_LOG_FILE" >&2
   fi
   # Started by a double-click or from PowerShell, the window would close before the output can be read.
   if [[ "${SHLVL:-1}" -le 1 && -t 0 ]]; then read -r -p "Press Enter to close this window. " _ || true; fi
-}
-trap 'report_result $?; deploy_cleanup' EXIT
+  exit "$status"
+fi
+log "log file: ${DEPLOY_LOG_FILE#"$REPO_ROOT"/}"
 
 # Fail before the long build when a step's settings are missing.
 needed="$(has_step database && echo "local.env server.env"; has_step server && echo "local.env server.env"
@@ -68,13 +74,6 @@ if has_step build; then
   require_cmd sbt
   log "building: sbt ${tasks[*]}"
   (cd "$REPO_ROOT" && sbt -batch "${tasks[@]}") || die "sbt build failed"
-  # The website includes the MathWorld teaching program, whose built dist/ is part of resources/.
-  if has_step client || ! { has_step database || has_step server; }; then
-    require_cmd npm
-    log "building MathWorld (published under resources/programs/20260907MathworldMain/dist)"
-    (cd "$REPO_ROOT/resources/programs/20260907MathworldMain" && npm ci && npm run build -- --base=./) \
-      || die "MathWorld build failed"
-  fi
 fi
 # "bash" runs the steps even where the execute bit or the #! line is not honored (Windows).
 if has_step database; then
