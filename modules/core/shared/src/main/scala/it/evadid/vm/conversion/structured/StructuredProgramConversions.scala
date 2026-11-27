@@ -41,14 +41,17 @@ object StructuredProgramConversions {
   /** A block header left without a body after hoisting receives `pass`, anchored to that header. */
   private def repairEmptyBlocks(source: SourceTextWithOrigins): SourceTextWithOrigins = {
     val lines = SourceParsing.parse(source.text, SourceLanguage.Python).structured.lines
-    SourceTextWithOrigins.join(lines.zipWithIndex.flatMap { (line, index) =>
-      val text = source.slice(line.span.start, line.span.end)
+    val newline = if source.text.contains("\r\n") then "\r\n" else if source.text.contains("\r") then "\r" else "\n"
+    // Insert only the missing bodies: rebuilding logical lines can add blank lines inside opaque imports/strings.
+    lines.zipWithIndex.reverse.foldLeft(source) { case (current, (line, index)) =>
       val next = lines.drop(index + 1).find(_.code.nonEmpty)
       if line.opensBlock && next.forall(_.indent <= line.indent) then {
-        val pass = " " * (line.indent + 4) + "pass"
-        Vector(text, SourceTextWithOrigins(pass, Vector.fill(pass.length)(text.offsets.lastOption.getOrElse(0))))
-      } else Vector(text)
-    }, "\n")
+        val at = if source.text.lift(line.span.end - 1).contains('\r') then line.span.end - 1 else line.span.end
+        val pass = newline + " " * (line.indent + 4) + "pass"
+        val inserted = SourceTextWithOrigins(pass, Vector.fill(pass.length)(source.offsets.lift(at - 1).getOrElse(0)))
+        SourceTextWithOrigins.join(Seq(current.slice(0, at), inserted, current.slice(at, current.text.length)), "")
+      } else current
+    }
   }
 
   /** Java classes as entries; package and import declarations, and remaining comments, become the first class's preamble. */

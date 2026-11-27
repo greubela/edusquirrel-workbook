@@ -100,6 +100,18 @@ class StructuredProgrammingStateSpec extends FunSuite {
     assertEquals(ProgrammingStatePythonStructured(state.toString), state)
   }
 
+  test("Python preparation preserves internal whitespace and is idempotent, including unfinished blocks") {
+    for newline <- Seq("\n", "\r\n") do {
+      val code = Seq("import turtle", "", "", "def main():", "    turtle.forward(1)", "    if True:", "        ").mkString(newline)
+      val prepared = ProgrammingStatePythonStructured(code)
+      assertEquals(prepared.toString, code.take(code.lastIndexOf(newline + "    if True:")) +
+        newline + "    if True:" + newline + "        pass")
+      assertEquals(ProgrammingStatePythonStructured(prepared.toString), prepared)
+      val complete = Seq("import turtle", "", "", "def main():", "    turtle.forward(1)").mkString(newline)
+      assertEquals(ProgrammingStatePythonStructured(complete).toString, complete)
+    }
+  }
+
   test("Java nested classes are hoisted without losing opaque or unfinished bodies") {
     val state = ProgrammingStateJavaStructured("class Outer { void f() { class Inner { Object data; } } }")
     assertEquals(state.definedClasses.keySet, Set(name("Outer"), name("Inner")))
