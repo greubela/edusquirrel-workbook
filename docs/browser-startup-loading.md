@@ -35,6 +35,11 @@ the external browser API boundary.
 site root; failure or its deadline selects defaults. A deployment may instead set
 `window.EDUSQUIRREL_CLIENT_CONFIG` before the client script runs.
 
+`EDUSQUIRREL_BACKEND_URL` (an `http(s)://host[:port]` origin) replaces the production
+backend, for example `http://localhost:9000` for a local server started with
+`SERVER_ALLOWED_ORIGINS` naming the page's origin (see [deployment](deployment.md#local-backend)).
+Backend commands wait for the configuration; an invalid address fails each of them.
+
 `EDUSQUIRREL_BACKEND_MODULE_WORKERS` sets the warm pool size (default 1; 0 disables
 warmup). `EDUSQUIRREL_BACKEND_MODULE_WORKER_SCRIPT` overrides the worker URL,
 relative to the page. On-demand workers count toward the pool. Bundle selection

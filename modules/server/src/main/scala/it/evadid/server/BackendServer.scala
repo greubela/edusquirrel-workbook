@@ -72,7 +72,25 @@ object BackendServer {
 
   private[server] val maxCommandBodyBytes: Long = 16L * 1024 * 1024
 
-  private[server] def buildApiRouter(action: DefaultActionBuilder, parsers: PlayBodyParsers): PartialFunction[RequestHeader, Handler] = {
+  /** Exact browser origins (`SERVER_ALLOWED_ORIGINS`, comma-separated) that may call the server directly, for a local
+    * client against a local backend. Leave it unset behind the deployment's Caddy proxy, which sets CORS headers itself.
+    */
+  private[server] def allowedOriginsFrom(value: Option[String]): Set[String] =
+    value.toSeq.flatMap(_.split(",")).map(_.trim.stripSuffix("/")).filter(_.nonEmpty).toSet
+
+  /** CORS headers for an allowed request origin; none otherwise, so browsers keep blocking other origins. */
+  private[server] def corsHeaders(request: RequestHeader, allowedOrigins: Set[String]): Seq[(String, String)] =
+    request.headers.get("Origin").filter(allowedOrigins).toSeq.flatMap(origin => Seq(
+      "Access-Control-Allow-Origin" -> origin,
+      "Access-Control-Allow-Credentials" -> "true",
+      "Access-Control-Allow-Methods" -> "GET, POST, OPTIONS",
+      "Access-Control-Allow-Headers" -> "Content-Type, Authorization, Content-Encoding",
+      "Vary" -> "Origin"))
+
+  private[server] def buildApiRouter(action: DefaultActionBuilder, parsers: PlayBodyParsers): PartialFunction[RequestHeader, Handler] =
+    apiRouterAllowing(allowedOriginsFrom(JvmUtils.env("SERVER_ALLOWED_ORIGINS")))(action, parsers)
+
+  private[server] def apiRouterAllowing(allowedOrigins: Set[String])(action: DefaultActionBuilder, parsers: PlayBodyParsers): PartialFunction[RequestHeader, Handler] = {
     val commandParser = BodyParser("execution command") { request =>
       parsers.tolerantText(maxLength = maxCommandBodyBytes)(request).map {
         case Left(result) if result.header.status == 413 =>
@@ -80,15 +98,18 @@ object BackendServer {
           val response = fail(LocalDateTime.now(),
             s"Execution command exceeds the $maxCommandBodyBytes byte request limit. Reduce the saved history or attached data.",
             None, None, logger)
-          Left(EntityTooLarge(write(response)).as("application/json"))
+          Left(EntityTooLarge(write(response)).as("application/json").withHeaders(corsHeaders(request, allowedOrigins)*))
         case result => result
       }
     }
     {
+      case OPTIONS(p"/executeCommand") =>
+        action { request => NoContent.withHeaders(corsHeaders(request, allowedOrigins)*) }
+
       case POST(p"/executeCommand") =>
         action.async(commandParser) { request =>
           handleExecuteCommand(Some(request.body), request.cookies, request.headers, request.connection.remoteAddress)
-            .map(response => Ok(write(response)).as("application/json"))
+            .map(response => Ok(write(response)).as("application/json").withHeaders(corsHeaders(request, allowedOrigins)*))
         }
 
 

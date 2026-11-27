@@ -1,5 +1,6 @@
 package it.evadid.homepage.control.startup
 
+import it.evadid.distribution.clients.RemoteExecutionConfig
 import it.evadid.facades.BrowserLoading
 import com.raquo.airstream.state.Var
 import org.scalajs.dom
@@ -50,6 +51,15 @@ object ClientRuntimeConfig {
       config
     }
   }
+
+  /** The production backend, used unless `EDUSQUIRREL_BACKEND_URL` names another `http(s)://host[:port]`. */
+  private[startup] val productionBackend: RemoteExecutionConfig = RemoteExecutionConfig("ypcgzj23.trafficplex.cloud", 443)
+
+  private[startup] def backendFrom(config: Map[String, String]): RemoteExecutionConfig =
+    config.get("EDUSQUIRREL_BACKEND_URL").map(_.trim).filter(_.nonEmpty).fold(productionBackend)(RemoteExecutionConfig.fromUrl)
+
+  /** The configured backend once the runtime configuration has loaded; an invalid address fails every backend command. */
+  lazy val backend: Future[RemoteExecutionConfig] = load().map(backendFrom)
 
   def workerUrl: String = current.get("EDUSQUIRREL_BACKEND_MODULE_WORKER_SCRIPT")
     .filter(_.nonEmpty).map(path => new dom.URL(path, dom.document.baseURI).href).getOrElse(BrowserLoading.worker)
