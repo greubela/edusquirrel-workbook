@@ -1,5 +1,6 @@
 package it.evadid.homepage.workbook.htmlRenderer
 
+import scala.util.control.NonFatal
 import it.evadid.workbook.elements.interactionElements.compression.CompressionExperimentInteraction
 import it.evadid.homepage.workbook.htmlRenderer.interactionRenderer.compression.CompressionExperimentRenderer
 import it.evadid.workbook.elements.interactionElements.evacuation.EvacuationSimulationInteraction
@@ -105,25 +106,14 @@ object HtmlRenderFactory {
   }
 
 
-  def render[T <: WorkbookElement](anyElement: T): HtmlWorkbookElement[WorkbookElement, HtmlAppElement] = {
-    try {
-      renderStructureElement(anyElement).asInstanceOf[HtmlWorkbookElement[WorkbookElement, HtmlAppElement]]
-    } catch case e: Throwable => try {
-      renderWorkbookElement(anyElement).asInstanceOf[HtmlWorkbookElement[WorkbookElement, HtmlAppElement]]
-    }
-    catch case e: Throwable => {
-      createPlaceholderElement(anyElement, s"Cannot render Element ${anyElement.getClass.getSimpleName} because of exception: ${e.getMessage}").asInstanceOf[HtmlWorkbookElement[WorkbookElement, HtmlAppElement]]
-    }
-  }
-
-
-  private def renderStructureElement[T <: WorkbookElement](anyElement: T): HtmlWorkbookElement[WorkbookElement, HtmlAppElement] = {
-    anyElement.match {
-      // structure
+  /** Renders any element; renderer failures become a visible placeholder instead of breaking the page. */
+  def render[T <: WorkbookElement](anyElement: T): HtmlWorkbookElement[WorkbookElement, HtmlAppElement] =
+    try anyElement match {
       case c: ExerciseContainer => HtmlExerciseContainerRenderer.render(c)
-      case _: T => ???
-    }
-  }
+      case other => renderWorkbookElement(other).asInstanceOf[HtmlWorkbookElement[WorkbookElement, HtmlAppElement]]
+    } catch case NonFatal(e) =>
+      createPlaceholderElement(anyElement, s"Cannot render Element ${anyElement.getClass.getSimpleName} because of exception: ${e.getMessage}")
+        .asInstanceOf[HtmlWorkbookElement[WorkbookElement, HtmlAppElement]]
 
   def renderWorkbookElement[T <: WorkbookElement](anyElement: T): HtmlWorkbookElement[WorkbookElement, AtomarLineRendering] = {
     anyElement match {
@@ -162,12 +152,6 @@ object HtmlRenderFactory {
       case d: SketchDownloadInteraction => HtmlSketchDownloadRenderer.renderWorkbookElement(d)
       case i: MatchingInteraction => HtmlMatchingInteractionRenderer.renderWorkbookElement(i)
       case i: LikertScaleInteraction => HtmlLikertScaleRenderer.renderWorkbookElement(i)
-      /*case i: ChoiceSelectionInteraction => HtmlChoiceSelectionRenderer.renderWorkbookElement(i)
-      case i: CategorizationInteraction => HtmlCategorizationInteractionRenderer.renderWorkbookElement(i)
-      case i: FillInBlanksInteraction => HtmlFillInBlanksRenderer.renderWorkbookElement(i)
-      case i: DropdownBlanksInteraction => HtmlDropdownBlanksRenderer.renderWorkbookElement(i)
-      case i: TableFillInInteraction => HtmlTableFillInRenderer.renderWorkbookElement(i)
-      case r: ReorderInteraction.ReorderCodeInteraction => HtmlReorderInteractionRenderer.renderWorkbookElement(r)*/
       // plugins -- turtle
       case t: TurtleStitchExploreProjectElement => HtmlTurtleStitchExploreProjectRenderer.renderWorkbookElement(t)
       case t: TurtleRecreateShapeInteraction => HtmlTurtleRecreateShapeRenderer.renderWorkbookElement(t)
@@ -177,14 +161,11 @@ object HtmlRenderFactory {
       case t: TextInputWithScaffoldingAndGrading => TextInputWithScaffoldingAndGradingRenderer.renderWorkbookElement(t)
       // plugins -- slideshow & reorder
       case s: Slideshow => HtmlSlideshowEditor.renderWorkbookElement(s)
-      /*case r: HtmlReorderInteraction[?] @unchecked => fromElement(r, r.getDomElement())*/
-      // case e: HtmlEmbeddedDomInteraction => fromAppElement(e, e.domElement)
       case s: SqlCommandExercise => HtmlSqlCommandExerciseRenderer.renderWorkbookElement(s)
       case p: ProgrammingExercise => HtmlProgrammingExerciseRenderer.renderWorkbookElement(p)
       case p: ProgrammingExerciseFullJava => HtmlProgrammingExerciseFullJavaRenderer.renderWorkbookElement(p)
       case s: SortListExercise => HtmlSortListExerciseRenderer.renderWorkbookElement(s)
-      case a: T => createPlaceholderElement(a, "HtmlRenderFactory::renderWorkbookElement cannot yet render objects of type '" + a.getClass.getName + "'!")
-      // error
+      case other => createPlaceholderElement(other, "HtmlRenderFactory::renderWorkbookElement cannot yet render objects of type '" + other.getClass.getName + "'!")
     }
   }
 

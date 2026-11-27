@@ -1,42 +1,19 @@
 package it.evadid.homepage.control.info
 
 import it.evadid.workbook.session.AllWorkbookInfo
-import it.evadid.core.datastructures.language.AppLanguage.*
 import it.evadid.core.datastructures.user.AllUserInfo
 import it.evadid.homepage.control.model.*
-import it.evadid.homepage.workbook.syncDestination.{DatabaseSyncViaBackendServerHandler, LocalIndexedDbStorageSyncHandler, LocalStorageSyncHandler}
-import it.evadid.workbook.abstractions.InteractionFormat
-import it.evadid.workbook.abstractions.WorkbookInteractionElement
-import it.evadid.workbook.interaction.sync.destination.SyncDestinationDefinition.{LocalIndexedDbSyncDefinition, LocalStorageSyncDefinition, SyncDestinationBasedOnHistoryDatabase}
-import it.evadid.workbook.interaction.sync.destination.{SyncDestinationDefinition, SyncDestinationHistoryHandler}
-import it.evadid.workbook.interaction.sync.*
+import it.evadid.workbook.abstractions.{InteractionFormat, WorkbookInteractionElement}
 
+/** Current values of the central homepage state, for imperative callers outside signals. */
 case class HomepageCurrentInfo(fullInfo: FullInfo) {
 
   private def now(): HomepageInfo = fullInfo.homepageInfoState.now()
 
-  def workbookInfo: Option[AllWorkbookInfo] = fullInfo.synchronized {
-    now().workbookInfo
-  }
+  def workbookInfo: Option[AllWorkbookInfo] = now().workbookInfo
 
-  def currentHomepageContext: UsageContext = now().toContext
+  def userInfo: Option[AllUserInfo] = now().userInfo
 
-  /*def workbookUserData: Option[WorkbookUserDataAnalyzer] = fullInfo.synchronized {
-    if (userInfo.isEmpty || workbookInfo.isEmpty) None
-    else Some(WorkbookUserDataAnalyzer(fullInfo.loggerSystemInfo.contentControlLogger, fullInfo.contentControl.downloadToDisc, now()))
-  }*/
-
-  def userInfo: Option[AllUserInfo] = fullInfo.synchronized {
-    now().userInfo
-  }
-
-  def allAvailableInteractions: Seq[WorkbookInteractionElement[? <: InteractionFormat]] = fullInfo.synchronized {
-    val default = List()
-    now().workbookInfo.map(_.loadedWorkbook.allInteractionsInThisInstance).getOrElse(default)
-  }
-
-  def allAvailableLanguages: Seq[HumanLanguage] = fullInfo.synchronized {
-    now().workbookInfo.map(_.loadedWorkbook.metadata.availableLanguages).getOrElse(List())
-  }
-
+  def allAvailableInteractions: Seq[WorkbookInteractionElement[? <: InteractionFormat]] =
+    now().workbookInfo.map(_.loadedWorkbook.allInteractionsInThisInstance).getOrElse(Seq.empty)
 }

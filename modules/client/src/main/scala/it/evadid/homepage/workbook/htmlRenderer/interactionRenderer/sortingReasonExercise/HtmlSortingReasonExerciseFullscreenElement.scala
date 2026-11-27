@@ -28,7 +28,6 @@ case class HtmlSortingReasonExerciseFullscreenElement(
   private val errorPopupContentId: Var[Option[LanguageMapContentId]] = Var(None)
   private var wrongFlashTimeout: Option[SetTimeoutHandle] = None
   private val reasonDraftVar: Var[String] = Var("")
-  private val reasonFormItemIndex: Var[Option[Int]] = Var(None)
 
   private val reasonFormTargetIndex: Signal[Option[Int]] = stateVar.signal
     .map { rawState =>
@@ -39,13 +38,9 @@ case class HtmlSortingReasonExerciseFullscreenElement(
     }
     .distinct
 
-  reasonFormTargetIndex.foreach {
-    case Some(itemIndex) =>
-      reasonFormItemIndex.set(Some(itemIndex))
-      reasonDraftVar.set(stateVar.now().sanitized(itemCount, fieldCount).reasonsByItem(itemIndex))
-    case None =>
-      reasonFormItemIndex.set(None)
-  }(using com.raquo.laminar.api.L.unsafeWindowOwner)
+  /** Starts the reason draft from the saved reason whenever a new item needs one; bound to the mounted board. */
+  private def seedReasonDraft(target: Option[Int]): Unit =
+    target.foreach(itemIndex => reasonDraftVar.set(stateVar.now().sanitized(itemCount, fieldCount).reasonsByItem(itemIndex)))
 
   private def unmount(): Unit = {
     clearWrongFlashTimeout()
@@ -58,7 +53,6 @@ case class HtmlSortingReasonExerciseFullscreenElement(
     clearWrongFlashTimeout()
     SortingExerciseDragDropHelper.clearDragState(draggingItemIndex)
     reasonDraftVar.set("")
-    reasonFormItemIndex.set(None)
   }
 
   private def contentIdSignal(contentId: LanguageMapContentId): Signal[String] =
@@ -233,6 +227,7 @@ case class HtmlSortingReasonExerciseFullscreenElement(
           cls := "sorting-source__label",
           child.text <-- contentIdSignal(LanguageMapContentId("basic/sortingCurrentTerm"))
         ),
+        reasonFormTargetIndex --> seedReasonDraft,
         child.maybe <-- reasonFormTargetIndex.map(_.map(renderReasonForm)),
         div(
           cls := "sorting-source__items",

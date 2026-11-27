@@ -11,18 +11,13 @@ import it.evadid.distribution.clients.ExecutionClient
 import it.evadid.homepage.control.change.*
 import it.evadid.homepage.control.info.*
 import it.evadid.homepage.control.singletons.HomepageDefaults
-import it.evadid.homepage.control.singletons.HtmlFullWorkbookApp.fullInfo
 import it.evadid.workbook.interaction.sync.SyncControl
 import it.evadid.workbook.meta.ExecutionContextInformation
 
 import scala.concurrent.{ExecutionContext, Future}
 
 
-case class FullInfo(
-                     // val defaults: HomepageDefaults,
-                     private[control] val defaultInfo: HomepageInfo
-                   ) {
-
+case class FullInfo(private[control] val defaultInfo: HomepageInfo) {
 
   val defaults: HomepageDefaults = HomepageDefaults(this)
 
@@ -35,25 +30,25 @@ case class FullInfo(
     val owner = feedbackSession.now()
     val backendToken = homepageInfoNow().userInfo.flatMap(_.credentials.signedBackendToken)
     new ExecutionContextInformation() {
-    override def isCurrent: Boolean = feedbackSession.now() eq owner
+      override def isCurrent: Boolean = feedbackSession.now() eq owner
 
-    override val llmConfiguration: Option[LlmConfiguration] =
-      homepageInfoNow().userInfo.flatMap(_.credentials.llmApiConfig)
+      override val llmConfiguration: Option[LlmConfiguration] =
+        homepageInfoNow().userInfo.flatMap(_.credentials.llmApiConfig)
 
-    override lazy val availableExecutionClients: Seq[ExecutionClient] = List(defaults.workerExecuter, defaults.backendExecutorWithCredentials(backendToken))
+      override lazy val availableExecutionClients: Seq[ExecutionClient] = List(defaults.workerExecuter, defaults.backendExecutorWithCredentials(backendToken))
 
-    override def getCurrentLanguage: AppLanguage.HumanLanguage = currentLanguageObservable.now().getOrElse(German)
+      override def getCurrentLanguage: AppLanguage.HumanLanguage = currentLanguageObservable.now().getOrElse(German)
 
-    override lazy val languageMapIdResolver: Option[LanguageMapIdResolver] = Some(new LanguageMapIdResolver(currentLanguageObservable) {
-      override def resolveMap(id: LanguageMapContentId): Future[LanguageMap[AppLanguage.HumanLanguage]] = Future {
-        homepageInfoState.now().languageMapStore.languageMaps(id)
-      }(using ExecutionContext.global)
-    })
+      override lazy val languageMapIdResolver: Option[LanguageMapIdResolver] = Some(new LanguageMapIdResolver(currentLanguageObservable) {
+        override def resolveMap(id: LanguageMapContentId): Future[LanguageMap[AppLanguage.HumanLanguage]] = Future {
+          homepageInfoState.now().languageMapStore.languageMaps(id)
+        }(using ExecutionContext.global)
+      })
 
-    override def futureExecutionContext: ExecutionContext = ExecutionContext.global
+      override def futureExecutionContext: ExecutionContext = ExecutionContext.global
 
-    override def syncControl: Option[SyncControl] = Some(FullInfo.this.syncControl)
-  }
+      override def syncControl: Option[SyncControl] = Some(FullInfo.this.syncControl)
+    }
   }
 
 
@@ -62,10 +57,6 @@ case class FullInfo(
   def homepageInfoNow(): HomepageInfo = homepageInfoState.now()
 
   /* INFO */
-
-  //lazy val executorForParallelism: Seq[ExecutionClient] = List(backendExecutor)
-  //ExecuteOnRemoteServer("http://localhost", 9000),
-  //ExecuteOnWebWorker(FileFactory.relativeToArtifactsFolder("/newest/backend-worker.js").fullPath),:
 
   lazy val loggerSystemInfo: HomepageLoggerInfo = HomepageLoggerInfo.singleton
 

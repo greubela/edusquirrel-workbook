@@ -1,10 +1,11 @@
 package it.evadid.server.commandHandler.sql.sync
 
 import it.evadid.util.logging.Logger
-import it.evadid.distribution.commandTypes.SQLCommands.{BulkStoreToDbRequest, DeleteInDbRequest, StoreToDbRequest}
+import it.evadid.distribution.commandTypes.SQLCommands.{BulkStoreToDbRequest, DbFetchResponse, DbRequest, DeleteInDbRequest, FetchEventsFromDbRequest, StoreToDbRequest}
+import it.evadid.sql.DatabaseHistoryFormat
 import it.evadid.workbook.interaction.sync.{SyncContext, SyncSuccess}
 import it.evadid.workbook.interaction.variable.events.EventId
-import it.evadid.server.database.SqlFailure
+import it.evadid.server.database.{DatabaseRequestConnection, SqlFailure}
 import it.evadid.core.util.io.ParsingContext
 import java.sql.{Connection, PreparedStatement, ResultSet}
 import scala.util.Using
@@ -12,6 +13,8 @@ import scala.util.Using
 /** Shared JDBC resource handling and transaction ownership for both history layouts. */
 abstract class HistorySql(connection: Connection, logger: Logger) {
   def store(request: StoreToDbRequest): SyncSuccess[EventId]
+  def fetch(request: FetchEventsFromDbRequest): DbFetchResponse
+  def delete(request: DeleteInDbRequest): SyncSuccess[SyncContext]
 
   /** One transaction and deterministic lock order across the entire network batch. */
   final def storeAll(request: BulkStoreToDbRequest): SyncSuccess[EventId] = transaction {
@@ -68,5 +71,15 @@ abstract class HistorySql(connection: Connection, logger: Logger) {
       connection.setTransactionIsolation(isolation)
     }
   }
+}
 
+object HistorySql {
+  /** Opens the request's validated connection and runs `operation` on the storage for its history layout. */
+  def forRequest[A](request: DbRequest, logger: Logger)(operation: HistorySql => A): A =
+    DatabaseRequestConnection.use(request, logger) { connection =>
+      operation(request.databaseFormat match {
+        case DatabaseHistoryFormat.RelationalFormat => RelationalHistoryStorage(connection, logger)
+        case DatabaseHistoryFormat.BlobFormat => BlobHistoryStorage(connection, logger)
+      })
+    }
 }

@@ -156,13 +156,13 @@ case class HtmlWorkbookDomElement() extends HtmlAppElement {
   // FULLSCREEN STUFF
 
 
-  private lazy val fullscreenActiveElementSignal: Signal[Option[HtmlAppElement]] = fullInfo.signals.currentDisplayInfo.map(_.fullscreenElement).distinct
+  private lazy val fullscreenActiveElementSignal: Signal[Option[HtmlAppElement]] = fullInfo.signals.display.map(_.fullscreenElement).distinct
 
   private val onCloseDialog = new EventProp[dom.Event]("close")
   private val onCancelDialog = new EventProp[dom.Event]("cancel")
 
   private def currentAllowsOutsideDismiss: Boolean =
-    fullInfo.signals.currentDisplayInfo.now().fullscreenElement match
+    fullInfo.signals.display.now().fullscreenElement match
       case Some(element) => element.dismissOnOutsideClick
       case _ => true
 

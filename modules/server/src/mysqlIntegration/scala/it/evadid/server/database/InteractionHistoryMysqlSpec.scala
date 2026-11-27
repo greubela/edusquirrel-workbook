@@ -25,7 +25,7 @@ import java.nio.charset.StandardCharsets.UTF_8
 import java.util.zip.GZIPOutputStream
 import java.net.URI
 import java.net.http.{HttpClient, HttpRequest, HttpResponse}
-import it.evadid.server.commandHandler.sql.sync.{DeleteInDatabase, FetchFromDatabase, UpsertToDatabase}
+import it.evadid.server.commandHandler.sql.sync.HistorySql
 import it.evadid.workbook.interaction.sync.model.InteractionHistoryJson
 import it.evadid.workbook.interaction.variable.events.*
 import it.evadid.workbook.abstractions.{FeedbackEntity, InteractionFormat}
@@ -34,7 +34,7 @@ import it.evadid.workbook.abstractions.scaffolding.{ScaffoldingResult, Scaffoldi
 import it.evadid.workbook.elements.interactionElements.gpt.{TextInputLlmGrader, TextInputWithScaffoldingAndGrading}
 import it.evadid.workbook.interaction.sync.{EventSyncStrategy, SyncContext, SyncSuccess, UpdateImportance, UsageContext}
 import it.evadid.workbook.interaction.variable.*
-import it.evadid.util.logging.BasicLogger
+import it.evadid.util.logging.{BasicLogger, Logger}
 import java.time.LocalDateTime
 import scala.util.Using
 import munit.FunSuite
@@ -69,10 +69,14 @@ class InteractionHistoryMysqlSpec extends FunSuite {
       case event => event
     }))
   }
+  private def storeVia(request: StoreToDbRequest, logger: Logger) = HistorySql.forRequest(request, logger)(_.store(request))
+  private def storeAllVia(request: BulkStoreToDbRequest, logger: Logger) = HistorySql.forRequest(request, logger)(_.storeAll(request))
+  private def fetchVia(request: FetchEventsFromDbRequest, logger: Logger) = HistorySql.forRequest(request, logger)(_.fetch(request))
+  private def deleteVia(request: DeleteInDbRequest, logger: Logger) = HistorySql.forRequest(request, logger)(_.delete(request))
   private def fixtureId(value: String): EventId = EventId(java.util.UUID.nameUUIDFromBytes(value.getBytes(UTF_8)).toString)
   private def encoded(history: History): InteractionHistoryJson = InteractionHistoryJson.fromHistory(format, history)
   private def store(history: History, storage: DatabaseHistoryFormat = RelationalFormat): Unit =
-    UpsertToDatabase.handleRequest(StoreToDbRequest(sync, encoded(history), config, storage), logger)
+    storeVia(StoreToDbRequest(sync, encoded(history), config, storage), logger)
   private def fetchRequest(storage: DatabaseHistoryFormat, keys: Seq[String] = Seq(key),
                            starting: LocalDateTime = LocalDateTime.MIN, until: LocalDateTime = LocalDateTime.MAX,
                            strategy: EventSyncStrategy = EventSyncStrategy.SYNC_EVERYTHING,
@@ -80,9 +84,9 @@ class InteractionHistoryMysqlSpec extends FunSuite {
     FetchEventsFromDbRequest(usage, keys, starting, until, config, storage, strategy)
   /** The typed history of [[sync]] in a direct database read. */
   private def fetchedHistory(request: FetchEventsFromDbRequest) =
-    FetchFromDatabase.handleRequest(request, logger).fetchedElements(sync).typedAs(format)
+    fetchVia(request, logger).fetchedElements(sync).typedAs(format)
   private def fetch(storage: DatabaseHistoryFormat = RelationalFormat): Map[SyncContext, String] =
-    FetchFromDatabase.handleRequest(fetchRequest(storage, keys = Seq.empty), logger).fetchedElements.map((key, value) => key -> value.historyJson)
+    fetchVia(fetchRequest(storage, keys = Seq.empty), logger).fetchedElements.map((key, value) => key -> value.historyJson)
   private def scalar(sql: String): Long = MysqlTestDatabase.withConnection { connection =>
     Using.resource(connection.createStatement())(statement => Using.resource(statement.executeQuery(sql))(rows => { rows.next(); rows.getLong(1) }))
   }
@@ -128,18 +132,18 @@ class InteractionHistoryMysqlSpec extends FunSuite {
       val other = context.toSyncContext("other-key")
       val initial = BulkStoreToDbRequest(Vector(sync, other), Vector(encoded(history()), encoded(history("other"))), config, storage)
       val sent = history().events.ids ++ history("other").events.ids
-      val first = UpsertToDatabase.handleBulkRequest(initial, logger)
+      val first = storeAllVia(initial, logger)
       assertEquals((first.elementsAdded, first.elementsUnchanged), (sent, Set.empty[EventId]))
       assertEquals(read[History](fetch(storage)(sync)), history())
       assertEquals(read[History](fetch(storage)(other)), history("other"))
-      val retry = UpsertToDatabase.handleBulkRequest(initial, logger)
+      val retry = storeAllVia(initial, logger)
       assertEquals((retry.elementsAdded, retry.elementsUnchanged), (Set.empty[EventId], sent), "a retry confirms the stored events")
       val delta = history("next", time.plusNanos(1))
-      UpsertToDatabase.handleBulkRequest(initial.copy(syncContexts = Seq(sync), histories = Seq(encoded(delta))), logger)
+      storeAllVia(initial.copy(syncContexts = Seq(sync), histories = Seq(encoded(delta))), logger)
       assertEquals(read[History](fetch(storage)(sync)), history().mergeWith(delta))
       val invalid = InteractionHistoryJson(format, "invalid JSON")
       val failed = initial.copy(histories = Seq(encoded(history("should roll back")), invalid))
-      intercept[Exception](UpsertToDatabase.handleBulkRequest(failed, logger))
+      intercept[Exception](storeAllVia(failed, logger))
       assertEquals(read[History](fetch(storage)(sync)), history().mergeWith(delta))
     }
   }
@@ -177,7 +181,7 @@ class InteractionHistoryMysqlSpec extends FunSuite {
       val wrongFormat = valid.copy(format = LabeledCheckboxInteractionFormat)
       val request = BulkStoreToDbRequest(Seq(context.toSyncContext("a-valid"), context.toSyncContext("z-invalid")),
         Seq(valid, wrongFormat), config, storage)
-      intercept[Exception](UpsertToDatabase.handleBulkRequest(request, logger))
+      intercept[Exception](storeAllVia(request, logger))
       assertEquals(fetch(storage), Map.empty)
     }
 
@@ -185,12 +189,12 @@ class InteractionHistoryMysqlSpec extends FunSuite {
       val text = InteractionVariableHistory.empty[TextInteractionFormat.type].addEvent(
         AnswerChangedEvent[TextInteractionFormat.type]("same JSON schema", time, UpdateImportance.MAJOR))
       val original = StoreToDbRequest(sync, InteractionHistoryJson.fromHistory(TextInteractionFormat, text), config, storage)
-      UpsertToDatabase.handleRequest(original, logger)
+      storeVia(original, logger)
       // Both formats encode String/Unit/Unit; their identity must still remain distinct.
       val changed = original.copy(history = original.history.copy(format = SqlCommandExerciseFormat))
       changed.history.toTyped // The replacement payload is valid for its declared format.
-      intercept[IllegalArgumentException](UpsertToDatabase.handleRequest(changed, logger))
-      val fetched = FetchFromDatabase.handleRequest(fetchRequest(storage), logger).fetchedElements(sync)
+      intercept[IllegalArgumentException](storeVia(changed, logger))
+      val fetched = fetchVia(fetchRequest(storage), logger).fetchedElements(sync)
       assertEquals(fetched.format, TextInteractionFormat)
       assertEquals(fetched.typedAs(TextInteractionFormat), text)
     }
@@ -216,7 +220,7 @@ class InteractionHistoryMysqlSpec extends FunSuite {
     val saved = history()
     store(saved, DatabaseHistoryFormat.RelationalFormat)
     assertEquals(read[History](fetch()(sync)), saved)
-    DeleteInDatabase.handleRequest(DeleteInDbRequest(context, Some(key), config, DatabaseHistoryFormat.RelationalFormat), logger)
+    deleteVia(DeleteInDbRequest(context, Some(key), config, DatabaseHistoryFormat.RelationalFormat), logger)
     assertEquals(fetch(), Map.empty)
   }
 
@@ -225,7 +229,7 @@ class InteractionHistoryMysqlSpec extends FunSuite {
       val original = history()
       store(original, storage)
       val restored = read[History](fetch(storage)(sync))
-      val replay = UpsertToDatabase.handleRequest(StoreToDbRequest(sync, encoded(restored), config, storage), logger)
+      val replay = storeVia(StoreToDbRequest(sync, encoded(restored), config, storage), logger)
       assertEquals((replay.elementsAdded, replay.elementsUnchanged), (Set.empty[EventId], original.events.ids))
       assertEquals(read[History](fetch(storage)(sync)), original)
       val answer = original.allStates.head
@@ -238,7 +242,7 @@ class InteractionHistoryMysqlSpec extends FunSuite {
         assertEquals(scalar("SELECT COUNT(*) FROM answer_event"), 1L)
         assertEquals(scalar("SELECT id FROM answer_event"), id)
       }
-      val removed = DeleteInDatabase.handleRequest(DeleteInDbRequest(context, Some(key), config, storage), logger)
+      val removed = deleteVia(DeleteInDbRequest(context, Some(key), config, storage), logger)
       assertEquals(removed.elementsRemoved, Set(sync))
     }
   }
@@ -302,9 +306,9 @@ class InteractionHistoryMysqlSpec extends FunSuite {
     withHttpCommands() { send =>
       List(BlobFormat, RelationalFormat).foreach { format =>
         List(context, second, otherUser, otherProgram).foreach { usage =>
-          UpsertToDatabase.handleRequest(StoreToDbRequest(usage.toSyncContext(key), encoded(history()), config, format), logger)
+          storeVia(StoreToDbRequest(usage.toSyncContext(key), encoded(history()), config, format), logger)
         }
-        def readAt(usage: UsageContext) = FetchFromDatabase.handleRequest(fetchRequest(format, keys = Seq.empty, usage = usage), logger).fetchedElements
+        def readAt(usage: UsageContext) = fetchVia(fetchRequest(format, keys = Seq.empty, usage = usage), logger).fetchedElements
         def erase(usage: UsageContext) = send(command(resetUserHistoriesDbCommand.name,
           DeleteInDbRequest(usage, None, config, format, allWorkbooks = true)))
         val missingScope = send(command(resetUserHistoriesDbCommand.name,
@@ -472,11 +476,11 @@ class InteractionHistoryMysqlSpec extends FunSuite {
     val variants = List(context, context.copy(programId = "PROGRAM"), context.copy(programId = "program "))
     variants.foreach { usage =>
       val identity = usage.toSyncContext(key)
-      UpsertToDatabase.handleRequest(StoreToDbRequest(identity, encoded(history()), config, RelationalFormat), logger)
+      storeVia(StoreToDbRequest(identity, encoded(history()), config, RelationalFormat), logger)
     }
     assertEquals(scalar("SELECT COUNT(*) FROM sync_context_id"), 3L)
     variants.foreach { usage =>
-      val response = FetchFromDatabase.handleRequest(fetchRequest(RelationalFormat, keys = Seq.empty, usage = usage), logger)
+      val response = fetchVia(fetchRequest(RelationalFormat, keys = Seq.empty, usage = usage), logger)
       assertEquals(response.fetchedElements.keySet, Set(usage.toSyncContext(key)))
     }
   }
@@ -510,7 +514,7 @@ class InteractionHistoryMysqlSpec extends FunSuite {
       val other = LabeledCheckboxInteractionFormat
       val booleanHistory = InteractionVariableHistory.empty[other.type].addEvent(AnswerChangedEvent[other.type](true, time, UpdateImportance.MAJOR))
       val changed = StoreToDbRequest(sync, InteractionHistoryJson.fromHistory(other, booleanHistory), config, storage)
-      intercept[IllegalArgumentException](UpsertToDatabase.handleRequest(changed, logger))
+      intercept[IllegalArgumentException](storeVia(changed, logger))
       assertEquals(read[History](fetch(storage)(sync)), history())
     }
 
@@ -566,7 +570,7 @@ class InteractionHistoryMysqlSpec extends FunSuite {
         }
       }
       val readLogger = BasicLogger()
-      val fetched = FetchFromDatabase.handleRequest(fetchRequest(RelationalFormat, keys = Seq.empty), readLogger)
+      val fetched = fetchVia(fetchRequest(RelationalFormat, keys = Seq.empty), readLogger)
       val expected = combined.copy(events = InteractionEvents(
         combined.events.values.filterNot(_.eventId == corruptEventId)))
       assertEquals(fetched.fetchedElements(sync).typedAs(format), expected)
@@ -618,13 +622,13 @@ class InteractionHistoryMysqlSpec extends FunSuite {
     Seq(RelationalFormat, BlobFormat).foreach { storage =>
       MysqlTestDatabase.withConnection(MysqlTestDatabase.reset)
       store(history(), storage)
-      UpsertToDatabase.handleRequest(StoreToDbRequest(other, encoded(history("other")), config, storage), logger)
+      storeVia(StoreToDbRequest(other, encoded(history("other")), config, storage), logger)
       MysqlTestDatabase.withConnection { connection =>
         Using.resource(connection.createStatement())(_.executeUpdate(
           if storage == BlobFormat then s"UPDATE blob_history SET history_json='{\"broken\": true}' WHERE variable_id='$key'"
           else s"UPDATE answer_event SET serialized_data='{\"broken\": true}' WHERE sync_id=(SELECT id FROM sync_context_id WHERE variable_id='$key')"))
       }
-      val fetched = FetchFromDatabase.handleRequest(fetchRequest(storage, keys = Seq.empty), logger).fetchedElements
+      val fetched = fetchVia(fetchRequest(storage, keys = Seq.empty), logger).fetchedElements
       assertEquals(fetched(other).typedAs(format).allStates, history("other").allStates, storage.toString)
       if storage == BlobFormat then assert(!fetched.contains(sync), "the unreadable blob is discarded")
       else {
@@ -640,7 +644,7 @@ class InteractionHistoryMysqlSpec extends FunSuite {
     Seq(RelationalFormat -> "sync_context_id", BlobFormat -> "blob_history").foreach { (storage, table) =>
       MysqlTestDatabase.withConnection(MysqlTestDatabase.reset)
       store(history(), storage)
-      UpsertToDatabase.handleRequest(StoreToDbRequest(other, encoded(history("other")), config, storage), logger)
+      storeVia(StoreToDbRequest(other, encoded(history("other")), config, storage), logger)
       MysqlTestDatabase.withConnection { connection =>
         Using.resource(connection.createStatement())(_.executeUpdate(s"UPDATE $table SET format='unknown-format' WHERE variable_id='$key'"))
       }

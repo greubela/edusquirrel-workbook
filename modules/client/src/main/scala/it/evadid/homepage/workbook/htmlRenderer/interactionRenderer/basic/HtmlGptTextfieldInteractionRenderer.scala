@@ -21,7 +21,6 @@ import it.evadid.workbook.interaction.variable.InteractionVariable
 import org.scalajs.dom.SVGSVGElement
 
 import java.time.LocalDateTime
-import scala.collection.mutable
 import scala.concurrent.ExecutionContext
 import scala.util.{Failure, Success}
 
@@ -80,11 +79,9 @@ object HtmlGptTextfieldInteractionRenderer extends LineBasedRenderingFactory[Gpt
 
   override protected def createRendering(workbookElement: GptInteractionElement): AtomarLineRendering = {
 
-    val elements: mutable.ListBuffer[Element] = mutable.ListBuffer()
-
-    val interactionVariable: InteractionVariable[MessagingInteractionFormat.type] = workbookElement.scaffoldingInteractionOp.get.interactionVariable
-    if (workbookElement.scaffoldingInteractionOp.nonEmpty) {
-      val boundState = interactionVariable
+    // The chat button exists only for exercises with a scaffolding conversation.
+    val elements: Seq[Element] = workbookElement.scaffoldingInteractionOp.toList.map { scaffolding =>
+      val boundState = scaffolding.interactionVariable
         .createBoundStateWithUpdateImportance( MAJOR, fullInfo.workbookContextInformation)
         .biMap(_.messengerModel, MessengerModelScaffolding.apply)
       val scaffoldingChat = SimpleChatEditor(boundState, State(""), msg => onUserSendMessage(msg, boundState))
@@ -93,16 +90,15 @@ object HtmlGptTextfieldInteractionRenderer extends LineBasedRenderingFactory[Gpt
         val currentUser: ChatParticipant = fullInfo.current.userInfo.map(_.user).getOrElse(MessengerModel.pFallbackStudent)
 
         workbookElement.initScaffoldingIfEmpty(fullInfo.workbookContextInformation, currentUser, fullInfo.workbookContextInformation.languageMapIdResolver.get).onComplete {
-          case Success(bool) => if (bool) requestCompletion(workbookElement.scaffoldingInteractionOp.get.interactionVariable.currentValue.messengerModel, boundState)
+          case Success(bool) => if (bool) requestCompletion(scaffolding.interactionVariable.currentValue.messengerModel, boundState)
           case e: Any => fullInfo.loggerSystemInfo.workbookElementLogger.logWarn(s"HtmlGptTextfieldInteractionRenderer::createRendering -> error of some sort..: ${e.toString}")
         }(using ExecutionContext.global)
         fullInfo.displayControl.setFullscreen(scaffoldingChat)
       })
-      elements += openChatButton.getDomElement()
+      openChatButton.getDomElement()
     }
 
-    val elementsFinished: Seq[Element] = elements.toList
-    AtomarLineRendering.basicLine(workbookElement, elementsFinished, "button-line")
+    AtomarLineRendering.basicLine(workbookElement, elements, "button-line")
   }
 
 }

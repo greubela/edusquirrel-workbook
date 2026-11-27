@@ -50,10 +50,7 @@ object BackendServer {
       Future(BackendCommandHandler.handleExecution(commandReceived, command, verifiedToken, remoteAddress, backendLogger)).flatten
         .recover { case NonFatal(error) =>
           fail(commandReceived, "Could not handle ExecutionCommand: " + error.getMessage,
-            Some(error match {
-              case serialized: SerializedException => serialized
-              case other => SerializedException(other)
-            }), Some(command), backendLogger)
+            Some(SerializedException(error)), Some(command), backendLogger)
         }
     }.recover { case NonFatal(error) =>
       fail(commandReceived, "Could not read ExecutionCommand: " + error.getMessage,
