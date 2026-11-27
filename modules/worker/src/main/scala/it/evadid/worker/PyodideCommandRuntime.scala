@@ -1,9 +1,11 @@
 package it.evadid.worker
 
+import it.evadid.core.datastructures.state.State
 import it.evadid.distribution.commandTypes.WorkerCommands.*
 import it.evadid.util.logging.Logger
 import it.evadid.facades.{Pyodide, PyodideRuntime}
 import it.evadid.vm.simulation.python.{PythonConsoleProgram, PythonTurtleCalls}
+import it.evadid.worker.PyodideRuntimeState.{Interpreter, JobOutput}
 import scala.concurrent.{ExecutionContext, Future}
 import scala.scalajs.js
 import scala.scalajs.js.JSConverters.*
@@ -12,23 +14,25 @@ import scala.util.Try
 /** One lazy interpreter per worker; only Python jobs are serialized, including initialization. */
 object PyodideCommandRuntime {
   private given ExecutionContext = ExecutionContext.global
-  private var interpreter = Option.empty[Future[PyodideRuntime]]
-  private var namespace = Option.empty[js.Dynamic]
-  private var registeredModules = Set.empty[String]
-  private var callbackOps = Vector.empty[PythonCallback]
-  private var pending: Future[Unit] = Future.successful(())
+  private val state = State(PyodideRuntimeState.initial)
 
-  private def load(): Future[PyodideRuntime] = interpreter.getOrElse {
-    val created = Pyodide.createInstance()
-    interpreter = Some(created)
-    created.failed.foreach(_ => interpreter = None)
-    created
+  /** The worker is single-threaded, so reading and replacing the job chain cannot interleave. */
+  def run(request: RunPythonRequest, logger: Logger): Future[RunPythonResult] = {
+    val (next, result) = state.now().enqueue(() => execute(request, logger))
+    state.set(next)
+    result
   }
 
-  def run(request: RunPythonRequest, logger: Logger): Future[RunPythonResult] = {
-    val result = pending.flatMap(_ => execute(request, logger))
-    pending = result.transform(_ => scala.util.Success(()))
-    result
+  private def load(): Future[PyodideRuntime] = state.now().interpreter match {
+    case Interpreter.Ready(runtime, _) => Future.successful(runtime)
+    case Interpreter.Loading(runtime) => runtime
+    case Interpreter.NotStarted =>
+      val created = Pyodide.createInstance()
+      state.update(_.startLoading(created))
+      created.transform { loaded =>
+        state.update(_.finishLoading(loaded))
+        loaded
+      }
   }
 
   private def json(value: js.Any): ujson.Value = {
@@ -95,11 +99,12 @@ object PyodideCommandRuntime {
 
   /** The persistent globals, recreated when requested or before the first job. */
   private def globalsFor(pyodide: PyodideRuntime, request: RunPythonRequest): js.Dynamic = {
-    if (request.resetGlobals || namespace.isEmpty) {
-      namespace.foreach(_.destroy())
-      namespace = Some(pyodide.runPython("dict()").asInstanceOf[js.Dynamic])
+    val current = state.now().session.namespace
+    if (request.resetGlobals || current.isEmpty) {
+      current.foreach(_.destroy())
+      state.update(_.withNamespace(pyodide.runPython("dict()").asInstanceOf[js.Dynamic]))
     }
-    val globals = namespace.get
+    val globals = state.now().session.namespace.get
     request.context.foreach { (key, value) =>
       val converted = pyodide.toPy(pythonContextValue(value))
       try globals.set(key, converted)
@@ -108,63 +113,77 @@ object PyodideCommandRuntime {
     globals
   }
 
-  /** Replaces the previous job's callback modules; each call is recorded in [[callbackOps]]. */
-  private def registerCallbacks(pyodide: PyodideRuntime, callbacks: Map[String, Seq[String]]): Unit = {
-    registeredModules.foreach { module =>
+  /** Replaces the previous job's callback modules; each call is recorded in this job's `output`. */
+  private def registerCallbacks(pyodide: PyodideRuntime, callbacks: Map[String, Seq[String]], output: State[JobOutput]): Unit = {
+    state.now().session.modules.foreach { module =>
       pyodide.unregisterJsModule(module)
       pyodide.runPython(s"import sys; sys.modules.pop('$module', None)")
     }
-    registeredModules = Set.empty
+    state.update(_.withoutModules)
     callbacks.foreach { (module, methods) =>
       require(module.matches(identifier), "Invalid Python callback module")
-      val functions = js.Dictionary.empty[js.Any]
-      methods.foreach { method =>
-        require(method.matches(identifier), "Invalid Python callback method")
-        val handler = js.Dynamic.literal(apply = ((_: js.Any, _: js.Any, args: js.Array[js.Any]) => {
-          callbackOps :+= PythonCallback(module, method, args.toList.map(arg => json(if (isPyProxy(arg)) proxyToJs(arg) else arg)))
-          js.undefined
-        }): js.Function3[js.Any, js.Any, js.Array[js.Any], js.Any])
-        functions(method) = js.Dynamic.newInstance(js.Dynamic.global.Proxy)((() => ()): js.Function0[Unit], handler)
-      }
-      pyodide.registerJsModule(module, functions)
-      registeredModules += module
+      pyodide.registerJsModule(module, callbackModule(module, methods, output))
+      state.update(_.withModule(module))
     }
   }
 
-  private def execute(request: RunPythonRequest, logger: Logger): Future[RunPythonResult] = {
+  private def callbackModule(module: String, methods: Seq[String], output: State[JobOutput]): js.Dictionary[js.Any] = {
+    val functions = js.Dictionary.empty[js.Any]
+    methods.foreach { method =>
+      require(method.matches(identifier), "Invalid Python callback method")
+      val handler = js.Dynamic.literal(apply = ((_: js.Any, _: js.Any, args: js.Array[js.Any]) => {
+        val values = args.toList.map(arg => json(if (isPyProxy(arg)) proxyToJs(arg) else arg))
+        output.update(_.withCallback(PythonCallback(module, method, values)))
+        js.undefined
+      }): js.Function3[js.Any, js.Any, js.Array[js.Any], js.Any])
+      functions(method) = js.Dynamic.newInstance(js.Dynamic.global.Proxy)((() => ()): js.Function0[Unit], handler)
+    }
+    functions
+  }
+
+  /** Routes Pyodide's streams into `output`; the returned function flushes both decoders into it. */
+  private def captureOutput(pyodide: PyodideRuntime, request: RunPythonRequest, output: State[JobOutput]): () => Unit = {
+    val stdoutDecoder = newDecoder()
+    val stderrDecoder = newDecoder()
+    pyodide.setStdout(outputStream(request.captureStdout, stdoutDecoder)(text => output.update(_.withStdout(text))))
+    pyodide.setStderr(outputStream(request.captureStderr, stderrDecoder)(text => output.update(_.withStderr(text))))
+    () => {
+      Try(pyodide.runPython("import sys; sys.stdout.flush(); sys.stderr.flush()"))
+      output.update(_.withStdout(stdoutDecoder.decode().asInstanceOf[String]).withStderr(stderrDecoder.decode().asInstanceOf[String]))
+    }
+  }
+
+  private def execute(request: RunPythonRequest, logger: Logger): Future[RunPythonResult] =
     load().flatMap { pyodide =>
-      var stdout = Vector.empty[String]
-      var stderr = Vector.empty[String]
-      callbackOps = Vector.empty
-      val stdoutDecoder = newDecoder()
-      val stderrDecoder = newDecoder()
-      pyodide.setStdout(outputStream(request.captureStdout, stdoutDecoder)(text => stdout :+= text))
-      pyodide.setStderr(outputStream(request.captureStderr, stderrDecoder)(text => stderr :+= text))
-      def flushOutput(): Unit = {
-        Try(pyodide.runPython("import sys; sys.stdout.flush(); sys.stderr.flush()"))
-        stdout :+= stdoutDecoder.decode().asInstanceOf[String]
-        stderr :+= stderrDecoder.decode().asInstanceOf[String]
-      }
+      val output = State(JobOutput.empty)
+      val flushOutput = captureOutput(pyodide, request, output)
       val globals = globalsFor(pyodide, request)
-      registerCallbacks(pyodide, request.callbacks)
-      val prepared = if (request.packages.isEmpty) Future.successful(())
-        else pyodide.loadPackage(request.packages.toJSArray).asInstanceOf[js.Promise[js.Any]].toFuture.map(_ => ())
-      prepared.flatMap(_ => pyodide.loadPackagesFromImports(request.code).asInstanceOf[js.Promise[js.Any]].toFuture)
-        .flatMap(_ => pyodide.runPythonAsync(program(request), js.Dynamic.literal(globals = globals))
-          .asInstanceOf[js.Promise[js.Any]].toFuture)
+      registerCallbacks(pyodide, request.callbacks, output)
+      evaluate(pyodide, request, globals)
         .map { value =>
           flushOutput()
-          val isProxy = isPyProxy(value)
-          try {
-            val converted = if (isProxy) proxyToJs(value) else value
-            RunPythonResult(json(converted), stdout.mkString, stderr.mkString, callbackOps.toList)
-          } finally if (isProxy) value.asInstanceOf[js.Dynamic].destroy()
+          result(value, output.now())
         }.recoverWith { case error =>
           flushOutput()
-          stdout.foreach(logger.logInfo(_))
-          stderr.foreach(logger.logError(_))
+          output.now().stdout.foreach(logger.logInfo(_))
+          output.now().stderr.foreach(logger.logError(_))
           Future.failed(error)
         }
     }
+
+  private def evaluate(pyodide: PyodideRuntime, request: RunPythonRequest, globals: js.Dynamic): Future[js.Any] = {
+    val prepared = if (request.packages.isEmpty) Future.successful(())
+      else pyodide.loadPackage(request.packages.toJSArray).asInstanceOf[js.Promise[js.Any]].toFuture.map(_ => ())
+    prepared.flatMap(_ => pyodide.loadPackagesFromImports(request.code).asInstanceOf[js.Promise[js.Any]].toFuture)
+      .flatMap(_ => pyodide.runPythonAsync(program(request), js.Dynamic.literal(globals = globals))
+        .asInstanceOf[js.Promise[js.Any]].toFuture)
+  }
+
+  private def result(value: js.Any, output: JobOutput): RunPythonResult = {
+    val isProxy = isPyProxy(value)
+    try {
+      val converted = if (isProxy) proxyToJs(value) else value
+      RunPythonResult(json(converted), output.stdout.mkString, output.stderr.mkString, output.callbacks.toList)
+    } finally if (isProxy) value.asInstanceOf[js.Dynamic].destroy()
   }
 }
