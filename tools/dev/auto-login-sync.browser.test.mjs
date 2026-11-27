@@ -1,5 +1,6 @@
 import {installCodeMirrorModules} from './codemirror-test-modules.mjs';
 import {readCommandRequest} from './command-request.mjs';
+import {syncSuccess} from './sync-success-fixture.mjs';
 import assert from 'node:assert/strict';
 import {readFile} from 'node:fs/promises';
 import path from 'node:path';
@@ -24,11 +25,16 @@ const profile = {user,credentials:{signedBackendToken:token,singleAccessToken:nu
 const context = {programId:'edusquirrel',scenarioId:'workbookTest',userId:user.id,keyForSerialisation:'demo-feedback-1_history'};
 const answer = 'This answer was restored during the first automatic login.';
 const savedHistory = {format:'TextInputWithLlmGradingAndScaffoldingFormat', historyJson:JSON.stringify({events:{values:[
-  {$type:'AnswerChangedEvent',eventId:'a86a2e47-40ed-4c65-9fd7-01bf45460b73',newState:answer,updateImportance:'MAJOR',timestamp:'2026-01-01T12:00:00'}]}})};
+  {$type:'AnswerChangedEvent',eventId:'a86a2e47-40ed-4c65-9fd7-01bf45460b73',newState:answer,updateImportance:'MAJOR',timestamp:'2026-01-01T12:00'}]}})};
 function mergeHistory(previous,incoming) {
   assert.equal(previous.format,incoming.format);
   const events=[...JSON.parse(previous.historyJson).events.values,...JSON.parse(incoming.historyJson).events.values];
-  return {...incoming,historyJson:JSON.stringify({events:{values:[...new Map(events.map(event=>[JSON.stringify(event),event])).values()]}})};
+  const byId = new Map();
+  for (const event of events) {
+    if (byId.has(event.eventId)) assert.deepEqual(event, byId.get(event.eventId), 'an event ID names immutable content');
+    else byId.set(event.eventId, event);
+  }
+  return {...incoming,historyJson:JSON.stringify({events:{values:[...byId.values()]}})};
 }
 function envelope(command,value) {
   const now = new Date().toISOString().slice(0,-1);
@@ -93,11 +99,18 @@ test('automatic login restores answers; full reset clears every destination, pau
           const json=histories.get(command.json.databaseFormat);
           value={fetchedElements:json?[[context,json]]:[]};
         } else if(command.name==='sync-histories-to-db-request'){
+          const previous = histories.get(command.json.databaseFormat);
+          const previousIds = new Set(previous ? JSON.parse(previous.historyJson).events.values.map(event => event.eventId) : []);
+          const storedIds = new Set();
           for (const history of command.json.histories) {
-            if (JSON.parse(history.historyJson).events.values.some(event => event.newState === answer || event.newState === 'This updated answer should survive reload.'))
+            const events = JSON.parse(history.historyJson).events.values;
+            if (events.some(event => event.newState === answer || event.newState === 'This updated answer should survive reload.')) {
               histories.set(command.json.databaseFormat,mergeHistory(histories.get(command.json.databaseFormat),history));
+              events.forEach(event => storedIds.add(event.eventId));
+            }
           }
-          value={elementsAdded:0,elementsChanged:1,elementsRemoved:0,timestampCommitted:new Date().toISOString().slice(0,-1)};
+          value = syncSuccess({elementsAdded: [...storedIds].filter(id => !previousIds.has(id)),
+            elementsUnchanged: [...storedIds].filter(id => previousIds.has(id))});
         } else if(command.name==='reset-user-histories-in-db-request'){
           deleteAttempts++;
           assert.equal(command.json.allWorkbooks,true);
@@ -105,8 +118,9 @@ test('automatic login restores answers; full reset clears every destination, pau
           assert.equal(command.json.limitToKey,null);
           if(failReset&&command.json.databaseFormat==='BlobFormat')
             return route.fulfill({status:503,headers,body:'fixture unavailable'});
+          const removed = histories.has(command.json.databaseFormat) ? [context] : [];
           histories.delete(command.json.databaseFormat);
-          value={elementsAdded:0,elementsChanged:0,elementsRemoved:1,timestampCommitted:new Date().toISOString().slice(0,-1)};
+          value = syncSuccess({elementsRemoved: removed});
         } else throw new Error('Unexpected command '+command.name);
         return route.fulfill({headers,contentType:'application/json',body:envelope(command,value)});
       }
@@ -161,8 +175,10 @@ test('automatic login restores answers; full reset clears every destination, pau
     await page.getByRole('alert').filter({hasText:'Not every destination'}).waitFor();
     await page.locator('.workbook-user-menu-button').click();
     failReset=false;
-    await page.getByRole('menuitem',{name:'Retry full reset',exact:true}).click();
-    await page.waitForFunction(()=>performance.getEntriesByType('navigation')[0]?.type==='reload');
+    await Promise.all([
+      page.waitForEvent('framenavigated', frame => frame === page.mainFrame()),
+      page.getByRole('menuitem',{name:'Retry full reset',exact:true}).click()
+    ]);
     await page.locator('.section-block').last().click();
     await page.locator('.text-input-feedback textarea').waitFor();
     assert.equal(await page.locator('.text-input-feedback textarea').inputValue(),'');

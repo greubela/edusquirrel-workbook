@@ -1,4 +1,5 @@
 import {readCommandRequest} from './command-request.mjs';
+import {syncSuccess} from './sync-success-fixture.mjs';
 import assert from 'node:assert/strict';
 import fs from 'node:fs/promises';
 import path from 'node:path';
@@ -70,7 +71,10 @@ test('login validates accounts, restores cached credentials after reload and cle
             user,credentials:{signedBackendToken:token,singleAccessToken:null,llmApiConfig:null,databaseConfig:null},config:{syncDestinations:destinations,isOnlineAccount:true}} : null};
         }
         else if (command.name === 'fetch-events-from-db-request') value = {fetchedElements:[]};
-        else if (command.name === 'sync-histories-to-db-request' || command.name === 'clear-values-in-db-request') value = {elementsAdded:1,elementsChanged:0,elementsRemoved:0,timestampCommitted:'2026-11-09T12:00:00'};
+        else if (command.name === 'sync-histories-to-db-request') value = syncSuccess({
+          elementsAdded: [...new Set(command.json.histories.flatMap(history => JSON.parse(history.historyJson).events.values.map(event => event.eventId)))]
+        });
+        else if (command.name === 'clear-values-in-db-request') value = syncSuccess();
         else if (command.name === 'auth-mail-request') value = {associatedUser:null,sent:!unknownAccount};
         else throw new Error('Unexpected command ' + command.name);
         return route.fulfill({headers,contentType:'application/json',body:response(command,value)});
