@@ -55,6 +55,8 @@ escape() { local value=${1//\\/\\\\}; printf '%s' "${value//\"/\\\"}"; }
 } > "$curl_auth"
 chmod 600 "$curl_auth"
 ftp() { curl --config "$curl_auth" "$@"; }
+# Upload configs name local files relative to the staged mirror (see sync-plan.mjs), so curl runs there.
+ftp_upload() { (cd "$SITE" && ftp "$@"); }
 
 base_url="ftp://$CLIENT_FTP_HOST${CLIENT_FTP_PORT:+:$CLIENT_FTP_PORT}"
 # Relative to the FTP login directory; surrounding slashes are dropped.
@@ -95,7 +97,7 @@ batches=("$plan_dir"/upload-*.curl)
 for batch in ${batches[@]+"${batches[@]}"}; do
   number="${batch##*/upload-}" number="${number%.curl}"
   log "uploading batch $((10#$number)) of ${#batches[@]}"
-  ftp --fail-early --config "$batch" || die "upload failed; rerun to continue (finished batches are recorded)"
+  ftp_upload --fail-early --config "$batch" || die "upload failed; rerun to continue (finished batches are recorded)"
   # A server may confirm a transfer it stored incompletely, so compare the remote sizes.
   for attempt in 1 2 3; do
     ftp --config "$plan_dir/verify-$number.curl" > "$plan_dir/sizes.txt" 2>/dev/null || true
@@ -104,7 +106,7 @@ for batch in ${batches[@]+"${batches[@]}"}; do
     [[ "$failed" == 0 ]] && break
     [[ "$attempt" == 3 ]] && die "$failed files still differ on the webspace after two retries (see above)"
     warn "$failed files arrived incomplete; uploading them again"
-    ftp --config "$plan_dir/retry.curl" || true
+    ftp_upload --config "$plan_dir/retry.curl" || true
   done
   # Record progress so a rerun skips the batches that already arrived.
   ftp --upload-file "$plan_dir/progress-$number.sha256" "$manifest_url" || die "could not record upload progress"

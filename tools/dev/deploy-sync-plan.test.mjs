@@ -35,7 +35,12 @@ test('writes URL-encoded upload batches, progress manifests and a final manifest
       'summary.json', 'upload-001.curl', 'verify-001.curl']);
     const upload = readFileSync(join(out, 'upload-001.curl'), 'utf8');
     assert.match(upload, /url = "ftp:\/\/host\/Eva\/edu\/Math%20World\/Pr%C3%A4sentation%20%221%22\.pdf"/);
-    assert.match(upload, /upload-file = ".*Präsentation \\"1\\"\.pdf"/);
+    // curl opens local paths in the ANSI code page on Windows: only ASCII paths relative to the site.
+    assert.match(upload, /upload-file = "index.html"/);
+    const alias = /upload-file = "(\.\.\/upload-aliases\/[0-9a-f]{64})"\nurl = "[^"]*Pr%C3%A4sentation/.exec(upload);
+    assert.ok(alias, upload);
+    assert.equal(readFileSync(join(site, alias[1]), 'utf8'), 'pdf');
+    assert.ok(/^[\x00-\x7f]*$/.test(upload.split('\n').filter(line => line.startsWith('upload-file')).join('')));
     const manifest = parseManifest(readFileSync(join(out, 'manifest.sha256'), 'utf8'));
     assert.deepEqual([...manifest.keys()], ['Math World/Präsentation "1".pdf', 'index.html']);
     assert.equal(readFileSync(join(out, 'progress-001.sha256'), 'utf8'), readFileSync(join(out, 'manifest.sha256'), 'utf8'));

@@ -84,3 +84,7 @@ src/main/main/
 
 # Local development scratch files and browser-test captures
 /tmp/work/
+
+# Logs and captured console output at the repository root
+/*.log
+/log*.txt
