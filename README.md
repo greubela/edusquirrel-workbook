@@ -15,9 +15,9 @@ EduSquirrel builds interactive, multilingual student workbooks with Scala.js and
 | `homepage/` | Entry pages, CSS and catalogue presentation |
 | `resources/` | Language maps, teaching materials and bundled programs/libraries |
 | `tools/` | Site assembly, browser checks, fixture generators and optional LLM proxies |
-| `artifacts/` | Generated bundles and server assemblies; tracked database creation scripts in `artifacts/database/` |
+| `artifacts/` | Generated bundles and server assemblies; ignored by Git |
 | `project/` | sbt build definitions, plugins and artifact tasks |
-| `deployment/` | Deployment configuration and operational assets |
+| `deployment/` | Deployment scripts per target (`database/` with the authoritative `setup.sql`, `server/`, `client/`), shared `lib/` and ignored `secrets/` with tracked `*.example` templates; `deploy.sh` in the root runs them all |
 | `docs/` | Maintained architecture, migration status, authoring and development guides |
 | `.github/` | CI workflows and repository tooling instructions |
 | `target/` | Generated Scala build output and reports; ignored by Git |
@@ -171,6 +171,11 @@ repository. Keep dependency caches between runs rather than deleting them to ret
 
 ## Deployment
 
+[deploy.sh](deploy.sh) deploys the backend server (SSH/Docker Compose), checks or recreates the
+MySQL schema and uploads the changed website files to the webspace over FTPS. Credentials live in
+ignored `deployment/secrets/*.env` files created from their `*.example` templates; see the
+[deployment guide](docs/deployment.md).
+
 [scala.yml](.github/workflows/scala.yml) builds optimized client/worker artifacts and MathWorld on pushes to main. It runs [assemble-pages.mjs](tools/dev/assemble-pages.mjs), which publishes the homepage directory, resources, newest worker/client artifacts and root-level page redirects. It requires the MathWorld `dist/index.html` build too:
 
 ```sh
@@ -189,6 +194,7 @@ Keep guides focused on architectural decisions, ownership, package locations and
 important behavior. Include examples where they help authors use a contract;
 avoid exhaustive class/method lists and historical test-run logs.
 
+- [Deployment](docs/deployment.md): one-click server, database and webspace deployment, secrets and incremental uploads.
 - [Digital workbook migration](docs/digital-workbook-migration.md): analysis of linked PDF/ZIP exercises, missing editors and the Blockchain, image-recognition and Phishing adaptations.
 - [Interaction architecture](docs/workbook-interaction-architecture.md): module and editor boundaries, element types, grading/scaffolding, localization and dependency loading.
 - [Interaction formats](docs/interaction-format.md): singleton types, event semantics and self-describing history exchange.

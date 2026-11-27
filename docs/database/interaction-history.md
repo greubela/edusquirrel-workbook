@@ -103,7 +103,7 @@ range. Reads verify the canonical text against the serialized event.
 Both layouts decode through the declared format; JDBC bindings accept only
 `String | Long`. `DatabaseHistoryFormat.tables` exposes typed `DatabaseTable`,
 `DatabaseColumn` and `MySqlType` declarations checked against
-[setup.sql](../../artifacts/database/setup.sql).
+[setup.sql](../../deployment/database/setup.sql).
 Existing event schemas require an explicit update to `timestamp_nano`; setup
 initializes empty databases only and never alters existing tables.
 
