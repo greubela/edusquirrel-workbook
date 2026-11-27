@@ -1,5 +1,6 @@
 package it.evadid.homepage.control.change
 
+import it.evadid.workbook.session.{AllWorkbookInfo, WorkbookConfig}
 import com.raquo.laminar.api.L.*
 import com.raquo.airstream.ownership.ManualOwner
 import it.evadid.core.datastructures.language.{LanguageMapContentId, AppLanguage}
@@ -464,8 +465,8 @@ class RemoteInteractionCacheControlSpec extends EditorDomSuite {
         val (studied, answered) = fixture.anotherWorkbook(fixture.workbook.elementId)
         answered.zipWithIndex.foreach((interaction, index) => interaction.interactionVariable.setStateFromUserInteraction(
           s"from the session $index", UpdateImportance.MAJOR, context = ExecutionContextInformation.default))
-        val session = it.evadid.homepage.control.info.SessionData.createSessionData(fixture.info.homepageInfoNow()
-          .copy(workbookInfo = Some(studied))).get
+        val session = fixture.info.homepageInfoNow()
+          .copy(workbookInfo = Some(studied)).toSessionData.get
         val sessionEvents = answered.map(_.interactionVariable.currentHistory.events.values.map(_.eventId)).reduce(_ ++ _)
         fixture.info.userSessionControl.continueWithSession(session).flatMap(_ => fixture.info.syncControl.storeAll(true)).map { _ =>
           assertEquals(fixture.elements.map(_.interactionVariable.currentValue), Seq("from the session 0", "from the session 1"))

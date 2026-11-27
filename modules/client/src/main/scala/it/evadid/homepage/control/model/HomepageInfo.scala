@@ -1,5 +1,6 @@
 package it.evadid.homepage.control.model
 
+import it.evadid.workbook.session.{AllWorkbookInfo, SessionData}
 import it.evadid.core.datastructures.language.AppLanguage.*
 import it.evadid.core.datastructures.language.control.LanguageMapStorage
 import it.evadid.core.datastructures.user.AllUserInfo
@@ -7,6 +8,9 @@ import it.evadid.homepage.workbook.syncDestination.{DatabaseSyncViaBackendServer
 import it.evadid.workbook.interaction.sync.destination.SyncDestinationDefinition.{LocalIndexedDbSyncDefinition, LocalStorageSyncDefinition, SyncDestinationBasedOnHistoryDatabase}
 import it.evadid.workbook.interaction.sync.destination.{SyncDestinationDefinition, SyncDestinationHistoryHandler}
 import it.evadid.workbook.interaction.sync.{SyncInformationWithContext, UsageContext}
+import it.evadid.workbook.interaction.sync.model.InteractionHistoryJson
+
+import java.time.LocalDateTime
 
 
 case class HomepageInfo(
@@ -22,6 +26,18 @@ case class HomepageInfo(
   override val toString: String = s"HomepageInfo(userInfo: $userInfo, workbookInfo: $workbookInfo)"
 
   lazy val toContext = UsageContext("edusquirrel", workbookInfo.map(_.loadedWorkbook.workbookId).getOrElse("[no workbook]"), userInfo.map(_.user.personId).getOrElse("[no user]"))
+
+  /** The open session without credentials, with each interaction's format-coded history; `None` without a workbook or user. */
+  def toSessionData: Option[SessionData] = for {
+    workbook <- workbookInfo
+    user <- userInfo.map(_.withoutCredentials())
+  } yield {
+    val histories = workbook.loadedWorkbook.allContainedInteractionsById.values.map { interaction =>
+      toContext.toSyncContext(interaction.interactionVariable.keyForSerialization) ->
+        InteractionHistoryJson.fromHistory(interaction.interactionFormat, interaction.interactionVariable.currentHistory)
+    }.toMap
+    SessionData(LocalDateTime.now(), histories, user.user, Some(user.config), workbook)
+  }
 
   def syncDestinations(fullInfo: FullInfo): Seq[SyncInformationWithContext] = {
     userInfo.toList.flatMap(curUserInfo => curUserInfo.config.syncDestinations.map(_.forContext(toContext, dest => resolveSyncDefinition(dest, fullInfo))))

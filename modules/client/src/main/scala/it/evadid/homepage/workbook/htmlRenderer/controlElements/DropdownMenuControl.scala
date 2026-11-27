@@ -1,5 +1,6 @@
 package it.evadid.homepage.workbook.htmlRenderer.controlElements
 
+import it.evadid.workbook.session.AllWorkbookInfo
 import com.raquo.laminar.api.L.*
 import it.evadid.homepage.webElements.basic.LabelSelection
 import com.raquo.laminar.nodes.ReactiveHtmlElement
@@ -7,7 +8,6 @@ import it.evadid.core.datastructures.file.{CopyrightInfo, LoadedFile}
 import it.evadid.core.datastructures.language.{LanguageMap, LanguageMapContentId}
 import it.evadid.core.datastructures.user.AllUserInfo
 import it.evadid.homepage.control.info.WorkbookUserDataAnalyzer
-import it.evadid.homepage.control.model.AllWorkbookInfo
 import it.evadid.homepage.webElements.HtmlAppElement
 import it.evadid.homepage.webElements.basic.{HtmlDropdownMenu, SessionCredentialsEditor}
 import it.evadid.homepage.workbook.syncDestination.LocalStorageSyncHandler

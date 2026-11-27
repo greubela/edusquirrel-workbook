@@ -3,7 +3,8 @@ package it.evadid.server.commandHandler.sql
 import it.evadid.core.datastructures.user.UserTokenInfo.SignedToken
 import it.evadid.core.datastructures.user.User
 import it.evadid.distribution.command.ExecutionCommand
-import it.evadid.sql.DatabaseTable
+import it.evadid.distribution.commandTypes.SubmissionCommands.SubmitSessionEvent
+import it.evadid.sql.{CommandLog, DatabaseTable}
 import it.evadid.util.logging.Logger
 
 import java.net.InetAddress
@@ -11,16 +12,21 @@ import java.sql.{Connection, Timestamp}
 import java.time.LocalDateTime
 import scala.util.Using
 import scala.util.control.NonFatal
+import upickle.default.{read, write}
 
 object SqlLogCommands {
 
   private[server] def payloadForLog(command: ExecutionCommand): String =
     command.stripPrivacySensitiveInformation().toJson
 
+  /** The submitted session as typed JSON without destination credentials; an unreadable submission is not logged. */
+  private[server] def submittedSessionForLog(command: ExecutionCommand): String =
+    write(read[SubmitSessionEvent](command.json).sessionData.withoutCredentials)
+
   def handleLog(commandReceived: LocalDateTime, executionCommand: ExecutionCommand, verifiedToken: Option[SignedToken], remoteAddress: InetAddress, logger: Logger): Unit = {
-    executionCommand.storeLogIntoTable.foreach { table =>
+    executionCommand.storeLogIntoTable.foreach { log =>
       try Using.resource(it.evadid.server.database.DatabaseRequestConnection.resolve(
-        table.inDatabase.getOrElse(it.evadid.sql.DatabaseConfigWithCredentials.readFromEnv()),
+        log.table.inDatabase.getOrElse(it.evadid.sql.DatabaseConfigWithCredentials.readFromEnv()),
         it.evadid.sql.DatabaseConfigWithCredentials.readFromEnv()).newConnection()) { connection =>
         handleLog(commandReceived, executionCommand, verifiedToken, remoteAddress, logger, connection)
       }
@@ -45,31 +51,30 @@ class SqlLogCommands(
   private lazy val generic: GenericSqlFunctionality = new GenericSqlFunctionality(logger)
 
   def logCommand(commandReceived: LocalDateTime, executionCommand: ExecutionCommand, verifiedToken: Option[SignedToken],
-                 remoteAddress: InetAddress, storeLogIntoTable: Option[DatabaseTable]): Int = {
-    if storeLogIntoTable.isEmpty then return 0
-    val storeOrigin: String = remoteAddress.getHostAddress
-    val storeTimestamp: Timestamp = Timestamp.valueOf(commandReceived)
-    val storeType: String = executionCommand.name
-    val storePayload: String = SqlLogCommands.payloadForLog(executionCommand)
+                 remoteAddress: InetAddress, storeLogIntoTable: Option[CommandLog]): Int = {
+    val timestamp = Timestamp.valueOf(commandReceived)
+    val address = remoteAddress.getHostAddress
     val userId = verifiedToken.map(_.info.user.id).getOrElse(User.Anonymous.id)
-
-    val sql =
-      s"""
-         |INSERT INTO `${storeLogIntoTable.get.name}` (`timestamp`, `origin`, `type`, `payload`, `userid`, `ipAddress`)
-         |VALUES (?, ?, ?, ?, ?, ?)
-         |""".stripMargin
-
-    Using.resource(connection.prepareStatement(sql)) { stmt =>
-      stmt.setTimestamp(1, storeTimestamp)
-      stmt.setString(2, storeOrigin)
-      stmt.setString(3, storeType)
-      stmt.setString(4, storePayload)
-      stmt.setString(5, userId)
-      stmt.setString(6, remoteAddress.getHostAddress)
-
-      generic.executeUpdate(stmt)
+    storeLogIntoTable.fold(0) {
+      case CommandLog.Audit(table) => insert(table, Seq("timestamp" -> timestamp, "origin" -> address,
+        "type" -> executionCommand.name, "payload" -> SqlLogCommands.payloadForLog(executionCommand),
+        "userid" -> userId, "ipAddress" -> address))
+      case CommandLog.SessionSubmission(table) => insert(table, Seq("timestamp" -> timestamp, "ipAddress" -> address,
+        "userid" -> userId, "sessionDataSerialized" -> SqlLogCommands.submittedSessionForLog(executionCommand)))
     }
   }
 
+  /** Inserts one row; column names are fixed by [[CommandLog]] and the table name is a validated identifier. */
+  private def insert(table: DatabaseTable, row: Seq[(String, Timestamp | String)]): Int = {
+    val sql = s"INSERT INTO `${table.name}` (${row.map(column => s"`${column._1}`").mkString(", ")}) " +
+      s"VALUES (${row.map(_ => "?").mkString(", ")})"
+    Using.resource(connection.prepareStatement(sql)) { stmt =>
+      row.map(_._2).zipWithIndex.foreach {
+        case (timestamp: Timestamp, index) => stmt.setTimestamp(index + 1, timestamp)
+        case (text: String, index) => stmt.setString(index + 1, text)
+      }
+      generic.executeUpdate(stmt)
+    }
+  }
 
 }

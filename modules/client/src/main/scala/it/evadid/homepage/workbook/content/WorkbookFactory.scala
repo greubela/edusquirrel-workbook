@@ -1,7 +1,7 @@
 package it.evadid.homepage.workbook.content
 
+import it.evadid.workbook.session.{AllWorkbookInfo, WorkbookConfig}
 import it.evadid.workbook.abstractions.InteractionFormat.{LabeledCheckboxInteractionFormat, TextInteractionFormat}
-
 
 import it.evadid.core.datastructures.language.*
 import it.evadid.core.datastructures.language.AppLanguage.*

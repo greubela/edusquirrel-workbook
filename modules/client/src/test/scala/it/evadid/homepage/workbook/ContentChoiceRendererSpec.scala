@@ -1,5 +1,6 @@
 package it.evadid.homepage.workbook
 
+import it.evadid.workbook.session.{AllWorkbookInfo, WorkbookConfig}
 import com.raquo.laminar.api.L.*
 import it.evadid.core.datastructures.language.{LanguageMap, LanguageMapContentId, WorkbookContent}
 import it.evadid.core.datastructures.language.AppLanguage.{English, German, HumanLanguage}

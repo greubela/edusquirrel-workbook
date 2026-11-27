@@ -18,7 +18,7 @@ case class WorkbookUserDataAnalyzer() {
 
   def downloadAllData(logger: Logger, downloadToDisc: DownloadToDisc, homepageInfo: HomepageInfo): Unit = {
     logger.logInfo("WorkbookUserDataAnalyzer: now downloading all session data!")
-    val dataOp = SessionData.createSessionData(homepageInfo)
+    val dataOp = homepageInfo.toSessionData
     if (dataOp.nonEmpty) {
       val data = dataOp.get
       downloadToDisc.downloadFile(data.fileName, write(data))

@@ -8,7 +8,7 @@ This allows servers to exchange histories for workbooks they do not know.
 | --- | --- |
 | `SerializedWorkbook` (`workbook.jsonFactory`) | Root ID and serialized element definitions; collects children and section prerequisites, rejecting conflicting IDs |
 | `WorkbookElementFactory` | Encodes element definitions and resolves graph references when reconstructing elements |
-| `SessionData` (`homepage.control.info`) | Save timestamp, user identity, public user configuration, workbook definition and `Map[SyncContext, InteractionHistoryJson]` |
+| `SessionData` (`workbook.session`, shared) | Save timestamp, user identity, public user configuration, workbook definition (`AllWorkbookInfo`) and `Map[SyncContext, InteractionHistoryJson]` |
 | `WorkbookUserDataAnalyzer` / `UserSessionControl` | Export/download and login/import orchestration |
 
 `Workbook` and `WorkbookSection` supply explicit companion `given ReadWriter`
@@ -36,15 +36,14 @@ Export `SessionData` to include those histories.
 Session export includes each interaction's format-coded history and strips credentials:
 
 ```scala
-import it.evadid.homepage.control.info.SessionData
 import it.evadid.homepage.control.model.HomepageInfo
 import upickle.default.*
 
 def exportSession(info: HomepageInfo): Option[String] =
-  SessionData.createSessionData(info).map(data => write(data))
+  info.toSessionData.map(data => write(data))
 ```
 
-`createSessionData` returns `None` without a workbook or user. The UI imports through
+`HomepageInfo.toSessionData` returns `None` without a workbook or user. The UI imports through
 `UserSessionControl.tryContinueWithSessionFile`, which parses the file and calls
 `continueWithSession`: it signs in as the session's user if needed, opens the session's
 workbook (the open one when it has the same ID, else the definition stored in the file)
@@ -55,6 +54,24 @@ an unreadable payload or a state the exercise rejects. Invalid file JSON fails t
 Only the current saved schema is supported.
 
 See [interaction formats](interaction-format.md) and [state ownership](state-and-serialization.md).
+
+## Session submission
+
+`SubmissionCommands.submitSessionCommand` (`submit-session-event`) carries
+`SubmitSessionEvent(sessionData)` and needs no account. The backend logs it in
+`submissionLog` ([database guide](database/README.md#logging-and-proxy-addresses)), then
+[SubmitSessionCommand](../modules/server/src/main/scala/it/evadid/server/SubmitSessionCommand.scala):
+
+1. derives a [SimpleSubmission](../modules/server/src/main/scala/it/evadid/server/SimpleSubmission.scala):
+   the claimed user and request address, plus the latest answer and combined authored-grader
+   status of each answered interaction of the session's own workbook, in workbook order;
+   unreadable histories are logged and left out;
+2. mails the full credential-free session (`.eva`, importable via session continuation) and
+   the summary to the archive address; failure fails the command;
+3. mails the summary to the session's address, only if it is one plain address. The response
+   reports the number of summarized interactions and whether this confirmation was sent.
+
+Coverage: `SubmitSessionCommandSpec`, `BackendCommandHttpSpec` and `UserAccountMysqlSpec`.
 
 Round-trip coverage lives in `WorkbookSerializerSpec` (JSON, MessagePack, nested
 structure, prerequisites, wrong-root rejection and definition/history separation)

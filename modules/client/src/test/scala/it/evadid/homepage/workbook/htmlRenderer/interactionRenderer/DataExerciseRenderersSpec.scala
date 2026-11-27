@@ -1,10 +1,11 @@
 package it.evadid.homepage.workbook.htmlRenderer.interactionRenderer
 
+import it.evadid.workbook.session.{AllWorkbookInfo, WorkbookConfig}
 import com.raquo.laminar.api.L.*
 import it.evadid.core.datastructures.language.AppLanguage.{English, Java, Python}
 import it.evadid.core.datastructures.language.LanguageMapContentId
 import it.evadid.homepage.control.info.interaction.GradingReporter
-import it.evadid.homepage.control.model.{AllWorkbookInfo, WorkbookConfig}
+
 import it.evadid.homepage.control.singletons.HtmlFullWorkbookApp.fullInfo
 import it.evadid.homepage.webElements.editor.code.EditorDomSuite
 import it.evadid.homepage.workbook.htmlRenderer.DomElementCollection.DomElementSingle

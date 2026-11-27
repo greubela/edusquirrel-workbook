@@ -432,7 +432,7 @@ class InteractionHistoryMysqlSpec extends FunSuite {
         DatabaseSqlScripts.statements.foreach(sql => statement.executeUpdate(sql.toString))
       }
       val report = DatabaseSchemaInspector.inspect(connection)
-      assertEquals(report.existingTables, (RelationalFormat.tables ++ BlobFormat.tables).map(_.name).toSet ++ Set("user", "loginTokens", "commandLog", "syncedLog"))
+      assertEquals(report.existingTables, (RelationalFormat.tables ++ BlobFormat.tables).map(_.name).toSet ++ Set("user", "loginTokens", "commandLog", "syncedLog", "submissionLog"))
       assertEquals(report.conflicts, Nil)
       assert(!DatabaseSchemaSetup.setupIfEmpty(connection).created)
     }

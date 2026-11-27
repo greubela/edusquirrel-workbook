@@ -1,5 +1,6 @@
 package it.evadid.homepage.control.change
 
+import it.evadid.workbook.session.SessionData
 import it.evadid.core.datastructures.file.LoadedFile
 import it.evadid.core.datastructures.user.*
 import it.evadid.core.datastructures.user.User.SingleAccessToken
@@ -8,7 +9,7 @@ import it.evadid.distribution.command.ExecutionInfo.ExecutionSuccess
 import it.evadid.distribution.command.SerializedException
 import it.evadid.distribution.commandTypes.UserCommands
 import it.evadid.distribution.commandTypes.UserCommands.{CreateAccountRequest, LoginRequest, LoginResponse}
-import it.evadid.homepage.control.info.{SessionData, WorkbookUserDataAnalyzer}
+import it.evadid.homepage.control.info.WorkbookUserDataAnalyzer
 import it.evadid.homepage.control.model.*
 import it.evadid.workbook.interaction.sync.SyncResetState
 import it.evadid.workbook.abstractions.InteractionFormat

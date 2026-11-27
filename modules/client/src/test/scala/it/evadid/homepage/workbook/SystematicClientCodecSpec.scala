@@ -22,7 +22,7 @@ class SystematicClientCodecSpec extends FunSuite {
     import it.evadid.core.datastructures.user.*
     import it.evadid.core.datastructures.language.AppLanguage.English
     import it.evadid.core.datastructures.language.LanguageMapContentId
-    import it.evadid.homepage.control.info.SessionData
+    import it.evadid.workbook.session.SessionData
     import it.evadid.workbook.elements.structureElements.Workbook
     import it.evadid.workbook.interaction.sync.SyncContext
     import it.evadid.workbook.interaction.sync.model.InteractionHistoryJson
@@ -31,7 +31,7 @@ class SystematicClientCodecSpec extends FunSuite {
     val workbook = Workbook("fixture", WorkbookMetadata(Set(user), Set.empty, LanguageMapContentId("fixture/title"), List(English)), Nil)
     
     val value = SessionData(java.time.LocalDateTime.of(2026, 11, 7, 0, 0), Map.empty[SyncContext, InteractionHistoryJson], user, Some(UserConfig(Nil, isOnlineAccount = false)),
-      it.evadid.homepage.control.model.AllWorkbookInfo(workbook, it.evadid.homepage.control.model.WorkbookConfig(None), Map.empty))
+      it.evadid.workbook.session.AllWorkbookInfo(workbook, it.evadid.workbook.session.WorkbookConfig(None), Map.empty))
     roundTrip(value)
     assertEquals(read[SessionData](write(value)).timestampStorage, value.timestampStorage)
   }
