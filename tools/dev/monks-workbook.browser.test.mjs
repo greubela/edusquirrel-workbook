@@ -121,9 +121,9 @@ test('monk stories and revised tasks work with the current editor and interactio
     await dialog.getByRole('tab', {name:'Java',exact:true}).click();
     assert.equal(await dialog.getByRole('tab', {name:'Python',exact:true}).count(), 1);
     // The method editor opens main; the full source is a read-only view of the whole class.
-    // Until CodeMirror has loaded, the editor's plain text fallback edits the same answer.
-    const code = dialog.locator('.cm-content, textarea.code-mirror-editor__fallback:visible').first();
-    const codeText = () => code.evaluate(node => node.tagName === 'TEXTAREA' ? node.value : node.innerText);
+    // Exercise native draft preservation after CodeMirror has finished loading.
+    const code = dialog.locator('.cm-content:visible');
+    const codeText = () => code.innerText();
     await code.waitFor();
     assert.match(await codeText(), /Turtle\.turnLeft\(90\)/);
     await code.fill('public static void main(String[] args) {\nTurtle.forward(60);\nTurtle.turnLeft(90);\nTurtle.forward(20);\n' +

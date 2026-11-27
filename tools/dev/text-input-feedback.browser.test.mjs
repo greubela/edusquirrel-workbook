@@ -58,7 +58,9 @@ test('text feedback preserves cached and in-flight grading across display langua
     await page.goto(origin + prefix + 'homepage/workbookDesign/');
     // Start local usage explicitly: there is no default user.
     await page.locator('.section-register .login-area').nth(1).locator('button').click();
-    await page.locator('.section-block').last().click();
+    await page.locator('.select-language-line > div:has(.flag-fill-british-blue)').click();
+    const feedbackTitle = JSON.parse(await readFile(path.join(root, 'resources/languageMaps/eva/testworkbook/map-en.json'), 'utf8')).sec7;
+    await page.locator('.section-block').filter({hasText:feedbackTitle}).click();
     const exercise = page.locator('.interaction-element').filter({has:page.locator('.text-input-feedback')});
     const content = exercise.locator('.text-input-feedback');
     const input = content.locator('textarea');
