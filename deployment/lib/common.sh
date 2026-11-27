@@ -171,3 +171,9 @@ ssh_run() {
 ssh_put() {
   ssh_run "umask 077 && cat > $(shell_quote "$2")" < "$1"
 }
+
+# Uploads a text file with Unix line endings: Windows checkouts and editors may have added CRs,
+# which break shell scripts and settings on the Linux server.
+ssh_put_text() {
+  tr -d '\r' < "$1" | ssh_run "umask 077 && cat > $(shell_quote "$2")"
+}

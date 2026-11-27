@@ -45,9 +45,9 @@ compose_dir="$remote_root/deployment/server"
 log "uploading server $version to $SERVER_SSH_USER@$SERVER_SSH_HOST:$remote_root"
 ssh_run "mkdir -p $(shell_quote "$remote_root/artifacts/newest") $(shell_quote "$compose_dir")"
 ssh_put "$JAR" "$remote_root/artifacts/newest/server.jar.upload"
-ssh_put "$DEPLOY_DIR/server/docker-compose.yml" "$compose_dir/docker-compose.yml.upload"
-ssh_put "$DEPLOY_TMP/server.env" "$compose_dir/.env.upload"
-ssh_put "$DEPLOY_DIR/server/update-docker.sh" "$compose_dir/update-docker.sh"
+ssh_put_text "$DEPLOY_DIR/server/docker-compose.yml" "$compose_dir/docker-compose.yml.upload"
+ssh_put_text "$DEPLOY_TMP/server.env" "$compose_dir/.env.upload"
+ssh_put_text "$DEPLOY_DIR/server/update-docker.sh" "$compose_dir/update-docker.sh"
 ssh_run "sh $(shell_quote "$compose_dir/update-docker.sh")" || die "server update failed (see the output above)"
 
 if [[ "$public_check" == true && -n "${SERVER_HEALTH_URL:-}" ]]; then
