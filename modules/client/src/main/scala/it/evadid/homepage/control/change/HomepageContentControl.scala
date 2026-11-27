@@ -61,12 +61,6 @@ object HomepageContentControl {
         case _ => throw new IllegalArgumentException(s"URL cannot be resolved with type ${howToResolveUrl}")
       }
     }
-
-    def onBackendServer(pathRelativeToBackendServer: String): FileDescription = {
-      val toAdd = if (pathRelativeToBackendServer.startsWith("/")) pathRelativeToBackendServer else "/" + pathRelativeToBackendServer
-      val urlStr = "https://" + fullInfo.defaults.defaultBackend.backendDomain + toAdd
-      fromUrl(URL(urlStr))
-    }
   }
 
 

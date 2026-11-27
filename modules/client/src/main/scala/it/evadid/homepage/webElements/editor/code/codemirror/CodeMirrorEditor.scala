@@ -33,11 +33,16 @@ case class CodeMirrorEditor(
     /** Equivalent documents leave the user's text, including formatting the state cannot represent, untouched. */
     sameSource: (String, String) => Boolean = _ == _,
     /** The flowchart gutter of each language, shown when the configuration enables it. */
-    flowchartSource: ProgrammingLanguage => Option[CodeMirrorFlowchartSource] = CodeMirrorFlowchartSource.forLanguage
+    flowchartSource: ProgrammingLanguage => Option[CodeMirrorFlowchartSource] = CodeMirrorFlowchartSource.forLanguage,
+    /** A document offset to move the cursor to (focusing the editor) once the editor exists; cleared when placed. */
+    caret: Var[Option[Int]] = Var(None)
 ) extends SimpleWebEditor[String, CodeMirrorEditorConfig] {
   import CodeMirrorEditor.*
 
   private val handle = Var(Option.empty[CodeMirrorHandle])
+
+  /** The cursor's document offset while the editor has focus. */
+  def focusedCursor: Option[Int] = handle.now().filter(_.hasFocus()).map(_.cursor())
   private val loadFailed = Var(false)
   private val flowchart = flowchartSource(language)
 
@@ -96,6 +101,10 @@ case class CodeMirrorEditor(
                   })(using ctx.owner)
                   diagnostics.foreach(values => native.setDiagnostics(js.Array(values.map(_.toJs)*)))(using ctx.owner)
                   lineNumbers.foreach(native.setFirstLineNumber)(using ctx.owner)
+                  caret.signal.foreach(_.foreach { offset =>
+                    caret.set(None)
+                    native.placeCursor(offset)
+                  })(using ctx.owner)
                 }
               }
               created.failed.foreach(_ => if !lifetime.isKilled then loadFailed.set(true))

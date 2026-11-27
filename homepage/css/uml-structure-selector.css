@@ -10,6 +10,7 @@
     --uml-header-alt: var(--editor-atmosphere-pearl, var(--color-surface-subtle));
     --uml-hover: var(--editor-hover, var(--color-surface-subtle));
     --uml-selected: var(--editor-selected, var(--color-surface-muted));
+    --uml-header-selected: color-mix(in srgb, var(--uml-accent) 30%, var(--uml-header));
     --uml-accent: var(--editor-accent, var(--color-accent-active));
     --uml-focus: var(--editor-focus, var(--color-focus));
     --uml-implied: var(--editor-warning-border, var(--color-yellow-4));
@@ -54,6 +55,18 @@
 
 .uml-class:nth-child(even) .uml-class__header {
     background: var(--uml-header-alt);
+}
+
+/* A selected class shows in its whole header; the class name needs no frame of its own. */
+.uml-class.uml-class--selected .uml-class__header {
+    background: var(--uml-header-selected);
+}
+
+.uml-structure-selector .uml-class__header .uml-entry--selected,
+.uml-structure-selector .uml-class__header .uml-entry--selected:is(:hover, :focus) {
+    border-color: transparent;
+    background: transparent;
+    font-weight: 600;
 }
 
 .uml-class__compartment {

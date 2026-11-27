@@ -50,5 +50,7 @@ class JavaEditorNavigationSpec extends FunSuite {
     val followed = Position(Mode.Function, Some(main)).follow(function, edited)
     assertEquals(followed.selection.flatMap(_.member).map(_.name), Some("draw"))
     assertEquals(Position(Mode.Class, Some(helper)).follow(function, edited), Position(Mode.Class, Some(helper)))
+    assertEquals(Position(Mode.Function, Some(main)).follow(function, program), Position(Mode.Function, Some(main)),
+      "a method not found in the answer never falls back to its class")
   }
 }

@@ -139,7 +139,39 @@ class FragmentCodeEditorSpec extends EditorDomSuite {
         assertEquals(scope, Some(Scope.Owner), "unfinished code after the method switches at once")
         val twoClasses = state()
         widenedBy(JavaClassEditor(logger, twoClasses, Val("loading")), helper, _ + "\n\nclass Extra {")
+      }.flatMap { scope =>
+        assertEquals(scope, None, "unclosed brackets are still being typed")
+        val twoClasses = state()
+        widenedBy(JavaClassEditor(logger, twoClasses, Val("loading")), helper, _ + "\n\nclass Extra {}")
       }.map(scope => assertEquals(scope, Some(Scope.Program), "code outside the class needs the whole program"))
+  }
+
+  test("a statement typed inside the method of an answer view widens nothing and reaches the answer") {
+    import it.evadid.workbook.elements.interactionElements.programming.state.ProgrammingState
+    // As in Eva: the editor's answer is a view of the central answer.
+    val central = Var[ProgrammingState](ProgrammingStateJavaStructured(helperClass + "\n\n" + mainClass))
+    val view = it.evadid.homepage.webElements.editor.code.ProgrammingStateView(central, ProgrammingStateJavaStructured(Map.empty)) {
+      case value: ProgrammingStateJavaStructured => value
+    }(identity)
+    widenedBy(JavaFunctionEditor(logger, view, Val("loading")), mainFunction(view), _.replace("forward(10);", "forward(10);\n    forward(20);"))
+      .map { scope =>
+        assertEquals(scope, None)
+        assert(central.now().toString.contains("forward(20)"), central.now().toString)
+      }
+  }
+
+  test("cursor offsets map between a dedented draft and its stored form, and to the printed program") {
+    val stored = "    def f(self):\n        return 1\n"
+    val shown = "def f(self):\n    return 1"
+    assertEquals(FragmentCodeEditor.mapOffset(shown, stored, shown.indexOf("return")), stored.indexOf("return"))
+    assertEquals(FragmentCodeEditor.mapOffset(stored, shown, stored.indexOf("1")), shown.indexOf("1"))
+    assertEquals(FragmentCodeEditor.mapOffset(mainClass, mainClass, 17), 17, "identical texts keep the offset")
+    val answer = state()
+    val range = FragmentRange(main, mainClass.indexOf("static void main"), mainClass.length - 2)
+    val printed = range.printedOffset(answer.now(), 3)
+    assertEquals(answer.now().toString.substring(printed, printed + 4), "tic ")
+    assertEquals(range.fragmentOffset(answer.now(), printed), Some(3))
+    assertEquals(range.fragmentOffset(answer.now(), 0), None, "before the fragment")
   }
 
   test("fragment ranges map to lines of the printed program") {
