@@ -30,7 +30,7 @@ done
 has_step() { [[ "$steps" == *",$1,"* ]]; }
 
 # Fail before the long build when a step's settings are missing.
-needed="$(has_step database && echo "local.env database.env server.env"; has_step server && echo "local.env server.env"
+needed="$(has_step database && echo "local.env server.env"; has_step server && echo "local.env server.env"
   has_step client && echo "local.env client.env"; true)"
 for file in $needed; do
   [[ -f "$SECRETS_DIR/$file" ]] || die "missing $SECRETS_DIR/$file (copy $file.example and fill it in)"

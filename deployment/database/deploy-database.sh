@@ -5,6 +5,7 @@
 #   deploy-database.sh setup   Run setup.sql on an empty database, then check
 #   deploy-database.sh reset   Back up, drop every table/view/routine, run setup.sql, then check
 #
+# The target is SQL_DATABASE from server.env, the backend's own database; nothing else is touched.
 # Options: --yes (skip the confirmation prompt), --no-backup (reset without a dump).
 # MySQL clients run in Docker on DATABASE_TOOLS_HOST: "server" (the backend host via SSH,
 # default) or "local". The reference schema for "check" is built from setup.sql in a
@@ -24,7 +25,6 @@ for arg in "$@"; do
 done
 
 load_env local.env
-load_env database.env
 # The connection comes from server.env, the backend's own configuration; nothing else is read from it.
 env_file_entries "$SECRETS_DIR/server.env" > /dev/null
 for key in SQL_HOST SQL_PORT SQL_DATABASE SQL_USER SQL_PW; do
@@ -113,17 +113,6 @@ check_schema() {
   fi
 }
 
-ensure_writable_target() {
-  local protected name
-  IFS=',' read -r -a protected <<< "${DATABASE_PROTECTED:-}"
-  for name in ${protected[@]+"${protected[@]}"}; do
-    name="${name#"${name%%[![:space:]]*}"}" name="${name%"${name##*[![:space:]]}"}"
-    if [[ "$name" == "$SQL_DATABASE" ]]; then die "$SQL_DATABASE is listed in DATABASE_PROTECTED"; fi
-  done
-  [[ "${DATABASE_ALLOW_RESET:-}" == "$SQL_DATABASE" ]] \
-    || die "set DATABASE_ALLOW_RESET=$SQL_DATABASE in database.env to allow $mode on this database"
-}
-
 run_setup() {
   log "running setup.sql on $SQL_DATABASE (it refuses databases that are not empty)"
   remote_sql < "$SETUP_SQL" || die "setup.sql failed; the database must be completely empty"
@@ -160,12 +149,10 @@ case "$mode" in
     check_schema
     ;;
   setup)
-    ensure_writable_target
     run_setup
     check_schema
     ;;
   reset)
-    ensure_writable_target
     warn "this permanently deletes every table, view and routine in $SQL_DATABASE on $SQL_HOST"
     confirm "Reset database $SQL_DATABASE?" "$SQL_DATABASE"
     if [[ "$backup" == true ]]; then backup_database; fi

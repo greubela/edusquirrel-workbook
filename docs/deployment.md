@@ -16,15 +16,14 @@ so no local MySQL or Docker is needed (`DATABASE_TOOLS_HOST=local` uses local Do
 
 ## Secrets
 
-`deployment/secrets/` holds four files that Git ignores; copy each `*.example` template
+`deployment/secrets/` holds three files that Git ignores; copy each `*.example` template
 and fill it in. Values are read literally; single-quote values containing `$`, quotes or spaces.
 The files are authoritative: exported shell variables (such as development `SQL_*`) are ignored.
 `EDUSQUIRREL_SECRETS_DIR` selects another directory, for example for a staging target.
 
 | File | Content |
 | --- | --- |
-| `local.env` | SSH host/user/key/passphrase and remote directory, FTP login and webspace root, database tool host |
-| `database.env` | `DATABASE_PROTECTED`, `DATABASE_ALLOW_RESET`, reference MySQL image |
+| `local.env` | SSH host/user/key/passphrase and remote directory, FTP login and webspace root, database tool host and reference MySQL image |
 | `server.env` | The backend's Compose `.env` (`SERVER_SECRET`, `SQL_*`, `OPENAI_*`, …); the single source of the database connection, also used by `deploy-database.sh` |
 | `client.env` | Client runtime configuration, published as `deployment/client/.env`; **public**, so credential-like keys are refused |
 
@@ -33,17 +32,15 @@ An encrypted SSH key is unlocked once through a private `ssh-agent` that is stop
 ## Database
 
 [deploy-database.sh](../deployment/database/deploy-database.sh) `check | setup | reset`
-targets only `SQL_DATABASE`; [setup.sql](../deployment/database/setup.sql) remains the
+targets only `SQL_DATABASE` from `server.env`; [setup.sql](../deployment/database/setup.sql) remains the
 single schema source (see the [database guide](database/README.md)).
 
 - `check` (default) builds a reference schema from `setup.sql` in a throwaway MySQL container
   and diffs tables, columns, indexes, foreign keys, routines and the seed row with the live database.
 - `setup` runs `setup.sql` on an empty database; its guard refuses any existing table.
-- `reset` dumps the tables to ignored `tmp/work/deployment/database-backups/`, drops every
-  table, view and routine, then runs `setup` and `check`.
-
-`setup` and `reset` require `DATABASE_ALLOW_RESET` to equal `SQL_DATABASE` and refuse names in
-`DATABASE_PROTECTED`, so a database shared with another project is never modified.
+- `reset` asks you to type the database name (or takes `--yes`), dumps the tables to ignored
+  `tmp/work/deployment/database-backups/`, drops every table, view and routine, then runs
+  `setup` and `check`.
 
 ## Backend server
 
