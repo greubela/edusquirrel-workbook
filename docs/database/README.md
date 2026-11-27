@@ -1,6 +1,6 @@
 # Database setup and connections
 
-[setup.sql](../../artifacts/database/setup.sql) is the single schema source for
+[setup.sql](../../deployment/database/setup.sql) is the single schema source for
 MySQL 8.4: account/login-token tables, command/sync logs, relational event tables,
 blob histories and the anonymous logging identity. Both history layouts can share
 one database. See [history storage](interaction-history.md) for their architecture and
@@ -12,7 +12,7 @@ ISO 8601 storage and range-query behavior.
 Select an existing database in your SQL client before executing the script, or use:
 
 ```sh
-mysql --host=HOST --user=USER --password --database=YOUR_EMPTY_DATABASE < artifacts/database/setup.sql
+mysql --host=HOST --user=USER --password --database=YOUR_EMPTY_DATABASE < deployment/database/setup.sql
 ```
 
 The script **does not create or switch databases**. The target must already exist;
@@ -41,7 +41,9 @@ DROP DATABASE IF EXISTS edusquirrel_dev;
 CREATE DATABASE edusquirrel_dev CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_bin;
 ```
 
-Then import with `--database=edusquirrel_dev`. On a live database, keep the guard
+Then import with `--database=edusquirrel_dev`. For the deployed database,
+[deploy-database.sh](../../deployment/database/deploy-database.sh) checks the live schema
+against this script or recreates it; see the [deployment guide](../deployment.md#database). On a live database, keep the guard
 and stop-on-error behavior; schema changes require a separately reviewed operation.
 
 ## Inspection and initialization

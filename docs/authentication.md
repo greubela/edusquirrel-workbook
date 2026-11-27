@@ -97,8 +97,8 @@ Normal `server/test` runs do not require Docker or a database.
 The suite exercises the actual registration, update and login handlers plus
 `SqlUserCommands` token queries. It checks duplicate accounts, email normalization,
 Unicode values, parameter binding, account isolation, token expiry/renewal,
-signed-token ownership, and malformed preferences. It never calls SMTP. The tests use the authoritative SQL creation scripts under `artifacts/database/`,
-which are also packaged with the server and used by its schema inspector.
+signed-token ownership, and malformed preferences. It never calls SMTP. The tests use the authoritative SQL creation script `deployment/database/setup.sql`,
+which is also packaged with the server and used by its schema inspector.
 
 To run locally with Docker:
 

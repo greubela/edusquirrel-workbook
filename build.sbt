@@ -50,7 +50,8 @@ lazy val server = (project in file("./modules/server"))
     MysqlIntegration / envVars ++= sys.env.get("SQL_DATABASE").toList.flatMap(database => List(
       "SQL_EDITOR_DATABASES" -> database, "SQL_EDITOR_USER" -> sys.env.getOrElse("SQL_USER", ""),
       "SQL_EDITOR_PW" -> sys.env.getOrElse("SQL_PW", ""))).toMap,
-    Compile / unmanagedResourceDirectories += (LocalRootProject / baseDirectory).value / "artifacts" / "database",
+    // Package only the schema script; the deployment scripts beside it stay out of the server JAR.
+    Compile / unmanagedResources += (LocalRootProject / baseDirectory).value / "deployment" / "database" / "setup.sql",
     Compile / mainClass := Some("it.evadid.server.BackendServer"),
     assembly / mainClass := Some("it.evadid.server.BackendServer"),
     assembly / assemblyJarName := "server.jar",

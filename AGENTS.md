@@ -36,7 +36,7 @@ constraints belong in `WorkbookInteractionElement.validateState`, not its codec.
 History reads use only `fetch-events-from-db-request`; complete reads use
 `LocalDateTime.MIN` and `MAX` bounds. Do not reintroduce a separate full-fetch
 command or dual-operation fallback. Database setup has one source,
-`artifacts/database/setup.sql`, and rejects nonempty databases.
+`deployment/database/setup.sql`, and rejects nonempty databases.
 
 Transport and persisted histories use `InteractionHistoryJson(format, historyJson)`.
 Do not infer a format from an element ID, reconstruct histories with raw JSON, or
