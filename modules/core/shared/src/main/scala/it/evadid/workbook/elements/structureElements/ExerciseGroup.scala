@@ -18,7 +18,6 @@ object ExerciseGroup {
     )
     override def idsRequiredForDeserialization(element: WorkbookElementSerializable): Set[String] =
       element.getElementsAs[WorkbookElementReference]("elements").map(_.referencedId).toSet
-    override def serializedElementContainsOtherSerializations(element: WorkbookElementSerializable): Seq[WorkbookElementSerializable] = Seq.empty
     override def fromSerializedElement(element: WorkbookElementSerializable, parsedElements: Map[String, WorkbookElement]): ExerciseGroup =
       ExerciseGroup(element.elementId, element.getAndResolveWorkbookElements("elements", parsedElements))
     override def toSerializableElement(element: ExerciseGroup): WorkbookElementSerializable =

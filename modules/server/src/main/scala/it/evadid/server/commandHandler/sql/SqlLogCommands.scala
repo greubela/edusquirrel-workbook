@@ -4,7 +4,8 @@ import it.evadid.core.datastructures.user.UserTokenInfo.SignedToken
 import it.evadid.core.datastructures.user.User
 import it.evadid.distribution.command.ExecutionCommand
 import it.evadid.distribution.commandTypes.SubmissionCommands.SubmitSessionEvent
-import it.evadid.sql.{CommandLog, DatabaseTable}
+import it.evadid.server.database.DatabaseRequestConnection
+import it.evadid.sql.{BackendDatabase, CommandLog, DatabaseConfigWithCredentials, DatabaseTable}
 import it.evadid.util.logging.Logger
 
 import java.net.InetAddress
@@ -25,9 +26,8 @@ object SqlLogCommands {
 
   def handleLog(commandReceived: LocalDateTime, executionCommand: ExecutionCommand, verifiedToken: Option[SignedToken], remoteAddress: InetAddress, logger: Logger): Unit = {
     executionCommand.storeLogIntoTable.foreach { log =>
-      try Using.resource(it.evadid.server.database.DatabaseRequestConnection.resolve(
-        log.table.inDatabase.getOrElse(it.evadid.sql.DatabaseConfigWithCredentials.readFromEnv()),
-        it.evadid.sql.DatabaseConfigWithCredentials.readFromEnv()).newConnection()) { connection =>
+      try Using.resource(DatabaseRequestConnection.resolve(log.table.inDatabase.getOrElse(BackendDatabase),
+        DatabaseConfigWithCredentials.readFromEnv()).newConnection()) { connection =>
         handleLog(commandReceived, executionCommand, verifiedToken, remoteAddress, logger, connection)
       }
       catch case NonFatal(error) => logger.logExceptionWarn("Could not store command log for " + executionCommand.name, error)
@@ -43,12 +43,9 @@ object SqlLogCommands {
 
 }
 
-class SqlLogCommands(
-                      connection: Connection,
-                      logger: Logger,
-                    ) {
+class SqlLogCommands(connection: Connection, logger: Logger) {
 
-  private lazy val generic: GenericSqlFunctionality = new GenericSqlFunctionality(logger)
+  private val generic: GenericSqlFunctionality = new GenericSqlFunctionality(logger)
 
   def logCommand(commandReceived: LocalDateTime, executionCommand: ExecutionCommand, verifiedToken: Option[SignedToken],
                  remoteAddress: InetAddress, storeLogIntoTable: Option[CommandLog]): Int = {

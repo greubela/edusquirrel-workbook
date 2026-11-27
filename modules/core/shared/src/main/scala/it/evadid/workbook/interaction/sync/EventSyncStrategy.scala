@@ -2,7 +2,7 @@ package it.evadid.workbook.interaction.sync
 
 import it.evadid.core.util.io.serializer.DefaultSerializer.given
 import it.evadid.workbook.abstractions.InteractionFormat
-import it.evadid.workbook.interaction.variable.events.{AnswerChangedEvent, InteractionEvent}
+import it.evadid.workbook.interaction.variable.events.{AnswerChangedEvent, InteractionEvent, InteractionEvents}
 
 import java.time.LocalDateTime
 import upickle.default.*
@@ -25,9 +25,7 @@ object EventSyncStrategy {
   /** Keep every event tied for the latest timestamp among the selected importance levels. */
   case class KeepLatest(importance: Set[UpdateImportance]) extends EventSyncStrategy derives ReadWriter {
     override def selectEvents[F <: InteractionFormat](events: Set[InteractionEvent[F]]) = {
-      val selected = events.filter(event => importance(event.updateImportance))
-      val latest = selected.map(_.timestamp).maxOption
-      selected.filter(event => latest.contains(event.timestamp))
+      InteractionEvents.latestTies(events.filter(event => importance(event.updateImportance)))
     }
   }
 
@@ -78,9 +76,7 @@ object EventSyncStrategy {
   /** Answers tied for the latest timestamp; a DEFAULT answer counts only if no other answer exists. */
   private def latest[F <: InteractionFormat](answers: Set[AnswerChangedEvent[F]]): Set[AnswerChangedEvent[F]] = {
     val nonDefault = answers.filter(_.updateImportance != UpdateImportance.DEFAULT)
-    val candidates = if nonDefault.nonEmpty then nonDefault else answers
-    val newest = candidates.map(_.timestamp).maxOption
-    candidates.filter(event => newest.contains(event.timestamp))
+    InteractionEvents.latestTies(if nonDefault.nonEmpty then nonDefault else answers)
   }
 
   val KEEP_MINOR: EventSyncStrategy = KeepImportance(Set(UpdateImportance.MINOR, UpdateImportance.MAJOR))

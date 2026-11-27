@@ -3,7 +3,6 @@ package it.evadid.server.commandHandler.sql
 import it.evadid.server.database.SqlFailure
 import it.evadid.core.util.io.ParsingContext
 import it.evadid.util.logging.Logger
-import it.evadid.workbook.interaction.sync.UsageContext
 
 import java.sql.*
 import java.time.LocalDateTime
@@ -22,12 +21,11 @@ private[sql] case class GenericSqlFunctionality(logger: Logger) {
   def executeUpdate(statement: PreparedStatement): Int = execute(statement, "executing database update") {
     val result = statement.executeUpdate()
     statement.clearParameters()
-    logger.logInfo(s"Executed Update statement: $statement")
+    logger.logInfo(s"Executed database update affecting $result rows")
     result
   }
 
   def executeQuery(statement: PreparedStatement, fieldsToRead: Seq[String]): Seq[Seq[String]] = execute(statement, s"reading database columns ${fieldsToRead.mkString(", ")}") {
-    logger.logInfo("Executing query: " + statement)
     val rows = Using.resource(statement.executeQuery())(readAll(_, fieldsToRead))
     logger.logInfo(s"Query executed successfully, ${rows.size} results!")
     rows
