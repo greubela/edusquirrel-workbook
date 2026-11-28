@@ -135,7 +135,8 @@ class WorkbookElementSerializableRoundTripSpec extends FunSuite {
       ("constructor", (e: WorkbookElement) => e.toStringConstructorLike, WorkbookElementSerializable.fromStringConstructorLike)
     )) {
       test(s"${element.getClass.getSimpleName} round-trips through $format") {
-        val original = element.toSerialized
+        // The single-element text formats embed the elements a workbook references.
+        val original = element.associatedFactory.toSelfContainedElementUnsafe(element)
         val restored = decode(encode(element))
         assertEquals(restored.elementId, element.elementId)
         // Constructor output also includes elementId as a field for factories whose JSON omits it.

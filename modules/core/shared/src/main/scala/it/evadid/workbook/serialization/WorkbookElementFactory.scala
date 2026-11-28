@@ -90,7 +90,7 @@ object WorkbookElementFactory {
 
   val serializerRefBasedJson: Serializer[WorkbookElement] = new Serializer[WorkbookElement]() {
     override def serialize(obj: WorkbookElement): String = {
-      val ser = obj.associatedFactory.toSerializableElementUnsafe(obj)
+      val ser = obj.associatedFactory.toSelfContainedElementUnsafe(obj)
       write(ser)(using WorkbookElementSerializable.regularSerializer)
     }
 
@@ -254,13 +254,18 @@ trait WorkbookElementFactory[T <: WorkbookElement] {
   protected def toFactoryBase(element: T): WorkbookElementSerializable =
     WorkbookElementSerializable(element.elementId, element.getClass.getSimpleName, Map.empty)
 
-  def toSerializableElement(element: T): WorkbookElementSerializable = {
-    val res = WorkbookElementSerializable.getSerializedVersion(element)(using writerJsonRegularRefBased)
+  /** This element alone; the elements it references are serialized beside it, once each (see [[SerializedWorkbook]]). */
+  def toSerializableElement(element: T): WorkbookElementSerializable =
+    WorkbookElementSerializable.getSerializedVersion(element)(using writerJsonRegularRefBased)
+
+  /** This element with the elements it references embedded, for the single-element text formats. */
+  def toSelfContainedElement(element: T): WorkbookElementSerializable = {
+    val res = toSerializableElement(element)
     res.copy(allConstructorFields = res.allConstructorFields ++ addElementsToSerialization(element))
   }
 
   def toStringConstructorLike(element: T): String = {
-    val serialized = toSerializableElement(element)
+    val serialized = toSelfContainedElement(element)
     ConstructorLikeSerializer.serializeFields(
       elementMapAndOrderForConstructorLike,
       serialized.allConstructorFields + ("elementId" -> writeJs(serialized.elementId)),
@@ -277,6 +282,9 @@ trait WorkbookElementFactory[T <: WorkbookElement] {
   def toSerializableElementUnsafe(element: WorkbookElement): WorkbookElementSerializable = {
     toSerializableElement(element.asInstanceOf[T])
   }
+
+  def toSelfContainedElementUnsafe(element: WorkbookElement): WorkbookElementSerializable =
+    toSelfContainedElement(element.asInstanceOf[T])
 
   def toStringConstructorLikeUnsafe(element: WorkbookElement): String =
     toStringConstructorLike(element.asInstanceOf[T])

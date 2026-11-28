@@ -54,6 +54,15 @@ class WorkbookSerializerSpec extends FunSuite {
     assertEquals(repeated, original)
   }
 
+  test("a saved workbook lists every element exactly once") {
+    val original = populatedDefinition
+    val json = ujson.read(write[Workbook](original))
+    val ids = json("elements").arr.map(_("elementId").str).toList
+    assertEquals(ids.sorted, (original +: original.allChildrenFullSubtree :+ original.sections.head.metadata.sectionsRequiredBefore.head
+      :++ original.sections.head.metadata.sectionsRequiredBefore.head.allChildrenFullSubtree).map(_.elementId).distinct.sorted)
+    assert(!json.render().contains("serializedElements"), "no element embeds another's serialization")
+  }
+
   test("uPickle Workbook MessagePack round trips preserve the same self-contained graph") {
     val original = populatedDefinition
     val restored = readBinary[Workbook](writeBinary[Workbook](original))

@@ -54,9 +54,9 @@ object Workbook {
 
 
   lazy val factory: WorkbookElementFactory[Workbook] = new WorkbookElementFactory[Workbook]() {
-    override def serializedElementKeysThatContainOtherSerializations(element: WorkbookElementSerializable): Set[String] = {
-      Set("serializedElements")
-    }
+    /** Only the single-element text formats embed the referenced elements; a saved workbook lists them beside it. */
+    override def serializedElementKeysThatContainOtherSerializations(element: WorkbookElementSerializable): Set[String] =
+      Set("serializedElements").filter(element.allConstructorFields.contains)
 
     def idsRequiredForDeserialization(element: WorkbookElementSerializable): Set[String] = {
       element.getElementsAs[WorkbookElementReference]("sections").map(curRef => curRef.referencedId).toSet
@@ -85,7 +85,7 @@ object Workbook {
           "elementId" -> writeJs(workbook.elementId),
           "metadata" -> writeJs(workbook.metadata),
           "sections" -> writeJs(workbook.sections.map(_.asRef))
-        ) ++ addElementsToSerialization(workbook)
+        )
       )
     }
 
