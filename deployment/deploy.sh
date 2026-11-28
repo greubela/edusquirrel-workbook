@@ -2,18 +2,18 @@
 # One-click deployment: build, check the database, update the backend, upload the website.
 # See docs/deployment.md. Settings and credentials come from deployment/secrets/*.env.
 #
-#   ./deploy.sh                      Build everything and deploy all parts
-#   ./deploy.sh --skip-build         Deploy the artifacts that are already built
-#   ./deploy.sh --only=server,client Run only the named steps (build, database, server, client)
-#   ./deploy.sh --database=setup     Create the schema; asks before re-creating existing tables
-#                                    (default: check only)
-#   ./deploy.sh --yes                Answer yes to all questions
-#   ./deploy.sh --no-pull            Deploy the checkout as it is, without git fetch/pull first
-#   ./deploy.sh -- --dry-run         Pass the remaining options to deploy-client.sh
+#   deployment/deploy.sh                      Build everything and deploy all parts
+#   deployment/deploy.sh --skip-build         Deploy the artifacts that are already built
+#   deployment/deploy.sh --only=server,client Run only the named steps (build, database, server, client)
+#   deployment/deploy.sh --database=setup     Create the schema; asks before re-creating existing tables
+#                                             (default: check only)
+#   deployment/deploy.sh --yes                Answer yes to all questions
+#   deployment/deploy.sh --no-pull            Deploy the checkout as it is, without git fetch/pull first
+#   deployment/deploy.sh -- --dry-run         Pass the remaining options to deploy-client.sh
 #
 # Every run first fetches and fast-forwards the current branch, and is logged to
 # tmp/work/deployment/logs/. On Windows, run it in Git Bash, or from PowerShell with:
-#   & "$env:ProgramFiles\Git\bin\bash.exe" ./deploy.sh
+#   & "$env:ProgramFiles\Git\bin\bash.exe" deployment/deploy.sh
 
 # Whether this run has a window of its own (double-click, PowerShell), decided once before re-starts.
 if [[ -z "${DEPLOY_OWN_WINDOW:-}" ]]; then
@@ -22,12 +22,12 @@ if [[ -z "${DEPLOY_OWN_WINDOW:-}" ]]; then
 fi
 
 # Fetch and pull first, from a temporary copy of this script: Git for Windows cannot replace a script
-# that a running shell holds open. Afterwards the freshly pulled deploy.sh runs the deployment.
+# that a running shell holds open. Afterwards the freshly pulled script runs the deployment.
 if [[ -z "${DEPLOY_PULLED:-}" && " $* " != *" --no-pull "* && " $* " != *" -h "* && " $* " != *" --help "* ]]; then
   if [[ -z "${DEPLOY_PULL_REPO:-}" ]]; then
-    DEPLOY_PULL_REPO="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+    DEPLOY_PULL_REPO="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
     copy="$(mktemp "${TMPDIR:-/tmp}/edusquirrel-deploy-pull.XXXXXX")"
-    cp "$DEPLOY_PULL_REPO/deploy.sh" "$copy"
+    cp "$DEPLOY_PULL_REPO/deployment/deploy.sh" "$copy"
     export DEPLOY_PULL_REPO
     exec bash "$copy" "$@"
   fi
@@ -43,11 +43,11 @@ if [[ -z "${DEPLOY_PULLED:-}" && " $* " != *" --no-pull "* && " $* " != *" -h "*
   git fetch --prune --quiet || pull_failed "git fetch failed"
   git pull --ff-only || pull_failed "git pull failed (local commits or conflicting local changes?)"
   export DEPLOY_PULLED=1
-  exec bash "$DEPLOY_PULL_REPO/deploy.sh" "$@"
+  exec bash "$DEPLOY_PULL_REPO/deployment/deploy.sh" "$@"
 fi
 
-# shellcheck source=SCRIPTDIR/deployment/lib/common.sh
-source "$(dirname "${BASH_SOURCE[0]}")/deployment/lib/common.sh"
+# shellcheck source=SCRIPTDIR/lib/common.sh
+source "$(dirname "${BASH_SOURCE[0]}")/lib/common.sh"
 LOG_PREFIX=deploy
 
 original_args=("$@")
@@ -76,7 +76,7 @@ if [[ -z "${DEPLOY_LOG_FILE:-}" ]]; then
   mkdir -p "${DEPLOY_LOG_FILE%/*}"
   export DEPLOY_LOG_FILE NO_COLOR=1
   set +e
-  bash "$REPO_ROOT/deploy.sh" ${original_args[@]+"${original_args[@]}"} 2>&1 | tee -a "$DEPLOY_LOG_FILE"
+  bash "$DEPLOY_DIR/deploy.sh" ${original_args[@]+"${original_args[@]}"} 2>&1 | tee -a "$DEPLOY_LOG_FILE"
   status=${PIPESTATUS[0]}
   set -e
   relative_log="${DEPLOY_LOG_FILE#"$REPO_ROOT"/}"

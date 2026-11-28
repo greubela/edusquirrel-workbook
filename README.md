@@ -16,7 +16,7 @@ EduSquirrel builds interactive, multilingual student workbooks with Scala.js and
 | `tools/` | Site assembly, browser checks, fixture generators and optional LLM proxies |
 | `artifacts/` | Generated bundles and server assemblies; ignored by Git |
 | `project/` | sbt build definitions, plugins and artifact tasks |
-| `deployment/` | Deployment scripts per target (`database/` with the authoritative `setup.sql`, `server/`, `client/`), shared `lib/` and ignored `secrets/` with tracked `*.example` templates; `deploy.sh` in the root runs them all |
+| `deployment/` | Deployment scripts per target (`database/` with the authoritative `setup.sql`, `server/`, `client/`), shared `lib/` and ignored `secrets/` with tracked `*.example` templates; `deploy.sh` runs them all |
 | `docs/` | Maintained architecture, migration status, authoring and development guides |
 | `.github/` | CI workflows and repository tooling instructions |
 | `target/` | Generated Scala build output and reports; ignored by Git |
@@ -165,7 +165,7 @@ repository. Keep dependency caches between runs rather than deleting them to ret
 
 ## Deployment
 
-[deploy.sh](deploy.sh) deploys the backend server (SSH/Docker Compose), checks the MySQL schema
+[deploy.sh](deployment/deploy.sh) deploys the backend server (SSH/Docker Compose), checks the MySQL schema
 (creating it in an empty database) and uploads changed website files over FTPS. Credentials live in
 ignored `deployment/secrets/*.env` files created from their `*.example` templates; see the
 [deployment guide](docs/deployment.md).
