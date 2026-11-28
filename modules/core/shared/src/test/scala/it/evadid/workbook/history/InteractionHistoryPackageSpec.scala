@@ -1,7 +1,7 @@
-package it.evadid.workbook.model.history
+package it.evadid.workbook.history
 
 import it.evadid.workbook.sync.{EventSyncStrategy, UpdateImportance}
-import it.evadid.workbook.model.history.events.*
+import it.evadid.workbook.history.events.*
 import java.time.LocalDateTime
 import munit.FunSuite
 import upickle.default.*

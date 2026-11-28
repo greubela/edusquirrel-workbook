@@ -3,8 +3,8 @@ package it.evadid.workbook.model
 import it.evadid.workbook.abstractions.{InteractionFormat, WorkbookInteractionElement}
 import it.evadid.workbook.sync.SyncConnection
 import it.evadid.workbook.sync.{SyncInformationWithContext, UpdateImportance, UsageContext}
-import it.evadid.workbook.model.history.InteractionVariableState.{DesignatedInteractionState, InteractionVariableStateChanged}
-import it.evadid.workbook.model.history.{InteractionVariableHistory, InteractionVariableState}
+import it.evadid.workbook.history.InteractionVariableState.{DesignatedInteractionState, InteractionVariableStateChanged}
+import it.evadid.workbook.history.{InteractionVariableHistory, InteractionVariableState}
 import it.evadid.workbook.reports.InteractionVariableSyncReport
 
 import java.time.LocalDateTime

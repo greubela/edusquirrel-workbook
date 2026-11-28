@@ -1,7 +1,7 @@
 package it.evadid.workbook.abstractions.scaffolding
 
 import it.evadid.workbook.abstractions.grading.GradingResult
-import it.evadid.workbook.model.history.InteractionVariableState
+import it.evadid.workbook.history.InteractionVariableState
 import it.evadid.workbook.abstractions.{FeedbackEntity, InteractionFormat}
 import it.evadid.workbook.abstractions.ExecutionContextInformation
 

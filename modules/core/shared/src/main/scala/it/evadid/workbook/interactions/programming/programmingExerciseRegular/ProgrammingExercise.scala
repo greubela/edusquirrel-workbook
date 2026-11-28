@@ -9,7 +9,7 @@ import it.evadid.workbook.abstractions.{WorkbookElement, *}
 import it.evadid.workbook.interactions.programming.AdditionalProgrammingTestInfo
 import it.evadid.workbook.interactions.programming.state.snap.ProgrammingEditorPalette
 import it.evadid.workbook.serialization.{WorkbookElementFactory, WorkbookElementSerializable}
-import it.evadid.workbook.model.history.InteractionVariableHistory
+import it.evadid.workbook.history.InteractionVariableHistory
 import upickle.default.*
 
 import it.evadid.workbook.interactions.programming.state.ProgrammingStateSnapScalaModel

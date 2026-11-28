@@ -1,10 +1,10 @@
-package it.evadid.workbook.model.history
+package it.evadid.workbook.history
 
 import it.evadid.workbook.abstractions.InteractionFormat
 import it.evadid.workbook.abstractions.scaffolding.{ScaffoldingResult, ScaffoldingStatus}
 import it.evadid.workbook.abstractions.grading.{GradedState, GradingResult, GradingStatus, WorkbookInteractionGrader}
 import it.evadid.workbook.sync.EventSyncStrategy
-import it.evadid.workbook.model.history.events.*
+import it.evadid.workbook.history.events.*
 
 import java.time.LocalDateTime
 import upickle.default.*

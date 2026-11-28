@@ -7,7 +7,7 @@ import it.evadid.distribution.commandTypes.SQLCommands.{DbFetchResponse, DeleteI
 import it.evadid.sql.DatabaseHistoryFormat
 import it.evadid.workbook.sync.{SyncContext, SyncSuccess}
 import it.evadid.workbook.sync.model.InteractionHistoryJson
-import it.evadid.workbook.model.history.events.EventId
+import it.evadid.workbook.history.events.EventId
 import scala.concurrent.{ExecutionContext, Future}
 
 /** A dummy history database answering the backend's history commands like the server's

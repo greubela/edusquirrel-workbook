@@ -3,8 +3,8 @@ package it.evadid.workbook.sync.model
 import it.evadid.core.util.io.ParsingContext
 import it.evadid.workbook.abstractions.InteractionFormat
 import it.evadid.workbook.sync.EventSyncStrategy
-import it.evadid.workbook.model.history.InteractionVariableHistory
-import it.evadid.workbook.model.history.events.EventId
+import it.evadid.workbook.history.InteractionVariableHistory
+import it.evadid.workbook.history.events.EventId
 import java.time.LocalDateTime
 import upickle.default.*
 

@@ -7,7 +7,7 @@ import it.evadid.workbook.abstractions.InteractionFormat.SlideshowFormat
 import it.evadid.workbook.abstractions.grading.WorkbookInteractionGrader
 import it.evadid.workbook.abstractions.{InteractionFormat, WorkbookDisplayElement, WorkbookElement, WorkbookInteractionElement, *}
 import it.evadid.workbook.serialization.{WorkbookElementFactory, WorkbookElementReference, WorkbookElementSerializable}
-import it.evadid.workbook.model.history.InteractionVariableHistory
+import it.evadid.workbook.history.InteractionVariableHistory
 
 case class Slideshow(
                       override val elementId: String,

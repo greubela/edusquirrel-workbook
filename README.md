@@ -71,9 +71,10 @@ Shared workbook code lives under `modules/core/shared/src/main/scala/it/evadid/w
 | `abstractions` | General definitions: [WorkbookElement.scala](modules/core/shared/src/main/scala/it/evadid/workbook/abstractions/WorkbookElement.scala), `InteractionFormat`, grader and scaffolder contracts |
 | `elements.structure`, `elements.display` | General elements: workbooks, sections, groups and display content |
 | `interactions.<kind>` | Specific interactions with their graders, scaffolders and domain models |
-| `model`, `model.history` | Central answer state (`InteractionInfo`) and the immutable histories and events |
+| `model` | Central answer state: `InteractionInfo` with an entry per interaction |
 | `control` | `InteractionController` and feedback control, which change that state |
-| `sync`, `serialization`, `reports`, `session` | Sync destinations and strategies, definition codecs, status reports, saved sessions |
+| `history`, `sync`, `serialization` | Immutable histories and events, sync destinations and strategies, definition codecs |
+| `reports`, `session` | Status reports, saved sessions |
 
 Interactions declare their `InteractionFormat` and grading/scaffolding definitions;
 the format owns saved-state and feedback codecs. Structure elements compose them

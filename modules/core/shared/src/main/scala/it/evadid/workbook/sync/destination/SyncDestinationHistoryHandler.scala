@@ -5,8 +5,8 @@ import it.evadid.util.logging.derived.SyncLogger
 import it.evadid.workbook.abstractions.InteractionFormat
 import it.evadid.workbook.sync.model.{FetchResponse, InteractionHistoryJson}
 import it.evadid.workbook.sync.{EventSyncStrategy, SyncContext, SyncSuccess, UsageContext}
-import it.evadid.workbook.model.history.InteractionVariableHistory
-import it.evadid.workbook.model.history.events.EventId
+import it.evadid.workbook.history.InteractionVariableHistory
+import it.evadid.workbook.history.events.EventId
 import upickle.default.*
 
 import java.time.LocalDateTime

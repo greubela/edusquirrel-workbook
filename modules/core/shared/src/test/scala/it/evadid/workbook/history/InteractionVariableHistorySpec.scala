@@ -1,4 +1,4 @@
-package it.evadid.workbook.model.history
+package it.evadid.workbook.history
 
 import it.evadid.core.datastructures.chat.MessengerModel
 import it.evadid.core.datastructures.language.LanguageMapContentId
@@ -10,7 +10,7 @@ import it.evadid.workbook.interactions.gpt.TextInputLlmGrader
 import it.evadid.workbook.interactions.gpt.TextInputWithScaffoldingAndGrading.ContentForLlmInteraction
 import it.evadid.workbook.sync.{EventSyncStrategy, UpdateImportance}
 import it.evadid.workbook.sync.UpdateImportance.*
-import it.evadid.workbook.model.history.events.*
+import it.evadid.workbook.history.events.*
 import java.time.LocalDateTime
 import munit.FunSuite
 

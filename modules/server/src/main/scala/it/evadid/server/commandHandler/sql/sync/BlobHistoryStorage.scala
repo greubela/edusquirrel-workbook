@@ -5,8 +5,8 @@ import it.evadid.util.logging.Logger
 import it.evadid.workbook.abstractions.InteractionFormat
 import it.evadid.workbook.sync.{SyncContext, SyncSuccess, UsageContext}
 import it.evadid.workbook.sync.model.InteractionHistoryJson
-import it.evadid.workbook.model.history.InteractionVariableHistory
-import it.evadid.workbook.model.history.events.EventId
+import it.evadid.workbook.history.InteractionVariableHistory
+import it.evadid.workbook.history.events.EventId
 import java.sql.Connection
 
 /** Serializes concurrent merges by locking the context row inside the transaction. */

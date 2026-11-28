@@ -5,7 +5,7 @@ import java.time.LocalDateTime
 import upickle.default.*
 import it.evadid.core.util.io.serializer.DefaultSerializer.given
 
-/** Committed outcome of a write, naming the affected elements: [[it.evadid.workbook.model.history.events.EventId]]s
+/** Committed outcome of a write, naming the affected elements: [[it.evadid.workbook.history.events.EventId]]s
   * for history stores, [[SyncContext]]s for history removal and raw keys for key-value stores.
   * A write acknowledgment is evidence of storage: every element in [[elementsStored]] was present when the write committed.
   */

@@ -2,7 +2,7 @@ package it.evadid.workbook.reports
 
 import it.evadid.workbook.abstractions.{InteractionFormat, WorkbookInteractionElement}
 import it.evadid.workbook.abstractions.grading.{GraderRunningBehavior, GradingStatus}
-import it.evadid.workbook.model.history.InteractionVariableHistory
+import it.evadid.workbook.history.InteractionVariableHistory
 
 import java.time.LocalDateTime
 

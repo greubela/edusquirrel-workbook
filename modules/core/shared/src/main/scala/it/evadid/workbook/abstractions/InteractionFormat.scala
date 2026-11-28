@@ -19,8 +19,8 @@ import it.evadid.workbook.interactions.sorting.sortingReasonExercise.SortingReas
 import it.evadid.workbook.interactions.table.TableAnswer
 import it.evadid.workbook.interactions.text.UnicodeComparisonAnswer
 import it.evadid.workbook.interactions.todo.*
-import it.evadid.workbook.model.history.InteractionVariableHistory
-import it.evadid.workbook.model.history.events.*
+import it.evadid.workbook.history.InteractionVariableHistory
+import it.evadid.workbook.history.events.*
 import it.evadid.core.util.io.serializer.DefaultSerializer.given
 import it.evadid.workbook.interactions.blockchain.TeachingChain
 import it.evadid.workbook.interactions.compression.CompressionExperiment

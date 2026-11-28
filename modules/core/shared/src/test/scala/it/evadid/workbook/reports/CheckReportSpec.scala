@@ -10,7 +10,7 @@ import it.evadid.workbook.interactions.matching.{MatchingGrader, MatchingInterac
 import it.evadid.workbook.interactions.reorderExercise.ReorderInteraction.ReorderMapIdInteraction
 import it.evadid.workbook.interactions.table.{AnswerTableInteraction, EditableTableCell, TableAnswer}
 import it.evadid.workbook.sync.UpdateImportance
-import it.evadid.workbook.model.history.{InteractionVariableHistory, InteractionVariableState}
+import it.evadid.workbook.history.{InteractionVariableHistory, InteractionVariableState}
 import munit.FunSuite
 
 import java.time.LocalDateTime

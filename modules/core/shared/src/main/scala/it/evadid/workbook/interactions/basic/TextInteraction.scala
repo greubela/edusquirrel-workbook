@@ -5,7 +5,7 @@ import it.evadid.workbook.abstractions.InteractionFormat.*
 import it.evadid.workbook.abstractions.{WorkbookElement, WorkbookInteractionElement}
 import it.evadid.workbook.sync.UpdateImportance
 import it.evadid.workbook.sync.UpdateImportance.{MAJOR, MINOR, TEMPORARY}
-import it.evadid.workbook.model.history.InteractionVariableState.InteractionVariableStateChanged
+import it.evadid.workbook.history.InteractionVariableState.InteractionVariableStateChanged
 import it.evadid.workbook.serialization.WorkbookElementFactory.NoContentElementFactory
 
 import java.time.Duration

@@ -5,8 +5,8 @@ import it.evadid.util.logging.Logger
 import it.evadid.workbook.abstractions.InteractionFormat
 import it.evadid.workbook.sync.{EventSyncStrategy, SyncContext, SyncSuccess, UsageContext}
 import it.evadid.workbook.sync.model.InteractionHistoryJson
-import it.evadid.workbook.model.history.InteractionVariableHistory
-import it.evadid.workbook.model.history.events.*
+import it.evadid.workbook.history.InteractionVariableHistory
+import it.evadid.workbook.history.events.*
 import java.sql.Connection
 import java.time.LocalDateTime
 import java.time.format.{DateTimeFormatter, DateTimeFormatterBuilder}

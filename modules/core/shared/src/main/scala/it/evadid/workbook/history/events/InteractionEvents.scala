@@ -1,4 +1,4 @@
-package it.evadid.workbook.model.history.events
+package it.evadid.workbook.history.events
 
 import it.evadid.workbook.abstractions.InteractionFormat
 

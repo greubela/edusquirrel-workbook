@@ -7,8 +7,8 @@ import it.evadid.core.datastructures.state.observable.ObservableValue
 import it.evadid.workbook.abstractions.{InteractionFormat, WorkbookInteractionElement}
 import it.evadid.workbook.sync.{SyncInformationWithContext, SyncResetState, UpdateImportance}
 import it.evadid.workbook.model.InteractionInfo
-import it.evadid.workbook.model.history.InteractionVariableHistory
-import it.evadid.workbook.model.history.InteractionVariableState.InteractionVariableStateChanged
+import it.evadid.workbook.history.InteractionVariableHistory
+import it.evadid.workbook.history.InteractionVariableState.InteractionVariableStateChanged
 import it.evadid.workbook.reports.InteractionVariableSyncReport
 
 import scala.util.Try

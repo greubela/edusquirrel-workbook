@@ -9,7 +9,7 @@ import it.evadid.sql.CommandLog
 import it.evadid.workbook.abstractions.InteractionFormat
 import it.evadid.workbook.sync.*
 import it.evadid.workbook.sync.model.InteractionHistoryJson
-import it.evadid.workbook.model.history.events.EventId
+import it.evadid.workbook.history.events.EventId
 import upickle.default.*
 
 object SQLCommands {

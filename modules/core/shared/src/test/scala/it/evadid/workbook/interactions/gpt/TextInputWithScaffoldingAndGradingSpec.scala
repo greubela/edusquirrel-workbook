@@ -24,7 +24,7 @@ import it.evadid.util.logging.Logger
 import it.evadid.workbook.abstractions.{FeedbackEntity, WorkbookElement}
 import it.evadid.workbook.abstractions.grading.*
 import it.evadid.workbook.abstractions.scaffolding.ScaffoldingResult
-import it.evadid.workbook.model.history.InteractionVariableHistory
+import it.evadid.workbook.history.InteractionVariableHistory
 import it.evadid.workbook.interactions.gpt.TextInputWithScaffoldingAndGrading.ContentForLlmInteraction
 import munit.FunSuite
 import upickle.default.*

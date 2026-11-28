@@ -1,4 +1,4 @@
-package it.evadid.workbook.model.history
+package it.evadid.workbook.history
 
 import it.evadid.core.util.InfoUtil
 import it.evadid.workbook.sync.EventSyncStrategy

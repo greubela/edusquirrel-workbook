@@ -17,7 +17,7 @@ import it.evadid.workbook.interactions.programming.programmingExerciseRegular.Pr
 import it.evadid.workbook.interactions.programming.programmingExerciseTurtle.RecreateShapeGrader
 import it.evadid.workbook.interactions.programming.state.*
 import it.evadid.workbook.interactions.programming.{AdditionalProgrammingTestInfo, ProgrammingTestGrader, ProgrammingTestInvocation, ProgrammingTestProgramObservation}
-import it.evadid.workbook.model.history.InteractionVariableState
+import it.evadid.workbook.history.InteractionVariableState
 import it.evadid.workbook.abstractions.ExecutionContextInformation
 
 import scala.concurrent.Future

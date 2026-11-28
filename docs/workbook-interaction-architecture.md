@@ -10,7 +10,7 @@ Keep the saved answer as the single source of truth.
 | --- | --- | --- |
 | Definitions | `modules/core/shared/.../workbook/abstractions/`, `elements/` | General element, format, grader and scaffolder contracts; structure and display elements |
 | Interactions | `modules/core/shared/.../workbook/interactions/<kind>/` | Specific exercises with their graders, scaffolders, states and domain models |
-| Answer state | `modules/core/shared/.../workbook/model/`, `control/` | Immutable answers and histories, and the controller that changes, grades and syncs them |
+| Answer state | `modules/core/shared/.../workbook/model/`, `history/`, `control/` | Immutable answers and histories, and the controller that changes, grades and syncs them |
 | Renderer | `modules/client/.../homepage/workbook/htmlRenderer/` | Workbook placement, localization, previews and editor composition |
 | Editor | `modules/client/.../homepage/webElements/editor/` | Controls and transient drafts, bound to a supplied `Var[T]` |
 | Platform adapters | `modules/core/js/`, `modules/core/jvm/` | Browser/JVM integration kept outside shared models |

@@ -27,13 +27,13 @@ import java.net.URI
 import java.net.http.{HttpClient, HttpRequest, HttpResponse}
 import it.evadid.server.commandHandler.sql.sync.HistorySql
 import it.evadid.workbook.sync.model.InteractionHistoryJson
-import it.evadid.workbook.model.history.events.*
+import it.evadid.workbook.history.events.*
 import it.evadid.workbook.abstractions.{FeedbackEntity, InteractionFormat}
 import it.evadid.workbook.abstractions.grading.{GradedState, GradingResult, GradingStatus, WorkbookInteractionGrader}
 import it.evadid.workbook.abstractions.scaffolding.{ScaffoldingResult, ScaffoldingStatus}
 import it.evadid.workbook.interactions.gpt.{TextInputLlmGrader, TextInputWithScaffoldingAndGrading}
 import it.evadid.workbook.sync.{EventSyncStrategy, SyncContext, SyncSuccess, UpdateImportance, UsageContext}
-import it.evadid.workbook.model.history.*
+import it.evadid.workbook.history.*
 import it.evadid.util.logging.{BasicLogger, Logger}
 import java.time.LocalDateTime
 import scala.util.Using

@@ -5,7 +5,7 @@ import it.evadid.util.logging.BasicLogger
 import it.evadid.util.logging.derived.SyncLogger
 import it.evadid.workbook.abstractions.InteractionFormat
 import it.evadid.workbook.sync.{SyncContext, SyncSuccess, UpdateImportance, UsageContext}
-import it.evadid.workbook.model.history.{InteractionVariableHistory, InteractionVariableState}
+import it.evadid.workbook.history.{InteractionVariableHistory, InteractionVariableState}
 import it.evadid.workbook.sync.model.InteractionHistoryJson
 import java.time.LocalDateTime
 import munit.FunSuite
@@ -76,7 +76,7 @@ class SyncDestinationHistoryHandlerSpec extends FunSuite {
 
 
   test("separate and concurrent local deltas merge instead of overwriting saved answer events") {
-    import it.evadid.workbook.model.history.events.*
+    import it.evadid.workbook.history.events.*
     val destination = new Destination(Map.empty)
     val handler = destination.forHistory()
     def delta(value: String, offset: Long): String = InteractionHistoryJson.fromHistory(textFormat,
@@ -95,7 +95,7 @@ class SyncDestinationHistoryHandlerSpec extends FunSuite {
   }
 
   test("local stores confirm the sent events they hold after merging, distinguishing new from known events") {
-    import it.evadid.workbook.model.history.events.*
+    import it.evadid.workbook.history.events.*
     val handler = new Destination(Map.empty).forHistory()
     def answer(value: String, importance: UpdateImportance, offset: Long): InteractionEvent[textFormat.type] =
       AnswerChangedEvent[textFormat.type](value, at.plusSeconds(offset), importance)

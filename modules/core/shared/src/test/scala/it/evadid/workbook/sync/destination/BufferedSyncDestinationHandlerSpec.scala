@@ -6,8 +6,8 @@ import it.evadid.util.logging.derived.SyncLogger
 import it.evadid.workbook.abstractions.InteractionFormat
 import it.evadid.workbook.sync.*
 import it.evadid.workbook.sync.model.{FetchResponse, InteractionHistoryJson}
-import it.evadid.workbook.model.history.InteractionVariableHistory
-import it.evadid.workbook.model.history.events.{AnswerChangedEvent, EventId, InteractionEvent, InteractionEvents}
+import it.evadid.workbook.history.InteractionVariableHistory
+import it.evadid.workbook.history.events.{AnswerChangedEvent, EventId, InteractionEvent, InteractionEvents}
 import munit.FunSuite
 import java.time.LocalDateTime
 import scala.concurrent.{ExecutionContext, Future, Promise}

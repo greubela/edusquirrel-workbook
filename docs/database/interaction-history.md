@@ -129,7 +129,7 @@ import it.evadid.sql.BackendDatabase
 import it.evadid.sql.DatabaseHistoryFormat.BlobFormat
 import it.evadid.workbook.sync.{SyncSuccess, UsageContext}
 import it.evadid.workbook.sync.model.InteractionHistoryJson
-import it.evadid.workbook.model.history.events.EventId
+import it.evadid.workbook.history.events.EventId
 import scala.concurrent.{ExecutionContext, Future}
 
 def storePair(backend: ExecutionClient, context: UsageContext,

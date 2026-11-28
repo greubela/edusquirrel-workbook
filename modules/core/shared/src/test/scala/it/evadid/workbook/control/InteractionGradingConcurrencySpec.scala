@@ -13,8 +13,8 @@ import it.evadid.workbook.interactions.choice.WorkbookContentChoiceInteraction
 import it.evadid.workbook.interactions.choice.WorkbookContentChoiceInteraction.*
 import it.evadid.workbook.sync.{SyncConnection, UpdateImportance, UsageContext}
 import it.evadid.workbook.sync.UpdateImportance.MAJOR
-import it.evadid.workbook.model.history.InteractionVariableHistory
-import it.evadid.workbook.model.history.events.{AnswerChangedEvent, GradingCompletedEvent, GradingStartedEvent}
+import it.evadid.workbook.history.InteractionVariableHistory
+import it.evadid.workbook.history.events.{AnswerChangedEvent, GradingCompletedEvent, GradingStartedEvent}
 import it.evadid.workbook.abstractions.ExecutionContextInformation
 import it.evadid.workbook.support.GatedHistoryStore
 import munit.FunSuite
@@ -67,7 +67,7 @@ class InteractionGradingConcurrencySpec extends FunSuite {
   private val wrong = choice.select(choice.defaultValue, 1, true)
   private val grader = choice.gradingElements.head
   private type Choice = choice.interactionFormat.type
-  private def remote(events: it.evadid.workbook.model.history.events.InteractionEvent[Choice]*): InteractionVariableHistory[Choice] =
+  private def remote(events: it.evadid.workbook.history.events.InteractionEvent[Choice]*): InteractionVariableHistory[Choice] =
     events.foldLeft(InteractionVariableHistory.empty[Choice])(_.addEvent(_))
 
   test("an answer changed while the previous answer is graded keeps each result with its own answer") {

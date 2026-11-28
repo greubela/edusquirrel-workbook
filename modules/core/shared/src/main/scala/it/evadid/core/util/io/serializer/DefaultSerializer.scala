@@ -19,7 +19,7 @@ import it.evadid.workbook.abstractions.TypeOfTextDisplay
 import it.evadid.workbook.sync.SyncInformation.*
 import it.evadid.workbook.sync.*
 import it.evadid.workbook.sync.{SyncContext, UpdateImportance, UsageContext}
-import it.evadid.workbook.model.history.*
+import it.evadid.workbook.history.*
 import upickle.ReadWriter
 import upickle.default.*
 

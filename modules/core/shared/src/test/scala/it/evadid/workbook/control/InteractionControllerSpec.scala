@@ -14,9 +14,9 @@ import it.evadid.workbook.sync.*
 import it.evadid.workbook.sync.UpdateImportance.*
 import it.evadid.workbook.sync.destination.{SyncDestinationDefinition, SyncDestinationHandlerBasic}
 import it.evadid.workbook.sync.model.InteractionHistoryJson
-import it.evadid.workbook.model.history.InteractionVariableState.{DesignatedInteractionState, InteractionVariableStateChanged}
-import it.evadid.workbook.model.history.events.{AnswerChangedEvent, InteractionEvent, InteractionEvents}
-import it.evadid.workbook.model.history.{InteractionVariableHistory, InteractionVariableState}
+import it.evadid.workbook.history.InteractionVariableState.{DesignatedInteractionState, InteractionVariableStateChanged}
+import it.evadid.workbook.history.events.{AnswerChangedEvent, InteractionEvent, InteractionEvents}
+import it.evadid.workbook.history.{InteractionVariableHistory, InteractionVariableState}
 import it.evadid.workbook.abstractions.ExecutionContextInformation
 import it.evadid.workbook.interactions.pixel.BinaryPixelImage
 import it.evadid.workbook.support.GatedHistoryStore

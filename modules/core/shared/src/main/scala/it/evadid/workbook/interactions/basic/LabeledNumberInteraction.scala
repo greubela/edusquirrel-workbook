@@ -11,7 +11,7 @@ import it.evadid.workbook.serialization.WorkbookElementSerializable
 import it.evadid.core.util.io.serializer.{DefaultSerializer}
 import it.evadid.core.util.io.serializer.DefaultSerializer.given
 import it.evadid.workbook.abstractions.InteractionFormat.TextInteractionFormat
-import it.evadid.workbook.model.history.InteractionVariableHistory
+import it.evadid.workbook.history.InteractionVariableHistory
 import upickle.default.ReadWriter
 import upickle.default.*
 object LabeledNumberInteraction {

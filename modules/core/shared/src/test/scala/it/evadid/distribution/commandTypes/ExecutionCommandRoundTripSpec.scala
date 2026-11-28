@@ -20,8 +20,8 @@ import it.evadid.workbook.interactions.programming.state.ProgrammingStateRaw
 import it.evadid.workbook.interactions.sql.SqlDatabaseConfig
 import it.evadid.workbook.sync.{EventSyncStrategy, SyncSuccess, UpdateImportance, UsageContext}
 import it.evadid.workbook.sync.model.InteractionHistoryJson
-import it.evadid.workbook.model.history.InteractionVariableHistory
-import it.evadid.workbook.model.history.events.{AnswerChangedEvent, EventId}
+import it.evadid.workbook.history.InteractionVariableHistory
+import it.evadid.workbook.history.events.{AnswerChangedEvent, EventId}
 import it.evadid.workbook.interactions.qr.{QrCode, QrErrorCorrection}
 import it.evadid.workbook.elements.structure.Workbook
 import it.evadid.workbook.elements.structure.Workbook.WorkbookMetadata

@@ -14,8 +14,8 @@ import it.evadid.workbook.abstractions.scaffolding.{ScaffoldingResult, Scaffoldi
 import it.evadid.workbook.interactions.choice.WorkbookContentChoiceInteraction.*
 import it.evadid.workbook.interactions.gpt.{TextInputLlmGrader, TextInputWithScaffoldingAndGrading}
 import it.evadid.workbook.sync.UpdateImportance
-import it.evadid.workbook.model.history.InteractionVariableHistory
-import it.evadid.workbook.model.history.events.*
+import it.evadid.workbook.history.InteractionVariableHistory
+import it.evadid.workbook.history.events.*
 import java.time.LocalDateTime
 import munit.FunSuite
 import upickle.default.*

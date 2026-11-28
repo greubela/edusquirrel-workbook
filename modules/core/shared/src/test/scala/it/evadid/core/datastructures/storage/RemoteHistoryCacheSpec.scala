@@ -5,8 +5,8 @@ import it.evadid.core.datastructures.storage.remote.{RemoteHistoryCache, RemoteH
 import it.evadid.util.logging.Logger
 import it.evadid.util.logging.derived.{PrintToStdLogger, SyncLogger}
 import it.evadid.workbook.sync.{EventSyncStrategy, SyncContext, SyncSuccess, UpdateImportance, UsageContext}
-import it.evadid.workbook.model.history.events.*
-import it.evadid.workbook.model.history.InteractionVariableHistory
+import it.evadid.workbook.history.events.*
+import it.evadid.workbook.history.InteractionVariableHistory
 import java.time.LocalDateTime
 import munit.FunSuite
 import scala.concurrent.{ExecutionContext, Future, Promise}

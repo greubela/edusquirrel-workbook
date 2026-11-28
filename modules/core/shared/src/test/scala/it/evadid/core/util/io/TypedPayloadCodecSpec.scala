@@ -7,7 +7,7 @@ import it.evadid.vm.parsing.python.clean.model.PythonType.{PYTHON_ANY, PYTHON_UN
 import it.evadid.workbook.abstractions.FeedbackEntity
 import it.evadid.workbook.abstractions.scaffolding.{ScaffoldingResult, ScaffoldingStatus}
 import it.evadid.workbook.interactions.basic.TextInteraction
-import it.evadid.workbook.model.history.{InteractionVariableHistory, InteractionVariableScaffoldingHistory}
+import it.evadid.workbook.history.{InteractionVariableHistory, InteractionVariableScaffoldingHistory}
 import java.time.LocalDateTime
 import munit.FunSuite
 import upickle.default.*

@@ -17,7 +17,7 @@ import it.evadid.workbook.interactions.programming.state.snap.ProgrammingEditorP
 import it.evadid.workbook.serialization.WorkbookElementFactory.SimpleWorkbookElementFactory
 import it.evadid.workbook.serialization.{WorkbookElementFactory, WorkbookElementSerializable}
 import it.evadid.core.util.io.serializer.*
-import it.evadid.workbook.model.history.InteractionVariableHistory
+import it.evadid.workbook.history.InteractionVariableHistory
 import upickle.default.*
 
 import it.evadid.workbook.abstractions.*

@@ -15,7 +15,7 @@ import it.evadid.workbook.elements.structure.{Workbook, WorkbookSection}
 import it.evadid.workbook.sync.destination.SyncDestinationDefinition.SyncDestinationBasedOnHistoryDatabase
 import it.evadid.workbook.sync.model.InteractionHistoryJson
 import it.evadid.workbook.sync.{EventSyncStrategy, SyncContext, SyncInformation, UpdateImportance, UsageContext}
-import it.evadid.workbook.model.history.{InteractionVariableHistory, InteractionVariableState}
+import it.evadid.workbook.history.{InteractionVariableHistory, InteractionVariableState}
 import it.evadid.workbook.session.{AllWorkbookInfo, SessionData, WorkbookConfig}
 
 import java.time.LocalDateTime

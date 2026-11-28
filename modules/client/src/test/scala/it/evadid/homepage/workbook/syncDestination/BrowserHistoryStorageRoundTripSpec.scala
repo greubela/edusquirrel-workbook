@@ -10,8 +10,8 @@ import it.evadid.workbook.abstractions.InteractionFormat.{ProgrammingExerciseWit
 import it.evadid.workbook.interactions.programming.state.{ProgrammingState, ProgrammingStateRaw}
 import it.evadid.workbook.sync.*
 import it.evadid.workbook.sync.destination.SyncDestinationDefinition.LocalStorageSyncDefinition
-import it.evadid.workbook.model.history.InteractionVariableHistory
-import it.evadid.workbook.model.history.events.{AnswerChangedEvent, InteractionEvent, InteractionEvents}
+import it.evadid.workbook.history.InteractionVariableHistory
+import it.evadid.workbook.history.events.{AnswerChangedEvent, InteractionEvent, InteractionEvents}
 import org.scalajs.dom
 import java.time.LocalDateTime
 import scala.concurrent.ExecutionContext

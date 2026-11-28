@@ -12,7 +12,7 @@ import it.evadid.workbook.control.InteractionController
 import it.evadid.workbook.sync.*
 import it.evadid.workbook.sync.destination.{SyncDestinationDefinition, SyncDestinationHandlerBasic}
 import it.evadid.workbook.sync.model.InteractionHistoryJson
-import it.evadid.workbook.model.history.InteractionVariableHistory
+import it.evadid.workbook.history.InteractionVariableHistory
 import it.evadid.workbook.abstractions.ExecutionContextInformation
 
 import scala.concurrent.{ExecutionContext, Future, Promise}

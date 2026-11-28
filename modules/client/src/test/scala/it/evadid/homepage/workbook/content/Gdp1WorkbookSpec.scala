@@ -14,7 +14,7 @@ import it.evadid.workbook.interactions.gpt.TextInputWithScaffoldingAndGrading
 import it.evadid.workbook.abstractions.ExecutionContextInformation
 import it.evadid.workbook.sync.model.InteractionHistoryJson
 import it.evadid.workbook.abstractions.InteractionFormat.TurtleRecreateShapeInteractionFormat
-import it.evadid.workbook.model.history.InteractionVariableHistory
+import it.evadid.workbook.history.InteractionVariableHistory
 import scala.concurrent.{ExecutionContext, Future}
 import upickle.default.*
 

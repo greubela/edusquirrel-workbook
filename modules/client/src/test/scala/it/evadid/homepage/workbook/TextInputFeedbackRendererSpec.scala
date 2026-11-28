@@ -13,7 +13,7 @@ import it.evadid.homepage.workbook.htmlRenderer.controlElements.interactionInfo.
 import it.evadid.workbook.abstractions.FeedbackEntity
 import it.evadid.workbook.abstractions.scaffolding.{ScaffoldingResult, ScaffoldingStatus}
 import it.evadid.homepage.control.info.interaction.GradingReporter
-import it.evadid.workbook.model.history.InteractionVariableState
+import it.evadid.workbook.history.InteractionVariableState
 import it.evadid.workbook.sync.UpdateImportance
 import java.time.LocalDateTime
 import it.evadid.workbook.abstractions.grading.{GradedState, GradingResult, GradingStatus}

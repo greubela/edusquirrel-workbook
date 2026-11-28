@@ -8,7 +8,7 @@ import it.evadid.workbook.abstractions.InteractionFormat.SortingReasonInteractio
 import it.evadid.workbook.abstractions.{InteractionFormat, WorkbookElement, WorkbookInteractionElement, *}
 import it.evadid.workbook.serialization.WorkbookElementFactory.SimpleWorkbookElementFactory
 import it.evadid.workbook.serialization.WorkbookElementSerializable
-import it.evadid.workbook.model.history.InteractionVariableHistory
+import it.evadid.workbook.history.InteractionVariableHistory
 import upickle.default.*
 
 case class SortingReasonInteraction(

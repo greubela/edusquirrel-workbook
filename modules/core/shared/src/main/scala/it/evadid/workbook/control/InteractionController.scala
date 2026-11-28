@@ -9,9 +9,9 @@ import it.evadid.util.logging.derived.SyncLogger
 import it.evadid.workbook.abstractions.{InteractionFormat, WorkbookInteractionElement}
 import it.evadid.workbook.sync.{FormattedSyncDestination, SyncConnection, SyncContext, SyncInformationWithContext, SyncResetState, UpdateImportance}
 import it.evadid.workbook.sync.model.InteractionHistoryJson
-import it.evadid.workbook.model.history.InteractionVariableState.InteractionVariableStateChanged
+import it.evadid.workbook.history.InteractionVariableState.InteractionVariableStateChanged
 import it.evadid.workbook.model.{InteractionEntry, InteractionInfo, InteractionScope}
-import it.evadid.workbook.model.history.{InteractionVariableHistory, InteractionVariableState}
+import it.evadid.workbook.history.{InteractionVariableHistory, InteractionVariableState}
 import it.evadid.workbook.abstractions.ExecutionContextInformation
 import it.evadid.workbook.reports.InteractionVariableSyncReport
 

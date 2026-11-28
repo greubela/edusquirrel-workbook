@@ -5,8 +5,8 @@ import it.evadid.core.util.io.Serializer
 import it.evadid.workbook.sync.destination.BufferedSyncDestinationHandler.*
 import it.evadid.workbook.sync.model.{FetchResponse, InteractionHistoryJson}
 import it.evadid.workbook.sync.{EventSyncStrategy, SyncContext, SyncSuccess, UsageContext}
-import it.evadid.workbook.model.history.*
-import it.evadid.workbook.model.history.events.EventId
+import it.evadid.workbook.history.*
+import it.evadid.workbook.history.events.EventId
 import it.evadid.util.logging.derived.SyncLogger
 import it.evadid.workbook.abstractions.InteractionFormat
 import upickle.default.*

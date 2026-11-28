@@ -9,7 +9,7 @@ import it.evadid.workbook.sync.*
 import it.evadid.workbook.sync.destination.*
 import it.evadid.workbook.sync.destination.SyncDestinationDefinition.SyncDestinationBasedOnHistoryDatabase
 import it.evadid.workbook.sync.model.{FetchResponse, InteractionHistoryJson}
-import it.evadid.workbook.model.history.events.EventId
+import it.evadid.workbook.history.events.EventId
 
 import scala.concurrent.*
 

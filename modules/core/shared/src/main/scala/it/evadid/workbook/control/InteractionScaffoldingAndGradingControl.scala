@@ -6,8 +6,8 @@ import it.evadid.workbook.abstractions.{InteractionFormat, WorkbookInteractionEl
 import it.evadid.workbook.abstractions.grading.{GradedState, GradingResult, GradingStatus, WorkbookInteractionGrader}
 import it.evadid.workbook.abstractions.scaffolding.{ScaffoldingEvidence, ScaffoldingResult}
 import it.evadid.workbook.sync.UpdateImportance
-import it.evadid.workbook.model.history.InteractionVariableHistory
-import it.evadid.workbook.model.history.events.{GradingStartedEvent, ScaffoldingStartedEvent}
+import it.evadid.workbook.history.InteractionVariableHistory
+import it.evadid.workbook.history.events.{GradingStartedEvent, ScaffoldingStartedEvent}
 import it.evadid.workbook.abstractions.ExecutionContextInformation
 
 import java.time.LocalDateTime

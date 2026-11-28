@@ -1,4 +1,4 @@
-package it.evadid.workbook.model.history
+package it.evadid.workbook.history
 
 import it.evadid.workbook.abstractions.InteractionFormat
 import it.evadid.workbook.abstractions.scaffolding.ScaffoldingResult

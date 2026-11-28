@@ -4,8 +4,8 @@ import it.evadid.core.datastructures.storage.remote.{RemoteHistoryDataReader, Re
 import it.evadid.util.logging.derived.SyncLogger
 import it.evadid.workbook.abstractions.InteractionFormat
 import it.evadid.workbook.sync.model.InteractionHistoryJson
-import it.evadid.workbook.model.history.InteractionVariableHistory
-import it.evadid.workbook.model.history.events.{EventId, InteractionEvent}
+import it.evadid.workbook.history.InteractionVariableHistory
+import it.evadid.workbook.history.events.{EventId, InteractionEvent}
 import java.time.LocalDateTime
 import scala.concurrent.{ExecutionContext, Future}
 

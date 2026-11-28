@@ -4,8 +4,8 @@ import it.evadid.core.datastructures.storage.remote.RemoteHistoryCache.{CacheSta
 import it.evadid.workbook.abstractions.{InteractionFormat, WorkbookInteractionElement}
 import it.evadid.workbook.sync.SyncConnection
 import it.evadid.workbook.sync.{FormattedSyncDestination, SyncContext, SyncInformationWithContext, UpdateImportance}
-import it.evadid.workbook.model.history.{InteractionVariableHistory, InteractionVariableState}
-import it.evadid.workbook.model.history.events.InteractionEvent
+import it.evadid.workbook.history.{InteractionVariableHistory, InteractionVariableState}
+import it.evadid.workbook.history.events.InteractionEvent
 import it.evadid.workbook.reports.InteractionVariableSyncReport
 
 import java.time.LocalDateTime

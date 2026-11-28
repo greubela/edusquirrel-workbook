@@ -75,7 +75,7 @@ class WorkbookDefinitionsSpec extends EditorDomSuite {
       val continuing = page(fresh, user)
       continuing.interactions.restoreHistories(BasicLogger(), restored.knownUsageData)
       fresh.loadedWorkbook.allContainedInteractionsById.foreach { (id, interaction) =>
-        def submitted(history: it.evadid.workbook.model.history.InteractionVariableHistory[?]): Set[(Any, Any)] =
+        def submitted(history: it.evadid.workbook.history.InteractionVariableHistory[?]): Set[(Any, Any)] =
           history.allStates.map(event => (event.newState: Any) -> event.updateImportance)
         assertEquals(submitted(continuing.interactions.currentHistory(interaction)), submitted(studying.interactions.currentHistory(interactions(id))), id)
         assert(continuing.interactions.currentHistory(interaction).allStates.exists(_.updateImportance == UpdateImportance.MAJOR), id)

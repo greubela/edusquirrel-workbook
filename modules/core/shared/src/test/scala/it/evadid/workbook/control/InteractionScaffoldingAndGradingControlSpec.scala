@@ -1,6 +1,6 @@
 package it.evadid.workbook.control
 
-import it.evadid.workbook.model.history.{InteractionVariableGradingHistory, InteractionVariableScaffoldingHistory}
+import it.evadid.workbook.history.{InteractionVariableGradingHistory, InteractionVariableScaffoldingHistory}
 
 import it.evadid.workbook.model.InteractionScope
 
@@ -361,7 +361,7 @@ class InteractionScaffoldingAndGradingControlSpec extends FunSuite {
   }
 
   test("received scaffolding lifecycle events expose pending and completed states without executing feedback") {
-    import it.evadid.workbook.model.history.events.*
+    import it.evadid.workbook.history.events.*
     type F = TextInputWithLlmGradingAndScaffoldingFormat.type
     val value = variable(Nil)
     val timestamp = java.time.LocalDateTime.of(2026, 11, 17, 12, 0)
@@ -402,7 +402,7 @@ class InteractionScaffoldingAndGradingControlSpec extends FunSuite {
     gate.success(())
     pending.flatMap { _ =>
       assert(value.controller.currentHistory(value.interaction).scaffoldingEvents.isEmpty)
-      assert(retired.historyOf(value.interaction).scaffoldingEvents.forall(_.isInstanceOf[it.evadid.workbook.model.history.events.ScaffoldingStartedEvent[?]]), "dropped, not recorded late")
+      assert(retired.historyOf(value.interaction).scaffoldingEvents.forall(_.isInstanceOf[it.evadid.workbook.history.events.ScaffoldingStartedEvent[?]]), "dropped, not recorded late")
       assertEquals(value.control.getCurrentStateOfScaffolding("answer"), None)
       value.control.getOrCalculateScaffolding()
     }.map(_ => assertEquals(scaffolder.calls.now(), 2))

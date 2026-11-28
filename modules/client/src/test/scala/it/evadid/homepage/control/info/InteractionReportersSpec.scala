@@ -17,7 +17,7 @@ import it.evadid.workbook.interactions.gpt.TextInputWithScaffoldingAndGrading
 import TextInputWithScaffoldingAndGrading.ContentForLlmInteraction
 import it.evadid.workbook.interactions.basic.TextInteraction
 import it.evadid.workbook.elements.structure.{Workbook, WorkbookSection}
-import it.evadid.workbook.model.history.InteractionVariableState
+import it.evadid.workbook.history.InteractionVariableState
 import it.evadid.workbook.sync.UpdateImportance
 import it.evadid.workbook.abstractions.ExecutionContextInformation
 import it.evadid.workbook.reports.{InteractionVariableSyncReport, ScaffoldingReport}

@@ -29,8 +29,8 @@ import it.evadid.workbook.elements.structure.WorkbookSection.WorkbookSectionMeta
 import it.evadid.workbook.sync.*
 import it.evadid.workbook.sync.destination.SyncDestinationDefinition.*
 import it.evadid.workbook.sync.model.InteractionHistoryJson
-import it.evadid.workbook.model.history.InteractionVariableHistory
-import it.evadid.workbook.model.history.events.{AnswerChangedEvent, EventId}
+import it.evadid.workbook.history.InteractionVariableHistory
+import it.evadid.workbook.history.events.{AnswerChangedEvent, EventId}
 import it.evadid.workbook.abstractions.ExecutionContextInformation
 import scala.concurrent.{ExecutionContext, Future, Promise}
 import scala.scalajs.js

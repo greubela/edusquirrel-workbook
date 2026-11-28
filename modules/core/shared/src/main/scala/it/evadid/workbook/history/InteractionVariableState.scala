@@ -1,4 +1,4 @@
-package it.evadid.workbook.model.history
+package it.evadid.workbook.history
 
 import upickle.default.*
 import it.evadid.core.util.io.serializer.DefaultSerializer.given

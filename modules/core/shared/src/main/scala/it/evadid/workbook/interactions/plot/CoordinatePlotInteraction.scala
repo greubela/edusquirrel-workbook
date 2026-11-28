@@ -8,7 +8,7 @@ import it.evadid.workbook.abstractions.InteractionFormat.CoordinatePlotInteracti
 import it.evadid.workbook.abstractions.{InteractionFormat, WorkbookInteractionElement, *}
 import it.evadid.workbook.serialization.{WorkbookElementFactory, WorkbookElementSerializable}
 import it.evadid.workbook.interactions.plot.*
-import it.evadid.workbook.model.history.InteractionVariableHistory
+import it.evadid.workbook.history.InteractionVariableHistory
 import upickle.default.*
 
 /** A learner-authored graph. Bounds validate the answer; they do not grade a hypothesis. */

@@ -1,6 +1,6 @@
 package it.evadid.core.util.io
 
-import it.evadid.workbook.model.history.InteractionVariableHistory
+import it.evadid.workbook.history.InteractionVariableHistory
 import it.evadid.workbook.sync.model.InteractionHistoryJson
 import munit.FunSuite
 import upickle.default.*
