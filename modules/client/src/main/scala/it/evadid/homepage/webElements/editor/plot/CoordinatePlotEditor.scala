@@ -4,8 +4,8 @@ import it.evadid.homepage.control.model.FullInfo
 
 import com.raquo.laminar.api.L.*
 import it.evadid.homepage.webElements.HtmlAppElement
-import it.evadid.workbook.elements.interactionElements.plot.CoordinatePlotInteraction
-import it.evadid.workbook.model.plot.*
+import it.evadid.workbook.interactions.plot.CoordinatePlotInteraction
+import it.evadid.workbook.interactions.plot.*
 
 /** Inline editor: numeric controls also make the graph usable without a mouse. */
 case class CoordinatePlotEditor(fullInfo: FullInfo, config: CoordinatePlotInteraction, answer: Var[PlotAnswer], locked: Var[Boolean]) extends HtmlAppElement {

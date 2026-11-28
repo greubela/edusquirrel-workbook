@@ -1,7 +1,8 @@
 package it.evadid.homepage.control.change
 
+
 import com.raquo.airstream.state.Var
-import it.evadid.core.datastructures.language.AppLanguage
+import it.evadid.core.datastructures.language.{AppLanguage, LanguageMapContentId}
 import it.evadid.core.datastructures.language.control.LanguageMapStorage
 import it.evadid.core.datastructures.user.*
 import it.evadid.core.datastructures.user.User.SingleAccessToken
@@ -13,7 +14,7 @@ import it.evadid.homepage.control.model.{AllDisplayInfo, FullInfo, HomepageInfo}
 import it.evadid.homepage.webElements.editor.code.EditorDomSuite
 import org.scalajs.dom
 import upickle.default.write
-import java.time.LocalDateTime
+import java.time.Instant
 import scala.concurrent.{ExecutionContext, Future}
 
 /** Sign-in, registration and session changes against an in-memory backend. */
@@ -27,7 +28,7 @@ class UserSessionControlSpec extends EditorDomSuite {
   private def page() = FullInfo(HomepageInfo(AppLanguage.German, None, None, AllDisplayInfo(false, None), LanguageMapStorage.empty))
   private val localConfig = UserConfig(Nil, isOnlineAccount = false)
   private val student = AllUserInfo.createNewUser("Ada Student", "ada@school.example", UserConfig(Nil, isOnlineAccount = true))
-  private def signed(user: User) = SignedToken(UserTokenInfo(user, LocalDateTime.now(), LocalDateTime.now().plusDays(1)), "signature")
+  private def signed(user: User) = SignedToken(UserTokenInfo(user, Instant.now(), Instant.now().plus(java.time.Duration.ofDays(1))), "signature")
   private def failure[T](future: Future[T]): Future[String] = future.failed.map {
     case AuthenticationFailure(key) => key
     case other => s"unexpected: $other"
@@ -158,23 +159,30 @@ class UserSessionControlSpec extends EditorDomSuite {
     }
   }
 
-  test("changing users resets the feedback session; repeating a change or signing out keeps state consistent") {
-    val info = page()
+  test("changing users replaces the bindings; repeating a change or signing out keeps state consistent") {
+    val element = it.evadid.workbook.interactions.basic.TextInteraction("answer")
+    val section = it.evadid.workbook.elements.structure.WorkbookSection("section",
+      it.evadid.workbook.elements.structure.WorkbookSection.WorkbookSectionMetadata(LanguageMapContentId("spec/section")), Seq(element))
+    val workbook = it.evadid.workbook.elements.structure.Workbook("workbook", it.evadid.workbook.elements.structure.Workbook.WorkbookMetadata(
+      Set.empty, Set.empty, LanguageMapContentId("spec/title"), Seq(AppLanguage.English)), Seq(section))
+    val info = FullInfo(HomepageInfo(AppLanguage.German, Some(it.evadid.workbook.session.AllWorkbookInfo(workbook,
+      it.evadid.workbook.session.WorkbookConfig(Some(section)), Map.empty)), None, AllDisplayInfo(false, None), LanguageMapStorage.empty))
     val control = info.userSessionControl
     val first = AllUserInfo.createNewUser("First", "first@school.example", localConfig)
     val second = AllUserInfo.createNewUser("Second", "second@school.example", localConfig)
-    val session = info.feedbackSession.now()
+    def session = info.interactions.info.session
+    val initial = session
     for {
       _ <- control.changeUser(Some(first))
-      afterFirst = info.feedbackSession.now()
+      afterFirst = session
       _ <- control.changeUser(Some(first))
-      _ = assert(info.feedbackSession.now() eq afterFirst, "the same user keeps the session")
+      _ = assertEquals(session, afterFirst, "the same user keeps the answers")
       _ <- control.changeUser(Some(second))
-      _ = assert(!(info.feedbackSession.now() eq afterFirst), "another user gets a new feedback session")
+      _ = assertNotEquals(session, afterFirst, "another user gets default answers of their own")
       _ = assert(dom.window.localStorage.getItem("edusquirrel-alluserinfo").contains("second@school.example"))
       _ <- control.changeUser(None)
     } yield {
-      assert(!(afterFirst eq session))
+      assertNotEquals(afterFirst, initial)
       assertEquals(info.current.userInfo, None)
       assertEquals(dom.window.localStorage.getItem("edusquirrel-alluserinfo"), null, "signing out removes the saved login")
       intercept[IllegalArgumentException](control.updateCredentials(UserCredentials()))

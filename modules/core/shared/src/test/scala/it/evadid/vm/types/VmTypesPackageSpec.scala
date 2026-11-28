@@ -66,15 +66,12 @@ class VmTypesPackageSpec extends FunSuite {
     assertEquals(BeDataType.BeUnionAllowedTypes(Set.empty).formatTypeForDisplay.getInLanguage(Python), "")
   }
 
-  test("serializable atomic type resolves the exported representation") {
+  test("atomic types are saved by their registered name") {
     assertEquals(BeDataType.allAtomic.size, 7)
-    BeDataType.allAtomic.foreach { atomic =>
-      assertEquals(atomic.toSerializableSubType.toTypedMainType, atomic)
-      assertEquals(read[BeDataType](write[BeDataType](atomic)), atomic)
-    }
-    assertEquals(BeDataType.String.toSerializableSubType, BeDataType.BeSerializableAtomicType("String"))
-    assertEquals(BeDataType.BeSerializableAtomicType("BeDataTypeAtomic").toTypedMainType, BeDataType.String)
-    intercept[NoSuchElementException](BeDataType.BeSerializableAtomicType("unknown").toTypedMainType)
+    BeDataType.allAtomic.foreach(atomic => assertEquals(read[BeDataType](write[BeDataType](atomic)), atomic))
+    assertEquals(write[BeDataType](BeDataType.String), "\"String\"")
+    assertEquals(write[BeDataType](BeDataType.AnyType), "\"AnyType\"")
+    intercept[Exception](read[BeDataType]("\"BeDataTypeAtomic\""))
   }
 
   test("data type codecs round-trip empty, nested and unrestricted unions") {

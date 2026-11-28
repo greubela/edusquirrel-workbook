@@ -38,6 +38,7 @@ object LanguageMap {
 
   def empty[T <: AppLanguage]: LanguageMap[T] = mapBasedLanguageMap(Map.empty)
 
+  @upickle.implicits.key("LanguageMapMapBased")
   private case class LanguageMapMapBased[T <: AppLanguage](pMap: Map[T, String]) extends LanguageMap[T] derives ReadWriter {
 
     def tryGetInLanguage(language: T): Option[String] = pMap.get(language)
@@ -51,6 +52,7 @@ object LanguageMap {
 
   }
 
+  @upickle.implicits.key("LanguageMapUniversal")
   private case class LanguageMapUniversal[T <: AppLanguage](returnString: String) extends LanguageMap[T]() derives ReadWriter {
     def tryGetInLanguage(language: T): Option[String] = Some(returnString)
 
@@ -61,6 +63,7 @@ object LanguageMap {
     override def toString: String = "UniversalLanguageMap('" + returnString + "')"
   }
 
+  @upickle.implicits.key("LanguageMapBaseWithFallback")
   private case class LanguageMapBaseWithFallback[T <: AppLanguage](base: LanguageMap[T], fallback: LanguageMap[T]) extends LanguageMap[T] derives ReadWriter {
     override def tryGetInLanguage(language: T): Option[String] =
       base.tryGetInLanguage(language).orElse(fallback.tryGetInLanguage(language))

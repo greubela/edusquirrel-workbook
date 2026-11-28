@@ -1,0 +1,53 @@
+{
+  "format": "SortListExerciseFormat",
+  "historyJson": {
+    "events": {
+      "values": [
+        {
+          "$type": "AnswerChangedEvent",
+          "newState": {
+            "$type": "PythonStructured",
+            "value": {
+              "$type": "ProgrammingStatePythonStructured",
+              "definedClasses": [],
+              "mainScript": "def sortiere():\n    # NumberList.length(), NumberList.get(i) und NumberList.swap(i, j) stehen zur Verfügung.\n    pass\n\nsortiere()"
+            }
+          },
+          "timestamp": "2026-11-28T12:00:00.123456789Z",
+          "updateImportance": "MAJOR",
+          "eventId": "00000000-0000-4000-8000-000000000001"
+        },
+        {
+          "$type": "GradingStartedEvent",
+          "state": "StateReference(sha256:f8d966015abb63f1dabdd07024117dec6fa0075f767ae1eae6441718ba9508b5)",
+          "timestamp": "2026-11-28T12:00:00.123456790Z",
+          "grader": "GraderReference(sha256:7ed0c64527b5867b9d6bb6d3e5702ce11cc379c128537fce6f428c6ff12e27d0)",
+          "eventId": "00000000-0000-4000-8000-000000000002"
+        },
+        {
+          "$type": "GradingCompletedEvent",
+          "record": {
+            "grader": "GraderReference(sha256:7ed0c64527b5867b9d6bb6d3e5702ce11cc379c128537fce6f428c6ff12e27d0)",
+            "state": "StateReference(sha256:f8d966015abb63f1dabdd07024117dec6fa0075f767ae1eae6441718ba9508b5)",
+            "gradingStatus": "Incorrect",
+            "feedbackInformation": {
+              "$type": "LanguageMapBasedContent",
+              "languageMap": {
+                "$type": "LanguageMapMapBased",
+                "pMap": [
+                  [
+                    "English",
+                    "Feedback"
+                  ]
+                ]
+              }
+            },
+            "additionalData": null,
+            "gradingTime": "2026-11-28T12:00:00.123456791Z"
+          },
+          "eventId": "00000000-0000-4000-8000-000000000003"
+        }
+      ]
+    }
+  }
+}

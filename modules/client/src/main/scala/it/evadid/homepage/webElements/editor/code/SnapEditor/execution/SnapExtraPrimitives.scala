@@ -2,7 +2,7 @@ package it.evadid.homepage.webElements.editor.code.SnapEditor.execution
 
 import it.evadid.homepage.webElements.editor.code.SnapEditor.SnapJs
 
-import it.evadid.workbook.elements.interactionElements.programming.state.snap.SnapTurtleCatalog
+import it.evadid.workbook.interactions.programming.state.snap.SnapTurtleCatalog
 import scala.scalajs.js
 import scala.scalajs.js.JSConverters.*
 

@@ -2,7 +2,7 @@ package it.evadid.distribution.commandTypes
 
 import it.evadid.core.util.io.Serializer
 import it.evadid.distribution.command.ExecutionCommandFactory
-import it.evadid.workbook.elements.interactionElements.sql.SqlDatabaseConfig
+import it.evadid.workbook.interactions.sql.SqlDatabaseConfig
 import upickle.default.*
 
 object SqlEditorCommands {

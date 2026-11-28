@@ -4,7 +4,6 @@ import it.evadid.core.datastructures.vectorShapes.blocks.{BlockPaths, BlockRende
 
 import it.evadid.core.datastructures.vectorShapes.svg.SvgPathBuilderCommand.MoveAbs
 import it.evadid.core.datastructures.geometry.{Bounds, Dimension, Point}
-import it.evadid.core.datastructures.vectorShapes.svg.{SvgPathBuilder, SvgPathBuilderImmutable, SvgPathParser}
 import munit.FunSuite
 
 class SvgPathRoundTripSuite extends FunSuite {

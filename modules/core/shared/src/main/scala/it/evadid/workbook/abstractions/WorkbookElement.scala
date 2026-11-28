@@ -1,12 +1,10 @@
 package it.evadid.workbook.abstractions
-import it.evadid.workbook.abstractions.InteractionFormat
 import it.evadid.workbook.abstractions.InteractionFormat.*
 import it.evadid.workbook.abstractions.grading.WorkbookInteractionGrader
 import it.evadid.workbook.abstractions.scaffolding.WorkbookInteractionScaffolder
-import it.evadid.workbook.interaction.variable.InteractionVariable
-import it.evadid.workbook.jsonFactory.{WorkbookElementFactory, WorkbookElementReference, WorkbookElementSerializable}
+import it.evadid.workbook.serialization.{WorkbookElementFactory, WorkbookElementReference, WorkbookElementSerializable}
 
-import it.evadid.workbook.jsonFactory.SerializedWorkbook
+import it.evadid.workbook.serialization.SerializedWorkbook
 
 object WorkbookElement {
   given upickle.default.ReadWriter[WorkbookElement] =
@@ -21,7 +19,7 @@ object WorkbookElement {
 sealed trait WorkbookElement {
   val elementId: String
   //  assert(elementId.matches("[a-zA-Z0-9.-]+"))
-  lazy val asRef = WorkbookElementReference(elementId, Option(this.getClass.getSimpleName))
+  lazy val asRef = WorkbookElementReference(elementId, Some(WorkbookElementFactory.persistedTypeOf(this)))
 
   lazy val childrenOfThisElement: Seq[WorkbookElement]
   lazy val allInteractionsInThisInstance: Seq[WorkbookInteractionElement[? <: InteractionFormat]] =
@@ -58,8 +56,8 @@ trait WorkbookInteractionElement[F <: InteractionFormat](using v: ValueOf[F]) ex
   override lazy val allInteractionsInThisInstance: Seq[WorkbookInteractionElement[? <: InteractionFormat]] =
     List(this) ++ childrenOfThisElement.collect { case x: WorkbookInteractionElement[? <: InteractionFormat] => x }.flatMap(_.allInteractionsInThisInstance)
   lazy val isDisabledState: it.evadid.core.datastructures.state.State[Boolean] = it.evadid.core.datastructures.state.State(false)
-  // needs to be lazy or defaultValue (from subclass) might not be inited!
-  lazy val interactionVariable: InteractionVariable[F] = InteractionVariable[F](this)
+  /** Names this interaction's history within its sync context. */
+  def keyForSerialization: String = elementId + "_history"
 
   // Type members that use the format's type members
   type InteractionStateType = InteractionFormat.State[F]
@@ -70,13 +68,13 @@ trait WorkbookInteractionElement[F <: InteractionFormat](using v: ValueOf[F]) ex
 
   /** Wrong parts of an answer, as indices whose meaning the interaction defines (an option, an editable cell, ...).
    * Parts left unanswered are not wrong. Renderers permanently mark the parts that a failed check found wrong, see
-   * [[it.evadid.workbook.meta.CheckReport]]; interactions without such parts, like programming tasks, keep the default. */
+   * [[it.evadid.workbook.reports.CheckReport]]; interactions without such parts, like programming tasks, keep the default. */
   def wrongParts(answer: InteractionStateType): Set[Int] = Set.empty
 
   val defaultValue: InteractionStateType
 
   val gradingElements: Seq[WorkbookInteractionGrader[InteractionStateType, GradingInfoType]] = List()
-  val scaffoldingElement: Option[WorkbookInteractionScaffolder[InteractionStateType, ScaffoldingInfoType]] = None
+  val scaffoldingElement: Option[WorkbookInteractionScaffolder[InteractionStateType, GradingInfoType, ScaffoldingInfoType]] = None
 
 }
 

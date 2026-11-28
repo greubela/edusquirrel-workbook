@@ -6,7 +6,7 @@ import it.evadid.homepage.webElements.HtmlAppElement
 import it.evadid.vm.simulation.{ProgramEntry, ProgramExecution}
 import it.evadid.vm.simulation.data.{DataWorld, ListCommand}
 import it.evadid.vm.simulation.turtle.TurtleExecutionStatus
-import it.evadid.workbook.elements.interactionElements.programming.state.ProgrammingState
+import it.evadid.workbook.interactions.programming.state.ProgrammingState
 
 import scala.concurrent.{ExecutionContext, Future}
 import scala.util.control.NonFatal

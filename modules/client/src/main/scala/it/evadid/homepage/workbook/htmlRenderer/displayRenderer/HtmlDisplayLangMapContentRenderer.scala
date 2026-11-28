@@ -11,7 +11,7 @@ import it.evadid.homepage.workbook.htmlRenderer.atomarLineRenderings.AtomarLineR
 import it.evadid.workbook.abstractions.RoleInWorkbook.EXERCISE_DESCRIPTION
 import it.evadid.workbook.abstractions.TypeOfTextDisplay.{HTML, MARKDOWN, PLAINTEXT}
 import it.evadid.workbook.abstractions.{LangMapContentIdType, TypeOfTextDisplay, WorkbookElement}
-import it.evadid.workbook.elements.displayElements.DisplayLangMapContent
+import it.evadid.workbook.elements.display.DisplayLangMapContent
 
 object HtmlDisplayLangMapContentRenderer extends LineBasedRenderingFactory[DisplayLangMapContent] {
 

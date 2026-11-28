@@ -99,16 +99,22 @@ object BeDefineFunction {
 
   sealed trait BeFunctionType derives ReadWriter
 
+  @upickle.implicits.key("Lambda")
   case object Lambda extends BeFunctionType
 
+  @upickle.implicits.key("Method")
   case object Method extends BeFunctionType
 
+  @upickle.implicits.key("StaticMethod")
   case object StaticMethod extends BeFunctionType
 
+  @upickle.implicits.key("Constructor")
   case object Constructor extends BeFunctionType
 
+  @upickle.implicits.key("Function")
   case object Function extends BeFunctionType
 
+  @upickle.implicits.key("Operator")
   case class Operator(nameBeforeChildNr: Int) extends BeFunctionType derives upickle.default.ReadWriter
 
   def methodFunctionInfo(methodInClass: BeDefineClass, name: BeEntityName): BeFunctionTypeInfo = {

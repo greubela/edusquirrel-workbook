@@ -149,6 +149,7 @@ object TurtleStitchProgramModel {
   }
 
   /** `<block s="selector"> ... </block>` and `<block var="..."/>`. */
+  @upickle.implicits.key("PrimitiveBlock")
   final case class PrimitiveBlock(
       selector: Option[String] = None,
       variable: Option[String] = None,
@@ -157,6 +158,7 @@ object TurtleStitchProgramModel {
   ) extends BlockLike
 
   /** `<custom-block s="..." ...> ... </custom-block>`. */
+  @upickle.implicits.key("CustomBlockCall")
   final case class CustomBlockCall(
       semanticSpec: String,
       scope: Option[String] = None,
@@ -173,18 +175,23 @@ object TurtleStitchProgramModel {
       case _ => Vector.empty
     }
   }
+  @upickle.implicits.key("Literal")
   final case class Literal(value: String) extends InputValue
+  @upickle.implicits.key("BoolLiteral")
   final case class BoolLiteral(value: Boolean) extends InputValue
+  @upickle.implicits.key("ColorLiteral")
   final case class ColorLiteral(value: Rgba) extends InputValue
+  @upickle.implicits.key("ListLiteral")
   final case class ListLiteral(items: Vector[InputValue]) extends InputValue
+  @upickle.implicits.key("NestedScript")
   final case class NestedScript(value: Script) extends InputValue
   final case class NestedBlock(value: BlockLike) extends InputValue
 
   final case class CustomBlockDefinition(
       spec: String,
-      blockType: it.evadid.workbook.elements.interactionElements.programming.state.snap.SnapVocabulary.BlockType,
-      category: it.evadid.workbook.elements.interactionElements.programming.state.snap.SnapVocabulary.BlockCategory =
-        it.evadid.workbook.elements.interactionElements.programming.state.snap.SnapVocabulary.BlockCategory.Other,
+      blockType: it.evadid.workbook.interactions.programming.state.snap.SnapVocabulary.BlockType,
+      category: it.evadid.workbook.interactions.programming.state.snap.SnapVocabulary.BlockCategory =
+        it.evadid.workbook.interactions.programming.state.snap.SnapVocabulary.BlockCategory.Other,
       selector: Option[String] = None,
       primitive: Option[String] = None,
       helper: Option[String] = None,

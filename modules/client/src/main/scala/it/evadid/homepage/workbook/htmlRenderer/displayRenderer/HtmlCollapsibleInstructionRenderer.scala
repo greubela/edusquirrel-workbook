@@ -5,7 +5,7 @@ import it.evadid.homepage.control.model.FullInfo
 import com.raquo.laminar.api.L.*
 import it.evadid.homepage.workbook.htmlRenderer.HtmlRenderFactory.LineBasedRenderingFactory
 import it.evadid.homepage.workbook.htmlRenderer.atomarLineRenderings.AtomarLineRendering
-import it.evadid.workbook.elements.displayElements.CollapsibleInstructionElement
+import it.evadid.workbook.elements.display.CollapsibleInstructionElement
 
 object HtmlCollapsibleInstructionRenderer extends LineBasedRenderingFactory[CollapsibleInstructionElement] {
 

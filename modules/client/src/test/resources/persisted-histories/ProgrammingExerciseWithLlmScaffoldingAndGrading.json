@@ -1,0 +1,45 @@
+{
+  "format": "ProgrammingExerciseWithLlmScaffoldingAndGrading",
+  "historyJson": {
+    "events": {
+      "values": [
+        {
+          "$type": "AnswerChangedEvent",
+          "newState": {
+            "$type": "Raw",
+            "value": {
+              "$type": "ProgrammingStateRaw",
+              "language": "Java",
+              "code": "public class Drawing {\n  static void square(int side) {\n\n  }\n\n  public static void main(String[] args) {\n    square(25);\n  }\n}\n"
+            }
+          },
+          "timestamp": "2026-11-28T12:00:00.123456789Z",
+          "updateImportance": "MAJOR",
+          "eventId": "00000000-0000-4000-8000-000000000001"
+        },
+        {
+          "$type": "ScaffoldingCompletedEvent",
+          "record": {
+            "state": "StateReference(sha256:5199ed3477179a4a44f0c9280b2d4a23c2ff180ca289ab5911ee1d31e8c5d0c7)",
+            "scaffoldingStatus": {
+              "$type": "ScaffoldingFeedback",
+              "feedback": {
+                "$type": "LanguageMapMapBased",
+                "pMap": [
+                  [
+                    "English",
+                    "Hint"
+                  ]
+                ]
+              }
+            },
+            "scaffoldingEntity": "LlmEntity",
+            "additionalInformation": null,
+            "scaffoldingTime": "2026-11-28T12:00:00.123456792Z"
+          },
+          "eventId": "00000000-0000-4000-8000-000000000004"
+        }
+      ]
+    }
+  }
+}

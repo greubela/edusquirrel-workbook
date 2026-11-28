@@ -1,14 +1,16 @@
 package it.evadid.homepage.workbook.htmlRenderer.interactionRenderer.sortingReasonExercise
 
+import it.evadid.workbook.control.InteractionSignals.*
+
 import it.evadid.homepage.control.model.FullInfo
 
 import com.raquo.laminar.api.L.*
 import it.evadid.core.datastructures.language.LanguageMapContentId
-import it.evadid.core.datastructures.state.StateHelper.InteractionVariableOnJS
+
 import it.evadid.homepage.webElements.basic.HtmlButtonElement
 import it.evadid.homepage.workbook.htmlRenderer.HtmlRenderFactory.LineBasedRenderingFactory
 import it.evadid.homepage.workbook.htmlRenderer.atomarLineRenderings.AtomarLineRendering
-import it.evadid.workbook.elements.interactionElements.sorting.sortingReasonExercise.SortingReasonInteraction
+import it.evadid.workbook.interactions.sorting.sortingReasonExercise.SortingReasonInteraction
 
 object HtmlSortingReasonInteractionRenderer extends LineBasedRenderingFactory[SortingReasonInteraction] {
 
@@ -16,7 +18,7 @@ object HtmlSortingReasonInteractionRenderer extends LineBasedRenderingFactory[So
 
   override protected def createRendering(fullInfo: FullInfo, interaction: SortingReasonInteraction): AtomarLineRendering = {
     val errorCountSignal =
-      interaction.interactionVariable.createInteractionSignal
+      fullInfo.interactions.answerSignal(interaction)
         .combineWith(fullInfo.signals.stringFromLanguageMapId(errorCountLabelId))
         .map { case (state, template) =>
           val totalErrors = state.lastSessionErrorCount + state.sessionErrorCount

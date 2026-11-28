@@ -7,7 +7,7 @@ import it.evadid.util.logging.BasicLogger
 import java.lang.reflect.{InvocationHandler, Method, Proxy}
 import java.net.InetAddress
 import java.sql.{Connection, PreparedStatement}
-import java.time.LocalDateTime
+import java.time.Instant
 
 class CommandLogWriterSpec extends munit.FunSuite {
   private def fake[T](kind: Class[T])(handle: (String, Array[AnyRef]) => AnyRef): T =
@@ -21,7 +21,6 @@ class CommandLogWriterSpec extends munit.FunSuite {
     val writes = State(Vector.empty[Map[Int, String]])
     val statement = fake(classOf[PreparedStatement]) { (method, args) => method match {
       case "setString" => parameters.update(_ + (args(0).asInstanceOf[Integer].intValue -> args(1).asInstanceOf[String])); null
-      case "setTimestamp" => null
       case "executeUpdate" => writes.update(_ :+ parameters.now()); Int.box(rows)
       case "clearParameters" => parameters.set(Map.empty); null
       case "close" => null
@@ -41,7 +40,7 @@ class CommandLogWriterSpec extends munit.FunSuite {
     val logger = BasicLogger()
     val log = command.storeLogIntoTable.getOrElse(fail("the command has no log"))
     CommandLogWriter.insert(log, command,
-      CommandAccess.RequestContext(LocalDateTime.of(2026, 10, 17, 10, 0), InetAddress.getLoopbackAddress, None), logger, connection)
+      CommandAccess.RequestContext(Instant.parse("2026-10-17T10:00:00Z"), InetAddress.getLoopbackAddress, None), logger, connection)
     writes.now() -> logger
   }
 
@@ -96,7 +95,7 @@ class CommandLogWriterSpec extends munit.FunSuite {
 
   test("without a configured database no log is written and the command is not delayed") {
     val command = ExecutionCommand("another-command", ujson.Obj())
-    val context = CommandAccess.RequestContext(LocalDateTime.now(), InetAddress.getLoopbackAddress, None)
+    val context = CommandAccess.RequestContext(Instant.now(), InetAddress.getLoopbackAddress, None)
     assert(CommandLogWriter(None).record(command, context, BasicLogger()).isCompleted)
   }
 }

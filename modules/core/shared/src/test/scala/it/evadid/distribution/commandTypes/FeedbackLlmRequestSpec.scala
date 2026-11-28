@@ -5,7 +5,10 @@ import munit.FunSuite
 import upickle.default.*
 
 class FeedbackLlmRequestSpec extends FunSuite {
-  test("malformed feedback requests fail without retaining a payload-bearing cause") {
+  /** The exception and its causes; upickle may wrap the rejection with the JSON path. */
+  private def chain(error: Throwable): List[Throwable] = Iterator.iterate(error)(_.getCause).takeWhile(_ != null).toList
+
+  test("malformed feedback requests fail with a fixed message and no payload-bearing cause") {
     val payloads = List(ujson.Obj(), ujson.Obj("prompt" -> "private source"),
       ujson.Obj("prompt" -> "private source", "systemPrompt" -> false),
       ujson.Obj("prompt" -> ujson.Null, "systemPrompt" -> "private instructions"),
@@ -16,14 +19,12 @@ class FeedbackLlmRequestSpec extends FunSuite {
       ujson.Obj("prompt" -> ujson.Arr("private source"), "systemPrompt" -> "private instructions"),
       ujson.Str("private non-object source"), ujson.Num(42), ujson.Arr("private array"), ujson.Null)
     payloads.foreach { payload =>
-      val error = intercept[IllegalArgumentException](read[FeedbackLlmRequest](payload))
-      assertEquals(error.getMessage, "Invalid feedback request.", ujson.write(payload))
-      assertEquals(error.getCause, null)
-      // Text input adds only the JSON path; the cause is the same fixed rejection.
-      val fromText = intercept[Exception](read[FeedbackLlmRequest](ujson.write(payload)))
-      val root = Iterator.iterate[Throwable](fromText)(_.getCause).takeWhile(_ != null).toList.last
-      assertEquals(root.getMessage, "Invalid feedback request.")
-      assert(!Iterator.iterate[Throwable](fromText)(_.getCause).takeWhile(_ != null).exists(_.getMessage.contains("private")))
+      List(() => read[FeedbackLlmRequest](payload), () => read[FeedbackLlmRequest](ujson.write(payload))).foreach { decode =>
+        val causes = chain(scala.util.Try(decode()).failed.getOrElse(fail(s"decoded ${ujson.write(payload)}")))
+        assertEquals(causes.last.getMessage, "Invalid feedback request.", ujson.write(payload))
+        assert(causes.last.isInstanceOf[IllegalArgumentException])
+        assert(!causes.exists(error => Option(error.getMessage).exists(_.contains("private"))), ujson.write(payload))
+      }
     }
   }
 

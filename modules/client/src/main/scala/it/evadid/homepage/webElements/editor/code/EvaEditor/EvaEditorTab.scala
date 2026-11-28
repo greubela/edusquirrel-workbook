@@ -6,7 +6,7 @@ import com.raquo.laminar.nodes.ReactiveSvgElement
 import it.evadid.core.datastructures.language.AppLanguage.ProgrammingLanguage
 import it.evadid.homepage.webElements.HtmlAppElement
 import it.evadid.vm.conversion.ConversionResult
-import it.evadid.workbook.elements.interactionElements.programming.state.ProgrammingState
+import it.evadid.workbook.interactions.programming.state.ProgrammingState
 import org.scalajs.dom.SVGSVGElement
 
 /** A language choice, not a retained editor. Only create the selected editor. */

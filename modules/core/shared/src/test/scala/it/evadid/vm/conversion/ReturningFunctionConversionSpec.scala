@@ -5,9 +5,9 @@ import it.evadid.vm.parsing.source.SourceParsing.SourceLanguage
 import it.evadid.core.datastructures.language.AppLanguage.{Java, Python, SnapLanguage}
 import it.evadid.core.datastructures.language.AppLanguage.ProgrammingLanguage
 import it.evadid.vm.conversion.snapexpression.SnapCustomBlockRules
-import it.evadid.workbook.elements.interactionElements.programming.state.*
-import it.evadid.workbook.elements.interactionElements.programming.state.snap.SnapScalaModel.{BlockDefinition, Block}
-import it.evadid.workbook.elements.interactionElements.programming.state.snap.SnapVocabulary.BlockType
+import it.evadid.workbook.interactions.programming.state.*
+import it.evadid.workbook.interactions.programming.state.snap.SnapScalaModel.{BlockDefinition, Block}
+import it.evadid.workbook.interactions.programming.state.snap.SnapVocabulary.BlockType
 import it.evadid.core.datastructures.vectorShapes.svg.TurtleCommand
 import it.evadid.core.datastructures.vectorShapes.svg.TurtleCommand.{Forward, Left}
 import munit.FunSuite

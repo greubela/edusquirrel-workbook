@@ -6,7 +6,7 @@ import it.evadid.vm.code.defining.BeDefineVariable
 import it.evadid.vm.code.usage.BeUseValue
 import it.evadid.vm.naming.BeEntityName
 import it.evadid.vm.types.{BeDataType, BeDataValueLiteral, BeUseValueReference}
-import it.evadid.workbook.elements.interactionElements.programming.state.snap.SnapTurtleCatalog.SnapInputKind
+import it.evadid.workbook.interactions.programming.state.snap.SnapTurtleCatalog.SnapInputKind
 import munit.FunSuite
 
 class SnapInputCodecSpec extends FunSuite {

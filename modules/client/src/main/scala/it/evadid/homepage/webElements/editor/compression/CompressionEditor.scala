@@ -5,7 +5,7 @@ import it.evadid.homepage.control.model.FullInfo
 import com.raquo.laminar.api.L.*
 import it.evadid.homepage.webElements.basic.LabelSelection
 import it.evadid.homepage.webElements.HtmlAppElement
-import it.evadid.workbook.model.compression.*
+import it.evadid.workbook.interactions.compression.*
 
 /** Edits the renderer's bound value; invalid numeric drafts never replace saved settings. */
 case class CompressionEditor(fullInfo: FullInfo, answer: Var[CompressionExperiment], initial: CompressionExperiment, locked: Signal[Boolean])

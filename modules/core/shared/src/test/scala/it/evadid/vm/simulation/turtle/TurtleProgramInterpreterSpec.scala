@@ -4,7 +4,7 @@ import it.evadid.core.datastructures.language.AppLanguage.Python
 import it.evadid.core.datastructures.vectorShapes.svg.TurtleCommand
 import it.evadid.vm.code.controlStructures.{BeIfElse, BeSequence, BeWhile}
 import it.evadid.vm.code.others.BeStartProgram
-import it.evadid.workbook.elements.interactionElements.programming.state.ProgrammingStateRaw
+import it.evadid.workbook.interactions.programming.state.ProgrammingStateRaw
 import munit.FunSuite
 
 class TurtleProgramInterpreterSpec extends FunSuite {

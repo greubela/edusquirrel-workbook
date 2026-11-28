@@ -1,7 +1,7 @@
 package it.evadid.homepage.webElements.editor.qr
 
 import com.raquo.airstream.state.Var
-import it.evadid.workbook.model.qr.{QrCode, QrErrorCorrection}
+import it.evadid.workbook.interactions.qr.{QrCode, QrErrorCorrection}
 import munit.FunSuite
 
 class QrCodeEditorStateSpec extends FunSuite {

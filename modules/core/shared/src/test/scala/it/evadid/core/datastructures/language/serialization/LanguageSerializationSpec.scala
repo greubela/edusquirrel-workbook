@@ -192,11 +192,13 @@ class LanguageSerializationSpec extends FunSuite {
   test("serialized triple tables skip unresolved references while retaining valid entries") {
     val table = ParsedTriples.ParsedTriplesSerialized(List(id), List(English), List(UniversalLanguage),
       List(LanguageTripel(0, 0, "Hello"), LanguageTripel(5, 0, "bad")), List(LanguageTripel(0, 0, "fallback"), LanguageTripel(0, 5, "bad")))
-    assertEquals(table.toTypedMainType, ParsedTriples(Set(regular), Set(universal)))
+    assertEquals(table.toTriples, ParsedTriples(Set(regular), Set(universal)))
   }
-  test("serialized triple tables expose their existing codec as a default ReadWriter") {
-    val table = ParsedTriples(Set(regular), Set(universal)).toSerializableSubType
-    assertEquals(read[ParsedTriples.ParsedTriplesSerialized](write(table)), table)
+  test("triples are saved as one indexed JSON object, not as JSON inside a string") {
+    val triples = ParsedTriples(Set(regular), Set(universal))
+    assertEquals(read[ParsedTriples.ParsedTriplesSerialized](write(triples.serialized)), triples.serialized)
+    assert(ujson.read(write(triples)).isInstanceOf[ujson.Obj])
+    assertEquals(read[ParsedTriples](write(triples)), triples)
   }
   test("refresh replaces cached text for the same key without losing other languages or keys") {
     val old = ParsedTriples(Set(regular, regular.copy(language = German, value = "Hallo")), Set(universal))

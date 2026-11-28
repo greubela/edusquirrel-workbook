@@ -3,8 +3,8 @@ package it.evadid.vm.conversion.snapexpression
 import it.evadid.vm.parsing.source.SourceParsing
 import it.evadid.vm.parsing.source.SourceParsing.SourceLanguage
 import it.evadid.vm.conversion.turtlestitchexpression.{TurtleStitchProgramModel, TurtleStitchToBeExpressionParser}
-import it.evadid.workbook.elements.interactionElements.programming.state.snap.SnapCanvasLayout
-import it.evadid.workbook.elements.interactionElements.programming.state.snap.SnapTurtleCatalog
+import it.evadid.workbook.interactions.programming.state.snap.SnapCanvasLayout
+import it.evadid.workbook.interactions.programming.state.snap.SnapTurtleCatalog
 import it.evadid.vm.conversion.expressionsnap.SnapProjectXml
 import it.evadid.core.datastructures.language.AppLanguage
 import it.evadid.core.datastructures.language.AppLanguage.{English, Python}
@@ -88,7 +88,7 @@ object SnapExpressionSupport {
     SourceParsing.parse(xml, SourceLanguage.Snap).unsupportedSelectors.toTry.get
 
   /** Primitive blocks outside the supported set, and custom blocks Python cannot express. */
-  def unsupportedSnapSelectors(document: it.evadid.workbook.elements.interactionElements.programming.state.snap.SnapScalaModel.Document,
+  def unsupportedSnapSelectors(document: it.evadid.workbook.interactions.programming.state.snap.SnapScalaModel.Document,
       project: TurtleStitchProgramModel.Project): List[String] = {
     // Predefined module blocks are implemented with list primitives; their calls are what the program uses.
     val fromBlocks = TurtleStitchToBeExpressionParser.withoutModuleLibraries(project).allBlocks.toList.collect {

@@ -1,14 +1,15 @@
 package it.evadid.vm.test
 
 import it.evadid.workbook.abstractions.InteractionFormat
-import it.evadid.workbook.elements.interactionElements.programming.ProgrammingTestGrader
-import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseRegular.ProgrammingUnitTestGrader
+import it.evadid.workbook.interactions.programming.ProgrammingTestGrader
+import it.evadid.workbook.interactions.programming.programmingExerciseRegular.ProgrammingUnitTestGrader
 import upickle.default.ReadWriter
 
 sealed trait BeTestSuite derives ReadWriter {
   val graders: List[ProgrammingTestGrader]
 }
 
+@upickle.implicits.key("ProgrammingTestSuite")
 case class ProgrammingTestSuite(graders: List[ProgrammingTestGrader]) extends BeTestSuite derives ReadWriter {
   require(graders != null && graders.forall(grader => grader != null &&
     grader.testId != null && grader.testId.nonEmpty && grader.testId == grader.testId.trim),
@@ -17,6 +18,7 @@ case class ProgrammingTestSuite(graders: List[ProgrammingTestGrader]) extends Be
     "Programming test IDs must be unique.")
 }
 
+@upickle.implicits.key("SampleBeTest")
 case class SampleBeTest(pythonTestCode: String) extends BeTestSuite derives ReadWriter {
   override val graders: List[ProgrammingTestGrader] =
     List(ProgrammingUnitTestGrader(ProgrammingUnitTestGrader.SampleTestId, pythonTestCode))

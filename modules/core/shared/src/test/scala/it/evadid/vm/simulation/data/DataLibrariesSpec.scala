@@ -5,7 +5,7 @@ import it.evadid.vm.code.defining.BeIntrinsic
 import it.evadid.vm.code.usage.BeFunctionCall
 import it.evadid.vm.simulation.{ProgramEntry, ProgramExecution}
 import it.evadid.vm.simulation.turtle.TurtleProgramAnalysis
-import it.evadid.workbook.elements.interactionElements.programming.state.ProgrammingStateRaw
+import it.evadid.workbook.interactions.programming.state.ProgrammingStateRaw
 import it.evadid.vm.modules.{BeModules, ModuleCommand}
 import munit.FunSuite
 import upickle.default.*

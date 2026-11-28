@@ -1,6 +1,6 @@
 package it.evadid.core.util.io
 
-import it.evadid.workbook.abstractions.InteractionFormat.{TextInteractionFormat}
+import it.evadid.workbook.abstractions.InteractionFormat.TextInteractionFormat
 
 import it.evadid.core.datastructures.geometry.{Dimension, Point}
 import it.evadid.core.datastructures.tree.nodeImpl.{NodeBasedTreeNode, NodeBasedTreePosition}
@@ -12,8 +12,8 @@ import it.evadid.vm.BeProgram
 import it.evadid.vm.parsing.java.clean.model.{JavaAST, JavaType}
 import it.evadid.vm.parsing.python.clean.model.{PyAST, PythonType}
 import it.evadid.workbook.abstractions.{WorkbookElement, WorkbookInteractionElement}
-import it.evadid.workbook.elements.displayElements.TwoColumnPanel
-import it.evadid.workbook.elements.interactionElements.basic.TextInteraction
+import it.evadid.workbook.elements.display.TwoColumnPanel
+import it.evadid.workbook.interactions.basic.TextInteraction
 import munit.FunSuite
 import upickle.default.*
 
@@ -24,7 +24,7 @@ class SystematicDerivedCodecSpec extends FunSuite {
   test("protocol request records expose their own derived codec") {
     roundTrip(SendMailRequest("a@example.com", "学校", "body\nline two", Nil))
   }
-  test("derived workbook containers resolve nested registered element interfaces") {
+  test("workbook containers round-trip through the canonical element codec") {
     val panel = TwoColumnPanel("panel", TextInteraction("left"), TextInteraction("right"))
     roundTrip(panel)
     copies[WorkbookElement](panel).foreach(decoded => assertEquals(decoded, panel))
@@ -36,7 +36,7 @@ class SystematicDerivedCodecSpec extends FunSuite {
 
   test("standalone section snapshots include prerequisites outside their child list") {
     import it.evadid.core.datastructures.language.LanguageMapContentId
-    import it.evadid.workbook.elements.structureElements.WorkbookSection
+    import it.evadid.workbook.elements.structure.WorkbookSection
     import WorkbookSection.WorkbookSectionMetadata
     val first = WorkbookSection("first", WorkbookSectionMetadata(LanguageMapContentId("first/title")), List(TextInteraction("one")))
     val second = WorkbookSection("second", WorkbookSectionMetadata(LanguageMapContentId("second/title"), List(first), List(first)),
@@ -52,7 +52,7 @@ class SystematicDerivedCodecSpec extends FunSuite {
   }
 
   test("Snap primitive defaults round-trip as JSON numbers, strings and booleans") {
-    import it.evadid.workbook.elements.interactionElements.programming.state.snap.SnapTurtleCatalog.*
+    import it.evadid.workbook.interactions.programming.state.snap.SnapTurtleCatalog.*
     Primitives.foreach(roundTrip(_))
     val value = ExtraBlockSpec("example", "motion", List(ujson.Num(10), ujson.Num(1.25), ujson.Bool(true), ujson.Str("学校")))
     roundTrip(value)
@@ -60,7 +60,7 @@ class SystematicDerivedCodecSpec extends FunSuite {
   }
 
   test("Snap primitive defaults reject structured and non-finite JSON values") {
-    import it.evadid.workbook.elements.interactionElements.programming.state.snap.SnapTurtleCatalog.ExtraBlockSpec
+    import it.evadid.workbook.interactions.programming.state.snap.SnapTurtleCatalog.ExtraBlockSpec
     List(ujson.Null, ujson.Arr(1), ujson.Obj("x" -> 1), ujson.Num(Double.NaN),
       ujson.Num(Double.PositiveInfinity), ujson.Num(Double.NegativeInfinity)).foreach { invalid =>
       intercept[IllegalArgumentException](ExtraBlockSpec("invalid", "motion", List(invalid)))
@@ -69,10 +69,10 @@ class SystematicDerivedCodecSpec extends FunSuite {
   }
 
   test("previously private interaction-state codecs are public and retain legacy JSON") {
-    import it.evadid.workbook.elements.interactionElements.todo.*
-    import it.evadid.workbook.elements.interactionElements.matching.MatchingInteractionState
-    import it.evadid.workbook.elements.interactionElements.codeTaskToggle.CodeTaskToggleState
-    import it.evadid.workbook.elements.interactionElements.sorting.sortingReasonExercise.SortingReasonInteractionState
+    import it.evadid.workbook.interactions.todo.*
+    import it.evadid.workbook.interactions.matching.MatchingInteractionState
+    import it.evadid.workbook.interactions.codeTaskToggle.CodeTaskToggleState
+    import it.evadid.workbook.interactions.sorting.sortingReasonExercise.SortingReasonInteractionState
     def compatible[T: ReadWriter](value: T, serializer: it.evadid.core.util.io.Serializer[T]): Unit = {
       roundTrip(value)
       assertEquals(writeJs(value), ujson.read(serializer.serialize(value)))
@@ -95,6 +95,5 @@ class SystematicDerivedCodecSpec extends FunSuite {
         assertEquals(decoded.isValidLiteral("12"), value.isValidLiteral("12"))
       }
     }
-    roundTrip(BeDataType.BeSerializableAtomicType("Int"))
   }
 }

@@ -1,7 +1,7 @@
 package it.evadid.homepage.webElements.editor.code
 
 import com.raquo.laminar.api.L.*
-import it.evadid.workbook.elements.interactionElements.programming.state.ProgrammingState
+import it.evadid.workbook.interactions.programming.state.ProgrammingState
 
 object ProgrammingStateView {
   /** The answer in one editor's representation.

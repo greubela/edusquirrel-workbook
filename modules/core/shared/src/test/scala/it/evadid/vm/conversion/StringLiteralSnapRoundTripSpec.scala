@@ -1,7 +1,7 @@
 package it.evadid.vm.conversion
 
 import it.evadid.core.datastructures.language.AppLanguage.{Java, ProgrammingLanguage, Python, SnapLanguage}
-import it.evadid.workbook.elements.interactionElements.programming.state.*
+import it.evadid.workbook.interactions.programming.state.*
 import munit.FunSuite
 
 /** Snap slots hold a string's text, not its source literal: a route through Snap must neither show the quotes in

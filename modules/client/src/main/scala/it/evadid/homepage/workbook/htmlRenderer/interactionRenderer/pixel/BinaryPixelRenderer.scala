@@ -1,5 +1,7 @@
 package it.evadid.homepage.workbook.htmlRenderer.interactionRenderer.pixel
 
+import it.evadid.workbook.control.InteractionSignals.*
+
 import it.evadid.homepage.control.model.FullInfo
 
 import com.raquo.laminar.api.L.*
@@ -9,14 +11,14 @@ import com.raquo.laminar.keys.HtmlAttr
 import it.evadid.core.datastructures.state.StateHelper.StateBasedVar
 import it.evadid.homepage.workbook.htmlRenderer.HtmlRenderFactory.LineBasedRenderingFactory
 import it.evadid.homepage.workbook.htmlRenderer.atomarLineRenderings.AtomarLineRendering
-import it.evadid.workbook.elements.interactionElements.pixel.BinaryPixelInteraction
-import it.evadid.workbook.model.pixel.*
-import it.evadid.workbook.interaction.sync.UpdateImportance
+import it.evadid.workbook.interactions.pixel.BinaryPixelInteraction
+import it.evadid.workbook.interactions.pixel.*
+import it.evadid.workbook.sync.UpdateImportance
 
 case object BinaryPixelRenderer extends LineBasedRenderingFactory[BinaryPixelInteraction] {
   private val headerScope = new HtmlAttr[String]("scope", StringAsIsCodec)
   override protected def createRendering(fullInfo: FullInfo, e: BinaryPixelInteraction): AtomarLineRendering = {
-    val state = e.interactionVariable.createBoundStateWithUpdateImportance(UpdateImportance.MAJOR, fullInfo.workbookContextInformation).toAirstreamVar
+    val state = fullInfo.interactions.boundVar(e, UpdateImportance.MAJOR)
     val disabledSignal = e.isDisabledState.toAirstreamVar.signal
     def textFor(key: String): Signal[String] = laminarHelper(fullInfo).plaintextStringSignal(s"digitalWorkbooks/$key")
     def grid(image: Signal[BinaryPixelImage], editable: Boolean): Element = div(cls := "pixel-grid-scroll", table(

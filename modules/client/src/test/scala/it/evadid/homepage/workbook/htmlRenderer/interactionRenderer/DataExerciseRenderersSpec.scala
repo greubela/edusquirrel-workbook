@@ -14,10 +14,10 @@ import it.evadid.homepage.workbook.htmlRenderer.interactionRenderer.basic.{HtmlP
 import it.evadid.homepage.workbook.htmlRenderer.interactionRenderer.steps.HtmlSortListExerciseRenderer
 import it.evadid.homepage.workbook.htmlRenderer.interactionRenderer.turtleStitch.HtmlTurtleRecreateShapeRenderer
 import it.evadid.workbook.abstractions.WorkbookElement
-import it.evadid.workbook.elements.interactionElements.basic.TextInteraction
-import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseRegular.{ExerciseDataView, ProgrammingExerciseFullJava, SortListExercise}
-import it.evadid.workbook.elements.interactionElements.programming.state.{ProgrammingState, ProgrammingStateRaw}
-import it.evadid.workbook.elements.structureElements.{Workbook, WorkbookSection}
+import it.evadid.workbook.interactions.basic.TextInteraction
+import it.evadid.workbook.interactions.programming.programmingExerciseRegular.{ExerciseDataView, ProgrammingExerciseFullJava, SortListExercise}
+import it.evadid.workbook.interactions.programming.state.{ProgrammingState, ProgrammingStateRaw}
+import it.evadid.workbook.elements.structure.{Workbook, WorkbookSection}
 import org.scalajs.dom
 
 import scala.concurrent.ExecutionContext
@@ -75,7 +75,7 @@ class DataExerciseRenderersSpec extends EditorDomSuite {
     val element = ProgrammingExerciseFullJava("java-data", instructionText = Some(LanguageMapContentId("test/task")), dataView = Some(ExerciseDataView.NumberList))
     load(element)
     val state: Var[ProgrammingState] = Var(java("NumberList.swap(0, 1);"))
-    val side = HtmlProgrammingExerciseFullJavaRenderer.createNewEditor(fullInfo, element, state, GradingReporter(element)).sidePanel.getDomElement()
+    val side = HtmlProgrammingExerciseFullJavaRenderer.createNewEditor(fullInfo, element, state, GradingReporter(element, fullInfo.interactions)).sidePanel.getDomElement()
     val close = mount(side)
     try {
       assert(side.ref.querySelector(".program-data-preview") != null)
@@ -88,7 +88,7 @@ class DataExerciseRenderersSpec extends EditorDomSuite {
   test("full Java exercises without a data view or shape grader do not invent a drawing panel") {
     val element = ProgrammingExerciseFullJava("java-drawing")
     load(element)
-    val side = HtmlProgrammingExerciseFullJavaRenderer.createNewEditor(fullInfo, element, Var(java("")), GradingReporter(element)).sidePanel.getDomElement()
+    val side = HtmlProgrammingExerciseFullJavaRenderer.createNewEditor(fullInfo, element, Var(java("")), GradingReporter(element, fullInfo.interactions)).sidePanel.getDomElement()
     val close = mount(side)
     try {
       assert(!side.ref.textContent.toLowerCase.contains("drawtitle"), side.ref.textContent)
@@ -122,7 +122,7 @@ class DataExerciseRenderersSpec extends EditorDomSuite {
     load(sortExercise)
     val sortCard = HtmlSortListExerciseRenderer.sortStepsCard(fullInfo, sortExercise, Var(sortExercise.initProgram)).getDomElement()
     val turtleCard = HtmlTurtleRecreateShapeRenderer.turtleStepsCard(fullInfo, Var(ProgrammingStateRaw(Python, "forward(10)\nright(90)\n")).signal,
-      it.evadid.workbook.elements.interactionElements.programming.programmingExerciseTurtle.TurtleRecreateShapeInteraction.defaultEnvironment,
+      it.evadid.workbook.interactions.programming.programmingExerciseTurtle.TurtleRecreateShapeInteraction.defaultEnvironment,
       it.evadid.homepage.webElements.editor.code.worker.LocalWorker.analyzer()).getDomElement()
     val close = mount(div(sortCard, turtleCard))
     (for {

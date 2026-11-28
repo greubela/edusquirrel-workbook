@@ -18,8 +18,8 @@ permissions:
   contents: read
 
 env:
-  # Keep in sync with project/repositories; the mirror is tried before Maven Central.
-  COURSIER_REPOSITORIES: https://maven-central.storage-download.googleapis.com/maven2|https://repo.maven.apache.org/maven2
+  # Keep in sync with project/repositories; Maven Central is tried before the mirror.
+  COURSIER_REPOSITORIES: https://repo.maven.apache.org/maven2|https://maven-central.storage-download.googleapis.com/maven2
   SBT_OPTS: >-
     -Dsbt.override.build.repos=true
     -Dsbt.repository.config=${{ github.workspace }}/project/repositories

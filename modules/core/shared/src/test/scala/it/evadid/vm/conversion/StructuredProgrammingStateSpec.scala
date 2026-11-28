@@ -5,7 +5,7 @@ import it.evadid.vm.conversion.structured.StructuredProgramConversions
 import it.evadid.vm.parsing.source.SourceParsing
 import it.evadid.vm.parsing.source.SourceParsing.SourceLanguage
 import it.evadid.vm.naming.BeEntityName
-import it.evadid.workbook.elements.interactionElements.programming.state.*
+import it.evadid.workbook.interactions.programming.state.*
 import it.evadid.vm.code.defining.BeDefineClass
 import it.evadid.vm.code.others.BeStartProgram
 import munit.FunSuite

@@ -1,5 +1,6 @@
 package it.evadid.homepage.webElements.facades
 
+
 import com.raquo.airstream.state.Var
 import it.evadid.homepage.webElements.editor.code.EditorDomSuite
 import it.evadid.distribution.clients.PythonExecutionClient
@@ -12,7 +13,7 @@ import org.scalajs.dom
 import scala.scalajs.js
 import scala.scalajs.js.timers.setTimeout
 import scala.scalajs.concurrent.JSExecutionContext.Implicits.queue
-import java.time.LocalDateTime
+import java.time.Instant
 import upickle.default.*
 
 class PythonWorkerProtocolSpec extends EditorDomSuite {
@@ -33,7 +34,7 @@ class PythonWorkerProtocolSpec extends EditorDomSuite {
       val request = read[Request](encoded)
       assertEquals(request.command.name, "worker.runPython")
       sent.set(Some(read[RunPythonRequest](request.command.json)))
-      val now = LocalDateTime.now()
+      val now = Instant.now()
       val timestamps = ExecutionClientResponseTimestamps(now, now, now)
       val response = if failing.now() then ExecutionClientResponse.forError(timestamps, SerializedException("bad Python"),
         request.command, AdditionalLoggingOutput("before error", "traceback"))

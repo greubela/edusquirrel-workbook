@@ -5,7 +5,7 @@ import com.raquo.laminar.api.L.*
 import it.evadid.homepage.webElements.HtmlAppElement
 import it.evadid.homepage.webElements.editor.code.program.ProgramAnalyzer
 import it.evadid.homepage.webElements.editor.code.program.ProgramAnalyzer.Status
-import it.evadid.workbook.elements.interactionElements.programming.state.ProgrammingState
+import it.evadid.workbook.interactions.programming.state.ProgrammingState
 
 /** The drawing of the current program, from its static analysis: the shared BeExpression's turtle commands,
   * computed in the worker for every language. Nothing is executed dynamically, so no run is needed.

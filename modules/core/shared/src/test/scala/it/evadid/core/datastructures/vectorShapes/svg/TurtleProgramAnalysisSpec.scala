@@ -9,7 +9,7 @@ import it.evadid.util.logging.Logger
 import it.evadid.vm.code.usage.{BeFunctionCall, BeUseValue}
 import it.evadid.vm.types.BeDataValueLiteral
 import it.evadid.vm.conversion.snapexpression.SnapControlFlow
-import it.evadid.workbook.elements.interactionElements.programming.state.snap.SnapTurtleCatalog
+import it.evadid.workbook.interactions.programming.state.snap.SnapTurtleCatalog
 import it.evadid.vm.simulation.turtle.{TurtleExecutionStatus, TurtleProgramAnalysis}
 import munit.FunSuite
 

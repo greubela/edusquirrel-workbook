@@ -1,7 +1,7 @@
 package it.evadid.homepage.webElements.editor.qr
 
 import com.raquo.airstream.state.Var
-import it.evadid.workbook.model.qr.{QrCode, QrErrorCorrection}
+import it.evadid.workbook.interactions.qr.{QrCode, QrErrorCorrection}
 import scala.util.Try
 
 /** Draft and saved state are separate so an invalid edit cannot overwrite a scannable code. */

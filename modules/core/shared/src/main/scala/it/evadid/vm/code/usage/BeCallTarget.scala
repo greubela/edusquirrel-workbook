@@ -14,6 +14,7 @@ sealed trait BeCallTarget derives ReadWriter {
   }
 }
 object BeCallTarget {
+  @upickle.implicits.key("Function")
   case class Function(definition: BeDefineFunction) extends BeCallTarget derives ReadWriter {
     require(definition.functionTypeInfo.isMethodInClass.isEmpty, "A free-function call cannot target a class member.")
     require(definition.functionTypeInfo.funcType match {
@@ -21,14 +22,17 @@ object BeCallTarget {
       case _ => false
     }, "A free-function call requires a function, lambda or operator declaration.")
   }
+  @upickle.implicits.key("InstanceMethod")
   case class InstanceMethod(instance: BeExpression, definition: BeDefineFunction) extends BeCallTarget derives ReadWriter {
     require(definition.functionTypeInfo.funcType == BeDefineFunction.Method, "An instance call requires an instance-method declaration.")
     owner(definition)
   }
+  @upickle.implicits.key("StaticMethod")
   case class StaticMethod(definition: BeDefineFunction) extends BeCallTarget derives ReadWriter {
     require(definition.functionTypeInfo.funcType == BeDefineFunction.StaticMethod, "A static call requires a static-method declaration.")
     owner(definition)
   }
+  @upickle.implicits.key("Constructor")
   case class Constructor(definition: BeDefineFunction) extends BeCallTarget derives ReadWriter {
     require(definition.functionTypeInfo.funcType == BeDefineFunction.Constructor, "A constructor call requires a constructor declaration.")
     owner(definition)

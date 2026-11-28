@@ -13,16 +13,24 @@ sealed trait ScaffoldingStatus derives ReadWriter {
 
 object ScaffoldingStatus {
 
+  @upickle.implicits.key("ScaffoldingFeedback")
   case class ScaffoldingFeedback(feedback: LanguageMap[HumanLanguage]) extends ScaffoldingStatus derives ReadWriter {
     def getInfoString: Either[LanguageMap[HumanLanguage], LanguageMapContentId] = Left(feedback)
   }
 
-  case class ScaffoldingError(err: SerializedException) extends ScaffoldingStatus derives ReadWriter {
+  /** Saved errors keep only the message (with its causes'), never a stack trace. */
+  @upickle.implicits.key("ScaffoldingError")
+  case class ScaffoldingError(message: String) extends ScaffoldingStatus derives ReadWriter {
     override def isError: Boolean = true
 
-    def getInfoString: Either[LanguageMap[HumanLanguage], LanguageMapContentId] = Left(LanguageMap.universalMap("Error: " + err.msg))
+    def getInfoString: Either[LanguageMap[HumanLanguage], LanguageMapContentId] = Left(LanguageMap.universalMap("Error: " + message))
   }
 
+  object ScaffoldingError {
+    def apply(error: Throwable): ScaffoldingError = ScaffoldingError(SerializedException.messageOf(error))
+  }
+
+  @upickle.implicits.key("ScaffoldingRequestedButNotFinished")
   case class ScaffoldingRequestedButNotFinished() extends ScaffoldingStatus derives ReadWriter {
 
     def getInfoString: Either[LanguageMap[HumanLanguage], LanguageMapContentId] = Right(LanguageMapContentId("basic/scaffoldingLoading"))

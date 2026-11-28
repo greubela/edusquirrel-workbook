@@ -10,9 +10,8 @@ import it.evadid.core.datastructures.language.AppLanguage.{English, HumanLanguag
 import it.evadid.homepage.webElements.HtmlAppElement
 import it.evadid.homepage.webElements.editor.code.EvaEditor.{EvaEditorContext, EvaEditorLabels, EvaEditorTab}
 import it.evadid.homepage.webElements.editor.code.SnapEditor.execution.JavaTurtleSnapPrimitives
-import it.evadid.homepage.webElements.editor.code.SnapEditor.SnapCodeEditorConfig
 import it.evadid.util.logging.Logger
-import it.evadid.workbook.elements.interactionElements.programming.state.*
+import it.evadid.workbook.interactions.programming.state.*
 import org.scalajs.dom
 import org.scalajs.dom.html.Canvas
 
@@ -94,7 +93,7 @@ case class SnapCodeEditor(
       onBlur.useCapture.filter(_.target == dom.document.getElementById("morphic_keyboard")) --> { _ =>
         impl.flushPendingProjectChanges()
       },
-      // A hidden page may be closed before the input pause ends (see RemoteInteractionCacheControl).
+      // A hidden page may be closed before the input pause ends (see InteractionController).
       documentEvents(_.onVisibilityChange).filter(_ => dom.document.hidden) --> { _ =>
         if SnapCodeEditor.shownAsSnap(state.now()) then impl.flushPendingProjectChanges()
       },

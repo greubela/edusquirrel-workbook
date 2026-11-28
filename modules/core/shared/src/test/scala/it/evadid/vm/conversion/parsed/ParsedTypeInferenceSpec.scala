@@ -1,7 +1,7 @@
 package it.evadid.vm.conversion.parsed
 
 import it.evadid.core.datastructures.language.AppLanguage.{Java, Python}
-import it.evadid.workbook.elements.interactionElements.programming.state.*
+import it.evadid.workbook.interactions.programming.state.*
 import munit.FunSuite
 
 /** Untyped Python functions receive the types their evidence agrees on, so Java gets compilable signatures. */

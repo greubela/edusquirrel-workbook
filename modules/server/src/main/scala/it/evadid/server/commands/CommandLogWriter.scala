@@ -9,7 +9,7 @@ import it.evadid.sql.{CommandLog, DatabaseConfigWithCredentials}
 import it.evadid.util.logging.Logger
 
 import java.net.InetAddress
-import java.sql.{Connection, Timestamp}
+import java.sql.Connection
 import scala.concurrent.Future
 import scala.util.control.NonFatal
 import upickle.default.{read, write}
@@ -41,7 +41,7 @@ object CommandLogWriter {
   /** Inserts the command's row into `log` on `connection`. */
   private[commands] def insert(log: CommandLog, command: ExecutionCommand, context: CommandAccess.RequestContext,
                               logger: Logger, connection: Connection): Unit = {
-    val timestamp = Timestamp.valueOf(context.received)
+    val timestamp = context.received
     val address = context.remoteAddress.getHostAddress
     val userId = context.user.map(_.id).getOrElse(User.Anonymous.id)
     val statements = SqlStatements(connection, logger)

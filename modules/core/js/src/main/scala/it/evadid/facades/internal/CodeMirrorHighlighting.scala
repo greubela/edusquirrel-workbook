@@ -35,7 +35,9 @@ private[evadid] object CodeMirrorHighlighting {
         reconfigured = update.transactions(index).reconfigured
         index += 1
       }
-      if (update.docChanged || update.viewportChanged || reconfigured)
+      // A background parse that finishes later changes which words lie in comments and strings.
+      val reparsed = Libraries.syntaxTree(update.startState) ne Libraries.syntaxTree(update.state)
+      if (update.docChanged || update.viewportChanged || reconfigured || reparsed)
         decorations = buildDecorations(update.view, styleComments)
     }
   }

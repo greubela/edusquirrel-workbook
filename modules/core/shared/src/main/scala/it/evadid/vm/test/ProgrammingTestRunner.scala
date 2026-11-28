@@ -4,9 +4,9 @@ import it.evadid.distribution.clients.ExecutionClient
 import it.evadid.distribution.command.ExecutionCommand
 import it.evadid.distribution.commandTypes.WorkerCommands
 import it.evadid.core.datastructures.vectorShapes.svg.TurtleCommand
-import it.evadid.workbook.elements.interactionElements.programming.{ProgrammingTestInvocation, ProgrammingTestProgramObservation}
+import it.evadid.workbook.interactions.programming.{ProgrammingTestInvocation, ProgrammingTestProgramObservation}
 import it.evadid.vm.conversion.unittest.ProgramForUnitTestExecution
-import it.evadid.workbook.elements.interactionElements.programming.state.snap.SnapTurtleCatalog
+import it.evadid.workbook.interactions.programming.state.snap.SnapTurtleCatalog
 import upickle.default.*
 
 import scala.concurrent.{ExecutionContext, Future}

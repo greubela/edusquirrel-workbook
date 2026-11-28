@@ -4,7 +4,7 @@ import it.evadid.core.datastructures.language.AppLanguage.{Java, Python}
 import it.evadid.vm.code.errors.BeSourcePlaceholder
 import it.evadid.vm.parsing.source.{SourceIdentity, SourceParsing}
 import it.evadid.vm.parsing.source.SourceParsing.SourceLanguage
-import it.evadid.workbook.elements.interactionElements.programming.state.*
+import it.evadid.workbook.interactions.programming.state.*
 import munit.FunSuite
 
 class BoundSourceOriginsSpec extends FunSuite {

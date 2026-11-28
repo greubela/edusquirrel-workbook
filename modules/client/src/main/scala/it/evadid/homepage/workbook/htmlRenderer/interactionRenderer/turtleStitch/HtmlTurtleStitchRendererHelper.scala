@@ -1,11 +1,13 @@
 package it.evadid.homepage.workbook.htmlRenderer.interactionRenderer.turtleStitch
 
+import it.evadid.workbook.control.InteractionSignals.*
+
 import it.evadid.homepage.control.model.FullInfo
 
 import it.evadid.core.datastructures.language.AppLanguage.{Java, Python, SnapLanguage}
-import it.evadid.workbook.abstractions.InteractionFormat.{TurtleProjectFormat}
+import it.evadid.workbook.abstractions.InteractionFormat.TurtleProjectFormat
 
-import it.evadid.workbook.elements.interactionElements.programming.state.{ProgrammingState, ProgrammingStateRaw}
+import it.evadid.workbook.interactions.programming.state.{ProgrammingState, ProgrammingStateRaw}
 import com.raquo.laminar.api.L.*
 import it.evadid.core.datastructures.file
 import it.evadid.core.datastructures.file.FileDescription
@@ -20,7 +22,7 @@ import it.evadid.homepage.webElements.editor.code.SnapEditor.SnapPreviewEditor
 import it.evadid.homepage.webElements.editor.code.SnapEditor.SnapCodeEditorConfig
 import it.evadid.homepage.workbook.htmlRenderer.LaminarRenderHelper
 import it.evadid.workbook.abstractions.WorkbookInteractionElement
-import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseTurtle.TurtleStitchProjectState
+import it.evadid.workbook.interactions.programming.programmingExerciseTurtle.TurtleStitchProjectState
 import it.evadid.homepage.webElements.basic.FullImage
 
 import scala.concurrent.ExecutionContext
@@ -53,7 +55,7 @@ object HtmlTurtleStitchRendererHelper {
   def renderDownloadButton(fullInfo: FullInfo, label: LanguageMapContentId, workbookInteraction: WorkbookInteractionElement[TurtleProjectFormat.type]): Element = {
     val desiredFilename: String = InfoUtil.downloadName("TurtleStitch " + workbookInteraction.elementId) + ".xml"
     HtmlButtonElement.withTextLabel(fullInfo, label, event =>
-      workbookInteraction.interactionVariable.currentValue.programXml.foreach(f = currentXml => {
+      fullInfo.interactions.currentValue(workbookInteraction).programXml.foreach(f = currentXml => {
         fullInfo.contentControl.downloadToDisc.downloadFile(desiredFilename, currentXml)
       }), HtmlButtonElement.stdConfig).getDomElement()
   }
@@ -71,7 +73,8 @@ object HtmlTurtleStitchRendererHelper {
    */
 
   def renderProjectPreviewImage(fullInfo: FullInfo, workbookInteraction: WorkbookInteractionElement[TurtleProjectFormat.type]): Element = {
-    val xmlSignal: AsyncData[Nothing, String] = workbookInteraction.interactionVariable.asAsync.map(_.programXml.get)
+    // A project without a program shows no preview.
+    val xmlSignal: Signal[Option[String]] = fullInfo.interactions.answerSignal(workbookInteraction).map(_.programXml)
     //xmlSignal.foreach(newContent => println("xml signal changed for workbook interaction " + workbookInteraction.id + ": " + newContent))(using unsafeWindowOwner)
     renderProjectCodePreviewWithAsyncXml(fullInfo, xmlSignal)
   }
@@ -79,7 +82,7 @@ object HtmlTurtleStitchRendererHelper {
   def renderProjectPreviewImage(fullInfo: FullInfo, filenameRelToResources: String): Element = {
     val fileDescription: FileDescription = fullInfo.contentControl.fileFactory.relativeToTechnicalResources(filenameRelToResources)
     val xmlAsync: AsyncData[Nothing, String] = AsyncData.forFuture(fileDescription.loadData()).map(_.fileDataAsUtf8String)
-    renderProjectCodePreviewWithAsyncXml(fullInfo, xmlAsync)
+    renderProjectCodePreviewWithAsyncXml(fullInfo, xmlAsync.observeLoadedValues.toEventStream().map(Some(_)))
 
   }
 
@@ -87,7 +90,7 @@ object HtmlTurtleStitchRendererHelper {
   Project Preview Helper
    */
 
-  private def renderProjectCodePreviewWithAsyncXml(fullInfo: FullInfo, xmlAsync: AsyncData[Nothing, String]): Element = {
+  private def renderProjectCodePreviewWithAsyncXml(fullInfo: FullInfo, xml: Observable[Option[String]]): Element = {
 
     val language = fullInfo.signals.currentLanguage
 
@@ -95,12 +98,12 @@ object HtmlTurtleStitchRendererHelper {
       cls := "preview-card",
       div(
         cls := "preview-content",
-        child <-- xmlAsync.observeLoadedValues.toEventStream().map(xml => {
+        child <-- xml.map(_.fold(emptyNode)(xml => {
           val editor = SnapPreviewEditor(Var[ProgrammingState](ProgrammingStateRaw(SnapLanguage, xml)),
             SnapCodeEditorConfig.Testing,
             language)
           editor.getDomElement()
-        })
+        }))
       )
     )
 

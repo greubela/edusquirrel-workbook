@@ -5,7 +5,7 @@ import it.evadid.homepage.control.model.FullInfo
 import com.raquo.laminar.api.L.*
 import it.evadid.homepage.webElements.basic.LabelSelection
 import it.evadid.homepage.webElements.HtmlAppElement
-import it.evadid.workbook.model.blockchain.*
+import it.evadid.workbook.interactions.blockchain.*
 import org.scalajs.dom
 
 case class BlockchainEditor(fullInfo: FullInfo, state: Var[TeachingChain], initial: TeachingChain, zeros: Int, locked: Signal[Boolean])

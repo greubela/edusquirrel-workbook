@@ -3,7 +3,7 @@ package it.evadid.vm.conversion
 import it.evadid.core.datastructures.language.AppLanguage.{Java, Python, SnapLanguage, BlockDisplay, ProgrammingLanguage}
 import it.evadid.vm.code.errors.BeSourcePlaceholder
 import it.evadid.vm.parsing.source.{SourceParsing, SourceLines}
-import it.evadid.workbook.elements.interactionElements.programming.state.*
+import it.evadid.workbook.interactions.programming.state.*
 import munit.FunSuite
 import scala.util.Try
 

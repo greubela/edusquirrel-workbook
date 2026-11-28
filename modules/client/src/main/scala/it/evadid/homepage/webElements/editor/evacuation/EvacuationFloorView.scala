@@ -7,7 +7,7 @@ import it.evadid.homepage.webElements.basic.LabelSelection
 import it.evadid.core.datastructures.matrix.PositionInMatrix
 import it.evadid.evacuation.eva2.model.EvaFloorMap
 import it.evadid.homepage.webElements.HtmlAppElement
-import it.evadid.workbook.model.evacuation.EvacuationTile
+import it.evadid.workbook.interactions.evacuation.EvacuationTile
 
 case class EvacuationFloorView(fullInfo: FullInfo, floorMap: Signal[EvaFloorMap], locked: Signal[Boolean], click: PositionInMatrix => Unit)
     extends HtmlAppElement {

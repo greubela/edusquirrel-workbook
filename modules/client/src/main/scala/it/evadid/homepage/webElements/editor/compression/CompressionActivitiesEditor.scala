@@ -1,12 +1,14 @@
 package it.evadid.homepage.webElements.editor.compression
 
+import it.evadid.workbook.control.InteractionSignals.*
+
 import it.evadid.homepage.control.model.FullInfo
 
 import com.raquo.laminar.api.L.*
 import it.evadid.homepage.webElements.basic.LabelSelection
 import it.evadid.homepage.webElements.HtmlAppElement
-import it.evadid.workbook.interaction.sync.UpdateImportance.MAJOR
-import it.evadid.workbook.model.compression.*
+import it.evadid.workbook.sync.UpdateImportance.MAJOR
+import it.evadid.workbook.interactions.compression.*
 import org.scalajs.dom
 
 /** Native Laminar controls for the activities that accompany the compression models. */
@@ -140,10 +142,10 @@ case class CompressionActivitiesEditor(fullInfo: FullInfo, answer: Var[Compressi
       (0 until 8).map(i => detailsTag(summaryTag(text <-- src(s"widget.filesystem.fileTypesOverview.items.$i.label")),
         p(text <-- src(s"widget.filesystem.fileTypesOverview.items.$i.text")))))
     case v: PreviousAnswer =>
-      fullInfo.current.allAvailableInteractions.collectFirst { case e: it.evadid.workbook.elements.interactionElements.compression.CompressionExperimentInteraction if e.elementId == v.referenceId => e } match {
+      fullInfo.current.allAvailableInteractions.collectFirst { case e: it.evadid.workbook.interactions.compression.CompressionExperimentInteraction if e.elementId == v.referenceId => e } match {
         case Some(e) =>
           import it.evadid.core.datastructures.state.StateHelper.StateBasedVar
-          val state=e.interactionVariable.createBoundStateWithUpdateImportance(MAJOR, fullInfo.workbookContextInformation).toAirstreamVar
+          val state=fullInfo.interactions.boundVar(e, MAJOR)
           blockQuote(text <-- localized(fullInfo, "comparisonEmpty").combineWith(state.signal).map((empty, a) => { val text=a.asInstanceOf[WrittenAnswer].text; if text.isEmpty then empty else text }))
         case None => p(text <-- localized(fullInfo, "comparisonEmpty"))
       }

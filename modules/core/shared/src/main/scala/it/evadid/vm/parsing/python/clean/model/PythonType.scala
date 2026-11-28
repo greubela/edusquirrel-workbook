@@ -36,13 +36,13 @@ object PythonType {
 
   case object PYTHON_INTEGER_BIN extends PythonTypeImpl[BigInt]("int", Serializer.intBinaryIO, Serializer.intBinaryIO) with GenericNumericalInteger
 
-  case object PYTHON_FLOAT extends PythonTypeImpl[Double]("float", Serializer.fromImplicitRW[Double], Serializer.fromImplicitRW[Double]) with GenericNumericalFractional
+  case object PYTHON_FLOAT extends PythonTypeImpl[Double]("float", Serializer.fromUpickleJson[Double], Serializer.fromUpickleJson[Double]) with GenericNumericalFractional
 
   // case object PYTHON_COMPLEX extends PythonType("complex") with Numeric
 
   case object PYTHON_STRING extends PythonTypeImpl[String]("str", Serializer.stringLiteralIO(), Serializer.stringLiteralIO())
 
-  case object PYTHON_BOOL extends PythonTypeImpl[Boolean]("bool", Serializer.pythonBooleanIO, Serializer.fromImplicitRW[Boolean])
+  case object PYTHON_BOOL extends PythonTypeImpl[Boolean]("bool", Serializer.pythonBooleanIO, Serializer.fromUpickleJson[Boolean])
 
   case object PYTHON_NONE extends PythonTypeImpl[Option[Unit]]("None", Serializer.noneParser(), Serializer.noneParser())
 

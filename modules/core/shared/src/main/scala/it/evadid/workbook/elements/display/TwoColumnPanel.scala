@@ -1,0 +1,26 @@
+package it.evadid.workbook.elements.display
+
+import it.evadid.workbook.serialization.WorkbookElementFactory.constructorLayout
+
+import it.evadid.workbook.abstractions.{WorkbookDisplayElement, WorkbookElement}
+import it.evadid.workbook.serialization.{WorkbookElementFactory, WorkbookElementReference, WorkbookElementSerializable}
+
+/** Two independently renderable workbook elements displayed side by side. */
+case class TwoColumnPanel(override val elementId: String, left: WorkbookElement, right: WorkbookElement) extends WorkbookDisplayElement {
+  override lazy val childrenOfThisElement: Seq[WorkbookElement] = List(left, right)
+  override val associatedFactory = TwoColumnPanel.factory
+}
+
+object TwoColumnPanel {
+  given upickle.default.ReadWriter[TwoColumnPanel] = WorkbookElement.subtypeCodec
+
+  val factory: WorkbookElementFactory[TwoColumnPanel] = new WorkbookElementFactory[TwoColumnPanel] {
+    override lazy val elementMapAndOrderForConstructorLike = constructorLayout("elementId", "left", "right")
+    override def idsRequiredForDeserialization(element: WorkbookElementSerializable): Set[String] =
+      Set(element.getElementAs[WorkbookElementReference]("left").referencedId, element.getElementAs[WorkbookElementReference]("right").referencedId)
+    override def fromSerializedElement(element: WorkbookElementSerializable, parsedElements: Map[String, WorkbookElement]): TwoColumnPanel =
+      TwoColumnPanel(element.elementId, element.getAndResolveWorkbookElement[WorkbookElement]("left", parsedElements), element.getAndResolveWorkbookElement[WorkbookElement]("right", parsedElements))
+    override def toSerializableElement(element: TwoColumnPanel): WorkbookElementSerializable =
+      toFactoryBase(element).withElementAddedAs[WorkbookElementReference]("left", element.left.asRef).withElementAddedAs[WorkbookElementReference]("right", element.right.asRef)
+  }
+}

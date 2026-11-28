@@ -15,7 +15,7 @@ import it.evadid.homepage.webElements.HtmlAppElement
 import it.evadid.homepage.webElements.editor.code.EditorAppearance
 import it.evadid.homepage.webElements.editor.code.EvaEditor.{EvaEditorContext, EvaEditorLabels, EvaEditorTab}
 import it.evadid.vm.code.errors.ProgrammingConversionError
-import it.evadid.workbook.elements.interactionElements.programming.state.{ProgrammingState, ProgrammingStateBeExpression}
+import it.evadid.workbook.interactions.programming.state.{ProgrammingState, ProgrammingStateBeExpression}
 import it.evadid.util.logging.Logger
 import it.evadid.vm.BeProgram
 import it.evadid.vm.editing.{BeBlockLibrary, BeValueInput, BeNodePath, BeProgramEditing, BeSequenceSlot}

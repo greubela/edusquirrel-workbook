@@ -1,5 +1,6 @@
 package it.evadid.homepage.control.info
 
+import it.evadid.workbook.sync.model.InteractionHistoryJson
 import it.evadid.workbook.session.{AllWorkbookInfo, SessionData, WorkbookConfig}
 import it.evadid.core.datastructures.file.LoadedFile
 import it.evadid.core.datastructures.language.{AppLanguage, LanguageMapContentId}
@@ -7,12 +8,12 @@ import it.evadid.core.datastructures.language.control.LanguageMapStorage
 import it.evadid.core.datastructures.user.{AllUserInfo, UserConfig}
 import it.evadid.homepage.control.model.*
 import it.evadid.homepage.webElements.editor.code.EditorDomSuite
-import it.evadid.workbook.elements.interactionElements.basic.TextInteraction
-import it.evadid.workbook.elements.structureElements.{Workbook, WorkbookSection}
-import it.evadid.workbook.elements.structureElements.Workbook.WorkbookMetadata
-import it.evadid.workbook.elements.structureElements.WorkbookSection.WorkbookSectionMetadata
-import it.evadid.workbook.interaction.sync.UpdateImportance
-import it.evadid.workbook.meta.ExecutionContextInformation
+import it.evadid.workbook.interactions.basic.TextInteraction
+import it.evadid.workbook.elements.structure.{Workbook, WorkbookSection}
+import it.evadid.workbook.elements.structure.Workbook.WorkbookMetadata
+import it.evadid.workbook.elements.structure.WorkbookSection.WorkbookSectionMetadata
+import it.evadid.workbook.sync.UpdateImportance
+import it.evadid.workbook.abstractions.ExecutionContextInformation
 import scala.concurrent.{ExecutionContext, Future}
 import upickle.default.*
 
@@ -29,19 +30,20 @@ class SessionDataRoundTripSpec extends EditorDomSuite {
   }
   private def client(open: Option[AllWorkbookInfo]): FullInfo =
     FullInfo(HomepageInfo(AppLanguage.English, open, Some(user), AllDisplayInfo(false, None), LanguageMapStorage.empty))
-  private def answers(info: AllWorkbookInfo): Map[String, String] =
-    info.loadedWorkbook.allContainedInteractionsById.map((id, interaction) => id -> interaction.interactionVariable.currentValue.toString)
-  private def answer(info: AllWorkbookInfo, id: String, value: String): Unit =
-    info.loadedWorkbook.allContainedInteractionsById(id).asInstanceOf[TextInteraction].interactionVariable
-      .setStateFromUserInteraction(value, UpdateImportance.MAJOR, context = ExecutionContextInformation.default)
+  /** The answers of the page's open workbook. */
+  private def answers(page: FullInfo): Map[String, String] =
+    page.current.workbookInfo.get.loadedWorkbook.allContainedInteractionsById.map((id, interaction) =>
+      id -> page.interactions.currentValue(interaction).toString)
+  private def answer(page: FullInfo, id: String, value: String): Unit =
+    page.interactions.setStateFromUserInteraction(
+      page.current.workbookInfo.get.loadedWorkbook.allContainedInteractionsById(id).asInstanceOf[TextInteraction], value, UpdateImportance.MAJOR)
 
   /** The text a download writes: answers of `id`'s interactions `first` and `second`. */
   private def downloaded(id: String = "workbook/part-1"): String = {
-    val studied = workbook(id, "first", "second")
+    val studied = client(Some(workbook(id, "first", "second")))
     answer(studied, "first", "my first answer")
     answer(studied, "second", "my second answer")
-    val session = HomepageInfo(AppLanguage.English, Some(studied), Some(user),
-      AllDisplayInfo(false, None), LanguageMapStorage.empty).toSessionData.get
+    val session = studied.homepageInfoNow().toSessionData(studied.interactions.info).get
     assert(!write(session).contains("signedBackendToken\":{"), "credentials are not exported")
     write(session)
   }
@@ -50,12 +52,12 @@ class SessionDataRoundTripSpec extends EditorDomSuite {
     val file = downloaded()
     val open = workbook("workbook/part-1", "first", "second")
     val restoredClient = client(Some(open))
-    answer(open, "second", "a newer local answer")
+    answer(restoredClient, "second", "a newer local answer")
     restoredClient.userSessionControl.continueWithSession(read[SessionData](file)).map { _ =>
       assert(restoredClient.current.workbookInfo.get.loadedWorkbook eq open.loadedWorkbook)
-      assertEquals(answers(open)("first"), "my first answer")
-      assertEquals(answers(open)("second"), "a newer local answer", "the newest answer stays current")
-      assertEquals(open.loadedWorkbook.allContainedInteractionsById("second").interactionVariable.currentHistory.allStates
+      assertEquals(answers(restoredClient)("first"), "my first answer")
+      assertEquals(answers(restoredClient)("second"), "a newer local answer", "the newest answer stays current")
+      assertEquals(restoredClient.interactions.currentHistory(open.loadedWorkbook.allContainedInteractionsById("second")).answerEvents
         .map(_.newState.toString), Set("my second answer", "a newer local answer"))
     }
   }
@@ -63,9 +65,12 @@ class SessionDataRoundTripSpec extends EditorDomSuite {
   test("answers never leak into another open workbook that reuses the element ids") {
     val other = workbook("workbook/part-2", "first", "second")
     val restoredClient = client(Some(other))
+    val otherAnswers = restoredClient.interactions.info
     restoredClient.userSessionControl.continueWithSession(read[SessionData](downloaded())).map { _ =>
       assertEquals(restoredClient.current.workbookInfo.get.loadedWorkbook.workbookId, "workbook/part-1")
-      assertEquals(answers(other), Map("first" -> "", "second" -> ""))
+      assertEquals(answers(restoredClient), Map("first" -> "my first answer", "second" -> "my second answer"))
+      assert(other.loadedWorkbook.allContainedInteractionsById.values.forall(interaction =>
+        !restoredClient.interactions.info.contains(interaction) && otherAnswers.historyOf(interaction).answerEvents.forall(_.newState.toString == "")))
     }
   }
 
@@ -73,12 +78,12 @@ class SessionDataRoundTripSpec extends EditorDomSuite {
     val session = read[SessionData](downloaded())
     val firstKey = session.knownUsageData.keys.find(_.keyForSerialisation == "first_history").get
     val broken = session.copy(knownUsageData = session.knownUsageData.updated(firstKey,
-      session.knownUsageData(firstKey).copy(historyJson = "{\"not\": \"a history\"}")))
-    val target = workbook("workbook/part-1", "first", "second")
-    target.loadedWorkbook.restoreHistories(it.evadid.util.logging.BasicLogger(), broken.knownUsageData, ExecutionContextInformation.default)
+      InteractionHistoryJson(session.knownUsageData(firstKey).format, "{\"not\": \"a history\"}")))
+    val target = client(Some(workbook("workbook/part-1", "first", "second")))
+    target.interactions.restoreHistories(it.evadid.util.logging.BasicLogger(), broken.knownUsageData)
     assertEquals(answers(target), Map("first" -> "", "second" -> "my second answer"))
-    val elsewhere = workbook("workbook/part-2", "first", "second")
-    elsewhere.loadedWorkbook.restoreHistories(it.evadid.util.logging.BasicLogger(), session.knownUsageData, ExecutionContextInformation.default)
+    val elsewhere = client(Some(workbook("workbook/part-2", "first", "second")))
+    elsewhere.interactions.restoreHistories(it.evadid.util.logging.BasicLogger(), session.knownUsageData)
     assertEquals(answers(elsewhere), Map("first" -> "", "second" -> ""))
   }
 

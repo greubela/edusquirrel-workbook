@@ -1,14 +1,14 @@
 package it.evadid.homepage.workbook.htmlRenderer.interactionRenderer.turtleStitch
 
-import it.evadid.workbook.interaction.sync.UpdateImportance
+import it.evadid.workbook.sync.UpdateImportance
 
 import it.evadid.core.datastructures.language.AppLanguage.{Java, Python, SnapLanguage}
 
-import it.evadid.workbook.elements.interactionElements.programming.state.{ProgrammingState, ProgrammingStateRaw}
+import it.evadid.workbook.interactions.programming.state.{ProgrammingState, ProgrammingStateRaw}
 import it.evadid.core.datastructures.vectorShapes.svg.TurtleCommand
 import it.evadid.core.datastructures.geometry.{Line, Point}
 import it.evadid.homepage.workbook.htmlRenderer.interactionRenderer.turtleStitch.TurtleJsxGraphRenderer.LineResult
-import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseTurtle.{RecreateShapeGrader, TurtleDrawingPolicy, TurtleGraphic}
+import it.evadid.workbook.interactions.programming.programmingExerciseTurtle.{RecreateShapeGrader, TurtleDrawingPolicy, TurtleGraphic}
 import munit.FunSuite
 import com.raquo.airstream.state.Var
 import scala.util.Try
@@ -19,7 +19,7 @@ class TurtleJsxGraphRendererSpec extends it.evadid.homepage.webElements.editor.c
 
   test("stored grades and visual line colors agree for every drawing policy") {
     import it.evadid.workbook.abstractions.grading.GradingImportance
-    import it.evadid.workbook.meta.ExecutionContextInformation
+    import it.evadid.workbook.abstractions.ExecutionContextInformation
     import scala.concurrent.Future
     import scala.scalajs.concurrent.JSExecutionContext.Implicits.queue
     val cases = List(
@@ -381,7 +381,7 @@ class TurtleJsxGraphRendererSpec extends it.evadid.homepage.webElements.editor.c
   }
 
   test("renderer scene is a projection of shared core grading and geometry") {
-    import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseTurtle.TurtleGradingLogic
+    import it.evadid.workbook.interactions.programming.programmingExerciseTurtle.TurtleGradingLogic
     import TurtleGradingLogic.{TurtleGraphicComparison, TurtleLineStatus}
     val commands: List[TurtleCommand[Double]] = List(TurtleCommand.PenUp, TurtleCommand.Goto(5.0, 0.0),
       TurtleCommand.PenDown, TurtleCommand.Forward(10.0))

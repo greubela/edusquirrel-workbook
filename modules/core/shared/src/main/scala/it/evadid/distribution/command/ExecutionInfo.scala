@@ -2,7 +2,7 @@ package it.evadid.distribution.command
 
 import it.evadid.distribution.command.ExecutionInfo.ExecutionSuccess
 
-import java.time.LocalDateTime
+import java.time.Instant
 
 sealed trait ExecutionInfo[T] {
 
@@ -10,7 +10,7 @@ sealed trait ExecutionInfo[T] {
   val resultOp: Option[T]
   val historyOp: Option[ExecutionHistory]
 
-  def withFixedTime(timeRequested: LocalDateTime, timeReceived: LocalDateTime): ExecutionInfo[T]
+  def withFixedTime(timeRequested: Instant, timeReceived: Instant): ExecutionInfo[T]
 
   def successOrThrow(): ExecutionSuccess[T]
 }
@@ -21,7 +21,7 @@ object ExecutionInfo {
     override val resultOp: Option[T] = Some(result)
     override val historyOp: Option[ExecutionHistory] = Some(history)
 
-    override def withFixedTime(timeRequested: LocalDateTime, timeReceived: LocalDateTime): ExecutionInfo[T] = this.copy(history = history.withFixedTime(timeRequested, timeReceived))
+    override def withFixedTime(timeRequested: Instant, timeReceived: Instant): ExecutionInfo[T] = this.copy(history = history.withFixedTime(timeRequested, timeReceived))
 
     override def successOrThrow(): ExecutionSuccess[T] = this
   }
@@ -30,7 +30,7 @@ object ExecutionInfo {
     override val toString: String = s"ExecutionFailure(command=${command.name}, error=${error.msg}, history=${historyOp.map(_.toString).getOrElse("None")}"
     override val resultOp: Option[T] = None
 
-    override def withFixedTime(timeRequested: LocalDateTime, timeReceived: LocalDateTime): ExecutionInfo[T] = this.copy(historyOp = historyOp.map(curHistory => curHistory.withFixedTime(timeRequested, timeReceived)))
+    override def withFixedTime(timeRequested: Instant, timeReceived: Instant): ExecutionInfo[T] = this.copy(historyOp = historyOp.map(curHistory => curHistory.withFixedTime(timeRequested, timeReceived)))
 
     override def successOrThrow(): ExecutionSuccess[T] = throw error
   }

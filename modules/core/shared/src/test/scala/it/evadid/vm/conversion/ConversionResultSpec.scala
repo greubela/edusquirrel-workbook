@@ -2,7 +2,7 @@ package it.evadid.vm.conversion
 
 import it.evadid.core.datastructures.language.AppLanguage.{Java, Python, SnapLanguage}
 import it.evadid.core.datastructures.language.AppLanguage.*
-import it.evadid.workbook.elements.interactionElements.programming.state.*
+import it.evadid.workbook.interactions.programming.state.*
 import it.evadid.vm.code.errors.ProgrammingConversionKind
 import it.evadid.util.logging.LoggingLevel
 import munit.FunSuite

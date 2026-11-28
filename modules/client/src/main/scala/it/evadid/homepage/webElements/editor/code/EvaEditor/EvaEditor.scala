@@ -7,7 +7,7 @@ import it.evadid.homepage.webElements.download.ProjectDownloadButton
 import it.evadid.homepage.webElements.editor.abstractions.SimpleWebEditor
 import it.evadid.homepage.webElements.editor.code.EditorAppearance
 import it.evadid.homepage.webElements.editor.code.program.ProgrammingExecutionPanel
-import it.evadid.workbook.elements.interactionElements.programming.state.ProgrammingState
+import it.evadid.workbook.interactions.programming.state.ProgrammingState
 
 import scala.concurrent.Future
 

@@ -1,8 +1,8 @@
 package it.evadid.core.datastructures.user
 
-import it.evadid.workbook.interaction.sync.SyncInformation
-import it.evadid.workbook.interaction.sync.EventSyncStrategy.*
-import it.evadid.workbook.interaction.sync.destination.SyncDestinationDefinition.*
+import it.evadid.workbook.sync.SyncInformation
+import it.evadid.workbook.sync.EventSyncStrategy.*
+import it.evadid.workbook.sync.destination.SyncDestinationDefinition.*
 import upickle.default.*
 
 case class UserConfig(syncDestinations: Seq[SyncInformation], isOnlineAccount: Boolean) derives ReadWriter {

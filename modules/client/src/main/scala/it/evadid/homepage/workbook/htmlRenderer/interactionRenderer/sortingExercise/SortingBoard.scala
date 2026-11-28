@@ -4,8 +4,8 @@ import com.raquo.laminar.api.L.*
 import it.evadid.core.datastructures.language.LanguageMapContentId
 import it.evadid.homepage.control.model.FullInfo
 import it.evadid.homepage.webElements.basic.LabelSelection
-import it.evadid.workbook.elements.interactionElements.sorting.SortingAttempt
-import it.evadid.workbook.elements.interactionElements.sorting.sortingExercise.AssignmentResult
+import it.evadid.workbook.interactions.sorting.SortingAttempt
+import it.evadid.workbook.interactions.sorting.sortingExercise.AssignmentResult
 import org.scalajs.dom.DragEvent
 
 /** The drag-and-drop board shared by the sorting exercises: fields, the source list, the toolbar and the popups,

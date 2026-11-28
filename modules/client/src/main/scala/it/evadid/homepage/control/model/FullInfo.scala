@@ -1,5 +1,9 @@
 package it.evadid.homepage.control.model
 
+import it.evadid.workbook.model.InteractionInfo
+
+import it.evadid.workbook.model.InteractionScope
+
 
 import it.evadid.llm.LlmConfiguration
 import com.raquo.laminar.api.L.*
@@ -13,8 +17,10 @@ import it.evadid.distribution.clients.ExecutionClient
 import it.evadid.homepage.control.change.*
 import it.evadid.homepage.control.info.*
 import it.evadid.homepage.control.singletons.HomepageDefaults
-import it.evadid.workbook.interaction.sync.SyncControl
-import it.evadid.workbook.meta.ExecutionContextInformation
+import it.evadid.core.datastructures.state.State
+import it.evadid.workbook.control.InteractionController
+import it.evadid.workbook.sync.SyncConnection
+import it.evadid.workbook.abstractions.ExecutionContextInformation
 
 import scala.concurrent.{ExecutionContext, Future}
 
@@ -22,7 +28,7 @@ import scala.concurrent.{ExecutionContext, Future}
 /** Page state and the controls derived from it. Each member only uses those declared above it, so the controls are
   * built in one order without lazy cycles. Long-lived observers belong to `owner`; `release()` ends them.
   */
-case class FullInfo(private[control] val defaultInfo: HomepageInfo) {
+final class FullInfo(private[control] val defaultInfo: HomepageInfo) {
 
   private[homepage] val owner: ManualOwner = new ManualOwner
 
@@ -33,12 +39,10 @@ case class FullInfo(private[control] val defaultInfo: HomepageInfo) {
 
   val loggerSystemInfo: HomepageLoggerInfo = HomepageLoggerInfo.singleton
 
-  private[control] val homepageInfoState: Var[HomepageInfo] = Var(defaultInfo)
+  /** Every change of the page state goes through this control. */
+  val homepage: HomepageControl = HomepageControl(Var(defaultInfo), loggerSystemInfo.contentControlLogger)
 
-  def homepageInfoNow(): HomepageInfo = homepageInfoState.now()
-
-  private[homepage] val feedbackSession = Var[AnyRef](new Object)
-  private[homepage] def invalidateFeedbackSession(): Unit = feedbackSession.set(new Object)
+  def homepageInfoNow(): HomepageInfo = homepage.now()
 
   /* INFO */
 
@@ -63,18 +67,44 @@ case class FullInfo(private[control] val defaultInfo: HomepageInfo) {
 
   val userSessionControl: UserSessionControl = new UserSessionControl(this)
 
-  val syncControl: RemoteInteractionCacheControl = RemoteInteractionCacheControl(this)
+  /** Every change of the answers goes through this control; it starts with the default answers of `defaultInfo`. */
+  val interactions: InteractionController = {
+    // Stores run after the current task, so changes made together share one write.
+    val controller = new InteractionController(State(InteractionInfo.empty(defaultInfo.toContext)),
+      run => { scala.scalajs.js.timers.setTimeout(0)(run()); () })
+    controller.bind(scopeFor(defaultInfo))
+    controller
+  }
 
-  val reporters: InteractionReporterRegistry = InteractionReporterRegistry(signals.workbook, syncControl, owner)
+  /* A hidden page may be closed without running another task: pending stores would never start and buffered
+   * destinations never send. So when the page is hidden or left, both happen at once. The listeners sit on the
+   * window: `visibilitychange` is fired at the document and bubbles to the window, so in the same dispatch they
+   * follow the editors, which write their typed text at the document.
+   */
+  windowEvents(_ => FullInfo.onVisibilityChange).filter(_ => org.scalajs.dom.document.hidden)
+    .foreach(_ => interactions.sync.sendPending())(using owner)
+  windowEvents(_.onPageHide).foreach(_ => interactions.sync.sendPending())(using owner)
 
-  def workbookContextInformation: ExecutionContextInformation = {
-    val owner = feedbackSession.now()
-    val token = backendToken
+  /** Changes of user, credentials and workbook, which concern both the page and its answers. */
+  val state: HomepageState = HomepageState(homepage, interactions, scopeFor)
+
+  val reporters: InteractionReporterRegistry = InteractionReporterRegistry(signals.workbook, interactions, owner)
+
+  /** What `info` binds: its sync context, the interactions of its workbook, and its user's destinations with their
+    * credentials and feedback execution.
+    */
+  def scopeFor(info: HomepageInfo): InteractionScope = InteractionScope(info.toContext,
+    info.workbookInfo.toSeq.flatMap(_.loadedWorkbook.allContainedInteractionsById.values),
+    SyncConnection(info.syncDestinations(this).toSet, executionContextFor(info), loggerSystemInfo.syncControlLogger))
+
+  /** Feedback execution for the current user. */
+  def workbookContextInformation: ExecutionContextInformation = executionContextFor(homepageInfoNow())
+
+  /** Feedback execution with `info`'s credentials; the language is read when feedback runs. */
+  def executionContextFor(info: HomepageInfo): ExecutionContextInformation = {
+    val token = info.userInfo.flatMap(_.credentials.signedBackendToken)
     new ExecutionContextInformation() {
-      override def isCurrent: Boolean = feedbackSession.now() eq owner
-
-      override val llmConfiguration: Option[LlmConfiguration] =
-        homepageInfoNow().userInfo.flatMap(_.credentials.llmApiConfig)
+      override val llmConfiguration: Option[LlmConfiguration] = info.userInfo.flatMap(_.credentials.llmApiConfig)
 
       override lazy val availableExecutionClients: Seq[ExecutionClient] = List(defaults.workerExecuter, defaults.backendExecutorWithCredentials(token))
 
@@ -82,13 +112,16 @@ case class FullInfo(private[control] val defaultInfo: HomepageInfo) {
 
       override lazy val languageMapIdResolver: Option[LanguageMapIdResolver] = Some(new LanguageMapIdResolver(currentLanguageObservable) {
         override def resolveMap(id: LanguageMapContentId): Future[LanguageMap[AppLanguage.HumanLanguage]] = Future {
-          homepageInfoState.now().languageMapStore.languageMaps(id)
+          homepage.now().languageMapStore.languageMaps(id)
         }(using ExecutionContext.global)
       })
 
       override def futureExecutionContext: ExecutionContext = ExecutionContext.global
-
-      override def syncControl: Option[SyncControl] = Some(FullInfo.this.syncControl)
     }
   }
+}
+
+object FullInfo {
+  /** `visibilitychange` on the window, where it arrives after the document's listeners. */
+  private val onVisibilityChange = new com.raquo.laminar.keys.EventProp[org.scalajs.dom.Event]("visibilitychange")
 }

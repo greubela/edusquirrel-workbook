@@ -7,9 +7,9 @@ import it.evadid.homepage.control.info.interaction.GradingReporter
 import it.evadid.homepage.webElements.editor.code.EditorDomSuite
 import it.evadid.homepage.workbook.htmlRenderer.controlElements.interactionInfo.FeedbackPresentation.*
 import it.evadid.workbook.abstractions.grading.{GradedState, GradingResult, GradingStatus}
-import it.evadid.workbook.elements.interactionElements.gpt.TextInputWithScaffoldingAndGrading
-import it.evadid.workbook.elements.interactionElements.gpt.TextInputWithScaffoldingAndGrading.ContentForLlmInteraction
-import it.evadid.workbook.meta.{GradingSummary, ScaffoldingReport}
+import it.evadid.workbook.interactions.gpt.TextInputWithScaffoldingAndGrading
+import it.evadid.workbook.interactions.gpt.TextInputWithScaffoldingAndGrading.ContentForLlmInteraction
+import it.evadid.workbook.reports.{GradingSummary, ScaffoldingReport}
 
 class FeedbackPresentationSpec extends EditorDomSuite {
   private def criteria(count: Int) = TextInputWithScaffoldingAndGrading(s"criteria-$count", LanguageMapContentId("test/task"),
@@ -55,7 +55,7 @@ class FeedbackPresentationSpec extends EditorDomSuite {
 
   test("AI criteria are titled as one assessment, or numbered when there are several") {
     def titles(exercise: TextInputWithScaffoldingAndGrading): Seq[String] = {
-      val panel = InteractionFeedbackPanel(pageInfo, exercise, GradingReporter(exercise)).getDomElement()
+      val panel = InteractionFeedbackPanel(pageInfo, exercise, GradingReporter(exercise, pageInfo.interactions)).getDomElement()
       val close = mount(panel)
       try (0 until panel.ref.querySelectorAll(".feedback-test-description").length)
         .map(panel.ref.querySelectorAll(".feedback-test-description")(_).textContent.toLowerCase)
@@ -72,7 +72,7 @@ class FeedbackPresentationSpec extends EditorDomSuite {
     val hinted = TextInputWithScaffoldingAndGrading("hinted", LanguageMapContentId("test/task"), contentGrading = Nil,
       contentScaffolding = Some(ContentForLlmInteraction(LanguageMapContentId("test/hint"), Map.empty)))
     def buttons(exercise: TextInputWithScaffoldingAndGrading): (Int, Int, Int) = {
-      val panel = InteractionFeedbackPanel(pageInfo, exercise, GradingReporter(exercise)).getDomElement()
+      val panel = InteractionFeedbackPanel(pageInfo, exercise, GradingReporter(exercise, pageInfo.interactions)).getDomElement()
       val close = mount(panel)
       try (panel.ref.querySelectorAll("button.feedback-action--primary:not([disabled])").length,
         panel.ref.querySelectorAll("button.scaffolding-info").length, panel.ref.querySelectorAll(".feedback-grading").length)

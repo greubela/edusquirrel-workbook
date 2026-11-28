@@ -1,6 +1,6 @@
 package it.evadid.homepage.workbook.htmlRenderer.interactionRenderer.emailSimulator
 
-import it.evadid.workbook.elements.interactionElements.emailSimulator.*
+import it.evadid.workbook.interactions.emailSimulator.*
 import munit.FunSuite
 
 class MailInteractionRendererSpec extends FunSuite {

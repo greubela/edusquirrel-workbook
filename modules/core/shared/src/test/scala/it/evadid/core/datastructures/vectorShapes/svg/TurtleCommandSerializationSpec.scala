@@ -1,6 +1,5 @@
 package it.evadid.core.datastructures.vectorShapes.svg
 
-import it.evadid.core.datastructures.vectorShapes.svg.TurtleCommand
 import munit.FunSuite
 import upickle.default.*
 

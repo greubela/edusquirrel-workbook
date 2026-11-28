@@ -1,6 +1,6 @@
 package it.evadid.homepage.workbook.content.wip
 
-import it.evadid.workbook.model.compression.*
+import it.evadid.workbook.interactions.compression.*
 /** Exact authored datasets, generated offline from the retained original. */
 object CompressionSourceData {
   val screenshotWidth = 2548

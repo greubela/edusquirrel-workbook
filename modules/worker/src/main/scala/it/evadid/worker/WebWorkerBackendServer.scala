@@ -1,5 +1,6 @@
 package it.evadid.worker
 
+
 import it.evadid.distribution.clients.ExecutionClient
 import it.evadid.distribution.command.{ExecutionCommand, SerializedException}
 import it.evadid.distribution.formats.ExecutionClientResponse
@@ -9,7 +10,7 @@ import it.evadid.util.logging.Logger
 import it.evadid.util.logging.derived.PrintToStdLogger
 import org.scalajs.dom
 import upickle.default.*
-import java.time.LocalDateTime
+import java.time.Instant
 import scala.concurrent.{ExecutionContext, Future}
 import scala.util.{Failure, Success, Try}
 
@@ -17,14 +18,14 @@ import scala.util.{Failure, Success, Try}
 object WebWorkerBackendServer {
   private given ExecutionContext = ExecutionContext.global
 
-  def fail(received: LocalDateTime, err: Throwable, command: Option[ExecutionCommand], logger: Logger): ExecutionClientResponse = {
+  def fail(received: Instant, err: Throwable, command: Option[ExecutionCommand], logger: Logger): ExecutionClientResponse = {
     logger.logError(Option(err.getMessage).getOrElse(err.getClass.getSimpleName))
-    ExecutionClientResponse(ExecutionClientResponseTimestamps(received, received, LocalDateTime.now()),
+    ExecutionClientResponse(ExecutionClientResponseTimestamps(received, received, Instant.now()),
       Left(SerializedException(err)), command, AdditionalLoggingOutput(logger.getOut(), logger.getErr()))
   }
 
   def handleMessage(raw: String, executor: ExecutionClient = WorkerCommandHandler.executor): Future[String] = {
-    val received = LocalDateTime.now()
+    val received = Instant.now()
     val logger = Logger.withNameAndPrefixes(Some(s"WorkerBackendServerLogger(Request@$received)"), PrintToStdLogger.printWarnAndError)
     Try(read[Request](raw)) match {
       case Failure(err) =>

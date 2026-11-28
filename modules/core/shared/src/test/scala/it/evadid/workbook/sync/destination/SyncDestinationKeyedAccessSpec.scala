@@ -1,0 +1,87 @@
+package it.evadid.workbook.sync.destination
+
+import it.evadid.core.datastructures.state.State
+import it.evadid.core.util.io.Serializer
+import it.evadid.distribution.command.SerializedException
+import it.evadid.util.logging.BasicLogger
+import it.evadid.util.logging.derived.SyncLogger
+import it.evadid.workbook.sync.SyncSuccess
+import munit.FunSuite
+
+import scala.concurrent.{ExecutionContext, Future}
+
+class SyncDestinationKeyedAccessSpec extends FunSuite {
+  private given ExecutionContext = ExecutionContext.global
+  private val integer = Serializer.fromUpickleJson(using upickle.default.readwriter[Int])
+  private val positive = new Serializer[Int] {
+    def serialize(value: Int): String = { require(value > 0, "not positive"); value.toString }
+    def deserialize(value: String): Int = value.toInt
+  }
+
+  private final class Memory(initial: Map[String, String]) extends SyncDestinationHandlerBasic {
+    val records = State(initial)
+    override val syncLogger = SyncLogger(BasicLogger())
+    override val underlyingDefinition = SyncDestinationDefinition.LocalStorageSyncDefinition(10000)
+    override def readAll(implicit ec: ExecutionContext): Future[Map[String, String]] = Future.successful(records.now())
+    override def updateElement[R](key: String, update: Option[String] => (String, R))(using ec: ExecutionContext): Future[R] = {
+      val (value, result) = update(records.now().get(key))
+      records.update(_.updated(key, value))
+      Future.successful(result)
+    }
+    override def readElement(key: String)(implicit ec: ExecutionContext): Future[String] = Future.fromTry(scala.util.Try(records.now()(key)))
+    override def storeElement(key: String, value: String)(implicit ec: ExecutionContext): Future[SyncSuccess[String]] =
+      updateElement(key, previous => value -> SyncSuccess.written(key, previous, value))
+    override def clearAll()(implicit ec: ExecutionContext): Future[SyncSuccess[String]] = {
+      val removed = records.now().keySet
+      records.set(Map.empty)
+      Future.successful(SyncSuccess.removed(removed))
+    }
+    override def clearValue(key: String)(implicit ec: ExecutionContext): Future[SyncSuccess[String]] = {
+      val removed = records.now().keySet.intersect(Set(key))
+      records.update(_ - key)
+      Future.successful(SyncSuccess.removed(removed))
+    }
+  }
+
+  test("key-bound access stores, reads and clears one typed record") {
+    val memory = new Memory(Map.empty)
+    val typed = memory.forSpecificType(integer, integer)
+    val slot = typed.forSpecificKey(7)
+    assertEquals(slot.forKey, 7)
+    for {
+      added <- slot.storeValue(42)
+      unchanged <- slot.storeValue(42)
+      changed <- typed.storeAll(Map(7 -> 43, 8 -> 1))
+      read <- slot.readValue
+      stored = memory.records.now()
+      removed <- typed.clearValue(7)
+    } yield {
+      assertEquals((added.elementsAdded, unchanged.elementsUnchanged), (Set(7), Set(7)))
+      assertEquals((changed.elementsChanged, changed.elementsAdded), (Set(7), Set(8)), "results name the typed keys")
+      assertEquals(read, 43)
+      assertEquals(stored, Map("7" -> "43", "8" -> "1"))
+      assertEquals(removed.elementsRemoved, Set(7))
+      assertEquals(memory.records.now(), Map("8" -> "1"))
+    }
+  }
+
+  test("serialization failures of keys or values and unreadable values fail the typed request") {
+    val memory = new Memory(Map("1" -> "not a number"))
+    val typed = memory.forSpecificType(positive, integer)
+    for {
+      badKeyStore <- typed.storeElementTyped(-1, 1).failed
+      badKeyRead <- typed.readElementTyped(-1).failed
+      badKeyClear <- typed.clearValue(-1).failed
+      badValue <- typed.readElementTyped(1).failed
+      nothing <- memory.forSpecificType(integer, positive).storeAll(Map(1 -> -5)).failed
+      empty <- typed.storeAll(Map.empty)
+    } yield {
+      assert(badKeyStore.getMessage.contains("not positive") || badKeyStore.isInstanceOf[SerializedException], badKeyStore)
+      assert(badKeyRead.getMessage.contains("key serialisation failed"), badKeyRead.getMessage)
+      assert(badKeyClear.getMessage.contains("Could not remove element"), badKeyClear.getMessage)
+      assert(badValue.getMessage.contains("Could not deserialize successfully read value"), badValue.getMessage)
+      assert(nothing.getMessage.contains("Could not serialize a single element"), nothing.getMessage)
+      assertEquals(empty.elementsStored ++ empty.elementsRemoved, Set.empty[Int])
+    }
+  }
+}

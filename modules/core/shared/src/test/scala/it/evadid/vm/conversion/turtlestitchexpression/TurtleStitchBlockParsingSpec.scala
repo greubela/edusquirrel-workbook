@@ -53,7 +53,7 @@ class TurtleStitchBlockParsingSpec extends FunSuite {
 
   test("empty Snap C-slots print as pass so the Python stays valid") {
     val xml = scriptProject("""<block s="doRepeat"><l>3</l><script></script></block><block s="doIf"><l><bool>true</bool></l><script></script></block>""")
-    val code = it.evadid.workbook.elements.interactionElements.programming.state.ProgrammingStateRaw(
+    val code = it.evadid.workbook.interactions.programming.state.ProgrammingStateRaw(
       it.evadid.core.datastructures.language.AppLanguage.SnapLanguage, xml).toPython.code
     val lines = code.linesIterator.toVector
     lines.zipWithIndex.filter(_._1.trim.endsWith(":")).foreach { (line, index) =>

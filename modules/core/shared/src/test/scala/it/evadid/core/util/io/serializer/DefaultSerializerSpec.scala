@@ -5,21 +5,18 @@ import it.evadid.distribution.command.SerializedException
 import munit.FunSuite
 import upickle.default.*
 
-import java.time.LocalDateTime
-import scala.util.{Failure, Success, Try}
+import java.time.Instant
 
 class DefaultSerializerSpec extends FunSuite {
-  test("Try values keep successful payloads and the message of failures") {
-    assertEquals(read[Try[Int]](write[Try[Int]](Success(4))), Success(4))
-    val failure = read[Try[Int]](write[Try[Int]](Failure(IllegalStateException("broken"))))
-    assertEquals(failure.failed.map(_.getMessage), Success("broken"))
-    assertEquals(read[Try[Int]]("{}").failed.map(_.getMessage), Success("Unknown failure"))
-  }
 
-  test("local date-times use their ISO text") {
-    val time = LocalDateTime.of(2026, 11, 20, 7, 5, 30)
-    assertEquals(write(time), "\"2026-11-20T07:05:30\"")
-    assertEquals(read[LocalDateTime](write(time)), time)
+  test("instants are written as UTC text with exactly nine fractional digits") {
+    val time = Instant.parse("2026-11-20T07:05:30Z")
+    assertEquals(write(time), "\"2026-11-20T07:05:30.000000000Z\"")
+    assertEquals(DefaultSerializer.instantText(time.plusMillis(5).plusNanos(7)), "2026-11-20T07:05:30.005000007Z")
+    for (instant <- List(time, time.plusNanos(1), Instant.EPOCH, Instant.MIN, Instant.MAX))
+      assertEquals(read[Instant](write(instant)), instant)
+    val ordered = List(Instant.EPOCH, time, time.plusNanos(1), time.plusSeconds(1))
+    assertEquals(ordered.map(DefaultSerializer.instantText).sorted, ordered.map(DefaultSerializer.instantText), "four-digit years sort as text")
   }
 
   test("throwables are stored as serialized exceptions with their cause chain") {

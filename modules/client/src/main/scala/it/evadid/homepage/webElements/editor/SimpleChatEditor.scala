@@ -1,5 +1,6 @@
 package it.evadid.homepage.webElements.editor
 
+
 import it.evadid.homepage.control.model.FullInfo
 
 import com.raquo.airstream.state.Var
@@ -15,7 +16,7 @@ import it.evadid.homepage.webElements.editor.abstractions.SimpleWebEditor
 import it.evadid.homepage.webElements.editor.abstractions.WebEditorConfig
 import it.evadid.homepage.webElements.editor.config.TextEditorConfig
 
-import java.time.LocalDateTime
+import java.time.Instant
 
 
 object SimpleChatEditor {
@@ -87,7 +88,7 @@ case class SimpleChatEditor(fullInfo: FullInfo, answer: Var[MessengerModel], edi
       answer.update(_.addMessage(
         text = trimmed,
         author = ChatParticipant("Student", "it.evadid.student", SenderRole.USER, None),
-        timestamp = LocalDateTime.now()
+        timestamp = Instant.now()
       ))
       messageInput.set("")
     }

@@ -2,7 +2,7 @@ package it.evadid.core.datastructures.state
 
 import it.evadid.core.datastructures.state.observable.{ObservableValueImpl, ObserverDerivationLogic}
 import it.evadid.util.logging.{Logger, LoggingLevel}
-import it.evadid.workbook.interaction.sync.model.{DataEntryToSync, FetchResponse, SyncDirection}
+import it.evadid.workbook.sync.model.{DataEntryToSync, FetchResponse, SyncDirection}
 import munit.FunSuite
 
 import java.util.concurrent.atomic.AtomicInteger

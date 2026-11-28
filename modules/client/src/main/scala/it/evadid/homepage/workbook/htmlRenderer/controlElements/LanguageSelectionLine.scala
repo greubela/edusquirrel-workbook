@@ -7,7 +7,7 @@ import com.raquo.laminar.api.L.*
 import it.evadid.core.datastructures.language.AppLanguage
 import it.evadid.core.datastructures.language.AppLanguage.HumanLanguage
 import it.evadid.homepage.webElements.HtmlAppElement
-import it.evadid.workbook.elements.structureElements.Workbook
+import it.evadid.workbook.elements.structure.Workbook
 
 private case class LanguageSelectionLine(fullInfo: FullInfo) extends HtmlAppElement {
 

@@ -7,7 +7,7 @@ import it.evadid.vm.conversion.parsed.ParsedProgram
 import it.evadid.vm.conversion.pythonexpression.PythonToExpression
 import it.evadid.vm.parsing.java.clean.JavaSourceMap
 import it.evadid.vm.parsing.java.clean.model.JavaAST.JavaMethodDef
-import it.evadid.workbook.elements.interactionElements.programming.state.ProgrammingStateBeExpression
+import it.evadid.workbook.interactions.programming.state.ProgrammingStateBeExpression
 
 /** Step 3 for Java ([[SourceParsing]]): the language-neutral program ([[ParsedProgram]]), the shared expression tree
   * built from it, and each structured function with its syntax node and the definition the expression tree holds for it.

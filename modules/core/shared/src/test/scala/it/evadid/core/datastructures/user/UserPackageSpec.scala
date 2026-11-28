@@ -1,7 +1,8 @@
 package it.evadid.core.datastructures.user
 
+
 import munit.FunSuite
-import java.time.LocalDateTime
+import java.time.Instant
 import upickle.default.*
 
 class UserPackageSpec extends FunSuite {
@@ -40,21 +41,21 @@ class UserPackageSpec extends FunSuite {
     assertEquals(read[User.UserInDatabase](write(record)), record)
   }
   test("secure access tokens are distinct, hexadecimal, expire after 30 minutes and round-trip") {
-    val before = LocalDateTime.now()
+    val before = Instant.now()
     val first = User.SingleAccessToken.generateSecureToken()
     val second = User.SingleAccessToken.generateSecureToken()
-    val after = LocalDateTime.now()
+    val after = Instant.now()
     assert(first.token.matches("[0-9a-f]{40}"))
     assert(first.token != second.token)
-    assert(!first.expires.isBefore(before.plusMinutes(30)))
-    assert(!first.expires.isAfter(after.plusMinutes(30)))
+    assert(!first.expires.isBefore(before.plus(java.time.Duration.ofMinutes(30))))
+    assert(!first.expires.isAfter(after.plus(java.time.Duration.ofMinutes(30))))
     assertEquals(read[User.SingleAccessToken](write(first)), first)
     assertEquals(User.SingleAccessToken("existing").token, "existing")
   }
   test("token information and signed tokens preserve users and timestamps") {
     val user = User("Ada", "id", "ada@example.org")
-    val created = LocalDateTime.of(2025, 1, 1, 12, 0)
-    val info = UserTokenInfo(user, created, created.plusHours(1))
+    val created = java.time.LocalDateTime.of(2025, 1, 1, 12, 0).toInstant(java.time.ZoneOffset.UTC)
+    val info = UserTokenInfo(user, created, created.plus(java.time.Duration.ofHours(1)))
     assertEquals(read[UserTokenInfo](info.toJson), info)
     val signed = UserTokenInfo.SignedToken(info, "signed-value")
     assertEquals(read[UserTokenInfo.SignedToken](signed.toJson), signed)
@@ -70,7 +71,7 @@ class UserPackageSpec extends FunSuite {
   }
 
   test("online defaults include both backend history layouts") {
-    import it.evadid.workbook.interaction.sync.destination.SyncDestinationDefinition.*
+    import it.evadid.workbook.sync.destination.SyncDestinationDefinition.*
     val remote = UserConfig.defaults(isLocalAccount = false).syncDestinations.map(_.syncDestination).collect {
       case database: SyncDestinationBasedOnHistoryDatabase => database
     }
@@ -86,10 +87,10 @@ class UserPackageSpec extends FunSuite {
       singleAccessToken = Some(User.SingleAccessToken("login-secret")),
       llmApiConfig = Some(LlmConfiguration("https://example.com/chat", "model", Some("llm-secret"))),
       databaseConfig = Some(DatabaseConfigWithCredentials("mysql", "localhost", "3306", "history", "owner", "db-secret")))
-    val destination = it.evadid.workbook.interaction.sync.destination.SyncDestinationDefinition.SyncDestinationBasedOnHistoryDatabase(
+    val destination = it.evadid.workbook.sync.destination.SyncDestinationDefinition.SyncDestinationBasedOnHistoryDatabase(
       credentials.databaseConfig.get, it.evadid.sql.DatabaseHistoryFormat.RelationalFormat, buffered = false)
-    val config = UserConfig(List(it.evadid.workbook.interaction.sync.SyncInformation(destination,
-      it.evadid.workbook.interaction.sync.EventSyncStrategy.KEEP_LAST_MAJOR)), isOnlineAccount = false)
+    val config = UserConfig(List(it.evadid.workbook.sync.SyncInformation(destination,
+      it.evadid.workbook.sync.EventSyncStrategy.KEEP_LAST_MAJOR)), isOnlineAccount = false)
     val info = AllUserInfo(user, credentials, config)
     assertEquals(read[AllUserInfo](write(info)), info)
     val saved = write(SavedUserPreferences(info.user, info.config.withoutCredentials))

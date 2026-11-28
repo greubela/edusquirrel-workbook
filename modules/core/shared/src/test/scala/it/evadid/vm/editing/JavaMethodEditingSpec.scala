@@ -48,7 +48,7 @@ class JavaMethodEditingSpec extends FunSuite {
   }
 
   test("the generated Turtle library is not listed as a student class, while an edited copy is") {
-    val source = it.evadid.workbook.elements.interactionElements.programming.state.ProgrammingStateRaw(
+    val source = it.evadid.workbook.interactions.programming.state.ProgrammingStateRaw(
       it.evadid.core.datastructures.language.AppLanguage.Python, "forward(10)").toJava.code
     assert(source.contains("class Turtle {"), source)
     assertEquals(JavaMethodEditing.discover(source).map(_.name), Vector("Main"))

@@ -1,9 +1,9 @@
 package it.evadid.vm.conversion.snapexpression
 
 import it.evadid.vm.parsing.source.SourceParsing.SourceLanguage
-import it.evadid.workbook.elements.interactionElements.programming.state.snap.SnapTurtleCatalog
+import it.evadid.workbook.interactions.programming.state.snap.SnapTurtleCatalog
 import it.evadid.vm.parsing.source.SourceParsing
-import it.evadid.workbook.elements.interactionElements.programming.state.snap.SnapScalaModel
+import it.evadid.workbook.interactions.programming.state.snap.SnapScalaModel
 
 /**
  * Port of the rules Snap applies when it loads a custom block, so generated XML
@@ -16,7 +16,7 @@ import it.evadid.workbook.elements.interactionElements.programming.state.snap.Sn
  * type (`byob.js` `CustomBlockDefinition.blockSpec`), defaulting to `%s` — which is
  * also the type Snap gives new slots in the Block Editor.
  */
-import it.evadid.workbook.elements.interactionElements.programming.state.snap.SnapVocabulary.{BlockCategory, BlockType}
+import it.evadid.workbook.interactions.programming.state.snap.SnapVocabulary.{BlockCategory, BlockType}
 
 object SnapCustomBlockRules {
 

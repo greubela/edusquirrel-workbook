@@ -1,6 +1,6 @@
 package it.evadid.core.util
 
-import java.time.LocalDateTime
+import java.time.Instant
 import munit.FunSuite
 import scala.collection.mutable
 
@@ -48,19 +48,20 @@ class UtilityCoverageSpec extends FunSuite {
     assertEquals(CodeStringBuilderMutable().changeForEach(List(1, 2), (b, n: Int) => b.appendInLine(n.toString)).toString, "12")
   }
 
-  test("date formats are stable for storage and distinguish human dates") {
-    val fixed = LocalDateTime.of(2024, 2, 3, 4, 5, 6)
+  test("logs show UTC; file names and human dates show the viewer's local time") {
+    def localInstant(time: java.time.LocalDateTime) = LocalZone.instantOf(time)
+    val fixed = java.time.LocalDateTime.of(2024, 2, 3, 4, 5, 6).toInstant(java.time.ZoneOffset.UTC)
     assertEquals(InfoUtil.datetimeFormattedForLog(fixed), "2024-02-03 04:05:06")
     assertEquals(InfoUtil.datetimeFormattedForLog(Some(fixed)), "2024-02-03 04:05:06")
     assertEquals(InfoUtil.datetimeFormattedForLog(None), "[no time]")
-    assertEquals(InfoUtil.datetimeFormattedForDb(fixed), "2024-02-03 04:05:06")
-    assertEquals(InfoUtil.datetimeFormattedForFilenames(fixed), "2024-02-03_04-05-06")
-    assertEquals(InfoUtil.downloadName("Würfel/Aufgabe 1", fixed), "2024-02-03_04-05-06_Wuerfel_Aufgabe_1")
-    val now = LocalDateTime.now()
-    assertEquals(InfoUtil.datetimeFormattedForHumans(now), f"${now.getHour}%02d:${now.getMinute}%02d")
+    val localFixed = localInstant(java.time.LocalDateTime.of(2024, 2, 3, 4, 5, 6))
+    assertEquals(InfoUtil.datetimeFormattedForFilenames(localFixed), "2024-02-03_04-05-06")
+    assertEquals(InfoUtil.downloadName("Würfel/Aufgabe 1", localFixed), "2024-02-03_04-05-06_Wuerfel_Aufgabe_1")
+    val now = InfoUtil.localDateTime(Instant.now())
+    assertEquals(InfoUtil.datetimeFormattedForHumans(localInstant(now)), f"${now.getHour}%02d:${now.getMinute}%02d")
     val previousYear = now.minusYears(1).withMonth(2).withDayOfMonth(3).withHour(4).withMinute(5)
-    assertEquals(InfoUtil.datetimeFormattedForHumans(previousYear), f"04:05 (03.02.${previousYear.getYear % 100}%02d)")
+    assertEquals(InfoUtil.datetimeFormattedForHumans(localInstant(previousYear)), f"04:05 (03.02.${previousYear.getYear % 100}%02d)")
     val otherDay = now.withMonth(if (now.getMonthValue == 1) 2 else 1).withDayOfMonth(3).withHour(4).withMinute(5)
-    assertEquals(InfoUtil.datetimeFormattedForHumans(otherDay), f"04:05 (03.${otherDay.getMonthValue}%02d)")
+    assertEquals(InfoUtil.datetimeFormattedForHumans(localInstant(otherDay)), f"04:05 (03.${otherDay.getMonthValue}%02d)")
   }
 }

@@ -7,7 +7,7 @@ import it.evadid.core.datastructures.language.AppLanguage.{Java, Python, SnapLan
 
 import munit.FunSuite
 import it.evadid.core.datastructures.language.AppLanguage.Cpp
-import it.evadid.workbook.elements.interactionElements.programming.state.{ProgrammingStateRaw}
+import it.evadid.workbook.interactions.programming.state.ProgrammingStateRaw
 
 class ProgrammingConversionErrorSpec extends FunSuite {
   test("parser failures and java diagnostics report a 1-based position") {

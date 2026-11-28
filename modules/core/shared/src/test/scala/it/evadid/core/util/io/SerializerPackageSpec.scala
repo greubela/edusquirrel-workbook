@@ -5,34 +5,6 @@ import munit.FunSuite
 import upickle.default.*
 
 class SerializerPackageSpec extends FunSuite {
-  private trait Entry
-  private case class TextEntry(text: String, values: List[Int]) extends Entry derives ReadWriter
-  private case class CountEntry(value: Int) extends Entry derives ReadWriter
-  private case class GenericEntry[A](value: A) extends Entry derives ReadWriter
-
-  private val entrySerializer = Serializer.universalTraitSerializer[Entry](Map(
-    Serializer.serializerForSubclass[TextEntry, Entry](classOf[TextEntry]),
-    Serializer.serializerForSubclass[CountEntry, Entry](classOf[CountEntry])))
-
-  test("universal serializers tag subtype objects without encoding their fields as strings") {
-    val original: Entry = TextEntry("Grüße\n\"学校\"", List(1, -2))
-    val expected = ujson.Obj("text" -> "Grüße\n\"学校\"", "values" -> ujson.Arr(1, -2),
-      "serializedType" -> "TextEntry")
-    assertEquals(ujson.read(entrySerializer.serialize(original)), expected)
-    assertEquals(entrySerializer.deserialize(ujson.write(expected)), original)
-    List(original, CountEntry(42)).foreach { value =>
-      val codec = entrySerializer.uPickleReadWrite
-      assertEquals(read[Entry](write(value)(using codec))(using codec), value)
-      assertEquals(readBinary[Entry](writeBinary(value)(using codec))(using codec), value)
-    }
-  }
-
-  test("universal serializers reject missing unknown and mismatched subtype tags") {
-    intercept[SerializedException](entrySerializer.deserialize("{\"value\":42}"))
-    intercept[NoSuchElementException](entrySerializer.deserialize("{\"serializedType\":\"Unknown\",\"value\":42}"))
-    intercept[SerializedException](entrySerializer.deserialize("{\"serializedType\":\"CountEntry\",\"text\":\"wrong payload\"}"))
-  }
-
   private val plainString = new Serializer[String] {
     def serialize(value: String): String = value
     def deserialize(value: String): String = value
@@ -77,7 +49,7 @@ class SerializerPackageSpec extends FunSuite {
   }
   test("optional string serialization preserves significant whitespace") {
     val value = Some(" Grüße ")
-    assertEquals(Serializer.fromImplicitRW[Option[String]].deserialize(Serializer.fromImplicitRW[Option[String]].serialize(value)), value)
+    assertEquals(Serializer.fromUpickleJson[Option[String]].deserialize(Serializer.fromUpickleJson[Option[String]].serialize(value)), value)
   }
   test("Java and Python numeric type serializers emit language-appropriate octal syntax") {
     import it.evadid.vm.parsing.java.clean.model.JavaType
@@ -112,12 +84,6 @@ class SerializerPackageSpec extends FunSuite {
     val either = Serializer.eitherPlainValueIO(fatal, plainString)
     val readError = try { either.deserialize("x"); None } catch { case e: LinkageError => Some(e) }
     assertEquals(readError.map(_.getMessage), Some("fatal read"))
-  }
-
-  test("generic subtype serializers leave payload validation to their supplied codec") {
-    val (_, io) = Serializer.serializerForSubclass[GenericEntry[Int], Entry](classOf[GenericEntry[Int]])
-    assertEquals(io.deserialize(io.serialize(GenericEntry(7))), GenericEntry(7): Entry)
-    intercept[SerializedException](io.deserialize("{\"value\":\"not an integer\"}"))
   }
 
   test("mapped serializers retain the failing stage and original cause") {

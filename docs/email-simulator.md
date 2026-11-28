@@ -8,7 +8,7 @@ It follows the shared [interaction architecture](workbook-interaction-architectu
 
 `MailInteraction` configures sorting practice; `MailEditor` configures local
 writing practice using the same fullscreen UI. Model implementations live under
-`modules/core/shared/src/main/scala/it/evadid/workbook/elements/interactionElements/emailSimulator/`;
+`modules/core/shared/src/main/scala/it/evadid/workbook/interactions/emailSimulator/`;
 renderers live under the client `workbook/htmlRenderer/interactionRenderer/emailSimulator/`
 package. Styles belong in `homepage/css/workbook/email-simulator.css`.
 

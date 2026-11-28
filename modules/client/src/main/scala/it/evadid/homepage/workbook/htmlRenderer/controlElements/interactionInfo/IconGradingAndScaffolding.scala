@@ -6,7 +6,7 @@ import it.evadid.homepage.workbook.htmlRenderer.LaminarRenderHelper
 import it.evadid.homepage.workbook.htmlRenderer.controlElements.interactionInfo.InteractionInfoPanelIcons.*
 import it.evadid.workbook.abstractions.TypeOfTextDisplay.*
 import it.evadid.workbook.abstractions.{InteractionFormat, WorkbookInteractionElement}
-import it.evadid.workbook.meta.{GradingSummary, ScaffoldingReport}
+import it.evadid.workbook.reports.{GradingSummary, ScaffoldingReport}
 import it.evadid.homepage.control.info.interaction.GradingReporter
 
 
@@ -69,11 +69,11 @@ case class IconGradingAndScaffolding[F <: InteractionFormat](
   }
 
   def onScaffoldingRequested(): Unit = {
-    workbookInteractionElement.interactionVariable.control.getOrCalculateScaffolding(fullInfo.workbookContextInformation, retryErrors = true)
+    fullInfo.interactions.feedback(workbookInteractionElement).getOrCalculateScaffolding(retryErrors = true)
   }
 
   def onGradingRequested(): Unit = {
-    workbookInteractionElement.interactionVariable.control.getOrCalculateGrading(fullInfo.workbookContextInformation, forceGrading = true)
+    fullInfo.interactions.feedback(workbookInteractionElement).getOrCalculateGrading(forceGrading = true)
   }
 
 }

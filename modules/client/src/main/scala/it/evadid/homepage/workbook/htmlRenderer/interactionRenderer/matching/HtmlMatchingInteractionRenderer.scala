@@ -1,5 +1,7 @@
 package it.evadid.homepage.workbook.htmlRenderer.interactionRenderer.matching
 
+import it.evadid.workbook.control.InteractionSignals.*
+
 import it.evadid.homepage.control.model.FullInfo
 
 import com.raquo.airstream.ownership.Subscription
@@ -9,8 +11,8 @@ import it.evadid.core.datastructures.state.StateHelper.StateBasedVar
 import it.evadid.homepage.workbook.htmlRenderer.HtmlRenderFactory.LineBasedRenderingFactory
 import it.evadid.homepage.workbook.htmlRenderer.InlineMarkdown
 import it.evadid.homepage.workbook.htmlRenderer.atomarLineRenderings.AtomarLineRendering
-import it.evadid.workbook.elements.interactionElements.matching.MatchingInteraction
-import it.evadid.workbook.interaction.sync.UpdateImportance
+import it.evadid.workbook.interactions.matching.MatchingInteraction
+import it.evadid.workbook.sync.UpdateImportance
 import org.scalajs.dom
 
 /** Two columns of items; a connection line joins a left item with its chosen right item.
@@ -68,7 +70,7 @@ object HtmlMatchingInteractionRenderer extends LineBasedRenderingFactory[Matchin
   }
 
   override protected def createRendering(fullInfo: FullInfo, e: MatchingInteraction): AtomarLineRendering = {
-    val state = e.interactionVariable.createBoundStateWithUpdateImportance(UpdateImportance.MAJOR, fullInfo.workbookContextInformation).toAirstreamVar
+    val state = fullInfo.interactions.boundVar(e, UpdateImportance.MAJOR)
     val locked = e.isDisabledState.toAirstreamVar
     val selected = Var(Option.empty[End])
     val drag = Var(Option.empty[Drag])

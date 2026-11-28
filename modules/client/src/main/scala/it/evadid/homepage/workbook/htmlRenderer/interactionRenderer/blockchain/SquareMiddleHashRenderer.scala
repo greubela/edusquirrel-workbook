@@ -1,5 +1,7 @@
 package it.evadid.homepage.workbook.htmlRenderer.interactionRenderer.blockchain
 
+import it.evadid.workbook.control.InteractionSignals.*
+
 import it.evadid.homepage.control.model.FullInfo
 
 import com.raquo.laminar.api.L.*
@@ -7,13 +9,13 @@ import it.evadid.homepage.webElements.basic.LabelSelection
 import it.evadid.core.datastructures.state.StateHelper.StateBasedVar
 import it.evadid.homepage.workbook.htmlRenderer.HtmlRenderFactory.LineBasedRenderingFactory
 import it.evadid.homepage.workbook.htmlRenderer.atomarLineRenderings.AtomarLineRendering
-import it.evadid.workbook.elements.interactionElements.blockchain.*
-import it.evadid.workbook.model.blockchain.SquareMiddleHash
-import it.evadid.workbook.interaction.sync.UpdateImportance
+import it.evadid.workbook.interactions.blockchain.*
+import it.evadid.workbook.interactions.blockchain.SquareMiddleHash
+import it.evadid.workbook.sync.UpdateImportance
 
 case object SquareMiddleHashRenderer extends LineBasedRenderingFactory[SquareMiddleHashInteraction] {
   override protected def createRendering(fullInfo: FullInfo, e: SquareMiddleHashInteraction): AtomarLineRendering = {
-    val state = e.interactionVariable.createBoundStateWithUpdateImportance(UpdateImportance.MAJOR, fullInfo.workbookContextInformation).toAirstreamVar
+    val state = fullInfo.interactions.boundVar(e, UpdateImportance.MAJOR)
     val disabledSignal = e.isDisabledState.toAirstreamVar.signal
     def textFor(key: String): Signal[String] = laminarHelper(fullInfo).plaintextStringSignal(s"blockchainworkbook/$key")
     def numberField(first: Boolean): Element = label(

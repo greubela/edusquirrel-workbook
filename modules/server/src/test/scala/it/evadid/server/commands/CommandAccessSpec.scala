@@ -6,7 +6,7 @@ import it.evadid.distribution.commandTypes.SubmissionCommands.submitSessionComma
 import it.evadid.distribution.commandTypes.SqlEditorCommands
 import munit.FunSuite
 import java.net.InetAddress
-import java.time.LocalDateTime
+import java.time.Instant
 import scala.concurrent.Future
 
 class CommandAccessSpec extends FunSuite {
@@ -27,7 +27,7 @@ class CommandAccessSpec extends FunSuite {
   }
 
   test("a handler's rule must match its command's login declaration, and only public handlers serve anonymous requests") {
-    val anonymous = RequestContext(LocalDateTime.now(), InetAddress.getLoopbackAddress, None)
+    val anonymous = RequestContext(Instant.now(), InetAddress.getLoopbackAddress, None)
     val submit = Handler(submitSessionCommand, Public, (_, _, _) => Future.never)
     assert(submit.availableTo(anonymous))
     val editor = Handler(SqlEditorCommands.execute, SignedIn, (_, _, _) => Future.never)

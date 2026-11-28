@@ -1,7 +1,6 @@
 package it.evadid.homepage.webElements.editor.code.SnapEditor
 
 import it.evadid.facades.Snap.{IDEMorph, WorldMorph}
-import it.evadid.homepage.webElements.editor.code.SnapEditor.SnapCodeEditorConfig
 import org.scalajs.dom.html.Canvas
 
 /** All live Morphic resources have the same session lifetime. */

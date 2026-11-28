@@ -3,10 +3,10 @@ package it.evadid.server.database.history
 import it.evadid.distribution.commandTypes.SQLCommands.*
 import it.evadid.util.logging.Logger
 import it.evadid.workbook.abstractions.InteractionFormat
-import it.evadid.workbook.interaction.sync.SyncSuccess
-import it.evadid.workbook.interaction.sync.model.InteractionHistoryJson
-import it.evadid.workbook.interaction.variable.InteractionVariableHistory
-import it.evadid.workbook.interaction.variable.events.EventId
+import it.evadid.workbook.sync.SyncSuccess
+import it.evadid.workbook.sync.model.InteractionHistoryJson
+import it.evadid.workbook.history.InteractionHistory
+import it.evadid.workbook.history.events.EventId
 import java.sql.Connection
 
 /** One JSON history per context row; concurrent merges are serialized by locking that row. */
@@ -19,11 +19,12 @@ class BlobHistoryStorage(connection: Connection, logger: Logger) extends History
     val format = request.history.format
     val incoming = request.history.typedAs[format.type](format)
     val codec = InteractionFormat.codecsFor[format.type](format).historySerializer
-    val previous = lockedContextRow(request.syncContext, format, Seq(codec.serialize(InteractionVariableHistory.empty[format.type]))) { row =>
-      InteractionHistoryJson(format, row.getString("history_json")).typedAs[format.type](format)
+    val empty = InteractionHistory.empty[format.type](format)
+    val previous = lockedContextRow(request.syncContext, format, Seq(codec.serialize(empty))) { (row, sameFormat) =>
+      if sameFormat then InteractionHistoryJson(format, row.getString("history_json")).typedAs[format.type](format) else empty
     }
     val merged = previous.mergeWith(incoming)
-    statements.update(updateHistory, (codec.serialize(merged) +: HistorySql.identity(request.syncContext))*)
+    statements.update(updateHistory, (Seq(format.name, codec.serialize(merged)) ++ HistorySql.identity(request.syncContext))*)
     SyncSuccess.immutable(incoming.events.ids, previous.events.ids, merged.events.ids)
   }
 
@@ -48,5 +49,5 @@ object BlobHistoryStorage {
     delete = "DELETE FROM blob_history WHERE program_id=? AND user_id=? AND (?=1 OR scenario_id=?) AND (?=0 OR variable_id=?)")
 
   private val updateHistory =
-    "UPDATE blob_history SET history_json=? WHERE program_id=? AND scenario_id=? AND user_id=? AND variable_id=?"
+    "UPDATE blob_history SET format=?, history_json=? WHERE program_id=? AND scenario_id=? AND user_id=? AND variable_id=?"
 }

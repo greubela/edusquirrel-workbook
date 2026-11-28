@@ -26,16 +26,18 @@ CREATE TABLE `user` (
 CREATE TABLE `loginTokens` (
   `userId` VARCHAR(128) NOT NULL PRIMARY KEY,
   `token` VARCHAR(255) NOT NULL,
-  `tokenExpires` DATETIME(6) NOT NULL,
+  `tokenExpires` VARCHAR(40) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
   CONSTRAINT `loginTokens_user` FOREIGN KEY (`userId`) REFERENCES `user` (`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_bin;
 INSERT INTO `user` (`id`, `name`, `mail`, `config`)
 VALUES ('user-unknown', 'Anonymous', 'info@eva-did.it', '{"syncDestinations":[],"isOnlineAccount":false}');
 
 -- Command and synchronization audit logs.
+-- Every stored time is ISO 8601 UTC text with nine fractional digits, e.g. 2026-11-28T12:00:00.123456789Z;
+-- MySQL DATETIME holds at most six. A binary collation keeps four-digit years in chronological order.
 CREATE TABLE `commandLog` (
   `id` BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
-  `timestamp` TIMESTAMP NULL,
+  `timestamp` VARCHAR(40) CHARACTER SET ascii COLLATE ascii_bin NULL,
   `origin` VARCHAR(128) NULL,
   `type` VARCHAR(128) NULL,
   `payload` LONGTEXT NULL,
@@ -45,7 +47,7 @@ CREATE TABLE `commandLog` (
 ) ENGINE=InnoDB DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_bin;
 CREATE TABLE `syncedLog` (
   `id` BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
-  `timestamp` TIMESTAMP NULL,
+  `timestamp` VARCHAR(40) CHARACTER SET ascii COLLATE ascii_bin NULL,
   `origin` VARCHAR(128) NULL,
   `type` VARCHAR(128) NULL,
   `payload` LONGTEXT NULL,
@@ -56,7 +58,7 @@ CREATE TABLE `syncedLog` (
 -- Submitted sessions (accepted without an account; userid is the verified account or Anonymous).
 CREATE TABLE `submissionLog` (
   `id` BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
-  `timestamp` DATETIME(6) NOT NULL,
+  `timestamp` VARCHAR(40) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
   `ipAddress` VARCHAR(45) NOT NULL,
   `userid` VARCHAR(128) NOT NULL,
   `sessionDataSerialized` JSON NOT NULL,
@@ -64,7 +66,6 @@ CREATE TABLE `submissionLog` (
 ) ENGINE=InnoDB DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_bin;
 
 -- Current schemas only. Formats are stable, workbook-independent names, never element IDs.
--- Exact timestamps use ISO 8601 local date/time text with nine fractional digits.
 -- A binary text index supports ranges without rounding nanoseconds to MySQL precision.
 CREATE TABLE `sync_context_id` (
   `id` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,

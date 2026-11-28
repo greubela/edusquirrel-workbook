@@ -1,7 +1,7 @@
 package it.evadid.vm.conversion.expressionsnap
 
 import it.evadid.core.datastructures.language.AppLanguage.{Python, SnapLanguage}
-import it.evadid.workbook.elements.interactionElements.programming.state.{ProgrammingState, ProgrammingStateRaw}
+import it.evadid.workbook.interactions.programming.state.{ProgrammingState, ProgrammingStateRaw}
 import munit.FunSuite
 
 class SnapProjectXmlRoundTripSpec extends FunSuite {

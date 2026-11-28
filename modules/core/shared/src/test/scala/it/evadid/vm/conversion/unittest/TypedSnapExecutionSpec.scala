@@ -2,8 +2,8 @@ package it.evadid.vm.conversion.unittest
 
 import it.evadid.vm.parsing.source.SourceParsing
 import it.evadid.vm.parsing.source.SourceParsing.SourceLanguage
-import it.evadid.workbook.elements.interactionElements.programming.state.ProgrammingStateSnapScalaModel
-import it.evadid.workbook.elements.interactionElements.programming.state.snap.SnapScalaModel
+import it.evadid.workbook.interactions.programming.state.ProgrammingStateSnapScalaModel
+import it.evadid.workbook.interactions.programming.state.snap.SnapScalaModel
 import munit.FunSuite
 
 class TypedSnapExecutionSpec extends FunSuite {

@@ -11,10 +11,8 @@ workbook application, language maps and interaction history. It includes written
 questions, capacity calculators, text/image experiments and file simulations.
 Materials remain downloadable from the original paths.
 
-Shared models and algorithms live under
-`modules/core/shared/src/main/scala/it/evadid/workbook/model/compression/`, with
-the interaction definition in the corresponding `elements/interactionElements/compression/`
-package.
+Shared models, algorithms and the interaction definition live under
+`modules/core/shared/src/main/scala/it/evadid/workbook/interactions/compression/`.
 Browser controls live under
 `modules/client/src/main/scala/it/evadid/homepage/webElements/editor/compression/`.
 The workbook factory supplies authored text and scenario configuration; editors

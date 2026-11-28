@@ -21,7 +21,7 @@ final case class EvaEditorContext(
     conversionMarker.combineWith(labels.conversion).map((failure, texts) =>
       failure.toSeq.flatMap(value => CodeMirrorEditor.mark(value.error, texts.describe(value))))
   /** Current-source warnings from the shared worker, with the selected page language. */
-  def sourceDiagnostics(state: Signal[it.evadid.workbook.elements.interactionElements.programming.state.ProgrammingState]): Signal[Seq[CodeMirrorEditor.Diagnostic]] =
+  def sourceDiagnostics(state: Signal[it.evadid.workbook.interactions.programming.state.ProgrammingState]): Signal[Seq[CodeMirrorEditor.Diagnostic]] =
     it.evadid.homepage.webElements.editor.code.program.ProgramAnalyzer.shared.statusOf(state, environment.programming)
       .combineWith(labels.sourceWarnings.all).map {
         case (it.evadid.homepage.webElements.editor.code.program.ProgramAnalyzer.Status.Ready(result), texts) =>

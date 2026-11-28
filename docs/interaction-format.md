@@ -23,20 +23,37 @@ Element definitions have their own codecs; see [session data](session-data-seria
 
 ## Current wire format
 
-Formats serialize by their case-object name. The finite `knownFormats` registry
-resolves those names and rejects unknown values, without dynamic class loading
-or element-ID lookup.
+Persisted names are fixed literals, never derived from class names, so classes and
+packages can be renamed without touching saved data:
+
+| Saved value | Name source |
+| --- | --- |
+| Format | `Typed(name, …)`, resolved by the finite `knownFormats` registry |
+| Event | `@key` on each event case class (`$type`) |
+| Grader | its companion's `codec` (`serializedType`), for workbook definitions |
+| Feedback reference | `GraderReference(<key>)` and `StateReference(<fingerprint>)` |
+| Workbook element type, `ElementRef(<type>/<id>)` | the literal key in `WorkbookElementFactory`'s registry |
+| Other sealed cases (`$type`) and enum values | `@upickle.implicits.key` on each case; hand-written codecs (`BeExpression`, `BeDataType`, `AppLanguage`, `ReorderType`) name theirs explicitly |
+
+Unknown names are rejected, without dynamic class loading or element-ID lookup;
+[PersistedNamesSpec](../modules/core/shared/src/test/scala/it/evadid/workbook/serialization/PersistedNamesSpec.scala)
+pins them. [PersistedHistorySnapshotSpec](../modules/client/src/test/scala/it/evadid/homepage/workbook/content/PersistedHistorySnapshotSpec.scala)
+compares a saved history of every published format, including nested type tags, field names and
+fingerprints, with reference files in `modules/client/src/test/resources/persisted-histories/`;
+[PersistedRecordSnapshotSpec](../modules/client/src/test/scala/it/evadid/homepage/workbook/content/PersistedRecordSnapshotSpec.scala)
+does the same for a user configuration and a session file (`persisted-records/`).
+Rewrite them only for an intended schema change.
 
 ```scala
 import it.evadid.workbook.abstractions.InteractionFormat.TextInteractionFormat
-import it.evadid.workbook.interaction.variable.InteractionVariableHistory
-import it.evadid.workbook.interaction.sync.model.InteractionHistoryJson
-import it.evadid.workbook.interaction.sync.UpdateImportance
-import it.evadid.workbook.interaction.variable.events.AnswerChangedEvent
-import java.time.LocalDateTime
+import it.evadid.workbook.history.InteractionHistory
+import it.evadid.workbook.sync.model.InteractionHistoryJson
+import it.evadid.workbook.sync.UpdateImportance
+import it.evadid.workbook.history.events.AnswerChangedEvent
+import java.time.Instant
 
-val history = InteractionVariableHistory.empty[TextInteractionFormat.type].addEvent(
-  AnswerChangedEvent[TextInteractionFormat.type]("My answer", LocalDateTime.now(), UpdateImportance.MAJOR))
+val history = InteractionHistory.empty[TextInteractionFormat.type].addEvent(
+  AnswerChangedEvent[TextInteractionFormat.type]("My answer", Instant.now(), UpdateImportance.MAJOR))
 val transport = InteractionHistoryJson.fromHistory(TextInteractionFormat, history)
 val decoded = InteractionHistoryJson.deserialize(transport.serialized)
 val restored = decoded.typedAs(TextInteractionFormat)
@@ -52,21 +69,31 @@ type resolution; [storage](database/interaction-history.md) defines how malforme
 
 ## Event contract
 
-`InteractionVariableHistory[F]` stores one `InteractionEvents[F]` set. Its events
+`InteractionHistory[F]` stores one `InteractionEvents[F]` set. Its events
 are answer changes, grading starts/completions and scaffolding starts/completions.
-Every event has a client-generated [`EventId`](../modules/core/shared/src/main/scala/it/evadid/workbook/interaction/variable/events/EventId.scala)
-(a canonical UUID), its associated answer, `LocalDateTime` and importance. Completed
-feedback derives its answer and timestamp from the typed result.
+Every event has a client-generated [`EventId`](../modules/core/shared/src/main/scala/it/evadid/workbook/history/events/EventId.scala)
+(a canonical UUID), an `Instant` and an importance; answer events hold the answer, feedback
+events a reference to it. Completed feedback takes its timestamp from its record.
 
 Events are immutable: an ID names exactly one content, and a revision is a new event
 with a new ID. Merging unions events, so retries are idempotent and distinct same-time
 events survive, while a different event under a known ID is rejected
 (`InteractionEvents` requires unique IDs). IDs are preserved during decoding; missing
 or malformed IDs are rejected rather than generated on read.
-Serialized exceptions use immutable stack-trace sequences so error events also retain
-value equality after decoding. State/feedback history views are derived projections,
+All saved and exchanged points in time are `Instant`s written in one text form,
+`DefaultSerializer.instantText`: ISO 8601 UTC with exactly nine fractional digits
+(`2026-11-28T12:00:00.123456789Z`). The JSON codec and every database time column use it,
+so event order survives device zones and DST. Display converts with `InfoUtil.localDateTime`, whose
+`LocalZone` takes the offset from the browser on JS, so no time zone database is bundled.
+Saved error statuses (`TestError`, `ScaffoldingError`) keep only the messages of an error
+and its causes; stack traces stay in logs. State/feedback history views are derived projections,
 not separate persisted stores. A newer grading start represents a retry in progress;
-completion wins a timestamp tie. Graders are matched by their canonical content key.
+completion wins a timestamp tie. Feedback events never copy their grader or answer. They refer to the grader by its content key
+(a hash of the persisted grader type and its parameters, so two unit tests differ) and to the
+answer by the fingerprint its format derives (`Typed(name, stateFingerprint)`; by default the
+canonical JSON of the state codec, for programs their source text). Each history carries its
+format to resolve them; readers pass the current graders and the answer they ask about
+(`gradingForState`, `completedScaffolding`), so results of removed graders are not shown.
 
 Starts default to `TEMPORARY`, completions to `MAJOR`. `cleanedHistory()` is the one
 history cleanup: it drops DEFAULT answers once another answer exists and TEMPORARY answers
@@ -75,7 +102,7 @@ Transmission strategies are described with [storage](database/interaction-histor
 
 ## Verification
 
-[`InteractionHistoryJsonSpec`](../modules/core/shared/src/test/scala/it/evadid/workbook/interaction/sync/model/InteractionHistoryJsonSpec.scala)
+[`InteractionHistoryJsonSpec`](../modules/core/shared/src/test/scala/it/evadid/workbook/sync/model/InteractionHistoryJsonSpec.scala)
 checks JSON/MessagePack envelope round trips for every format, populated answer and
 feedback histories, heterogeneous sequences, timestamp precision and malformed inputs.
 

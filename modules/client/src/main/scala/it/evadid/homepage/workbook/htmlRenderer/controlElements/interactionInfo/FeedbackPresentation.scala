@@ -2,7 +2,7 @@ package it.evadid.homepage.workbook.htmlRenderer.controlElements.interactionInfo
 
 import it.evadid.homepage.workbook.htmlRenderer.controlElements.interactionInfo.InteractionInfoPanelIcons.FeedbackIcon
 import it.evadid.workbook.abstractions.grading.GradingStatus
-import it.evadid.workbook.meta.{GradingSummary, ScaffoldingReport}
+import it.evadid.workbook.reports.{GradingSummary, ScaffoldingReport}
 
 /** Labels, tones and icons belong to the browser; status decisions belong to reporters. */
 private[interactionInfo] object FeedbackPresentation {

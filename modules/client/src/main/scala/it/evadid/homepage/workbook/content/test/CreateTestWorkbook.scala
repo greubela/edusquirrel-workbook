@@ -1,7 +1,7 @@
 package it.evadid.homepage.workbook.content.test
 
 import it.evadid.core.datastructures.language.AppLanguage.{BlockDisplay, Java, Python, SnapLanguage}
-import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseTurtle.{MaxCommandUsage, RecreateTurtleDidacticConfig, TurtleDrawingPolicy, TurtleRecreateShapeInteraction}
+import it.evadid.workbook.interactions.programming.programmingExerciseTurtle.{MaxCommandUsage, RecreateTurtleDidacticConfig, TurtleDrawingPolicy, TurtleRecreateShapeInteraction}
 import it.evadid.vm.conversion.expressionsnap.SnapProjectXml
 import it.evadid.core.datastructures.geometry.{Line, Point}
 import it.evadid.core.datastructures.language.AppLanguage.{BlockDisplay, Java, Python, SnapLanguage}
@@ -11,18 +11,18 @@ import it.evadid.homepage.control.model.FullInfo
 import it.evadid.homepage.workbook.content.WorkbookFactory
 import it.evadid.homepage.workbook.content.wip.PhishingMailboxData
 import it.evadid.workbook.abstractions.{LangMapContentIdType, RoleInWorkbook, TypeOfTextDisplay, WorkbookElement}
-import it.evadid.workbook.elements.displayElements.DisplayLangMapContent
-import it.evadid.workbook.elements.displayElements.LabeledWorkbookElement.{GoalLabel, HintLabel, TaskLabel}
-import it.evadid.workbook.elements.interactionElements.emailSimulator.MailInteraction
-import it.evadid.workbook.elements.interactionElements.gpt.TextInputWithScaffoldingAndGrading
-import it.evadid.workbook.elements.interactionElements.gpt.TextInputWithScaffoldingAndGrading.ContentForLlmInteraction
-import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseRegular.{ProgrammingExercise, ProgrammingExerciseFullJava}
-import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseTurtle.TurtleGraphic.*
-import it.evadid.workbook.elements.interactionElements.programming.state.*
-import it.evadid.workbook.elements.interactionElements.programming.state.snap.ProgrammingEditorPalette
-import it.evadid.workbook.elements.interactionElements.qr.{CreateQrCodeInteraction, QrCodeRequirements}
-import it.evadid.workbook.elements.interactionElements.sql.{SqlCommandExercise, SqlDatabaseConfig}
-import it.evadid.workbook.elements.structureElements.{Workbook, WorkbookSection}
+import it.evadid.workbook.elements.display.DisplayLangMapContent
+import it.evadid.workbook.elements.display.LabeledWorkbookElement.{GoalLabel, HintLabel, TaskLabel}
+import it.evadid.workbook.interactions.emailSimulator.MailInteraction
+import it.evadid.workbook.interactions.gpt.TextInputWithScaffoldingAndGrading
+import it.evadid.workbook.interactions.gpt.TextInputWithScaffoldingAndGrading.ContentForLlmInteraction
+import it.evadid.workbook.interactions.programming.programmingExerciseRegular.{ProgrammingExercise, ProgrammingExerciseFullJava}
+import it.evadid.workbook.interactions.programming.programmingExerciseTurtle.TurtleGraphic.*
+import it.evadid.workbook.interactions.programming.state.*
+import it.evadid.workbook.interactions.programming.state.snap.ProgrammingEditorPalette
+import it.evadid.workbook.interactions.qr.{CreateQrCodeInteraction, QrCodeRequirements}
+import it.evadid.workbook.interactions.sql.{SqlCommandExercise, SqlDatabaseConfig}
+import it.evadid.workbook.elements.structure.{Workbook, WorkbookSection}
 
 case class CreateTestWorkbook(fullInfo: FullInfo) extends WorkbookFactory {
 
@@ -199,7 +199,7 @@ case class CreateTestWorkbook(fullInfo: FullInfo) extends WorkbookFactory {
   /** Hands in this workbook's answers by e-mail without creating an account. */
   lazy val section8: WorkbookSection = section("submission-demo", "login/submissionTitle", List(
     container("login/submissionTitle", List(
-      it.evadid.workbook.elements.displayElements.WorkbookSubmissionElement("submission-demo-form")
+      it.evadid.workbook.elements.display.WorkbookSubmissionElement("submission-demo-form")
     ))
   ))
 
@@ -208,7 +208,7 @@ case class CreateTestWorkbook(fullInfo: FullInfo) extends WorkbookFactory {
   lazy val section5: WorkbookSection = section("evacuation-construction", "digitalWorkbooks/evacuationTitle", List(
     container("digitalWorkbooks/evacuationTitle", List(
       instructionPlaintext("digitalWorkbooks/evacuationExampleTask"),
-      it.evadid.workbook.elements.interactionElements.evacuation.EvacuationConstructFloorInteraction("evacuation-construct-floor")
+      it.evadid.workbook.interactions.evacuation.EvacuationConstructFloorInteraction("evacuation-construct-floor")
     ))
   ))
 

@@ -1,16 +1,18 @@
 package it.evadid.homepage.control.model
 
+
 import it.evadid.workbook.session.{AllWorkbookInfo, SessionData}
 import it.evadid.core.datastructures.language.AppLanguage.*
 import it.evadid.core.datastructures.language.control.LanguageMapStorage
 import it.evadid.core.datastructures.user.{AllUserInfo, User, UserConfig}
 import it.evadid.homepage.workbook.syncDestination.{DatabaseSyncViaBackendServerHandler, LocalIndexedDbStorageSyncHandler, LocalStorageSyncHandler}
-import it.evadid.workbook.interaction.sync.destination.SyncDestinationDefinition.{LocalIndexedDbSyncDefinition, LocalStorageSyncDefinition, SyncDestinationBasedOnHistoryDatabase}
-import it.evadid.workbook.interaction.sync.destination.{SyncDestinationDefinition, SyncDestinationHistoryHandler}
-import it.evadid.workbook.interaction.sync.{SyncInformationWithContext, UsageContext}
-import it.evadid.workbook.interaction.sync.model.InteractionHistoryJson
+import it.evadid.workbook.sync.destination.SyncDestinationDefinition.{LocalIndexedDbSyncDefinition, LocalStorageSyncDefinition, SyncDestinationBasedOnHistoryDatabase}
+import it.evadid.workbook.sync.destination.{SyncDestinationDefinition, SyncDestinationHistoryHandler}
+import it.evadid.workbook.sync.{SyncInformationWithContext, UsageContext}
+import it.evadid.workbook.model.InteractionInfo
+import it.evadid.workbook.sync.model.InteractionHistoryJson
 
-import java.time.LocalDateTime
+import java.time.Instant
 
 
 case class HomepageInfo(
@@ -27,25 +29,25 @@ case class HomepageInfo(
 
   lazy val toContext = UsageContext("edusquirrel", workbookInfo.map(_.loadedWorkbook.workbookId).getOrElse("[no workbook]"), userInfo.map(_.user.personId).getOrElse("[no user]"))
 
-  /** The open session without credentials, with each interaction's format-coded history; `None` without a workbook or user. */
-  def toSessionData: Option[SessionData] = for {
+  /** The open session without credentials, with each of `answers`' interaction's format-coded history; `None` without a workbook or user. */
+  def toSessionData(answers: InteractionInfo): Option[SessionData] = for {
     workbook <- workbookInfo
     user <- userInfo.map(_.withoutCredentials())
-  } yield sessionOf(workbook, user.user, user.config)
+  } yield sessionOf(workbook, user.user, user.config, answers)
 
   /** The open workbook handed in by `submitter` instead of the bound user; `None` without a workbook. Every current
     * history is kept under its bound context, and the configuration is local-only, so continuing the copy never
     * syncs to or creates an account in a database. The bound user and its bindings are not changed.
     */
-  def toSubmissionBy(submitter: User): Option[SessionData] =
-    workbookInfo.map(sessionOf(_, submitter, UserConfig.defaults(isLocalAccount = true)))
+  def toSubmissionBy(submitter: User, answers: InteractionInfo): Option[SessionData] =
+    workbookInfo.map(sessionOf(_, submitter, UserConfig.defaults(isLocalAccount = true), answers))
 
-  private def sessionOf(workbook: AllWorkbookInfo, user: User, config: UserConfig): SessionData = {
+  private def sessionOf(workbook: AllWorkbookInfo, user: User, config: UserConfig, answers: InteractionInfo): SessionData = {
     val histories = workbook.loadedWorkbook.allContainedInteractionsById.values.map { interaction =>
-      toContext.toSyncContext(interaction.interactionVariable.keyForSerialization) ->
-        InteractionHistoryJson.fromHistory(interaction.interactionFormat, interaction.interactionVariable.currentHistory)
+      toContext.toSyncContext(interaction.keyForSerialization) ->
+        InteractionHistoryJson.fromHistory(interaction.interactionFormat, answers.historyOf(interaction))
     }.toMap
-    SessionData(LocalDateTime.now(), histories, user, Some(config), workbook)
+    SessionData(Instant.now(), histories, user, Some(config), workbook)
   }
 
   def syncDestinations(fullInfo: FullInfo): Seq[SyncInformationWithContext] = {

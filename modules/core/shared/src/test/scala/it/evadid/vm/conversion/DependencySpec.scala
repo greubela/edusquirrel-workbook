@@ -5,7 +5,7 @@ import it.evadid.vm.code.defining.{BeDefineClass, BeDefineFunction, BeIntrinsic}
 import it.evadid.vm.code.usage.BeFunctionCall
 import it.evadid.vm.conversion.dependencies.KnownDependencies
 import it.evadid.vm.conversion.printing.ModuleLayout
-import it.evadid.workbook.elements.interactionElements.programming.state.*
+import it.evadid.workbook.interactions.programming.state.*
 import it.evadid.vm.compilation.java.turtle.JavaTurtleCompiler
 import it.evadid.vm.simulation.java.JavaTurtleInterpreter
 import munit.FunSuite

@@ -1,5 +1,7 @@
 package it.evadid.homepage.workbook.htmlRenderer.interactionRenderer.slideshow
 
+import it.evadid.workbook.control.InteractionSignals.*
+
 import it.evadid.homepage.control.model.FullInfo
 
 import com.raquo.laminar.api.L.{child, *}
@@ -7,9 +9,9 @@ import it.evadid.core.datastructures.state.StateHelper.StateBasedVar
 import it.evadid.homepage.workbook.htmlRenderer.HtmlRenderFactory
 import it.evadid.homepage.workbook.htmlRenderer.HtmlRenderFactory.LineBasedRenderingFactory
 import it.evadid.homepage.workbook.htmlRenderer.atomarLineRenderings.*
-import it.evadid.workbook.elements.interactionElements.slideshow.*
-import it.evadid.workbook.interaction.sync.UpdateImportance
-import it.evadid.workbook.interaction.sync.UpdateImportance.MAJOR
+import it.evadid.workbook.interactions.slideshow.*
+import it.evadid.workbook.sync.UpdateImportance
+import it.evadid.workbook.sync.UpdateImportance.MAJOR
 
 /** Navigation records visits; completion is evaluated by the shared slideshow grader. */
 object HtmlSlideshowEditor extends LineBasedRenderingFactory[Slideshow] {
@@ -19,7 +21,7 @@ object HtmlSlideshowEditor extends LineBasedRenderingFactory[Slideshow] {
    * When navigation succeeds, the method updates the bound interaction state through the model-level transition recorder instead of constructing event data directly.
    */
   override protected def createRendering(fullInfo: FullInfo, workbookElement: Slideshow): AtomarLineRendering = {
-    val stateVar = workbookElement.interactionVariable.createBoundStateWithUpdateImportance(MAJOR, fullInfo.workbookContextInformation).toAirstreamVar
+    val stateVar = fullInfo.interactions.boundVar(workbookElement, MAJOR)
     val totalSlides = workbookElement.panelSize
 
     def safeIndex(state: SlideshowState): Int = {

@@ -6,7 +6,7 @@ import it.evadid.evacuation.core.graphic.sprites.traits.FloorSprite
 import it.evadid.evacuation.core.graphic.spritemap.*
 import it.evadid.evacuation.core.io.instances.eva.config.DefaultMetaConfig
 import it.evadid.evacuation.eva2.model.{EvaFloorMap, Person}
-import it.evadid.workbook.model.evacuation.*
+import it.evadid.workbook.interactions.evacuation.*
 
 /** A minimal construction palette using EVA2's actual movement properties, not a second simulator. */
 object EvacuationFloorAdapter {

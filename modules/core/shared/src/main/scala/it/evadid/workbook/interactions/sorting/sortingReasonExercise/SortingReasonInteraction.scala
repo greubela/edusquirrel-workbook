@@ -1,0 +1,58 @@
+package it.evadid.workbook.interactions.sorting.sortingReasonExercise
+
+import it.evadid.core.datastructures.language.LanguageMapContentId
+import it.evadid.core.util.io.Serializer
+import it.evadid.core.util.io.serializer.{DefaultSerializer}
+import it.evadid.core.util.io.serializer.DefaultSerializer.given
+import it.evadid.workbook.abstractions.InteractionFormat.SortingReasonInteractionFormat
+import it.evadid.workbook.abstractions.{InteractionFormat, WorkbookElement, WorkbookInteractionElement, *}
+import it.evadid.workbook.serialization.WorkbookElementFactory.SimpleWorkbookElementFactory
+import it.evadid.workbook.serialization.WorkbookElementSerializable
+import it.evadid.workbook.history.InteractionHistory
+import upickle.default.*
+
+case class SortingReasonInteraction(
+                                     override val elementId: String,
+                                     fields: Seq[LanguageMapContentId],
+                                     items: Seq[SortingReasonItem],
+                                     openButtonLabel: LanguageMapContentId = LanguageMapContentId("basic/startSortingReasonActivity")
+                                   ) extends WorkbookInteractionElement[SortingReasonInteractionFormat.type] {
+
+  override val associatedFactory = SortingReasonInteraction.factory
+
+  override val defaultValue: SortingReasonInteractionState =
+    SortingReasonInteractionState.initial(items.size)
+
+  override lazy val childrenOfThisElement: Seq[WorkbookElement] = List()
+
+}
+
+case class SortingReasonItem(
+                              label: LanguageMapContentId,
+                              correctFieldIndex: Int,
+                              wrongFeedback: LanguageMapContentId,
+                              reasonPrompt: LanguageMapContentId
+                            ) derives ReadWriter
+
+object SortingReasonInteraction  {
+
+   val factory = new SimpleWorkbookElementFactory[SortingReasonInteraction]() {
+    override protected val constructorFieldOrder = List("elementId", "fields", "items", "openButtonLabel")
+    override def finishSerialization(baseElement: WorkbookElementSerializable, e: SortingReasonInteraction): WorkbookElementSerializable = {
+      baseElement
+        .withElementsAddedAs[LanguageMapContentId]("fields", e.fields)
+        .withElementsAddedAs[SortingReasonItem]("items", e.items)
+        .withElementAddedAs[LanguageMapContentId]("openButtonLabel", e.openButtonLabel)
+    }
+
+    override def finishDeserialization(f: WorkbookElementSerializable): SortingReasonInteraction = {
+      SortingReasonInteraction(
+        f.elementId,
+        f.getElementsAs[LanguageMapContentId]("fields"),
+        f.getElementsAs[SortingReasonItem]("items"),
+        f.getElementAs[LanguageMapContentId]("openButtonLabel")
+      )
+
+    }
+  }
+}

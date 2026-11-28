@@ -29,11 +29,11 @@ object JavaType {
 
   case object JAVA_INTEGER_BIN extends JavaType[BigInt]("int", Serializer.intBinaryIO, Serializer.intBinaryIO) with GenericNumericalInteger
 
-  case object JAVA_FLOAT extends JavaType[Double]("double", Serializer.fromImplicitRW[Double], Serializer.fromImplicitRW[Double]) with GenericNumericalFractional
+  case object JAVA_FLOAT extends JavaType[Double]("double", Serializer.fromUpickleJson[Double], Serializer.fromUpickleJson[Double]) with GenericNumericalFractional
 
-  case object JAVA_STRING extends JavaType[String]("String", Serializer.fromImplicitRW[String], Serializer.fromImplicitRW[String])
+  case object JAVA_STRING extends JavaType[String]("String", Serializer.fromUpickleJson[String], Serializer.fromUpickleJson[String])
 
-  case object JAVA_BOOL extends JavaType[Boolean]("boolean", Serializer.fromImplicitRW[Boolean], Serializer.fromImplicitRW[Boolean])
+  case object JAVA_BOOL extends JavaType[Boolean]("boolean", Serializer.fromUpickleJson[Boolean], Serializer.fromUpickleJson[Boolean])
 
   case object JAVA_ANY extends JavaType[String]("Object", rawStringIO, rawStringIO)
 

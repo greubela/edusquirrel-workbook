@@ -1,0 +1,61 @@
+package it.evadid.workbook.elements.display
+
+import it.evadid.workbook.serialization.WorkbookElementFactory.constructorLayout
+
+import it.evadid.core.datastructures.language.LanguageMapContentId
+import it.evadid.core.util.io.serializer.DefaultSerializer
+import it.evadid.workbook.abstractions.{WorkbookDisplayElement, WorkbookElement}
+import it.evadid.workbook.elements.display.LabeledWorkbookElement.WorkbookLabel
+import it.evadid.workbook.elements.structure.Workbook
+import it.evadid.workbook.serialization.{WorkbookElementFactory, WorkbookElementReference, WorkbookElementSerializable}
+import upickle.default.*
+
+case class LabeledWorkbookElement[T <: WorkbookElement](override val elementId: String, baseElement: T, label: WorkbookLabel) extends WorkbookDisplayElement {
+  override lazy val childrenOfThisElement: Seq[WorkbookElement] = List(baseElement)
+
+  override val associatedFactory: WorkbookElementFactory[? <: WorkbookElement] = LabeledWorkbookElement.factory
+}
+
+object LabeledWorkbookElement {
+
+  lazy val factory: WorkbookElementFactory[LabeledWorkbookElement[WorkbookElement]] = new WorkbookElementFactory[LabeledWorkbookElement[WorkbookElement]](){
+    override lazy val elementMapAndOrderForConstructorLike = constructorLayout("elementId", "baseElement", "label")
+
+    override def idsRequiredForDeserialization(element: WorkbookElementSerializable): Set[String] =
+      Set(element.getElementAs[WorkbookElementReference]("baseElement").referencedId)
+
+    override def toSerializableElement(element: LabeledWorkbookElement[WorkbookElement]): WorkbookElementSerializable = {
+      toFactoryBase(element)
+        .withElementAddedAs[WorkbookElementReference]("baseElement", element.baseElement.asRef)
+        .withElementAddedAs[WorkbookLabel]("label", element.label)
+    }
+
+    override def fromSerializedElement(element: WorkbookElementSerializable, parsedElements: Map[String, WorkbookElement]): LabeledWorkbookElement[WorkbookElement] = {
+
+      LabeledWorkbookElement(
+        element.elementId,
+        element.getAndResolveWorkbookElement[WorkbookElement]("baseElement", parsedElements),
+        element.getElementAs[WorkbookLabel]("label")
+      )
+    }
+  }
+
+
+  @upickle.implicits.key("WorkbookLabel")
+  case class WorkbookLabel(contentId: LanguageMapContentId, labelType: LabelType) derives ReadWriter
+
+  sealed trait LabelType(val associatedCssString: String) derives ReadWriter
+
+  @upickle.implicits.key("SafetyLabel")
+  case object SafetyLabel extends LabelType("instruction-safety");
+
+  @upickle.implicits.key("GoalLabel")
+  case object GoalLabel extends LabelType("instruction-goal");
+
+  @upickle.implicits.key("TaskLabel")
+  case object TaskLabel extends LabelType("instruction-task");
+
+  @upickle.implicits.key("HintLabel")
+  case object HintLabel extends LabelType("instruction-hint")
+
+}

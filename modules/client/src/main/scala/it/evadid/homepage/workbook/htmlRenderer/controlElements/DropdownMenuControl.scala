@@ -1,5 +1,7 @@
 package it.evadid.homepage.workbook.htmlRenderer.controlElements
 
+import it.evadid.workbook.control.InteractionSignals.*
+
 import it.evadid.homepage.control.model.FullInfo
 
 import it.evadid.workbook.session.AllWorkbookInfo
@@ -19,7 +21,7 @@ import scala.scalajs.concurrent.JSExecutionContext.Implicits.queue
 import scala.util.{Failure, Success}
 import org.scalajs.dom
 import it.evadid.core.datastructures.state.StateHelper.RichObservableValue
-import it.evadid.workbook.interaction.sync.SyncResetState
+import it.evadid.workbook.sync.SyncResetState
 
 case class DropdownMenuControl(fullInfo: FullInfo, curWorkbook: Option[AllWorkbookInfo], curUser: Option[AllUserInfo]) extends HtmlAppElement {
 
@@ -27,7 +29,7 @@ case class DropdownMenuControl(fullInfo: FullInfo, curWorkbook: Option[AllWorkbo
   private val credentialsOpen = Var(false)
 
 
-  private val resetState = fullInfo.syncControl.resetState
+  private val resetState = fullInfo.interactions.resetStateSignal
   private val resetLabel: Signal[String] = LabelSelection(resetState,
     Seq("basic/resetAllData", "basic/resetAllDataRunning", "basic/resetAllDataRetry"), laminarHelper(fullInfo).plaintextStringSignal) {
       case SyncResetState.Idle | SyncResetState.Completed => Some("basic/resetAllData")
@@ -44,7 +46,7 @@ case class DropdownMenuControl(fullInfo: FullInfo, curWorkbook: Option[AllWorkbo
       .getOrElse("Clear all configured local answer stores and delete your saved answers and feedback across all workbooks? This cannot be undone.")
     if !resetState.now().isInstanceOf[SyncResetState.Running] && dom.window.confirm(message) then {
       val owner = resetOwner
-      fullInfo.syncControl.resetAllData().onComplete {
+      fullInfo.interactions.sync.resetAllData().onComplete {
         case Success(_) if resetOwner == owner => dom.window.location.reload()
         case Success(_) => ()
         case Failure(error) => logger.logExceptionWarn("Reset was not confirmed by every destination", error)

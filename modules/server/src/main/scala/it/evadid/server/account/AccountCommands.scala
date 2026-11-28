@@ -13,7 +13,7 @@ import it.evadid.util.logging.Logger
 
 import java.nio.charset.StandardCharsets.UTF_8
 import java.security.MessageDigest
-import java.time.LocalDateTime
+import java.time.Instant
 import scala.concurrent.Future
 
 /** Registration, login and account updates on the backend database. */
@@ -83,7 +83,7 @@ object AccountCommands {
       case Some(code) if !MessageDigest.isEqual(code.token.getBytes(UTF_8), submitted.token.getBytes(UTF_8)) =>
         logger.logWarn("Dismissing login code: code invalid!")
         false
-      case Some(code) if code.expires.isBefore(LocalDateTime.now()) =>
+      case Some(code) if code.expires.isBefore(Instant.now()) =>
         logger.logWarn(s"Dismissing login code: it expired at ${code.expires}!")
         false
       case Some(_) => true

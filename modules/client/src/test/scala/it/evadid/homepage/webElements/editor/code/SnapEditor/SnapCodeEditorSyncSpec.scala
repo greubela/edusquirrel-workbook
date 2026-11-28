@@ -2,12 +2,11 @@ package it.evadid.homepage.webElements.editor.code.SnapEditor
 
 import it.evadid.core.datastructures.language.AppLanguage.{Java, Python, SnapLanguage}
 
-import it.evadid.workbook.elements.interactionElements.programming.state.{ProgrammingState, ProgrammingStateRaw, ProgrammingStateSnapScalaModel}
+import it.evadid.workbook.interactions.programming.state.{ProgrammingState, ProgrammingStateRaw, ProgrammingStateSnapScalaModel}
 
 import com.raquo.airstream.ownership.{ManualOwner, Owner}
 import com.raquo.laminar.api.L.*
 import com.raquo.airstream.state.Var
-import it.evadid.homepage.webElements.editor.code.SnapEditor.{CanvasVisibility, SnapCodeEditorConfig}
 import it.evadid.core.datastructures.language.AppLanguage.*
 import munit.FunSuite
 import SnapProjectBindingSpec.FakeNative

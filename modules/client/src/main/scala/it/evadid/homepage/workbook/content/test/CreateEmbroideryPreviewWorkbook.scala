@@ -8,12 +8,12 @@ import it.evadid.homepage.control.model.*
 import it.evadid.homepage.workbook.content.WorkbookFactory
 import it.evadid.homepage.workbook.content.wip.EmbroideryPreviewTargets
 import it.evadid.workbook.abstractions.WorkbookElement
-import it.evadid.workbook.elements.interactionElements.gpt.GptInteractionElement
-import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseRegular.ProgrammingExercise
-import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseTurtle.{RecreateTurtleDidacticConfig, TurtleDrawingPolicy, TurtleGraphic, TurtleRecreateShapeInteraction, TurtleStitchExploreProjectElement}
-import it.evadid.workbook.elements.interactionElements.programming.state.ProgrammingStateRaw
-import it.evadid.workbook.elements.interactionElements.programming.state.snap.ProgrammingEditorPalette
-import it.evadid.workbook.elements.structureElements.{Workbook, WorkbookSection}
+import it.evadid.workbook.interactions.gpt.GptInteractionElement
+import it.evadid.workbook.interactions.programming.programmingExerciseRegular.ProgrammingExercise
+import it.evadid.workbook.interactions.programming.programmingExerciseTurtle.{RecreateTurtleDidacticConfig, TurtleDrawingPolicy, TurtleGraphic, TurtleRecreateShapeInteraction, TurtleStitchExploreProjectElement}
+import it.evadid.workbook.interactions.programming.state.ProgrammingStateRaw
+import it.evadid.workbook.interactions.programming.state.snap.ProgrammingEditorPalette
+import it.evadid.workbook.elements.structure.{Workbook, WorkbookSection}
 
 /** Separate digital edition: preserves the original workbook and its saved responses. */
 case class CreateEmbroideryPreviewWorkbook(override val fullInfo: FullInfo) extends WorkbookFactory {
@@ -260,7 +260,7 @@ case class CreateEmbroideryPreviewWorkbook(override val fullInfo: FullInfo) exte
   private lazy val fifthSection: WorkbookSection = section("Section5", "embroiderypreviewworkbook/section5Title", List(
     container("embroiderypreviewworkbook/S5E1Title", List(prompt("S5Modulo")) ++
       (1 to 7).toList.map(i => numberInput("embroiderypreviewworkbook/modulo" + i,
-        it.evadid.workbook.elements.interactionElements.basic.LabeledNumberInteraction.NumberType.IntegerLike,
+        it.evadid.workbook.interactions.basic.LabeledNumberInteraction.NumberType.IntegerLike,
         defaultValue = "", elementId = "embroidery-preview-modulo-" + i))),
     container("embroiderypreviewworkbook/S5E2Title", List(
       prompt("S5Predict"), answer("condition-prediction"),

@@ -11,14 +11,14 @@ import it.evadid.homepage.webElements.editor.code.EditorDomSuite
 import it.evadid.util.DownloadToDisc
 import it.evadid.util.logging.BasicLogger
 import it.evadid.workbook.abstractions.grading.GradingStatus
-import it.evadid.workbook.elements.interactionElements.basic.TextInteraction
-import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseTurtle.{TurtleGraphic, TurtleRecreateShapeInteraction}
-import it.evadid.workbook.elements.interactionElements.programming.state.{ProgrammingState, ProgrammingStateRaw}
-import it.evadid.workbook.elements.structureElements.{Workbook, WorkbookSection}
-import it.evadid.workbook.elements.structureElements.Workbook.WorkbookMetadata
-import it.evadid.workbook.elements.structureElements.WorkbookSection.WorkbookSectionMetadata
-import it.evadid.workbook.interaction.sync.UpdateImportance
-import it.evadid.workbook.meta.ExecutionContextInformation
+import it.evadid.workbook.interactions.basic.TextInteraction
+import it.evadid.workbook.interactions.programming.programmingExerciseTurtle.{TurtleGraphic, TurtleRecreateShapeInteraction}
+import it.evadid.workbook.interactions.programming.state.{ProgrammingState, ProgrammingStateRaw}
+import it.evadid.workbook.elements.structure.{Workbook, WorkbookSection}
+import it.evadid.workbook.elements.structure.Workbook.WorkbookMetadata
+import it.evadid.workbook.elements.structure.WorkbookSection.WorkbookSectionMetadata
+import it.evadid.workbook.sync.UpdateImportance
+import it.evadid.workbook.abstractions.ExecutionContextInformation
 import scala.concurrent.{ExecutionContext, Future, Promise}
 import scala.scalajs.js
 
@@ -73,12 +73,11 @@ class SessionFileJourneySpec extends EditorDomSuite {
   test("a downloaded session file continues in a fresh page with nobody signed in: user, workbook, answers and grading") {
     val first = client(Some(workbook()), Some(user))
     val answer: ProgrammingState = program.toSnapXml
-    interaction(first, "square").asInstanceOf[TurtleRecreateShapeInteraction].interactionVariable
-      .setStateFromUserInteraction(answer, UpdateImportance.MAJOR, context = ExecutionContextInformation.default)
-    interaction(first, "note").asInstanceOf[TextInteraction].interactionVariable
-      .setStateFromUserInteraction("my reasoning", UpdateImportance.MAJOR, context = ExecutionContextInformation.default)
+    first.interactions.setStateFromUserInteraction(interaction(first, "square").asInstanceOf[TurtleRecreateShapeInteraction],
+      answer, UpdateImportance.MAJOR)
+    first.interactions.setStateFromUserInteraction(interaction(first, "note").asInstanceOf[TextInteraction], "my reasoning", UpdateImportance.MAJOR)
     val logger = BasicLogger()
-    captureDownload(WorkbookUserDataAnalyzer().downloadAllData(logger, DownloadToDisc(logger), first.homepageInfoNow())).flatMap { (name, content) =>
+    captureDownload(WorkbookUserDataAnalyzer().downloadAllData(logger, DownloadToDisc(logger), first.homepageInfoNow(), first.interactions.info)).flatMap { (name, content) =>
       assert(name.endsWith("_journey_workbook.eva") && name.contains(user.user.id), name)
       assert(!content.contains("signedBackendToken\":{"), "the file holds no credentials")
       val second = client(None, None)
@@ -86,13 +85,13 @@ class SessionFileJourneySpec extends EditorDomSuite {
         assertEquals(second.current.userInfo.map(_.user.id), Some(user.user.id), "the session's user is registered locally")
         assertEquals(second.current.workbookInfo.map(_.loadedWorkbook.workbookId), Some("journey/workbook"))
         val restored = interaction(second, "square").asInstanceOf[TurtleRecreateShapeInteraction]
-        assertEquals(restored.interactionVariable.currentValue, answer)
-        assertEquals(interaction(second, "note").asInstanceOf[TextInteraction].interactionVariable.currentValue, "my reasoning")
-        restored.interactionVariable.control.getOrCalculateGrading(ExecutionContextInformation.default)
-          .flatMap(_ => restored.interactionVariable.control.getOrCalculateGrading(ExecutionContextInformation.default, forceGrading = true)).map { graded =>
+        assertEquals(second.interactions.currentValue(restored), answer)
+        assertEquals(second.interactions.currentValue(interaction(second, "note").asInstanceOf[TextInteraction]), "my reasoning")
+        second.interactions.feedback(restored).getOrCalculateGrading()
+          .flatMap(_ => second.interactions.feedback(restored).getOrCalculateGrading(forceGrading = true)).map { graded =>
           assertEquals(graded.testsWithResults.head.gradingStatus, GradingStatus.Correct, "the restored reporter answer still draws the square")
           List(Python, Java).foreach { language =>
-            val converted = restored.interactionVariable.currentValue.convertToLanguage(language).finalState.get
+            val converted = second.interactions.currentValue(restored).convertToLanguage(language).finalState.get
             assertEquals(converted.toBeExpression.turtleCommandExecutionInfo.completedCommands, square.toTurtleProgram.toList, language.toString)
           }
         }

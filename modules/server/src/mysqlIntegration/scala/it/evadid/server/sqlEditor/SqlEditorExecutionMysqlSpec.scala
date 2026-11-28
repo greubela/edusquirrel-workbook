@@ -2,7 +2,7 @@ package it.evadid.server.sqlEditor
 
 import it.evadid.distribution.commandTypes.SqlEditorCommands.*
 import it.evadid.server.database.MysqlTestDatabase
-import it.evadid.workbook.elements.interactionElements.sql.SqlDatabaseConfig
+import it.evadid.workbook.interactions.sql.SqlDatabaseConfig
 import munit.FunSuite
 
 /** The SQL editor against a real MySQL teaching database: results, errors and the schema shown next to them. */

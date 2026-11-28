@@ -8,7 +8,7 @@ import it.evadid.workbook.abstractions.{InteractionFormat, WorkbookInteractionEl
 /** Current values of the central homepage state, for imperative callers outside signals. */
 case class HomepageCurrentInfo(fullInfo: FullInfo) {
 
-  private def now(): HomepageInfo = fullInfo.homepageInfoState.now()
+  private def now(): HomepageInfo = fullInfo.homepage.now()
 
   def workbookInfo: Option[AllWorkbookInfo] = now().workbookInfo
 

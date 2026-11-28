@@ -4,12 +4,12 @@ import it.evadid.core.datastructures.language.LanguageMapContentId
 import it.evadid.core.datastructures.user.User
 import it.evadid.homepage.control.model.FullInfo
 import it.evadid.homepage.workbook.content.WorkbookFactory
-import it.evadid.workbook.elements.interactionElements.choice.WorkbookContentChoiceInteraction
-import it.evadid.workbook.elements.interactionElements.neuron.*
-import it.evadid.workbook.elements.interactionElements.pixel.*
-import it.evadid.workbook.elements.interactionElements.table.*
-import it.evadid.workbook.elements.structureElements.Workbook
-import it.evadid.workbook.model.pixel.*
+import it.evadid.workbook.interactions.choice.WorkbookContentChoiceInteraction
+import it.evadid.workbook.interactions.neuron.*
+import it.evadid.workbook.interactions.pixel.*
+import it.evadid.workbook.interactions.table.*
+import it.evadid.workbook.elements.structure.Workbook
+import it.evadid.workbook.interactions.pixel.*
 
 /** Partial adaptation including robustness/generalization and the school-chatbot advisory activity. */
 case class CreateImageRecognitionWorkbook(fullInfo: FullInfo) extends WorkbookFactory {

@@ -7,7 +7,7 @@ import it.evadid.vm.conversion.dependencies.{KnownDependencies, ProgrammingEnvir
 import it.evadid.vm.naming.BeEntityName
 import it.evadid.vm.code.errors.BeSourcePlaceholder
 import it.evadid.vm.simulation.turtle.TurtleExecutionStatus
-import it.evadid.workbook.elements.interactionElements.programming.state.{ProgrammingState, ProgrammingStateJavaStructured, ProgrammingStatePythonStructured, ProgrammingStateRaw}
+import it.evadid.workbook.interactions.programming.state.{ProgrammingState, ProgrammingStateJavaStructured, ProgrammingStatePythonStructured, ProgrammingStateRaw}
 import upickle.default.ReadWriter
 
 import scala.util.Try

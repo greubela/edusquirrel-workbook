@@ -30,7 +30,7 @@ test('test workbook preserves edits across human languages, programming language
       };
       window.snapAnswerEvents = () => {
         const saved = snapHistoryWrites.at(-1);
-        return saved ? JSON.parse(JSON.parse(saved).historyJson).events.values
+        return saved ? JSON.parse(saved).historyJson.events.values
           .filter(event => event.$type === 'AnswerChangedEvent') : [];
       };
       window.snapSavedForward = value => {
@@ -183,7 +183,7 @@ test('test workbook preserves edits across human languages, programming language
           id: JSON.stringify({programId:'edusquirrel', scenarioId:'workbookTest', userId:'probe',
             keyForSerialisation:'unrelated-exercise_history'}),
           value: JSON.stringify({format:'TextInputWithLlmGradingAndScaffoldingFormat',
-            historyJson:JSON.stringify({events:{values:[]}})})
+            historyJson:{events:{values:[]}}})
         });
         transaction.oncomplete = () => { db.close(); resolve(); };
         transaction.onabort = () => { db.close(); reject(transaction.error); };

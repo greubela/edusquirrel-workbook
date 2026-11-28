@@ -5,14 +5,14 @@ import it.evadid.core.datastructures.language.LanguageMapContentId
 import it.evadid.homepage.control.model.FullInfo
 import it.evadid.homepage.workbook.htmlRenderer.LaminarRenderHelper
 import it.evadid.workbook.abstractions.{InteractionFormat, WorkbookInteractionElement}
-import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseTurtle.ProgramStructureGrader
-import it.evadid.workbook.elements.interactionElements.programming.ProgrammingTestGrader
-import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseRegular.{ProgramDataTestGrader, ProgrammingUnitTestGrader}
-import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseTurtle.{CommandUsageMeasure, RecreateShapeGrader, TurtleCommandUsageGrader}
+import it.evadid.workbook.interactions.programming.programmingExerciseTurtle.ProgramStructureGrader
+import it.evadid.workbook.interactions.programming.ProgrammingTestGrader
+import it.evadid.workbook.interactions.programming.programmingExerciseRegular.{ProgramDataTestGrader, ProgrammingUnitTestGrader}
+import it.evadid.workbook.interactions.programming.programmingExerciseTurtle.{CommandUsageMeasure, RecreateShapeGrader, TurtleCommandUsageGrader}
 import it.evadid.homepage.control.info.interaction.GradingReporter
-import it.evadid.workbook.elements.interactionElements.matching.MatchingGrader
+import it.evadid.workbook.interactions.matching.MatchingGrader
 import it.evadid.workbook.abstractions.FeedbackEntity
-import it.evadid.workbook.meta.{GradingSummary, ScaffoldingReport}
+import it.evadid.workbook.reports.{GradingSummary, ScaffoldingReport}
 import it.evadid.homepage.webElements.basic.LabelSelection
 import FeedbackPresentation.*
 import scala.concurrent.{ExecutionContext, Future}
@@ -25,7 +25,6 @@ private[interactionInfo] final class InteractionFeedbackView[F <: InteractionFor
     helper: LaminarRenderHelper
 ) {
   private given ExecutionContext = ExecutionContext.global
-  private val variable = interaction.interactionVariable
   val disabled = reporter.disabled
   val grading = reporter.summary
   val scaffolding = reporter.scaffolding
@@ -87,6 +86,6 @@ private[interactionInfo] final class InteractionFeedbackView[F <: InteractionFor
       outcome.failed.foreach(error => fullInfo.loggerSystemInfo.uiAndDomLogger.logExceptionWarn("Could not request interaction feedback", error))
     }
   }
-  def requestGrading(): Unit = request(variable.control.getOrCalculateGrading(fullInfo.workbookContextInformation, forceGrading = true))
-  def requestScaffolding(): Unit = request(variable.control.getOrCalculateScaffolding(fullInfo.workbookContextInformation, retryErrors = true))
+  def requestGrading(): Unit = request(fullInfo.interactions.feedback(interaction).getOrCalculateGrading(forceGrading = true))
+  def requestScaffolding(): Unit = request(fullInfo.interactions.feedback(interaction).getOrCalculateScaffolding(retryErrors = true))
 }

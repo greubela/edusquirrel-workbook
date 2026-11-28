@@ -17,7 +17,7 @@ import it.evadid.server.{BlockingExecution, ServerConfig}
 import it.evadid.util.logging.Logger
 
 import java.net.InetAddress
-import java.time.LocalDateTime
+import java.time.Instant
 import scala.concurrent.{ExecutionContext, Future}
 
 /** Routes execution commands to their handlers under each handler's [[CommandAccess]] rule. */
@@ -61,7 +61,7 @@ final class BackendCommandHandler(config: ServerConfig, val tokens: SignedTokens
   )
 
   /** Fails, rather than throws, for an unnamed command or one that needs an account the request does not have. */
-  def handleExecution(commandReceived: LocalDateTime, executionCommand: ExecutionCommand, verifiedToken: Option[SignedToken],
+  def handleExecution(commandReceived: Instant, executionCommand: ExecutionCommand, verifiedToken: Option[SignedToken],
                       remoteAddress: InetAddress, logger: Logger): Future[ExecutionClientResponse] = Future.delegate {
     require(executionCommand.name.trim.nonEmpty, "ExecutionCommand.name must not be empty")
     logReceivedCommand(executionCommand, logger)

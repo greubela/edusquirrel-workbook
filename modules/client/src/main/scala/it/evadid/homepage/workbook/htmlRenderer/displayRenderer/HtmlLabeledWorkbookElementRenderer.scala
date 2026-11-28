@@ -6,7 +6,7 @@ import it.evadid.homepage.workbook.htmlRenderer.HtmlRenderFactory.LineBasedRende
 import it.evadid.homepage.workbook.htmlRenderer.atomarLineRenderings.{AtomarLineRendering, RenderingWithLabel}
 import it.evadid.homepage.workbook.htmlRenderer.{HtmlRenderFactory, HtmlWorkbookElement}
 import it.evadid.workbook.abstractions.WorkbookElement
-import it.evadid.workbook.elements.displayElements.LabeledWorkbookElement
+import it.evadid.workbook.elements.display.LabeledWorkbookElement
 
 case class HtmlLabeledWorkbookElementRenderer[T <: WorkbookElement](entry: LabeledWorkbookElement[T]) extends LineBasedRenderingFactory[LabeledWorkbookElement[T]]  {
 

@@ -1,12 +1,13 @@
 package it.evadid.distribution.clients
 
+
 import it.evadid.distribution.command.*
 import it.evadid.distribution.formats.ExecutionClientResponse
 import it.evadid.util.logging.Logger
 import it.evadid.util.logging.derived.PrintToStdLogger
 import upickle.default.*
 
-import java.time.LocalDateTime
+import java.time.Instant
 import scala.concurrent.{ExecutionContext, Future}
 
 trait ExecutionClient {
@@ -24,7 +25,7 @@ trait ExecutionClient {
   protected def defaultLogger: Logger = Logger.withNameAndPrefixes(Some(this.getClass.getSimpleName), PrintToStdLogger.printWarnAndError)
 
   def handleCommand[T: ReadWriter](logger: Logger, executionCommand: ExecutionCommand): Future[ExecutionInfo[T]] = {
-    val timestampRequested: LocalDateTime = LocalDateTime.now()
+    val timestampRequested: Instant = Instant.now()
     handleCommandExecution(logger, executionCommand)
       .map(_.parse[T](logger, executionCommand, timestampRequested))
   }

@@ -1,0 +1,93 @@
+{
+  "format": "ReorderCodeInteractionFormat",
+  "historyJson": {
+    "events": {
+      "values": [
+        {
+          "$type": "AnswerChangedEvent",
+          "newState": {
+            "elements": [
+              "int feuchtigkeitsGrenze = 400;",
+              "digitalWrite(SENSOR_POWER_PIN, HIGH);",
+              "delay(10);",
+              "int messwert = analogRead(SENSOR_PIN);",
+              "digitalWrite(SENSOR_POWER_PIN, LOW);",
+              "if (messwert < feuchtigkeitsGrenze) {",
+              "  digitalWrite(PUMP_PIN, HIGH);",
+              "  delay(2000);",
+              "  digitalWrite(PUMP_PIN, LOW);",
+              "} else {",
+              "  Serial.println(\"Boden feucht - keine Bewässerung nötig\");",
+              "}",
+              "delay(10000);"
+            ],
+            "currentOrder": [
+              1,
+              0,
+              6,
+              12,
+              11,
+              3,
+              9,
+              2,
+              10,
+              7,
+              8,
+              4,
+              5
+            ],
+            "correctOrder": [
+              0,
+              1,
+              2,
+              3,
+              4,
+              5,
+              6,
+              7,
+              8,
+              9,
+              10,
+              11,
+              12
+            ],
+            "elementType": "CODELINES(C)"
+          },
+          "timestamp": "2026-11-28T12:00:00.123456789Z",
+          "updateImportance": "MAJOR",
+          "eventId": "00000000-0000-4000-8000-000000000001"
+        },
+        {
+          "$type": "GradingStartedEvent",
+          "state": "StateReference(sha256:5d48ce25041817d0d75afa2a2b28cba2b8b6d95ec01a3205a58fbf4a34a9a358)",
+          "timestamp": "2026-11-28T12:00:00.123456790Z",
+          "grader": "GraderReference(sha256:1dece514c2f291ddfbc486d7c218c615272430db260eb7013564e3c1338c9c51)",
+          "eventId": "00000000-0000-4000-8000-000000000002"
+        },
+        {
+          "$type": "GradingCompletedEvent",
+          "record": {
+            "grader": "GraderReference(sha256:1dece514c2f291ddfbc486d7c218c615272430db260eb7013564e3c1338c9c51)",
+            "state": "StateReference(sha256:5d48ce25041817d0d75afa2a2b28cba2b8b6d95ec01a3205a58fbf4a34a9a358)",
+            "gradingStatus": "Incorrect",
+            "feedbackInformation": {
+              "$type": "LanguageMapBasedContent",
+              "languageMap": {
+                "$type": "LanguageMapMapBased",
+                "pMap": [
+                  [
+                    "English",
+                    "Feedback"
+                  ]
+                ]
+              }
+            },
+            "additionalData": null,
+            "gradingTime": "2026-11-28T12:00:00.123456791Z"
+          },
+          "eventId": "00000000-0000-4000-8000-000000000003"
+        }
+      ]
+    }
+  }
+}

@@ -13,7 +13,7 @@ import it.evadid.vm.types.{BeDataType, BeDataValueLiteral}
 
 /** Snap execution metadata becomes ordinary startup and uncalled functions in the shared tree. */
 object SnapToExpression {
-  def convert(document: it.evadid.workbook.elements.interactionElements.programming.state.snap.SnapScalaModel.Document): TurtleStitchToBeExpressionParser.ParseWithLayout = {
+  def convert(document: it.evadid.workbook.interactions.programming.state.snap.SnapScalaModel.Document): TurtleStitchToBeExpressionParser.ParseWithLayout = {
     val project = it.evadid.vm.conversion.turtlestitchexpression.TurtleStitchModelMapper.toProject(document)
     convert(project, SnapExpressionSupport.unsupportedSnapSelectors(document, project))
   }

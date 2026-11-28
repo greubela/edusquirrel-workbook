@@ -6,13 +6,13 @@ import it.evadid.core.datastructures.user.User
 import it.evadid.core.datastructures.vectorShapes.svg.TurtleCommand
 import it.evadid.homepage.control.model.FullInfo
 import it.evadid.workbook.abstractions.WorkbookElement
-import it.evadid.workbook.elements.interactionElements.gpt.TextInputWithScaffoldingAndGrading
-import it.evadid.workbook.elements.interactionElements.gpt.TextInputWithScaffoldingAndGrading.ContentForLlmInteraction
-import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseTurtle.*
-import it.evadid.workbook.elements.interactionElements.programming.state.{ProgrammingStatePythonStructured, ProgrammingStateSnapScalaModel}
-import it.evadid.workbook.elements.interactionElements.programming.state.snap.{PaletteLayout, ProgrammingEditorPalette}
-import it.evadid.workbook.elements.structureElements.Workbook
-import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseRegular.{DataExpectation, ExerciseDataView, ListOperation, ProgramDataTestGrader, ProgrammingExerciseFullJava, SortListExercise, SortingMethod}
+import it.evadid.workbook.interactions.gpt.TextInputWithScaffoldingAndGrading
+import it.evadid.workbook.interactions.gpt.TextInputWithScaffoldingAndGrading.ContentForLlmInteraction
+import it.evadid.workbook.interactions.programming.programmingExerciseTurtle.*
+import it.evadid.workbook.interactions.programming.state.{ProgrammingStatePythonStructured, ProgrammingStateSnapScalaModel}
+import it.evadid.workbook.interactions.programming.state.snap.{PaletteLayout, ProgrammingEditorPalette}
+import it.evadid.workbook.elements.structure.Workbook
+import it.evadid.workbook.interactions.programming.programmingExerciseRegular.{DataExpectation, ExerciseDataView, ListOperation, ProgramDataTestGrader, ProgrammingExerciseFullJava, SortListExercise, SortingMethod}
 import it.evadid.vm.test.ProgrammingTestSuite
 import it.evadid.vm.simulation.data.{DataWorld, SudokuGrid}
 

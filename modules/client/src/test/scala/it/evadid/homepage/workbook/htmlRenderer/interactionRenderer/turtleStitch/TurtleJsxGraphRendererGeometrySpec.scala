@@ -5,7 +5,7 @@ import com.raquo.laminar.api.L
 import it.evadid.core.datastructures.geometry.Point
 import it.evadid.core.datastructures.vectorShapes.svg.TurtleCommand
 import it.evadid.homepage.workbook.htmlRenderer.interactionRenderer.turtleStitch.TurtleJsxGraphRenderer.*
-import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseTurtle.TurtleGraphic
+import it.evadid.workbook.interactions.programming.programmingExerciseTurtle.TurtleGraphic
 import munit.FunSuite
 import org.scalajs.dom
 import scala.collection.mutable.ListBuffer

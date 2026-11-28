@@ -43,7 +43,7 @@ development; reject unsupported data at its storage boundary.
 Unknown email addresses are reported as an unknown account without attempting SMTP.
 Delivery/transport failures display a server-error message and allow retry; they do
 not claim that the email address is wrong. Missing/invalid stored login codes are
-discarded, and requesting a code creates a new one. Token rows accept only JDBC timestamp text.
+discarded, and requesting a code creates a new one. Token expiry rows accept only the canonical nine-digit UTC text.
 
 Account identity and configurable preferences are separate: invalid database
 preferences are discarded and replaced by `UserConfig.defaults(isLocalAccount = false)`. They must

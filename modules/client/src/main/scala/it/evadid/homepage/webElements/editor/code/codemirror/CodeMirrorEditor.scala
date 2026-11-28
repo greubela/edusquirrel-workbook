@@ -15,7 +15,7 @@ import it.evadid.homepage.webElements.editor.code.EvaEditor.{EvaEditorContext, E
 import it.evadid.vm.code.errors.ProgrammingConversionError
 import it.evadid.homepage.webElements.editor.config.CodeMirrorEditorConfig
 import it.evadid.util.logging.Logger
-import it.evadid.workbook.elements.interactionElements.programming.state.*
+import it.evadid.workbook.interactions.programming.state.*
 import org.scalajs.dom
 import org.scalajs.dom.SVGSVGElement
 import scala.scalajs.js

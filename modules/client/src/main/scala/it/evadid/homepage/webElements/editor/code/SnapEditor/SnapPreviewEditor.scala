@@ -4,12 +4,11 @@ package it.evadid.homepage.webElements.editor.code.SnapEditor
 import com.raquo.laminar.api.L.{canvasTag, *}
 import it.evadid.core.datastructures.language.AppLanguage.{English, HumanLanguage}
 import it.evadid.homepage.webElements.HtmlAppElement
-import it.evadid.homepage.webElements.editor.code.SnapEditor.SnapCodeEditorConfig
-import it.evadid.workbook.elements.interactionElements.programming.*
-import it.evadid.workbook.elements.interactionElements.programming.state.*
-import it.evadid.workbook.elements.interactionElements.programming.state.snap.*
-import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseRegular.*
-import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseTurtle.*
+import it.evadid.workbook.interactions.programming.*
+import it.evadid.workbook.interactions.programming.state.*
+import it.evadid.workbook.interactions.programming.state.snap.*
+import it.evadid.workbook.interactions.programming.programmingExerciseRegular.*
+import it.evadid.workbook.interactions.programming.programmingExerciseTurtle.*
 import org.scalajs.dom
 import com.raquo.airstream.ownership.Subscription
 import org.scalajs.dom.html.Canvas

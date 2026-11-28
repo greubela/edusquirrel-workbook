@@ -19,22 +19,27 @@ object CopyrightInfo {
 
   sealed trait LicenceInfo(val licenceName: String, val licenceDescription: LanguageMap[HumanLanguage]) derives ReadWriter
 
+  @upickle.implicits.key("UnknownLicence")
   case object UnknownLicence extends LicenceInfo("Unknown Licence", LanguageMap.universalMap("[Unknown Licence]"))
 
+  @upickle.implicits.key("CC_LICENCE")
   case object CC_LICENCE extends LicenceInfo("CC Licence", LanguageMap.universalMap("[CC Licence]"))
 
   sealed trait AuthorInfo() derives ReadWriter {
     def getName: Option[String]
   }
 
+  @upickle.implicits.key("UnknownAuthorInfo")
   case class UnknownAuthorInfo() extends AuthorInfo derives ReadWriter {
     override def getName: Option[String] = None
   }
 
+  @upickle.implicits.key("AuthorNameInfo")
   case class AuthorNameInfo(name: String) extends AuthorInfo derives ReadWriter {
     override def getName: Option[String] = Some(name)
   }
 
+  @upickle.implicits.key("AiGenerated")
   case class AiGenerated() extends AuthorInfo derives ReadWriter {
     override def getName: Option[String] = Some("AiGenerated")
   }

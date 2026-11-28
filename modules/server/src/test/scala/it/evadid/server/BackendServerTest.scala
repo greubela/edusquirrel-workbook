@@ -7,19 +7,19 @@ import it.evadid.util.logging.BasicLogger
 import munit.FunSuite
 
 import java.net.InetAddress
-import java.time.LocalDateTime
+import java.time.Instant
 
 class BackendServerTest extends FunSuite {
   test("an empty command name fails the returned Future instead of throwing") {
     val commands = BackendCommandHandler(TestServerConfig(), account.SignedTokens("secret"), database.schema.SchemaValidation())
-    commands.handleExecution(LocalDateTime.parse("2026-01-01T08:00:00"), ExecutionCommand("   ", ujson.Obj()), None,
+    commands.handleExecution(Instant.parse("2026-01-01T08:00:00Z"), ExecutionCommand("   ", ujson.Obj()), None,
       InetAddress.getLoopbackAddress, BasicLogger()).failed.map { error =>
       assert(error.getMessage.contains("must not be empty"), error.getMessage)
     }(using scala.concurrent.ExecutionContext.global)
   }
 
   test("server failures use the response envelope understood by execution clients") {
-    val time = LocalDateTime.parse("2026-01-01T08:00:00")
+    val time = Instant.parse("2026-01-01T08:00:00Z")
     val logger = BasicLogger()
     val command = ExecutionCommand("invalid", ujson.Obj())
     val response = HttpApi.fail(time, "Could not parse command", None, Some(command), logger)

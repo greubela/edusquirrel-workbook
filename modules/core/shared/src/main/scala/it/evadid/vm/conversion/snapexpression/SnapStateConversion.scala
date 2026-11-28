@@ -1,7 +1,7 @@
 package it.evadid.vm.conversion.snapexpression
 
 import it.evadid.vm.code.abstractions.BeExpression
-import it.evadid.workbook.elements.interactionElements.programming.state.snap.{SnapScalaModel, SnapTurtleCatalog}
+import it.evadid.workbook.interactions.programming.state.snap.{SnapScalaModel, SnapTurtleCatalog}
 
 
 

@@ -56,7 +56,10 @@ case class TurtleCommandExecutionInfo[T](
 }
 
 enum TurtleExecutionStatus derives ReadWriter {
-  case Completed, LimitExceeded, Cancelled
+  @upickle.implicits.key("Completed") case Completed
+  @upickle.implicits.key("LimitExceeded") case LimitExceeded
+  @upickle.implicits.key("Cancelled") case Cancelled
+  @upickle.implicits.key("Failed")
   case Failed(message: String)
 }
 

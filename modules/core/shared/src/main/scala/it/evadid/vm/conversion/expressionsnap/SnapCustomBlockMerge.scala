@@ -10,12 +10,12 @@ import it.evadid.vm.conversion.snapmodelxml.SnapModelToXml.toXml
 
 import it.evadid.vm.BeProgram
 import it.evadid.vm.code.defining.BeDefineFunction
-import it.evadid.workbook.elements.interactionElements.programming.*
-import it.evadid.workbook.elements.interactionElements.programming.state.*
-import it.evadid.workbook.elements.interactionElements.programming.state.snap.*
-import it.evadid.workbook.elements.interactionElements.programming.state.snap.SnapVocabulary.{BlockCategory, BlockType}
-import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseRegular.*
-import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseTurtle.*
+import it.evadid.workbook.interactions.programming.*
+import it.evadid.workbook.interactions.programming.state.*
+import it.evadid.workbook.interactions.programming.state.snap.*
+import it.evadid.workbook.interactions.programming.state.snap.SnapVocabulary.{BlockCategory, BlockType}
+import it.evadid.workbook.interactions.programming.programmingExerciseRegular.*
+import it.evadid.workbook.interactions.programming.programmingExerciseTurtle.*
 
 /**
  * Python write-back that merges into existing custom-block XML instead of replacing it.

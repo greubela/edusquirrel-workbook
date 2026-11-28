@@ -12,8 +12,8 @@ import it.evadid.homepage.workbook.htmlRenderer.interactionRenderer.turtleStitch
 import it.evadid.homepage.webElements.editor.code.program.ProgramAnalyzer
 import it.evadid.vm.analysis.ProgramAnalysis
 import it.evadid.vm.simulation.turtle.TurtleExecutionStatus
-import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseTurtle.TurtleGraphic
-import it.evadid.workbook.elements.interactionElements.programming.state.ProgrammingState
+import it.evadid.workbook.interactions.programming.programmingExerciseTurtle.TurtleGraphic
+import it.evadid.workbook.interactions.programming.state.ProgrammingState
 
 import scala.concurrent.ExecutionContext
 import scala.concurrent.duration.FiniteDuration

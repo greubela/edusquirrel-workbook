@@ -5,8 +5,8 @@ import it.evadid.core.datastructures.user.User.*
 import it.evadid.core.util.io.ParsingContext
 import it.evadid.server.database.{Database, SqlStatements}
 import it.evadid.util.logging.Logger
-import java.sql.{Connection, ResultSet, Timestamp}
-import java.time.LocalDateTime
+import java.sql.{Connection, ResultSet}
+import java.time.Instant
 import scala.util.Try
 import upickle.default.*
 
@@ -44,7 +44,7 @@ final class AccountRows(connection: Connection, logger: Logger) {
       case None =>
         logger.logWarn("Cannot ensure a login code since the user is unknown!")
         None
-      case Some(_) => getTokenFromDb(userId).filterNot(_.expires.isBefore(LocalDateTime.now())).orElse {
+      case Some(_) => getTokenFromDb(userId).filterNot(_.expires.isBefore(Instant.now())).orElse {
         val token = SingleAccessToken.generateSecureToken()
         upsertToken(userId, token)
         logger.logInfo(s"Created a new login code for user $userId (expires at ${token.expires})")
@@ -53,7 +53,7 @@ final class AccountRows(connection: Connection, logger: Logger) {
     }
 
   def upsertToken(userId: String, token: SingleAccessToken): Int =
-    statements.update(upsertTokenSql, userId, token.token, Timestamp.valueOf(token.expires))
+    statements.update(upsertTokenSql, userId, token.token, token.expires)
 
   /** The account of the current row; malformed settings fall back to the current defaults, an unreadable row is skipped. */
   private def readUser(row: ResultSet): Option[UserInDatabase] = readable("account") {
@@ -80,9 +80,9 @@ final class AccountRows(connection: Connection, logger: Logger) {
 object AccountRows {
   def normalizedMail(mail: String): String = mail.trim.toLowerCase
 
-  /** Reads a JDBC timestamp text such as `2026-10-13 01:40:00.123456`; other formats are rejected. */
-  private[server] def parseDatabaseTimestamp(databaseTimestampString: String): LocalDateTime =
-    Timestamp.valueOf(databaseTimestampString).toLocalDateTime
+  /** Reads a stored time such as `2026-10-13T01:40:00.123456789Z`; other forms are rejected. */
+  private[server] def parseDatabaseTimestamp(databaseTimestampString: String): Instant =
+    SqlStatements.instant(databaseTimestampString)
 
   private val selectUserById = "SELECT `id`, `name`, `mail`, `config` FROM `user` WHERE `id` = ?"
   private val selectUserByMail = "SELECT `id`, `name`, `mail`, `config` FROM `user` WHERE `mail` = ?"

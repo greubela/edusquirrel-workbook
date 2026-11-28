@@ -5,7 +5,7 @@ import it.evadid.distribution.clients.ExecutionClient
 import it.evadid.distribution.command.ExecutionCommandFactory
 import it.evadid.util.logging.Logger
 import java.net.InetAddress
-import java.time.LocalDateTime
+import java.time.Instant
 import scala.concurrent.Future
 
 /** Who may run a command. Every backend handler states its rule; there is no permissive default. */
@@ -36,7 +36,7 @@ object CommandAccess {
   }
 
   /** The request's arrival: when and from where it was received, and the verified account, if any. */
-  final case class RequestContext(received: LocalDateTime, remoteAddress: InetAddress, user: Option[User])
+  final case class RequestContext(received: Instant, remoteAddress: InetAddress, user: Option[User])
 
   /** A command, its access rule and its handler. A handler without login is offered to anonymous requests. */
   final case class Handler[I, O](factory: ExecutionCommandFactory[I, O], access: CommandAccess[I],

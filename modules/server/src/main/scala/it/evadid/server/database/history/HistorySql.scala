@@ -4,9 +4,9 @@ import it.evadid.distribution.commandTypes.SQLCommands.{BulkStoreToDbRequest, Db
 import it.evadid.server.database.{Database, SqlStatements}
 import it.evadid.util.logging.Logger
 import it.evadid.workbook.abstractions.InteractionFormat
-import it.evadid.workbook.interaction.sync.model.InteractionHistoryJson
-import it.evadid.workbook.interaction.sync.{SyncContext, SyncSuccess, UsageContext}
-import it.evadid.workbook.interaction.variable.events.EventId
+import it.evadid.workbook.sync.model.InteractionHistoryJson
+import it.evadid.workbook.sync.{SyncContext, SyncSuccess, UsageContext}
+import it.evadid.workbook.history.events.EventId
 import java.sql.{Connection, ResultSet}
 
 /** Shared statements, row identity and transaction ownership for both history layouts. All SQL is constant text. */
@@ -42,13 +42,14 @@ abstract class HistorySql(connection: Connection, logger: Logger) {
     SyncSuccess.removed(removed)
   }
 
-  /** Inserts the context's row unless present, then locks it until the transaction ends and reads it. */
-  protected final def lockedContextRow[A](context: SyncContext, format: InteractionFormat, initial: Seq[String])(read: ResultSet => A): A = {
+  /** Inserts the context's row unless present, then locks it until the transaction ends and reads it. `read` also
+    * receives whether the stored format is `format`: an exercise whose type changed replaces its earlier history.
+    */
+  protected final def lockedContextRow[A](context: SyncContext, format: InteractionFormat, initial: Seq[String])
+                                         (read: (ResultSet, Boolean) => A): A = {
     val key = identity(context)
     statements.update(contextTable.insertIfAbsent, (key ++ (format.name +: initial))*)
-    val (savedFormat, row) = statements.query(contextTable.lockRow, key*)(row => row.getString("format") -> read(row)).head
-    require(InteractionFormat.fromName(savedFormat) == format, s"History format cannot change for ${context.keyForSerialisation}")
-    row
+    statements.query(contextTable.lockRow, key*)(row => read(row, row.getString("format") == format.name)).head
   }
 
   /** The usage context's rows, optionally limited to `keys`, as (sync context, stored value). */

@@ -5,7 +5,7 @@ import it.evadid.evacuation.eva2.algorithm.escaping.*
 import it.evadid.evacuation.eva2.algorithm.escaping.strategies.ClosestGoalStrategy
 import it.evadid.evacuation.eva2.algorithm.escaping.strategies.ClosestGoalStrategy.{CGSimInfo, CGStepInfo}
 import it.evadid.evacuation.eva2.control.modes.ScenarioPlayerMode
-import it.evadid.workbook.model.evacuation.*
+import it.evadid.workbook.interactions.evacuation.*
 import munit.FunSuite
 
 class EvacuationPlaybackSpec extends FunSuite {

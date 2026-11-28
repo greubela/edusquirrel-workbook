@@ -1,11 +1,13 @@
 package it.evadid.homepage.webElements.editor.MailEditor
 
+
+
 import it.evadid.homepage.control.model.FullInfo
 
 import com.raquo.laminar.api.L.*
 import it.evadid.homepage.webElements.basic.LabelSelection
 import it.evadid.homepage.webElements.HtmlAppElement
-import it.evadid.workbook.elements.interactionElements.emailSimulator.*
+import it.evadid.workbook.interactions.emailSimulator.*
 
 case class MailEditor(fullInfo: FullInfo, underlyingVar: Var[InboxStateScaffolding], account: String = "opa.jürgen@gmail.com",
                       allowCompose: Boolean = true) extends HtmlAppElement {
@@ -17,7 +19,7 @@ case class MailEditor(fullInfo: FullInfo, underlyingVar: Var[InboxStateScaffoldi
   private val hasSelection = selected.map(_.isDefined)
   private def editDraft(d: MailDraft): Element = form(
     cls := "mail-compose",
-    onSubmit.preventDefault --> (_ => send(java.util.UUID.randomUUID().toString, account, java.time.LocalDateTime.now().toString)),
+    onSubmit.preventDefault --> (_ => send(java.util.UUID.randomUUID().toString, account, it.evadid.core.util.InfoUtil.datetimeFormattedForMail())),
     h2(text <-- labelText("compose")),
     label(span(text <-- labelText("to")), input(value := d.to,
       onInput.mapToValue --> (v => draft.update(_.map(_.copy(to = v)))))),

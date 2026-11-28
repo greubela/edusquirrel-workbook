@@ -6,19 +6,19 @@ This allows servers to exchange histories for workbooks they do not know.
 
 | Class | Responsibility |
 | --- | --- |
-| `SerializedWorkbook` (`workbook.jsonFactory`) | Root ID and serialized element definitions; collects children and section prerequisites, rejecting conflicting IDs |
-| `WorkbookElementFactory` | Encodes element definitions and resolves graph references when reconstructing elements |
+| `SerializedWorkbook` (`workbook.serialization`) | Root ID and serialized element definitions; collects children and section prerequisites, rejecting conflicting IDs |
+| `WorkbookElementFactory` | Encodes element definitions (`toSerializableElement`: fields beside the ID and persisted type) and resolves graph references when reconstructing elements |
 | `SessionData` (`workbook.session`, shared) | Save timestamp, user identity, public user configuration, workbook definition (`AllWorkbookInfo`) and `Map[SyncContext, InteractionHistoryJson]` |
 | `WorkbookUserDataAnalyzer` / `UserSessionControl` | Export/download and login/import orchestration |
 
-`Workbook` and `WorkbookSection` supply explicit companion `given ReadWriter`
-instances; they do not need `derives ReadWriter`. These delegate to the
+Element classes never derive their own codec. `Workbook`, `WorkbookSection` and
+`TwoColumnPanel` supply companion `given ReadWriter` instances that delegate to the
 `WorkbookElement` graph codec backed by `SerializedWorkbook`, so nested elements
 and section prerequisites travel with the root. The concrete reader checks the
 root kind.
 
 ```scala
-import it.evadid.workbook.elements.structureElements.Workbook
+import it.evadid.workbook.elements.structure.Workbook
 import upickle.default.*
 
 def workbookToString(workbook: Workbook): String = write[Workbook](workbook)
@@ -43,13 +43,13 @@ def exportSession(info: HomepageInfo): Option[String] =
   info.toSessionData.map(data => write(data))
 ```
 
-`HomepageInfo.toSessionData` returns `None` without a workbook or user. The UI imports through
+`HomepageInfo.toSessionData(answers)` returns `None` without a workbook or user. The UI imports through
 `UserSessionControl.tryContinueWithSessionFile`, which parses the file and calls
 `continueWithSession`: it signs in as the session's user if needed, opens the session's
 workbook (the open one when it has the same ID, else the definition stored in the file)
-and calls `Workbook.restoreHistories`. A workbook restores only histories whose context
-names its own ID, so element IDs reused across workbooks never mix. Each history passes
-`InteractionVariable.restoreHistory`, which discards and logs a record with another format,
+and calls `InteractionController.restoreHistories`. Only histories whose context names the
+open workbook's ID are restored, so element IDs reused across workbooks never mix. Each history
+passes `restoreHistory`, which discards and logs a record with another format,
 an unreadable payload or a state the exercise rejects. Invalid file JSON fails the import.
 Only the current saved schema is supported.
 

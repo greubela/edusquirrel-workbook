@@ -1,5 +1,7 @@
 package it.evadid.homepage.workbook.htmlRenderer.interactionRenderer.basic
 
+import it.evadid.workbook.control.InteractionSignals.*
+
 import it.evadid.homepage.control.model.FullInfo
 
 import com.raquo.laminar.api.L.*
@@ -8,14 +10,13 @@ import it.evadid.core.datastructures.state.StateHelper.StateBasedVar
 import it.evadid.homepage.webElements.editor.SimpleTextEditor
 import it.evadid.homepage.workbook.htmlRenderer.HtmlRenderFactory.LineBasedRenderingFactory
 import it.evadid.homepage.workbook.htmlRenderer.atomarLineRenderings.AtomarLineRendering
-import it.evadid.workbook.elements.interactionElements.basic.TextInteraction
-import it.evadid.workbook.elements.interactionElements.gpt.TextInputWithScaffoldingAndGrading
+import it.evadid.workbook.interactions.basic.TextInteraction
+import it.evadid.workbook.interactions.gpt.TextInputWithScaffoldingAndGrading
 
 
 object TextInputWithScaffoldingAndGradingRenderer extends LineBasedRenderingFactory[TextInputWithScaffoldingAndGrading] {
   override protected def createRendering(fullInfo: FullInfo, element: TextInputWithScaffoldingAndGrading): AtomarLineRendering = {
-    val variable = element.interactionVariable
-    val answer = variable.createBoundStateWithUpdateLogic( TextInteraction.decideTextareaUpdateImportance, fullInfo.workbookContextInformation).toAirstreamVar
+    val answer = fullInfo.interactions.boundVar(element, TextInteraction.decideTextareaUpdateImportance)
     def label(key: String) = laminarHelper(fullInfo).plaintextStringSignal(LanguageMapContentId(s"basic/$key"))
     val reporter = fullInfo.reporters.reportersFor(element).grading
     val content = div(

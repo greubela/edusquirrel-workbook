@@ -5,7 +5,7 @@ import it.evadid.core.datastructures.language.AppLanguage.{Java, Python, SnapLan
 import it.evadid.core.datastructures.language.AppLanguage.*
 import it.evadid.homepage.webElements.HtmlAppElement
 import it.evadid.homepage.webElements.editor.code.EvaEditor.*
-import it.evadid.workbook.elements.interactionElements.programming.state.*
+import it.evadid.workbook.interactions.programming.state.*
 import org.scalajs.dom
 import scala.concurrent.{Future, Promise}
 import scala.scalajs.concurrent.JSExecutionContext.Implicits.queue
@@ -129,7 +129,7 @@ class EvaEditorSpec extends EditorDomSuite {
       assertEquals(f.state.now().associatedLanguage, SnapLanguage)
       assertEquals(drawing(f.state.now()), expected)
       val types = f.state.now().toSnapXml.toSnapScalaModel.toOption.get.model.root.descendants.collect {
-        case definition: it.evadid.workbook.elements.interactionElements.programming.state.snap.SnapScalaModel.BlockDefinition => definition.blockType.map(_.xml)
+        case definition: it.evadid.workbook.interactions.programming.state.snap.SnapScalaModel.BlockDefinition => definition.blockType.map(_.xml)
       }
       assertEquals(types.toSet, Set[Option[String]](Some("reporter"), Some("predicate")))
       f.editor.setActiveTab(Java)

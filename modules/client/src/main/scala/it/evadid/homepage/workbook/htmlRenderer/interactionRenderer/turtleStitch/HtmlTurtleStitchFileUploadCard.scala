@@ -1,8 +1,9 @@
 package it.evadid.homepage.workbook.htmlRenderer.interactionRenderer.turtleStitch
 
+
 import it.evadid.homepage.control.model.FullInfo
 
-import it.evadid.workbook.abstractions.InteractionFormat.{TurtleProjectFormat}
+import it.evadid.workbook.abstractions.InteractionFormat.TurtleProjectFormat
 
 import com.raquo.laminar.api.L.*
 import com.raquo.laminar.nodes.ReactiveHtmlElement
@@ -10,12 +11,12 @@ import it.evadid.core.datastructures.language.LanguageMapContentId
 import it.evadid.homepage.webElements.HtmlAppElement
 import it.evadid.homepage.webElements.basic.HtmlButtonElement
 import it.evadid.workbook.abstractions.WorkbookInteractionElement
-import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseTurtle.TurtleStitchProjectState
-import it.evadid.workbook.interaction.sync.UpdateImportance
+import it.evadid.workbook.interactions.programming.programmingExerciseTurtle.TurtleStitchProjectState
+import it.evadid.workbook.sync.UpdateImportance
 import org.scalajs.dom
 import org.scalajs.dom.{File, HTMLInputElement}
 
-import java.time.LocalDateTime
+import java.time.Instant
 import scala.concurrent.{ExecutionContext, Future}
 import scala.util.{Failure, Success}
 
@@ -38,7 +39,7 @@ private[turtleStitch] case class HtmlTurtleStitchFileUploadCard(fullInfo: FullIn
   private def onFileReadSuccessfully(bytes: Array[Byte]): Unit = {
     println("file read successfully, content has " + bytes.length + " bytes!")
     TurtleStitchProjectState.parseFromBytes(bytes).match {
-      case Success(newState) => workbookInteraction.interactionVariable.setStateFromUserInteraction(newState, UpdateImportance.MAJOR, LocalDateTime.now(), fullInfo.workbookContextInformation)
+      case Success(newState) => fullInfo.interactions.setStateFromUserInteraction(workbookInteraction, newState, UpdateImportance.MAJOR, Instant.now())
       case Failure(err) => println("HtmlTurtleStitchFileUploadCardRenderer::onFileReadSuccessfully error: " + err.getMessage)
     }
   }

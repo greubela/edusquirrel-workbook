@@ -1,0 +1,55 @@
+{
+  "format": "SlideshowFormat",
+  "historyJson": {
+    "events": {
+      "values": [
+        {
+          "$type": "AnswerChangedEvent",
+          "newState": {
+            "allPanels": [
+              "ElementRef(ExerciseGroup/wiring-panel-21)",
+              "ElementRef(ExerciseGroup/wiring-panel-25)",
+              "ElementRef(ExerciseGroup/wiring-panel-32)",
+              "ElementRef(ExerciseGroup/wiring-panel-39)",
+              "ElementRef(ExerciseGroup/wiring-panel-43)"
+            ],
+            "events": []
+          },
+          "timestamp": "2026-11-28T12:00:00.123456789Z",
+          "updateImportance": "MAJOR",
+          "eventId": "00000000-0000-4000-8000-000000000001"
+        },
+        {
+          "$type": "GradingStartedEvent",
+          "state": "StateReference(sha256:baa56c457f24e8940ebebf3f30d3acda93cde619f1d1963c075f0552acf0beac)",
+          "timestamp": "2026-11-28T12:00:00.123456790Z",
+          "grader": "GraderReference(sha256:72fb6739ac26e38fd7365de987b7dd86ef44109768812b9acb09ad0c421fd4b1)",
+          "eventId": "00000000-0000-4000-8000-000000000002"
+        },
+        {
+          "$type": "GradingCompletedEvent",
+          "record": {
+            "grader": "GraderReference(sha256:72fb6739ac26e38fd7365de987b7dd86ef44109768812b9acb09ad0c421fd4b1)",
+            "state": "StateReference(sha256:baa56c457f24e8940ebebf3f30d3acda93cde619f1d1963c075f0552acf0beac)",
+            "gradingStatus": "Incorrect",
+            "feedbackInformation": {
+              "$type": "LanguageMapBasedContent",
+              "languageMap": {
+                "$type": "LanguageMapMapBased",
+                "pMap": [
+                  [
+                    "English",
+                    "Feedback"
+                  ]
+                ]
+              }
+            },
+            "additionalData": null,
+            "gradingTime": "2026-11-28T12:00:00.123456791Z"
+          },
+          "eventId": "00000000-0000-4000-8000-000000000003"
+        }
+      ]
+    }
+  }
+}

@@ -1,17 +1,17 @@
 package it.evadid.homepage.workbook.htmlRenderer
 
 import scala.util.control.NonFatal
-import it.evadid.workbook.elements.interactionElements.compression.CompressionExperimentInteraction
+import it.evadid.workbook.interactions.compression.CompressionExperimentInteraction
 import it.evadid.homepage.workbook.htmlRenderer.interactionRenderer.compression.CompressionExperimentRenderer
-import it.evadid.workbook.elements.interactionElements.evacuation.EvacuationSimulationInteraction
+import it.evadid.workbook.interactions.evacuation.EvacuationSimulationInteraction
 import it.evadid.homepage.workbook.htmlRenderer.interactionRenderer.evacuation.EvacuationSimulationRenderer
-import it.evadid.workbook.elements.interactionElements.evacuation.EvacuationConstructFloorInteraction
+import it.evadid.workbook.interactions.evacuation.EvacuationConstructFloorInteraction
 import it.evadid.homepage.workbook.htmlRenderer.interactionRenderer.evacuation.EvacuationConstructFloorRenderer
 import com.raquo.laminar.api.L.*
 import com.raquo.laminar.nodes.ReactiveHtmlElement
 import it.evadid.homepage.control.model.*
 import it.evadid.homepage.webElements.sqlEditor.HtmlSqlCommandExerciseRenderer
-import it.evadid.workbook.elements.interactionElements.sql.SqlCommandExercise
+import it.evadid.workbook.interactions.sql.SqlCommandExercise
 import it.evadid.homepage.webElements.HtmlAppElement
 import it.evadid.homepage.webElements.basic.HtmlImageElement
 import it.evadid.homepage.workbook.htmlRenderer.atomarLineRenderings.AtomarLineRendering
@@ -20,50 +20,50 @@ import it.evadid.homepage.workbook.htmlRenderer.interactionRenderer.basic.*
 import it.evadid.homepage.workbook.htmlRenderer.interactionRenderer.codeTaskToggle.{HtmlCodeTaskToggleRenderer, HtmlSketchDownloadRenderer}
 import it.evadid.homepage.workbook.htmlRenderer.interactionRenderer.reorderExercise.HtmlReorderInteractionRenderer
 import it.evadid.homepage.workbook.htmlRenderer.interactionRenderer.matching.{HtmlLikertScaleRenderer, HtmlMatchingInteractionRenderer}
-import it.evadid.workbook.elements.interactionElements.matching.{LikertScaleInteraction, MatchingInteraction}
+import it.evadid.workbook.interactions.matching.{LikertScaleInteraction, MatchingInteraction}
 import it.evadid.homepage.workbook.htmlRenderer.interactionRenderer.sortingExercise.HtmlSortingInteractionRenderer
 import it.evadid.homepage.workbook.htmlRenderer.interactionRenderer.sortingReasonExercise.HtmlSortingReasonInteractionRenderer
 import it.evadid.homepage.workbook.htmlRenderer.interactionRenderer.turtleStitch.{HtmlTurtleRecreateShapeRenderer, HtmlTurtleStitchExploreProjectRenderer, HtmlTurtleStitchRecreateShapeRendererLegacy}
 import it.evadid.homepage.workbook.htmlRenderer.structureRenderer.*
-import it.evadid.workbook.elements.interactionElements.emailSimulator.{MailEditor, MailInteraction}
+import it.evadid.workbook.interactions.emailSimulator.{MailEditor, MailInteraction}
 import it.evadid.homepage.workbook.htmlRenderer.interactionRenderer.emailSimulator.{HtmlMailEditorRenderer, HtmlMailInteractionRenderer}
-import it.evadid.workbook.elements.interactionElements.qr.CreateQrCodeInteraction
+import it.evadid.workbook.interactions.qr.CreateQrCodeInteraction
 import it.evadid.homepage.workbook.htmlRenderer.interactionRenderer.qr.CreateQrCodeInteractionRenderer
 import it.evadid.workbook.abstractions.WorkbookElement
-import it.evadid.workbook.elements.displayElements.*
-import it.evadid.workbook.elements.interactionElements.basic.{LabeledCheckboxInteraction, LabeledNumberInteraction, TextInteraction}
-import it.evadid.workbook.elements.interactionElements.codeTaskToggle.{CodeTaskToggleInteraction, SketchDownloadInteraction}
-import it.evadid.workbook.elements.interactionElements.gpt.GptInteractionElement
-import it.evadid.workbook.elements.interactionElements.gpt.TextInputWithScaffoldingAndGrading
+import it.evadid.workbook.elements.display.*
+import it.evadid.workbook.interactions.basic.{LabeledCheckboxInteraction, LabeledNumberInteraction, TextInteraction}
+import it.evadid.workbook.interactions.codeTaskToggle.{CodeTaskToggleInteraction, SketchDownloadInteraction}
+import it.evadid.workbook.interactions.gpt.GptInteractionElement
+import it.evadid.workbook.interactions.gpt.TextInputWithScaffoldingAndGrading
 import it.evadid.homepage.workbook.htmlRenderer.interactionRenderer.basic.TextInputWithScaffoldingAndGradingRenderer
-import it.evadid.workbook.elements.interactionElements.reorderExercise.ReorderInteraction
-import it.evadid.workbook.elements.interactionElements.slideshow.Slideshow
-import it.evadid.workbook.elements.structureElements.{ExerciseContainer, ExerciseGroup, Workbook}
+import it.evadid.workbook.interactions.reorderExercise.ReorderInteraction
+import it.evadid.workbook.interactions.slideshow.Slideshow
+import it.evadid.workbook.elements.structure.{ExerciseContainer, ExerciseGroup, Workbook}
 import org.scalajs.dom.HTMLDivElement
-import it.evadid.workbook.elements.interactionElements.choice.WorkbookContentChoiceInteraction
-import it.evadid.workbook.elements.interactionElements.neuron.ThresholdNeuronInteraction
+import it.evadid.workbook.interactions.choice.WorkbookContentChoiceInteraction
+import it.evadid.workbook.interactions.neuron.ThresholdNeuronInteraction
 import it.evadid.homepage.workbook.htmlRenderer.interactionRenderer.choice.WorkbookContentChoiceInteractionRenderer
 import it.evadid.homepage.workbook.htmlRenderer.interactionRenderer.neuron.ThresholdNeuronRenderer
-import it.evadid.workbook.elements.interactionElements.table.AnswerTableInteraction
-import it.evadid.workbook.elements.interactionElements.plot.CoordinatePlotInteraction
+import it.evadid.workbook.interactions.table.AnswerTableInteraction
+import it.evadid.workbook.interactions.plot.CoordinatePlotInteraction
 import it.evadid.homepage.workbook.htmlRenderer.interactionRenderer.plot.CoordinatePlotRenderer
 import it.evadid.homepage.workbook.htmlRenderer.interactionRenderer.table.AnswerTableRenderer
-import it.evadid.workbook.elements.interactionElements.pixel.BinaryPixelInteraction
+import it.evadid.workbook.interactions.pixel.BinaryPixelInteraction
 import it.evadid.homepage.workbook.htmlRenderer.interactionRenderer.pixel.BinaryPixelRenderer
-import it.evadid.workbook.elements.interactionElements.blockchain.SquareMiddleHashInteraction
+import it.evadid.workbook.interactions.blockchain.SquareMiddleHashInteraction
 import it.evadid.homepage.workbook.htmlRenderer.interactionRenderer.blockchain.SquareMiddleHashRenderer
-import it.evadid.workbook.elements.interactionElements.blockchain.Sha256Interaction
+import it.evadid.workbook.interactions.blockchain.Sha256Interaction
 import it.evadid.homepage.workbook.htmlRenderer.interactionRenderer.blockchain.Sha256Renderer
-import it.evadid.workbook.elements.interactionElements.blockchain.BlockchainInteraction
+import it.evadid.workbook.interactions.blockchain.BlockchainInteraction
 import it.evadid.homepage.workbook.htmlRenderer.interactionRenderer.blockchain.BlockchainRenderer
 import it.evadid.homepage.workbook.htmlRenderer.interactionRenderer.slideshow.HtmlSlideshowEditor
-import it.evadid.workbook.elements.interactionElements.text.UnicodeComparisonInteraction
+import it.evadid.workbook.interactions.text.UnicodeComparisonInteraction
 import it.evadid.homepage.workbook.htmlRenderer.interactionRenderer.text.UnicodeComparisonRenderer
-import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseRegular.{ProgrammingExercise, ProgrammingExerciseFullJava, SortListExercise}
+import it.evadid.workbook.interactions.programming.programmingExerciseRegular.{ProgrammingExercise, ProgrammingExerciseFullJava, SortListExercise}
 import it.evadid.homepage.workbook.htmlRenderer.interactionRenderer.steps.HtmlSortListExerciseRenderer
-import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseTurtle.{TurtleRecreateShapeInteraction, TurtleStitchExploreProjectElement, TurtleStitchRecreateShapeInteractionLegacy}
-import it.evadid.workbook.elements.interactionElements.sorting.sortingExercise.SortingInteraction
-import it.evadid.workbook.elements.interactionElements.sorting.sortingReasonExercise.SortingReasonInteraction
+import it.evadid.workbook.interactions.programming.programmingExerciseTurtle.{TurtleRecreateShapeInteraction, TurtleStitchExploreProjectElement, TurtleStitchRecreateShapeInteractionLegacy}
+import it.evadid.workbook.interactions.sorting.sortingExercise.SortingInteraction
+import it.evadid.workbook.interactions.sorting.sortingReasonExercise.SortingReasonInteraction
 
 trait HtmlRenderFactory[T <: WorkbookElement] {
 

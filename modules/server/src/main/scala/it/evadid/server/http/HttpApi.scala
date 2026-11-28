@@ -14,12 +14,12 @@ import play.api.routing.sird.*
 import upickle.default.write
 
 import java.net.InetAddress
-import java.time.LocalDateTime
+import java.time.Instant
 import scala.concurrent.{ExecutionContext, Future}
 import scala.util.control.NonFatal
 
 /** HTTP routes: `POST /executeCommand` (with CORS for configured origins) and `GET /health`. */
-final class HttpApi(config: ServerConfig, commands: BackendCommandHandler, startedAt: LocalDateTime = LocalDateTime.now()) {
+final class HttpApi(config: ServerConfig, commands: BackendCommandHandler, startedAt: Instant = Instant.now()) {
   import HttpApi.*
 
   def routes(action: DefaultActionBuilder, parsers: PlayBodyParsers): PartialFunction[RequestHeader, Handler] = {
@@ -27,7 +27,7 @@ final class HttpApi(config: ServerConfig, commands: BackendCommandHandler, start
     val commandParser = BodyParser("execution command") { request =>
       parsers.tolerantText(maxLength = maxCommandBodyBytes)(request).map {
         case Left(result) if result.header.status == 413 =>
-          val response = fail(LocalDateTime.now(),
+          val response = fail(Instant.now(),
             s"Execution command exceeds the $maxCommandBodyBytes byte request limit. Reduce the saved history or attached data.",
             None, None, requestLogger("CommandBodyParser"))
           Left(EntityTooLarge(write(response)).as("application/json").withHeaders(cors(request)*))
@@ -52,7 +52,7 @@ final class HttpApi(config: ServerConfig, commands: BackendCommandHandler, start
   private def executeCommand(body: String, cookies: Cookies, headers: Headers, remoteAddress: InetAddress): Future[ExecutionClientResponse] = {
     // Parsing, token verification and serialization use the CPU pool; handlers move blocking work to BlockingExecution.
     given ExecutionContext = ExecutionContext.global
-    val received = LocalDateTime.now()
+    val received = Instant.now()
     val logger = requestLogger(s"BackendServerLogger(Request@$received)")
     Future {
       val verifiedToken = commands.tokens.verifiedToken(cookies, headers, logger)
@@ -82,10 +82,10 @@ object HttpApi {
 
   private def requestLogger(name: String): Logger = Logger.withNameAndPrefixes(Some(name), PrintToStdLogger.printEverything)
 
-  def fail(commandReceived: LocalDateTime, msg: String, cause: Option[SerializedException], command: Option[ExecutionCommand], logger: Logger): ExecutionClientResponse = {
+  def fail(commandReceived: Instant, msg: String, cause: Option[SerializedException], command: Option[ExecutionCommand], logger: Logger): ExecutionClientResponse = {
     logger.logError(msg)
     ExecutionClientResponse(
-      ExecutionClientResponseTimestamps(commandReceived, commandReceived, LocalDateTime.now()),
+      ExecutionClientResponseTimestamps(commandReceived, commandReceived, Instant.now()),
       Left(cause.getOrElse(SerializedException(msg))), command,
       AdditionalLoggingOutput(logger.getOut(), logger.getErr())
     )

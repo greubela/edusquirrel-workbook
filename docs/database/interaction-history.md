@@ -9,34 +9,33 @@ registries. See [formats and event semantics](../interaction-format.md).
 
 | Class | Responsibility |
 | --- | --- |
-| [HomepageSignalInfo](../../modules/client/src/main/scala/it/evadid/homepage/control/info/HomepageSignalInfo.scala) | Derives the workbook/user/destination/credential environment |
-| [RemoteInteractionCacheControl](../../modules/client/src/main/scala/it/evadid/homepage/control/change/RemoteInteractionCacheControl.scala) | Replaces bindings, restores fetched answers, batches phases and owns user-scoped reset progress |
-| [RemoteHistoryCache](../../modules/core/shared/src/main/scala/it/evadid/core/datastructures/storage/remote/RemoteHistoryCache.scala) | Immutable `CacheState`: local histories and per-location known event IDs, read freshness and cursors |
-| [FormattedSyncDestination](../../modules/core/shared/src/main/scala/it/evadid/workbook/interaction/sync/FormattedSyncDestination.scala) | Converts typed histories to/from envelopes at a destination boundary |
-| [BufferedSyncDestinationHandler](../../modules/core/shared/src/main/scala/it/evadid/workbook/interaction/sync/destination/BufferedSyncDestinationHandler.scala) | Merges queued deltas per context, serializes batches and gives each caller the confirmations of its own events |
+| [HomepageState](../../modules/client/src/main/scala/it/evadid/homepage/control/change/HomepageState.scala) | Orders user, credential and workbook changes across the page and answer controls |
+| [InteractionController](../../modules/core/shared/src/main/scala/it/evadid/workbook/control/InteractionController.scala) | Transitions of the answers (`InteractionInfo`), session-scoped results |
+| [InteractionSync](../../modules/core/shared/src/main/scala/it/evadid/workbook/control/InteractionSync.scala) (`controller.sync`) | Deferred stores, batched store/read phases, user-scoped reset progress |
+| [RemoteHistoryCache](../../modules/core/shared/src/main/scala/it/evadid/core/datastructures/storage/remote/RemoteHistoryCache.scala) | Store and read logic over an immutable `CacheState`: local histories and per-location known event IDs, read freshness and cursors |
+| [FormattedSyncDestination](../../modules/core/shared/src/main/scala/it/evadid/workbook/sync/FormattedSyncDestination.scala) | Converts typed histories to/from envelopes at a destination boundary |
+| [BufferedSyncDestinationHandler](../../modules/core/shared/src/main/scala/it/evadid/workbook/sync/destination/BufferedSyncDestinationHandler.scala) | Merges queued deltas per context, serializes batches and gives each caller the confirmations of its own events |
 | [DatabaseSyncViaBackendServerHandler](../../modules/client/src/main/scala/it/evadid/homepage/workbook/syncDestination/DatabaseSyncViaBackendServerHandler.scala) | Sends database commands using captured credentials and connection configuration |
 | [BackendCommandHandler](../../modules/server/src/main/scala/it/evadid/server/commands/BackendCommandHandler.scala) | Decodes typed requests; `OwnRecords(_.ownerUserIds)` authorizes every context |
 | [Server history storage](../../modules/server/src/main/scala/it/evadid/server/database/history/) | `HistoryDatabase.run` dispatches to the selected layout; `HistorySql` owns transactions, row identity and constant SQL; [`SqlStatements`](../../modules/server/src/main/scala/it/evadid/server/database/SqlStatements.scala) binds typed parameters and closes statements |
 
-Within the client control, `WorkbookBinding` captures an environment and
-`TypedBinding[F]` owns a `Var[RemoteHistoryCache.CacheState[...]]` for each
-interaction. `StateHelper.fromAirstreamVarToState` adapts that same store for
-shared core code. A separate `UserBinding` retains pending operations and reset
-state across workbook or credential changes.
+Each interaction's entry in `InteractionInfo` holds its `CacheState` (history and
+destination knowledge); see [answer state](../state-and-serialization.md#answer-state-and-sessions).
+Reset progress and pending operations are kept per user across workbooks and credentials.
 
 ## Binding and event flow
 
-1. An interaction update registers its typed history with the current binding.
+1. A change of a history is observed and its store requested after the current task.
 2. The cache computes missing events independently for each destination.
 3. A phase registers all requests before flushing shared handlers. Buffered futures
    complete with the actual read/write result; awaiting queued work requires a flush.
-4. Only the selected binding's signal can restore histories or publish confirmations.
-   Replacing it disconnects old observations and flushes its captured handlers.
+4. Results apply only to the session they started in, and only for destinations its
+   connection still uses.
 
-Bindings are replaced rather than changing active/closing flags. This isolates
-credentials and responses while allowing old and new requests to overlap. Retired
-requests may finish or fail; neither outcome can change a replacement binding.
-UI navigation starts sync after Airstream applies the environment transaction.
+A context change (user, workbook, full reset) sends pending stores, then replaces the
+session; a credential or destination change reconnects the same session. Both start a
+full read. This isolates credentials and responses while allowing old and new requests to
+overlap: a retired session's requests may finish or fail, but cannot change its successor.
 
 Backend databases store, read and delete histories only for a verified account. These
 commands are `requiresLogin` factories: the browser's remote client, which attaches the
@@ -56,7 +55,7 @@ requests or persisted database events fail explicitly.
 
 Each destination is tracked by the IDs of the events it is known to hold: those a
 read returned or a committed write acknowledged.
-[`SyncSuccess[T]`](../../modules/core/shared/src/main/scala/it/evadid/workbook/interaction/sync/SyncSuccess.scala)
+[`SyncSuccess[T]`](../../modules/core/shared/src/main/scala/it/evadid/workbook/sync/SyncSuccess.scala)
 names the added, changed, unchanged and removed elements (`EventId`s for history
 stores, `SyncContext`s for removals, keys for raw key-value stores); its
 `elementsStored` were present at commit. A requested write alone is not evidence.
@@ -85,8 +84,10 @@ until it is committed.
 | `RelationalHistoryStorage` / `RelationalFormat` | Format metadata on `sync_context_id`; independent answer, grading and scaffolding event rows | More tables and writes; indexed ranges can fetch feedback without fetching its answer event |
 
 Identity is `(programId, scenarioId, userId, keyForSerialisation)`. The format is
-metadata, not part of the unique key. Changing it is rejected even if the two
-formats share a JSON schema. Case and trailing spaces are significant; numeric
+metadata, not part of the unique key. A store under another format (the exercise
+changed its type) replaces the record, even if the two formats share a JSON schema;
+the earlier answers belonged to a different exercise. Exercise IDs are the storage
+keys: a new ID is a new exercise. Case and trailing spaces are significant; numeric
 row IDs stay on the server. Each event receives a client-generated `EventId` once;
 serialization, copies and retries preserve it, and the event is immutable. Both
 layouts confirm a replayed equal event as unchanged and reject a request that sends
@@ -97,13 +98,14 @@ an ID are unsupported. History storage grows as new events are recorded; transmi
 
 ### Timestamp representation
 
-`timestamp_nano` stores ISO 8601 local date/time text with exactly nine fractional
-digits, e.g. `2026-11-18T12:00:00.123456789`. MySQL `DATETIME` supports only six.
+`timestamp_nano` stores the event's instant as `DefaultSerializer.instantText`, ISO 8601 UTC text with exactly nine
+fractional digits, e.g. `2026-11-18T12:00:00.123456789Z`; MySQL `DATETIME` supports only six. The log and token
+time columns use the same text.
 The binary text index serves range queries, so a duplicate `timestamp_millies`
 column is unnecessary. No epoch-day or nanosecond-of-day encoding is stored.
 Four-digit years sort chronologically; signed/expanded ISO years use safe SQL
-candidate bounds followed by typed filtering to preserve the full `LocalDateTime`
-range. Reads verify the canonical text against the serialized event.
+candidate bounds followed by typed filtering. Events may carry any `Instant`; `Instant.MIN`
+and `MAX` are open read bounds. Reads verify the canonical text against the serialized event.
 
 Both layouts decode through the declared format; JDBC bindings accept only
 `String | Long`. `DatabaseHistoryFormat.tables` exposes typed `DatabaseTable`,
@@ -129,9 +131,9 @@ import it.evadid.distribution.clients.ExecutionClient
 import it.evadid.distribution.commandTypes.SQLCommands
 import it.evadid.sql.BackendDatabase
 import it.evadid.sql.DatabaseHistoryFormat.BlobFormat
-import it.evadid.workbook.interaction.sync.{SyncSuccess, UsageContext}
-import it.evadid.workbook.interaction.sync.model.InteractionHistoryJson
-import it.evadid.workbook.interaction.variable.events.EventId
+import it.evadid.workbook.sync.{SyncSuccess, UsageContext}
+import it.evadid.workbook.sync.model.InteractionHistoryJson
+import it.evadid.workbook.history.events.EventId
 import scala.concurrent.{ExecutionContext, Future}
 
 def storePair(backend: ExecutionClient, context: UsageContext,
@@ -149,7 +151,7 @@ atomically; one invalid entry rolls it all back. Retrying exact events is safe a
 confirms them as `elementsUnchanged`. Deletes report the removed contexts.
 
 The sole read command is `fetch-events-from-db-request`, with inclusive bounds;
-complete reads use `LocalDateTime.MIN` and `MAX`. Selection precedes the timestamp
+complete reads use `Instant.MIN` and `MAX`. Selection precedes the timestamp
 window. Buffered reads sharing a usage context and strategy query the union of
 keys/windows once, then clip each caller's result to its own bounds.
 
@@ -160,7 +162,7 @@ credentials from client-visible cause chains.
 
 ## Full reset
 
-`resetAllData()` drains registered operations, deletes the current user's histories
+`sync.resetAllData()` drains registered operations, deletes the current user's histories
 across all workbooks from every configured backend destination, and clears each
 configured local answer store without decoding records. Authentication and
 unrelated caches survive. Reset also works from the catalogue.
@@ -169,22 +171,23 @@ Partial failure keeps sync paused until retry, including across navigation and
 credential changes. A different user has separate reset state; late completions
 cannot change it. Normal user switches start the replacement immediately, while
 a running reset finishes first because it clears shared local stores. Successful
-reset reloads the page. User changes and full resets invalidate pending feedback
-and computation caches so stale completions cannot publish into a new session.
+reset reloads the page. User changes and full resets start a new session, whose feedback
+caches are new, so stale completions cannot publish into it.
 
 ## Verification
 
-`RemoteInteractionCacheControlSpec` covers production buffers and HTTP adaptation
+`HomepageStateSpec` covers production buffers and HTTP adaptation
 with controlled responses: workbook/user/credential/destination switches,
 A → B → A, delayed successes/failures, confirmation isolation and reset ownership.
-`RemoteHistoryCacheSpec` and `BufferedSyncDestinationHandlerSpec` cover cache and
-batch contracts. MySQL tests cover both layouts, mixed-format HTTP batches,
-format rejection, exact ISO timestamp storage, signed/expanded years, nanosecond
+`InteractionGradingConcurrencySpec` covers grading while answers change and other devices
+record feedback; `RemoteHistoryCacheSpec` and `BufferedSyncDestinationHandlerSpec` cover cache
+and batch contracts. MySQL tests cover both layouts, mixed-format HTTP batches,
+format replacement, exact ISO timestamp storage, signed/expanded years, nanosecond
 range boundaries, corruption rejection, rollback and authorization.
 
 ```sh
-sbt 'client/testOnly *RemoteInteractionCacheControlSpec'
-sbt 'coreJVM/testOnly *RemoteHistoryCacheSpec *BufferedSyncDestinationHandlerSpec'
+sbt 'client/testOnly *HomepageStateSpec'
+sbt 'coreJVM/testOnly *InteractionControllerSpec *InteractionGradingConcurrencySpec *RemoteHistoryCacheSpec *BufferedSyncDestinationHandlerSpec'
 # Only against the disposable localhost edusquirrel_account_test database:
 sbt 'server / MysqlIntegration / test'
 ```

@@ -10,7 +10,7 @@ import it.evadid.homepage.webElements.HtmlAppElement
 import it.evadid.core.datastructures.language.AppLanguage.SQL
 import it.evadid.homepage.webElements.editor.code.codemirror.CodeMirrorEditor
 import it.evadid.util.logging.Logger
-import it.evadid.workbook.elements.interactionElements.sql.SqlDatabaseConfig
+import it.evadid.workbook.interactions.sql.SqlDatabaseConfig
 
 import scala.scalajs.concurrent.JSExecutionContext.Implicits.queue
 import scala.util.{Failure, Success}
