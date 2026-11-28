@@ -87,14 +87,15 @@ submissions stay out of the account and history tables.
 `SubmissionCommands.submitSessionCommand` (`submit-session-event`) carries
 `SubmitSessionEvent(sessionData)` and needs no account. The backend logs it in
 `submissionLog` ([database guide](database/README.md#logging-and-proxy-addresses)), then
-[SubmitSessionCommand](../modules/server/src/main/scala/it/evadid/server/SubmitSessionCommand.scala):
+[SessionSubmission](../modules/server/src/main/scala/it/evadid/server/events/submission/SessionSubmission.scala),
+which accepts each mail address once per minute ([backend contracts](backend-server.md#contracts)):
 
-1. derives a [SimpleSubmission](../modules/server/src/main/scala/it/evadid/server/SimpleSubmission.scala):
+1. derives a [SimpleSubmission](../modules/server/src/main/scala/it/evadid/server/events/submission/SimpleSubmission.scala):
    the claimed user and request address, plus the latest answer and combined authored-grader
    status of each answered interaction of the session's own workbook, in workbook order;
    unreadable histories are logged and left out;
 2. mails the full credential-free session (`.eva`, importable via session continuation once
-   unzipped) and the summary to the archive address; failure fails the command;
+   unzipped) and the summary to the archive address (`SUBMISSION_ARCHIVE_MAIL`); failure fails the command;
 3. mails the summary to the session's address, only if it is one plain address. The response
    reports the number of summarized interactions and whether this confirmation was sent.
 
@@ -103,4 +104,4 @@ Each attachment is deflated into its own ZIP named after the date and submitter 
 roughly tenfold. Commands may be up to 100 MB once decoded; logging a session larger than the
 database's `max_allowed_packet` only warns, and the mails are still sent.
 
-Coverage: `HtmlSubmissionFormSpec`, `SubmitSessionCommandSpec`, `BackendCommandHttpSpec` and `UserAccountMysqlSpec`.
+Coverage: `HtmlSubmissionFormSpec`, `SessionSubmissionSpec`, `BackendCommandHttpSpec` and `UserAccountMysqlSpec`.

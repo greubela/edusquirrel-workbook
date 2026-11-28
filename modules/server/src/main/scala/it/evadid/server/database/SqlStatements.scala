@@ -2,10 +2,11 @@ package it.evadid.server.database
 
 import it.evadid.core.util.io.ParsingContext
 import it.evadid.util.logging.Logger
-import java.sql.{Connection, PreparedStatement, ResultSet, Timestamp}
+import java.sql.{Connection, PreparedStatement, ResultSet, SQLException, Timestamp}
 import scala.util.Using
 
 /** Prepared statements with typed bindings on a caller-owned connection.
+  * SQL texts are constants: every value, including optional filters, is bound as a parameter.
   * Each statement and result set is closed once used; failures pass through [[SqlFailure]],
   * so neither diagnostics nor logs contain bound values.
   */
@@ -13,6 +14,12 @@ final class SqlStatements(connection: Connection, logger: Logger) {
   import SqlStatements.*
 
   def update(sql: String, values: Value*): Int = prepared(sql, values)(_.executeUpdate())
+
+  /** Runs an INSERT or UPDATE unless it would duplicate a unique key; returns whether a row was written or matched. */
+  def updateUnlessDuplicate(sql: String, values: Value*): Boolean = prepared(sql, values) { statement =>
+    try statement.executeUpdate() > 0
+    catch case error: SQLException if error.getErrorCode == duplicateKeyErrorCode => false
+  }
 
   def query[A](sql: String, values: Value*)(read: ResultSet => A): Seq[A] =
     prepared(sql, values)(statement => rows(statement.executeQuery())(read))
@@ -29,6 +36,12 @@ final class SqlStatements(connection: Connection, logger: Logger) {
 
 object SqlStatements {
   type Value = String | Long | Timestamp
+
+  /** MySQL `ER_DUP_ENTRY`. */
+  private val duplicateKeyErrorCode = 1062
+
+  /** Binds an optional filter as two parameters for `(? = 0 OR column = ?)`: a flag and a placeholder-safe value. */
+  def optionalFilter(value: Option[String]): Seq[Value] = Seq(if value.isDefined then 1L else 0L, value.getOrElse(""))
 
   /** Reads every row of `resultSet`, starting at the first, and closes it. */
   def rows[A](resultSet: ResultSet)(read: ResultSet => A): Seq[A] =

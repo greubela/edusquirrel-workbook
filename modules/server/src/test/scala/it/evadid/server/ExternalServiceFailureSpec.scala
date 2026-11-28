@@ -1,5 +1,7 @@
 package it.evadid.server
 
+import it.evadid.server.events.llm.LlmCompletion
+import it.evadid.server.events.mail.MailSender
 import jakarta.mail.{AuthenticationFailedException, MessagingException, SendFailedException}
 import java.net.{ConnectException, SocketTimeoutException, UnknownHostException}
 import java.net.http.HttpTimeoutException
@@ -19,7 +21,7 @@ class ExternalServiceFailureSpec extends FunSuite {
     SendFailedException(secret) -> "rejected delivery"
   ).foreach { (failure, expected) =>
     test(s"mail delivery explains $expected without echoing message or credentials") {
-      val error = intercept[IllegalStateException] { SendMailCommand.withDeliveryContext { throw failure } }
+      val error = intercept[IllegalStateException] { MailSender.withDeliveryContext { throw failure } }
       assert(error.getMessage.contains(expected))
       assert(!error.getMessage.contains(secret))
       assertEquals(error.getCause, null)
@@ -29,7 +31,7 @@ class ExternalServiceFailureSpec extends FunSuite {
   List(HttpTimeoutException(secret) -> "timed out", IOException(secret) -> "network access",
     SSLException(secret) -> "TLS").foreach { (failure, expected) =>
     test(s"LLM transport explains $expected without leaking endpoint or credentials") {
-      val error = intercept[IllegalStateException] { CompleteChatWithLLMCommand.withRequestContext { throw failure } }
+      val error = intercept[IllegalStateException] { LlmCompletion.withRequestContext { throw failure } }
       assert(error.getMessage.contains(expected))
       assert(!error.getMessage.contains(secret))
       assertEquals(error.getCause, null)
@@ -38,7 +40,7 @@ class ExternalServiceFailureSpec extends FunSuite {
 
   List(401 -> "API key", 403 -> "permissions", 404 -> "endpoint or model", 429 -> "quota", 503 -> "retry later").foreach { (status, expected) =>
     test(s"LLM HTTP $status explains the provider rejection without retaining its body") {
-      val error = intercept[IllegalStateException] { CompleteChatWithLLMCommand.decodeResponse(status, secret) }
+      val error = intercept[IllegalStateException] { LlmCompletion.decodeResponse(status, secret) }
       assert(error.getMessage.contains(status.toString))
       assert(error.getMessage.contains(expected))
       assert(!error.getMessage.contains(secret))
@@ -47,7 +49,7 @@ class ExternalServiceFailureSpec extends FunSuite {
 
   test("LLM success responses with incompatible payloads identify the response contract safely") {
     List(secret -> "invalid JSON", s"""{"private":"$secret"}""" -> "choices[0].message.content").foreach { (body, expected) =>
-      val error = intercept[IllegalStateException] { CompleteChatWithLLMCommand.decodeResponse(200, body) }
+      val error = intercept[IllegalStateException] { LlmCompletion.decodeResponse(200, body) }
       assert(error.getMessage.contains(expected))
       assert(!error.getMessage.contains(secret))
       assertEquals(error.getCause, null)

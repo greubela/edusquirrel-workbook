@@ -17,7 +17,7 @@ case class ExecutionCommand(name: String, json: ujson.Value) derives ReadWriter{
 
   // Routing is server-owned metadata, never supplied in the wire payload.
   def storeLogIntoTable: Option[CommandLog] =
-    ExecutionCommandFactory.forName(name).map(_.storeLogIntoTable).getOrElse(Some(CommandLog.commandLog))
+    ExecutionCommandFactory.forName(name).map(_.storeLogIntoTable).getOrElse(Some(CommandLog.CommandAudit))
 }
 
 object ExecutionCommand {

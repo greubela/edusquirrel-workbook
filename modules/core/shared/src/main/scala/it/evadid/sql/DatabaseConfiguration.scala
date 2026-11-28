@@ -29,10 +29,3 @@ case class DatabaseConfigWithCredentials(dbFormat: String, host: String, port: S
     user: String, password: String) extends DatabaseConnection derives ReadWriter {
   override def toString: String = s"DatabaseConfigWithCredentials($dbFormat,$host,$port,$database,credentials=redacted)"
 }
-
-object DatabaseConfigWithCredentials {
-  def readFromEnv(dbFormat: Option[String] = None, dbName: Option[String] = None): DatabaseConfigWithCredentials =
-    DatabaseConfigWithCredentials(dbFormat.orElse(Option(System.getenv("DB_FORMAT"))).getOrElse("mysql"),
-      System.getenv("SQL_HOST"), System.getenv("SQL_PORT"), dbName.getOrElse(System.getenv("SQL_DATABASE")),
-      System.getenv("SQL_USER"), System.getenv("SQL_PW"))
-}

@@ -34,16 +34,16 @@ class CommandPayloadCodecsSpec extends FunSuite {
     assertEquals(definitions.map(_.name).distinct.size, definitions.size)
     definitions.foreach { definition =>
       val expected = Some(
-        if syncNames.contains(definition.name) then CommandLog.syncedLog
-        else if definition.name == SubmissionCommands.submitSessionCommand.name then CommandLog.submissionLog
-        else CommandLog.commandLog)
+        if syncNames.contains(definition.name) then CommandLog.SyncAudit
+        else if definition.name == SubmissionCommands.submitSessionCommand.name then CommandLog.SessionSubmission
+        else CommandLog.CommandAudit)
       assertEquals(definition.storeLogIntoTable, expected)
       assertEquals(ExecutionCommand(definition.name, ujson.Obj()).storeLogIntoTable, expected)
     }
-    assertEquals(ExecutionCommand("unknown-command", ujson.Obj()).storeLogIntoTable, Some(CommandLog.commandLog))
+    assertEquals(ExecutionCommand("unknown-command", ujson.Obj()).storeLogIntoTable, Some(CommandLog.CommandAudit))
     val forged = read[ExecutionCommand](ujson.Obj("name" -> SQLCommands.StoreToDbCommand.name, "json" -> ujson.Obj(),
       "storeLogIntoTable" -> "another_table"))
-    assertEquals(forged.storeLogIntoTable, Some(CommandLog.syncedLog))
+    assertEquals(forged.storeLogIntoTable, Some(CommandLog.SyncAudit))
   }
 
   test("bulk histories round-trip with matching keys, redact credentials and reject ambiguous entries") {

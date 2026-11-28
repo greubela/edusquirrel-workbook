@@ -22,6 +22,6 @@ object SubmissionCommands {
   }
 
   lazy val submitSessionCommand: ExecutionCommandFactory[SubmitSessionEvent, SubmitSessionResponse] = ExecutionCommandFactory(
-    "submit-session-event", privacyFilter = Some(submissionForLog), storeLogIntoTable = Some(CommandLog.submissionLog)
+    "submit-session-event", privacyFilter = Some(submissionForLog), storeLogIntoTable = Some(CommandLog.SessionSubmission)
   )
 }

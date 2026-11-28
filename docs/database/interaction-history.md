@@ -15,8 +15,8 @@ registries. See [formats and event semantics](../interaction-format.md).
 | [FormattedSyncDestination](../../modules/core/shared/src/main/scala/it/evadid/workbook/interaction/sync/FormattedSyncDestination.scala) | Converts typed histories to/from envelopes at a destination boundary |
 | [BufferedSyncDestinationHandler](../../modules/core/shared/src/main/scala/it/evadid/workbook/interaction/sync/destination/BufferedSyncDestinationHandler.scala) | Merges queued deltas per context, serializes batches and gives each caller the confirmations of its own events |
 | [DatabaseSyncViaBackendServerHandler](../../modules/client/src/main/scala/it/evadid/homepage/workbook/syncDestination/DatabaseSyncViaBackendServerHandler.scala) | Sends database commands using captured credentials and connection configuration |
-| [BackendCommandHandler](../../modules/server/src/main/scala/it/evadid/server/BackendCommandHandler.scala) | Decodes typed requests and authorizes every context |
-| [Server history handlers](../../modules/server/src/main/scala/it/evadid/server/commandHandler/sql/sync/) | `HistorySql.forRequest` dispatches to the selected layout; `HistorySql` owns transactions; [`SqlStatements`](../../modules/server/src/main/scala/it/evadid/server/database/SqlStatements.scala) binds typed parameters and closes statements |
+| [BackendCommandHandler](../../modules/server/src/main/scala/it/evadid/server/commands/BackendCommandHandler.scala) | Decodes typed requests; `OwnRecords(_.ownerUserIds)` authorizes every context |
+| [Server history storage](../../modules/server/src/main/scala/it/evadid/server/database/history/) | `HistoryDatabase.run` dispatches to the selected layout; `HistorySql` owns transactions, row identity and constant SQL; [`SqlStatements`](../../modules/server/src/main/scala/it/evadid/server/database/SqlStatements.scala) binds typed parameters and closes statements |
 
 Within the client control, `WorkbookBinding` captures an environment and
 `TypedBinding[F]` owns a `Var[RemoteHistoryCache.CacheState[...]]` for each

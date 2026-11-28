@@ -67,4 +67,19 @@ class SqlStatementsSpec extends FunSuite {
     intercept[IllegalArgumentException](SqlStatements(db, BasicLogger()).update("SELECT ?", null.asInstanceOf[String]))
     assertEquals(calls.now(), Vector.empty)
   }
+
+  test("duplicate unique keys are reported as unchanged; other failures stay sanitized SQL errors") {
+    val (duplicate, _) = connection(_ => throw java.sql.SQLIntegrityConstraintViolationException("Duplicate entry 'private'", "23000", 1062))
+    assert(!SqlStatements(duplicate, BasicLogger()).updateUnlessDuplicate("INSERT INTO t VALUES (?)", "private"))
+    val (inserted, _) = connection(_ => Int.box(1))
+    assert(SqlStatements(inserted, BasicLogger()).updateUnlessDuplicate("INSERT INTO t VALUES (?)", "value"))
+    val (rejected, _) = connection(_ => throw SQLException("private", "23000", 1452))
+    val error = intercept[SQLException](SqlStatements(rejected, BasicLogger()).updateUnlessDuplicate("INSERT INTO t VALUES (?)", "value"))
+    assert(error.getMessage.contains("constraint") && !error.getMessage.contains("private"))
+  }
+
+  test("optional filters bind a flag and a placeholder-safe value") {
+    assertEquals(SqlStatements.optionalFilter(Some("key")), Seq[SqlStatements.Value](1L, "key"))
+    assertEquals(SqlStatements.optionalFilter(None), Seq[SqlStatements.Value](0L, ""))
+  }
 }

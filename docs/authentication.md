@@ -50,9 +50,11 @@ preferences are discarded and replaced by `UserConfig.defaults(isLocalAccount = 
 not prevent login-code delivery or account lookup.
 Creation and account updates use distinct command names, and updates require the
 authenticated user's ID. All account operations run through
-`UserAccountDatabase.execute`, which owns one connection and closes it on success
-or failure. Registration checks and insertion share that scope; SMTP delivery
-runs after database work has released its connection.
+`AccountCommands` on one connection from `Database.withConnection`, closed on success
+or failure. Mail addresses are unique and stored in lower case: registration inserts in one
+transaction and the unique keys reject concurrent duplicates, and an update cannot take another
+account's address. Checking a login code never creates one (`getTokenFromDb`); requesting a code
+does (`ensureTokenInDb`). SMTP delivery runs after database work has released its connection.
 
 ## Diagnosing failures
 
@@ -84,7 +86,7 @@ the anonymous logging identity and proxy configuration.
 ### MySQL account queries
 
 `sbt 'server / MysqlIntegration / test'` exercises the real registration, update and login
-handlers and `UserAccountRows` token queries against MySQL 8.4: duplicate accounts, email
+handlers and `AccountRows` token queries against MySQL 8.4: duplicate accounts, email
 normalization, Unicode, parameter binding, account isolation, token expiry/renewal,
 signed-token ownership and malformed preferences. It never calls SMTP and uses the
 authoritative `deployment/database/setup.sql`. CI runs it against a temporary service; to run

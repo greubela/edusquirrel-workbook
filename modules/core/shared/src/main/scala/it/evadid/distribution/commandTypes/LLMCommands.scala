@@ -17,7 +17,19 @@ object LLMCommands {
   )
 
   case class FeedbackLlmRequest(prompt: String, systemPrompt: String,
-      llmConfiguration: Option[LlmConfiguration] = None, programmingHint: Boolean = false) derives ReadWriter
+      llmConfiguration: Option[LlmConfiguration] = None, programmingHint: Boolean = false)
+
+  object FeedbackLlmRequest {
+    private val fields: ReadWriter[FeedbackLlmRequest] = macroRW
+
+    /** Reading requires both prompts as strings (JSON null is rejected). A malformed request fails with a fixed
+      * message and no cause, since decoder errors would quote the learner's prompt into logs and responses.
+      */
+    given ReadWriter[FeedbackLlmRequest] = readwriter[ujson.Value].bimap[FeedbackLlmRequest](writeJs(_)(using fields), json =>
+      scala.util.Try(read[FeedbackLlmRequest](json)(using fields)).toOption
+        .filter(request => request.prompt != null && request.systemPrompt != null)
+        .getOrElse(throw IllegalArgumentException("Invalid feedback request.")))
+  }
 
   lazy val feedbackLlmCommandFactory: ExecutionCommandFactory[FeedbackLlmRequest, String] =
     ExecutionCommandFactory[FeedbackLlmRequest, String](

@@ -1,16 +1,23 @@
 package it.evadid.server.database
 
+import it.evadid.server.ServerConfig
+import it.evadid.server.database.schema.DatabaseSchemaSetup
 import it.evadid.sql.DatabaseConfigWithCredentials
-import it.evadid.server.database.newConnection
+import it.evadid.util.logging.BasicLogger
 import java.sql.Connection
 import scala.util.Using
 
+/** The disposable localhost database named by the test environment's `SQL_*` and `SERVER_SECRET` settings. */
 object MysqlTestDatabase {
-  def withConnection[A](run: Connection => A): A = {
+  lazy val serverConfig: ServerConfig = {
     require(sys.env.get("SQL_DATABASE").contains("edusquirrel_account_test"), "Use only the disposable edusquirrel_account_test database")
     require(sys.env.get("SQL_HOST").exists(Set("127.0.0.1", "localhost")), "Use only a localhost test database")
-    Using.resource(DatabaseConfigWithCredentials.readFromEnv().newConnection())(run)
+    ServerConfig.fromEnvironment()
   }
+
+  def config: DatabaseConfigWithCredentials = serverConfig.backendDatabase
+
+  def withConnection[A](run: Connection => A): A = Using.resource(Database.open(config))(run)
 
   def clearSchema(connection: Connection): Unit = {
     require(connection.getCatalog == "edusquirrel_account_test")
@@ -28,7 +35,7 @@ object MysqlTestDatabase {
 
   def reset(connection: Connection): Unit = {
     clearSchema(connection)
-    val report = DatabaseSchemaSetup.setupIfEmpty(connection)
+    val report = DatabaseSchemaSetup.setupIfEmpty(connection, BasicLogger())
     require(report.valid, report.toString)
   }
 }

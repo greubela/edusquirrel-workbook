@@ -21,7 +21,7 @@ CREATE TABLE `user` (
   `name` VARCHAR(255) NOT NULL,
   `mail` VARCHAR(255) NOT NULL,
   `config` LONGTEXT NOT NULL,
-  INDEX `user_mail` (`mail`)
+  UNIQUE KEY `user_mail` (`mail`)
 ) ENGINE=InnoDB DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_bin;
 CREATE TABLE `loginTokens` (
   `userId` VARCHAR(128) NOT NULL PRIMARY KEY,
