@@ -24,7 +24,7 @@ import scala.util.{Failure, Success, Try}
   * its successor. A received history that `validate` rejects is reported and discarded.
   */
 final class RemoteHistoryCache[K, F <: InteractionFormat, RW <: RemoteHistoryReaderWriter[K, F]](
-    syncLogger: SyncLogger, cacheStrategies: Map[RW, EventSyncStrategy],
+    format: F, syncLogger: SyncLogger, cacheStrategies: Map[RW, EventSyncStrategy],
     state: CacheStore[K, F, RW], validate: InteractionVariableHistory[F] => Try[Unit] = (_: InteractionVariableHistory[F]) => Success(())) {
   private given ExecutionContext = ExecutionContext.global
   private type History = InteractionVariableHistory[F]
@@ -43,10 +43,10 @@ final class RemoteHistoryCache[K, F <: InteractionFormat, RW <: RemoteHistoryRea
   }
 
   private def attempt[A](operation: => Future[A]): Future[A] = Try(operation).fold(Future.failed, identity)
-  private def empty: History = InteractionVariableHistory(InteractionEvents.empty)
+  private def empty: History = InteractionVariableHistory(format, InteractionEvents.empty)
   private def later(a: Option[LocalDateTime], b: Option[LocalDateTime]): Option[LocalDateTime] = (a.toList ++ b).maxOption
   private def missing(local: History, known: Set[EventId], strategy: EventSyncStrategy): History =
-    InteractionVariableHistory(InteractionEvents(local.cleanWithStrategy(strategy).events.values.filterNot(event => known(event.eventId))))
+    InteractionVariableHistory(format, InteractionEvents(local.cleanWithStrategy(strategy).events.values.filterNot(event => known(event.eventId))))
 
   /** Events are immutable; a received event whose ID names different local content is corrupt and left out. */
   private def withoutConflicts(cache: RW, key: K, received: Seq[InteractionEvent[F]]): Set[InteractionEvent[F]] = {
@@ -129,7 +129,7 @@ final class RemoteHistoryCache[K, F <: InteractionFormat, RW <: RemoteHistoryRea
         val received = keys.map { key =>
           val bounded = response.getOrElse(key, Nil).filter(event =>
             starting.forall(from => !event.timestamp.isBefore(from)) && !event.timestamp.isAfter(until))
-          key -> InteractionVariableHistory(InteractionEvents(withoutConflicts(cache, key, bounded)))
+          key -> InteractionVariableHistory(format, InteractionEvents(withoutConflicts(cache, key, bounded)))
         }.filter((key, history) => validate(history).fold(error => {
           syncLogger.logExceptionWarn(s"Discarded the history of $key received from $cache: the exercise rejects one of its answers", error)
           false
@@ -215,8 +215,8 @@ object RemoteHistoryCache {
   }
 
   def apply[K, F <: InteractionFormat, RW <: RemoteHistoryReaderWriter[K, F]](
-      logger: SyncLogger, strategies: Map[RW, EventSyncStrategy]): RemoteHistoryCache[K, F, RW] =
-    new RemoteHistoryCache(logger, strategies, CacheStore(State(CacheState.empty(strategies.keySet))))
+      format: F, logger: SyncLogger, strategies: Map[RW, EventSyncStrategy]): RemoteHistoryCache[K, F, RW] =
+    new RemoteHistoryCache(format, logger, strategies, CacheStore(State(CacheState.empty(strategies.keySet))))
 
   /** What one destination is known to hold for a key; the progress fields advance only with tracked reads. */
   case class RemoteHistoryValue(
@@ -234,7 +234,7 @@ object RemoteHistoryCache {
       destinations: Map[RW, Map[K, RemoteHistoryValue]]) {
     def withLocalHistories(incoming: Map[K, InteractionVariableHistory[F]]): CacheState[K, F, RW] =
       copy(histories = incoming.foldLeft(histories) { case (merged, (key, history)) =>
-        merged.updated(key, merged.getOrElse(key, InteractionVariableHistory(InteractionEvents.empty[F])).mergeWith(history).cleanedHistory())
+        merged.updated(key, merged.get(key).fold(history)(_.mergeWith(history)).cleanedHistory())
       })
 
     def knownAt(cache: RW, key: K): Option[RemoteHistoryValue] = destinations.get(cache).flatMap(_.get(key))

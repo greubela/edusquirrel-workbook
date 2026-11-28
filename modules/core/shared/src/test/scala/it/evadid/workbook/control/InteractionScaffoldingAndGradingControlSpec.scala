@@ -1,6 +1,6 @@
 package it.evadid.workbook.control
 
-import it.evadid.workbook.history.{InteractionVariableGradingHistory, InteractionVariableScaffoldingHistory}
+import it.evadid.workbook.history.InteractionVariableHistory
 
 import it.evadid.workbook.model.InteractionScope
 
@@ -9,6 +9,7 @@ import it.evadid.workbook.sync.SyncConnection
 import it.evadid.workbook.sync.UsageContext
 import it.evadid.core.datastructures.language.WorkbookContent
 import it.evadid.core.datastructures.chat.MessengerModel
+import it.evadid.workbook.abstractions.InteractionFormat
 import it.evadid.workbook.abstractions.InteractionFormat.TextInputWithLlmGradingAndScaffoldingFormat
 import it.evadid.core.datastructures.state.State
 import it.evadid.core.datastructures.language.AppLanguage.{English, German, HumanLanguage}
@@ -240,7 +241,8 @@ class InteractionScaffoldingAndGradingControlSpec extends FunSuite {
     val current = old.copy(gradingStatus = GradingStatus.Correct, gradingTime = time.plusSeconds(1))
     val other = GradingResult[String, MessengerModel](second, "answer", GradingStatus.Incorrect, feedbackInformation = None, additionalData = None, gradingTime = time)
     List(old, current, other).permutations.foreach { results =>
-      val saved = InteractionVariableGradingHistory.fromResults(results).gradingsMap("answer")
+      val saved = InteractionVariableHistory.empty(TextInputWithLlmGradingAndScaffoldingFormat).addGradings(results)
+        .gradingForState(List(first, second), "answer")
       assertEquals(saved.graderResultMap, Map[WorkbookInteractionGrader[String, MessengerModel], GradingResult[String, MessengerModel]](first -> current, second -> other))
     }
   }
@@ -261,7 +263,7 @@ class InteractionScaffoldingAndGradingControlSpec extends FunSuite {
     first.zip(second).flatMap { (a, b) =>
       assertEquals(a, original)
       assertEquals(b, original)
-      assertEquals(value.controller.currentHistory(value.interaction).historyScaffolding.scaffoldingMap("answer"), original)
+      assertEquals(value.controller.currentHistory(value.interaction).completedScaffolding("answer"), Some(original))
       value.control.getOrCalculateScaffolding().map { cached =>
         assertEquals(cached, original)
         assertEquals(scaffolder.calls.now(), 1)
@@ -275,7 +277,8 @@ class InteractionScaffoldingAndGradingControlSpec extends FunSuite {
     val english = german.copy(scaffoldingStatus = ScaffoldingStatus.ScaffoldingFeedback(
       LanguageMap.mapBasedLanguageMap[HumanLanguage](Map(English -> "Hint"))), scaffoldingTime = time.plusSeconds(1))
     List(german.merge(english), english.merge(german),
-      InteractionVariableScaffoldingHistory(Set(german, english)).scaffoldingMap("answer")).foreach { result =>
+      InteractionVariableHistory.empty(TextInputWithLlmGradingAndScaffoldingFormat).addScaffoldings(Seq(german, english))
+        .completedScaffolding("answer").get).foreach { result =>
       val feedback = result.scaffoldingStatus.asInstanceOf[ScaffoldingStatus.ScaffoldingFeedback].feedback
       assertEquals(feedback.tryGetInLanguage(German), Some("Hinweis"))
       assertEquals(feedback.tryGetInLanguage(English), Some("Hint"))
@@ -367,12 +370,13 @@ class InteractionScaffoldingAndGradingControlSpec extends FunSuite {
     val value = variable(Nil)
     val timestamp = java.time.LocalDateTime.of(2026, 11, 17, 12, 0)
     val entity = FeedbackEntity.LlmEntity
-    value.controller.updateHistory(value.interaction)(_.addEvent(ScaffoldingStartedEvent[F]("answer", timestamp, entity)))
+    def started(at: java.time.LocalDateTime) = ScaffoldingResult[String, MessengerModel]("answer", ScaffoldingStatus.ScaffoldingRequestedButNotFinished(), entity, None, at)
+    value.controller.updateHistory(value.interaction)(_.addScaffolding(started(timestamp)))
     assertEquals(value.control.getCurrentStateOfScaffolding("answer").map(_.scaffoldingStatus), Some(ScaffoldingStatus.ScaffoldingRequestedButNotFinished()))
     val completed = ScaffoldingResult[String, MessengerModel]("answer", ScaffoldingStatus.ScaffoldingFeedback(LanguageMap.universalMap("Hint")), entity, None, timestamp)
-    value.controller.updateHistory(value.interaction)(_.addEvent(ScaffoldingCompletedEvent[F](completed)))
+    value.controller.updateHistory(value.interaction)(_.addScaffolding(completed))
     assertEquals(value.control.getCurrentStateOfScaffolding("answer"), Some(completed))
-    value.controller.updateHistory(value.interaction)(_.addEvent(ScaffoldingStartedEvent[F]("answer", timestamp.plusNanos(1), entity)))
+    value.controller.updateHistory(value.interaction)(_.addScaffolding(started(timestamp.plusNanos(1))))
     assertEquals(value.control.getCurrentStateOfScaffolding("answer").map(_.scaffoldingStatus), Some(ScaffoldingStatus.ScaffoldingRequestedButNotFinished()))
   }
   private val nextUser = UsageContext("program", "workbook", "next user")
@@ -389,7 +393,7 @@ class InteractionScaffoldingAndGradingControlSpec extends FunSuite {
     rebind(value)
     value.controller.setStateFromUserInteraction(value.interaction, "new user's answer", UpdateImportance.MAJOR)
     gate.success(())
-    pending.map(_ => assert(!value.controller.currentHistory(value.interaction).gradingEvents.exists(_.associatedState == "answer")))
+    pending.map(_ => assert(!value.controller.currentHistory(value.interaction).gradingEvents.exists(_.state == InteractionFormat.referenceOf(TextInputWithLlmGradingAndScaffoldingFormat, "answer"))))
   }
 
   test("a replaced session drops pending hints and starts with empty feedback caches") {
@@ -415,7 +419,7 @@ class InteractionScaffoldingAndGradingControlSpec extends FunSuite {
     val pending = value.control.getOrCalculateGrading(forceGrading = true)
     value.controller.connect(SyncConnection.offline.copy(execution = TestExecutionContext()))
     gate.success(())
-    pending.map(_ => assert(value.controller.currentHistory(value.interaction).historyGrading.gradingsMap.nonEmpty))
+    pending.map(_ => assert(value.controller.currentHistory(value.interaction).gradingRecords.nonEmpty))
   }
 
 }

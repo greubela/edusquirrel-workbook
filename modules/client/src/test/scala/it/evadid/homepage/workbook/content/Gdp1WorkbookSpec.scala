@@ -315,7 +315,7 @@ class Gdp1WorkbookSpec extends FunSuite {
   test("structure grading results round-trip through InteractionHistoryJson") {
     val task = tasks(3)
     grade(task.gradingElements, ProgrammingStatePythonStructured(withFunction)).map { results =>
-      val history = InteractionVariableHistory.empty[TurtleRecreateShapeInteractionFormat.type].addGradings(results)
+      val history = InteractionVariableHistory.empty(TurtleRecreateShapeInteractionFormat).addGradings(results)
       val envelope = InteractionHistoryJson.fromHistory(TurtleRecreateShapeInteractionFormat, history)
       val restored = read[InteractionHistoryJson](write(envelope))
       assertEquals(restored, envelope)

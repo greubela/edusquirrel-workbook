@@ -30,7 +30,8 @@ packages can be renamed without touching saved data:
 | --- | --- |
 | Format | `Typed(name, …)`, resolved by the finite `knownFormats` registry |
 | Event | `@key` on each event case class (`$type`) |
-| Grader | its companion's `codec` (`serializedType`); a format lists the grader codecs it accepts |
+| Grader | its companion's `codec` (`serializedType`), for workbook definitions |
+| Feedback reference | `GraderReference(<key>)` and `StateReference(<fingerprint>)` |
 
 Unknown names are rejected, without dynamic class loading or element-ID lookup;
 [PersistedNamesSpec](../modules/core/shared/src/test/scala/it/evadid/workbook/serialization/PersistedNamesSpec.scala)
@@ -78,8 +79,12 @@ order survives other device zones and DST; only display converts with `UtcTime.t
 Saved error statuses (`TestError`, `ScaffoldingError`) keep only the messages of an error
 and its causes; stack traces stay in logs. State/feedback history views are derived projections,
 not separate persisted stores. A newer grading start represents a retry in progress;
-completion wins a timestamp tie. Graders are matched by their content key: a hash of the persisted grader type and its
-parameters, so graders of one type (for example two unit tests) differ by their parameters.
+completion wins a timestamp tie. Feedback events never copy their grader or answer. They refer to the grader by its content key
+(a hash of the persisted grader type and its parameters, so two unit tests differ) and to the
+answer by the fingerprint its format derives (`Typed(name, stateFingerprint)`; by default the
+canonical JSON of the state codec, for programs their source text). Each history carries its
+format to resolve them; readers pass the current graders and the answer they ask about
+(`gradingForState`, `completedScaffolding`), so results of removed graders are not shown.
 
 Starts default to `TEMPORARY`, completions to `MAJOR`. `cleanedHistory()` is the one
 history cleanup: it drops DEFAULT answers once another answer exists and TEMPORARY answers

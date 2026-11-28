@@ -93,7 +93,7 @@ class RelationalHistoryStorage(connection: Connection, logger: Logger) extends H
         }.fold(error => { logger.logExceptionWarn(s"Discarded the unreadable $table row $eventId", error); None }, Some(_))
       }.flatten
     }.toSet
-    InteractionHistoryJson.fromHistory(format, InteractionVariableHistory(InteractionEvents(events)))
+    InteractionHistoryJson.fromHistory(format, InteractionVariableHistory(format, InteractionEvents(events)))
   }
 
   def fetch(request: FetchEventsFromDbRequest): DbFetchResponse = transaction {

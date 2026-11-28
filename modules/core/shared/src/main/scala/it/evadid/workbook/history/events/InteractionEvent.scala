@@ -1,9 +1,9 @@
 package it.evadid.workbook.history.events
 
 import it.evadid.core.util.io.serializer.DefaultSerializer.given
-import it.evadid.workbook.abstractions.{FeedbackEntity, InteractionFormat}
-import it.evadid.workbook.abstractions.grading.{GradingResult, GradingStatus, WorkbookInteractionGrader}
-import it.evadid.workbook.abstractions.scaffolding.{ScaffoldingResult, ScaffoldingStatus}
+import it.evadid.workbook.abstractions.{FeedbackEntity, GraderReference, InteractionFormat, StateReference}
+import it.evadid.workbook.abstractions.grading.{GradingRecord, GradingStatus}
+import it.evadid.workbook.abstractions.scaffolding.{ScaffoldingRecord, ScaffoldingStatus}
 import it.evadid.workbook.sync.UpdateImportance
 
 import java.time.LocalDateTime
@@ -11,13 +11,18 @@ import upickle.default.*
 import upickle.implicits.key
 
 /** Events are immutable: an [[EventId]] names exactly one content, and a revision is a new event. Saved events
-  * are tagged with their fixed `@key` names, so the classes can be renamed.
+  * are tagged with their fixed `@key` names, so the classes can be renamed. Only answer events hold an answer;
+  * feedback events refer to it by [[StateReference]] and to graders by [[GraderReference]].
   */
 sealed trait InteractionEvent[F <: InteractionFormat] {
   def eventId: EventId
-  def associatedState: InteractionFormat.State[F]
   def timestamp: LocalDateTime
   def updateImportance: UpdateImportance
+}
+
+/** Grading and scaffolding events, which refer to their answer. */
+sealed trait FeedbackEvent[F <: InteractionFormat] extends InteractionEvent[F] {
+  def state: StateReference
 }
 
 @key("AnswerChangedEvent")
@@ -26,44 +31,42 @@ case class AnswerChangedEvent[F <: InteractionFormat](
     timestamp: LocalDateTime,
     updateImportance: UpdateImportance,
     eventId: EventId = EventId.random()
-) extends InteractionEvent[F] {
-  override def associatedState: InteractionFormat.State[F] = newState
-}
+) extends InteractionEvent[F]
 
-sealed trait GradingEvent[F <: InteractionFormat] extends InteractionEvent[F] {
-  def grader: WorkbookInteractionGrader[InteractionFormat.State[F], InteractionFormat.Grading[F]]
+sealed trait GradingEvent[F <: InteractionFormat] extends FeedbackEvent[F] {
+  def grader: GraderReference
 }
 
 @key("GradingStartedEvent")
 case class GradingStartedEvent[F <: InteractionFormat](
-    associatedState: InteractionFormat.State[F],
+    state: StateReference,
     timestamp: LocalDateTime,
-    grader: WorkbookInteractionGrader[InteractionFormat.State[F], InteractionFormat.Grading[F]],
+    grader: GraderReference,
     updateImportance: UpdateImportance = UpdateImportance.TEMPORARY,
     eventId: EventId = EventId.random()
 ) extends GradingEvent[F]
 
-/** The result is the single source of truth for the answer, grader and completion time. */
+/** The record is the single source of truth for the answer, grader and completion time. */
 @key("GradingCompletedEvent")
 case class GradingCompletedEvent[F <: InteractionFormat](
-    result: GradingResult[InteractionFormat.State[F], InteractionFormat.Grading[F]],
+    record: GradingRecord[InteractionFormat.Grading[F]],
     updateImportance: UpdateImportance = UpdateImportance.MAJOR,
     eventId: EventId = EventId.random()
 ) extends GradingEvent[F] {
-  require(result.gradingStatus != GradingStatus.NotRequested && result.gradingStatus != GradingStatus.NotFinished,
+  require(record.gradingStatus != GradingStatus.NotRequested && record.gradingStatus != GradingStatus.NotFinished,
     "A completed grading event requires a completed assessment or execution error")
-  override def associatedState: InteractionFormat.State[F] = result.gradedState
-  override def timestamp: LocalDateTime = result.gradingTime
-  override def grader: WorkbookInteractionGrader[InteractionFormat.State[F], InteractionFormat.Grading[F]] = result.grader
+  override def state: StateReference = record.state
+  override def timestamp: LocalDateTime = record.gradingTime
+  override def grader: GraderReference = record.grader
 }
 
-sealed trait ScaffoldingEvent[F <: InteractionFormat] extends InteractionEvent[F] {
+sealed trait ScaffoldingEvent[F <: InteractionFormat] extends FeedbackEvent[F] {
   def scaffoldingEntity: FeedbackEntity
 }
 
 @key("ScaffoldingStartedEvent")
 case class ScaffoldingStartedEvent[F <: InteractionFormat](
-    associatedState: InteractionFormat.State[F],
+    state: StateReference,
     timestamp: LocalDateTime,
     scaffoldingEntity: FeedbackEntity,
     updateImportance: UpdateImportance = UpdateImportance.TEMPORARY,
@@ -72,13 +75,13 @@ case class ScaffoldingStartedEvent[F <: InteractionFormat](
 
 @key("ScaffoldingCompletedEvent")
 case class ScaffoldingCompletedEvent[F <: InteractionFormat](
-    result: ScaffoldingResult[InteractionFormat.State[F], InteractionFormat.Scaffolding[F]],
+    record: ScaffoldingRecord[InteractionFormat.Scaffolding[F]],
     updateImportance: UpdateImportance = UpdateImportance.MAJOR,
     eventId: EventId = EventId.random()
 ) extends ScaffoldingEvent[F] {
-  require(result.scaffoldingStatus != ScaffoldingStatus.ScaffoldingRequestedButNotFinished(),
+  require(record.scaffoldingStatus != ScaffoldingStatus.ScaffoldingRequestedButNotFinished(),
     "A completed scaffolding event requires feedback or an execution error")
-  override def associatedState: InteractionFormat.State[F] = result.forState
-  override def timestamp: LocalDateTime = result.scaffoldingTime
-  override def scaffoldingEntity: FeedbackEntity = result.scaffoldingEntity
+  override def state: StateReference = record.state
+  override def timestamp: LocalDateTime = record.scaffoldingTime
+  override def scaffoldingEntity: FeedbackEntity = record.scaffoldingEntity
 }

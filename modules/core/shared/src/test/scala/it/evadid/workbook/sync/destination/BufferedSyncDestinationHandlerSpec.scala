@@ -20,7 +20,7 @@ class BufferedSyncDestinationHandlerSpec extends FunSuite {
   private val key = context.toSyncContext("answer")
   private def saved(value: String): String = {
     val format = InteractionFormat.TextInteractionFormat
-    val history = InteractionVariableHistory.empty[format.type]
+    val history = InteractionVariableHistory.empty(format)
       .addEvent(AnswerChangedEvent[format.type](value, LocalDateTime.of(2026, 1, 1, 12, 0), UpdateImportance.MAJOR, eventId(value)))
     InteractionHistoryJson.fromHistory(format, history).serialized
   }
@@ -300,7 +300,7 @@ class BufferedSyncDestinationHandlerSpec extends FunSuite {
     val events = (0 to 3).map(index => AnswerChangedEvent[format.type](
       index.toString, base.plusNanos(index), UpdateImportance.MAJOR)).toSet
     val full = InteractionHistoryJson.fromHistory(format,
-      InteractionVariableHistory(InteractionEvents(events.map(event => event: InteractionEvent[format.type]))))
+      InteractionVariableHistory(format, InteractionEvents(events.map(event => event: InteractionEvent[format.type]))))
     val destination = new Destination {
       override def readHistoriesInRange(ctx: UsageContext, keys: Seq[SyncContext], from: LocalDateTime,
           until: LocalDateTime, strategy: EventSyncStrategy)(using ExecutionContext) = {

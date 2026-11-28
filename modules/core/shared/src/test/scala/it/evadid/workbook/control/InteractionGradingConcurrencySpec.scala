@@ -71,7 +71,15 @@ class InteractionGradingConcurrencySpec extends FunSuite {
   private val grader = choice.gradingElements.head
   private type Choice = choice.interactionFormat.type
   private def remote(events: it.evadid.workbook.history.events.InteractionEvent[Choice]*): InteractionVariableHistory[Choice] =
-    events.foldLeft(InteractionVariableHistory.empty[Choice])(_.addEvent(_))
+    events.foldLeft(InteractionVariableHistory.empty[Choice](choice.interactionFormat))(_.addEvent(_))
+  private def ref(state: it.evadid.workbook.abstractions.InteractionFormat.State[Choice]) =
+    it.evadid.workbook.abstractions.InteractionFormat.referenceOf[Choice](choice.interactionFormat, state)
+  /** Whether a feedback event of `answers`' text exercise refers to `answer`. */
+  private def about(event: it.evadid.workbook.history.events.InteractionEvent[Text], answer: String) = event match {
+    case feedback: it.evadid.workbook.history.events.FeedbackEvent[Text] =>
+      feedback.state == it.evadid.workbook.abstractions.InteractionFormat.referenceOf[Text](TextInputWithLlmGradingAndScaffoldingFormat, answer)
+    case answerEvent: AnswerChangedEvent[Text] => answerEvent.newState == answer
+  }
 
   test("an answer changed while the previous answer is graded keeps each result with its own answer") {
     val grader = GatedGrader(GraderRunningBehavior.RUN_ALWAYS)
@@ -105,7 +113,7 @@ class InteractionGradingConcurrencySpec extends FunSuite {
       answers.setStateFromUserInteraction(exercise, "wrong", UpdateImportance.MAJOR)
       assertEquals(grader.graded.now(), Vector("wrong"), "grading events and a new importance of the same answer start nothing")
       assert(answers.currentHistory(exercise).allStates.forall(_.newState != "typing"), "the superseded temporary answer is gone")
-      assert(answers.currentHistory(exercise).gradingEvents.forall(_.associatedState == "wrong"))
+      assert(answers.currentHistory(exercise).gradingEvents.forall(about(_, "wrong")))
     }
   }
 
@@ -115,11 +123,11 @@ class InteractionGradingConcurrencySpec extends FunSuite {
     val answers = offline(exercise)
     answers.setStateFromUserInteraction(exercise, "draft", UpdateImportance.TEMPORARY)
     val pending = answers.feedback(exercise).getOrCalculateGrading(forceGrading = true)
-    assert(answers.currentHistory(exercise).gradingEvents.exists(_.associatedState == "draft"))
+    assert(answers.currentHistory(exercise).gradingEvents.exists(about(_, "draft")))
     answers.setStateFromUserInteraction(exercise, "right", MAJOR, UtcTime.now().plusSeconds(1))
     grader.gate("draft").success(())
     pending.map { _ =>
-      assert(answers.currentHistory(exercise).events.values.forall(_.associatedState != "draft"),
+      assert(answers.currentHistory(exercise).events.values.forall(!about(_, "draft")),
         "neither the start nor the late completion of the superseded draft is kept")
     }
   }
@@ -131,7 +139,7 @@ class InteractionGradingConcurrencySpec extends FunSuite {
     answers.setStateFromUserInteraction(exercise, "right", MAJOR)
     val pending = answers.feedback(exercise).getOrCalculateGrading(forceGrading = true)
     val earlier = GradingResult[String, MessengerModel](grader, "right", GradingStatus.Incorrect, None, None, UtcTime.now().minusSeconds(5))
-    answers.updateHistory(exercise)(_.mergeWith(InteractionVariableHistory.empty[Text].addEvent(GradingCompletedEvent[Text](earlier))))
+    answers.updateHistory(exercise)(_.mergeWith(InteractionVariableHistory.empty[Text](TextInputWithLlmGradingAndScaffoldingFormat).addGrading(earlier)))
     assertEquals(answers.feedback(exercise).getCurrentStateOfGrading("right").testsWithResults.head.gradingStatus, GradingStatus.NotFinished,
       "the newer local start is still running")
     grader.gate("right").success(())
@@ -145,7 +153,7 @@ class InteractionGradingConcurrencySpec extends FunSuite {
     val store = GatedHistoryStore(context)
     val now = UtcTime.now()
     store.seed(choice, remote(AnswerChangedEvent[Choice](wrong, now.minusSeconds(10), MAJOR),
-      GradingStartedEvent[Choice](wrong, now.minusSeconds(5), grader)))
+      GradingStartedEvent[Choice](ref(wrong), now.minusSeconds(5), grader.reference)))
     val answers = store.controllerFor(choice)
     answers.setStateFromUserInteraction(choice, right, MAJOR)
     answers.fetch(choice, forceFlush = true).flatMap { _ =>
@@ -164,7 +172,7 @@ class InteractionGradingConcurrencySpec extends FunSuite {
     val store = GatedHistoryStore(context)
     val now = UtcTime.now()
     store.seed(choice, remote(AnswerChangedEvent[Choice](wrong, now.minusSeconds(10), MAJOR),
-      GradingStartedEvent[Choice](wrong, now.minusSeconds(5), grader)))
+      GradingStartedEvent[Choice](ref(wrong), now.minusSeconds(5), grader.reference)))
     val answers = store.controllerFor(choice)
     answers.fetch(choice, forceFlush = true).flatMap { _ =>
       assertEquals(answers.currentValue(choice), wrong)
@@ -185,7 +193,7 @@ class InteractionGradingConcurrencySpec extends FunSuite {
     val store = GatedHistoryStore(context)
     val now = UtcTime.now()
     val completed = GradingResult(grader, right, GradingStatus.Correct, None, None, now.minusSeconds(5))
-    store.seed(choice, remote(AnswerChangedEvent[Choice](right, now.minusSeconds(10), MAJOR), GradingCompletedEvent[Choice](completed)))
+    store.seed(choice, remote(AnswerChangedEvent[Choice](right, now.minusSeconds(10), MAJOR), GradingCompletedEvent[Choice](completed.record(ref(right)))))
     val answers = store.controllerFor(choice)
     answers.fetch(choice, forceFlush = true).flatMap(_ => answers.feedback(choice).getOrCalculateGrading(forceGrading = true)).map { graded =>
       assertEquals(graded.testsWithResults.head.gradingStatus, GradingStatus.Correct)

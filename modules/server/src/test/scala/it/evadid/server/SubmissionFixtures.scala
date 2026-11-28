@@ -43,11 +43,11 @@ object SubmissionFixtures {
 
   private def context(scenario: String, key: String): SyncContext = UsageContext("edusquirrel", scenario, student.id).toSyncContext(key)
 
-  private val essayHistory = InteractionHistoryJson.fromHistory(TextInteractionFormat, InteractionVariableHistory.empty[TextInteractionFormat.type]
+  private val essayHistory = InteractionHistoryJson.fromHistory(TextInteractionFormat, InteractionVariableHistory.empty(TextInteractionFormat)
     .addState(InteractionVariableState("first draft", UpdateImportance.MAJOR, savedAt.minusMinutes(20)))
     .addState(InteractionVariableState("final answer", UpdateImportance.MAJOR, savedAt.minusMinutes(10))))
 
-  private val quizHistory = InteractionHistoryJson.fromHistory(ChoiceInteractionFormat, InteractionVariableHistory.empty[ChoiceInteractionFormat.type]
+  private val quizHistory = InteractionHistoryJson.fromHistory(ChoiceInteractionFormat, InteractionVariableHistory.empty(ChoiceInteractionFormat)
     .addState(InteractionVariableState(quizAnswer, UpdateImportance.MAJOR, savedAt.minusMinutes(5)))
     .addGrading(GradingResult(quiz.gradingElements.head, quizAnswer, GradingStatus.Correct, None, None, savedAt.minusMinutes(4))))
 

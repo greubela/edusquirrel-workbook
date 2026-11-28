@@ -87,7 +87,7 @@ class HomepageStateSpec extends EditorDomSuite {
     val database = InMemoryHistoryDatabase()
 
     private def history(text: String, index: Int) = InteractionHistoryJson.fromHistory(TextInteractionFormat,
-      InteractionVariableHistory.empty[TextInteractionFormat.type].addEvent(
+      InteractionVariableHistory.empty(TextInteractionFormat).addEvent(
         AnswerChangedEvent[TextInteractionFormat.type](text, at.plusSeconds(index), UpdateImportance.MAJOR)))
     Seq(defaultDatabase.format, defaultBlobDatabase.format).foreach { format =>
       elements.zipWithIndex.foreach { (element, index) =>
@@ -98,7 +98,7 @@ class HomepageStateSpec extends EditorDomSuite {
 
     def seed(context: UsageContext, text: String, timestamp: LocalDateTime): Unit = {
       val value = InteractionHistoryJson.fromHistory(TextInteractionFormat,
-        InteractionVariableHistory.empty[TextInteractionFormat.type].addEvent(
+        InteractionVariableHistory.empty(TextInteractionFormat).addEvent(
           AnswerChangedEvent[TextInteractionFormat.type](text, timestamp, UpdateImportance.MAJOR)))
       Seq(defaultDatabase.format, defaultBlobDatabase.format).foreach { format =>
         elements.foreach { element =>
@@ -411,7 +411,7 @@ class HomepageStateSpec extends EditorDomSuite {
       val local = fixture.info.interactions.currentHistory(element).cleanWithStrategy(information.syncStrategy).events.values
       val known = sent.getOrElse(format -> key, Set.empty) ++ heldBefore.getOrElse(format -> key, Set.empty)
       val missing = local.filterNot(event => known.contains(event.eventId))
-      assertEquals(missing.map(event => (event.associatedState, event.updateImportance)), Set.empty, s"$format $key")
+      assertEquals(missing.map(event => (event.eventId, event.updateImportance)), Set.empty, s"$format $key")
     }
   }
 

@@ -23,7 +23,7 @@ class CheckReportSpec extends FunSuite {
   private def at(minute: Int) = LocalDateTime.of(2026, 1, 1, 10, minute)
 
   private def history(checks: (MatchingInteractionState, GradingStatus, Int)*): InteractionVariableHistory[MatchingInteractionFormat.type] =
-    checks.foldLeft(InteractionVariableHistory.empty[MatchingInteractionFormat.type]) { case (current, (state, status, minute)) =>
+    checks.foldLeft(InteractionVariableHistory.empty(MatchingInteractionFormat)) { case (current, (state, status, minute)) =>
       current.addState(InteractionVariableState(state, UpdateImportance.MAJOR, at(minute)))
         .addGrading(GradingResult(grader, state, status, None, Some(0), at(minute)))
     }
@@ -50,7 +50,7 @@ class CheckReportSpec extends FunSuite {
     val options = Seq(true, false).map(correct => ChoiceOptionWorkbookContent(WorkbookContent(id(correct.toString)),
       Some(GradingForChoice(if correct then GradingStatus.Correct else GradingStatus.Incorrect, id("feedback")))))
     val automatic = WorkbookContentChoiceInteraction("auto-choice", ChoiceConfig(id("q"), Some(false), GraderRunningBehavior.RUN_ALWAYS), options)
-    assertEquals(CheckReport(automatic, InteractionVariableHistory.empty), CheckReport.untracked)
+    assertEquals(CheckReport(automatic, InteractionVariableHistory.empty(automatic.interactionFormat)), CheckReport.untracked)
   }
 
   test("wrong parts name wrong options, filled wrong cells and misplaced items only") {

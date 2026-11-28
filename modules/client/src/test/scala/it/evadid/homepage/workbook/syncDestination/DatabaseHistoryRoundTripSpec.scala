@@ -34,7 +34,7 @@ class DatabaseHistoryRoundTripSpec extends FunSuite {
     DatabaseSyncViaBackendServerHandler(logger, definition, database.client, BackendDatabase)
 
   private def textHistory(values: (String, Int)*): InteractionVariableHistory[text.type] =
-    InteractionVariableHistory(InteractionEvents(values.map((value, second) =>
+    InteractionVariableHistory(text, InteractionEvents(values.map((value, second) =>
       AnswerChangedEvent[text.type](value, at.plusSeconds(second), UpdateImportance.MAJOR): InteractionEvent[text.type]).toSet))
 
   /** A programming answer whose expression tree uses computed repeat counts and one-way counting loops. */
@@ -42,7 +42,7 @@ class DatabaseHistoryRoundTripSpec extends FunSuite {
     ProgrammingStateRaw(Python, "n = 3\nfor _ in range(n):\n    forward(10)\nfor i in range(n, 0, -1):\n    right(i)\n").toBeExpression
 
   private val programmingHistory: InteractionVariableHistory[programming.type] =
-    InteractionVariableHistory(InteractionEvents(Set(
+    InteractionVariableHistory(programming, InteractionEvents(Set(
       AnswerChangedEvent[programming.type](program, at, UpdateImportance.MAJOR): InteractionEvent[programming.type],
       AnswerChangedEvent[programming.type](ProgrammingStateRaw(Python, "forward(1)"), at.plusSeconds(5), UpdateImportance.MINOR))))
 
@@ -52,7 +52,7 @@ class DatabaseHistoryRoundTripSpec extends FunSuite {
     FormattedSyncDestination(SyncInformationWithContext(SyncInformation(definition, strategy), context, _ => history), format)
 
   private def cache[F <: InteractionFormat](target: FormattedSyncDestination[F], strategy: EventSyncStrategy = EventSyncStrategy.SYNC_EVERYTHING) =
-    RemoteHistoryCache[SyncContext, F, FormattedSyncDestination[F]](logger, Map(target -> strategy))
+    RemoteHistoryCache[SyncContext, F, FormattedSyncDestination[F]](target.format, logger, Map(target -> strategy))
 
   layouts.foreach { definition =>
     val layout = definition.format.toString
@@ -71,7 +71,7 @@ class DatabaseHistoryRoundTripSpec extends FunSuite {
           val restored = fetched.fetchedValues.map(value => value.dataKey -> InteractionHistoryJson.deserialize(value.dataValue)).toMap
           assertEquals(restored(answerKey).typedAs(text), answers)
           assertEquals(restored(programKey).typedAs(programming), programmingHistory)
-          assertEquals(restored(programKey).typedAs(programming).latestAnswerEvents.map(_.associatedState), Set(ProgrammingStateRaw(Python, "forward(1)"): ProgrammingState))
+          assertEquals(restored(programKey).typedAs(programming).latestAnswerEvents.collect { case answer: AnswerChangedEvent[programming.type] => answer.newState }, Set(ProgrammingStateRaw(Python, "forward(1)"): ProgrammingState))
         }
       }
     }
@@ -85,11 +85,11 @@ class DatabaseHistoryRoundTripSpec extends FunSuite {
       for {
         _ <- writing.requestStore(writerDestination, Map(key -> textHistory("a" -> 1, "b" -> 2)), forceFlush = true)
         restored <- reader.fetchAll(Set(key))
-        _ = assertEquals(restored(key).map(_.associatedState), Seq("a", "b"))
+        _ = assertEquals(restored(key).collect { case answer: AnswerChangedEvent[?] => answer.newState }, Seq("a", "b"))
         _ <- writing.requestStore(writerDestination, Map(key -> textHistory("c" -> 3)), forceFlush = true)
         _ <- reader.ensureMaxAge(Set(key))
       } yield {
-        assertEquals(reader.histories(key).events.values.map(_.associatedState), Set("a", "b", "c"))
+        assertEquals(reader.histories(key).events.values.collect { case answer: AnswerChangedEvent[?] => answer.newState }, Set("a", "b", "c"))
         assert(database.commands.now().count(_ == "bulkStore") == 2, database.commands.now().toString)
       }
     }
@@ -100,17 +100,17 @@ class DatabaseHistoryRoundTripSpec extends FunSuite {
       val strategy = EventSyncStrategy.KEEP_LAST_AND_MAJOR
       def answer(value: String, second: Int, importance: UpdateImportance): InteractionEvent[text.type] =
         AnswerChangedEvent[text.type](value, at.plusSeconds(second), importance)
-      val local = InteractionVariableHistory(InteractionEvents(Set(answer("draft", 1, UpdateImportance.MINOR),
+      val local = InteractionVariableHistory(text, InteractionEvents(Set(answer("draft", 1, UpdateImportance.MINOR),
         answer("submitted", 2, UpdateImportance.MAJOR), answer("typing", 3, UpdateImportance.TEMPORARY))))
       val target = destination(text, handler(database, definition), definition, strategy = strategy)
       val session = cache(target, strategy)
       for {
         _ <- session.requestStore(target, Map(key -> local))
         restored <- cache(target, strategy).fetchAll(Set(key))
-        _ = assertEquals(restored(key).map(_.associatedState), Seq("submitted", "typing"))
+        _ = assertEquals(restored(key).collect { case answer: AnswerChangedEvent[?] => answer.newState }, Seq("submitted", "typing"))
         _ <- session.requestStore(target, Map(key -> local.addEvent(answer("retyped", 4, UpdateImportance.TEMPORARY))))
         again <- cache(target, strategy).fetchAll(Set(key))
-      } yield assertEquals(again(key).map(_.associatedState), Seq("submitted", "retyped"),
+      } yield assertEquals(again(key).collect { case answer: AnswerChangedEvent[?] => answer.newState }, Seq("submitted", "retyped"),
         "the superseded latest answer is no longer selected")
     }
 
@@ -121,7 +121,7 @@ class DatabaseHistoryRoundTripSpec extends FunSuite {
       val session = cache(target)
       session.requestStore(target, Map(key -> textHistory("a" -> 1, "b" -> 2, "c" -> 3, "d" -> 4))).flatMap { _ =>
         session.fetchEventsBetween(Seq(key), at.plusSeconds(2), at.plusSeconds(3)).map { window =>
-          assertEquals(window(key).map(_.associatedState), Seq("b", "c"))
+          assertEquals(window(key).collect { case answer: AnswerChangedEvent[?] => answer.newState }, Seq("b", "c"))
         }
       }
     }
@@ -158,7 +158,7 @@ class DatabaseHistoryRoundTripSpec extends FunSuite {
       session.requestStore(target, Map(good -> textHistory("kept" -> 1), broken -> textHistory("lost" -> 1))).flatMap { _ =>
         database.corrupt(definition.format, broken, database.rows.now()(definition.format -> good))
         cache(target).fetchAll(Set(good, broken)).map { restored =>
-          assertEquals(restored.get(good).map(_.map(_.associatedState)), Some(Seq("kept")))
+          assertEquals(restored.get(good).map(_.collect { case answer: AnswerChangedEvent[?] => answer.newState }), Some(Seq("kept")))
           assertEquals(restored.getOrElse(broken, Nil), Nil)
         }
       }
@@ -177,7 +177,7 @@ class DatabaseHistoryRoundTripSpec extends FunSuite {
           assertEquals(session.reports(key).syncedDestinations, Set(target), "the committed acknowledgment confirms the write")
           session.fetchAll(Set(key))
         }.map { restored =>
-          assertEquals(restored(key).map(_.associatedState), Seq("offline"))
+          assertEquals(restored(key).collect { case answer: AnswerChangedEvent[?] => answer.newState }, Seq("offline"))
           assertEquals(session.reports(key).syncedDestinations, Set(target))
         }
       }

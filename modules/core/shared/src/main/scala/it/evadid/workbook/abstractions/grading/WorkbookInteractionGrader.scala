@@ -2,7 +2,7 @@ package it.evadid.workbook.abstractions.grading
 
 import it.evadid.workbook.sync.UpdateImportance
 import it.evadid.distribution.command.SerializedException
-import it.evadid.workbook.abstractions.{FeedbackEntity, InteractionFormat}
+import it.evadid.workbook.abstractions.{FeedbackEntity, GraderReference, InteractionFormat}
 import it.evadid.workbook.abstractions.grading.GradingStatus.*
 import it.evadid.workbook.interactions.gpt.TextInputLlmGrader
 import it.evadid.workbook.interactions.programming.programmingExerciseRegular.{ProgramDataTestGrader, ProgrammingUnitTestGrader}
@@ -29,6 +29,8 @@ trait WorkbookInteractionGrader[T, GA] {
   }
   private lazy val contentKey: String = it.evadid.core.util.crypto.ContentIdentity.key(identityContent)
   def key: String = contentKey
+  /** How saved feedback refers to this grader. */
+  final def reference: GraderReference = GraderReference(key)
 
   given ec: ExecutionContext = ExecutionContext.global
 

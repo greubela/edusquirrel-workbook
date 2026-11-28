@@ -159,8 +159,9 @@ class TurtleCommandUsageGraderSpec extends FunSuite {
     assertEquals(read[ProgrammingTestGrader](write(g)), g)
     assertEquals(readBinary[ProgrammingTestGrader](writeBinary(g)), g)
     unforced(g, loop).map { result =>
-      assertEquals(read[GradingResult[ProgrammingState, AdditionalProgrammingTestInfo]](write(result)), result)
-      assertEquals(readBinary[GradingResult[ProgrammingState, AdditionalProgrammingTestInfo]](writeBinary(result)), result)
+      val record = result.record(it.evadid.workbook.abstractions.StateReference("program"))
+      assertEquals(read[it.evadid.workbook.abstractions.grading.GradingRecord[AdditionalProgrammingTestInfo]](write(record)), record)
+      assertEquals(readBinary[it.evadid.workbook.abstractions.grading.GradingRecord[AdditionalProgrammingTestInfo]](writeBinary(record)), record)
     }
   }
 

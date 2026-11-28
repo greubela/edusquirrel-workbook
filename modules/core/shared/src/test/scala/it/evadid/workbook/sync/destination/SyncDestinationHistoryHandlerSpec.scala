@@ -20,7 +20,7 @@ class SyncDestinationHistoryHandlerSpec extends FunSuite {
   
   private val textFormat = InteractionFormat.TextInteractionFormat
   private val history = InteractionHistoryJson.fromHistory(textFormat,
-    InteractionVariableHistory.empty[textFormat.type].addState(InteractionVariableState("saved", UpdateImportance.MAJOR, at))).serialized
+    InteractionVariableHistory.empty(textFormat).addState(InteractionVariableState("saved", UpdateImportance.MAJOR, at))).serialized
 
   private class Destination(initial: Map[String, String], prohibitReads: Boolean = false) extends SyncDestinationHandlerBasic {
     val values = it.evadid.core.datastructures.state.State(initial)
@@ -80,7 +80,7 @@ class SyncDestinationHistoryHandlerSpec extends FunSuite {
     val destination = new Destination(Map.empty)
     val handler = destination.forHistory()
     def delta(value: String, offset: Long): String = InteractionHistoryJson.fromHistory(textFormat,
-      InteractionVariableHistory.empty[textFormat.type].addEvent(AnswerChangedEvent[textFormat.type](value, at.plusNanos(offset), UpdateImportance.MAJOR))).serialized
+      InteractionVariableHistory.empty(textFormat).addEvent(AnswerChangedEvent[textFormat.type](value, at.plusNanos(offset), UpdateImportance.MAJOR))).serialized
     val deltas = (1 to 8).map(index => delta(index.toString, index))
     Future.traverse(deltas)(json => handler.storeHistoryJson(key, json)).flatMap { _ =>
       handler.readHistory[textFormat.type](key).map(restored => assertEquals(restored.size, deltas.size))
@@ -100,7 +100,7 @@ class SyncDestinationHistoryHandlerSpec extends FunSuite {
     def answer(value: String, importance: UpdateImportance, offset: Long): InteractionEvent[textFormat.type] =
       AnswerChangedEvent[textFormat.type](value, at.plusSeconds(offset), importance)
     def json(events: InteractionEvent[textFormat.type]*): String =
-      InteractionHistoryJson.fromHistory(textFormat, InteractionVariableHistory(InteractionEvents(events.toSet))).serialized
+      InteractionHistoryJson.fromHistory(textFormat, InteractionVariableHistory(textFormat, InteractionEvents(events.toSet))).serialized
     val first = answer("first", UpdateImportance.MAJOR, 1)
     val superseded = answer("draft", UpdateImportance.TEMPORARY, 2)
     val latest = answer("latest", UpdateImportance.MAJOR, 3)
@@ -118,7 +118,7 @@ class SyncDestinationHistoryHandlerSpec extends FunSuite {
     import it.evadid.workbook.history.events.*
     val handler = new Destination(Map.empty).forHistory()
     val checkbox = InteractionFormat.LabeledCheckboxInteractionFormat
-    val changed = InteractionVariableHistory.empty[checkbox.type].addEvent(AnswerChangedEvent[checkbox.type](true, at, UpdateImportance.MAJOR))
+    val changed = InteractionVariableHistory.empty(checkbox).addEvent(AnswerChangedEvent[checkbox.type](true, at, UpdateImportance.MAJOR))
     handler.storeHistoryJson(key, history).flatMap { _ =>
       handler.storeHistoryJson(key, InteractionHistoryJson.fromHistory(checkbox, changed).serialized)
     }.flatMap(_ => handler.readHistoryJson(key)).map { read =>

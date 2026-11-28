@@ -22,11 +22,12 @@ class RemoteHistoryCacheSpec extends FunSuite {
   private val time = LocalDateTime.of(2026, 11, 16, 12, 0)
   private val key = UsageContext("program", "workbook", "user").toSyncContext("answer")
   private val otherKey = key.copy(keyForSerialisation = "other")
-  private val empty: History = InteractionVariableHistory.empty[TextInteractionFormat.type]
+  private val empty: History = InteractionVariableHistory.empty(TextInteractionFormat)
   private def event(value: Int, seconds: Long, importance: UpdateImportance = UpdateImportance.MAJOR): Event =
     AnswerChangedEvent[TextInteractionFormat.type](value.toString, time.plusSeconds(seconds), importance, EventId(new java.util.UUID(0L, s"$value/$seconds/$importance".hashCode.toLong).toString))
   private def ids(events: Event*): Set[EventId] = events.map(_.eventId).toSet
-  private def history(events: Event*): History = InteractionVariableHistory(InteractionEvents(events.toSet))
+  private def history(events: Event*): History = InteractionVariableHistory(TextInteractionFormat, InteractionEvents(events.toSet))
+  private def ref(value: String) = it.evadid.workbook.abstractions.InteractionFormat.referenceOf(TextInteractionFormat, value)
   private case class Read(keys: Seq[SyncContext], starting: LocalDateTime, until: LocalDateTime, strategy: EventSyncStrategy)
 
   private class Destination extends RemoteHistoryReaderWriter[SyncContext, TextInteractionFormat.type] {
@@ -65,7 +66,7 @@ class RemoteHistoryCacheSpec extends FunSuite {
       override def flush(logger: SyncLogger, forceFlush: Boolean): Unit = ()
     }
   }
-  private def cache(destinations: (Destination, EventSyncStrategy)*): Cache = RemoteHistoryCache(logger, destinations.toMap)
+  private def cache(destinations: (Destination, EventSyncStrategy)*): Cache = RemoteHistoryCache(TextInteractionFormat, logger, destinations.toMap)
   private def local(cache: Cache, historyKey: SyncContext = key): History = cache.histories(historyKey)
   private def reportOf(cache: Cache, historyKey: SyncContext = key) = cache.reports(historyKey)
   private def syncingEverything(destination: Destination): Cache = cache(destination -> EventSyncStrategy.SYNC_EVERYTHING)
@@ -360,15 +361,15 @@ class RemoteHistoryCacheSpec extends FunSuite {
       override protected def handleGrading(state: String, context: it.evadid.workbook.abstractions.ExecutionContextInformation)
           : Future[GradingResult[String, Unit]] = throw AssertionError("The cache must not execute graders")
     }
-    val grading: Event = GradingCompletedEvent(GradingResult(grader, "1", GradingStatus.Correct, None, None, time.plusSeconds(5)))
+    val grading: Event = GradingCompletedEvent(GradingResult(grader, "1", GradingStatus.Correct, None, None, time.plusSeconds(5)).record(ref("1")))
     val scaffolding: Event = ScaffoldingCompletedEvent(ScaffoldingResult("1",
-      ScaffoldingStatus.ScaffoldingFeedback(LanguageMap.universalMap("Hint")), FeedbackEntity.LlmEntity, None, time.plusSeconds(6)))
+      ScaffoldingStatus.ScaffoldingFeedback(LanguageMap.universalMap("Hint")), FeedbackEntity.LlmEntity, None, time.plusSeconds(6)).record(ref("1")))
     val destination = new Destination
     destination.persisted.set(Map(key -> history(event(1, 1), grading, scaffolding)))
     val control = syncingEverything(destination)
     control.ensureMaxAge(Set(key)).flatMap { _ =>
       assertEquals(reportOf(control).lastKnownValues(destination).fetchedThrough, Some(time.plusSeconds(6)))
-      control.requestStoreToAll(Map(key -> history(ScaffoldingStartedEvent[TextInteractionFormat.type]("1", time.plusSeconds(7), FeedbackEntity.LlmEntity))))
+      control.requestStoreToAll(Map(key -> history(ScaffoldingStartedEvent[TextInteractionFormat.type](ref("1"), time.plusSeconds(7), FeedbackEntity.LlmEntity))))
     }.map { _ =>
       val written = destination.writes.now().last(key).events.values
       assertEquals(written.size, 1)
@@ -430,12 +431,12 @@ class RemoteHistoryCacheSpec extends FunSuite {
     val control = cache(destination -> EventSyncStrategy.SYNC_MAJOR)
     val old = event(1, 1, UpdateImportance.MINOR)
     val current = event(2, 2, UpdateImportance.MINOR)
-    val pending: Event = ScaffoldingStartedEvent[TextInteractionFormat.type]("2", time.plusSeconds(3), LlmEntity)
+    val pending: Event = ScaffoldingStartedEvent[TextInteractionFormat.type](ref("2"), time.plusSeconds(3), LlmEntity)
     val initial = history(old, current, pending)
     control.requestStoreToAll(Map(key -> initial)).flatMap(_ => control.ensureMaxAge(Set(key))).flatMap { _ =>
       assertEquals(destination.persisted.now()(key).events.values, Set(current, pending))
       assertEquals(reportOf(control).syncedDestinations, Set(destination))
-      val newPending: Event = ScaffoldingStartedEvent[TextInteractionFormat.type]("2", time.plusSeconds(4), LlmEntity)
+      val newPending: Event = ScaffoldingStartedEvent[TextInteractionFormat.type](ref("2"), time.plusSeconds(4), LlmEntity)
       control.mergeLocal(Map(key -> history(newPending)))
       assertEquals(reportOf(control).syncedDestinations, Set.empty)
       control.storeAll()
@@ -462,7 +463,7 @@ class RemoteHistoryCacheSpec extends FunSuite {
     val destination = new Destination
     val control = cache(destination -> EventSyncStrategy.SYNC_MAJOR)
     val answer = event(1, 1)
-    val pending: Event = ScaffoldingStartedEvent[TextInteractionFormat.type]("1", time.plusSeconds(2), LlmEntity)
+    val pending: Event = ScaffoldingStartedEvent[TextInteractionFormat.type](ref("1"), time.plusSeconds(2), LlmEntity)
     destination.persisted.set(Map(key -> history(answer, pending)))
     control.fetchEventsBetween(Seq(key), time.plusSeconds(2), time.plusSeconds(2)).map { received =>
       assertEquals(received(key).toSet, Set(pending))

@@ -7,7 +7,9 @@ import it.evadid.vm.parsing.python.clean.model.PythonType.{PYTHON_ANY, PYTHON_UN
 import it.evadid.workbook.abstractions.FeedbackEntity
 import it.evadid.workbook.abstractions.scaffolding.{ScaffoldingResult, ScaffoldingStatus}
 import it.evadid.workbook.interactions.basic.TextInteraction
-import it.evadid.workbook.history.{InteractionVariableHistory, InteractionVariableScaffoldingHistory}
+import it.evadid.workbook.history.InteractionVariableHistory
+import it.evadid.workbook.abstractions.StateReference
+import it.evadid.workbook.abstractions.scaffolding.ScaffoldingRecord
 import java.time.LocalDateTime
 import munit.FunSuite
 import upickle.default.*
@@ -27,9 +29,9 @@ class TypedPayloadCodecSpec extends FunSuite {
       "nested" -> ujson.Arr("学校", 1.25, false, ujson.Obj("value" -> "text")))
     val result = ScaffoldingResult[String, ujson.Value]("draft", ScaffoldingStatus.ScaffoldingRequestedButNotFinished(),
       FeedbackEntity.SystemEntity, Some(payload), LocalDateTime.of(2026, 11, 10, 12, 0))
-    val history = InteractionVariableScaffoldingHistory(Map("draft" -> result))
-    assertEquals(read[InteractionVariableScaffoldingHistory[String, ujson.Value]](write(history)), history)
-    assertEquals(readBinary[InteractionVariableScaffoldingHistory[String, ujson.Value]](writeBinary(history)), history)
+    val record = result.record(StateReference("draft"))
+    assertEquals(read[ScaffoldingRecord[ujson.Value]](write(record)), record)
+    assertEquals(readBinary[ScaffoldingRecord[ujson.Value]](writeBinary(record)), record)
   }
 
   test("interactions without grading or scaffolding information use Unit payloads") {

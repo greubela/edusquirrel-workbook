@@ -60,7 +60,7 @@ class RecreateShapeGraderSpec extends FunSuite {
       requested().map { current =>
         assertEquals(current.state, corrected)
         assertEquals(current.testsWithResults.head.gradingStatus, GradingStatus.Correct)
-        assertEquals(answers.currentHistory(interaction).historyGrading.gradingsMap(first), old)
+        assertEquals(answers.currentHistory(interaction).gradingForState(interaction.gradingElements, first), old)
       }
     }
   }

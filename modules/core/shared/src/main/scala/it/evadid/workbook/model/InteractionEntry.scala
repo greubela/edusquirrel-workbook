@@ -7,7 +7,7 @@ import it.evadid.workbook.abstractions.{InteractionFormat, WorkbookInteractionEl
 import it.evadid.workbook.sync.SyncConnection
 import it.evadid.workbook.sync.{FormattedSyncDestination, SyncContext, SyncInformationWithContext, UpdateImportance}
 import it.evadid.workbook.history.{InteractionVariableHistory, InteractionVariableState}
-import it.evadid.workbook.history.events.InteractionEvent
+import it.evadid.workbook.history.events.{AnswerChangedEvent, InteractionEvent}
 import it.evadid.workbook.reports.InteractionVariableSyncReport
 
 import java.time.LocalDateTime
@@ -52,10 +52,10 @@ object InteractionEntry {
       .connectedTo(connection)
 
   def defaultHistory[F <: InteractionFormat](interaction: WorkbookInteractionElement[F]): InteractionVariableHistory[F] =
-    InteractionVariableHistory.empty[F].addState(
+    InteractionVariableHistory.empty(interaction.interactionFormat).addState(
       InteractionVariableState[InteractionFormat.State[F]](interaction.defaultValue, UpdateImportance.DEFAULT, UtcTime.now()))
 
-  /** Exercise-specific constraints of the answers of `events`. */
+  /** Exercise-specific constraints of the answers among `events`; feedback events only refer to answers. */
   def validate[F <: InteractionFormat](interaction: WorkbookInteractionElement[F], events: Iterable[InteractionEvent[F]]): Try[Unit] =
-    Try(events.foreach(event => interaction.validateState(event.associatedState)))
+    Try(events.foreach { case answer: AnswerChangedEvent[F] => interaction.validateState(answer.newState); case _ => () })
 }

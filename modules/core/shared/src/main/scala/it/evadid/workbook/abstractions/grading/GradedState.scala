@@ -19,7 +19,7 @@ case class GradedState[T, GA]
 (
   state: T,
   graderResultMap: Map[WorkbookInteractionGrader[T, GA], GradingResult[T, GA]]
-) derives ReadWriter {
+) {
 
   lazy val testsWithResults: Set[GradingResult[T, GA]] = graderResultMap.values.toSet
   val timestampLatestTest: LocalDateTime = testsWithResults.map(_.gradingTime).maxOption.getOrElse(LocalDateTime.MIN)

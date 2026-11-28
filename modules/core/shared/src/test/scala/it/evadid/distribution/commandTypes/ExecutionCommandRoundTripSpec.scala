@@ -61,7 +61,7 @@ class ExecutionCommandRoundTripSpec extends FunSuite {
   private val signed = SignedToken(UserTokenInfo(user.user, at, at.plusDays(1)), "signature")
   private val usage = UsageContext("edusquirrel", "workbook", user.user.personId)
   private val key = usage.toSyncContext("answer_history")
-  private val history = InteractionHistoryJson.fromHistory(TextInteractionFormat, InteractionVariableHistory.empty[TextInteractionFormat.type]
+  private val history = InteractionHistoryJson.fromHistory(TextInteractionFormat, InteractionVariableHistory.empty(TextInteractionFormat)
     .addEvent(AnswerChangedEvent[TextInteractionFormat.type]("answer \"quoted\" 学校", at, UpdateImportance.MAJOR)))
   private val synced = SyncSuccess[EventId](Set(EventId.random()), Set.empty, Set(EventId.random()), Set.empty, at)
   private val removed = SyncSuccess.removed(Set(key)).copy(timestampCommitted = at)

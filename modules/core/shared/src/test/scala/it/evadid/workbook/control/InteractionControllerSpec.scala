@@ -36,7 +36,7 @@ class InteractionControllerSpec extends FunSuite {
   private val at = LocalDateTime.of(2026, 6, 1, 8, 0)
   private type Text = TextInteractionFormat.type
   private def text(values: (String, Int)*): InteractionVariableHistory[Text] =
-    InteractionVariableHistory(InteractionEvents(values.map((value, second) =>
+    InteractionVariableHistory(TextInteractionFormat, InteractionEvents(values.map((value, second) =>
       AnswerChangedEvent[Text](value, at.plusSeconds(second), MINOR): InteractionEvent[Text]).toSet))
 
   private def controllerFor(interactions: WorkbookInteractionElement[? <: InteractionFormat]*): InteractionController = {
@@ -104,8 +104,8 @@ class InteractionControllerSpec extends FunSuite {
     val before = answers.info
     answers.restoreHistory(logger, essay, InteractionHistoryJson(TextInteractionFormat, "{\"not\": \"a history\"}"))
     answers.restoreHistory(logger, essay, InteractionHistoryJson.fromHistory(BinaryPixelInteractionFormat,
-      InteractionVariableHistory.empty[BinaryPixelInteractionFormat.type]))
-    val resized = InteractionVariableHistory[BinaryPixelInteractionFormat.type](InteractionEvents(Set(
+      InteractionVariableHistory.empty(BinaryPixelInteractionFormat)))
+    val resized = InteractionVariableHistory[BinaryPixelInteractionFormat.type](BinaryPixelInteractionFormat, InteractionEvents(Set(
       AnswerChangedEvent[BinaryPixelInteractionFormat.type](BinaryPixelImage.blank(3, 3), at, MAJOR))))
     answers.restoreHistory(logger, pixels, InteractionHistoryJson.fromHistory(BinaryPixelInteractionFormat, resized))
     intercept[IllegalArgumentException](answers.setStateFromUserInteraction(pixels, BinaryPixelImage.blank(3, 3), MAJOR, at))
@@ -151,7 +151,7 @@ class InteractionControllerSpec extends FunSuite {
   private def connected(store: GatedHistoryStore, interactions: WorkbookInteractionElement[? <: InteractionFormat]*) =
     store.controllerFor(interactions*)
   private def seed(store: GatedHistoryStore, interaction: TextInteraction, answer: String): Unit = store.seed(interaction,
-    InteractionVariableHistory.empty[Text].addEvent(AnswerChangedEvent(answer, UtcTime.now().plusDays(1), MAJOR)))
+    InteractionVariableHistory.empty(TextInteractionFormat).addEvent(AnswerChangedEvent(answer, UtcTime.now().plusDays(1), MAJOR)))
 
   private def confirmed(answers: InteractionController, interaction: TextInteraction): Int =
     answers.report(interaction).destinationsWithSufficientWrites.size
@@ -220,7 +220,7 @@ class InteractionControllerSpec extends FunSuite {
     val pixels = BinaryPixelInteraction("pixels", LanguageMapContentId("spec/pixels"), BinaryPixelImage.blank(2, 2))
     val store = GatedHistoryStore(context)
     val answers = connected(store, pixels)
-    val resized = InteractionVariableHistory[BinaryPixelInteractionFormat.type](InteractionEvents(Set(
+    val resized = InteractionVariableHistory[BinaryPixelInteractionFormat.type](BinaryPixelInteractionFormat, InteractionEvents(Set(
       AnswerChangedEvent[BinaryPixelInteractionFormat.type](BinaryPixelImage.blank(3, 3), UtcTime.now(), MAJOR))))
     store.values.set(Map(SyncContext.serializer.serialize(context.toSyncContext(pixels.keyForSerialization)) ->
       InteractionHistoryJson.fromHistory(BinaryPixelInteractionFormat, resized).serialized))

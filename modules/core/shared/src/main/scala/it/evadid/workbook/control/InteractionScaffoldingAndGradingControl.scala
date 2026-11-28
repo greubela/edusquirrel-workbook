@@ -6,10 +6,10 @@ import it.evadid.core.datastructures.state.State
 import it.evadid.distribution.command.SerializedException
 import it.evadid.workbook.abstractions.{InteractionFormat, WorkbookInteractionElement}
 import it.evadid.workbook.abstractions.grading.{GradedState, GradingResult, GradingStatus, WorkbookInteractionGrader}
-import it.evadid.workbook.abstractions.scaffolding.{ScaffoldingEvidence, ScaffoldingResult}
+import it.evadid.workbook.abstractions.scaffolding.{ScaffoldingEvidence, ScaffoldingResult, ScaffoldingStatus}
 import it.evadid.workbook.sync.UpdateImportance
 import it.evadid.workbook.history.InteractionVariableHistory
-import it.evadid.workbook.history.events.{GradingStartedEvent, ScaffoldingStartedEvent}
+
 import it.evadid.workbook.abstractions.ExecutionContextInformation
 
 import java.time.LocalDateTime
@@ -95,7 +95,7 @@ final class InteractionScaffoldingAndGradingControl[F <: InteractionFormat](targ
 
   private def recordGradingStart(selected: Seq[Grader], state: InteractionStateType): Unit = {
     val timestamp = UtcTime.now()
-    target.publish(history => selected.foldLeft(history)((current, grader) => current.addEvent(GradingStartedEvent[F](state, timestamp, grader))))
+    target.publish(history => selected.foldLeft(history)(_.addGradingStart(state, _, timestamp)))
   }
 
   /** The importance the answer was recorded with (its latest event); an answer without an event has DEFAULT importance. */
@@ -109,7 +109,7 @@ final class InteractionScaffoldingAndGradingControl[F <: InteractionFormat](targ
     */
   def getOrCalculateScaffolding(retryErrors: Boolean = false): Future[Hint] =
     currentAnswer.fold(noAnswer)(forState => shared(pendingHints, forState) { () =>
-      val completed = history.historyScaffolding.scaffoldingMap.get(forState).orElse(computedHints.now().get(forState))
+      val completed = history.completedScaffolding(forState).orElse(computedHints.now().get(forState))
       val hint = completed.filterNot(result => retryErrors && result.scaffoldingStatus.isError).fold(requestHint(forState))(Future.successful)
       hint.map { result =>
         computedHints.update(_.updated(forState, result))
@@ -121,7 +121,7 @@ final class InteractionScaffoldingAndGradingControl[F <: InteractionFormat](targ
   private def requestHint(forState: InteractionStateType): Future[Hint] = target.interaction.scaffoldingElement match {
     case None => Future.failed(SerializedException("Cannot calculate scaffolding on an interaction without a scaffolder"))
     case Some(scaffolder) =>
-      target.publish(_.addEvent(ScaffoldingStartedEvent[F](forState, UtcTime.now(), scaffolder.scaffoldingEntity)))
+      target.publish(_.addScaffolding(ScaffoldingResult(forState, ScaffoldingStatus.ScaffoldingRequestedButNotFinished(), scaffolder.scaffoldingEntity, None)))
       scaffolder.generateFeedbackSafe(forState, evidenceFor(forState), target.execution)
   }
 
@@ -129,8 +129,7 @@ final class InteractionScaffoldingAndGradingControl[F <: InteractionFormat](targ
     * grader results recorded for `forState`.
     */
   def evidenceFor(forState: InteractionStateType): ScaffoldingEvidence.Reader[InteractionStateType, GradingInfoType] = () =>
-    ScaffoldingEvidence(history.historyStates.lastStateOption,
-      history.historyGrading.gradingsMap.get(forState).toList.flatMap(_.graderResultMap.values))
+    ScaffoldingEvidence(history.historyStates.lastStateOption, history.completedGradings(graders, forState).toList)
 
   // SHARED REQUESTS
 

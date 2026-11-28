@@ -1,37 +1,38 @@
 package it.evadid.workbook.sync
 
 import it.evadid.core.util.io.serializer.DefaultSerializer.given
-import it.evadid.workbook.abstractions.InteractionFormat
+import it.evadid.workbook.abstractions.{InteractionFormat, StateReference}
 import it.evadid.workbook.history.events.{AnswerChangedEvent, InteractionEvent, InteractionEvents}
 
 import java.time.LocalDateTime
 import upickle.default.*
 
 /** Applies uniformly to answers, grading and scaffolding, without removing related events implicitly. */
+/** `stateOf` names the answer an event belongs to, as its history derives it. */
 sealed trait EventSyncStrategy derives ReadWriter {
-  def selectEvents[F <: InteractionFormat](events: Set[InteractionEvent[F]]): Set[InteractionEvent[F]]
+  def selectEvents[F <: InteractionFormat](events: Set[InteractionEvent[F]], stateOf: InteractionEvent[F] => StateReference): Set[InteractionEvent[F]]
 }
 
 object EventSyncStrategy {
   case object SYNC_EVERYTHING extends EventSyncStrategy {
-    override def selectEvents[F <: InteractionFormat](events: Set[InteractionEvent[F]]) = events
+    override def selectEvents[F <: InteractionFormat](events: Set[InteractionEvent[F]], stateOf: InteractionEvent[F] => StateReference) = events
   }
 
   case class KeepImportance(importance: Set[UpdateImportance]) extends EventSyncStrategy derives ReadWriter {
-    override def selectEvents[F <: InteractionFormat](events: Set[InteractionEvent[F]]) =
+    override def selectEvents[F <: InteractionFormat](events: Set[InteractionEvent[F]], stateOf: InteractionEvent[F] => StateReference) =
       events.filter(event => importance(event.updateImportance))
   }
 
   /** Keep every event tied for the latest timestamp among the selected importance levels. */
   case class KeepLatest(importance: Set[UpdateImportance]) extends EventSyncStrategy derives ReadWriter {
-    override def selectEvents[F <: InteractionFormat](events: Set[InteractionEvent[F]]) = {
+    override def selectEvents[F <: InteractionFormat](events: Set[InteractionEvent[F]], stateOf: InteractionEvent[F] => StateReference) = {
       InteractionEvents.latestTies(events.filter(event => importance(event.updateImportance)))
     }
   }
 
   case class KeepLatestCount(count: Int) extends EventSyncStrategy derives ReadWriter {
     require(count > 0, "Event count must be positive")
-    override def selectEvents[F <: InteractionFormat](events: Set[InteractionEvent[F]]) = {
+    override def selectEvents[F <: InteractionFormat](events: Set[InteractionEvent[F]], stateOf: InteractionEvent[F] => StateReference) = {
       val boundary = events.toList.sortBy(_.timestamp).takeRight(count).headOption.map(_.timestamp)
       events.filter(event => boundary.exists(time => !event.timestamp.isBefore(time)))
     }
@@ -39,15 +40,15 @@ object EventSyncStrategy {
 
   /** Preserve the latest event of each lifecycle kind as well as all events at the selected importance. */
   case class KeepLatestAndImportance(importance: Set[UpdateImportance]) extends EventSyncStrategy derives ReadWriter {
-    override def selectEvents[F <: InteractionFormat](events: Set[InteractionEvent[F]]) = {
-      val latest = events.groupBy(_.getClass.getName).values.flatMap(group => KeepLatest(UpdateImportance.values.toSet).selectEvents(group)).toSet
+    override def selectEvents[F <: InteractionFormat](events: Set[InteractionEvent[F]], stateOf: InteractionEvent[F] => StateReference) = {
+      val latest = events.groupBy(_.getClass.getName).values.flatMap(group => KeepLatest(UpdateImportance.values.toSet).selectEvents(group, stateOf)).toSet
       events.filter(event => importance(event.updateImportance)) ++ latest
     }
   }
 
   /** Inclusive by default so events sharing a synchronization boundary are not lost. */
   case class Since(timestamp: LocalDateTime, includeBoundary: Boolean = true) extends EventSyncStrategy derives ReadWriter {
-    override def selectEvents[F <: InteractionFormat](events: Set[InteractionEvent[F]]) =
+    override def selectEvents[F <: InteractionFormat](events: Set[InteractionEvent[F]], stateOf: InteractionEvent[F] => StateReference) =
       events.filter(event => event.timestamp.isAfter(timestamp) || (includeBoundary && event.timestamp == timestamp))
   }
 
@@ -55,18 +56,18 @@ object EventSyncStrategy {
     * A TEMPORARY answer is not sent until a later MAJOR answer or an explicit sync commits it.
     */
   case object SYNC_MAJOR extends EventSyncStrategy {
-    override def selectEvents[F <: InteractionFormat](events: Set[InteractionEvent[F]]): Set[InteractionEvent[F]] = {
+    override def selectEvents[F <: InteractionFormat](events: Set[InteractionEvent[F]], stateOf: InteractionEvent[F] => StateReference): Set[InteractionEvent[F]] = {
       val settled = answers(events).filter(_.updateImportance != UpdateImportance.TEMPORARY)
-      val states = (settled.filter(_.updateImportance == UpdateImportance.MAJOR) ++ latest(settled)).map(_.associatedState)
-      events.filter(event => event.updateImportance == UpdateImportance.MAJOR || states(event.associatedState))
+      val states = (settled.filter(_.updateImportance == UpdateImportance.MAJOR) ++ latest(settled)).map(stateOf)
+      events.filter(event => event.updateImportance == UpdateImportance.MAJOR || states(stateOf(event)))
     }
   }
 
   /** Send the latest answer of any importance with all its feedback lifecycle events, e.g. for local storage. */
   case object SYNC_LAST extends EventSyncStrategy {
-    override def selectEvents[F <: InteractionFormat](events: Set[InteractionEvent[F]]): Set[InteractionEvent[F]] = {
-      val states = latest(answers(events)).map(_.associatedState)
-      events.filter(event => states(event.associatedState))
+    override def selectEvents[F <: InteractionFormat](events: Set[InteractionEvent[F]], stateOf: InteractionEvent[F] => StateReference): Set[InteractionEvent[F]] = {
+      val states = latest(answers(events)).map(stateOf)
+      events.filter(event => states(stateOf(event)))
     }
   }
 

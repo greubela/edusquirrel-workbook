@@ -319,7 +319,7 @@ class InteractionController(store: State[InteractionInfo], schedule: (() => Unit
         store.update(current => inSession(current).fold(current)(found => current.withEntry(found.copy(cache = transition(found.cache)))))
     }
     val strategies = entry.destinations(started.connection).map(destination => destination -> destination.information.syncInformation.syncStrategy).toMap
-    new RemoteHistoryCache(started.connection.logger, strategies, cacheStore, history => InteractionEntry.validate(entry.interaction, history.events.values))
+    new RemoteHistoryCache(entry.interaction.interactionFormat, started.connection.logger, strategies, cacheStore, history => InteractionEntry.validate(entry.interaction, history.events.values))
   }
 
   // FEEDBACK

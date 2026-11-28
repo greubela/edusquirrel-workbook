@@ -22,7 +22,7 @@ class InteractionFormatSpec extends FunSuite {
     knownFormats.foreach { format =>
       assertEquals(write[InteractionFormat](format), s"\"${format.name}\"")
       assert(read[InteractionFormat](write[InteractionFormat](format)) eq format)
-      val empty = InteractionVariableHistory.empty[format.type]
+      val empty = InteractionVariableHistory.empty[format.type](format)
       assertEquals(format.historySerializer.deserialize(format.historySerializer.serialize(empty)), empty)
     }
   }
@@ -34,18 +34,18 @@ class InteractionFormatSpec extends FunSuite {
 
   test("range bounds are inclusive and distinguish adjacent nanoseconds") {
     val format = TextInteractionFormat
-    val history = InteractionVariableHistory.empty[format.type]
+    val history = InteractionVariableHistory.empty(format)
       .addEvent(AnswerChangedEvent[format.type]("before", time.minusNanos(1), UpdateImportance.MAJOR))
       .addEvent(AnswerChangedEvent[format.type]("at", time, UpdateImportance.MAJOR))
       .addEvent(AnswerChangedEvent[format.type]("after", time.plusNanos(1), UpdateImportance.MAJOR))
     val bounded = InteractionHistoryJson.fromHistory(format, history).between(time, time).typedAs(format)
-    assertEquals(bounded.events.values.map(_.associatedState), Set("at"))
+    assertEquals(bounded.allStates.map(_.newState), Set("at"))
   }
 
   test("different events at the same timestamp survive idempotent envelope merges") {
     val format = TextInteractionFormat
-    val first = InteractionVariableHistory.empty[format.type].addEvent(AnswerChangedEvent[format.type]("a", time, UpdateImportance.MAJOR))
-    val second = InteractionVariableHistory.empty[format.type].addEvent(AnswerChangedEvent[format.type]("b", time, UpdateImportance.MAJOR))
+    val first = InteractionVariableHistory.empty(format).addEvent(AnswerChangedEvent[format.type]("a", time, UpdateImportance.MAJOR))
+    val second = InteractionVariableHistory.empty(format).addEvent(AnswerChangedEvent[format.type]("b", time, UpdateImportance.MAJOR))
     val a = InteractionHistoryJson.fromHistory(format, first)
     val b = InteractionHistoryJson.fromHistory(format, second)
     assertEquals(a.merge(b).merge(a).typedAs(format), first.mergeWith(second))
@@ -54,19 +54,17 @@ class InteractionFormatSpec extends FunSuite {
   test("unknown format names, old schemas and incompatible formats fail immediately") {
     intercept[Exception](read[InteractionFormat]("\"unknown-format\""))
     intercept[Exception](TextInteractionFormat.historySerializer.deserialize("{\"historyStates\":{\"events\":[]}}"))
-    val envelope = InteractionHistoryJson.fromHistory(TextInteractionFormat, InteractionVariableHistory.empty[TextInteractionFormat.type])
+    val envelope = InteractionHistoryJson.fromHistory(TextInteractionFormat, InteractionVariableHistory.empty(TextInteractionFormat))
     intercept[IllegalArgumentException](envelope.typedAs(LabeledCheckboxInteractionFormat))
     intercept[Exception](InteractionHistoryJson.deserialize("{\"format\":\"unknown-format\",\"historyJson\":\"{}\"}"))
     intercept[Exception](InteractionHistoryJson(envelope.format, "invalid").toTyped)
     intercept[IllegalArgumentException](envelope.between(time.plusNanos(1), time))
   }
-  test("history codecs reject incompatible graders") {
-    val grader = TextInputLlmGrader(LanguageMapContentId("custom/task"), None,
-      TextInputWithScaffoldingAndGrading.ContentForLlmInteraction(LanguageMapContentId("custom/criterion"), Map.empty))
-    val valid = InteractionVariableHistory.empty[TextInputWithLlmGradingAndScaffoldingFormat.type]
-      .addEvent(GradingStartedEvent[TextInputWithLlmGradingAndScaffoldingFormat.type]("answer", time, grader))
-    val encoded = InteractionHistoryJson.fromHistory(TextInputWithLlmGradingAndScaffoldingFormat, valid)
-    intercept[Exception](encoded.copy(format = TextInteractionFormat).toTyped)
+  test("history codecs reject answers of another format's state type") {
+    val valid = InteractionVariableHistory.empty(TextInteractionFormat)
+      .addEvent(AnswerChangedEvent[TextInteractionFormat.type]("answer", time, UpdateImportance.MAJOR))
+    val encoded = InteractionHistoryJson.fromHistory(TextInteractionFormat, valid)
+    intercept[Exception](encoded.copy(format = LabeledCheckboxInteractionFormat).toTyped)
   }
 
 }

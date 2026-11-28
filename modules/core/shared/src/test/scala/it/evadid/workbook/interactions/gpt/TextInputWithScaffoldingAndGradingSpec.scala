@@ -26,6 +26,9 @@ import it.evadid.workbook.abstractions.grading.*
 import it.evadid.workbook.abstractions.scaffolding.ScaffoldingResult
 import it.evadid.workbook.history.InteractionVariableHistory
 import it.evadid.workbook.interactions.gpt.TextInputWithScaffoldingAndGrading.ContentForLlmInteraction
+import it.evadid.workbook.abstractions.InteractionFormat
+import it.evadid.workbook.abstractions.grading.GradingRecord
+import it.evadid.workbook.abstractions.scaffolding.ScaffoldingRecord
 import munit.FunSuite
 import upickle.default.*
 
@@ -297,8 +300,9 @@ class TextInputWithScaffoldingAndGradingSpec extends FunSuite {
   test("LLM result and typed history round trips preserve the marker-free feedback and transcript") {
     val f = new Fixture
     f.grade().map { result =>
-      assertEquals(read[GradingResult[String, MessengerModel]](write(result)), result)
-      val history = InteractionVariableHistory.empty[TextInputWithLlmGradingAndScaffoldingFormat.type].addGrading(result)
+      val record = result.record(InteractionFormat.referenceOf(TextInputWithLlmGradingAndScaffoldingFormat, result.gradedState))
+      assertEquals(read[GradingRecord[MessengerModel]](write(record)), record)
+      val history = InteractionVariableHistory.empty(TextInputWithLlmGradingAndScaffoldingFormat).addGrading(result)
       assertEquals(read[InteractionVariableHistory[TextInputWithLlmGradingAndScaffoldingFormat.type]](write(history)), history)
     }
   }
@@ -312,7 +316,7 @@ class TextInputWithScaffoldingAndGradingSpec extends FunSuite {
       answers.connect(SyncConnection.offline.copy(execution = f.context))
       answers.feedback(element).getOrCalculateGrading(forceGrading = true)
     }.map { _ =>
-      val results = answers.currentHistory(element).historyGrading.gradingsMap("answer").testsWithResults
+      val results = answers.currentHistory(element).completedGradings(element.gradingElements, "answer").toSet
       assertEquals(results.size, 2)
       assertEquals(results.map(_.grader), element.gradingElements.toSet[WorkbookInteractionGrader[String, MessengerModel]])
       assert(results.forall(_.gradingStatus == GradingStatus.Correct))
@@ -334,7 +338,8 @@ class TextInputWithScaffoldingAndGradingSpec extends FunSuite {
       assert(result.scaffoldingEntity.isInstanceOf[FeedbackEntity.LlmEntity.type])
       assertEquals(f.resolutions.now().toSet, Set(task, hint))
       assert(!f.requests.now().head.prompt.contains("test/criterion"))
-      assertEquals(read[ScaffoldingResult[String, MessengerModel]](write(result)), result)
+      val record = result.record(InteractionFormat.referenceOf(TextInputWithLlmGradingAndScaffoldingFormat, result.forState))
+      assertEquals(read[ScaffoldingRecord[MessengerModel]](write(record)), record)
     }
   }
 
@@ -371,7 +376,7 @@ class TextInputWithScaffoldingAndGradingSpec extends FunSuite {
       reply.success("Bestehendes Feedback.\nCORRECT")
       first.zip(second).flatMap { (a, b) =>
         assertEquals(a, b)
-        val result = answers.currentHistory(element).historyGrading.gradingsMap("answer").testsWithResults.head
+        val result = answers.currentHistory(element).completedGradings(element.gradingElements, "answer").head
         assertEquals(result.gradingStatus, GradingStatus.Correct)
         assertEquals(feedbackMap(result.feedbackInformation).flatMap(_.tryGetInLanguage(German)), Some("Bestehendes Feedback."))
         grade().map { cached =>
