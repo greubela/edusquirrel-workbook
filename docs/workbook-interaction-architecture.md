@@ -17,7 +17,9 @@ Keep the saved answer as the single source of truth.
 Shared models must run on JVM and Scala.js without DOM, Laminar or renderer
 dependencies. Editors should also work outside a workbook: accept the answer,
 configuration and services rather than looking up an interaction or owning a
-second persistence store. Small inline interactions need no separate editor.
+second persistence store. Small inline interactions need no separate editor; add one only when a
+task needs a sustained workspace (mail triage, programming, simulation), and reuse text, choice,
+table and ordering interactions first.
 
 [WorkbookElement.scala](../modules/core/shared/src/main/scala/it/evadid/workbook/abstractions/WorkbookElement.scala)
 separates display elements, structural containers and interactions.
@@ -66,7 +68,8 @@ whereas answer tables save entered strings.
 
 An interaction attaches independent `WorkbookInteractionGrader[T, GA]` checks and
 at most one `WorkbookInteractionScaffolder[T, SA]`. Results belong to the exact
-answer assessed, with localized feedback and optional typed additional data.
+answer assessed, with localized feedback and optional typed additional data. Add automated
+feedback only where the task has a defensible grading contract.
 `WorkbookInteractionGrader.shouldRunGrader(forceGrading, importance)` keeps two reasons apart:
 `forceGrading` says the caller requested grading (the check button) and always runs the grader;
 otherwise its `runningBehavior` decides for the answer's recorded `UpdateImportance`
