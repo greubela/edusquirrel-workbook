@@ -205,6 +205,7 @@ avoid exhaustive class/method lists and historical test-run logs.
 - [Worker execution](docs/worker-execution-backend.md): supported jobs, transport/lifecycle and browser verification.
 - [Native compression workbook](docs/compression-workbook.md): complete seven-chapter native copy, saved interactions and the retained standalone version.
 - [Email simulator](docs/email-simulator.md): state, grading, content handling and verification.
+- [SQL editor](docs/sql-editor.md): SQL exercises, their database references and execution.
 - [QR interaction](docs/qr-code-interaction.md): encoding model, requirements, region colors and reference tests.
 - [Plant workshop](docs/PlantWorkshop_Quickstart.md): implemented sections and remaining migration work.
 - [Eva programming state](docs/eva-editor-programming-state.md), [Snap editor](docs/snap-editor.md) and [block editor](docs/block-editor.md): representations and editor lifecycle.

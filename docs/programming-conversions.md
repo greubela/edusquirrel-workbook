@@ -35,8 +35,10 @@ All drawings use the shared interpreter. `JavaTurtleCompiler`/`JavaTurtleInterpr
 are a separate checked-Java runtime; Java unit-test instrumentation does not select
 editable conversion routes. Console execution uses Pyodide
 ([analysis and execution](program-analysis-and-execution.md)). Snap rejects object
-features without a supported representation. Extend supported subsets with semantic
-round-trip tests, not alternate interpreters or source replay.
+features without a supported representation. Source frontends own interpretation and
+validation, printers own syntax: unsupported features are rejected or represented explicitly,
+never silently dropped, and UI components do not duplicate conversion dispatch. Extend supported
+subsets with semantic round-trip tests, not alternate interpreters or source replay.
 
 ## Libraries and built-ins
 
