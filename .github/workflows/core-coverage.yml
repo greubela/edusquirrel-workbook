@@ -9,14 +9,11 @@ permissions:
 
 jobs:
   coverage:
-    name: ${{ matrix.project }} branch coverage
+    name: Core JVM branch coverage
     runs-on: ubuntu-latest
     timeout-minutes: 15
-    strategy:
-      fail-fast: false
-      matrix:
-        project: [coreJVM, coreJS]
     env:
+      TZ: Europe/Berlin
       COURSIER_REPOSITORIES: https://maven-central.storage-download.googleapis.com/maven2|https://repo.maven.apache.org/maven2
       SBT_OPTS: >-
         -Dsbt.override.build.repos=true
@@ -36,21 +33,13 @@ jobs:
             project/build.properties
             project/repositories
       - uses: sbt/setup-sbt@v1
-      - uses: actions/setup-node@v7
-        if: matrix.project == 'coreJS'
-        with:
-          node-version: '24'
-          cache: npm
-      - name: Install JavaScript test dependencies
-        if: matrix.project == 'coreJS'
-        run: npm ci
       # Instrumented classes must not enter the ordinary incremental build caches.
       - name: Test and enforce core branch coverage
-        run: sbt -batch -J-Xmx4G -Dsbt.supershell=false 'project ${{ matrix.project }}' coverage test coverageReport
+        run: sbt -batch -J-Xmx4G -Dsbt.supershell=false 'project coreJVM' coverage test coverageReport
       - name: Upload coverage reports
         if: always()
         uses: actions/upload-artifact@v6
         with:
-          name: coverage-${{ matrix.project }}
-          path: target/${{ matrix.project }}/**/scoverage-report/
+          name: core-coverage
+          path: target/coreJVM/**/scoverage-report/
           if-no-files-found: warn

@@ -155,6 +155,8 @@ jobs:
         run: sbt -batch -J-Xmx4G -Dsbt.supershell=false 'all coreJVM/test server/test'
 
   scala-js:
+    env:
+      TZ: Europe/Berlin
     runs-on: ubuntu-latest
     # Allow a clean dependency/build cache.
     timeout-minutes: 30
