@@ -24,7 +24,7 @@ test('text feedback preserves cached and in-flight grading across display langua
       'access-control-allow-methods':'POST, OPTIONS', 'access-control-allow-headers':'Content-Type, Authorization, Content-Encoding'};
     page.on('pageerror', error => errors.push(error.message));
     async function reply({route, command}, value) {
-      const now = '2026-10-24T12:00:00Z';
+      const now = '2026-10-24T12:00:00.000000000Z';
       await route.fulfill({headers,contentType:'application/json',body:JSON.stringify({
         timestamps:{timestampReceived:now,timestampStarted:now,timestampFinished:now},
         result:[1,{json:JSON.stringify(value),classSimpleName:'String'}],

@@ -19,13 +19,13 @@ const destinations = [
     databaseConfig:{$type:'DatabaseConfig',dbFormat:'mysql',host:'example.test',port:'3306',database:'fixture'}},
     syncStrategy:'SYNC_EVERYTHING'}))
 ];
-const token = {info:{user,createdAt:'2026-01-01T00:00:00Z',expiresAt:'2099-01-01T00:00:00Z'},tokenStringWithSignature:'fixture-token'};
+const token = {info:{user,createdAt:'2026-01-01T00:00:00.000000000Z',expiresAt:'2099-01-01T00:00:00.000000000Z'},tokenStringWithSignature:'fixture-token'};
 const profile = {user,credentials:{signedBackendToken:token,singleAccessToken:null,llmApiConfig:null,databaseConfig:null},
   config:{syncDestinations:destinations,isOnlineAccount:true}};
 const context = {programId:'edusquirrel',scenarioId:'workbookTest',userId:user.id,keyForSerialisation:'demo-feedback-1_history'};
 const answer = 'This answer was restored during the first automatic login.';
 const savedHistory = {format:'TextInputWithLlmGradingAndScaffoldingFormat', historyJson:{events:{values:[
-  {$type:'AnswerChangedEvent',eventId:'a86a2e47-40ed-4c65-9fd7-01bf45460b73',newState:answer,updateImportance:'MAJOR',timestamp:'2026-01-01T12:00:00Z'}]}}};
+  {$type:'AnswerChangedEvent',eventId:'a86a2e47-40ed-4c65-9fd7-01bf45460b73',newState:answer,updateImportance:'MAJOR',timestamp:'2026-01-01T12:00:00.000000000Z'}]}}};
 function mergeHistory(previous,incoming) {
   assert.equal(previous.format,incoming.format);
   const events=[...previous.historyJson.events.values,...incoming.historyJson.events.values];
@@ -37,7 +37,7 @@ function mergeHistory(previous,incoming) {
   return {...incoming,historyJson:{events:{values:[...byId.values()]}}};
 }
 function envelope(command,value) {
-  const now = new Date().toISOString();
+  const now = new Date().toISOString().replace('Z', '000000Z');
   return JSON.stringify({timestamps:{timestampReceived:now,timestampStarted:now,timestampFinished:now},
     result:[1,{json:JSON.stringify(value),classSimpleName:'FixtureResponse'}],receivedExecutionCommand:command,
     additionalOutput:{loggerOut:'',loggerError:''}});

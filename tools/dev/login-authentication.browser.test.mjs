@@ -11,7 +11,7 @@ const origin = 'http://localhost:9000';
 const mime = {'.html':'text/html','.js':'text/javascript','.css':'text/css','.json':'application/json','.svg':'image/svg+xml','.png':'image/png'};
 
 function response(command, value) {
-  const now = '2026-10-13T01:40:00Z';
+  const now = '2026-10-13T01:40:00.000000000Z';
   return JSON.stringify({
     timestamps: {timestampReceived:now, timestampStarted:now, timestampFinished:now},
     result: [1, {json:JSON.stringify(value), classSimpleName:'TestResponse'}],
@@ -66,7 +66,7 @@ test('login validates accounts, restores cached credentials after reload and cle
         if (command.name === 'create-account') value = {accountCreated:false,token:null};
         else if (command.name === 'login-command') {
           const user = {name:'Different Name',id:'test-user',mail:'first.last@example.org'};
-          const token = {info:{user,createdAt:'2026-10-13T01:40:00Z',expiresAt:'2099-01-01T00:00:00Z'},tokenStringWithSignature:'mock-token'};
+          const token = {info:{user,createdAt:'2026-10-13T01:40:00.000000000Z',expiresAt:'2099-01-01T00:00:00.000000000Z'},tokenStringWithSignature:'mock-token'};
           value = {userKnown:true,tokenValid:validLogin,allUserInfo:validLogin ? {
             user,credentials:{signedBackendToken:token,singleAccessToken:null,llmApiConfig:null,databaseConfig:null},config:{syncDestinations:destinations,isOnlineAccount:true}} : null};
         }
