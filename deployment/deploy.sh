@@ -37,11 +37,13 @@ if [[ -z "${DEPLOY_PULLED:-}" && " $* " != *" --no-pull "* && " $* " != *" -h "*
     if [[ "$DEPLOY_OWN_WINDOW" == true ]]; then read -r -p "Press Enter to close this window. " _ || true; fi
     exit 1
   }
-  cd "$DEPLOY_PULL_REPO" || pull_failed "cannot enter $DEPLOY_PULL_REPO"
-  branch="$(git symbolic-ref --quiet --short HEAD)" || pull_failed "the checkout is not on a branch"
+  # git -C instead of cd: the deployment keeps the caller's directory, against which relative
+  # paths in the secrets files (such as SERVER_SSH_KEY) resolve.
+  [[ -d "$DEPLOY_PULL_REPO" ]] || pull_failed "cannot find $DEPLOY_PULL_REPO"
+  branch="$(git -C "$DEPLOY_PULL_REPO" symbolic-ref --quiet --short HEAD)" || pull_failed "the checkout is not on a branch"
   printf '[deploy] fetching and pulling %s\n' "$branch" >&2
-  git fetch --prune --quiet || pull_failed "git fetch failed"
-  git pull --ff-only || pull_failed "git pull failed (local commits or conflicting local changes?)"
+  git -C "$DEPLOY_PULL_REPO" fetch --prune --quiet || pull_failed "git fetch failed"
+  git -C "$DEPLOY_PULL_REPO" pull --ff-only || pull_failed "git pull failed (local commits or conflicting local changes?)"
   export DEPLOY_PULLED=1
   exec bash "$DEPLOY_PULL_REPO/deployment/deploy.sh" "$@"
 fi
