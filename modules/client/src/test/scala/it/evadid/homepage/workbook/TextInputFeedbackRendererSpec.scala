@@ -14,7 +14,7 @@ import it.evadid.homepage.workbook.htmlRenderer.controlElements.interactionInfo.
 import it.evadid.workbook.abstractions.FeedbackEntity
 import it.evadid.workbook.abstractions.scaffolding.{ScaffoldingResult, ScaffoldingStatus}
 import it.evadid.homepage.control.info.interaction.GradingReporter
-import it.evadid.workbook.history.InteractionVariableState
+import it.evadid.workbook.history.InteractionState
 import it.evadid.workbook.sync.UpdateImportance
 import java.time.Instant
 import it.evadid.workbook.abstractions.grading.{GradedState, GradingResult, GradingStatus}
@@ -85,12 +85,12 @@ class TextInputFeedbackRendererSpec extends EditorDomSuite {
         assertEquals(panel.querySelector(".feedback-hint-text").textContent, "CURRENT HINT")
         assert(panel.classList.contains("feedback-status--correct"))
         assert(panel.querySelector(".ai-badge") == null)
-        fullInfo.interactions.updateHistory(exercise)(_.addState(InteractionVariableState("changed answer", UpdateImportance.MAJOR, time.plusSeconds(4))))
+        fullInfo.interactions.updateHistory(exercise)(_.addState(InteractionState("changed answer", UpdateImportance.MAJOR, time.plusSeconds(4))))
         assert(panel.hasAttribute("hidden"))
         assertEquals(panel.querySelector(".feedback-hint-text").textContent, "")
         save(ScaffoldingStatus.ScaffoldingFeedback(LanguageMap.universalMap[HumanLanguage]("LATE OLD HINT")), 5)
         assert(panel.hasAttribute("hidden"))
-        fullInfo.interactions.updateHistory(exercise)(_.addState(InteractionVariableState("", UpdateImportance.MAJOR, time.plusSeconds(6))))
+        fullInfo.interactions.updateHistory(exercise)(_.addState(InteractionState("", UpdateImportance.MAJOR, time.plusSeconds(6))))
         assert(!panel.hasAttribute("hidden"))
         assertEquals(panel.querySelector(".feedback-hint-text").textContent, "LATE OLD HINT")
       } finally close()

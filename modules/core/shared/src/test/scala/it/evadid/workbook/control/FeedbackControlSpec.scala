@@ -1,6 +1,6 @@
 package it.evadid.workbook.control
 
-import it.evadid.workbook.history.InteractionVariableHistory
+import it.evadid.workbook.history.InteractionHistory
 
 import it.evadid.workbook.model.InteractionScope
 
@@ -26,7 +26,7 @@ import munit.FunSuite
 
 import scala.concurrent.{ExecutionContext, Future, Promise}
 
-class InteractionScaffoldingAndGradingControlSpec extends FunSuite {
+class FeedbackControlSpec extends FunSuite {
   private given ExecutionContext = ExecutionContext.global
   private val context = TestExecutionContext()
   private val time = java.time.LocalDateTime.of(2026, 11, 7, 0, 0).toInstant(java.time.ZoneOffset.UTC)
@@ -75,7 +75,7 @@ class InteractionScaffoldingAndGradingControlSpec extends FunSuite {
   /** An exercise with its answers in an offline controller of its own that executes feedback with `context`. */
   private final case class Exercise(interaction: WorkbookInteractionElement[TextInputWithLlmGradingAndScaffoldingFormat.type]) {
     val controller: InteractionController = OfflineController.of(context, interaction)
-    def control: InteractionScaffoldingAndGradingControl[TextInputWithLlmGradingAndScaffoldingFormat.type] = controller.feedback(interaction)
+    def control: FeedbackControl[TextInputWithLlmGradingAndScaffoldingFormat.type] = controller.feedback(interaction)
   }
 
   private def variable(graders: List[WorkbookInteractionGrader[String, MessengerModel]]) = element("retry-tests", graders, None)
@@ -241,7 +241,7 @@ class InteractionScaffoldingAndGradingControlSpec extends FunSuite {
     val current = old.copy(gradingStatus = GradingStatus.Correct, gradingTime = time.plusSeconds(1))
     val other = GradingResult[String, MessengerModel](second, "answer", GradingStatus.Incorrect, feedbackInformation = None, additionalData = None, gradingTime = time)
     List(old, current, other).permutations.foreach { results =>
-      val saved = InteractionVariableHistory.empty(TextInputWithLlmGradingAndScaffoldingFormat).addGradings(results)
+      val saved = InteractionHistory.empty(TextInputWithLlmGradingAndScaffoldingFormat).addGradings(results)
         .gradingForState(List(first, second), "answer")
       assertEquals(saved.graderResultMap, Map[WorkbookInteractionGrader[String, MessengerModel], GradingResult[String, MessengerModel]](first -> current, second -> other))
     }
@@ -277,7 +277,7 @@ class InteractionScaffoldingAndGradingControlSpec extends FunSuite {
     val english = german.copy(scaffoldingStatus = ScaffoldingStatus.ScaffoldingFeedback(
       LanguageMap.mapBasedLanguageMap[HumanLanguage](Map(English -> "Hint"))), scaffoldingTime = time.plusSeconds(1))
     List(german.merge(english), english.merge(german),
-      InteractionVariableHistory.empty(TextInputWithLlmGradingAndScaffoldingFormat).addScaffoldings(Seq(german, english))
+      InteractionHistory.empty(TextInputWithLlmGradingAndScaffoldingFormat).addScaffoldings(Seq(german, english))
         .completedScaffolding("answer").get).foreach { result =>
       val feedback = result.scaffoldingStatus.asInstanceOf[ScaffoldingStatus.ScaffoldingFeedback].feedback
       assertEquals(feedback.tryGetInLanguage(German), Some("Hinweis"))

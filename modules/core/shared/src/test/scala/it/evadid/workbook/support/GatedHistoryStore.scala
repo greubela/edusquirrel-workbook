@@ -12,7 +12,7 @@ import it.evadid.workbook.control.InteractionController
 import it.evadid.workbook.sync.*
 import it.evadid.workbook.sync.destination.{SyncDestinationDefinition, SyncDestinationHandlerBasic}
 import it.evadid.workbook.sync.model.InteractionHistoryJson
-import it.evadid.workbook.history.InteractionVariableHistory
+import it.evadid.workbook.history.InteractionHistory
 import it.evadid.workbook.abstractions.ExecutionContextInformation
 
 import scala.concurrent.{ExecutionContext, Future, Promise}
@@ -48,7 +48,7 @@ final class GatedHistoryStore(val context: UsageContext) extends SyncDestination
   }
 
   /** Replaces the stored history of `interaction`, as another device or the server would have written it. */
-  def seed[F <: InteractionFormat](interaction: WorkbookInteractionElement[F], history: InteractionVariableHistory[F]): Unit =
+  def seed[F <: InteractionFormat](interaction: WorkbookInteractionElement[F], history: InteractionHistory[F]): Unit =
     values.update(_.updated(SyncContext.serializer.serialize(context.toSyncContext(interaction.keyForSerialization)),
       InteractionHistoryJson.fromHistory(interaction.interactionFormat, history).serialized))
 

@@ -47,7 +47,7 @@ class InteractionHistoryMysqlSpec extends FunSuite {
   // The extreme event times the sortable timestamp text supports; Instant.MIN and MAX are open range bounds.
   private val earliestEvent = LocalDateTime.MIN.toInstant(java.time.ZoneOffset.UTC)
   private val latestEvent = LocalDateTime.MAX.toInstant(java.time.ZoneOffset.UTC)
-  private type History = InteractionVariableHistory[TextInputWithLlmGradingAndScaffoldingFormat.type]
+  private type History = InteractionHistory[TextInputWithLlmGradingAndScaffoldingFormat.type]
   private val logger = BasicLogger()
   private val context = UsageContext("program", "scenario", "student")
   private val key = "answer_history"
@@ -64,7 +64,7 @@ class InteractionHistoryMysqlSpec extends FunSuite {
     }
     val scaffolding = ScaffoldingResult(value, ScaffoldingStatus.ScaffoldingFeedback(LanguageMap.universalMap("regular scaffolding feedback")),
       FeedbackEntity.LlmEntity, Some(transcript), at.plusSeconds(2))
-    val result = InteractionVariableHistory.empty(format).addState(InteractionVariableState(value, UpdateImportance.MAJOR, at))
+    val result = InteractionHistory.empty(format).addState(InteractionState(value, UpdateImportance.MAJOR, at))
       .addGradings(grades).addScaffolding(scaffolding)
     // A fixture describes the same logical events each time it is requested.
     result.copy(events = InteractionEvents(result.events.values.map {
@@ -155,9 +155,9 @@ class InteractionHistoryMysqlSpec extends FunSuite {
 
   Seq(BlobFormat, RelationalFormat).foreach { storage =>
     test(s"$storage bulk histories retain independent InteractionFormats without workbook definitions") {
-      val text = InteractionVariableHistory.empty(TextInteractionFormat).addEvent(
+      val text = InteractionHistory.empty(TextInteractionFormat).addEvent(
         AnswerChangedEvent[TextInteractionFormat.type]("plain answer", time, UpdateImportance.MAJOR))
-      val checkbox = InteractionVariableHistory.empty(LabeledCheckboxInteractionFormat).addEvent(
+      val checkbox = InteractionHistory.empty(LabeledCheckboxInteractionFormat).addEvent(
         AnswerChangedEvent[LabeledCheckboxInteractionFormat.type](true, time, UpdateImportance.MAJOR))
       val contexts = Seq(sync, context.toSyncContext("unknown-text-id"), context.toSyncContext("unknown-checkbox-id"))
       val histories = Seq(encoded(history()), InteractionHistoryJson.fromHistory(TextInteractionFormat, text),
@@ -191,7 +191,7 @@ class InteractionHistoryMysqlSpec extends FunSuite {
     }
 
     test(s"$storage replaces the record when the InteractionFormat changes, even with the same state schema") {
-      val text = InteractionVariableHistory.empty(TextInteractionFormat).addEvent(
+      val text = InteractionHistory.empty(TextInteractionFormat).addEvent(
         AnswerChangedEvent[TextInteractionFormat.type]("same JSON schema", time, UpdateImportance.MAJOR))
       val original = StoreToDbRequest(sync, InteractionHistoryJson.fromHistory(TextInteractionFormat, text), config, storage)
       storeVia(original, logger)
@@ -201,7 +201,7 @@ class InteractionHistoryMysqlSpec extends FunSuite {
       storeVia(changed, logger)
       val fetched = fetchVia(fetchRequest(storage), logger).fetchedElements(sync)
       assertEquals(fetched.format, SqlCommandExerciseFormat)
-      assertEquals(fetched.typedAs(SqlCommandExerciseFormat).allStates.map(_.newState), Set("same JSON schema"))
+      assertEquals(fetched.typedAs(SqlCommandExerciseFormat).answerEvents.map(_.newState), Set("same JSON schema"))
     }
   }
 
@@ -237,9 +237,9 @@ class InteractionHistoryMysqlSpec extends FunSuite {
       val replay = storeVia(StoreToDbRequest(sync, encoded(restored), config, storage), logger)
       assertEquals((replay.elementsAdded, replay.elementsUnchanged), (Set.empty[EventId], original.events.ids))
       assertEquals(read[History](fetch(storage)(sync)), original)
-      val answer = original.allStates.head
+      val answer = original.answerEvents.head
       val revised = answer.copy[format.type](newState = "revised", timestamp = answer.timestamp.plusNanos(1))
-      val delta = InteractionVariableHistory(format, InteractionEvents(Set[InteractionEvent[format.type]](revised)))
+      val delta = InteractionHistory(format, InteractionEvents(Set[InteractionEvent[format.type]](revised)))
       val rowId = if storage == RelationalFormat then Some(scalar("SELECT id FROM answer_event")) else None
       intercept[Exception](store(delta, storage))
       assertEquals(read[History](fetch(storage)(sync)), original, "the rejected request is rolled back")
@@ -262,8 +262,8 @@ class InteractionHistoryMysqlSpec extends FunSuite {
     assertEquals(scalar("SELECT COUNT(*) FROM grading_event"), 2L)
     store(history("second", time.plusNanos(1)))
     val restored = read[History](fetch()(sync))
-    assertEquals(restored.historyStates.events.map(_.timestamp), Set(time, time.plusNanos(1)))
-    assertEquals(restored.historyStates.lastStateOption.map(_.value), Some("second"))
+    assertEquals(restored.answerStates.map(_.timestamp), Set(time, time.plusNanos(1)))
+    assertEquals(restored.latestAnswer.map(_.value), Some("second"))
     assertEquals(restored.gradingRecords.keySet, Set("first", "second").map(restored.referenceOf))
     assert(!fetch()(sync).render().contains("answer_id"))
     assert(!fetch()(sync).render().contains("sync_id"))
@@ -273,7 +273,7 @@ class InteractionHistoryMysqlSpec extends FunSuite {
     withHttpCommands() { send =>
       List(BlobFormat, RelationalFormat).foreach { format =>
         val graded = history()
-        val answerOnly = graded.copy(events = InteractionEvents(graded.allStates.map(event => event: InteractionEvent[TextInputWithLlmGradingAndScaffoldingFormat.type])))
+        val answerOnly = graded.copy(events = InteractionEvents(graded.answerEvents.map(event => event: InteractionEvent[TextInputWithLlmGradingAndScaffoldingFormat.type])))
         def save(value: History): Unit = {
           val response = send(storeCommand(StoreToDbRequest(sync, encoded(value), config, format)))
           assert(response.result.isRight, response.result.left.toOption.map(_.msg).getOrElse(""))
@@ -294,7 +294,7 @@ class InteractionHistoryMysqlSpec extends FunSuite {
         val ranged = send(command(fetchEventsFromDbCommand.name, rangeRequest)).throwIfContainsError
           .result.toOption.get.getAs[DbFetchResponse].fetchedElements(sync).typedAs(TextInputWithLlmGradingAndScaffoldingFormat)
         assertEquals(ranged.size, 2)
-        assert(ranged.allStates.isEmpty)
+        assert(ranged.answerEvents.isEmpty)
         assert(send(command(fetchEventsFromDbCommand.name,
           rangeRequest.copy(usageContext = context.copy(userId = "another-user")))).result.isLeft)
         val deleted = send(command(clearValuesDbCommand.name, DeleteInDbRequest(context, Some(key), config, format)))
@@ -359,9 +359,9 @@ class InteractionHistoryMysqlSpec extends FunSuite {
 
   test("large cumulative gzip histories sync repeatedly over HTTP with the same context and different timestamps") {
     withHttpCommands() { send =>
-      val first = InteractionVariableState("x" * 350000, UpdateImportance.MAJOR, time)
-      val second = InteractionVariableState("second edit", UpdateImportance.MAJOR, time.plusSeconds(1))
-      val initial = InteractionVariableHistory.empty(format).addState(first)
+      val first = InteractionState("x" * 350000, UpdateImportance.MAJOR, time)
+      val second = InteractionState("second edit", UpdateImportance.MAJOR, time.plusSeconds(1))
+      val initial = InteractionHistory.empty(format).addState(first)
       val cumulative = initial.addState(second)
       def request(value: History) = StoreToDbRequest(sync, encoded(value), config, RelationalFormat)
       def sendBounded(value: History): Unit = {
@@ -376,7 +376,7 @@ class InteractionHistoryMysqlSpec extends FunSuite {
       sendBounded(cumulative)
       assertEquals(scalar("SELECT id FROM sync_context_id"), syncId)
       assertEquals(scalar("SELECT COUNT(*) FROM answer_event"), 2L)
-      assertEquals(read[History](fetch()(sync)).historyStates, cumulative.historyStates)
+      assertEquals(read[History](fetch()(sync)).answerStates, cumulative.answerStates)
     }
   }
 
@@ -505,11 +505,11 @@ class InteractionHistoryMysqlSpec extends FunSuite {
       store(first, storage)
       store(history("second", time.plusNanos(1)), storage)
       def range(from: Instant, until: Instant) = fetchedHistory(fetchRequest(storage, starting = from, until = until))
-      assertEquals(range(time, time).events.values, first.allStates.map(event => event: InteractionEvent[format.type]))
+      assertEquals(range(time, time).events.values, first.answerEvents.map(event => event: InteractionEvent[format.type]))
       val feedbackTime = time.plusSeconds(1)
       val feedback = range(feedbackTime, feedbackTime)
       assertEquals(feedback.size, 2)
-      assert(feedback.allStates.isEmpty)
+      assert(feedback.answerEvents.isEmpty)
       assertEquals(feedback.gradingRecords.keySet, Set(feedback.referenceOf("first")))
       assertEquals(range(time.minusNanos(1), time.minusNanos(1)).size, 0)
     }
@@ -517,13 +517,13 @@ class InteractionHistoryMysqlSpec extends FunSuite {
     test(s"$storage replaces the earlier answers when an exercise changes its format") {
       store(history(), storage)
       val other = LabeledCheckboxInteractionFormat
-      val booleanHistory = InteractionVariableHistory.empty(other).addEvent(AnswerChangedEvent[other.type](true, time, UpdateImportance.MAJOR))
+      val booleanHistory = InteractionHistory.empty(other).addEvent(AnswerChangedEvent[other.type](true, time, UpdateImportance.MAJOR))
       storeVia(StoreToDbRequest(sync, InteractionHistoryJson.fromHistory(other, booleanHistory), config, storage), logger)
       assertEquals(fetchVia(fetchRequest(storage), logger).fetchedElements(sync).typedAs(other), booleanHistory)
     }
 
     test(s"$storage supports the complete Instant range") {
-      val extremes = InteractionVariableHistory.empty(format)
+      val extremes = InteractionHistory.empty(format)
         .addEvent(AnswerChangedEvent[format.type]("minimum", earliestEvent, UpdateImportance.MAJOR))
         .addEvent(AnswerChangedEvent[format.type]("maximum", latestEvent, UpdateImportance.MAJOR))
       store(extremes, storage)
@@ -542,7 +542,7 @@ class InteractionHistoryMysqlSpec extends FunSuite {
 
   test("relational feedback-only deltas roundtrip without synthesizing answer edits") {
     val original = history()
-    val delta = original.copy(events = InteractionEvents(original.events.values -- original.allStates))
+    val delta = original.copy(events = InteractionEvents(original.events.values -- original.answerEvents))
     store(delta)
     assertEquals(scalar("SELECT COUNT(*) FROM answer_event"), 0L)
     assertEquals(read[History](fetch()(sync)), delta)
@@ -566,7 +566,7 @@ class InteractionHistoryMysqlSpec extends FunSuite {
       val healthy = history("healthy", time.plusSeconds(10))
       val combined = original.mergeWith(healthy)
       store(combined)
-      val corruptEventId = original.allStates.head.eventId
+      val corruptEventId = original.answerEvents.head.eventId
       MysqlTestDatabase.withConnection { connection =>
         Using.resource(connection.prepareStatement("UPDATE answer_event SET timestamp_nano=? WHERE event_id=?")) { statement =>
           statement.setString(1, stored)
@@ -587,7 +587,7 @@ class InteractionHistoryMysqlSpec extends FunSuite {
   test("relational timestamps use indexed ISO 8601 text with nine fractional digits") {
     val exactSecond = time.truncatedTo(java.time.temporal.ChronoUnit.SECONDS)
     val oneNano = exactSecond.plusNanos(1)
-    val sample = InteractionVariableHistory.empty(format)
+    val sample = InteractionHistory.empty(format)
       .addEvent(AnswerChangedEvent[format.type]("second", exactSecond, UpdateImportance.MAJOR))
       .addEvent(AnswerChangedEvent[format.type]("one nanosecond", oneNano, UpdateImportance.MAJOR))
     store(sample)
@@ -602,13 +602,13 @@ class InteractionHistoryMysqlSpec extends FunSuite {
         }
       }
     }
-    assertEquals(fetchedHistory(fetchRequest(RelationalFormat, starting = oneNano, until = oneNano)).allStates.map(_.timestamp), Set(oneNano))
+    assertEquals(fetchedHistory(fetchRequest(RelationalFormat, starting = oneNano, until = oneNano)).answerEvents.map(_.timestamp), Set(oneNano))
   }
 
   test("ISO signed and expanded years preserve chronological range semantics") {
     val timestamps = Seq(earliestEvent, java.time.LocalDateTime.of(-1, 1, 1, 0, 0).toInstant(java.time.ZoneOffset.UTC), java.time.LocalDateTime.of(0, 1, 1, 0, 0).toInstant(java.time.ZoneOffset.UTC),
       time, java.time.LocalDateTime.of(9999, 12, 31, 23, 59, 59, 999999999).toInstant(java.time.ZoneOffset.UTC), java.time.LocalDateTime.of(10000, 1, 1, 0, 0).toInstant(java.time.ZoneOffset.UTC), latestEvent)
-    val sample = timestamps.foldLeft(InteractionVariableHistory.empty(format)) { (history, timestamp) =>
+    val sample = timestamps.foldLeft(InteractionHistory.empty(format)) { (history, timestamp) =>
       history.addEvent(AnswerChangedEvent[format.type](timestamp.toString, timestamp, UpdateImportance.MAJOR))
     }
     store(sample)
@@ -617,7 +617,7 @@ class InteractionHistoryMysqlSpec extends FunSuite {
       java.time.LocalDateTime.of(10000, 1, 1, 0, 0).toInstant(java.time.ZoneOffset.UTC) -> Instant.MAX,
       Instant.MIN -> java.time.LocalDateTime.of(-1, 12, 31, 23, 59).toInstant(java.time.ZoneOffset.UTC), Instant.MIN -> Instant.MAX)
     ranges.foreach { (starting, until) =>
-      assertEquals(fetchedHistory(fetchRequest(RelationalFormat, starting = starting, until = until)).allStates.map(_.timestamp),
+      assertEquals(fetchedHistory(fetchRequest(RelationalFormat, starting = starting, until = until)).answerEvents.map(_.timestamp),
         timestamps.filter(value => !value.isBefore(starting) && !value.isAfter(until)).toSet)
     }
   }
@@ -634,7 +634,7 @@ class InteractionHistoryMysqlSpec extends FunSuite {
           else s"UPDATE answer_event SET serialized_data='{\"broken\": true}' WHERE sync_id=(SELECT id FROM sync_context_id WHERE variable_id='$key')"))
       }
       val fetched = fetchVia(fetchRequest(storage, keys = Seq.empty), logger).fetchedElements
-      assertEquals(fetched(other).typedAs(format).allStates, history("other").allStates, storage.toString)
+      assertEquals(fetched(other).typedAs(format).answerEvents, history("other").answerEvents, storage.toString)
       if storage == BlobFormat then assert(!fetched.contains(sync), "the unreadable blob is discarded")
       else {
         // Only the unreadable answer row is discarded; its gradings and scaffolding remain.
@@ -655,7 +655,7 @@ class InteractionHistoryMysqlSpec extends FunSuite {
       }
       val fetched = fetch(storage)
       assertEquals(fetched.keySet, Set(other), storage.toString)
-      assertEquals(read[History](fetched(other)).allStates, history("other").allStates)
+      assertEquals(read[History](fetched(other)).answerEvents, history("other").answerEvents)
       // Writing to it replaces the record this version cannot read.
       val later = history("later", time.plus(java.time.Duration.ofDays(1)))
       store(later, storage)
@@ -672,11 +672,11 @@ class InteractionHistoryMysqlSpec extends FunSuite {
     store(after)
     val request = fetchRequest(RelationalFormat, starting = endOfDay, until = nextDay)
     val fetched = fetchedHistory(request)
-    assertEquals(fetched.allStates, before.allStates ++ after.allStates)
+    assertEquals(fetched.answerEvents, before.answerEvents ++ after.answerEvents)
     assertEquals(fetched.events.values.size, 2)
     val exactBoundary = request.copy(starting = nextDay)
     val exact = fetchedHistory(exactBoundary)
-    assertEquals(exact.allStates, after.allStates)
+    assertEquals(exact.answerEvents, after.answerEvents)
     assertEquals(exact.events.values.size, 1)
   }
 

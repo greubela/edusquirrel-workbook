@@ -28,12 +28,12 @@ object GradingReporter {
   /** Capture F here; views receive format-independent summaries without casts. */
   def apply[F <: InteractionFormat](interaction: WorkbookInteractionElement[F], interactions: InteractionController): GradingReporter = {
     val report = interactions.historySignal(interaction).map { history =>
-      val state = history.historyStates.lastStateOption.get.value
+      val state = history.latestAnswer.get.value
       val feedback = interactions.feedback(interaction)
       Report(
         GradingSummary(interaction.gradingElements, feedback.getCurrentStateOfGrading(state)),
         ScaffoldingReport(feedback.getCurrentStateOfScaffolding(state)),
-        history.historyStates.lastStateOption.exists(_.updateImportance != DEFAULT),
+        history.latestAnswer.exists(_.updateImportance != DEFAULT),
         CheckReport(interaction, history))
     }
     new GradingReporter(interaction.gradingElements.nonEmpty, interaction.scaffoldingElement.nonEmpty,

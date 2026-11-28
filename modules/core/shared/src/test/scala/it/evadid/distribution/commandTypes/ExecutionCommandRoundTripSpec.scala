@@ -20,7 +20,7 @@ import it.evadid.workbook.interactions.programming.state.ProgrammingStateRaw
 import it.evadid.workbook.interactions.sql.SqlDatabaseConfig
 import it.evadid.workbook.sync.{EventSyncStrategy, SyncSuccess, UpdateImportance, UsageContext}
 import it.evadid.workbook.sync.model.InteractionHistoryJson
-import it.evadid.workbook.history.InteractionVariableHistory
+import it.evadid.workbook.history.InteractionHistory
 import it.evadid.workbook.history.events.{AnswerChangedEvent, EventId}
 import it.evadid.workbook.interactions.qr.{QrCode, QrErrorCorrection}
 import it.evadid.workbook.elements.structure.Workbook
@@ -61,7 +61,7 @@ class ExecutionCommandRoundTripSpec extends FunSuite {
   private val signed = SignedToken(UserTokenInfo(user.user, at, at.plus(java.time.Duration.ofDays(1))), "signature")
   private val usage = UsageContext("edusquirrel", "workbook", user.user.personId)
   private val key = usage.toSyncContext("answer_history")
-  private val history = InteractionHistoryJson.fromHistory(TextInteractionFormat, InteractionVariableHistory.empty(TextInteractionFormat)
+  private val history = InteractionHistoryJson.fromHistory(TextInteractionFormat, InteractionHistory.empty(TextInteractionFormat)
     .addEvent(AnswerChangedEvent[TextInteractionFormat.type]("answer \"quoted\" 学校", at, UpdateImportance.MAJOR)))
   private val synced = SyncSuccess[EventId](Set(EventId.random()), Set.empty, Set(EventId.random()), Set.empty, at)
   private val removed = SyncSuccess.removed(Set(key)).copy(timestampCommitted = at)

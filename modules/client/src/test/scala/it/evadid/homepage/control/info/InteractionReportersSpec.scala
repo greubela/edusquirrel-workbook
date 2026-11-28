@@ -17,10 +17,10 @@ import it.evadid.workbook.interactions.gpt.TextInputWithScaffoldingAndGrading
 import TextInputWithScaffoldingAndGrading.ContentForLlmInteraction
 import it.evadid.workbook.interactions.basic.TextInteraction
 import it.evadid.workbook.elements.structure.{Workbook, WorkbookSection}
-import it.evadid.workbook.history.InteractionVariableState
+import it.evadid.workbook.history.InteractionState
 import it.evadid.workbook.sync.UpdateImportance
 import it.evadid.workbook.abstractions.ExecutionContextInformation
-import it.evadid.workbook.reports.{InteractionVariableSyncReport, ScaffoldingReport}
+import it.evadid.workbook.reports.{InteractionSyncReport, ScaffoldingReport}
 import it.evadid.core.datastructures.chat.MessengerModel
 import java.time.Instant
 
@@ -155,7 +155,7 @@ class InteractionReportersSpec extends EditorDomSuite {
       assert(report.now().scaffolding.feedback.isEmpty)
       hint(ScaffoldingStatus.ScaffoldingFeedback(LanguageMap.universalMap[HumanLanguage]("hint")), 2)
       assertEquals(report.now().scaffolding.status, ScaffoldingReport.Status.Ready)
-      full.interactions.updateHistory(element)(_.addState(InteractionVariableState("new", UpdateImportance.MAJOR, at.plusSeconds(3))))
+      full.interactions.updateHistory(element)(_.addState(InteractionState("new", UpdateImportance.MAJOR, at.plusSeconds(3))))
       hint(ScaffoldingStatus.ScaffoldingFeedback(LanguageMap.universalMap[HumanLanguage]("late")), 4)
       assertEquals(report.now().scaffolding.status, ScaffoldingReport.Status.NotRequested)
       assert(report.now().scaffolding.feedback.isEmpty)
@@ -164,13 +164,13 @@ class InteractionReportersSpec extends EditorDomSuite {
 
   test("sync classification ignores obsolete confirmations and shares its snapshot") {
     import SyncReporter.Status
-    assertEquals(SyncReporter.summarize(InteractionVariableSyncReport(Set.empty[String], Set("obsolete"))).status, Status.Disabled)
-    assertEquals(SyncReporter.summarize(InteractionVariableSyncReport(Set("a", "b"), Set.empty[String])).status, Status.Unsynced)
-    assertEquals(SyncReporter.summarize(InteractionVariableSyncReport(Set("a", "b"), Set("a", "obsolete"))).status, Status.Partial)
-    assertEquals(SyncReporter.summarize(InteractionVariableSyncReport(Set("a", "b"), Set("a", "b"))).status, Status.Synced)
+    assertEquals(SyncReporter.summarize(InteractionSyncReport(Set.empty[String], Set("obsolete"))).status, Status.Disabled)
+    assertEquals(SyncReporter.summarize(InteractionSyncReport(Set("a", "b"), Set.empty[String])).status, Status.Unsynced)
+    assertEquals(SyncReporter.summarize(InteractionSyncReport(Set("a", "b"), Set("a", "obsolete"))).status, Status.Partial)
+    assertEquals(SyncReporter.summarize(InteractionSyncReport(Set("a", "b"), Set("a", "b"))).status, Status.Synced)
     val owner = new ManualOwner
     try {
-      val source = Var(InteractionVariableSyncReport(Set.empty[it.evadid.workbook.sync.SyncInformationWithContext], Set.empty))
+      val source = Var(InteractionSyncReport(Set.empty[it.evadid.workbook.sync.SyncInformationWithContext], Set.empty))
       val reporter = new SyncReporter(source.signal)
       val first = reporter.report.observe(using owner)
       val second = reporter.report.observe(using owner)

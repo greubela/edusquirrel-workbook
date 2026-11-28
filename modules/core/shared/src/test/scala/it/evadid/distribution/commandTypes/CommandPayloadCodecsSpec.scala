@@ -55,9 +55,9 @@ class CommandPayloadCodecsSpec extends FunSuite {
     import it.evadid.workbook.sync.UsageContext
     import it.evadid.workbook.sync.model.InteractionHistoryJson
     import it.evadid.workbook.abstractions.InteractionFormat.TextInteractionFormat
-    import it.evadid.workbook.history.InteractionVariableHistory
+    import it.evadid.workbook.history.InteractionHistory
     val key = UsageContext("program", "workbook", "user").toSyncContext("one")
-    val history = InteractionHistoryJson.fromHistory(TextInteractionFormat, InteractionVariableHistory.empty(TextInteractionFormat))
+    val history = InteractionHistoryJson.fromHistory(TextInteractionFormat, InteractionHistory.empty(TextInteractionFormat))
     val credentials = DatabaseConfigWithCredentials("mysql", "localhost", "3306", "test", "private-user", "private-password")
     val request = BulkStoreToDbRequest(Vector(key), Vector(history), credentials, DatabaseHistoryFormat.BlobFormat)
     assertEquals(read[BulkStoreToDbRequest](write(request)), request)
@@ -363,11 +363,11 @@ class CommandPayloadCodecsSpec extends FunSuite {
     import it.evadid.workbook.elements.structure.Workbook.WorkbookMetadata
     import it.evadid.workbook.sync.{UpdateImportance, UsageContext}
     import it.evadid.workbook.sync.model.InteractionHistoryJson
-    import it.evadid.workbook.history.{InteractionVariableHistory, InteractionVariableState}
+    import it.evadid.workbook.history.{InteractionHistory, InteractionState}
     import it.evadid.workbook.session.{AllWorkbookInfo, SessionData, WorkbookConfig}
     val learner = User("private name", "private-id", "private@example.invalid")
-    val history = InteractionHistoryJson.fromHistory(TextInteractionFormat, InteractionVariableHistory.empty(TextInteractionFormat)
-      .addState(InteractionVariableState("private answer", UpdateImportance.MAJOR, Instant.now())))
+    val history = InteractionHistoryJson.fromHistory(TextInteractionFormat, InteractionHistory.empty(TextInteractionFormat)
+      .addState(InteractionState("private answer", UpdateImportance.MAJOR, Instant.now())))
     val workbook = Workbook("workbook", WorkbookMetadata(Set.empty, Set.empty, LanguageMapContentId("test/title"), List(AppLanguage.English)), Seq.empty)
     val session = SessionData(Instant.now(), Map(UsageContext("p", "workbook", learner.id).toSyncContext("a") -> history),
       learner, None, AllWorkbookInfo(workbook, WorkbookConfig(None), Map.empty))

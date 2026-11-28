@@ -54,7 +54,7 @@ object SimpleSubmission {
   private def latestAnswer[F <: InteractionFormat](interaction: WorkbookInteractionElement[F], stored: InteractionHistoryJson): Option[SubmittedInteractionState] = {
     val history = stored.typedAs(interaction.interactionFormat)
     val graders = interaction.gradingElements
-    history.historyStates.lastStateOption.map { latest =>
+    history.latestAnswer.map { latest =>
       SubmittedInteractionState(interaction.asRef, interaction.interactionFormat,
         InteractionFormat.codecsFor(interaction.interactionFormat).stateSerializer.serialize(latest.value),
         Option.when(graders.nonEmpty)(GradingSummary(graders, history.gradingForState(graders, latest.value)).status))

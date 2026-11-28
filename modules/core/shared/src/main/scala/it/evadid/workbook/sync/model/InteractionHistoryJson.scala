@@ -3,7 +3,7 @@ package it.evadid.workbook.sync.model
 import it.evadid.core.util.io.ParsingContext
 import it.evadid.workbook.abstractions.InteractionFormat
 import it.evadid.workbook.sync.EventSyncStrategy
-import it.evadid.workbook.history.InteractionVariableHistory
+import it.evadid.workbook.history.InteractionHistory
 import it.evadid.workbook.history.events.EventId
 import java.time.Instant
 import upickle.default.*
@@ -12,12 +12,12 @@ import upickle.default.*
   * as JSON, not as an escaped string.
   */
 case class InteractionHistoryJson(format: InteractionFormat, historyJson: ujson.Value) derives ReadWriter {
-  def toTyped: InteractionVariableHistory[format.type] = typedAs(format)
+  def toTyped: InteractionHistory[format.type] = typedAs(format)
 
-  def typedAs[F <: InteractionFormat](expected: F): InteractionVariableHistory[F] = {
+  def typedAs[F <: InteractionFormat](expected: F): InteractionHistory[F] = {
     require(format == expected, s"History format ${format.name} does not match ${expected.name}")
     ParsingContext(s"interaction history (${format.name})", historyJson.render()) {
-      read[InteractionVariableHistory[F]](historyJson)(using InteractionFormat.codecsFor(expected).historyReadWriter)
+      read[InteractionHistory[F]](historyJson)(using InteractionFormat.codecsFor(expected).historyReadWriter)
     }
   }
 
@@ -41,7 +41,7 @@ case class InteractionHistoryJson(format: InteractionFormat, historyJson: ujson.
 }
 
 object InteractionHistoryJson {
-  def fromHistory[F <: InteractionFormat](format: F, history: InteractionVariableHistory[F]): InteractionHistoryJson =
+  def fromHistory[F <: InteractionFormat](format: F, history: InteractionHistory[F]): InteractionHistoryJson =
     InteractionHistoryJson(format, writeJs(history)(using InteractionFormat.codecsFor(format).historyReadWriter))
 
   /** An envelope for a history read as text, e.g. from a database column; malformed JSON fails here. */

@@ -5,7 +5,7 @@ import it.evadid.workbook.abstractions.InteractionFormat.*
 import it.evadid.workbook.abstractions.{WorkbookElement, WorkbookInteractionElement}
 import it.evadid.workbook.sync.UpdateImportance
 import it.evadid.workbook.sync.UpdateImportance.{MAJOR, MINOR, TEMPORARY}
-import it.evadid.workbook.history.InteractionVariableState.InteractionVariableStateChanged
+import it.evadid.workbook.history.InteractionState.InteractionStateChange
 import it.evadid.workbook.serialization.WorkbookElementFactory.NoContentElementFactory
 
 import java.time.Duration
@@ -22,7 +22,7 @@ object TextInteraction {
     override def callConstructor(elementId: String): TextInteraction= TextInteraction(elementId)
   }
 
-  def decideTextareaUpdateImportance(change: InteractionVariableStateChanged[String]): UpdateImportance =
+  def decideTextareaUpdateImportance(change: InteractionStateChange[String]): UpdateImportance =
     if (change.lastState.value == change.newState.value) TEMPORARY else {
       val lenNew = change.newState.value.length
       val lenDiff = lenNew - change.lastState.value.length

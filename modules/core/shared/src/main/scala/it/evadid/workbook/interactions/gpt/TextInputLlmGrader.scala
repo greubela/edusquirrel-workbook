@@ -11,7 +11,7 @@ import it.evadid.workbook.abstractions.FeedbackEntity
 import it.evadid.workbook.abstractions.InteractionFormat.TextInputWithLlmGradingAndScaffoldingFormat
 import it.evadid.workbook.abstractions.grading.*
 import it.evadid.workbook.interactions.gpt.TextInputWithScaffoldingAndGrading.ContentForLlmInteraction
-import it.evadid.workbook.history.InteractionVariableHistory
+import it.evadid.workbook.history.InteractionHistory
 import it.evadid.workbook.abstractions.ExecutionContextInformation
 import upickle.default.*
 

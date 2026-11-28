@@ -6,7 +6,7 @@ import it.evadid.core.datastructures.storage.remote.RemoteHistoryCache.*
 import it.evadid.util.logging.derived.SyncLogger
 import it.evadid.workbook.abstractions.InteractionFormat
 import it.evadid.workbook.sync.{EventSyncStrategy, SyncSuccess}
-import it.evadid.workbook.history.InteractionVariableHistory
+import it.evadid.workbook.history.InteractionHistory
 import it.evadid.workbook.history.events.{EventId, InteractionEvent, InteractionEvents}
 import java.time.Instant
 import scala.concurrent.{ExecutionContext, Future}
@@ -24,9 +24,9 @@ import scala.util.{Failure, Success, Try}
   */
 final class RemoteHistoryCache[K, F <: InteractionFormat, RW <: RemoteHistoryReaderWriter[K, F]](
     format: F, syncLogger: SyncLogger, cacheStrategies: Map[RW, EventSyncStrategy],
-    state: CacheStore[K, F, RW], validate: InteractionVariableHistory[F] => Try[Unit] = (_: InteractionVariableHistory[F]) => Success(())) {
+    state: CacheStore[K, F, RW], validate: InteractionHistory[F] => Try[Unit] = (_: InteractionHistory[F]) => Success(())) {
   private given ExecutionContext = ExecutionContext.global
-  private type History = InteractionVariableHistory[F]
+  private type History = InteractionHistory[F]
 
   def histories: Map[K, History] = state.now().histories
 
@@ -42,10 +42,10 @@ final class RemoteHistoryCache[K, F <: InteractionFormat, RW <: RemoteHistoryRea
   }
 
   private def attempt[A](operation: => Future[A]): Future[A] = Try(operation).fold(Future.failed, identity)
-  private def empty: History = InteractionVariableHistory(format, InteractionEvents.empty)
+  private def empty: History = InteractionHistory(format, InteractionEvents.empty)
   private def later(a: Option[Instant], b: Option[Instant]): Option[Instant] = (a.toList ++ b).maxOption
   private def missing(local: History, known: Set[EventId], strategy: EventSyncStrategy): History =
-    InteractionVariableHistory(format, InteractionEvents(local.cleanWithStrategy(strategy).events.values.filterNot(event => known(event.eventId))))
+    InteractionHistory(format, InteractionEvents(local.cleanWithStrategy(strategy).events.values.filterNot(event => known(event.eventId))))
 
   /** Events are immutable; a received event whose ID names different local content is corrupt and left out. */
   private def withoutConflicts(cache: RW, key: K, received: Seq[InteractionEvent[F]]): Set[InteractionEvent[F]] = {
@@ -128,7 +128,7 @@ final class RemoteHistoryCache[K, F <: InteractionFormat, RW <: RemoteHistoryRea
         val received = keys.map { key =>
           val bounded = response.getOrElse(key, Nil).filter(event =>
             starting.forall(from => !event.timestamp.isBefore(from)) && !event.timestamp.isAfter(until))
-          key -> InteractionVariableHistory(format, InteractionEvents(withoutConflicts(cache, key, bounded)))
+          key -> InteractionHistory(format, InteractionEvents(withoutConflicts(cache, key, bounded)))
         }.filter((key, history) => validate(history).fold(error => {
           syncLogger.logExceptionWarn(s"Discarded the history of $key received from $cache: the exercise rejects one of its answers", error)
           false
@@ -229,9 +229,9 @@ object RemoteHistoryCache {
   }
 
   case class CacheState[K, F <: InteractionFormat, RW](
-      histories: Map[K, InteractionVariableHistory[F]],
+      histories: Map[K, InteractionHistory[F]],
       destinations: Map[RW, Map[K, RemoteHistoryValue]]) {
-    def withLocalHistories(incoming: Map[K, InteractionVariableHistory[F]]): CacheState[K, F, RW] =
+    def withLocalHistories(incoming: Map[K, InteractionHistory[F]]): CacheState[K, F, RW] =
       copy(histories = incoming.foldLeft(histories) { case (merged, (key, history)) =>
         merged.updated(key, merged.get(key).fold(history)(_.mergeWith(history)).cleanedHistory())
       })
@@ -263,8 +263,8 @@ object RemoteHistoryCache {
 
   case class CacheReportForKey[K, F <: InteractionFormat, RW](
       key: K,
-      localHistory: InteractionVariableHistory[F],
+      localHistory: InteractionHistory[F],
       lastKnownValues: Map[RW, RemoteHistoryValue],
-      pendingWrites: Map[RW, InteractionVariableHistory[F]],
+      pendingWrites: Map[RW, InteractionHistory[F]],
       syncedDestinations: Set[RW])
 }

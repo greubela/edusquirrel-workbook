@@ -7,7 +7,7 @@ import it.evadid.workbook.serialization.{WorkbookElementFactory, WorkbookElement
 import it.evadid.core.util.io.serializer.{DefaultSerializer}
 import it.evadid.core.util.io.serializer.DefaultSerializer.given
 import it.evadid.workbook.abstractions.InteractionFormat.AnswerTableInteractionFormat
-import it.evadid.workbook.history.InteractionVariableHistory
+import it.evadid.workbook.history.InteractionHistory
 import upickle.default.*
 import scala.util.chaining.*
 

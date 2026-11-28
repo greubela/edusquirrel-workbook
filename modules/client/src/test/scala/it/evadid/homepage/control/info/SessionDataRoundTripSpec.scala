@@ -57,7 +57,7 @@ class SessionDataRoundTripSpec extends EditorDomSuite {
       assert(restoredClient.current.workbookInfo.get.loadedWorkbook eq open.loadedWorkbook)
       assertEquals(answers(restoredClient)("first"), "my first answer")
       assertEquals(answers(restoredClient)("second"), "a newer local answer", "the newest answer stays current")
-      assertEquals(restoredClient.interactions.currentHistory(open.loadedWorkbook.allContainedInteractionsById("second")).allStates
+      assertEquals(restoredClient.interactions.currentHistory(open.loadedWorkbook.allContainedInteractionsById("second")).answerEvents
         .map(_.newState.toString), Set("my second answer", "a newer local answer"))
     }
   }
@@ -70,7 +70,7 @@ class SessionDataRoundTripSpec extends EditorDomSuite {
       assertEquals(restoredClient.current.workbookInfo.get.loadedWorkbook.workbookId, "workbook/part-1")
       assertEquals(answers(restoredClient), Map("first" -> "my first answer", "second" -> "my second answer"))
       assert(other.loadedWorkbook.allContainedInteractionsById.values.forall(interaction =>
-        !restoredClient.interactions.info.contains(interaction) && otherAnswers.historyOf(interaction).allStates.forall(_.newState.toString == "")))
+        !restoredClient.interactions.info.contains(interaction) && otherAnswers.historyOf(interaction).answerEvents.forall(_.newState.toString == "")))
     }
   }
 

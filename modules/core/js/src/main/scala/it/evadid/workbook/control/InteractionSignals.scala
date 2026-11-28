@@ -7,9 +7,9 @@ import it.evadid.core.datastructures.state.observable.ObservableValue
 import it.evadid.workbook.abstractions.{InteractionFormat, WorkbookInteractionElement}
 import it.evadid.workbook.sync.{SyncInformationWithContext, SyncResetState, UpdateImportance}
 import it.evadid.workbook.model.InteractionInfo
-import it.evadid.workbook.history.InteractionVariableHistory
-import it.evadid.workbook.history.InteractionVariableState.InteractionVariableStateChanged
-import it.evadid.workbook.reports.InteractionVariableSyncReport
+import it.evadid.workbook.history.InteractionHistory
+import it.evadid.workbook.history.InteractionState.InteractionStateChange
+import it.evadid.workbook.reports.InteractionSyncReport
 
 import scala.util.Try
 
@@ -26,7 +26,7 @@ object InteractionSignals {
   extension (controller: InteractionController)
     private def projection[A](project: InteractionInfo => A): StrictSignal[A] = Projection(controller.changes, () => controller.info, project)
 
-    def historySignal[F <: InteractionFormat](interaction: WorkbookInteractionElement[F]): StrictSignal[InteractionVariableHistory[F]] =
+    def historySignal[F <: InteractionFormat](interaction: WorkbookInteractionElement[F]): StrictSignal[InteractionHistory[F]] =
       projection(_.historyOf(interaction))
 
     def answerSignal[F <: InteractionFormat](interaction: WorkbookInteractionElement[F]): StrictSignal[InteractionFormat.State[F]] =
@@ -36,7 +36,7 @@ object InteractionSignals {
       * exercise rejects is reported and not recorded.
       */
     def boundVar[F <: InteractionFormat](interaction: WorkbookInteractionElement[F],
-        relevance: InteractionVariableStateChanged[InteractionFormat.State[F]] => UpdateImportance): Var[InteractionFormat.State[F]] =
+        relevance: InteractionStateChange[InteractionFormat.State[F]] => UpdateImportance): Var[InteractionFormat.State[F]] =
       new LazyDerivedVar[Unit, InteractionFormat.State[F]](Var(()), answerSignal(interaction), (unit, value) => {
         Try(controller.applyUserChange(interaction, value, relevance)).failed
           .foreach(error => controller.logger.logExceptionWarn(s"Ignored an answer of ${interaction.keyForSerialization}", error))
@@ -50,7 +50,7 @@ object InteractionSignals {
     def resetStateSignal: StrictSignal[SyncResetState] = Projection(controller.resetStates, () => controller.resetState, identity)
 
     /** The sync report of `interaction`; no destination counts as confirmed during a reset. */
-    def reportSignal(interaction: WorkbookInteractionElement[? <: InteractionFormat]): Signal[InteractionVariableSyncReport[SyncInformationWithContext]] =
+    def reportSignal(interaction: WorkbookInteractionElement[? <: InteractionFormat]): Signal[InteractionSyncReport[SyncInformationWithContext]] =
       projection(_.reportOf(interaction)).combineWith(resetStateSignal).map((report, reset) =>
         if reset == SyncResetState.Idle then report else report.copy(destinationsWithSufficientWrites = Set.empty))
 }

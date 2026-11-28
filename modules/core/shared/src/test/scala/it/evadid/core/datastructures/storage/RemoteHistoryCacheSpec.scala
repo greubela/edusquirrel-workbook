@@ -6,7 +6,7 @@ import it.evadid.util.logging.Logger
 import it.evadid.util.logging.derived.{PrintToStdLogger, SyncLogger}
 import it.evadid.workbook.sync.{EventSyncStrategy, SyncContext, SyncSuccess, UpdateImportance, UsageContext}
 import it.evadid.workbook.history.events.*
-import it.evadid.workbook.history.InteractionVariableHistory
+import it.evadid.workbook.history.InteractionHistory
 import java.time.Instant
 import munit.FunSuite
 import scala.concurrent.{ExecutionContext, Future, Promise}
@@ -16,17 +16,17 @@ import it.evadid.workbook.abstractions.InteractionFormat.TextInteractionFormat
 class RemoteHistoryCacheSpec extends FunSuite {
   private given ExecutionContext = ExecutionContext.global
   private type Event = InteractionEvent[TextInteractionFormat.type]
-  private type History = InteractionVariableHistory[TextInteractionFormat.type]
+  private type History = InteractionHistory[TextInteractionFormat.type]
   private type Cache = RemoteHistoryCache[SyncContext, TextInteractionFormat.type, Destination]
   private val logger = SyncLogger(Logger.withNameAndPrefixes(printMap = PrintToStdLogger.printNothing))
   private val time = java.time.LocalDateTime.of(2026, 11, 16, 12, 0).toInstant(java.time.ZoneOffset.UTC)
   private val key = UsageContext("program", "workbook", "user").toSyncContext("answer")
   private val otherKey = key.copy(keyForSerialisation = "other")
-  private val empty: History = InteractionVariableHistory.empty(TextInteractionFormat)
+  private val empty: History = InteractionHistory.empty(TextInteractionFormat)
   private def event(value: Int, seconds: Long, importance: UpdateImportance = UpdateImportance.MAJOR): Event =
     AnswerChangedEvent[TextInteractionFormat.type](value.toString, time.plusSeconds(seconds), importance, EventId(new java.util.UUID(0L, s"$value/$seconds/$importance".hashCode.toLong).toString))
   private def ids(events: Event*): Set[EventId] = events.map(_.eventId).toSet
-  private def history(events: Event*): History = InteractionVariableHistory(TextInteractionFormat, InteractionEvents(events.toSet))
+  private def history(events: Event*): History = InteractionHistory(TextInteractionFormat, InteractionEvents(events.toSet))
   private def ref(value: String) = it.evadid.workbook.abstractions.InteractionFormat.referenceOf(TextInteractionFormat, value)
   private case class Read(keys: Seq[SyncContext], starting: Instant, until: Instant, strategy: EventSyncStrategy)
 

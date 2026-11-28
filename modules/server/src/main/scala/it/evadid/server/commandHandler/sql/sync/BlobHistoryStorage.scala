@@ -5,7 +5,7 @@ import it.evadid.util.logging.Logger
 import it.evadid.workbook.abstractions.InteractionFormat
 import it.evadid.workbook.sync.{SyncContext, SyncSuccess, UsageContext}
 import it.evadid.workbook.sync.model.InteractionHistoryJson
-import it.evadid.workbook.history.InteractionVariableHistory
+import it.evadid.workbook.history.InteractionHistory
 import it.evadid.workbook.history.events.EventId
 import java.sql.Connection
 
@@ -19,7 +19,7 @@ class BlobHistoryStorage(connection: Connection, logger: Logger) extends History
     val format = incoming.format
     val newHistory = incoming.typedAs[format.type](format)
     val codec = InteractionFormat.codecsFor[format.type](format).historySerializer
-    val emptyJson = codec.serialize(InteractionVariableHistory.empty[format.type](format))
+    val emptyJson = codec.serialize(InteractionHistory.empty[format.type](format))
     val keys = rowKeys(request.usageContext, request.syncContext.keyForSerialisation)
     statements.update("INSERT INTO blob_history (program_id,scenario_id,user_id,variable_id,format,history_json) VALUES (?,?,?,?,?,?) ON DUPLICATE KEY UPDATE id=id",
       (keys ++ List(format.name, emptyJson))*)
@@ -29,7 +29,7 @@ class BlobHistoryStorage(connection: Connection, logger: Logger) extends History
     // The exercise changed its type: its earlier history belongs to another exercise and is replaced.
     val previous =
       if savedFormat == format.name then InteractionHistoryJson(format, savedJson).typedAs[format.type](format)
-      else InteractionVariableHistory.empty[format.type](format)
+      else InteractionHistory.empty[format.type](format)
     val merged = previous.mergeWith(newHistory)
     statements.update("UPDATE blob_history SET format=?, history_json=? WHERE program_id=? AND scenario_id=? AND user_id=? AND variable_id=?",
       (List(format.name, codec.serialize(merged)) ++ keys)*)

@@ -10,7 +10,7 @@ import it.evadid.workbook.abstractions.InteractionFormat.{ProgrammingExerciseWit
 import it.evadid.workbook.interactions.programming.state.{ProgrammingState, ProgrammingStateRaw}
 import it.evadid.workbook.sync.*
 import it.evadid.workbook.sync.destination.SyncDestinationDefinition.LocalStorageSyncDefinition
-import it.evadid.workbook.history.InteractionVariableHistory
+import it.evadid.workbook.history.InteractionHistory
 import it.evadid.workbook.history.events.{AnswerChangedEvent, InteractionEvent, InteractionEvents}
 import org.scalajs.dom
 import java.time.Instant
@@ -26,8 +26,8 @@ class BrowserHistoryStorageRoundTripSpec extends EditorDomSuite {
 
   override def beforeEach(context: BeforeEach): Unit = dom.window.localStorage.clear()
 
-  private def history[F <: InteractionFormat](format: F)(values: (InteractionFormat.State[F], Int)*): InteractionVariableHistory[F] =
-    InteractionVariableHistory(format, InteractionEvents(values.map((value, second) =>
+  private def history[F <: InteractionFormat](format: F)(values: (InteractionFormat.State[F], Int)*): InteractionHistory[F] =
+    InteractionHistory(format, InteractionEvents(values.map((value, second) =>
       AnswerChangedEvent[F](value, at.plusSeconds(second), UpdateImportance.MAJOR): InteractionEvent[F]).toSet))
 
   private def destination[F <: InteractionFormat](format: F, context: UsageContext = usage) = {

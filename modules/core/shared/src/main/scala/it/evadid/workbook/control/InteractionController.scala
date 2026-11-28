@@ -10,11 +10,11 @@ import it.evadid.util.logging.derived.SyncLogger
 import it.evadid.workbook.abstractions.{InteractionFormat, WorkbookInteractionElement}
 import it.evadid.workbook.sync.{FormattedSyncDestination, SyncConnection, SyncContext, SyncInformationWithContext, SyncResetState, UpdateImportance}
 import it.evadid.workbook.sync.model.InteractionHistoryJson
-import it.evadid.workbook.history.InteractionVariableState.InteractionVariableStateChanged
+import it.evadid.workbook.history.InteractionState.InteractionStateChange
 import it.evadid.workbook.model.{InteractionEntry, InteractionInfo, InteractionScope}
-import it.evadid.workbook.history.{InteractionVariableHistory, InteractionVariableState}
+import it.evadid.workbook.history.{InteractionHistory, InteractionState}
 import it.evadid.workbook.abstractions.ExecutionContextInformation
-import it.evadid.workbook.reports.InteractionVariableSyncReport
+import it.evadid.workbook.reports.InteractionSyncReport
 
 import java.time.Instant
 import scala.concurrent.{ExecutionContext, Future, Promise}
@@ -31,7 +31,7 @@ import scala.util.Try
 class InteractionController(store: State[InteractionInfo], schedule: (() => Unit) => Unit = run => run()) {
   private given ExecutionContext = ExecutionContext.global
   private type AnyInteraction = WorkbookInteractionElement[? <: InteractionFormat]
-  private type Control = InteractionScaffoldingAndGradingControl[? <: InteractionFormat]
+  private type Control = FeedbackControl[? <: InteractionFormat]
 
   def info: InteractionInfo = store.now()
   /** Every new state of the answers, for views that follow them. */
@@ -87,11 +87,11 @@ class InteractionController(store: State[InteractionInfo], schedule: (() => Unit
 
   // READS
 
-  def currentHistory[F <: InteractionFormat](interaction: WorkbookInteractionElement[F]): InteractionVariableHistory[F] = info.historyOf(interaction)
-  def currentState[F <: InteractionFormat](interaction: WorkbookInteractionElement[F]): InteractionVariableState[InteractionFormat.State[F]] =
+  def currentHistory[F <: InteractionFormat](interaction: WorkbookInteractionElement[F]): InteractionHistory[F] = info.historyOf(interaction)
+  def currentState[F <: InteractionFormat](interaction: WorkbookInteractionElement[F]): InteractionState[InteractionFormat.State[F]] =
     info.currentStateOf(interaction)
   def currentValue[F <: InteractionFormat](interaction: WorkbookInteractionElement[F]): InteractionFormat.State[F] = info.currentValueOf(interaction)
-  def report(interaction: AnyInteraction): InteractionVariableSyncReport[SyncInformationWithContext] = info.reportOf(interaction)
+  def report(interaction: AnyInteraction): InteractionSyncReport[SyncInformationWithContext] = info.reportOf(interaction)
 
   // TRANSITIONS
 
@@ -116,7 +116,7 @@ class InteractionController(store: State[InteractionInfo], schedule: (() => Unit
 
   /** Changes the history of `interaction`; a history with an answer the exercise rejects is reported and not applied. */
   def updateHistory[F <: InteractionFormat](interaction: WorkbookInteractionElement[F])(
-      transition: InteractionVariableHistory[F] => InteractionVariableHistory[F]): Unit =
+      transition: InteractionHistory[F] => InteractionHistory[F]): Unit =
     store.update(current => orUnchanged(current, interaction, current.withHistory(interaction)(transition)))
 
   /** Applies a transition result, or reports its failure and keeps `current`. */
@@ -135,7 +135,7 @@ class InteractionController(store: State[InteractionInfo], schedule: (() => Unit
 
   /** Records a user's change of the answer whose importance `relevance` decides; an unchanged answer is ignored. */
   def applyUserChange[F <: InteractionFormat](interaction: WorkbookInteractionElement[F], value: InteractionFormat.State[F],
-      relevance: InteractionVariableStateChanged[InteractionFormat.State[F]] => UpdateImportance): Unit = {
+      relevance: InteractionStateChange[InteractionFormat.State[F]] => UpdateImportance): Unit = {
     interaction.validateState(value)
     store.update(current => orUnchanged(current, interaction, current.withUserChange(interaction, value, relevance)))
   }
@@ -149,8 +149,8 @@ class InteractionController(store: State[InteractionInfo], schedule: (() => Unit
 
   /** Commits a TEMPORARY current answer as MAJOR, so strategies that skip TEMPORARY answers send it. */
   def commitCurrentState[F <: InteractionFormat](interaction: WorkbookInteractionElement[F]): Unit =
-    updateHistory(interaction)(history => history.historyStates.lastStateOption.filter(_.updateImportance == UpdateImportance.TEMPORARY)
-      .fold(history)(last => history.addState(InteractionVariableState(last.value, UpdateImportance.MAJOR, Instant.now()))))
+    updateHistory(interaction)(history => history.latestAnswer.filter(_.updateImportance == UpdateImportance.TEMPORARY)
+      .fold(history)(last => history.addState(InteractionState(last.value, UpdateImportance.MAJOR, Instant.now()))))
 
   /** Back to the default answer; the session and its completed feedback computations stay. */
   def resetLocalHistory[F <: InteractionFormat](interaction: WorkbookInteractionElement[F]): Unit =
@@ -327,12 +327,12 @@ class InteractionController(store: State[InteractionInfo], schedule: (() => Unit
   private val feedbacks = State(Map.empty[(InteractionInfo.Session, String), Control])
 
   /** The feedback of `interaction` in the current session. Requests for an interaction outside it fail. */
-  def feedback[F <: InteractionFormat](interaction: WorkbookInteractionElement[F]): InteractionScaffoldingAndGradingControl[F] = feedbacks.synchronized {
+  def feedback[F <: InteractionFormat](interaction: WorkbookInteractionElement[F]): FeedbackControl[F] = feedbacks.synchronized {
     val session = info.session
     val key = (session, interaction.keyForSerialization)
     // Instance identity guarantees that the control has the interaction's format.
-    feedbacks.now().get(key).filter(_.interaction eq interaction).map(_.asInstanceOf[InteractionScaffoldingAndGradingControl[F]]).getOrElse {
-      val created = new InteractionScaffoldingAndGradingControl(feedbackTarget(interaction, session))
+    feedbacks.now().get(key).filter(_.interaction eq interaction).map(_.asInstanceOf[FeedbackControl[F]]).getOrElse {
+      val created = new FeedbackControl(feedbackTarget(interaction, session))
       feedbacks.update(all => all.filter((known, _) => known._1 == session).updated(key, created))
       created
     }
@@ -342,10 +342,10 @@ class InteractionController(store: State[InteractionInfo], schedule: (() => Unit
     new FeedbackTarget[F] {
       val interaction: WorkbookInteractionElement[F] = element
       def isCurrent: Boolean = info.session == session && info.contains(interaction)
-      def currentHistory: InteractionVariableHistory[F] =
+      def currentHistory: InteractionHistory[F] =
         if isCurrent then info.historyOf(interaction) else InteractionEntry.defaultHistory(interaction)
       def execution: ExecutionContextInformation = info.connection.execution
-      def publish(transition: InteractionVariableHistory[F] => InteractionVariableHistory[F]): Unit =
+      def publish(transition: InteractionHistory[F] => InteractionHistory[F]): Unit =
         store.update(current => if current.session != session then current else orUnchanged(current, interaction, current.withHistory(interaction)(transition)))
     }
 

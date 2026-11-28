@@ -6,7 +6,7 @@ import it.evadid.workbook.abstractions.InteractionFormat.TextInputWithLlmGrading
 import it.evadid.workbook.abstractions.{WorkbookElement, WorkbookInteractionElement, *}
 import it.evadid.workbook.interactions.gpt.TextInputWithScaffoldingAndGrading.ContentForLlmInteraction
 import it.evadid.workbook.serialization.{WorkbookElementFactory, WorkbookElementSerializable}
-import it.evadid.workbook.history.InteractionVariableHistory
+import it.evadid.workbook.history.InteractionHistory
 import upickle.default.*
 
 

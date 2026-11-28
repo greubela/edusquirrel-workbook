@@ -24,7 +24,7 @@ class FeedbackReferencesSpec extends FunSuite {
 
   test("a saved grading holds the grader's and the answer's references, not their content") {
     val answer = "a long student answer that should be stored once"
-    val history = InteractionVariableHistory.empty(format).addState(InteractionVariableState(answer, UpdateImportance.MAJOR, time))
+    val history = InteractionHistory.empty(format).addState(InteractionState(answer, UpdateImportance.MAJOR, time))
       .addGrading(GradingResult(grader, answer, GradingStatus.Correct, None, None, time))
     val saved = InteractionHistoryJson.fromHistory(format, history).serialized
     assertEquals(saved.split(java.util.regex.Pattern.quote(answer), -1).length - 1, 1, "the answer is saved once, in its answer event")
@@ -48,7 +48,7 @@ class FeedbackReferencesSpec extends FunSuite {
 
   test("a grading of a grader that is no longer configured is not resolved") {
     val other = grader.copy(exerciseText = LanguageMapContentId("spec/other"))
-    val history = InteractionVariableHistory.empty(format).addGrading(GradingResult(other, "a", GradingStatus.Correct, None, None, time))
+    val history = InteractionHistory.empty(format).addGrading(GradingResult(other, "a", GradingStatus.Correct, None, None, time))
     assertEquals(history.gradingForState(Seq(grader), "a").graderResultMap(grader).gradingStatus, GradingStatus.NotRequested)
     assertEquals(history.completedGradings(Seq(grader), "a"), Nil)
   }

@@ -7,7 +7,7 @@ import it.evadid.core.util.io.serializer.DefaultSerializer.given
 import it.evadid.workbook.abstractions.{InteractionFormat, WorkbookElement, WorkbookInteractionElement, *}
 import it.evadid.workbook.serialization.WorkbookElementFactory.SimpleWorkbookElementFactory
 import it.evadid.workbook.serialization.WorkbookElementSerializable
-import it.evadid.workbook.history.InteractionVariableHistory
+import it.evadid.workbook.history.InteractionHistory
 import upickle.default.*
 import it.evadid.workbook.abstractions.*
 import it.evadid.workbook.abstractions.InteractionFormat.*

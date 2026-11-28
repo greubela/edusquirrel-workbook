@@ -14,7 +14,7 @@ import it.evadid.workbook.interactions.choice.WorkbookContentChoiceInteraction
 import it.evadid.workbook.interactions.choice.WorkbookContentChoiceInteraction.*
 import it.evadid.workbook.sync.{SyncConnection, UpdateImportance, UsageContext}
 import it.evadid.workbook.sync.UpdateImportance.MAJOR
-import it.evadid.workbook.history.InteractionVariableHistory
+import it.evadid.workbook.history.InteractionHistory
 import it.evadid.workbook.history.events.{AnswerChangedEvent, GradingCompletedEvent, GradingStartedEvent}
 import it.evadid.workbook.abstractions.ExecutionContextInformation
 import it.evadid.workbook.support.GatedHistoryStore
@@ -69,8 +69,8 @@ class InteractionGradingConcurrencySpec extends FunSuite {
   private val wrong = choice.select(choice.defaultValue, 1, true)
   private val grader = choice.gradingElements.head
   private type Choice = choice.interactionFormat.type
-  private def remote(events: it.evadid.workbook.history.events.InteractionEvent[Choice]*): InteractionVariableHistory[Choice] =
-    events.foldLeft(InteractionVariableHistory.empty[Choice](choice.interactionFormat))(_.addEvent(_))
+  private def remote(events: it.evadid.workbook.history.events.InteractionEvent[Choice]*): InteractionHistory[Choice] =
+    events.foldLeft(InteractionHistory.empty[Choice](choice.interactionFormat))(_.addEvent(_))
   private def ref(state: it.evadid.workbook.abstractions.InteractionFormat.State[Choice]) =
     it.evadid.workbook.abstractions.InteractionFormat.referenceOf[Choice](choice.interactionFormat, state)
   /** Whether a feedback event of `answers`' text exercise refers to `answer`. */
@@ -111,7 +111,7 @@ class InteractionGradingConcurrencySpec extends FunSuite {
       answers.updateHistory(exercise)(identity)
       answers.setStateFromUserInteraction(exercise, "wrong", UpdateImportance.MAJOR)
       assertEquals(grader.graded.now(), Vector("wrong"), "grading events and a new importance of the same answer start nothing")
-      assert(answers.currentHistory(exercise).allStates.forall(_.newState != "typing"), "the superseded temporary answer is gone")
+      assert(answers.currentHistory(exercise).answerEvents.forall(_.newState != "typing"), "the superseded temporary answer is gone")
       assert(answers.currentHistory(exercise).gradingEvents.forall(about(_, "wrong")))
     }
   }
@@ -138,7 +138,7 @@ class InteractionGradingConcurrencySpec extends FunSuite {
     answers.setStateFromUserInteraction(exercise, "right", MAJOR)
     val pending = answers.feedback(exercise).getOrCalculateGrading(forceGrading = true)
     val earlier = GradingResult[String, MessengerModel](grader, "right", GradingStatus.Incorrect, None, None, Instant.now().minusSeconds(5))
-    answers.updateHistory(exercise)(_.mergeWith(InteractionVariableHistory.empty[Text](TextInputWithLlmGradingAndScaffoldingFormat).addGrading(earlier)))
+    answers.updateHistory(exercise)(_.mergeWith(InteractionHistory.empty[Text](TextInputWithLlmGradingAndScaffoldingFormat).addGrading(earlier)))
     assertEquals(answers.feedback(exercise).getCurrentStateOfGrading("right").testsWithResults.head.gradingStatus, GradingStatus.NotFinished,
       "the newer local start is still running")
     grader.gate("right").success(())

@@ -15,7 +15,7 @@ import java.time.Instant
 import munit.FunSuite
 
 /** The projections every editor, renderer and cache reads from an event history. */
-class InteractionVariableHistorySpec extends FunSuite {
+class InteractionHistorySpec extends FunSuite {
   private type F = TextInputWithLlmGradingAndScaffoldingFormat.type
   private val format: F = TextInputWithLlmGradingAndScaffoldingFormat
   private def ref(value: String) = InteractionFormat.referenceOf(format, value)
@@ -43,7 +43,7 @@ class InteractionVariableHistorySpec extends FunSuite {
       it.evadid.core.datastructures.language.LanguageMap.universalMap(s"hint for $value")), tutor, None, t(second))
   private def hintDone(value: String, second: Int): Event = ScaffoldingCompletedEvent[F](hint(value, second).record(ref(value)))
   private def hintStarted(value: String, second: Int): Event = ScaffoldingStartedEvent[F](ref(value), t(second), tutor)
-  private def history(events: Event*) = InteractionVariableHistory[F](format, InteractionEvents(events.toSet))
+  private def history(events: Event*) = InteractionHistory[F](format, InteractionEvents(events.toSet))
   /** The answers `events` belong to. */
   private def values(events: Iterable[Event]) = events.map(history().stateOf).toSet
 
@@ -54,7 +54,7 @@ class InteractionVariableHistorySpec extends FunSuite {
     val normalized = history(start, gradingDone("start", 1), typed, feedback).cleanedHistory()
     assertEquals(normalized.events.values, Set(typed, feedback))
     assertEquals(values(normalized.events.values), refs("typed"))
-    assertEquals(normalized.allStates.size, 1)
+    assertEquals(normalized.answerEvents.size, 1)
     assertEquals(normalized.gradingEvents.size, 1)
   }
 
@@ -62,7 +62,7 @@ class InteractionVariableHistorySpec extends FunSuite {
     val onlyDefaults = history(answer("old", 0, DEFAULT), answer("new", 1, DEFAULT), gradingDone("old", 2)).cleanedHistory()
     assertEquals(values(onlyDefaults.events.values), refs("new"))
     val repeated = history(answer("same", 0, DEFAULT), answer("same", 1), gradingDone("same", 2)).cleanedHistory()
-    assertEquals(repeated.allStates.map(_.updateImportance), Set(MINOR))
+    assertEquals(repeated.answerEvents.map(_.updateImportance), Set(MINOR))
     assertEquals(repeated.gradingEvents.size, 1, "the feedback still belongs to an answer in the history")
     assertEquals(history().cleanedHistory(), history())
   }
@@ -106,7 +106,7 @@ class InteractionVariableHistorySpec extends FunSuite {
   }
 
   test("adding results ignores unfinished gradings and never duplicates a published result") {
-    val empty = InteractionVariableHistory.empty(format)
+    val empty = InteractionHistory.empty(format)
     assertEquals(empty.addGrading(graded("a", 1, status = GradingStatus.NotFinished)), empty)
     assertEquals(empty.addGrading(graded("a", 1, status = GradingStatus.NotRequested)), empty)
     val once = empty.addGrading(graded("a", 1))
@@ -124,9 +124,9 @@ class InteractionVariableHistorySpec extends FunSuite {
   }
 
   test("histories built from results project the same answers and feedback") {
-    val states = Set(InteractionVariableState("a", MINOR, t(1)), InteractionVariableState("b", MAJOR, t(2)))
-    val built = InteractionVariableHistory.fromResults[F](format, states, Set(GradedState("b", Map(spelling -> graded("b", 3)))), Set(hint("b", 4)))
-    assertEquals(built.historyStates.events, states)
+    val states = Set(InteractionState("a", MINOR, t(1)), InteractionState("b", MAJOR, t(2)))
+    val built = InteractionHistory.fromResults[F](format, states, Set(GradedState("b", Map(spelling -> graded("b", 3)))), Set(hint("b", 4)))
+    assertEquals(built.answerStates, states)
     assertEquals(built.gradingForState(Seq(spelling), "b").graderResultMap(spelling), graded("b", 3))
     assertEquals(built.scaffoldingForState("b"), Some(hint("b", 4)))
   }
@@ -152,7 +152,7 @@ class InteractionVariableHistorySpec extends FunSuite {
     assertEquals(typing.cleanedHistory(), typing, "the current answer stays, even when it is temporary")
     val committed = history(answer("a", 1), gradingDone("a", 2), answer("typing", 3, TEMPORARY), gradingStarted("typing", 4),
       hintStarted("a", 5), answer("b", 6, MAJOR)).cleanedHistory()
-    assertEquals(committed.allStates.map(_.newState), Set("a", "b"))
+    assertEquals(committed.answerEvents.map(_.newState), Set("a", "b"))
     assertEquals(values(committed.events.values), refs("a", "b"), "in-flight feedback of retained answers stays")
   }
 

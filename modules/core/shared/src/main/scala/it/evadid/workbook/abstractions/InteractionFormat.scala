@@ -19,7 +19,7 @@ import it.evadid.workbook.interactions.sorting.sortingReasonExercise.SortingReas
 import it.evadid.workbook.interactions.table.TableAnswer
 import it.evadid.workbook.interactions.text.UnicodeComparisonAnswer
 import it.evadid.workbook.interactions.todo.*
-import it.evadid.workbook.history.InteractionVariableHistory
+import it.evadid.workbook.history.InteractionHistory
 import it.evadid.workbook.history.events.*
 import it.evadid.core.util.io.serializer.DefaultSerializer.given
 import it.evadid.workbook.interactions.blockchain.TeachingChain
@@ -43,7 +43,7 @@ sealed trait InteractionFormat {
   final def stateSerializer: Serializer[InteractionFormat.State[this.type]] = codecs.stateSerializer
   final def gradingInfoSerializer: Serializer[InteractionFormat.Grading[this.type]] = codecs.gradingInfoSerializer
   final def scaffoldingInfoSerializer: Serializer[InteractionFormat.Scaffolding[this.type]] = codecs.scaffoldingInfoSerializer
-  final def historySerializer: Serializer[InteractionVariableHistory[this.type]] = codecs.historySerializer
+  final def historySerializer: Serializer[InteractionHistory[this.type]] = codecs.historySerializer
   /** The stable name histories are tagged with; independent of the object's name. */
   def name: String
 }
@@ -99,15 +99,15 @@ object InteractionFormat {
       })
     private given eventsRW: ReadWriter[InteractionEvents[F]] = macroRW
     /** A saved history holds only its events; the format is the envelope's. */
-    given historyReadWriter: ReadWriter[InteractionVariableHistory[F]] = readwriter[ujson.Value].bimap[InteractionVariableHistory[F]](
+    given historyReadWriter: ReadWriter[InteractionHistory[F]] = readwriter[ujson.Value].bimap[InteractionHistory[F]](
       history => ujson.Obj("events" -> writeJs(history.events)),
-      json => InteractionVariableHistory(format, read[InteractionEvents[F]](json("events"))))
+      json => InteractionHistory(format, read[InteractionEvents[F]](json("events"))))
 
     val stateSerializer: Serializer[State[F]] = Serializer.fromImplicitRW
     val gradingInfoSerializer: Serializer[Grading[F]] = Serializer.fromImplicitRW
     val scaffoldingInfoSerializer: Serializer[Scaffolding[F]] = Serializer.fromImplicitRW
     val eventSerializer: Serializer[InteractionEvent[F]] = Serializer.fromImplicitRW
-    val historySerializer: Serializer[InteractionVariableHistory[F]] = Serializer.fromImplicitRW
+    val historySerializer: Serializer[InteractionHistory[F]] = Serializer.fromImplicitRW
   }
 
   /** Programs are referenced by their source text. */

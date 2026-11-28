@@ -113,7 +113,7 @@ finished state while the observable continues to update.
 Interactions are exercise definitions without state. The answers of one sync context
 (program, workbook, user) form one immutable
 [`InteractionInfo`](../modules/core/shared/src/main/scala/it/evadid/workbook/model/InteractionInfo.scala):
-per interaction its `InteractionVariableHistory[F]` and what each destination is known to
+per interaction its `InteractionHistory[F]` and what each destination is known to
 hold, plus the `SyncConnection` (destinations with credentials, execution context) and a
 session identity. An interaction belongs to it by serialization key and instance; another
 instance under the same key reads its default answer and its writes are ignored.

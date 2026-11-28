@@ -14,7 +14,7 @@ import it.evadid.workbook.interactions.gpt.TextInputWithScaffoldingAndGrading
 import it.evadid.workbook.abstractions.ExecutionContextInformation
 import it.evadid.workbook.sync.model.InteractionHistoryJson
 import it.evadid.workbook.abstractions.InteractionFormat.TurtleRecreateShapeInteractionFormat
-import it.evadid.workbook.history.InteractionVariableHistory
+import it.evadid.workbook.history.InteractionHistory
 import scala.concurrent.{ExecutionContext, Future}
 import upickle.default.*
 
@@ -315,7 +315,7 @@ class Gdp1WorkbookSpec extends FunSuite {
   test("structure grading results round-trip through InteractionHistoryJson") {
     val task = tasks(3)
     grade(task.gradingElements, ProgrammingStatePythonStructured(withFunction)).map { results =>
-      val history = InteractionVariableHistory.empty(TurtleRecreateShapeInteractionFormat).addGradings(results)
+      val history = InteractionHistory.empty(TurtleRecreateShapeInteractionFormat).addGradings(results)
       val envelope = InteractionHistoryJson.fromHistory(TurtleRecreateShapeInteractionFormat, history)
       val restored = read[InteractionHistoryJson](write(envelope))
       assertEquals(restored, envelope)

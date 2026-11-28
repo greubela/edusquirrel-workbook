@@ -132,7 +132,7 @@ class InteractionFeedbackViewsSpec extends EditorDomSuite {
       try {
         assert(sidebar.ref.textContent.contains("FEEDBACK-FOR-OLD-ANSWER"))
         val next = it.evadid.workbook.interactions.programming.state.ProgrammingStateRaw(Python, "forward(20)")
-        fullInfo.interactions.updateHistory(exercise)(_.addState(it.evadid.workbook.history.InteractionVariableState(
+        fullInfo.interactions.updateHistory(exercise)(_.addState(it.evadid.workbook.history.InteractionState(
           next, it.evadid.workbook.sync.UpdateImportance.MAJOR, date.plus(java.time.Duration.ofHours(1)))))
         assert(!sidebar.ref.textContent.contains("FEEDBACK-FOR-OLD-ANSWER"))
         assertEquals(sidebar.ref.querySelectorAll(".feedback-entry.feedback-status--neutral").length, 1)

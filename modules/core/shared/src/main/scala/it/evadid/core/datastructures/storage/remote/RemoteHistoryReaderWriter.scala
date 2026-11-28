@@ -2,7 +2,7 @@ package it.evadid.core.datastructures.storage.remote
 
 import it.evadid.util.logging.derived.SyncLogger
 import it.evadid.workbook.abstractions.InteractionFormat
-import it.evadid.workbook.history.InteractionVariableHistory
+import it.evadid.workbook.history.InteractionHistory
 import it.evadid.workbook.sync.SyncSuccess
 import it.evadid.workbook.history.events.{EventId, InteractionEvent}
 import java.time.Instant
@@ -24,9 +24,9 @@ trait RemoteHistoryDataReader[K, F <: InteractionFormat] {
 
 /** Data writer for event-based history. A result names the sent events stored once the write has committed. */
 trait RemoteHistoryDataWriter[K, F <: InteractionFormat] {
-  def writeForKey(logger: SyncLogger, key: K, value: InteractionVariableHistory[F]): Future[SyncSuccess[EventId]]
+  def writeForKey(logger: SyncLogger, key: K, value: InteractionHistory[F]): Future[SyncSuccess[EventId]]
 
-  def writeAll(logger: SyncLogger, values: Map[K, InteractionVariableHistory[F]]): Future[SyncSuccess[EventId]]
+  def writeAll(logger: SyncLogger, values: Map[K, InteractionHistory[F]]): Future[SyncSuccess[EventId]]
 
   def flush(logger: SyncLogger, forceFlush: Boolean): Unit = ()
 }

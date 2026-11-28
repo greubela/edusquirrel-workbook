@@ -1,7 +1,7 @@
 package it.evadid.workbook.abstractions.scaffolding
 
 import it.evadid.workbook.abstractions.grading.GradingResult
-import it.evadid.workbook.history.InteractionVariableState
+import it.evadid.workbook.history.InteractionState
 import it.evadid.workbook.abstractions.{FeedbackEntity, InteractionFormat}
 import it.evadid.workbook.abstractions.ExecutionContextInformation
 
@@ -10,7 +10,7 @@ import scala.concurrent.{ExecutionContext, Future}
 import it.evadid.workbook.abstractions.*
 import it.evadid.workbook.abstractions.InteractionFormat.*
 /** What the history recorded for an answer that a hint is about: the latest answer and the results graded for it. */
-final case class ScaffoldingEvidence[T, GA](latestAnswer: Option[InteractionVariableState[T]], gradings: Seq[GradingResult[T, GA]])
+final case class ScaffoldingEvidence[T, GA](latestAnswer: Option[InteractionState[T]], gradings: Seq[GradingResult[T, GA]])
 
 object ScaffoldingEvidence {
   /** Reads the evidence of the current history; scaffolders read it again to notice changes during preparation. */

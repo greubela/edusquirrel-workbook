@@ -42,13 +42,13 @@ rewrite them only for an intended schema change.
 
 ```scala
 import it.evadid.workbook.abstractions.InteractionFormat.TextInteractionFormat
-import it.evadid.workbook.history.InteractionVariableHistory
+import it.evadid.workbook.history.InteractionHistory
 import it.evadid.workbook.sync.model.InteractionHistoryJson
 import it.evadid.workbook.sync.UpdateImportance
 import it.evadid.workbook.history.events.AnswerChangedEvent
 import java.time.Instant
 
-val history = InteractionVariableHistory.empty[TextInteractionFormat.type].addEvent(
+val history = InteractionHistory.empty[TextInteractionFormat.type].addEvent(
   AnswerChangedEvent[TextInteractionFormat.type]("My answer", Instant.now(), UpdateImportance.MAJOR))
 val transport = InteractionHistoryJson.fromHistory(TextInteractionFormat, history)
 val decoded = InteractionHistoryJson.deserialize(transport.serialized)
@@ -65,7 +65,7 @@ type resolution; [storage](database/interaction-history.md) defines how malforme
 
 ## Event contract
 
-`InteractionVariableHistory[F]` stores one `InteractionEvents[F]` set. Its events
+`InteractionHistory[F]` stores one `InteractionEvents[F]` set. Its events
 are answer changes, grading starts/completions and scaffolding starts/completions.
 Every event has a client-generated [`EventId`](../modules/core/shared/src/main/scala/it/evadid/workbook/history/events/EventId.scala)
 (a canonical UUID), an `Instant` and an importance; answer events hold the answer, feedback

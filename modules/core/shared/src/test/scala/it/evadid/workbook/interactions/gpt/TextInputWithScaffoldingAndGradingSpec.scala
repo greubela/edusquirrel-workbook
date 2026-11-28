@@ -24,7 +24,7 @@ import it.evadid.util.logging.Logger
 import it.evadid.workbook.abstractions.{FeedbackEntity, WorkbookElement}
 import it.evadid.workbook.abstractions.grading.*
 import it.evadid.workbook.abstractions.scaffolding.ScaffoldingResult
-import it.evadid.workbook.history.InteractionVariableHistory
+import it.evadid.workbook.history.InteractionHistory
 import it.evadid.workbook.interactions.gpt.TextInputWithScaffoldingAndGrading.ContentForLlmInteraction
 import it.evadid.workbook.abstractions.InteractionFormat
 import it.evadid.workbook.abstractions.grading.GradingRecord
@@ -302,8 +302,8 @@ class TextInputWithScaffoldingAndGradingSpec extends FunSuite {
     f.grade().map { result =>
       val record = result.record(InteractionFormat.referenceOf(TextInputWithLlmGradingAndScaffoldingFormat, result.gradedState))
       assertEquals(read[GradingRecord[MessengerModel]](write(record)), record)
-      val history = InteractionVariableHistory.empty(TextInputWithLlmGradingAndScaffoldingFormat).addGrading(result)
-      assertEquals(read[InteractionVariableHistory[TextInputWithLlmGradingAndScaffoldingFormat.type]](write(history)), history)
+      val history = InteractionHistory.empty(TextInputWithLlmGradingAndScaffoldingFormat).addGrading(result)
+      assertEquals(read[InteractionHistory[TextInputWithLlmGradingAndScaffoldingFormat.type]](write(history)), history)
     }
   }
 

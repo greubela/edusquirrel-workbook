@@ -5,7 +5,7 @@ import it.evadid.util.logging.Logger
 import it.evadid.workbook.abstractions.InteractionFormat
 import it.evadid.workbook.sync.{EventSyncStrategy, SyncContext, SyncSuccess, UsageContext}
 import it.evadid.workbook.sync.model.InteractionHistoryJson
-import it.evadid.workbook.history.InteractionVariableHistory
+import it.evadid.workbook.history.InteractionHistory
 import it.evadid.workbook.history.events.*
 import java.sql.Connection
 import java.time.Instant
@@ -97,7 +97,7 @@ class RelationalHistoryStorage(connection: Connection, logger: Logger) extends H
         }.fold(error => { logger.logExceptionWarn(s"Discarded the unreadable $table row $eventId", error); None }, Some(_))
       }.flatten
     }.toSet
-    InteractionHistoryJson.fromHistory(format, InteractionVariableHistory(format, InteractionEvents(events)))
+    InteractionHistoryJson.fromHistory(format, InteractionHistory(format, InteractionEvents(events)))
   }
 
   def fetch(request: FetchEventsFromDbRequest): DbFetchResponse = transaction {

@@ -6,7 +6,7 @@ import it.evadid.util.logging.derived.SyncLogger
 import it.evadid.workbook.abstractions.InteractionFormat
 import it.evadid.workbook.sync.model.{FetchResponse, InteractionHistoryJson}
 import it.evadid.workbook.sync.{EventSyncStrategy, SyncContext, SyncSuccess, UsageContext}
-import it.evadid.workbook.history.InteractionVariableHistory
+import it.evadid.workbook.history.InteractionHistory
 import it.evadid.workbook.history.events.EventId
 import upickle.default.*
 
@@ -53,7 +53,7 @@ trait SyncDestinationHistoryHandler {
       (key, error) => syncLogger.logExceptionWarn(s"Discarded the unreadable history of ${key.keyForSerialisation}", error)))
   }
 
-  def readHistory[F <: InteractionFormat](syncContext: SyncContext)(using ec: ExecutionContext, format: ValueOf[F]): Future[InteractionVariableHistory[F]] =
+  def readHistory[F <: InteractionFormat](syncContext: SyncContext)(using ec: ExecutionContext, format: ValueOf[F]): Future[InteractionHistory[F]] =
     readHistoryJson(syncContext).flatMap(response => SyncDestinationHistoryHandler.readHistoryFrom[F](syncContext, response).fold(Future.failed, Future.successful))
 
   lazy val toBuffered: BufferedSyncDestinationHandler = {
@@ -66,7 +66,7 @@ trait SyncDestinationHistoryHandler {
 object SyncDestinationHistoryHandler {
 
   private[sync] def readHistoryFrom[F <: InteractionFormat](syncContext: SyncContext,
-      response: FetchResponse[SyncContext, String])(using format: ValueOf[F]): Either[SerializedException, InteractionVariableHistory[F]] =
+      response: FetchResponse[SyncContext, String])(using format: ValueOf[F]): Either[SerializedException, InteractionHistory[F]] =
     response.fetchedValues.find(_.dataKey == syncContext).toRight(SerializedException(s"No history for $syncContext"))
       .flatMap(entry => scala.util.Try(InteractionHistoryJson.deserialize(entry.dataValue).typedAs(format.value)).toEither.left.map(SerializedException(_)))
 

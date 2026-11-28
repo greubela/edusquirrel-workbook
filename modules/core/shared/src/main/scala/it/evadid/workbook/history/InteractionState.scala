@@ -12,16 +12,16 @@ import UpdateImportance.*
 
 import java.time.Instant
 
-case class InteractionVariableState[T](value: T, updateImportance: UpdateImportance, timestamp: Instant) derives ReadWriter {
+case class InteractionState[T](value: T, updateImportance: UpdateImportance, timestamp: Instant) derives ReadWriter {
 
 
 }
 
-object InteractionVariableState {
+object InteractionState {
 
   case class DesignatedInteractionState[T](value: T, timestamp: Instant) derives ReadWriter
 
-  case class InteractionVariableStateChanged[T](lastState: InteractionVariableState[T], newState: DesignatedInteractionState[T]) derives ReadWriter
+  case class InteractionStateChange[T](lastState: InteractionState[T], newState: DesignatedInteractionState[T]) derives ReadWriter
 
 }
 

@@ -5,7 +5,7 @@ import it.evadid.workbook.abstractions.grading.GradingRecord
 import it.evadid.workbook.abstractions.scaffolding.ScaffoldingRecord
 import it.evadid.workbook.abstractions.scaffolding.{ScaffoldingResult, ScaffoldingStatus}
 import it.evadid.workbook.abstractions.grading.{GradedState, GradingResult, GradingStatus, WorkbookInteractionGrader}
-import it.evadid.workbook.sync.EventSyncStrategy
+import it.evadid.workbook.sync.{EventSyncStrategy, UpdateImportance}
 import it.evadid.workbook.history.events.*
 
 import java.time.Instant
@@ -14,7 +14,7 @@ import upickle.default.*
 /** Canonical interaction history: all saved state and feedback live in timestamped events. The format derives the
   * references feedback events use for answers.
   */
-case class InteractionVariableHistory[F <: InteractionFormat](
+case class InteractionHistory[F <: InteractionFormat](
   format: F,
   events: InteractionEvents[F]
 ) {
@@ -26,7 +26,7 @@ case class InteractionVariableHistory[F <: InteractionFormat](
   def referenceOf(state: InteractionFormat.State[F]): StateReference = InteractionFormat.referenceOf(format, state)
 
   private lazy val answerReferences: Map[AnswerChangedEvent[F], StateReference] =
-    allStates.map(event => event -> referenceOf(event.newState)).toMap
+    answerEvents.map(event => event -> referenceOf(event.newState)).toMap
 
   /** The answer an event belongs to: an answer event's own, or the one a feedback event refers to. */
   def stateOf(event: InteractionEvent[F]): StateReference = event match {
@@ -34,7 +34,7 @@ case class InteractionVariableHistory[F <: InteractionFormat](
     case feedback: FeedbackEvent[F] => feedback.state
   }
 
-  lazy val allStates: Set[AnswerChangedEvent[F]] = events.values.collect {
+  lazy val answerEvents: Set[AnswerChangedEvent[F]] = events.values.collect {
     case event: AnswerChangedEvent[F] => event
   }
   lazy val gradingEvents: Set[GradingEvent[F]] = events.values.collect {
@@ -44,8 +44,11 @@ case class InteractionVariableHistory[F <: InteractionFormat](
     case event: ScaffoldingEvent[F] => event
   }
 
-  lazy val historyStates: InteractionVariableStateHistory[InteractionFormat.State[F]] = InteractionVariableStateHistory(
-    allStates.map(event => InteractionVariableState(event.newState, event.updateImportance, event.timestamp)))
+  /** The recorded answers with their importance and time. */
+  lazy val answerStates: Set[InteractionState[InteractionFormat.State[F]]] =
+    answerEvents.map(event => InteractionState(event.newState, event.updateImportance, event.timestamp))
+  /** The latest recorded answer. */
+  def latestAnswer: Option[InteractionState[InteractionFormat.State[F]]] = answerStates.maxByOption(_.timestamp)
   /** Completed gradings per answer and grader, merged; readers resolve them with [[gradingForState]]. */
   lazy val gradingRecords: Map[StateReference, Map[GraderReference, GradingRecord[InteractionFormat.Grading[F]]]] =
     gradingEvents.collect { case event: GradingCompletedEvent[F] => event.record }.groupBy(_.state).view
@@ -56,7 +59,7 @@ case class InteractionVariableHistory[F <: InteractionFormat](
       .mapValues(_.reduce(_.merge(_))).toMap
   /** Confirmation requires the latest answer (including ties) and every feedback event for it. */
   def latestAnswerEvents: Set[InteractionEvent[F]] = {
-    val answers = InteractionEvents.latestTies(cleanedHistory().allStates)
+    val answers = InteractionEvents.latestTies(cleanedHistory().answerEvents)
     val states = answers.map(stateOf)
     answers.map(event => event: InteractionEvent[F]) ++
       (gradingEvents ++ scaffoldingEvents).filter(event => states(event.state))
@@ -65,14 +68,14 @@ case class InteractionVariableHistory[F <: InteractionFormat](
   def timestampLastChanged: Option[Instant] = events.timestampLastChanged
   def size: Int = events.values.size
 
-  def addEvent(event: InteractionEvent[F]): InteractionVariableHistory[F] =
+  def addEvent(event: InteractionEvent[F]): InteractionHistory[F] =
     copy(events = events.updated(event))
-  def addState(state: InteractionVariableState[InteractionFormat.State[F]]): InteractionVariableHistory[F] =
-    if allStates.exists(event => event.newState == state.value && event.timestamp == state.timestamp && event.updateImportance == state.updateImportance) then this
+  def addState(state: InteractionState[InteractionFormat.State[F]]): InteractionHistory[F] =
+    if answerEvents.exists(event => event.newState == state.value && event.timestamp == state.timestamp && event.updateImportance == state.updateImportance) then this
     else addEvent(AnswerChangedEvent(state.value, state.timestamp, state.updateImportance))
-  def addStates(states: Iterable[InteractionVariableState[InteractionFormat.State[F]]]): InteractionVariableHistory[F] =
+  def addStates(states: Iterable[InteractionState[InteractionFormat.State[F]]]): InteractionHistory[F] =
     states.foldLeft(this)(_.addState(_))
-  def addGrading(result: GradingResult[InteractionFormat.State[F], InteractionFormat.Grading[F]]): InteractionVariableHistory[F] = result.gradingStatus match {
+  def addGrading(result: GradingResult[InteractionFormat.State[F], InteractionFormat.Grading[F]]): InteractionHistory[F] = result.gradingStatus match {
     case GradingStatus.NotRequested | GradingStatus.NotFinished => this
     case _ =>
       val record = result.record(referenceOf(result.gradedState))
@@ -84,13 +87,13 @@ case class InteractionVariableHistory[F <: InteractionFormat](
   }
   /** Records that `grader` started grading `state`. */
   def addGradingStart(state: InteractionFormat.State[F],
-      grader: WorkbookInteractionGrader[InteractionFormat.State[F], InteractionFormat.Grading[F]], timestamp: Instant): InteractionVariableHistory[F] =
+      grader: WorkbookInteractionGrader[InteractionFormat.State[F], InteractionFormat.Grading[F]], timestamp: Instant): InteractionHistory[F] =
     addEvent(GradingStartedEvent(referenceOf(state), timestamp, grader.reference))
-  def addGrading(result: GradedState[InteractionFormat.State[F], InteractionFormat.Grading[F]]): InteractionVariableHistory[F] =
+  def addGrading(result: GradedState[InteractionFormat.State[F], InteractionFormat.Grading[F]]): InteractionHistory[F] =
     result.graderResultMap.values.foldLeft(this)(_.addGrading(_))
-  def addGradings(results: Iterable[GradingResult[InteractionFormat.State[F], InteractionFormat.Grading[F]]]): InteractionVariableHistory[F] =
+  def addGradings(results: Iterable[GradingResult[InteractionFormat.State[F], InteractionFormat.Grading[F]]]): InteractionHistory[F] =
     results.foldLeft(this)(_.addGrading(_))
-  def addScaffolding(result: ScaffoldingResult[InteractionFormat.State[F], InteractionFormat.Scaffolding[F]]): InteractionVariableHistory[F] = {
+  def addScaffolding(result: ScaffoldingResult[InteractionFormat.State[F], InteractionFormat.Scaffolding[F]]): InteractionHistory[F] = {
     val record = result.record(referenceOf(result.forState))
     result.scaffoldingStatus match {
       case _: ScaffoldingStatus.ScaffoldingRequestedButNotFinished if scaffoldingEvents.exists {
@@ -106,15 +109,15 @@ case class InteractionVariableHistory[F <: InteractionFormat](
       case _ => addEvent(ScaffoldingCompletedEvent(record))
     }
   }
-  def addScaffoldings(results: Iterable[ScaffoldingResult[InteractionFormat.State[F], InteractionFormat.Scaffolding[F]]]): InteractionVariableHistory[F] =
+  def addScaffoldings(results: Iterable[ScaffoldingResult[InteractionFormat.State[F], InteractionFormat.Scaffolding[F]]]): InteractionHistory[F] =
     results.foldLeft(this)(_.addScaffolding(_))
 
   /** Removes superseded DEFAULT and TEMPORARY answers with the feedback of only those answers; see
-    * [[InteractionVariableStateHistory.cleanedHistory]]. Feedback of retained answers stays.
+    * [[InteractionHistory.retained]]. Feedback of retained answers stays.
     */
-  def cleanedHistory(): InteractionVariableHistory[F] = {
-    val states = historyStates.cleanedHistory().events
-    val obsolete = allStates.filterNot(event => states(InteractionVariableState(event.newState, event.updateImportance, event.timestamp)))
+  def cleanedHistory(): InteractionHistory[F] = {
+    val states = InteractionHistory.retained(answerStates)
+    val obsolete = answerEvents.filterNot(event => states(InteractionState(event.newState, event.updateImportance, event.timestamp)))
     val obsoleteAnswers = obsolete.map(stateOf) -- states.map(state => referenceOf(state.value))
     copy(events = InteractionEvents(events.values.filterNot(event => obsoleteAnswers(stateOf(event))) -- obsolete))
   }
@@ -160,25 +163,35 @@ case class InteractionVariableHistory[F <: InteractionFormat](
   def completedScaffolding(state: InteractionFormat.State[F]): Option[ScaffoldingResult[InteractionFormat.State[F], InteractionFormat.Scaffolding[F]]] =
     scaffoldingRecords.get(referenceOf(state)).map(_.resolve(state))
 
-  def mergeWith(other: InteractionVariableHistory[F]): InteractionVariableHistory[F] =
+  def mergeWith(other: InteractionHistory[F]): InteractionHistory[F] =
     copy(events = events.merge(other.events))
 
-  def mergeWith(others: Seq[InteractionVariableHistory[F]]): InteractionVariableHistory[F] =
+  def mergeWith(others: Seq[InteractionHistory[F]]): InteractionHistory[F] =
     others.foldLeft(this)(_.mergeWith(_))
 
-  def cleanWithStrategy(syncStrategy: EventSyncStrategy): InteractionVariableHistory[F] =
+  def cleanWithStrategy(syncStrategy: EventSyncStrategy): InteractionHistory[F] =
     copy(events = InteractionEvents(syncStrategy.selectEvents(events.values, stateOf)))
 }
 
-object InteractionVariableHistory {
-  given [F <: InteractionFormat](using format: ValueOf[F]): ReadWriter[InteractionVariableHistory[F]] =
+object InteractionHistory {
+  /** The answers a cleanup keeps: DEFAULT answers only while no other answer exists, TEMPORARY answers only while
+    * they are the latest. The latest answer always remains.
+    */
+  private def retained[T](answers: Set[InteractionState[T]]): Set[InteractionState[T]] = {
+    val nonDefault = answers.filter(_.updateImportance != UpdateImportance.DEFAULT)
+    val candidates = if nonDefault.nonEmpty then nonDefault else answers.maxByOption(_.timestamp).toSet
+    val latest = candidates.iterator.map(_.timestamp).maxOption
+    candidates.filter(state => state.updateImportance != UpdateImportance.TEMPORARY || latest.contains(state.timestamp))
+  }
+
+  given [F <: InteractionFormat](using format: ValueOf[F]): ReadWriter[InteractionHistory[F]] =
     InteractionFormat.codecsFor(format.value).historyReadWriter
 
-  def empty[F <: InteractionFormat](format: F): InteractionVariableHistory[F] = InteractionVariableHistory[F](format, InteractionEvents.empty)
+  def empty[F <: InteractionFormat](format: F): InteractionHistory[F] = InteractionHistory[F](format, InteractionEvents.empty)
 
   /** Build events from typed answers and completed results; this does not decode an older saved schema. */
-  def fromResults[F <: InteractionFormat](format: F, states: Set[InteractionVariableState[InteractionFormat.State[F]]],
-      gradings: Set[GradedState[InteractionFormat.State[F], InteractionFormat.Grading[F]]] = Set.empty[GradedState[InteractionFormat.State[F], InteractionFormat.Grading[F]]], scaffoldings: Set[ScaffoldingResult[InteractionFormat.State[F], InteractionFormat.Scaffolding[F]]] = Set.empty[ScaffoldingResult[InteractionFormat.State[F], InteractionFormat.Scaffolding[F]]]): InteractionVariableHistory[F] =
+  def fromResults[F <: InteractionFormat](format: F, states: Set[InteractionState[InteractionFormat.State[F]]],
+      gradings: Set[GradedState[InteractionFormat.State[F], InteractionFormat.Grading[F]]] = Set.empty[GradedState[InteractionFormat.State[F], InteractionFormat.Grading[F]]], scaffoldings: Set[ScaffoldingResult[InteractionFormat.State[F], InteractionFormat.Scaffolding[F]]] = Set.empty[ScaffoldingResult[InteractionFormat.State[F], InteractionFormat.Scaffolding[F]]]): InteractionHistory[F] =
     empty(format).addStates(states).addGradings(gradings.flatMap(_.graderResultMap.values)).addScaffoldings(scaffoldings)
 
   // no backward compatible version!

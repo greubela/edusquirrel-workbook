@@ -15,9 +15,9 @@ import it.evadid.workbook.sync.*
 import it.evadid.workbook.sync.UpdateImportance.*
 import it.evadid.workbook.sync.destination.{SyncDestinationDefinition, SyncDestinationHandlerBasic}
 import it.evadid.workbook.sync.model.InteractionHistoryJson
-import it.evadid.workbook.history.InteractionVariableState.{DesignatedInteractionState, InteractionVariableStateChanged}
+import it.evadid.workbook.history.InteractionState.{DesignatedInteractionState, InteractionStateChange}
 import it.evadid.workbook.history.events.{AnswerChangedEvent, InteractionEvent, InteractionEvents}
-import it.evadid.workbook.history.{InteractionVariableHistory, InteractionVariableState}
+import it.evadid.workbook.history.{InteractionHistory, InteractionState}
 import it.evadid.workbook.abstractions.ExecutionContextInformation
 import it.evadid.workbook.interactions.pixel.BinaryPixelImage
 import it.evadid.workbook.support.GatedHistoryStore
@@ -34,8 +34,8 @@ class InteractionControllerSpec extends FunSuite {
   private val context = UsageContext("program", "workbook", "student")
   private val at = java.time.LocalDateTime.of(2026, 6, 1, 8, 0).toInstant(java.time.ZoneOffset.UTC)
   private type Text = TextInteractionFormat.type
-  private def text(values: (String, Int)*): InteractionVariableHistory[Text] =
-    InteractionVariableHistory(TextInteractionFormat, InteractionEvents(values.map((value, second) =>
+  private def text(values: (String, Int)*): InteractionHistory[Text] =
+    InteractionHistory(TextInteractionFormat, InteractionEvents(values.map((value, second) =>
       AnswerChangedEvent[Text](value, at.plusSeconds(second), MINOR): InteractionEvent[Text]).toSet))
 
   private def controllerFor(interactions: WorkbookInteractionElement[? <: InteractionFormat]*): InteractionController = {
@@ -48,7 +48,7 @@ class InteractionControllerSpec extends FunSuite {
     val essay = TextInteraction("essay")
     val answers = controllerFor(essay)
     assertEquals(answers.currentValue(essay), "")
-    assertEquals(answers.currentHistory(essay).allStates.map(_.updateImportance), Set(DEFAULT))
+    assertEquals(answers.currentHistory(essay).answerEvents.map(_.updateImportance), Set(DEFAULT))
     assertEquals(answers.info.entryOption(essay).map(_.syncContext), Some(context.toSyncContext("essay_history")))
   }
 
@@ -57,9 +57,9 @@ class InteractionControllerSpec extends FunSuite {
     val answers = controllerFor(essay)
     answers.setStateFromUserInteraction(essay, "draft", MINOR, at)
     answers.setStateFromUserInteraction(essay, "draft", MINOR, at.plusSeconds(1))
-    assertEquals(answers.currentHistory(essay).allStates.map(_.newState), Set("draft"), "the default is superseded by the first edit")
+    assertEquals(answers.currentHistory(essay).answerEvents.map(_.newState), Set("draft"), "the default is superseded by the first edit")
     answers.setStateFromUserInteraction(essay, "draft", MAJOR, at.plusSeconds(2))
-    assertEquals(answers.currentHistory(essay).allStates.toList.sortBy(_.timestamp).map(event => event.newState -> event.updateImportance),
+    assertEquals(answers.currentHistory(essay).answerEvents.toList.sortBy(_.timestamp).map(event => event.newState -> event.updateImportance),
       List("draft" -> MINOR, "draft" -> MAJOR))
   }
 
@@ -86,7 +86,7 @@ class InteractionControllerSpec extends FunSuite {
     answers.setStateFromUserInteraction(essay, "local", MINOR, at.plusSeconds(1))
     answers.restoreHistory(logger, essay, InteractionHistoryJson.fromHistory(TextInteractionFormat, text("remote" -> 2, "older" -> 0)))
     assertEquals(answers.currentValue(essay), "remote")
-    assertEquals(answers.currentHistory(essay).allStates.map(_.newState), Set("older", "local", "remote"))
+    assertEquals(answers.currentHistory(essay).answerEvents.map(_.newState), Set("older", "local", "remote"))
     val before = answers.currentHistory(essay)
     answers.restoreHistories(logger, Map(context.toSyncContext(essay.keyForSerialization) ->
       InteractionHistoryJson.fromHistory(TextInteractionFormat, before),
@@ -103,8 +103,8 @@ class InteractionControllerSpec extends FunSuite {
     val before = answers.info
     answers.restoreHistory(logger, essay, InteractionHistoryJson(TextInteractionFormat, "{\"not\": \"a history\"}"))
     answers.restoreHistory(logger, essay, InteractionHistoryJson.fromHistory(BinaryPixelInteractionFormat,
-      InteractionVariableHistory.empty(BinaryPixelInteractionFormat)))
-    val resized = InteractionVariableHistory[BinaryPixelInteractionFormat.type](BinaryPixelInteractionFormat, InteractionEvents(Set(
+      InteractionHistory.empty(BinaryPixelInteractionFormat)))
+    val resized = InteractionHistory[BinaryPixelInteractionFormat.type](BinaryPixelInteractionFormat, InteractionEvents(Set(
       AnswerChangedEvent[BinaryPixelInteractionFormat.type](BinaryPixelImage.blank(3, 3), at, MAJOR))))
     answers.restoreHistory(logger, pixels, InteractionHistoryJson.fromHistory(BinaryPixelInteractionFormat, resized))
     intercept[IllegalArgumentException](answers.setStateFromUserInteraction(pixels, BinaryPixelImage.blank(3, 3), MAJOR, at))
@@ -121,7 +121,7 @@ class InteractionControllerSpec extends FunSuite {
     val retired = answers.bind(InteractionScope(context.copy(userId = "next"), Seq(essay), SyncConnection.offline))
     assertEquals(answers.currentValue(essay), "")
     assertNotEquals(answers.info.session, retired.session)
-    assertEquals(retired.historyOf(essay).historyStates.lastStateOption.map(_.value), Some("mine"))
+    assertEquals(retired.historyOf(essay).latestAnswer.map(_.value), Some("mine"))
   }
 
   test("interactions outside the state read their default answer and ignore writes, also under a shared key") {
@@ -135,7 +135,7 @@ class InteractionControllerSpec extends FunSuite {
 
   test("textarea edits are classified by timing, length and the typed character") {
     def change(before: String, after: String, seconds: Long = 1) = TextInteraction.decideTextareaUpdateImportance(
-      InteractionVariableStateChanged(InteractionVariableState(before, MINOR, at), DesignatedInteractionState(after, at.plusSeconds(seconds))))
+      InteractionStateChange(InteractionState(before, MINOR, at), DesignatedInteractionState(after, at.plusSeconds(seconds))))
     assertEquals(change("same", "same"), TEMPORARY)
     assertEquals(change("a", "ab", seconds = 11), MAJOR)
     assertEquals(change("a", "a."), MAJOR)
@@ -150,7 +150,7 @@ class InteractionControllerSpec extends FunSuite {
   private def connected(store: GatedHistoryStore, interactions: WorkbookInteractionElement[? <: InteractionFormat]*) =
     store.controllerFor(interactions*)
   private def seed(store: GatedHistoryStore, interaction: TextInteraction, answer: String): Unit = store.seed(interaction,
-    InteractionVariableHistory.empty(TextInteractionFormat).addEvent(AnswerChangedEvent(answer, Instant.now().plus(java.time.Duration.ofDays(1)), MAJOR)))
+    InteractionHistory.empty(TextInteractionFormat).addEvent(AnswerChangedEvent(answer, Instant.now().plus(java.time.Duration.ofDays(1)), MAJOR)))
 
   private def confirmed(answers: InteractionController, interaction: TextInteraction): Int =
     answers.report(interaction).destinationsWithSufficientWrites.size
@@ -219,7 +219,7 @@ class InteractionControllerSpec extends FunSuite {
     val pixels = BinaryPixelInteraction("pixels", LanguageMapContentId("spec/pixels"), BinaryPixelImage.blank(2, 2))
     val store = GatedHistoryStore(context)
     val answers = connected(store, pixels)
-    val resized = InteractionVariableHistory[BinaryPixelInteractionFormat.type](BinaryPixelInteractionFormat, InteractionEvents(Set(
+    val resized = InteractionHistory[BinaryPixelInteractionFormat.type](BinaryPixelInteractionFormat, InteractionEvents(Set(
       AnswerChangedEvent[BinaryPixelInteractionFormat.type](BinaryPixelImage.blank(3, 3), Instant.now(), MAJOR))))
     store.values.set(Map(SyncContext.serializer.serialize(context.toSyncContext(pixels.keyForSerialization)) ->
       InteractionHistoryJson.fromHistory(BinaryPixelInteractionFormat, resized).serialized))

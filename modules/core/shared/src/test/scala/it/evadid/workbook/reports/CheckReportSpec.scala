@@ -10,7 +10,7 @@ import it.evadid.workbook.interactions.matching.{MatchingGrader, MatchingInterac
 import it.evadid.workbook.interactions.reorderExercise.ReorderInteraction.ReorderMapIdInteraction
 import it.evadid.workbook.interactions.table.{AnswerTableInteraction, EditableTableCell, TableAnswer}
 import it.evadid.workbook.sync.UpdateImportance
-import it.evadid.workbook.history.{InteractionVariableHistory, InteractionVariableState}
+import it.evadid.workbook.history.{InteractionHistory, InteractionState}
 import munit.FunSuite
 
 import java.time.Instant
@@ -22,9 +22,9 @@ class CheckReportSpec extends FunSuite {
   private def answer(rights: Option[Int]*) = MatchingInteractionState(rights)
   private def at(minute: Int) = java.time.LocalDateTime.of(2026, 1, 1, 10, minute).toInstant(java.time.ZoneOffset.UTC)
 
-  private def history(checks: (MatchingInteractionState, GradingStatus, Int)*): InteractionVariableHistory[MatchingInteractionFormat.type] =
-    checks.foldLeft(InteractionVariableHistory.empty(MatchingInteractionFormat)) { case (current, (state, status, minute)) =>
-      current.addState(InteractionVariableState(state, UpdateImportance.MAJOR, at(minute)))
+  private def history(checks: (MatchingInteractionState, GradingStatus, Int)*): InteractionHistory[MatchingInteractionFormat.type] =
+    checks.foldLeft(InteractionHistory.empty(MatchingInteractionFormat)) { case (current, (state, status, minute)) =>
+      current.addState(InteractionState(state, UpdateImportance.MAJOR, at(minute)))
         .addGrading(GradingResult(grader, state, status, None, Some(0), at(minute)))
     }
 
@@ -39,7 +39,7 @@ class CheckReportSpec extends FunSuite {
     assertEquals(report.failedChecks, 2)
     // Unconnected statements are no mistakes.
     assertEquals(report.wrongParts, Set(2))
-    val changed = history(checks*).addState(InteractionVariableState(answer(Some(0), None, None), UpdateImportance.MINOR, at(5)))
+    val changed = history(checks*).addState(InteractionState(answer(Some(0), None, None), UpdateImportance.MINOR, at(5)))
     assertEquals(CheckReport(matching, changed).wrongParts, Set.empty[Int])
     assertEquals(CheckReport(matching, changed).failedChecks, 2)
   }
@@ -50,7 +50,7 @@ class CheckReportSpec extends FunSuite {
     val options = Seq(true, false).map(correct => ChoiceOptionWorkbookContent(WorkbookContent(id(correct.toString)),
       Some(GradingForChoice(if correct then GradingStatus.Correct else GradingStatus.Incorrect, id("feedback")))))
     val automatic = WorkbookContentChoiceInteraction("auto-choice", ChoiceConfig(id("q"), Some(false), GraderRunningBehavior.RUN_ALWAYS), options)
-    assertEquals(CheckReport(automatic, InteractionVariableHistory.empty(automatic.interactionFormat)), CheckReport.untracked)
+    assertEquals(CheckReport(automatic, InteractionHistory.empty(automatic.interactionFormat)), CheckReport.untracked)
   }
 
   test("wrong parts name wrong options, filled wrong cells and misplaced items only") {

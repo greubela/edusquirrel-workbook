@@ -30,7 +30,7 @@ import it.evadid.workbook.elements.structure.WorkbookSection.WorkbookSectionMeta
 import it.evadid.workbook.sync.*
 import it.evadid.workbook.sync.destination.SyncDestinationDefinition.*
 import it.evadid.workbook.sync.model.InteractionHistoryJson
-import it.evadid.workbook.history.InteractionVariableHistory
+import it.evadid.workbook.history.InteractionHistory
 import it.evadid.workbook.history.events.{AnswerChangedEvent, EventId}
 import it.evadid.workbook.abstractions.ExecutionContextInformation
 import scala.concurrent.{ExecutionContext, Future, Promise}
@@ -86,7 +86,7 @@ class HomepageStateSpec extends EditorDomSuite {
     val database = InMemoryHistoryDatabase()
 
     private def history(text: String, index: Int) = InteractionHistoryJson.fromHistory(TextInteractionFormat,
-      InteractionVariableHistory.empty(TextInteractionFormat).addEvent(
+      InteractionHistory.empty(TextInteractionFormat).addEvent(
         AnswerChangedEvent[TextInteractionFormat.type](text, at.plusSeconds(index), UpdateImportance.MAJOR)))
     Seq(defaultDatabase.format, defaultBlobDatabase.format).foreach { format =>
       elements.zipWithIndex.foreach { (element, index) =>
@@ -97,7 +97,7 @@ class HomepageStateSpec extends EditorDomSuite {
 
     def seed(context: UsageContext, text: String, timestamp: Instant): Unit = {
       val value = InteractionHistoryJson.fromHistory(TextInteractionFormat,
-        InteractionVariableHistory.empty(TextInteractionFormat).addEvent(
+        InteractionHistory.empty(TextInteractionFormat).addEvent(
           AnswerChangedEvent[TextInteractionFormat.type](text, timestamp, UpdateImportance.MAJOR)))
       Seq(defaultDatabase.format, defaultBlobDatabase.format).foreach { format =>
         elements.foreach { element =>
@@ -215,7 +215,7 @@ class HomepageStateSpec extends EditorDomSuite {
       fixture.info.interactions.ensureSynced().failed.map { _ =>
         val writes = fixture.storeRequests
         assert(writes.exists(request => request.databaseFormat == defaultDatabase.format &&
-          request.histories.exists(_.typedAs(TextInteractionFormat).allStates.exists(_.newState == "offline edit"))))
+          request.histories.exists(_.typedAs(TextInteractionFormat).answerEvents.exists(_.newState == "offline edit"))))
         assertEquals(fixture.elements.map(fixture.info.interactions.currentValue(_)), Seq("offline edit", "saved-1"))
       }
     }
@@ -240,7 +240,7 @@ class HomepageStateSpec extends EditorDomSuite {
           val writes = fixture.storeRequests
           assert(writes.nonEmpty)
           assert(writes.flatMap(_.syncContexts).forall(_.userId == other.user.personId))
-          assert(writes.flatMap(_.histories).forall(_.typedAs(TextInteractionFormat).allStates.forall(_.newState.isEmpty)))
+          assert(writes.flatMap(_.histories).forall(_.typedAs(TextInteractionFormat).answerEvents.forall(_.newState.isEmpty)))
         }
       }
     }
@@ -297,7 +297,7 @@ class HomepageStateSpec extends EditorDomSuite {
             js.Dynamic.literal(bubbles = true)).asInstanceOf[dom.Event])
           written.future.map { _ =>
             val writes = fixture.storeRequests
-            assert(writes.exists(_.histories.exists(_.typedAs(TextInteractionFormat).allStates.exists(_.newState == s"typed before $kind"))))
+            assert(writes.exists(_.histories.exists(_.typedAs(TextInteractionFormat).answerEvents.exists(_.newState == s"typed before $kind"))))
           }
         }
       }
@@ -342,7 +342,7 @@ class HomepageStateSpec extends EditorDomSuite {
       SyncInformation(defaultDatabase, EventSyncStrategy.SYNC_MAJOR), SyncInformation(defaultBlobDatabase, EventSyncStrategy.SYNC_MAJOR)))
     fixture.info.state.switchUser(Some(fixture.user.copy(config = majorOnly)))
     def written(answer: String) = fixture.storeRequests.flatMap(_.histories)
-      .exists(_.typedAs(TextInteractionFormat).allStates.exists(_.newState == answer))
+      .exists(_.typedAs(TextInteractionFormat).answerEvents.exists(_.newState == answer))
     fixture.withHttp {
       synchronizedAndRead(fixture).flatMap(_ => settled(fixture)).flatMap { _ =>
         val summary = fixture.info.reporters.reportersFor(fixture.elements.head).sync.report.observe(using owner)
@@ -354,7 +354,7 @@ class HomepageStateSpec extends EditorDomSuite {
           fixture.info.interactions.synchronize(fixture.elements.head)
         }.map { _ =>
           assert(written("half-typed"))
-          assertEquals(fixture.info.interactions.currentHistory(fixture.elements.head).historyStates.lastStateOption.map(_.updateImportance), Some(UpdateImportance.MAJOR))
+          assertEquals(fixture.info.interactions.currentHistory(fixture.elements.head).latestAnswer.map(_.updateImportance), Some(UpdateImportance.MAJOR))
           assertEquals(summary.now().confirmed, 2)
         }
       }.andThen { case _ => owner.killSubscriptions() }
@@ -377,7 +377,7 @@ class HomepageStateSpec extends EditorDomSuite {
         finished.future.map { _ =>
           val writes = fixture.storeRequests
           assertEquals(writes.size, 2)
-          assert(writes.forall(_.histories.forall(_.typedAs(TextInteractionFormat).allStates.exists(_.newState == "transaction edit"))))
+          assert(writes.forall(_.histories.forall(_.typedAs(TextInteractionFormat).answerEvents.exists(_.newState == "transaction edit"))))
         }.andThen { case _ => owner.killSubscriptions() }
       }
     }
@@ -428,7 +428,7 @@ class HomepageStateSpec extends EditorDomSuite {
         fixture.info.interactions.storeAll(true)
       }.map { _ =>
         assertEveryLocalEventSent(fixture, heldBefore)
-        assert(fixture.elements.forall(fixture.info.interactions.currentHistory(_).allStates.exists(_.newState.startsWith("revised"))))
+        assert(fixture.elements.forall(fixture.info.interactions.currentHistory(_).answerEvents.exists(_.newState.startsWith("revised"))))
       }
     }
   }
@@ -568,7 +568,7 @@ class HomepageStateSpec extends EditorDomSuite {
             assert(oldWrites.nonEmpty && newWrites.nonEmpty)
             assert(oldWrites.forall(_._2 == oldToken.toJson))
             assert(newWrites.forall(_._2 == newToken.toJson))
-            assert(oldWrites.flatMap(_._1.histories).forall(_.typedAs(TextInteractionFormat).allStates.forall(_.newState != "new user's answer")))
+            assert(oldWrites.flatMap(_._1.histories).forall(_.typedAs(TextInteractionFormat).answerEvents.forall(_.newState != "new user's answer")))
           }
         }
       }.andThen { case _ => release.trySuccess(()) }
@@ -628,7 +628,7 @@ class HomepageStateSpec extends EditorDomSuite {
             assert(writes.exists(_._1.toUsageContext == context))
             // The detached binding may finish its own pending stores, but never with the detached read's answers.
             assert(writes.forall((key, history) => key.toUsageContext == context ||
-              key.toUsageContext == original && !history.typedAs(TextInteractionFormat).allStates.exists(_.newState == "late original workbook")))
+              key.toUsageContext == original && !history.typedAs(TextInteractionFormat).answerEvents.exists(_.newState == "late original workbook")))
           }
         }
       }.andThen { case _ => gate.release() }
@@ -658,7 +658,7 @@ class HomepageStateSpec extends EditorDomSuite {
           fixture.info.state.switchWorkbook(original)
           fixture.info.interactions.ensureSynced().flatMap { _ =>
             val current = fixture.elements.map(fixture.info.interactions.currentHistory(_))
-            assert(current.forall(_.allStates.forall(_.newState != "first binding only")))
+            assert(current.forall(_.answerEvents.forall(_.newState != "first binding only")))
             gate.release()
             firstRead.map { outcome =>
               if retiredReadFails then assert(outcome.isFailure)

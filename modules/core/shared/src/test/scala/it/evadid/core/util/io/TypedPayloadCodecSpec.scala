@@ -7,7 +7,7 @@ import it.evadid.vm.parsing.python.clean.model.PythonType.{PYTHON_ANY, PYTHON_UN
 import it.evadid.workbook.abstractions.FeedbackEntity
 import it.evadid.workbook.abstractions.scaffolding.{ScaffoldingResult, ScaffoldingStatus}
 import it.evadid.workbook.interactions.basic.TextInteraction
-import it.evadid.workbook.history.InteractionVariableHistory
+import it.evadid.workbook.history.InteractionHistory
 import it.evadid.workbook.abstractions.StateReference
 import it.evadid.workbook.abstractions.scaffolding.ScaffoldingRecord
 import java.time.Instant
@@ -37,8 +37,8 @@ class TypedPayloadCodecSpec extends FunSuite {
   test("interactions without grading or scaffolding information use Unit payloads") {
     val text = TextInteraction("typed-answer")
     val history = OfflineController.of(text).currentHistory(text)
-    assertEquals(read[InteractionVariableHistory[TextInteractionFormat.type]](write(history)), history)
-    assertEquals(readBinary[InteractionVariableHistory[TextInteractionFormat.type]](writeBinary(history)), history)
+    assertEquals(read[InteractionHistory[TextInteractionFormat.type]](write(history)), history)
+    assertEquals(readBinary[InteractionHistory[TextInteractionFormat.type]](writeBinary(history)), history)
   }
 
   test("unknown language literals preserve opaque source text with a String codec") {

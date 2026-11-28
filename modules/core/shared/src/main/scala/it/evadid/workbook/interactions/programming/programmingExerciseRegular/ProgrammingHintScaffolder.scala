@@ -17,7 +17,7 @@ import it.evadid.workbook.interactions.programming.programmingExerciseRegular.Pr
 import it.evadid.workbook.interactions.programming.programmingExerciseTurtle.RecreateShapeGrader
 import it.evadid.workbook.interactions.programming.state.*
 import it.evadid.workbook.interactions.programming.{AdditionalProgrammingTestInfo, ProgrammingTestGrader, ProgrammingTestInvocation, ProgrammingTestProgramObservation}
-import it.evadid.workbook.history.InteractionVariableState
+import it.evadid.workbook.history.InteractionState
 import it.evadid.workbook.abstractions.ExecutionContextInformation
 
 import scala.concurrent.Future
@@ -212,7 +212,7 @@ object ProgrammingHintScaffolder {
   }
 
   private case class Context(sourceLanguage: String, source: String, sourceLines: Vector[(String, String)],
-                             checks: Seq[Check], answer: Option[InteractionVariableState[ProgrammingState]]) {
+                             checks: Seq[Check], answer: Option[InteractionState[ProgrammingState]]) {
     def localizedChecks(language: HumanLanguage): Seq[PublicCheck] = checks.map(_.localized(language))
 
     def evidenceIds(language: HumanLanguage): Set[String] = sourceLines.map(_._1).toSet ++ localizedChecks(language).flatMap {

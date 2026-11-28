@@ -19,8 +19,8 @@ class InteractionHistoryPackageSpec extends FunSuite {
     val independent = majorAnswer(1)
     assertNotEquals(first.eventId, independent.eventId)
     assertEquals(first.timestamp, independent.timestamp)
-    val original = InteractionVariableHistory.empty(TextInteractionFormat).addEvent(first)
-    val restored = read[InteractionVariableHistory[TextInteractionFormat.type]](write(original))
+    val original = InteractionHistory.empty(TextInteractionFormat).addEvent(first)
+    val restored = read[InteractionHistory[TextInteractionFormat.type]](write(original))
     assertEquals(restored, original)
     assertEquals(original.mergeWith(restored).size, 1)
     assertEquals(original.addEvent(independent).size, 2)
@@ -36,23 +36,23 @@ class InteractionHistoryPackageSpec extends FunSuite {
   test("events are immutable: different content under a known ID is rejected") {
     val first = majorAnswer(1)
     val revised = first.copy[TextInteractionFormat.type](newState = "revised")
-    val original = InteractionVariableHistory.empty(TextInteractionFormat).addEvent(first)
+    val original = InteractionHistory.empty(TextInteractionFormat).addEvent(first)
     intercept[IllegalArgumentException](original.addEvent(revised))
-    intercept[IllegalArgumentException](original.mergeWith(InteractionVariableHistory.empty(TextInteractionFormat).addEvent(revised)))
+    intercept[IllegalArgumentException](original.mergeWith(InteractionHistory.empty(TextInteractionFormat).addEvent(revised)))
     intercept[IllegalArgumentException](InteractionEvents[TextInteractionFormat.type](Set(first, revised)))
     intercept[IllegalArgumentException](EventId("7"))
     assertEquals(EventId(first.eventId.value), first.eventId)
   }
 
   test("publishing a state or result again preserves its event identity") {
-    val state = InteractionVariableState("answer", UpdateImportance.MAJOR, time)
-    val first = InteractionVariableHistory.empty(TextInteractionFormat).addState(state)
+    val state = InteractionState("answer", UpdateImportance.MAJOR, time)
+    val first = InteractionHistory.empty(TextInteractionFormat).addState(state)
     assertEquals(first.addState(state), first)
   }
 
   test("empty histories have no states and stay empty when cleaned") {
-    val empty = InteractionVariableHistory.empty(TextInteractionFormat)
-    assertEquals(empty.allStates.size, 0)
+    val empty = InteractionHistory.empty(TextInteractionFormat)
+    assertEquals(empty.answerEvents.size, 0)
     assertEquals(empty.cleanedHistory().events.values.size, 0)
   }
   
@@ -61,7 +61,7 @@ class InteractionHistoryPackageSpec extends FunSuite {
     val major = AnswerChangedEvent[TextInteractionFormat.type]("2", time.plusSeconds(10), UpdateImportance.MAJOR)
     val minor = AnswerChangedEvent[TextInteractionFormat.type]("3", time.plusSeconds(15), UpdateImportance.MINOR)
     
-    val history = InteractionVariableHistory.empty(TextInteractionFormat)
+    val history = InteractionHistory.empty(TextInteractionFormat)
       .addEvent(temp)
       .addEvent(major)
       .addEvent(minor)

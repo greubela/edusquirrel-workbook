@@ -84,7 +84,7 @@ class HtmlSubmissionFormSpec extends UiDomSuite {
           val expected = fullInfo.homepageInfoNow().toSubmissionBy(session.userInfo, fullInfo.interactions.info).get.knownUsageData
           assertEquals(session.knownUsageData, expected, "every interaction's current history is submitted")
           assertEquals(session.knownUsageData.size, 2)
-          val text = session.knownUsageData.values.map(_.toTyped.historyStates.lastStateOption.map(_.value.toString)).toSet
+          val text = session.knownUsageData.values.map(_.toTyped.latestAnswer.map(_.value.toString)).toSet
           assert(text.contains(Some("my solution")), text.toString)
           assertEquals(fullInfo.homepageInfoNow().userInfo, boundBefore, "submitting never signs in or switches the user")
           assert(status(root).contains(loadingText("login/submissionSent")), status(root))

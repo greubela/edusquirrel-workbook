@@ -7,7 +7,7 @@ import it.evadid.util.logging.derived.SyncLogger
 import it.evadid.workbook.abstractions.InteractionFormat
 import it.evadid.workbook.sync.*
 import it.evadid.workbook.sync.model.{FetchResponse, InteractionHistoryJson}
-import it.evadid.workbook.history.InteractionVariableHistory
+import it.evadid.workbook.history.InteractionHistory
 import it.evadid.workbook.history.events.{AnswerChangedEvent, EventId, InteractionEvent, InteractionEvents}
 import munit.FunSuite
 import java.time.Instant
@@ -19,7 +19,7 @@ class BufferedSyncDestinationHandlerSpec extends FunSuite {
   private val key = context.toSyncContext("answer")
   private def saved(value: String): String = {
     val format = InteractionFormat.TextInteractionFormat
-    val history = InteractionVariableHistory.empty(format)
+    val history = InteractionHistory.empty(format)
       .addEvent(AnswerChangedEvent[format.type](value, java.time.LocalDateTime.of(2026, 1, 1, 12, 0).toInstant(java.time.ZoneOffset.UTC), UpdateImportance.MAJOR, eventId(value)))
     InteractionHistoryJson.fromHistory(format, history).serialized
   }
@@ -299,7 +299,7 @@ class BufferedSyncDestinationHandlerSpec extends FunSuite {
     val events = (0 to 3).map(index => AnswerChangedEvent[format.type](
       index.toString, base.plusNanos(index), UpdateImportance.MAJOR)).toSet
     val full = InteractionHistoryJson.fromHistory(format,
-      InteractionVariableHistory(format, InteractionEvents(events.map(event => event: InteractionEvent[format.type]))))
+      InteractionHistory(format, InteractionEvents(events.map(event => event: InteractionEvent[format.type]))))
     val destination = new Destination {
       override def readHistoriesInRange(ctx: UsageContext, keys: Seq[SyncContext], from: Instant,
           until: Instant, strategy: EventSyncStrategy)(using ExecutionContext) = {
@@ -315,8 +315,8 @@ class BufferedSyncDestinationHandlerSpec extends FunSuite {
       assertEquals(calls.now(), Vector(base.plusNanos(1) -> base.plusNanos(3)))
       assertEquals(a.keySet, Set(key))
       assertEquals(b.keySet, Set(other))
-      assertEquals(a(key).typedAs(format).allStates.map(_.newState), Set("1"))
-      assertEquals(b(other).typedAs(format).allStates.map(_.newState), Set("2", "3"))
+      assertEquals(a(key).typedAs(format).answerEvents.map(_.newState), Set("1"))
+      assertEquals(b(other).typedAs(format).answerEvents.map(_.newState), Set("2", "3"))
     }
   }
 
@@ -329,7 +329,7 @@ class BufferedSyncDestinationHandlerSpec extends FunSuite {
     val from = java.time.LocalDateTime.of(2026, 1, 1, 0, 0).toInstant(java.time.ZoneOffset.UTC)
     destination.readHistoriesInRange(context, Seq(key, broken), from, from.plus(java.time.Duration.ofDays(1)), EventSyncStrategy.SYNC_EVERYTHING).map { read =>
       assertEquals(read.keySet, Set(key))
-      assertEquals(read(key).typedAs(InteractionFormat.TextInteractionFormat).allStates.map(_.newState), Set("kept"))
+      assertEquals(read(key).typedAs(InteractionFormat.TextInteractionFormat).answerEvents.map(_.newState), Set("kept"))
     }
   }
 

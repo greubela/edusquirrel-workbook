@@ -14,7 +14,7 @@ import it.evadid.workbook.abstractions.scaffolding.{ScaffoldingResult, Scaffoldi
 import it.evadid.workbook.interactions.choice.WorkbookContentChoiceInteraction.*
 import it.evadid.workbook.interactions.gpt.{TextInputLlmGrader, TextInputWithScaffoldingAndGrading}
 import it.evadid.workbook.sync.UpdateImportance
-import it.evadid.workbook.history.InteractionVariableHistory
+import it.evadid.workbook.history.InteractionHistory
 import it.evadid.workbook.history.events.*
 import java.time.Instant
 import it.evadid.workbook.abstractions.InteractionFormat
@@ -33,7 +33,7 @@ class InteractionHistoryJsonSpec extends FunSuite {
   private val feedback: LanguageMap[AppLanguage.HumanLanguage] = LanguageMap.mapBasedLanguageMap(Map(
     AppLanguage.English -> "Try again", AppLanguage.German -> "Noch einmal"))
   private val answerRef = InteractionFormat.referenceOf(feedbackFormat, answer)
-  private val feedbackHistory = InteractionVariableHistory[FeedbackFormat](feedbackFormat, InteractionEvents(Set(
+  private val feedbackHistory = InteractionHistory[FeedbackFormat](feedbackFormat, InteractionEvents(Set(
     AnswerChangedEvent[FeedbackFormat](answer, time, UpdateImportance.MINOR),
     GradingStartedEvent[FeedbackFormat](answerRef, time.plusNanos(1), grader.reference),
     GradingCompletedEvent[FeedbackFormat](GradingResult(grader, answer, GradingStatus.Correct,
@@ -48,7 +48,7 @@ class InteractionHistoryJsonSpec extends FunSuite {
     read[InteractionHistoryJson](write[InteractionHistoryJson](value)),
     readBinary[InteractionHistoryJson](writeBinary[InteractionHistoryJson](value)))
 
-  private def assertRoundTrips[F <: InteractionFormat](format: F, history: InteractionVariableHistory[F]): Unit = {
+  private def assertRoundTrips[F <: InteractionFormat](format: F, history: InteractionHistory[F]): Unit = {
     val original = InteractionHistoryJson.fromHistory(format, history)
     copies(original).foreach { decoded =>
       assertEquals(decoded, original, format.name) // Includes the exact inner JSON string.
@@ -61,7 +61,7 @@ class InteractionHistoryJsonSpec extends FunSuite {
 
   test("empty envelopes round-trip through JSON and MessagePack for every registered format") {
     InteractionFormat.knownFormats.foreach { format =>
-      assertRoundTrips[format.type](format, InteractionVariableHistory.empty(format))
+      assertRoundTrips[format.type](format, InteractionHistory.empty(format))
     }
   }
 
@@ -72,13 +72,13 @@ class InteractionHistoryJsonSpec extends FunSuite {
       AnswerChangedEvent[TextInteractionFormat.type]("same timestamp", time, UpdateImportance.MINOR),
       AnswerChangedEvent[TextInteractionFormat.type]("adjacent nanosecond", time.plusNanos(1), UpdateImportance.MAJOR),
       AnswerChangedEvent[TextInteractionFormat.type]("maximum", Instant.MAX, UpdateImportance.MAJOR))
-    assertRoundTrips(TextInteractionFormat, InteractionVariableHistory(TextInteractionFormat, InteractionEvents(events)))
+    assertRoundTrips(TextInteractionFormat, InteractionHistory(TextInteractionFormat, InteractionEvents(events)))
   }
 
   test("populated Boolean and structured answer envelopes use their declared state codecs") {
-    val checkbox = InteractionVariableHistory.empty(LabeledCheckboxInteractionFormat)
+    val checkbox = InteractionHistory.empty(LabeledCheckboxInteractionFormat)
       .addEvent(AnswerChangedEvent[LabeledCheckboxInteractionFormat.type](true, time, UpdateImportance.MAJOR))
-    val choice = InteractionVariableHistory.empty(ChoiceInteractionFormat)
+    val choice = InteractionHistory.empty(ChoiceInteractionFormat)
       .addEvent(AnswerChangedEvent[ChoiceInteractionFormat.type](ChoiceState(Seq(ChoiceSelectedEvent(time, ChoiceOptionWorkbookContent(WorkbookContent(LanguageMapContentId("custom/option")), None)))), time, UpdateImportance.MAJOR))
     assertRoundTrips(LabeledCheckboxInteractionFormat, checkbox)
     assertRoundTrips(ChoiceInteractionFormat, choice)
@@ -94,14 +94,14 @@ class InteractionHistoryJsonSpec extends FunSuite {
       case _: AnswerChangedEvent[FeedbackFormat] => false
       case _ => true
     }))
-    assert(delta.allStates.isEmpty)
+    assert(delta.answerEvents.isEmpty)
     assertRoundTrips(TextInputWithLlmGradingAndScaffoldingFormat, delta)
   }
 
   test("saved feedback errors keep the messages of an error and its causes, never a stack trace") {
     val cause = SerializedException("root cause", Seq.empty, None)
     val error = SerializedException("execution failed", Seq(SimpleStackTraceElement("Grader", "run", "Grader.scala", 42)), Some(cause))
-    val history = InteractionVariableHistory[FeedbackFormat](feedbackFormat, InteractionEvents(Set(
+    val history = InteractionHistory[FeedbackFormat](feedbackFormat, InteractionEvents(Set(
       GradingCompletedEvent[FeedbackFormat](GradingResult(grader, answer, GradingStatus.TestError(error),
         Some(WorkbookContent(feedback)), Some(transcript), time).record(answerRef)),
       ScaffoldingCompletedEvent[FeedbackFormat](ScaffoldingResult(answer, ScaffoldingStatus.ScaffoldingError(error),
@@ -123,9 +123,9 @@ class InteractionHistoryJsonSpec extends FunSuite {
   }
 
   test("heterogeneous envelope sequences round-trip without a shared interaction type") {
-    val text = InteractionVariableHistory.empty(TextInteractionFormat)
+    val text = InteractionHistory.empty(TextInteractionFormat)
       .addEvent(AnswerChangedEvent[TextInteractionFormat.type](answer, time, UpdateImportance.MAJOR))
-    val checkbox = InteractionVariableHistory.empty(LabeledCheckboxInteractionFormat)
+    val checkbox = InteractionHistory.empty(LabeledCheckboxInteractionFormat)
       .addEvent(AnswerChangedEvent[LabeledCheckboxInteractionFormat.type](false, time, UpdateImportance.MAJOR))
     val original = Seq(InteractionHistoryJson.fromHistory(TextInteractionFormat, text),
       InteractionHistoryJson.fromHistory(LabeledCheckboxInteractionFormat, checkbox),
@@ -140,9 +140,9 @@ class InteractionHistoryJsonSpec extends FunSuite {
 
   test("format identity survives round trips even when two formats have identical payload schemas") {
     val eventId = EventId.random()
-    val text = InteractionVariableHistory.empty(TextInteractionFormat)
+    val text = InteractionHistory.empty(TextInteractionFormat)
       .addEvent(AnswerChangedEvent[TextInteractionFormat.type](answer, time, UpdateImportance.MAJOR, eventId))
-    val sql = InteractionVariableHistory.empty(SqlCommandExerciseFormat)
+    val sql = InteractionHistory.empty(SqlCommandExerciseFormat)
       .addEvent(AnswerChangedEvent[SqlCommandExerciseFormat.type](answer, time, UpdateImportance.MAJOR, eventId))
     val textEnvelope = InteractionHistoryJson.fromHistory(TextInteractionFormat, text)
     val sqlEnvelope = InteractionHistoryJson.fromHistory(SqlCommandExerciseFormat, sql)

@@ -15,7 +15,7 @@ import it.evadid.workbook.elements.structure.{Workbook, WorkbookSection}
 import it.evadid.workbook.sync.destination.SyncDestinationDefinition.SyncDestinationBasedOnHistoryDatabase
 import it.evadid.workbook.sync.model.InteractionHistoryJson
 import it.evadid.workbook.sync.{EventSyncStrategy, SyncContext, SyncInformation, UpdateImportance, UsageContext}
-import it.evadid.workbook.history.{InteractionVariableHistory, InteractionVariableState}
+import it.evadid.workbook.history.{InteractionHistory, InteractionState}
 import it.evadid.workbook.session.{AllWorkbookInfo, SessionData, WorkbookConfig}
 
 import java.time.Instant
@@ -43,12 +43,12 @@ object SubmissionFixtures {
 
   private def context(scenario: String, key: String): SyncContext = UsageContext("edusquirrel", scenario, student.id).toSyncContext(key)
 
-  private val essayHistory = InteractionHistoryJson.fromHistory(TextInteractionFormat, InteractionVariableHistory.empty(TextInteractionFormat)
-    .addState(InteractionVariableState("first draft", UpdateImportance.MAJOR, savedAt.minus(java.time.Duration.ofMinutes(20))))
-    .addState(InteractionVariableState("final answer", UpdateImportance.MAJOR, savedAt.minus(java.time.Duration.ofMinutes(10)))))
+  private val essayHistory = InteractionHistoryJson.fromHistory(TextInteractionFormat, InteractionHistory.empty(TextInteractionFormat)
+    .addState(InteractionState("first draft", UpdateImportance.MAJOR, savedAt.minus(java.time.Duration.ofMinutes(20))))
+    .addState(InteractionState("final answer", UpdateImportance.MAJOR, savedAt.minus(java.time.Duration.ofMinutes(10)))))
 
-  private val quizHistory = InteractionHistoryJson.fromHistory(ChoiceInteractionFormat, InteractionVariableHistory.empty(ChoiceInteractionFormat)
-    .addState(InteractionVariableState(quizAnswer, UpdateImportance.MAJOR, savedAt.minus(java.time.Duration.ofMinutes(5))))
+  private val quizHistory = InteractionHistoryJson.fromHistory(ChoiceInteractionFormat, InteractionHistory.empty(ChoiceInteractionFormat)
+    .addState(InteractionState(quizAnswer, UpdateImportance.MAJOR, savedAt.minus(java.time.Duration.ofMinutes(5))))
     .addGrading(GradingResult(quiz.gradingElements.head, quizAnswer, GradingStatus.Correct, None, None, savedAt.minus(java.time.Duration.ofMinutes(4)))))
 
   /** Destination credentials are stripped before logging and mailing. */

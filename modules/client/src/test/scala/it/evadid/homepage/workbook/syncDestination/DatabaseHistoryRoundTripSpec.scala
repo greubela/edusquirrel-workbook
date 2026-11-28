@@ -12,7 +12,7 @@ import it.evadid.workbook.sync.*
 import it.evadid.workbook.sync.destination.SyncDestinationDefinition.{SyncDestinationBasedOnHistoryDatabase, defaultBlobDatabase, defaultDatabase}
 import it.evadid.workbook.sync.destination.SyncDestinationHistoryHandler
 import it.evadid.workbook.sync.model.InteractionHistoryJson
-import it.evadid.workbook.history.InteractionVariableHistory
+import it.evadid.workbook.history.InteractionHistory
 import it.evadid.workbook.history.events.{AnswerChangedEvent, InteractionEvent, InteractionEvents}
 import java.time.Instant
 import munit.FunSuite
@@ -33,16 +33,16 @@ class DatabaseHistoryRoundTripSpec extends FunSuite {
   private def handler(database: InMemoryHistoryDatabase, definition: SyncDestinationBasedOnHistoryDatabase): SyncDestinationHistoryHandler =
     DatabaseSyncViaBackendServerHandler(logger, definition, database.client, BackendDatabase)
 
-  private def textHistory(values: (String, Int)*): InteractionVariableHistory[text.type] =
-    InteractionVariableHistory(text, InteractionEvents(values.map((value, second) =>
+  private def textHistory(values: (String, Int)*): InteractionHistory[text.type] =
+    InteractionHistory(text, InteractionEvents(values.map((value, second) =>
       AnswerChangedEvent[text.type](value, at.plusSeconds(second), UpdateImportance.MAJOR): InteractionEvent[text.type]).toSet))
 
   /** A programming answer whose expression tree uses computed repeat counts and one-way counting loops. */
   private val program: ProgrammingState =
     ProgrammingStateRaw(Python, "n = 3\nfor _ in range(n):\n    forward(10)\nfor i in range(n, 0, -1):\n    right(i)\n").toBeExpression
 
-  private val programmingHistory: InteractionVariableHistory[programming.type] =
-    InteractionVariableHistory(programming, InteractionEvents(Set(
+  private val programmingHistory: InteractionHistory[programming.type] =
+    InteractionHistory(programming, InteractionEvents(Set(
       AnswerChangedEvent[programming.type](program, at, UpdateImportance.MAJOR): InteractionEvent[programming.type],
       AnswerChangedEvent[programming.type](ProgrammingStateRaw(Python, "forward(1)"), at.plusSeconds(5), UpdateImportance.MINOR))))
 
@@ -100,7 +100,7 @@ class DatabaseHistoryRoundTripSpec extends FunSuite {
       val strategy = EventSyncStrategy.KEEP_LAST_AND_MAJOR
       def answer(value: String, second: Int, importance: UpdateImportance): InteractionEvent[text.type] =
         AnswerChangedEvent[text.type](value, at.plusSeconds(second), importance)
-      val local = InteractionVariableHistory(text, InteractionEvents(Set(answer("draft", 1, UpdateImportance.MINOR),
+      val local = InteractionHistory(text, InteractionEvents(Set(answer("draft", 1, UpdateImportance.MINOR),
         answer("submitted", 2, UpdateImportance.MAJOR), answer("typing", 3, UpdateImportance.TEMPORARY))))
       val target = destination(text, handler(database, definition), definition, strategy = strategy)
       val session = cache(target, strategy)

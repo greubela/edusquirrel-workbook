@@ -4,9 +4,9 @@ package it.evadid.workbook.model
 import it.evadid.workbook.abstractions.{InteractionFormat, WorkbookInteractionElement}
 import it.evadid.workbook.sync.SyncConnection
 import it.evadid.workbook.sync.{SyncInformationWithContext, UpdateImportance, UsageContext}
-import it.evadid.workbook.history.InteractionVariableState.{DesignatedInteractionState, InteractionVariableStateChanged}
-import it.evadid.workbook.history.{InteractionVariableHistory, InteractionVariableState}
-import it.evadid.workbook.reports.InteractionVariableSyncReport
+import it.evadid.workbook.history.InteractionState.{DesignatedInteractionState, InteractionStateChange}
+import it.evadid.workbook.history.{InteractionHistory, InteractionState}
+import it.evadid.workbook.reports.InteractionSyncReport
 
 import java.time.Instant
 import java.util.UUID
@@ -31,12 +31,12 @@ final case class InteractionInfo(session: InteractionInfo.Session, usageContext:
   def contains(interaction: WorkbookInteractionElement[? <: InteractionFormat]): Boolean = entryOption(interaction).nonEmpty
 
   /** The history of `interaction`; an interaction that is not part of this state has its default history. */
-  def historyOf[F <: InteractionFormat](interaction: WorkbookInteractionElement[F]): InteractionVariableHistory[F] =
+  def historyOf[F <: InteractionFormat](interaction: WorkbookInteractionElement[F]): InteractionHistory[F] =
     entryOption(interaction).fold(InteractionEntry.defaultHistory(interaction))(_.history)
 
   /** The current answer of `interaction`, with its importance and time. */
-  def currentStateOf[F <: InteractionFormat](interaction: WorkbookInteractionElement[F]): InteractionVariableState[InteractionFormat.State[F]] =
-    historyOf(interaction).historyStates.lastStateOption.get
+  def currentStateOf[F <: InteractionFormat](interaction: WorkbookInteractionElement[F]): InteractionState[InteractionFormat.State[F]] =
+    historyOf(interaction).latestAnswer.get
 
   def currentValueOf[F <: InteractionFormat](interaction: WorkbookInteractionElement[F]): InteractionFormat.State[F] =
     currentStateOf(interaction).value
@@ -49,32 +49,32 @@ final case class InteractionInfo(session: InteractionInfo.Session, usageContext:
     * an answer the transition adds.
     */
   def withHistory[F <: InteractionFormat](interaction: WorkbookInteractionElement[F])(
-      transition: InteractionVariableHistory[F] => InteractionVariableHistory[F]): Try[InteractionInfo] =
+      transition: InteractionHistory[F] => InteractionHistory[F]): Try[InteractionInfo] =
     Try(entryOption(interaction).getOrElse(throw new IllegalArgumentException(
       s"${interaction.keyForSerialization} is not part of the answers of $usageContext")))
       .flatMap(_.withHistory(transition)).map(withEntry)
 
   /** Records a user's answer whose importance `relevance` decides from the change; an unchanged answer is kept. */
   def withUserChange[F <: InteractionFormat](interaction: WorkbookInteractionElement[F], value: InteractionFormat.State[F],
-      relevance: InteractionVariableStateChanged[InteractionFormat.State[F]] => UpdateImportance,
+      relevance: InteractionStateChange[InteractionFormat.State[F]] => UpdateImportance,
       timestamp: Instant = Instant.now()): Try[InteractionInfo] =
     withHistory(interaction)(history => {
-      val last = history.historyStates.lastStateOption.get
+      val last = history.latestAnswer.get
       if last.value == value then history
-      else history.addState(InteractionVariableState[InteractionFormat.State[F]](value,
-        relevance(InteractionVariableStateChanged(last, DesignatedInteractionState(value, timestamp))), timestamp))
+      else history.addState(InteractionState[InteractionFormat.State[F]](value,
+        relevance(InteractionStateChange(last, DesignatedInteractionState(value, timestamp))), timestamp))
     })
 
   /** Records `value` with `importance`; repeating the current answer and importance changes nothing. */
   def withAnswer[F <: InteractionFormat](interaction: WorkbookInteractionElement[F], value: InteractionFormat.State[F],
       importance: UpdateImportance, timestamp: Instant = Instant.now()): Try[InteractionInfo] =
     withHistory(interaction)(history =>
-      if history.historyStates.lastStateOption.exists(last => last.value == value && last.updateImportance == importance) then history
-      else history.addState(InteractionVariableState[InteractionFormat.State[F]](value, importance, timestamp)))
+      if history.latestAnswer.exists(last => last.value == value && last.updateImportance == importance) then history
+      else history.addState(InteractionState[InteractionFormat.State[F]](value, importance, timestamp)))
 
   /** All destinations and those known to hold the latest answer of `interaction` with all its feedback events. */
-  def reportOf(interaction: WorkbookInteractionElement[? <: InteractionFormat]): InteractionVariableSyncReport[SyncInformationWithContext] =
-    entryOption(interaction).fold(InteractionVariableSyncReport(Set.empty[SyncInformationWithContext], Set.empty))(_.report(connection))
+  def reportOf(interaction: WorkbookInteractionElement[? <: InteractionFormat]): InteractionSyncReport[SyncInformationWithContext] =
+    entryOption(interaction).fold(InteractionSyncReport(Set.empty[SyncInformationWithContext], Set.empty))(_.report(connection))
 
   def withEntry[F <: InteractionFormat](entry: InteractionEntry[F]): InteractionInfo =
     copy(entries = entries.updated(entry.interaction.keyForSerialization, entry))

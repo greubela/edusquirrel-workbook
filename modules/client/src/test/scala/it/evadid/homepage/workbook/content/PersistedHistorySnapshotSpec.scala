@@ -7,7 +7,7 @@ import it.evadid.homepage.workbook.content.test.CreateTestWorkbook
 import it.evadid.workbook.abstractions.{FeedbackEntity, InteractionFormat, WorkbookInteractionElement}
 import it.evadid.workbook.abstractions.grading.{GradingResult, GradingStatus}
 import it.evadid.workbook.abstractions.scaffolding.{ScaffoldingResult, ScaffoldingStatus}
-import it.evadid.workbook.history.InteractionVariableHistory
+import it.evadid.workbook.history.InteractionHistory
 import it.evadid.workbook.history.events.*
 import it.evadid.workbook.sync.UpdateImportance
 import it.evadid.workbook.sync.model.InteractionHistoryJson
@@ -37,7 +37,7 @@ class PersistedHistorySnapshotSpec extends EditorDomSuite {
   private def sample[F <: InteractionFormat](interaction: WorkbookInteractionElement[F]): String = {
     val format = interaction.interactionFormat
     val answer = interaction.defaultValue
-    val base = InteractionVariableHistory.empty(format).addEvent(AnswerChangedEvent[F](answer, time, UpdateImportance.MAJOR, id(1)))
+    val base = InteractionHistory.empty(format).addEvent(AnswerChangedEvent[F](answer, time, UpdateImportance.MAJOR, id(1)))
     val reference = base.referenceOf(answer)
     val graded = interaction.gradingElements.headOption.fold(base) { grader =>
       base.addEvent(GradingStartedEvent[F](reference, time.plusNanos(1), grader.reference, eventId = id(2)))

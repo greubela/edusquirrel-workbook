@@ -7,7 +7,7 @@ import it.evadid.workbook.abstractions.{InteractionFormat, WorkbookInteractionEl
 import it.evadid.workbook.abstractions.grading.{GradedState, GradingResult, GradingStatus, WorkbookInteractionGrader}
 import it.evadid.workbook.abstractions.scaffolding.{ScaffoldingEvidence, ScaffoldingResult, ScaffoldingStatus}
 import it.evadid.workbook.sync.UpdateImportance
-import it.evadid.workbook.history.InteractionVariableHistory
+import it.evadid.workbook.history.InteractionHistory
 
 import it.evadid.workbook.abstractions.ExecutionContextInformation
 
@@ -17,11 +17,11 @@ import scala.concurrent.{ExecutionContext, Future, Promise}
 /** How feedback reads and records the history of its interaction in one session. */
 trait FeedbackTarget[F <: InteractionFormat] {
   def interaction: WorkbookInteractionElement[F]
-  def currentHistory: InteractionVariableHistory[F]
+  def currentHistory: InteractionHistory[F]
   def execution: ExecutionContextInformation
   /** False once the session has been replaced: requests then fail and results are dropped. */
   def isCurrent: Boolean
-  def publish(transition: InteractionVariableHistory[F] => InteractionVariableHistory[F]): Unit
+  def publish(transition: InteractionHistory[F] => InteractionHistory[F]): Unit
 }
 
 /** Grading and scaffolding of one interaction in one session.
@@ -31,7 +31,7 @@ trait FeedbackTarget[F <: InteractionFormat] {
   * same answer share, and the results computed in this session, which an answer that returns (for example after a
   * local reset) reuses and records again instead of computing them again.
   */
-final class InteractionScaffoldingAndGradingControl[F <: InteractionFormat](target: FeedbackTarget[F]) {
+final class FeedbackControl[F <: InteractionFormat](target: FeedbackTarget[F]) {
   type InteractionStateType = InteractionFormat.State[F]
   type GradingInfoType = InteractionFormat.Grading[F]
   type ScaffoldingInfoType = InteractionFormat.Scaffolding[F]
@@ -40,7 +40,7 @@ final class InteractionScaffoldingAndGradingControl[F <: InteractionFormat](targ
   private type Hint = ScaffoldingResult[InteractionStateType, ScaffoldingInfoType]
 
   def interaction: WorkbookInteractionElement[F] = target.interaction
-  private def history: InteractionVariableHistory[F] = target.currentHistory
+  private def history: InteractionHistory[F] = target.currentHistory
   private def graders: Seq[Grader] = target.interaction.gradingElements
 
   private val pendingGradings = State(Map.empty[InteractionStateType, Future[Graded]])
@@ -99,7 +99,7 @@ final class InteractionScaffoldingAndGradingControl[F <: InteractionFormat](targ
 
   /** The importance the answer was recorded with (its latest event); an answer without an event has DEFAULT importance. */
   private def importanceOf(forState: InteractionStateType): UpdateImportance =
-    history.allStates.filter(_.newState == forState).maxByOption(_.timestamp).map(_.updateImportance).getOrElse(UpdateImportance.DEFAULT)
+    history.answerEvents.filter(_.newState == forState).maxByOption(_.timestamp).map(_.updateImportance).getOrElse(UpdateImportance.DEFAULT)
 
   // SCAFFOLDING
 
@@ -128,17 +128,17 @@ final class InteractionScaffoldingAndGradingControl[F <: InteractionFormat](targ
     * grader results recorded for `forState`.
     */
   def evidenceFor(forState: InteractionStateType): ScaffoldingEvidence.Reader[InteractionStateType, GradingInfoType] = () =>
-    ScaffoldingEvidence(history.historyStates.lastStateOption, history.completedGradings(graders, forState).toList)
+    ScaffoldingEvidence(history.latestAnswer, history.completedGradings(graders, forState).toList)
 
   // SHARED REQUESTS
 
   /** Records feedback of `forState` while the history still holds that answer; feedback of an answer that was
     * superseded and cleaned up meanwhile is dropped.
     */
-  private def publishFor(forState: InteractionStateType)(transition: InteractionVariableHistory[F] => InteractionVariableHistory[F]): Unit =
-    target.publish(history => if history.allStates.exists(_.newState == forState) then transition(history) else history)
+  private def publishFor(forState: InteractionStateType)(transition: InteractionHistory[F] => InteractionHistory[F]): Unit =
+    target.publish(history => if history.answerEvents.exists(_.newState == forState) then transition(history) else history)
 
-  private def currentAnswer: Option[InteractionStateType] = history.historyStates.lastStateOption.map(_.value)
+  private def currentAnswer: Option[InteractionStateType] = history.latestAnswer.map(_.value)
   private def noAnswer[A]: Future[A] = Future.failed(SerializedException("Cannot request feedback without a current answer"))
 
   /** Starts `request` for `forState` unless one is pending, which is shared instead. The request is registered before
