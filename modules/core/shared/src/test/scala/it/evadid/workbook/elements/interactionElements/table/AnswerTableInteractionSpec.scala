@@ -1,5 +1,6 @@
 package it.evadid.workbook.elements.interactionElements.table
 
+import it.evadid.workbook.support.StandaloneAnswers
 import it.evadid.workbook.interaction.sync.UpdateImportance
 
 import it.evadid.core.datastructures.language.LanguageMapContentId
@@ -86,13 +87,13 @@ class AnswerTableInteractionSpec extends FunSuite {
 
   test("per-cell results are persisted with their registered table graders") {
     val answer = TableAnswer(Seq("1", "hello", "reflection"))
-    table.interactionVariable.setStateFromUserInteraction(answer, it.evadid.workbook.interaction.sync.UpdateImportance.MAJOR)
-    val control = table.interactionVariable.control
+    StandaloneAnswers.of(table).setStateFromUserInteraction(answer, it.evadid.workbook.interaction.sync.UpdateImportance.MAJOR)
+    val control = StandaloneAnswers.of(table).control
     // Saving starts an automatic grading, which skips the cells; the check runs them once it finished.
     control.getOrCalculateGrading().flatMap(_ => control.getOrCalculateGrading(forceGrading = true)).map { result =>
       assertEquals(result.testsWithResults.size, 2)
       assert(result.testsWithResults.forall(_.gradingStatus.isCorrect))
-      val history = table.interactionVariable.currentHistory
+      val history = StandaloneAnswers.of(table).currentHistory
       val serializer = table.interactionFormat.historySerializer
       assertEquals(serializer.deserialize(serializer.serialize(history)), history)
     }

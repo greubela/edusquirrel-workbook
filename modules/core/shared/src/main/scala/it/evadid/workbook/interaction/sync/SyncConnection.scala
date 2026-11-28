@@ -1,8 +1,7 @@
-package it.evadid.workbook.interaction.binding
+package it.evadid.workbook.interaction.sync
 
 import it.evadid.util.logging.Logger
 import it.evadid.util.logging.derived.{PrintToStdLogger, SyncLogger}
-import it.evadid.workbook.interaction.sync.SyncInformationWithContext
 import it.evadid.workbook.meta.ExecutionContextInformation
 
 /** How a binding reaches its destinations and computes feedback. Credentials belong here: replacing the connection

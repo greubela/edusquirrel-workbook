@@ -1,6 +1,6 @@
 package it.evadid.workbook.elements.interactionElements.programming
 
-import it.evadid.workbook.support.executingWith
+import it.evadid.workbook.support.StandaloneAnswers
 import it.evadid.core.datastructures.language.AppLanguage.{English, German, HumanLanguage, Java, Python, SnapLanguage}
 import it.evadid.core.datastructures.language.{LanguageMap, LanguageMapContentId}
 import it.evadid.core.datastructures.language.control.LanguageMapIdResolver
@@ -77,7 +77,7 @@ class ProgrammingHintScaffolderSpec extends FunSuite {
   private def exercise(answer: ProgrammingState, tests: Boolean = false) = {
     val element = ProgrammingExerciseFullJava(s"java-${java.util.UUID.randomUUID()}",
       Option.when(tests)(SampleBeTest("assert sum(1, 2) == 3")), hintTask = Some(task))
-    element.interactionVariable.setStateFromUserInteraction(answer, UpdateImportance.MAJOR)
+    StandaloneAnswers.of(element).setStateFromUserInteraction(answer, UpdateImportance.MAJOR)
     element
   }
   private def context(backend: ExecutionClient, language: HumanLanguage = German, configuration: Option[LlmConfiguration] = None,
@@ -88,7 +88,7 @@ class ProgrammingHintScaffolderSpec extends FunSuite {
     val backend = new LlmBackend(reply)
     val element = exercise(ProgrammingStateRaw(Java, source))
     val configuration = Some(LlmConfiguration("https://llm.example/chat", "tutor-model", Some("session-key")))
-    element.interactionVariable.executingWith(context(backend, configuration = configuration)).control.getOrCalculateScaffolding().map { result =>
+    StandaloneAnswers.of(element).executingWith(context(backend, configuration = configuration)).control.getOrCalculateScaffolding().map { result =>
       assertEquals(backend.routed.now(), Set("feedback-llm-request"))
       assertEquals(backend.requests.size, 1)
       val request = backend.requests.head
@@ -119,8 +119,8 @@ class ProgrammingHintScaffolderSpec extends FunSuite {
     val element = exercise(ProgrammingStateRaw(Java, source))
     val ctx = context(backend)
     for {
-      first <- element.interactionVariable.executingWith(ctx).control.getOrCalculateScaffolding()
-      second <- element.interactionVariable.executingWith(ctx).control.getOrCalculateScaffolding()
+      first <- StandaloneAnswers.of(element).executingWith(ctx).control.getOrCalculateScaffolding()
+      second <- StandaloneAnswers.of(element).executingWith(ctx).control.getOrCalculateScaffolding()
     } yield {
       assertEquals(second, first)
       assertEquals(backend.requests.size, 1)
@@ -133,8 +133,8 @@ class ProgrammingHintScaffolderSpec extends FunSuite {
     val python = ProgrammingStateRaw(Python, "def total(a, b):\n    return a - b\n")
     val englishOnly = Map[HumanLanguage, String](English -> "Return the sum.")
     for {
-      _ <- exercise(structured).interactionVariable.executingWith(context(backend, texts = englishOnly)).control.getOrCalculateScaffolding()
-      _ <- exercise(python).interactionVariable.executingWith(context(backend, texts = englishOnly)).control.getOrCalculateScaffolding()
+      _ <- StandaloneAnswers.of(exercise(structured)).executingWith(context(backend, texts = englishOnly)).control.getOrCalculateScaffolding()
+      _ <- StandaloneAnswers.of(exercise(python)).executingWith(context(backend, texts = englishOnly)).control.getOrCalculateScaffolding()
     } yield {
       val prompts = backend.prompts
       assertEquals(prompts.map(_("task")("text").str), Vector("Return the sum.", "Return the sum."))
@@ -150,9 +150,9 @@ class ProgrammingHintScaffolderSpec extends FunSuite {
     val answer = ProgrammingStateRaw(Java, source)
     val element = exercise(answer, tests = true)
     val grader = element.gradingElements.head
-    element.interactionVariable.updateHistory(_.addGrading(GradingResult(grader, answer, GradingStatus.Incorrect, None, None,
+    StandaloneAnswers.of(element).updateHistory(_.addGrading(GradingResult(grader, answer, GradingStatus.Incorrect, None, None,
       LocalDateTime.now())))
-    element.interactionVariable.executingWith(context(backend, language = English)).control.getOrCalculateScaffolding().map { result =>
+    StandaloneAnswers.of(element).executingWith(context(backend, language = English)).control.getOrCalculateScaffolding().map { result =>
       val checks = backend.prompts.head("checks").arr.toList
       assertEquals(checks, List(ujson.Obj("id" -> "check-1", "required" -> true, "status" -> "incorrect")))
       assertEquals(result.scaffoldingStatus, ScaffoldingStatus.ScaffoldingFeedback(LanguageMap.mapBasedLanguageMap(Map(
@@ -165,11 +165,11 @@ class ProgrammingHintScaffolderSpec extends FunSuite {
     val answer = ProgrammingStateRaw(Python, "def total(a, b):\n    return a + b")
     val graded = exercise(answer, tests = true)
     val grader = graded.gradingElements.head
-    graded.interactionVariable.updateHistory(_.addGrading(GradingResult(grader, answer, GradingStatus.Correct)))
+    StandaloneAnswers.of(graded).updateHistory(_.addGrading(GradingResult(grader, answer, GradingStatus.Correct)))
     for {
-      passed <- graded.interactionVariable.executingWith(context(backend)).control.getOrCalculateScaffolding()
+      passed <- StandaloneAnswers.of(graded).executingWith(context(backend)).control.getOrCalculateScaffolding()
       _ = assertEquals(backend.requests.size, 0)
-      noEvidence <- exercise(answer).interactionVariable.executingWith(context(backend)).control.getOrCalculateScaffolding()
+      noEvidence <- StandaloneAnswers.of(exercise(answer)).executingWith(context(backend)).control.getOrCalculateScaffolding()
     } yield {
       assertEquals(backend.requests.size, 1)
       assertEquals(passed.scaffoldingStatus, noEvidence.scaffoldingStatus)
@@ -184,8 +184,8 @@ class ProgrammingHintScaffolderSpec extends FunSuite {
     val element = exercise(answer, tests = true)
     val grader = element.gradingElements.head
     val feedback = LanguageMap.mapBasedLanguageMap(Map[HumanLanguage,String](English -> "The result was negative."))
-    element.interactionVariable.updateHistory(_.addGrading(GradingResult(grader, answer, GradingStatus.Incorrect, feedback, None)))
-    element.interactionVariable.executingWith(context(backend, language = English)).control.getOrCalculateScaffolding().map { result =>
+    StandaloneAnswers.of(element).updateHistory(_.addGrading(GradingResult(grader, answer, GradingStatus.Incorrect, feedback, None)))
+    StandaloneAnswers.of(element).executingWith(context(backend, language = English)).control.getOrCalculateScaffolding().map { result =>
       assertEquals(backend.prompts.head("checks")(0)("feedback").str, "The result was negative.")
       assertEquals(result.scaffoldingStatus, ScaffoldingStatus.ScaffoldingFeedback(
         LanguageMap.mapBasedLanguageMap(Map(English -> "1. Trace the two arguments through the return expression."))))
@@ -194,7 +194,7 @@ class ProgrammingHintScaffolderSpec extends FunSuite {
 
   test("a check without a result is listed as unavailable and cannot be cited") {
     val backend = new LlmBackend("""{"hints":[{"text":"Why does check one fail?","evidenceIds":["check-1"]}]}""")
-    exercise(ProgrammingStateRaw(Java, source), tests = true).interactionVariable.executingWith(context(backend)).control
+    StandaloneAnswers.of(exercise(ProgrammingStateRaw(Java, source), tests = true)).executingWith(context(backend)).control
       .getOrCalculateScaffolding().map { result =>
         assertEquals(backend.prompts.head("checks")(0), ujson.Obj("id" -> "check-1", "required" -> true, "status" -> "unavailable"))
         assert(rejected(result), result.scaffoldingStatus.toString)
@@ -210,7 +210,7 @@ class ProgrammingHintScaffolderSpec extends FunSuite {
       """Sure! Here is a hint: which line?""")
     Future.traverse(invalid) { raw =>
       val backend = new LlmBackend(raw)
-      exercise(ProgrammingStateRaw(Java, source)).interactionVariable.executingWith(context(backend)).control.getOrCalculateScaffolding()
+      StandaloneAnswers.of(exercise(ProgrammingStateRaw(Java, source))).executingWith(context(backend)).control.getOrCalculateScaffolding()
         .map(result => raw -> rejected(result))
     }.map(outcomes => assertEquals(outcomes.filterNot(_._2), Nil))
   }
@@ -218,7 +218,7 @@ class ProgrammingHintScaffolderSpec extends FunSuite {
   test("a Snap answer is discussed as its Python form") {
     val backend = new LlmBackend(reply.replace("source-3", "source-1"))
     val snapAnswer: ProgrammingState = ProgrammingStateRaw(Python, "forward(10)\n").toSnapScalaModel.toOption.get
-    exercise(snapAnswer).interactionVariable.executingWith(context(backend)).control.getOrCalculateScaffolding().map { _ =>
+    StandaloneAnswers.of(exercise(snapAnswer)).executingWith(context(backend)).control.getOrCalculateScaffolding().map { _ =>
       val prompt = backend.prompts.head
       assertEquals(prompt("source")("language").str, Python.name)
       assertEquals(prompt("source")("code").str, snapAnswer.toPython.code)
@@ -231,7 +231,7 @@ class ProgrammingHintScaffolderSpec extends FunSuite {
     val shape = it.evadid.workbook.elements.interactionElements.programming.programmingExerciseTurtle.TurtleRecreateShapeInteraction(
       s"turtle-${java.util.UUID.randomUUID()}", ProgrammingStateRaw(Python, "forward(10)\n"), target, instructionText = Some(task))
     assertEquals(shape.copy(elementId = "no-task", instructionText = None).scaffoldingElement, None)
-    shape.interactionVariable.executingWith(context(backend)).control.getOrCalculateScaffolding().map { _ =>
+    StandaloneAnswers.of(shape).executingWith(context(backend)).control.getOrCalculateScaffolding().map { _ =>
       assertEquals(backend.prompts.map(_("task")("text").str), Vector("Gib die Summe zweier positiver Zahlen zurück."))
       assertEquals(backend.prompts.head("source")("code").str, "forward(10)\n")
     }
@@ -249,8 +249,8 @@ class ProgrammingHintScaffolderSpec extends FunSuite {
     for {
       grade <- grader.gradeStateSafe(answer, true, UpdateImportance.MAJOR, ctx)
       _ = assertEquals(grade.gradingStatus, GradingStatus.Correct)
-      _ = shape.interactionVariable.updateHistory(_.addGrading(grade))
-      hint <- shape.scaffoldingElement.get.handleFeedbackGeneration(answer, ctx)
+      _ = StandaloneAnswers.of(shape).updateHistory(_.addGrading(grade))
+      hint <- shape.scaffoldingElement.get.handleFeedbackGeneration(answer, StandaloneAnswers.of(shape).evidence(answer), ctx)
     } yield {
       assert(!hint.scaffoldingStatus.isError)
       assertEquals(backend.prompts.head("checks")(0)("scope").str, "drawing")
@@ -262,8 +262,8 @@ class ProgrammingHintScaffolderSpec extends FunSuite {
     val backend = new LlmBackend(reply)
     val java = exercise(ProgrammingStateRaw(Java, source))
     for {
-      noResolver <- java.scaffoldingElement.get.handleFeedbackGeneration(ProgrammingStateRaw(Java, source), TestExecutionContext(List(backend))).failed
-      noClient <- java.scaffoldingElement.get.handleFeedbackGeneration(ProgrammingStateRaw(Java, source),
+      noResolver <- java.scaffoldingElement.get.handleFeedbackGeneration(ProgrammingStateRaw(Java, source), StandaloneAnswers.of(java).evidence(ProgrammingStateRaw(Java, source)), TestExecutionContext(List(backend))).failed
+      noClient <- java.scaffoldingElement.get.handleFeedbackGeneration(ProgrammingStateRaw(Java, source), StandaloneAnswers.of(java).evidence(ProgrammingStateRaw(Java, source)),
         TestExecutionContext(Nil, languageMapIdResolver = Some(resolver(German)))).failed
     } yield {
       assert(noResolver.getMessage.contains("LanguageMapIdResolver"), noResolver.getMessage)
@@ -274,16 +274,16 @@ class ProgrammingHintScaffolderSpec extends FunSuite {
 
   test("a hint is not accepted when the answer changed while the request was running") {
     val element = ProgrammingExerciseFullJava("java-changing", hintTask = Some(task))
-    element.interactionVariable.setStateFromUserInteraction(ProgrammingStateRaw(Java, source), UpdateImportance.MAJOR,
+    StandaloneAnswers.of(element).setStateFromUserInteraction(ProgrammingStateRaw(Java, source), UpdateImportance.MAJOR,
       timestamp = LocalDateTime.now().minusSeconds(1))
     val backend = new LlmBackend(reply) {
       override protected def rawExecution(logger: Logger, request: LLMCommands.FeedbackLlmRequest): Future[String] = {
-        element.interactionVariable.setStateFromUserInteraction(ProgrammingStateRaw(Java, source + "\n// edited"),
+        StandaloneAnswers.of(element).setStateFromUserInteraction(ProgrammingStateRaw(Java, source + "\n// edited"),
           UpdateImportance.MAJOR)
         super.rawExecution(logger, request)
       }
     }
-    element.scaffoldingElement.get.handleFeedbackGeneration(ProgrammingStateRaw(Java, source), context(backend)).failed.map { error =>
+    element.scaffoldingElement.get.handleFeedbackGeneration(ProgrammingStateRaw(Java, source), StandaloneAnswers.of(element).evidence(ProgrammingStateRaw(Java, source)), context(backend)).failed.map { error =>
       assertEquals(backend.requests.size, 1)
       assert(error.getMessage.contains("changed"), error.getMessage)
     }
@@ -292,7 +292,7 @@ class ProgrammingHintScaffolderSpec extends FunSuite {
   test("oversized sources are refused before any command is sent") {
     val backend = new LlmBackend(reply)
     val long = ProgrammingStateRaw(Java, (1 to 401).map(i => s"int v$i = $i;").mkString("\n"))
-    exercise(long).scaffoldingElement.get.handleFeedbackGeneration(long, context(backend)).failed.map { error =>
+    { val longExercise = exercise(long); longExercise.scaffoldingElement.get.handleFeedbackGeneration(long, StandaloneAnswers.of(longExercise).evidence(long), context(backend)) }.failed.map { error =>
       assert(error.getMessage.contains("too many lines"), error.getMessage)
       assertEquals(backend.requests.size, 0)
     }

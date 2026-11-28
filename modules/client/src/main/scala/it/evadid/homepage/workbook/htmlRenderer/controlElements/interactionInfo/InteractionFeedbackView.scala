@@ -25,7 +25,6 @@ private[interactionInfo] final class InteractionFeedbackView[F <: InteractionFor
     helper: LaminarRenderHelper
 ) {
   private given ExecutionContext = ExecutionContext.global
-  private val variable = interaction.interactionVariable
   val disabled = reporter.disabled
   val grading = reporter.summary
   val scaffolding = reporter.scaffolding
@@ -87,6 +86,6 @@ private[interactionInfo] final class InteractionFeedbackView[F <: InteractionFor
       outcome.failed.foreach(error => fullInfo.loggerSystemInfo.uiAndDomLogger.logExceptionWarn("Could not request interaction feedback", error))
     }
   }
-  def requestGrading(): Unit = request(variable.control.getOrCalculateGrading(forceGrading = true))
-  def requestScaffolding(): Unit = request(variable.control.getOrCalculateScaffolding(retryErrors = true))
+  def requestGrading(): Unit = request(fullInfo.interactions.feedback(interaction).getOrCalculateGrading(forceGrading = true))
+  def requestScaffolding(): Unit = request(fullInfo.interactions.feedback(interaction).getOrCalculateScaffolding(retryErrors = true))
 }

@@ -75,7 +75,7 @@ class DataExerciseRenderersSpec extends EditorDomSuite {
     val element = ProgrammingExerciseFullJava("java-data", instructionText = Some(LanguageMapContentId("test/task")), dataView = Some(ExerciseDataView.NumberList))
     load(element)
     val state: Var[ProgrammingState] = Var(java("NumberList.swap(0, 1);"))
-    val side = HtmlProgrammingExerciseFullJavaRenderer.createNewEditor(fullInfo, element, state, GradingReporter(element)).sidePanel.getDomElement()
+    val side = HtmlProgrammingExerciseFullJavaRenderer.createNewEditor(fullInfo, element, state, GradingReporter(element, fullInfo.interactions)).sidePanel.getDomElement()
     val close = mount(side)
     try {
       assert(side.ref.querySelector(".program-data-preview") != null)
@@ -88,7 +88,7 @@ class DataExerciseRenderersSpec extends EditorDomSuite {
   test("full Java exercises without a data view or shape grader do not invent a drawing panel") {
     val element = ProgrammingExerciseFullJava("java-drawing")
     load(element)
-    val side = HtmlProgrammingExerciseFullJavaRenderer.createNewEditor(fullInfo, element, Var(java("")), GradingReporter(element)).sidePanel.getDomElement()
+    val side = HtmlProgrammingExerciseFullJavaRenderer.createNewEditor(fullInfo, element, Var(java("")), GradingReporter(element, fullInfo.interactions)).sidePanel.getDomElement()
     val close = mount(side)
     try {
       assert(!side.ref.textContent.toLowerCase.contains("drawtitle"), side.ref.textContent)

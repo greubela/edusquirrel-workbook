@@ -1,5 +1,6 @@
 package it.evadid.workbook.elements.interactionElements.programming
 
+import it.evadid.workbook.support.StandaloneAnswers
 
 import it.evadid.core.datastructures.language.AppLanguage.{Java, Python, SnapLanguage}
 import it.evadid.vm.conversion.pythonsnap.PythonToSnap
@@ -45,10 +46,10 @@ class ReporterExerciseSpec extends FunSuite {
 
   test("the exercise interaction grades a student's reporter answer from its history") {
     val interaction = TurtleRecreateShapeInteraction("reporter-square", ProgrammingStateRaw(Python, "pass\n"), square)
-    interaction.interactionVariable.setStateFromUserInteraction(answer.toSnapXml, MAJOR)
+    StandaloneAnswers.of(interaction).setStateFromUserInteraction(answer.toSnapXml, MAJOR)
     // The edit's automatic grading skips the shape grader; the requested one after it runs it.
-    interaction.interactionVariable.control.getOrCalculateGrading().flatMap(_ =>
-      interaction.interactionVariable.control.getOrCalculateGrading(forceGrading = true)).map { graded =>
+    StandaloneAnswers.of(interaction).control.getOrCalculateGrading().flatMap(_ =>
+      StandaloneAnswers.of(interaction).control.getOrCalculateGrading(forceGrading = true)).map { graded =>
       assertEquals(graded.testsWithResults.head.gradingStatus, GradingStatus.Correct)
     }
   }

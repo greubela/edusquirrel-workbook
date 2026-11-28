@@ -1,5 +1,6 @@
 package it.evadid.workbook.elements.interactionElements.slideshow
 
+import it.evadid.workbook.support.StandaloneAnswers
 
 import it.evadid.core.datastructures.language.LanguageMapContentId
 import it.evadid.workbook.abstractions.{LangMapContentIdType, RoleInWorkbook, TypeOfTextDisplay}
@@ -32,10 +33,10 @@ class SlideshowGraderSpec extends FunSuite {
   test("automatic grading is stored and round-trips with the slideshow format") {
     val exercise = deck
     val answer = exercise.defaultValue.recordTransitionByIndex(0, 1).recordTransitionByIndex(1, 2)
-    exercise.interactionVariable.setStateFromUserInteraction(answer, MAJOR)
-    exercise.interactionVariable.control.getOrCalculateGrading().map { result =>
+    StandaloneAnswers.of(exercise).setStateFromUserInteraction(answer, MAJOR)
+    StandaloneAnswers.of(exercise).control.getOrCalculateGrading().map { result =>
       assert(result.testsWithResults.forall(_.gradingStatus.isCorrect))
-      val history = exercise.interactionVariable.currentHistory
+      val history = StandaloneAnswers.of(exercise).currentHistory
       val serializer = exercise.interactionFormat.historySerializer
       assertEquals(serializer.deserialize(serializer.serialize(history)), history)
     }

@@ -15,7 +15,7 @@ case class MailInteraction(elementId: String, initialInbox: InboxState = InboxSt
   override val defaultValue = InboxStateScaffolding(initialInbox.normalized)
 
 
-  def isPassed: Boolean = interactionVariable.currentValue.inboxState.sortingResult.passed
+  def isPassed(answer: InteractionStateType): Boolean = answer.inboxState.sortingResult.passed
 
 }
 

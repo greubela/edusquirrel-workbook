@@ -8,11 +8,7 @@ import it.evadid.core.datastructures.state.StateHelper.*
 import it.evadid.core.datastructures.state.async.AsyncDataState.{AsyncDataLoading, AsyncDataSuccess}
 import it.evadid.core.datastructures.state.async.AsyncValue
 import it.evadid.core.datastructures.state.observable.ObservableValueImpl
-import it.evadid.workbook.elements.interactionElements.basic.TextInteraction
-import it.evadid.workbook.interaction.sync.UpdateImportance
-import it.evadid.workbook.interaction.variable.{InteractionVariable, InteractionVariableState}
 import it.evadid.util.JsDomSuite
-import java.time.LocalDateTime
 import scala.concurrent.{Future, Promise}
 import scala.scalajs.concurrent.JSExecutionContext.Implicits.queue
 import scala.util.{Failure, Success, Try}
@@ -151,22 +147,6 @@ class StateHelperSpec extends JsDomSuite {
     pending.success(8)
     assertEquals(AsyncValue(AsyncDataSuccess[Nothing, Int](1)).toStateSignal.observe(using owner).now(), AsyncDataSuccess(1))
     waitUntil(signal.now() == AsyncDataSuccess(8)).map(_ => owner.killSubscriptions())
-  }
-
-  test("interaction variables bind to Vars and signals that follow every history change") {
-    val variable = InteractionVariable(TextInteraction("state-helper-answer"))
-    val bound = variable.createBoundVarWithUpdateImportance(UpdateImportance.MAJOR)
-    val owner = new ManualOwner
-    val signal = variable.createInteractionSignal.observe(using owner)
-    assertEquals((bound.now(), signal.now()), ("", ""))
-    bound.set("typed")
-    assertEquals(variable.currentValue, "typed")
-    assertEquals(variable.currentHistory.historyStates.lastStateOption.map(_.updateImportance), Some(UpdateImportance.MAJOR))
-    assertEquals(signal.now(), "typed")
-    variable.updateHistory(_.addState(InteractionVariableState("restored", UpdateImportance.MAJOR,
-      LocalDateTime.now().plusSeconds(5))))
-    assertEquals((bound.now(), signal.now()), ("restored", "restored"))
-    owner.killSubscriptions()
   }
 
   test("state-backed Vars read and write unobserved and stop observing when their owner ends") {

@@ -1,6 +1,5 @@
 package it.evadid.workbook.elements.interactionElements.gpt
 
-import cats.mtl.syntax.state
 import it.evadid.core.datastructures.chat
 import it.evadid.core.datastructures.chat.{Message, MessengerModel}
 import it.evadid.core.datastructures.language.{LanguageMap, LanguageMapContentId}
@@ -10,7 +9,7 @@ import it.evadid.distribution.commandTypes.LLMCommands.FeedbackLlmRequest
 import it.evadid.workbook.abstractions.FeedbackEntity
 import it.evadid.workbook.abstractions.FeedbackEntity.LlmEntity
 import it.evadid.workbook.abstractions.InteractionFormat.TextInputWithLlmGradingAndScaffoldingFormat
-import it.evadid.workbook.abstractions.scaffolding.{ScaffoldingResult, WorkbookInteractionScaffolder}
+import it.evadid.workbook.abstractions.scaffolding.{ScaffoldingEvidence, ScaffoldingResult, WorkbookInteractionScaffolder}
 import it.evadid.workbook.elements.interactionElements.gpt.TextInputWithScaffoldingAndGrading.ContentForLlmInteraction
 import it.evadid.workbook.interaction.variable.InteractionVariableHistory
 import it.evadid.workbook.meta.ExecutionContextInformation
@@ -23,12 +22,12 @@ case class TextInputLlmScaffolder(
                                    solution: Option[LanguageMapContentId],
                                    scaffData: ContentForLlmInteraction,
                                  )
-  extends WorkbookInteractionScaffolder[String, MessengerModel] derives ReadWriter {
+  extends WorkbookInteractionScaffolder[String, MessengerModel, MessengerModel] derives ReadWriter {
 
 
   override def scaffoldingEntity: FeedbackEntity = LlmEntity
 
-  override def handleFeedbackGeneration(state: String, contextInformation: ExecutionContextInformation): Future[ScaffoldingResult[String, MessengerModel]] = {
+  override def handleFeedbackGeneration(state: String, evidence: ScaffoldingEvidence.Reader[String, MessengerModel], contextInformation: ExecutionContextInformation): Future[ScaffoldingResult[String, MessengerModel]] = {
     given ExecutionContext = contextInformation.futureExecutionContext
     val resolver = contextInformation.languageMapIdResolver.getOrElse(
       throw IllegalArgumentException("LLM scaffolding requires a language map resolver."))

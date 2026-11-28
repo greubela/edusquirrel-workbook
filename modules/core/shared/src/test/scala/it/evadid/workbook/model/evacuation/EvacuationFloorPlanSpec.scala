@@ -32,7 +32,7 @@ class EvacuationFloorPlanSpec extends FunSuite {
     val floor = EvacuationFloorPlan(2, 2, List(EvacuationTile.Floor, EvacuationTile.Wall, EvacuationTile.Exit, EvacuationTile.Floor), Set(0, 2))
     val interaction = EvacuationConstructFloorInteraction("floor", floor)
     assertEquals(interaction.interactionFormat.stateSerializer.deserialize(interaction.interactionFormat.stateSerializer.serialize(floor)), floor)
-    assert(interaction.isPassed)
+    assert(interaction.isPassed(floor))
     val bad = writeJs(floor)
     bad("people") = ujson.Arr(1)
     assert(scala.util.Try(read[EvacuationFloorPlan](bad)).isFailure)

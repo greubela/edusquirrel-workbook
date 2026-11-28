@@ -70,13 +70,6 @@ trait ObservableValue[T] {
     res
   }
 
-  /** Follows the observable that `select` returns for the latest value, unsubscribing from earlier selections. */
-  def switchMap[O](select: T => ObservableValue[O]): ObservableValue[O] = syncLock.synchronized {
-    val res = SwitchedObservableValue[T, O](select)
-    addObserver(Observer(res.handleOnOuterValue, ExecutionMethod.executeSync, 10000))
-    res
-  }
-
   def combineWith[O](other: ObservableValue[O]): ObservableValue[(T, O)] = syncLock.synchronized {
     val res = CombinedObservableValue(this, other)
 

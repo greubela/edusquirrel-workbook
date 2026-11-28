@@ -66,8 +66,8 @@ class RemoteHistoryCacheSpec extends FunSuite {
     }
   }
   private def cache(destinations: (Destination, EventSyncStrategy)*): Cache = RemoteHistoryCache(logger, destinations.toMap)
-  private def local(cache: Cache, historyKey: SyncContext = key): History = cache.updateReport.now().get(historyKey)
-  private def reportOf(cache: Cache, historyKey: SyncContext = key) = cache.reports.now().get(historyKey)
+  private def local(cache: Cache, historyKey: SyncContext = key): History = cache.histories(historyKey)
+  private def reportOf(cache: Cache, historyKey: SyncContext = key) = cache.reports(historyKey)
   private def syncingEverything(destination: Destination): Cache = cache(destination -> EventSyncStrategy.SYNC_EVERYTHING)
 
   test("local histories merge without IO and reports select pending events per destination") {
@@ -228,7 +228,7 @@ class RemoteHistoryCacheSpec extends FunSuite {
     destination.readOperation.set(_ => throw failure)
     control.ensureMaxAge(Set(key)).failed.flatMap { error =>
       assert(error eq failure)
-      assertEquals(control.reports.now(), Some(Map.empty))
+      assertEquals(control.reports, Map.empty)
       destination.readOperation.set(_ => Future.failed(failure))
       control.ensureMaxAge(Set(key)).failed
     }.flatMap { error =>

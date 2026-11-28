@@ -57,8 +57,7 @@ case class LanguageMapStorageControl(fullInfo: FullInfo, contentControlLogger: L
       error => syncLogger.logExceptionWarn("Language cache/startup refresh unavailable", error))
 
   private def addTriples(loadedSources: Set[LanguageMapInputSource], loadedTriples: ParsedTriples): Unit =
-    fullInfo.homepageInfoState.update(curInfo => curInfo.copy(
-      languageMapStore = curInfo.languageMapStore.withLoadedTriples(contentControlLogger, loadedSources, loadedTriples)))
+    fullInfo.homepage.updateLanguageMaps(_.withLoadedTriples(contentControlLogger, loadedSources, loadedTriples))
 
   private def addTriplesAndStoreToCache(loadedSources: Set[LanguageMapInputSource], loadedTriples: ParsedTriples): Unit = {
     addTriples(loadedSources, loadedTriples)

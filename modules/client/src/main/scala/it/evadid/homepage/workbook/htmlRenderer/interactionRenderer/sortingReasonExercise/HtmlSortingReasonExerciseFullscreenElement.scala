@@ -2,7 +2,7 @@ package it.evadid.homepage.workbook.htmlRenderer.interactionRenderer.sortingReas
 
 import com.raquo.laminar.api.L.*
 import it.evadid.core.datastructures.language.LanguageMapContentId
-import it.evadid.core.datastructures.state.StateHelper.InteractionVariableOnJS
+
 import it.evadid.homepage.control.model.FullInfo
 import it.evadid.homepage.webElements.HtmlAppElement
 import it.evadid.homepage.workbook.htmlRenderer.interactionRenderer.sortingExercise.SortingBoard
@@ -17,7 +17,7 @@ case class HtmlSortingReasonExerciseFullscreenElement(
   private val itemCount = interaction.items.size
   private val fieldCount = interaction.fields.size
 
-  private val stateVar = interaction.interactionVariable.createBoundVarWithUpdateImportance(MINOR)
+  private val stateVar = fullInfo.interactions.boundVar(interaction, MINOR)
   private val reasonDraftVar: Var[String] = Var("")
 
   private def contentIdSignal(contentId: LanguageMapContentId): Signal[String] =

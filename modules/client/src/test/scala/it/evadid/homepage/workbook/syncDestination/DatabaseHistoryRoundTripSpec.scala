@@ -89,7 +89,7 @@ class DatabaseHistoryRoundTripSpec extends FunSuite {
         _ <- writing.requestStore(writerDestination, Map(key -> textHistory("c" -> 3)), forceFlush = true)
         _ <- reader.ensureMaxAge(Set(key))
       } yield {
-        assertEquals(reader.updateReport.now().get(key).events.values.map(_.associatedState), Set("a", "b", "c"))
+        assertEquals(reader.histories(key).events.values.map(_.associatedState), Set("a", "b", "c"))
         assert(database.commands.now().count(_ == "bulkStore") == 2, database.commands.now().toString)
       }
     }
@@ -171,14 +171,14 @@ class DatabaseHistoryRoundTripSpec extends FunSuite {
       val session = cache(target)
       database.offline.set(true)
       session.requestStore(target, Map(key -> textHistory("offline" -> 1))).failed.flatMap { _ =>
-        assertEquals(session.reports.now().get(key).pendingWrites(target).events.values.size, 1)
+        assertEquals(session.reports(key).pendingWrites(target).events.values.size, 1)
         database.offline.set(false)
         session.storeAll().flatMap { _ =>
-          assertEquals(session.reports.now().get(key).syncedDestinations, Set(target), "the committed acknowledgment confirms the write")
+          assertEquals(session.reports(key).syncedDestinations, Set(target), "the committed acknowledgment confirms the write")
           session.fetchAll(Set(key))
         }.map { restored =>
           assertEquals(restored(key).map(_.associatedState), Seq("offline"))
-          assertEquals(session.reports.now().get(key).syncedDestinations, Set(target))
+          assertEquals(session.reports(key).syncedDestinations, Set(target))
         }
       }
     }

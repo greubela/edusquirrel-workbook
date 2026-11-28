@@ -43,13 +43,13 @@ def exportSession(info: HomepageInfo): Option[String] =
   info.toSessionData.map(data => write(data))
 ```
 
-`HomepageInfo.toSessionData` returns `None` without a workbook or user. The UI imports through
+`HomepageInfo.toSessionData(answers)` returns `None` without a workbook or user. The UI imports through
 `UserSessionControl.tryContinueWithSessionFile`, which parses the file and calls
 `continueWithSession`: it signs in as the session's user if needed, opens the session's
 workbook (the open one when it has the same ID, else the definition stored in the file)
-and calls `Workbook.restoreHistories`. A workbook restores only histories whose context
-names its own ID, so element IDs reused across workbooks never mix. Each history passes
-`InteractionVariable.restoreHistory`, which discards and logs a record with another format,
+and calls `InteractionController.restoreHistories`. Only histories whose context names the
+open workbook's ID are restored, so element IDs reused across workbooks never mix. Each history
+passes `restoreHistory`, which discards and logs a record with another format,
 an unreadable payload or a state the exercise rejects. Invalid file JSON fails the import.
 Only the current saved schema is supported.
 

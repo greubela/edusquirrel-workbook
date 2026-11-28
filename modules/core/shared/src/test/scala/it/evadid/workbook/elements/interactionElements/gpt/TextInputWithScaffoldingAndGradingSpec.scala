@@ -1,6 +1,8 @@
 package it.evadid.workbook.elements.interactionElements.gpt
 
-import it.evadid.workbook.support.executingWith
+import it.evadid.workbook.abstractions.scaffolding.ScaffoldingEvidence
+
+import it.evadid.workbook.support.StandaloneAnswers
 import it.evadid.workbook.interaction.sync.UpdateImportance
 
 import it.evadid.core.datastructures.language.WorkbookContent
@@ -81,7 +83,7 @@ class TextInputWithScaffoldingAndGradingSpec extends FunSuite {
     f.grader.gradeStateSafe("answer", true, UpdateImportance.MAJOR, context).flatMap { result =>
       assertEquals(result.gradingStatus, GradingStatus.Correct)
       TextInputLlmScaffolder(task, None, ContentForLlmInteraction(hint, Map.empty))
-        .handleFeedbackGeneration("answer", context).map { _ =>
+        .handleFeedbackGeneration("answer", ScaffoldingEvidence.none, context).map { _ =>
           assertEquals(f.requests.now().size, 3)
           assert(f.requests.now().forall(_.llmConfiguration == configuration))
         }
@@ -263,7 +265,7 @@ class TextInputWithScaffoldingAndGradingSpec extends FunSuite {
     val example = LanguageMapContentId("test/example-answer")
     val reply = LanguageMapContentId("test/example-hint")
     val scaffolder = TextInputLlmScaffolder(task, Some(solution), ContentForLlmInteraction(hint, Map(example -> reply)))
-    scaffolder.generateFeedbackSafe("answer", TestExecutionContext(List(f.client), Some(f.resolver))).map { result =>
+    scaffolder.generateFeedbackSafe("answer", ScaffoldingEvidence.none, TestExecutionContext(List(f.client), Some(f.resolver))).map { result =>
       val prompt = f.firstPrompt
       assertEquals(prompt("hints")(0).str, "Deutsch: test/hint")
       assertEquals(prompt("solution").str, "Deutsch: test/solution")
@@ -279,7 +281,7 @@ class TextInputWithScaffoldingAndGradingSpec extends FunSuite {
     val element = twoCriteriaEssay("essay")
     assertEquals(element.allInteractionsInThisInstance, List(element))
     assertEquals(element.childrenOfThisElement, Nil)
-    assertEquals(element.interactionVariable.currentValue, "")
+    assertEquals(StandaloneAnswers.of(element).currentValue, "")
     assertEquals(element.gradingElements.map(_.gradeData.instructionForLlm), List(criterion, secondCriterion))
     assertEquals(element.scaffoldingElement.get.scaffData.instructionForLlm, hint)
     assertEquals(read[TextInputWithScaffoldingAndGrading](write(element)), element)
@@ -303,11 +305,11 @@ class TextInputWithScaffoldingAndGradingSpec extends FunSuite {
   test("the interaction grading pipeline passes the resolver and collects independent criteria into its own history") {
     val f = new Fixture(List(Right("First feedback.\nCORRECT"), Right("Second feedback.\nCORRECT")))
     val element = twoCriteriaEssay("pipeline")
-    element.interactionVariable.setStateFromUserInteraction("answer", it.evadid.workbook.interaction.sync.UpdateImportance.MAJOR)
-    element.interactionVariable.control.getOrCalculateGrading().flatMap { _ =>
-      element.interactionVariable.executingWith(f.context).control.getOrCalculateGrading(forceGrading = true)
+    StandaloneAnswers.of(element).setStateFromUserInteraction("answer", it.evadid.workbook.interaction.sync.UpdateImportance.MAJOR)
+    StandaloneAnswers.of(element).control.getOrCalculateGrading().flatMap { _ =>
+      StandaloneAnswers.of(element).executingWith(f.context).control.getOrCalculateGrading(forceGrading = true)
     }.map { _ =>
-      val results = element.interactionVariable.currentHistory.historyGrading.gradingsMap("answer").testsWithResults
+      val results = StandaloneAnswers.of(element).currentHistory.historyGrading.gradingsMap("answer").testsWithResults
       assertEquals(results.size, 2)
       assertEquals(results.map(_.grader), element.gradingElements.toSet[WorkbookInteractionGrader[String, MessengerModel]])
       assert(results.forall(_.gradingStatus == GradingStatus.Correct))
@@ -315,28 +317,28 @@ class TextInputWithScaffoldingAndGradingSpec extends FunSuite {
       assertEquals(f.requests.now().map(request => ujson.read(request.prompt)("criterion").str).toSet,
         Set(s"Deutsch: ${criterion.fullId}", s"Deutsch: ${secondCriterion.fullId}"))
       assert(!f.resolutions.now().contains(hint))
-      val variable = element.interactionVariable
-      assertEquals(variable.underlyingInteraction.interactionFormat.historySerializer.deserialize(variable.underlyingInteraction.interactionFormat.historySerializer.serialize(variable.currentHistory)), variable.currentHistory)
+      val variable = StandaloneAnswers.of(element)
+      assertEquals(variable.interaction.interactionFormat.historySerializer.deserialize(variable.interaction.interactionFormat.historySerializer.serialize(variable.currentHistory)), variable.currentHistory)
     }
   }
 
   test("scaffolding follows its abstraction and exposes only configured hints, never grading criteria") {
     val f = new Fixture(List(Right("Welche Ursache könntest du nennen?")))
     val element = TextInputWithScaffoldingAndGrading("essay", task, contentScaffolding = Some(ContentForLlmInteraction(hint, Map.empty)), contentGrading = List(ContentForLlmInteraction(criterion, Map.empty)))
-    element.scaffoldingElement.get.handleFeedbackGeneration("current answer", f.context).map { result =>
+    element.scaffoldingElement.get.handleFeedbackGeneration("current answer", ScaffoldingEvidence.none, f.context).map { result =>
       assertEquals(result.forState, "current answer")
       assertEquals(result.scaffoldingStatus.asInstanceOf[ScaffoldingStatus.ScaffoldingFeedback].feedback.getInLanguage(German), "Welche Ursache könntest du nennen?")
       assert(result.scaffoldingEntity.isInstanceOf[FeedbackEntity.LlmEntity.type])
       assertEquals(f.resolutions.now().toSet, Set(task, hint))
       assert(!f.requests.now().head.prompt.contains("test/criterion"))
       assertEquals(read[ScaffoldingResult[String, MessengerModel]](write(result)), result)
-      assertEquals(element.interactionVariable.currentValue, "")
+      assertEquals(StandaloneAnswers.of(element).currentValue, "")
     }
   }
 
   test("empty hint responses fail instead of returning an empty successful scaffold") {
     val f = new Fixture(List(Right("  ")))
-    TextInputLlmScaffolder(task, None, ContentForLlmInteraction(hint, Map.empty)).handleFeedbackGeneration("", f.context)
+    TextInputLlmScaffolder(task, None, ContentForLlmInteraction(hint, Map.empty)).handleFeedbackGeneration("", ScaffoldingEvidence.none, f.context)
       .failed.map(error => assertEquals(error.getMessage, "LLM returned an empty hint."))
   }
 
@@ -355,16 +357,16 @@ class TextInputWithScaffoldingAndGradingSpec extends FunSuite {
         reply.future
       }
     }
-    element.interactionVariable.setStateFromUserInteraction("answer", it.evadid.workbook.interaction.sync.UpdateImportance.MAJOR)
-    def grade() = element.interactionVariable.executingWith(TestExecutionContext(List(client), Some(f.resolver), language = () => f.language.now())).control.getOrCalculateGrading(forceGrading = true)
-    val first = element.interactionVariable.control.getOrCalculateGrading().flatMap(_ => grade())
+    StandaloneAnswers.of(element).setStateFromUserInteraction("answer", it.evadid.workbook.interaction.sync.UpdateImportance.MAJOR)
+    def grade() = StandaloneAnswers.of(element).executingWith(TestExecutionContext(List(client), Some(f.resolver), language = () => f.language.now())).control.getOrCalculateGrading(forceGrading = true)
+    val first = StandaloneAnswers.of(element).control.getOrCalculateGrading().flatMap(_ => grade())
     started.future.flatMap { _ =>
       f.language.set(English)
       val second = grade()
       reply.success("Bestehendes Feedback.\nCORRECT")
       first.zip(second).flatMap { (a, b) =>
         assertEquals(a, b)
-        val result = element.interactionVariable.currentHistory.historyGrading.gradingsMap("answer").testsWithResults.head
+        val result = StandaloneAnswers.of(element).currentHistory.historyGrading.gradingsMap("answer").testsWithResults.head
         assertEquals(result.gradingStatus, GradingStatus.Correct)
         assertEquals(feedbackMap(result.feedbackInformation).flatMap(_.tryGetInLanguage(German)), Some("Bestehendes Feedback."))
         grade().map { cached =>

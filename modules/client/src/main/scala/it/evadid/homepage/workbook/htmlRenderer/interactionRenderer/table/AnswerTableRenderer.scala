@@ -16,7 +16,7 @@ import it.evadid.workbook.interaction.sync.UpdateImportance
 case object AnswerTableRenderer extends LineBasedRenderingFactory[AnswerTableInteraction] {
   private val headerScope = new HtmlAttr[String]("scope", StringAsIsCodec)
   override protected def createRendering(fullInfo: FullInfo, e: AnswerTableInteraction): AtomarLineRendering = {
-    val state = e.interactionVariable.createBoundStateWithUpdateImportance(UpdateImportance.MAJOR).toAirstreamVar
+    val state = fullInfo.interactions.boundVar(e, UpdateImportance.MAJOR)
     val disabledSignal = e.isDisabledState.toAirstreamVar.signal
     // Cells that a failed check found wrong are marked until the answer changes.
     val wrong = fullInfo.reporters.reportersFor(e).grading.checks.map(_.wrongParts).distinct

@@ -12,7 +12,7 @@ import it.evadid.workbook.interaction.sync.UpdateImportance
 
 case object WorkbookContentChoiceInteractionRenderer extends LineBasedRenderingFactory[WorkbookContentChoiceInteraction] {
   override protected def createRendering(fullInfo: FullInfo, e: WorkbookContentChoiceInteraction): AtomarLineRendering = {
-    val state = e.interactionVariable.createBoundStateWithUpdateImportance(UpdateImportance.MAJOR).toAirstreamVar
+    val state = fullInfo.interactions.boundVar(e, UpdateImportance.MAJOR)
     // Options that a failed check found wrong are marked until the answer changes.
     val wrong = fullInfo.reporters.reportersFor(e).grading.checks.map(_.wrongParts).distinct
     val controls = fieldSet(cls := "choice-interaction",

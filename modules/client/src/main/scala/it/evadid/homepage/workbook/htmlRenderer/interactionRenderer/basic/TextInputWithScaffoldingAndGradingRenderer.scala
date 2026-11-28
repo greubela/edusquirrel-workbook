@@ -14,8 +14,7 @@ import it.evadid.workbook.elements.interactionElements.gpt.TextInputWithScaffold
 
 object TextInputWithScaffoldingAndGradingRenderer extends LineBasedRenderingFactory[TextInputWithScaffoldingAndGrading] {
   override protected def createRendering(fullInfo: FullInfo, element: TextInputWithScaffoldingAndGrading): AtomarLineRendering = {
-    val variable = element.interactionVariable
-    val answer = variable.createBoundStateWithUpdateLogic(TextInteraction.decideTextareaUpdateImportance).toAirstreamVar
+    val answer = fullInfo.interactions.boundVar(element, TextInteraction.decideTextareaUpdateImportance)
     def label(key: String) = laminarHelper(fullInfo).plaintextStringSignal(LanguageMapContentId(s"basic/$key"))
     val reporter = fullInfo.reporters.reportersFor(element).grading
     val content = div(

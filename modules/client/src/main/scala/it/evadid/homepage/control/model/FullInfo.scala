@@ -13,6 +13,8 @@ import it.evadid.distribution.clients.ExecutionClient
 import it.evadid.homepage.control.change.*
 import it.evadid.homepage.control.info.*
 import it.evadid.homepage.control.singletons.HomepageDefaults
+import it.evadid.workbook.interaction.state.InteractionController
+import it.evadid.workbook.interaction.sync.SyncConnection
 import it.evadid.workbook.meta.ExecutionContextInformation
 
 import scala.concurrent.{ExecutionContext, Future}
@@ -32,9 +34,10 @@ case class FullInfo(private[control] val defaultInfo: HomepageInfo) {
 
   val loggerSystemInfo: HomepageLoggerInfo = HomepageLoggerInfo.singleton
 
-  private[control] val homepageInfoState: Var[HomepageInfo] = Var(defaultInfo)
+  /** Every change of the page state goes through this control. */
+  val homepage: HomepageControl = HomepageControl(Var(defaultInfo))
 
-  def homepageInfoNow(): HomepageInfo = homepageInfoState.now()
+  def homepageInfoNow(): HomepageInfo = homepage.now()
 
   /* INFO */
 
@@ -59,9 +62,21 @@ case class FullInfo(private[control] val defaultInfo: HomepageInfo) {
 
   val userSessionControl: UserSessionControl = new UserSessionControl(this)
 
-  val bindings: BindingController = BindingController(this)
+  /** Every change of the answers goes through this control; it starts with the default answers of `defaultInfo`. */
+  val interactions: InteractionControl = {
+    val control = InteractionControl(Var(InteractionController.emptyState(defaultInfo.toContext)), owner)
+    control.bind(defaultInfo.toContext, HomepageState.interactionsOf(defaultInfo), connectionFor(defaultInfo))
+    control
+  }
 
-  val reporters: InteractionReporterRegistry = InteractionReporterRegistry(signals.workbook, bindings, owner)
+  /** Changes of user, credentials and workbook, which concern both the page and its answers. */
+  val state: HomepageState = HomepageState(homepage, interactions, connectionFor)
+
+  val reporters: InteractionReporterRegistry = InteractionReporterRegistry(signals.workbook, interactions, owner)
+
+  /** The destinations of `info`'s user with their credentials, and feedback execution for that user. */
+  def connectionFor(info: HomepageInfo): SyncConnection =
+    SyncConnection(info.syncDestinations(this).toSet, executionContextFor(info), loggerSystemInfo.syncControlLogger)
 
   /** Feedback execution for the current user. */
   def workbookContextInformation: ExecutionContextInformation = executionContextFor(homepageInfoNow())
@@ -78,7 +93,7 @@ case class FullInfo(private[control] val defaultInfo: HomepageInfo) {
 
       override lazy val languageMapIdResolver: Option[LanguageMapIdResolver] = Some(new LanguageMapIdResolver(currentLanguageObservable) {
         override def resolveMap(id: LanguageMapContentId): Future[LanguageMap[AppLanguage.HumanLanguage]] = Future {
-          homepageInfoState.now().languageMapStore.languageMaps(id)
+          homepage.now().languageMapStore.languageMaps(id)
         }(using ExecutionContext.global)
       })
 

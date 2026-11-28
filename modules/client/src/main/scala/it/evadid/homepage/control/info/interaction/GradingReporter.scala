@@ -1,5 +1,7 @@
 package it.evadid.homepage.control.info.interaction
 
+import it.evadid.homepage.control.change.InteractionControl
+
 import com.raquo.laminar.api.L.*
 import it.evadid.core.datastructures.state.StateHelper.RichObservableValue
 import it.evadid.workbook.abstractions.{InteractionFormat, WorkbookInteractionElement}
@@ -22,13 +24,13 @@ object GradingReporter {
   final case class Report(grading: GradingSummary, scaffolding: ScaffoldingReport, interacted: Boolean, checks: CheckReport)
 
   /** Capture F here; views receive format-independent summaries without casts. */
-  def apply[F <: InteractionFormat](interaction: WorkbookInteractionElement[F]): GradingReporter = {
-    val variable = interaction.interactionVariable
-    val report = variable.observableHistory.toSignal(variable.currentHistory).map { history =>
+  def apply[F <: InteractionFormat](interaction: WorkbookInteractionElement[F], interactions: InteractionControl): GradingReporter = {
+    val report = interactions.historySignal(interaction).map { history =>
       val state = history.historyStates.lastStateOption.get.value
+      val feedback = interactions.feedback(interaction)
       Report(
-        GradingSummary(interaction.gradingElements, variable.control.getCurrentStateOfGrading(state)),
-        ScaffoldingReport(variable.control.getCurrentStateOfScaffolding(state)),
+        GradingSummary(interaction.gradingElements, feedback.getCurrentStateOfGrading(state)),
+        ScaffoldingReport(feedback.getCurrentStateOfScaffolding(state)),
         history.historyStates.lastStateOption.exists(_.updateImportance != DEFAULT),
         CheckReport(interaction, history))
     }

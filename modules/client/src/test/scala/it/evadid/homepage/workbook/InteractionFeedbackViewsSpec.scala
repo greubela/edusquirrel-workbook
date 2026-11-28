@@ -1,5 +1,7 @@
 package it.evadid.homepage.workbook
 
+import it.evadid.homepage.control.TestAnswers
+
 import it.evadid.core.datastructures.language.WorkbookContent
 
 import it.evadid.core.datastructures.language.AppLanguage.{Java, Python, SnapLanguage}
@@ -50,12 +52,12 @@ class InteractionFeedbackViewsSpec extends EditorDomSuite {
     val public = grader("public-description")
     val hidden = grader("SECRET-HIDDEN-DESCRIPTION", true)
     val exercise = ProgrammingExercise("feedback-sidebar", Some(ProgrammingTestSuite(List(public, hidden))))
-    val variable = exercise.interactionVariable
-    val source = variable.currentValue
+    TestAnswers.bind(fullInfo, exercise)
+    val source = fullInfo.interactions.currentValue(exercise)
     val publicResult = GradingResult(public, source, GradingStatus.Correct, Some(WorkbookContent(feedback)), None, date)
     val hiddenResult = GradingResult(hidden, source, GradingStatus.Correct, Some(WorkbookContent(LanguageMap.universalMap[HumanLanguage]("SECRET-HIDDEN-FEEDBACK"))), None, LocalDateTime.parse("1999-01-01T01:02:03"))
-    variable.updateHistory(_.addGradings(List(publicResult, hiddenResult)))
-    val sidebar = InteractionInfoSidebar(fullInfo, exercise,GradingReporter(exercise)).getDomElement()
+    fullInfo.interactions.updateHistory(exercise)(_.addGradings(List(publicResult, hiddenResult)))
+    val sidebar = InteractionInfoSidebar(fullInfo, exercise,GradingReporter(exercise, fullInfo.interactions)).getDomElement()
     val previous = fullInfo.signals.currentLanguage.now()
     fullInfo.displayControl.changeLanguage(German)
     val close = mount(sidebar)
@@ -76,7 +78,7 @@ class InteractionFeedbackViewsSpec extends EditorDomSuite {
       assert(sidebar.ref.textContent.contains("Public feedback"))
       details.removeAttribute("open")
       val changed = publicResult.copy(gradingStatus = GradingStatus.Incorrect, gradingTime = date.plusMinutes(1))
-      variable.updateHistory(_.addGrading(changed))
+      fullInfo.interactions.updateHistory(exercise)(_.addGrading(changed))
       assert(sidebar.ref.querySelector("details.feedback-grading") eq details)
       assert(!details.hasAttribute("open"), "a result update keeps the reader's disclosure choice")
       assertEquals(sidebar.ref.querySelectorAll(".feedback-entry.feedback-status--incorrect").length, 1)
@@ -87,8 +89,8 @@ class InteractionFeedbackViewsSpec extends EditorDomSuite {
   test("overview panel and editor sidebar render the same results from the shared reporter") {
     val tests = List(grader("first"), grader("second"), grader("secret", true))
     val exercise = ProgrammingExercise("feedback-shared-source", Some(ProgrammingTestSuite(tests)))
-    val variable = exercise.interactionVariable
-    val reporter = GradingReporter(exercise)
+    TestAnswers.bind(fullInfo, exercise)
+    val reporter = GradingReporter(exercise, fullInfo.interactions)
     val overview = it.evadid.homepage.workbook.htmlRenderer.controlElements.interactionInfo
       .InteractionFeedbackPanel(fullInfo, exercise, reporter).getDomElement()
     val sidebar = InteractionInfoSidebar(fullInfo, exercise,reporter).getDomElement()
@@ -103,8 +105,8 @@ class InteractionFeedbackViewsSpec extends EditorDomSuite {
       assert(details.hasAttribute("hidden"), "unchecked results start collapsed")
       assertEquals(toggle.getAttribute("aria-expanded"), "false")
       val statuses = List(GradingStatus.Correct, GradingStatus.PartiallyCorrect, GradingStatus.Incorrect)
-      variable.updateHistory(_.addGradings(tests.zip(statuses).map((test, status) =>
-        GradingResult(test, variable.currentValue, status, Some(WorkbookContent(feedback)), None, date))))
+      fullInfo.interactions.updateHistory(exercise)(_.addGradings(tests.zip(statuses).map((test, status) =>
+        GradingResult(test, fullInfo.interactions.currentValue(exercise), status, Some(WorkbookContent(feedback)), None, date))))
       assertEquals(rows(overview.ref), rows(sidebar.ref))
       assertEquals(rows(overview.ref).map(_._1.split(' ').last), Seq("feedback-status--correct", "feedback-status--partial", "feedback-status--incorrect"))
       assertEquals(overview.ref.querySelector(".feedback-score-chip").textContent, sidebar.ref.querySelector(".feedback-score-chip").textContent)
@@ -122,14 +124,14 @@ class InteractionFeedbackViewsSpec extends EditorDomSuite {
   test("sidebar never presents old feedback as a result for a changed answer") {
     val test = grader("visible")
     val exercise = ProgrammingExercise("feedback-current-answer", Some(ProgrammingTestSuite(List(test))))
-    val variable = exercise.interactionVariable
-    variable.updateHistory(_.addGrading(GradingResult(test, variable.currentValue, GradingStatus.Correct, Some(WorkbookContent(LanguageMap.universalMap[HumanLanguage]("FEEDBACK-FOR-OLD-ANSWER"))), None, java.time.LocalDateTime.now())))
-    val sidebar = InteractionInfoSidebar(fullInfo, exercise,GradingReporter(exercise)).getDomElement()
+    TestAnswers.bind(fullInfo, exercise)
+    fullInfo.interactions.updateHistory(exercise)(_.addGrading(GradingResult(test, fullInfo.interactions.currentValue(exercise), GradingStatus.Correct, Some(WorkbookContent(LanguageMap.universalMap[HumanLanguage]("FEEDBACK-FOR-OLD-ANSWER"))), None, java.time.LocalDateTime.now())))
+    val sidebar = InteractionInfoSidebar(fullInfo, exercise,GradingReporter(exercise, fullInfo.interactions)).getDomElement()
     val close = mount(sidebar)
     try {
       assert(sidebar.ref.textContent.contains("FEEDBACK-FOR-OLD-ANSWER"))
       val next = it.evadid.workbook.elements.interactionElements.programming.state.ProgrammingStateRaw(Python, "forward(20)")
-      variable.updateHistory(_.addState(it.evadid.workbook.interaction.variable.InteractionVariableState(
+      fullInfo.interactions.updateHistory(exercise)(_.addState(it.evadid.workbook.interaction.variable.InteractionVariableState(
         next, it.evadid.workbook.interaction.sync.UpdateImportance.MAJOR, date.plusHours(1))))
       assert(!sidebar.ref.textContent.contains("FEEDBACK-FOR-OLD-ANSWER"))
       assertEquals(sidebar.ref.querySelectorAll(".feedback-entry.feedback-status--neutral").length, 1)
@@ -144,10 +146,11 @@ class InteractionFeedbackViewsSpec extends EditorDomSuite {
     import it.evadid.core.datastructures.chat.MessengerModel
     val exercise = TextInputWithScaffoldingAndGrading("hint-sidebar", LanguageMapContentId("test/task"),
       contentGrading = Nil, contentScaffolding = Some(ContentForLlmInteraction(LanguageMapContentId("test/hint"), Map.empty)))
+    TestAnswers.bind(fullInfo, exercise)
     val saved = ScaffoldingResult[String, MessengerModel]("", ScaffoldingStatus.ScaffoldingFeedback(
       LanguageMap.universalMap[HumanLanguage]("PUBLIC-HINT")), FeedbackEntity.TestEntity, None, date)
-    exercise.interactionVariable.updateHistory(_.addScaffolding(saved))
-    val sidebar = InteractionInfoSidebar(fullInfo, exercise,GradingReporter(exercise)).getDomElement()
+    fullInfo.interactions.updateHistory(exercise)(_.addScaffolding(saved))
+    val sidebar = InteractionInfoSidebar(fullInfo, exercise,GradingReporter(exercise, fullInfo.interactions)).getDomElement()
     val close = mount(sidebar)
     try {
       assert(sidebar.ref.querySelector(".interaction-hint-panel").hasAttribute("open"))

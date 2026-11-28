@@ -1,5 +1,10 @@
 package it.evadid.workbook.elements.interactionElements.gpt
 
+import it.evadid.workbook.interaction.sync.{SyncConnection, UsageContext}
+
+import it.evadid.workbook.interaction.state.InteractionController
+
+import it.evadid.workbook.support.StandaloneAnswers
 import it.evadid.core.datastructures.chat.MessengerModel
 import it.evadid.core.datastructures.language.AppLanguage.{English, HumanLanguage}
 import it.evadid.core.datastructures.language.{LanguageMap, LanguageMapContentId}
@@ -25,37 +30,49 @@ class GptInteractionElementSpec extends FunSuite {
       if fail then Future.failed(IllegalStateException("offline")) else super.languageFuture()
   }
 
-  private def messages(element: GptInteractionElement) =
-    element.scaffoldingInteractionOp.get.interactionVariable.currentValue.messengerModel.orderedMessages
+  private val usage = UsageContext("test", "gpt", "student")
+
+  /** Answers of the chat element and its input, as in a workbook that contains both. */
+  private def answersOf(element: GptInteractionElement): InteractionController = {
+    val answers = InteractionController(State(InteractionController.emptyState(usage)))
+    answers.bind(usage, element.allInteractionsInThisInstance :+ element.underlyingTextInteraction, SyncConnection.offline)
+    answers
+  }
+
+  private def messages(answers: InteractionController, element: GptInteractionElement) =
+    answers.currentValue(element.scaffoldingInteractionOp.get).messengerModel.orderedMessages
 
   test("the scaffolding chat is initialised once with the task, hints and current answer") {
     val input = TextInteraction("gpt-answer")
-    input.interactionVariable.setStateFromUserInteraction("my answer", UpdateImportance.MAJOR, java.time.LocalDateTime.now().plusSeconds(1))
     val element = GptInteractionElement("gpt", input, task, Seq(hint), Nil)
+    val answers = answersOf(element)
+    answers.setStateFromUserInteraction(input, "my answer", UpdateImportance.MAJOR, java.time.LocalDateTime.now().plusSeconds(1))
     assertEquals(element.childrenOfThisElement.map(_.elementId), Seq("gpt_scaffoldingMessenger"))
-    element.initScaffoldingIfEmpty(MessengerModel.pFallbackStudent, resolver()).flatMap { first =>
+    element.initScaffoldingIfEmpty(answers, MessengerModel.pFallbackStudent, resolver()).flatMap { first =>
       assert(first, "the student's answer is part of the chat")
-      val texts = messages(element).map(_.text)
+      val texts = messages(answers, element).map(_.text)
       assert(texts.contains(s"text of ${task.fullId}"), texts)
       assert(texts.contains(s"@assistant: text of ${hint.fullId}"), texts)
       assert(texts.contains("my answer"), texts)
-      element.initScaffoldingIfEmpty(MessengerModel.pFallbackStudent, resolver()).map { second =>
-        assertEquals(second, messages(element).last.author.role == it.evadid.core.datastructures.chat.SenderRole.USER,
+      element.initScaffoldingIfEmpty(answers, MessengerModel.pFallbackStudent, resolver()).map { second =>
+        assertEquals(second, messages(answers, element).last.author.role == it.evadid.core.datastructures.chat.SenderRole.USER,
           "an existing chat is reported by its last author instead of being initialised again")
-        assertEquals(messages(element).map(_.text), texts)
+        assertEquals(messages(answers, element).map(_.text), texts)
       }
     }
   }
 
   test("unresolved texts are marked and failed resolution leaves the chat empty") {
     val element = GptInteractionElement("gpt-unresolved", TextInteraction("gpt-empty"), task, Seq(hint), Nil)
-    assert(!element.initScaffoldingIfEmpty(MessengerModel.pFallbackStudent, Map.empty, English))
-    assert(messages(element).exists(_.text.contains(s"[unresolved: ${task.fullId}]")))
-    assert(!element.initScaffoldingIfEmpty(MessengerModel.pFallbackStudent, Map.empty, English))
+    val answers = answersOf(element)
+    assert(!element.initScaffoldingIfEmpty(answers, MessengerModel.pFallbackStudent, Map.empty, English))
+    assert(messages(answers, element).exists(_.text.contains(s"[unresolved: ${task.fullId}]")))
+    assert(!element.initScaffoldingIfEmpty(answers, MessengerModel.pFallbackStudent, Map.empty, English))
     val failing = GptInteractionElement("gpt-offline", TextInteraction("gpt-offline-answer"), task, Seq(hint), Nil)
-    failing.initScaffoldingIfEmpty(MessengerModel.pFallbackStudent, resolver(fail = true)).map { initialised =>
+    val failingAnswers = answersOf(failing)
+    failing.initScaffoldingIfEmpty(failingAnswers, MessengerModel.pFallbackStudent, resolver(fail = true)).map { initialised =>
       assert(!initialised)
-      assert(messages(failing).isEmpty)
+      assert(messages(failingAnswers, failing).isEmpty)
       assertEquals(GptInteractionElement("no-hints", TextInteraction("x"), task, Nil, Nil).scaffoldingInteractionOp, None)
     }
   }

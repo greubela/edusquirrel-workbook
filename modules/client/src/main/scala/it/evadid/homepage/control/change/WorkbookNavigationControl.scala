@@ -12,19 +12,12 @@ final class WorkbookNavigationControl(fullInfo: FullInfo) {
 
   def changeWorkbook(factory: WorkbookFactory): Unit = changeWorkbook(Some(factory.createEverything))
 
-  def changeWorkbook(newWorkbook: Option[AllWorkbookInfo]): Unit = {
-    val previous = fullInfo.homepageInfoNow().workbookInfo
-    val sameInstance = previous.zip(newWorkbook).forall((a, b) => a.loadedWorkbook eq b.loadedWorkbook)
-    if (previous != newWorkbook || !sameInstance) {
-      fullInfo.homepageInfoState.update(_.copy(workbookInfo = newWorkbook))
-      // Var updates inside a UI observer run in a child transaction. Select the binding after that update.
-      if (newWorkbook.nonEmpty) Future.unit.flatMap(_ => fullInfo.bindings.ensureSynced())
-    }
-  }
+  /** Opens `newWorkbook`; its answers are bound and read from every destination. */
+  def changeWorkbook(newWorkbook: Option[AllWorkbookInfo]): Future[Unit] = fullInfo.state.switchWorkbook(newWorkbook)
 
   def updateWorkbookConfig(func: WorkbookConfig => WorkbookConfig): Unit = {
-    if (fullInfo.homepageInfoState.now().workbookInfo.nonEmpty) {
-      fullInfo.homepageInfoState.update(curInfo => curInfo.copy(workbookInfo = curInfo.workbookInfo.map(info => info.copy(config = func(info.config)))))
+    if (fullInfo.homepageInfoNow().workbookInfo.nonEmpty) {
+      fullInfo.homepage.updateWorkbookConfig(func)
     } else {
       logger.logWarn("[WARN] ignore updated workbook config because there is no workbook loaded!")
     }

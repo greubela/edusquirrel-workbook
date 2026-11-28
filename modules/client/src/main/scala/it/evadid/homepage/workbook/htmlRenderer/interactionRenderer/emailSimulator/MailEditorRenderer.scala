@@ -1,6 +1,6 @@
 package it.evadid.homepage.workbook.htmlRenderer.interactionRenderer.emailSimulator
 
-import it.evadid.core.datastructures.state.StateHelper.InteractionVariableOnJS
+
 import it.evadid.homepage.control.model.FullInfo
 import it.evadid.homepage.workbook.htmlRenderer.HtmlRenderFactory.LineBasedRenderingFactory
 import it.evadid.homepage.workbook.htmlRenderer.atomarLineRenderings.AtomarLineRendering
@@ -10,6 +10,6 @@ import it.evadid.workbook.interaction.sync.UpdateImportance
 case object HtmlMailEditorRenderer extends LineBasedRenderingFactory[MailEditor] {
   override protected def createRendering(fullInfo: FullInfo, element: MailEditor): AtomarLineRendering =
     MailRendering.cardLine(fullInfo, element,
-      element.interactionVariable.createBoundVarWithUpdateImportance(UpdateImportance.MAJOR),
+      fullInfo.interactions.boundVar(element, UpdateImportance.MAJOR),
       element.account, element.allowCompose)
 }

@@ -25,8 +25,8 @@ import it.evadid.workbook.abstractions.{LangMapContentIdType, RoleInWorkbook, Ty
 import it.evadid.workbook.elements.displayElements.DisplayLangMapContent
 
 case object HtmlProgrammingExerciseFullJavaRenderer extends LineBasedRenderingFactory[ProgrammingExerciseFullJava] {
-  private[homepage] def editorState(element: ProgrammingExerciseFullJava): Var[ProgrammingState] =
-    element.interactionVariable.createBoundStateWithUpdateImportance(UpdateImportance.MAJOR).toAirstreamVar
+  private[homepage] def editorState(fullInfo: FullInfo, element: ProgrammingExerciseFullJava): Var[ProgrammingState] =
+    fullInfo.interactions.boundVar(element, UpdateImportance.MAJOR)
 
   private[homepage] def createNewEditor(
                                          fullInfo: FullInfo,
@@ -51,7 +51,7 @@ case object HtmlProgrammingExerciseFullJavaRenderer extends LineBasedRenderingFa
   }
 
   override protected def createRendering(fullInfo: FullInfo, workbookElement: ProgrammingExerciseFullJava): AtomarLineRendering = {
-    val boundVar = editorState(workbookElement)
+    val boundVar = editorState(fullInfo, workbookElement)
     val gradingReporter = fullInfo.reporters.reportersFor(workbookElement).grading
 
     val openButton = HtmlButtonElement.withTextLabel(

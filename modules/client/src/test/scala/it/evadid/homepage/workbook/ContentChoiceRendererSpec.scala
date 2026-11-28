@@ -47,14 +47,14 @@ class ContentChoiceRendererSpec extends EditorDomSuite {
       assertEquals(inputs.length, 2)
       inputs(0).asInstanceOf[dom.html.Input].click()
       inputs(1).asInstanceOf[dom.html.Input].click()
-      val answer = exercise.interactionVariable.currentValue
+      val answer = fullInfo.interactions.currentValue(exercise)
       assertEquals(answer.selectedOptions.toSet, options.toSet)
       fullInfo.displayControl.changeLanguage(German)
       assert(element.ref.textContent.contains("Erste"), element.ref.textContent)
-      assertEquals(exercise.interactionVariable.currentValue, answer)
+      assertEquals(fullInfo.interactions.currentValue(exercise), answer)
       assertEquals(element.ref.querySelectorAll(".choice-feedback").length, 0)
       assertEquals(element.ref.querySelectorAll(".feedback-entry").length, 1)
-      exercise.interactionVariable.control.getOrCalculateGrading().map { graded =>
+      fullInfo.interactions.feedback(exercise).getOrCalculateGrading().map { graded =>
         assert(graded.testsWithResults.forall(_.gradingStatus.isCorrect))
       }
     }.andThen { case _ => close() }
@@ -69,7 +69,7 @@ class ContentChoiceRendererSpec extends EditorDomSuite {
     load(exercise)
     val element = WorkbookContentChoiceInteractionRenderer.renderAppElement(fullInfo, exercise).getDomElement()
     val close = mount(element)
-    val control = exercise.interactionVariable.control
+    val control = fullInfo.interactions.feedback(exercise)
     val context = fullInfo.workbookContextInformation
     // Selecting starts an automatic grading that skips the manual grader; the check runs it afterwards.
     def check() = control.getOrCalculateGrading().flatMap(_ => control.getOrCalculateGrading(forceGrading = true))

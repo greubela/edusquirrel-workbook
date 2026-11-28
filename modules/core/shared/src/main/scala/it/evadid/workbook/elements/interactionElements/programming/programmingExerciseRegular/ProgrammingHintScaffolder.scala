@@ -11,7 +11,7 @@ import it.evadid.util.logging.BasicLogger
 import it.evadid.workbook.abstractions.FeedbackEntity.LlmEntity
 import it.evadid.workbook.abstractions.grading.{GradingImportance, GradingResult, GradingStatus, WorkbookInteractionGrader}
 import it.evadid.workbook.abstractions.scaffolding.ScaffoldingStatus.*
-import it.evadid.workbook.abstractions.scaffolding.{AdditionalInfoLlmScaffolding, ScaffoldingResult, WorkbookInteractionScaffolder}
+import it.evadid.workbook.abstractions.scaffolding.{AdditionalInfoLlmScaffolding, ScaffoldingEvidence, ScaffoldingResult, WorkbookInteractionScaffolder}
 import it.evadid.workbook.abstractions.FeedbackEntity
 import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseRegular.ProgrammingHintScaffolder.*
 import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseTurtle.RecreateShapeGrader
@@ -24,26 +24,27 @@ import scala.concurrent.Future
 import scala.util.Try
 
 final class ProgrammingHintScaffolder(exercise: ProgrammingHintScaffolder.Exercise, publicTaskId: LanguageMapContentId)
-  extends WorkbookInteractionScaffolder[ProgrammingState, AdditionalInfoLlmScaffolding] {
+  extends WorkbookInteractionScaffolder[ProgrammingState, AdditionalProgrammingTestInfo, AdditionalInfoLlmScaffolding] {
 
   override def scaffoldingEntity: FeedbackEntity = LlmEntity
 
-  override def handleFeedbackGeneration(currentState: ProgrammingState, contextInformation: ExecutionContextInformation): Future[ScaffoldingResult[ProgrammingState, AdditionalInfoLlmScaffolding]] =
+  override def handleFeedbackGeneration(currentState: ProgrammingState,
+      evidence: ScaffoldingEvidence.Reader[ProgrammingState, AdditionalProgrammingTestInfo], contextInformation: ExecutionContextInformation): Future[ScaffoldingResult[ProgrammingState, AdditionalInfoLlmScaffolding]] =
     contextInformation.languageMapIdResolver match {
       case None => Future.failed(SerializedException("Llm Scaffolding needs a LanguageMapIdResolver!"))
       case Some(resolver) =>
         Try {
           given scala.concurrent.ExecutionContext = contextInformation.futureExecutionContext
-          val context = prepare(currentState)
+          val context = prepare(currentState, evidence)
           resolver.languageFuture().zip(resolver.resolveMap(publicTaskId)).flatMap { (locale, translations) =>
             val task = publicTask(translations, locale)
-            verifyChecks(currentState, context, locale)
+            verifyChecks(currentState, evidence, context, locale)
 
             def noHint(entity: FeedbackEntity, info: Option[AdditionalInfoLlmScaffolding]) =
               resolver.resolveMap(LanguageMapContentId("basic/programmingHintNoChange")).map { messages =>
                 val text = messages.tryGetInLanguage(locale).orElse(messages.tryGetInLanguage(English))
                   .filter(_.trim.nonEmpty).getOrElse(throw IllegalArgumentException("Missing programming hint message."))
-                verifyChecks(currentState, context, locale)
+                verifyChecks(currentState, evidence, context, locale)
                 hintResult(currentState, locale, text, entity, info)
               }
 
@@ -53,7 +54,7 @@ final class ProgrammingHintScaffolder(exercise: ProgrammingHintScaffolder.Exerci
             else {
               val request = context.request(locale, task, currentState).copy(llmConfiguration = contextInformation.llmConfiguration)
               sendRequest(request, contextInformation).flatMap { response =>
-                verifyChecks(currentState, context, locale)
+                verifyChecks(currentState, evidence, context, locale)
                 val hints = parse(response.result, context.evidenceIds(locale))
                 val accepted = ujson.write(ujson.Obj("hints" -> ujson.Arr.from(hints.map(_.toJson))))
                 val info = Some(AdditionalInfoLlmScaffolding(MessengerModel(List(Message(accepted, MessengerModel.pAgent)))))
@@ -84,14 +85,15 @@ final class ProgrammingHintScaffolder(exercise: ProgrammingHintScaffolder.Exerci
                          info: Option[AdditionalInfoLlmScaffolding]): ScaffoldingResult[ProgrammingState, AdditionalInfoLlmScaffolding] =
     ScaffoldingResult(state, ScaffoldingFeedback(LanguageMap.mapBasedLanguageMap(Map(locale -> text))), entity, info)
 
-  private def verifyChecks(state: ProgrammingState, context: Context, locale: HumanLanguage): Unit = {
-    val current = prepare(state)
+  private def verifyChecks(state: ProgrammingState, evidence: ScaffoldingEvidence.Reader[ProgrammingState, AdditionalProgrammingTestInfo],
+      context: Context, locale: HumanLanguage): Unit = {
+    val current = prepare(state, evidence)
     require(current.answer == context.answer && current.checks.map(_.grader) == context.checks.map(_.grader) &&
       current.localizedChecks(locale) == context.localizedChecks(locale),
       "The answer or public check results changed while preparing this hint.")
   }
 
-  private def prepare(state: ProgrammingState): Context = {
+  private def prepare(state: ProgrammingState, evidence: ScaffoldingEvidence.Reader[ProgrammingState, AdditionalProgrammingTestInfo]): Context = {
     val (sourceLanguage, source) = sourceOf(state)
     require(source != null && source.length <= 24000, "The source is too long for a hint.")
     val lines = source.split("\\r\\n|\\r|\\n", -1).toVector
@@ -99,9 +101,10 @@ final class ProgrammingHintScaffolder(exercise: ProgrammingHintScaffolder.Exerci
     val sourceLines = lines.zipWithIndex.collect {
       case (line, index) if line.trim.nonEmpty => s"source-${index + 1}" -> line
     }
-    val latest = exercise.latestAnswer()
+    val recorded = evidence()
+    val latest = recorded.latestAnswer
     require(latest.map(_.value).getOrElse(exercise.defaultValue) == state, "The answer changed while preparing this hint.")
-    val results = exercise.results(state)
+    val results = recorded.gradings
     val graders = exercise.graders.filter { grader =>
       grader.importance != GradingImportance.HIDDEN_TEST && grader.gradingEntity == FeedbackEntity.TestEntity
     }.distinct
@@ -130,14 +133,12 @@ final class ProgrammingHintScaffolder(exercise: ProgrammingHintScaffolder.Exerci
 }
 
 object ProgrammingHintScaffolder {
-  /** What a hint needs from its exercise, independently of the exercise's saved format: the latest saved answer,
-    * the default answer, the exercise's graders and the recorded results of a state.
+  /** What a hint needs from its exercise, independently of the exercise's saved format: the default answer and the
+    * exercise's graders. The latest answer and recorded results arrive as [[ScaffoldingEvidence]].
     */
   final case class Exercise(
-      latestAnswer: () => Option[InteractionVariableState[ProgrammingState]],
       defaultValue: ProgrammingState,
-      graders: Seq[WorkbookInteractionGrader[ProgrammingState, AdditionalProgrammingTestInfo]],
-      results: ProgrammingState => Seq[GradingResult[ProgrammingState, AdditionalProgrammingTestInfo]])
+      graders: Seq[WorkbookInteractionGrader[ProgrammingState, AdditionalProgrammingTestInfo]])
 
   private val evidenceStatuses = Set("correct", "partially-correct", "incorrect")
 

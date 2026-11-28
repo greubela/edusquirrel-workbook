@@ -38,7 +38,7 @@ case object HtmlTurtleRecreateShapeRenderer extends LineBasedRenderingFactory[Tu
     scala.util.Try(target.renderMovements.flatMap(movement => Seq(movement.start, movement.end)).distinct).getOrElse(Nil)
 
   override protected def createRendering(fullInfo: FullInfo, workbookElement: TurtleRecreateShapeInteraction): AtomarLineRendering = {
-    val boundVar = workbookElement.interactionVariable.createBoundStateWithUpdateImportance(UpdateImportance.MAJOR).toAirstreamVar
+    val boundVar = fullInfo.interactions.boundVar(workbookElement, UpdateImportance.MAJOR)
 
     val gradingReporter = fullInfo.reporters.reportersFor(workbookElement).grading
     val shapeGrader = workbookElement.gradingElements.collectFirst {

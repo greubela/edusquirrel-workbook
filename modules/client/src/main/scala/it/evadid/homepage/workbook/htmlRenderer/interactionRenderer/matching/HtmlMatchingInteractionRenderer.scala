@@ -68,7 +68,7 @@ object HtmlMatchingInteractionRenderer extends LineBasedRenderingFactory[Matchin
   }
 
   override protected def createRendering(fullInfo: FullInfo, e: MatchingInteraction): AtomarLineRendering = {
-    val state = e.interactionVariable.createBoundStateWithUpdateImportance(UpdateImportance.MAJOR).toAirstreamVar
+    val state = fullInfo.interactions.boundVar(e, UpdateImportance.MAJOR)
     val locked = e.isDisabledState.toAirstreamVar
     val selected = Var(Option.empty[End])
     val drag = Var(Option.empty[Drag])

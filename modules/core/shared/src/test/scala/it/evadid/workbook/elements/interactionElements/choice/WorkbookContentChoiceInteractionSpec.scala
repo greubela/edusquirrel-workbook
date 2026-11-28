@@ -1,5 +1,6 @@
 package it.evadid.workbook.elements.interactionElements.choice
 
+import it.evadid.workbook.support.StandaloneAnswers
 import it.evadid.workbook.interaction.sync.UpdateImportance
 
 import it.evadid.core.datastructures.language.{LanguageMapContentId, WorkbookContent}
@@ -71,9 +72,9 @@ class WorkbookContentChoiceInteractionSpec extends FunSuite {
     val state = selected(multiple, 0, 1)
     val format = multiple.interactionFormat
     assertEquals(format.stateSerializer.deserialize(format.stateSerializer.serialize(state)), state)
-    multiple.interactionVariable.setStateFromUserInteraction(state, it.evadid.workbook.interaction.sync.UpdateImportance.MAJOR)
-    multiple.interactionVariable.control.getOrCalculateGrading(true).map { result =>
-      val history = multiple.interactionVariable.currentHistory
+    StandaloneAnswers.of(multiple).setStateFromUserInteraction(state, it.evadid.workbook.interaction.sync.UpdateImportance.MAJOR)
+    StandaloneAnswers.of(multiple).control.getOrCalculateGrading(true).map { result =>
+      val history = StandaloneAnswers.of(multiple).currentHistory
       val restored = format.historySerializer.deserialize(format.historySerializer.serialize(history))
       assertEquals(restored, history)
       assertEquals(restored.gradingForState(multiple.gradingElements, state).testsWithResults.head.gradingStatus, GradingStatus.Correct)

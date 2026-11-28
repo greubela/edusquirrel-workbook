@@ -4,7 +4,7 @@ import it.evadid.homepage.control.model.FullInfo
 
 import com.raquo.laminar.api.L.*
 import it.evadid.core.datastructures.language.LanguageMapContentId
-import it.evadid.core.datastructures.state.StateHelper.InteractionVariableOnJS
+
 import it.evadid.homepage.webElements.basic.HtmlButtonElement
 import it.evadid.homepage.workbook.htmlRenderer.HtmlRenderFactory.LineBasedRenderingFactory
 import it.evadid.homepage.workbook.htmlRenderer.atomarLineRenderings.AtomarLineRendering
@@ -16,7 +16,7 @@ object HtmlSortingInteractionRenderer extends LineBasedRenderingFactory[SortingI
 
   override protected def createRendering(fullInfo: FullInfo, interaction: SortingInteraction): AtomarLineRendering = {
     val errorCountSignal =
-      interaction.interactionVariable.createInteractionSignal
+      fullInfo.interactions.answerSignal(interaction)
         .combineWith(fullInfo.signals.stringFromLanguageMapId(errorCountLabelId))
         .map { case (state, template) =>
           val totalErrors = state.lastSessionErrorCount + state.sessionErrorCount

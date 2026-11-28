@@ -5,7 +5,7 @@ import it.evadid.util.logging.derived.SyncLogger
 import it.evadid.workbook.abstractions.InteractionFormat
 import it.evadid.workbook.interaction.sync.model.{FetchResponse, InteractionHistoryJson}
 import it.evadid.workbook.interaction.sync.{EventSyncStrategy, SyncContext, SyncSuccess, UsageContext}
-import it.evadid.workbook.interaction.variable.{InteractionVariable, InteractionVariableHistory}
+import it.evadid.workbook.interaction.variable.InteractionVariableHistory
 import it.evadid.workbook.interaction.variable.events.EventId
 import upickle.default.*
 

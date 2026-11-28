@@ -23,10 +23,10 @@ table and ordering interactions first.
 
 [WorkbookElement.scala](../modules/core/shared/src/main/scala/it/evadid/workbook/abstractions/WorkbookElement.scala)
 separates display elements, structural containers and interactions.
-`WorkbookInteractionElement[F <: InteractionFormat]` declares its saved format.
-`InteractionVariable[F]` owns its answer and event history; the format supplies
-the state and feedback codecs. `defaultValue` initializes
-the answer; it is not another live state. See [state and serialization](state-and-serialization.md).
+`WorkbookInteractionElement[F <: InteractionFormat]` declares its saved format and holds no
+state. Its answer and event history live in the page's `InteractionInfo`, changed through
+`fullInfo.interactions`; the format supplies the state and feedback codecs. `defaultValue`
+initializes the answer; it is not another live state. See [state and serialization](state-and-serialization.md).
 
 ## Renderer and editor boundary
 
@@ -37,15 +37,13 @@ shares one value between preview and fullscreen editor:
 
 ```scala
 import com.raquo.laminar.api.L.*
-import it.evadid.core.datastructures.state.StateHelper.InteractionVariableOnJS
 import it.evadid.homepage.control.model.FullInfo
 import it.evadid.homepage.webElements.editor.qr.{QrCodeEditor, QrCodeView}
 import it.evadid.workbook.elements.interactionElements.qr.CreateQrCodeInteraction
 import it.evadid.workbook.interaction.sync.UpdateImportance
 
 def qrControls(fullInfo: FullInfo, element: CreateQrCodeInteraction): Element = {
-  val answer = element.interactionVariable
-    .createBoundVarWithUpdateImportance(UpdateImportance.MAJOR, fullInfo.workbookContextInformation)
+  val answer = fullInfo.interactions.boundVar(element, UpdateImportance.MAJOR)
   div(
     QrCodeView.preview(fullInfo, answer.signal, element.requirements),
     button("Edit", onClick --> (_ =>

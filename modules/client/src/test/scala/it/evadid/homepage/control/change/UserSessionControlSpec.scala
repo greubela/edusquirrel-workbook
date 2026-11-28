@@ -169,19 +169,19 @@ class UserSessionControlSpec extends EditorDomSuite {
     val control = info.userSessionControl
     val first = AllUserInfo.createNewUser("First", "first@school.example", localConfig)
     val second = AllUserInfo.createNewUser("Second", "second@school.example", localConfig)
-    val interaction = element.interactionVariable
-    val session = interaction.binding
+    def session = info.interactions.info.session
+    val initial = session
     for {
       _ <- control.changeUser(Some(first))
-      afterFirst = interaction.binding
+      afterFirst = session
       _ <- control.changeUser(Some(first))
-      _ = assert(interaction.binding eq afterFirst, "the same user keeps the binding")
+      _ = assertEquals(session, afterFirst, "the same user keeps the answers")
       _ <- control.changeUser(Some(second))
-      _ = assert(!(interaction.binding eq afterFirst), "another user gets a new binding")
+      _ = assertNotEquals(session, afterFirst, "another user gets default answers of their own")
       _ = assert(dom.window.localStorage.getItem("edusquirrel-alluserinfo").contains("second@school.example"))
       _ <- control.changeUser(None)
     } yield {
-      assert(!(afterFirst eq session))
+      assertNotEquals(afterFirst, initial)
       assertEquals(info.current.userInfo, None)
       assertEquals(dom.window.localStorage.getItem("edusquirrel-alluserinfo"), null, "signing out removes the saved login")
       intercept[IllegalArgumentException](control.updateCredentials(UserCredentials()))

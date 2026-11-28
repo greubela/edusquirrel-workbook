@@ -3,7 +3,7 @@ package it.evadid.homepage.workbook.htmlRenderer.interactionRenderer.codeTaskTog
 import it.evadid.homepage.control.model.FullInfo
 
 import com.raquo.laminar.api.L.*
-import it.evadid.core.datastructures.state.StateHelper.InteractionVariableOnJS
+
 import it.evadid.core.util.InfoUtil
 import it.evadid.homepage.workbook.htmlRenderer.HtmlRenderFactory.LineBasedRenderingFactory
 import it.evadid.homepage.workbook.htmlRenderer.atomarLineRenderings.AtomarLineRendering

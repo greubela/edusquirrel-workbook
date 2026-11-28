@@ -56,9 +56,9 @@ object SubmissionFixtures {
     DatabaseConfigWithCredentials("mysql", "db.example.invalid", "3306", "school", "private-user", "private-password")
 
   def session(mail: String = student.mail): SessionData = SessionData(savedAt, Map(
-    context(workbook.workbookId, essay.interactionVariable.keyForSerialization) -> essayHistory,
-    context(workbook.workbookId, quiz.interactionVariable.keyForSerialization) -> quizHistory,
-    context("another-workbook", essay.interactionVariable.keyForSerialization) -> quizHistory),
+    context(workbook.workbookId, essay.keyForSerialization) -> essayHistory,
+    context(workbook.workbookId, quiz.keyForSerialization) -> quizHistory,
+    context("another-workbook", essay.keyForSerialization) -> quizHistory),
     student.copy(mail = mail),
     Some(UserConfig(Seq(SyncInformation(SyncDestinationBasedOnHistoryDatabase(credentials, DatabaseHistoryFormat.BlobFormat, buffered = false),
       EventSyncStrategy.SYNC_MAJOR)), isOnlineAccount = true)),
@@ -68,6 +68,6 @@ object SubmissionFixtures {
   def sessionWithUnreadableEssay: SessionData = {
     val stored = session()
     stored.copy(knownUsageData = stored.knownUsageData.updated(
-      context(workbook.workbookId, essay.interactionVariable.keyForSerialization), InteractionHistoryJson(TextInteractionFormat, "{not json")))
+      context(workbook.workbookId, essay.keyForSerialization), InteractionHistoryJson(TextInteractionFormat, "{not json")))
   }
 }

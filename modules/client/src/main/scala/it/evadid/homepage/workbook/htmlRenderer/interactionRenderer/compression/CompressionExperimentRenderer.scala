@@ -13,7 +13,7 @@ import it.evadid.workbook.interaction.sync.UpdateImportance
 
 case object CompressionExperimentRenderer extends LineBasedRenderingFactory[CompressionExperimentInteraction] {
   override protected def createRendering(fullInfo: FullInfo, e: CompressionExperimentInteraction): AtomarLineRendering = {
-    val state = e.interactionVariable.createBoundStateWithUpdateImportance(UpdateImportance.MAJOR).toAirstreamVar
+    val state = fullInfo.interactions.boundVar(e, UpdateImportance.MAJOR)
     e.initial match {
       case _: it.evadid.workbook.model.compression.WrittenAnswer | _: it.evadid.workbook.model.compression.EthicalReflection | _: it.evadid.workbook.model.compression.PreviousAnswer =>
         return AtomarLineRendering.basicLine(fullInfo, e, CompressionActivitiesEditor(fullInfo, state,e.initial,e.isDisabledState.toAirstreamVar.signal).getDomElement(), "compression-inline")

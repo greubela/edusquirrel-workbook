@@ -1,7 +1,6 @@
 package it.evadid.core.datastructures.storage.remote
 
 import it.evadid.core.datastructures.state.State
-import it.evadid.core.datastructures.state.observable.ObservableValue
 import it.evadid.core.datastructures.storage.remote.RemoteHistoryCache.*
 import it.evadid.util.logging.derived.SyncLogger
 import it.evadid.workbook.abstractions.InteractionFormat
@@ -24,12 +23,15 @@ import scala.util.{Failure, Success, Try}
   */
 final class RemoteHistoryCache[K, F <: InteractionFormat, RW <: RemoteHistoryReaderWriter[K, F]](
     syncLogger: SyncLogger, cacheStrategies: Map[RW, EventSyncStrategy],
-    state: State[CacheState[K, F, RW]], validate: InteractionVariableHistory[F] => Try[Unit] = (_: InteractionVariableHistory[F]) => Success(())) {
+    state: CacheStore[K, F, RW], validate: InteractionVariableHistory[F] => Try[Unit] = (_: InteractionVariableHistory[F]) => Success(())) {
   private given ExecutionContext = ExecutionContext.global
   private type History = InteractionVariableHistory[F]
 
-  lazy val updateReport: ObservableValue[Map[K, History]] = state.observable.deriveValue(_.histories)
-  lazy val reports: ObservableValue[Map[K, CacheReportForKey[K, F, RW]]] = state.observable.deriveValue { current =>
+  def histories: Map[K, History] = state.now().histories
+
+  /** Per key: the local history, what each destination is known to hold, what it misses and whether it is confirmed. */
+  def reports: Map[K, CacheReportForKey[K, F, RW]] = {
+    val current = state.now()
     current.histories.map { (key, history) =>
       val known = current.destinations.flatMap((cache, values) => values.get(key).map(cache -> _))
       def knownIds(cache: RW): Set[EventId] = known.get(cache).fold(Set.empty)(_.knownEventIds)
@@ -187,9 +189,22 @@ final class RemoteHistoryCache[K, F <: InteractionFormat, RW <: RemoteHistoryRea
 }
 
 object RemoteHistoryCache {
+  /** Where a cache keeps its state; updates are pure transitions and may be applied later than requested. */
+  trait CacheStore[K, F <: InteractionFormat, RW] {
+    def now(): CacheState[K, F, RW]
+    def update(transition: CacheState[K, F, RW] => CacheState[K, F, RW]): Unit
+  }
+
+  object CacheStore {
+    def apply[K, F <: InteractionFormat, RW](state: State[CacheState[K, F, RW]]): CacheStore[K, F, RW] = new CacheStore[K, F, RW] {
+      def now(): CacheState[K, F, RW] = state.now()
+      def update(transition: CacheState[K, F, RW] => CacheState[K, F, RW]): Unit = state.update(transition)
+    }
+  }
+
   def apply[K, F <: InteractionFormat, RW <: RemoteHistoryReaderWriter[K, F]](
       logger: SyncLogger, strategies: Map[RW, EventSyncStrategy]): RemoteHistoryCache[K, F, RW] =
-    new RemoteHistoryCache(logger, strategies, State(CacheState.empty(strategies.keySet)))
+    new RemoteHistoryCache(logger, strategies, CacheStore(State(CacheState.empty(strategies.keySet))))
 
   /** What one destination is known to hold for a key; the progress fields advance only with tracked reads. */
   case class RemoteHistoryValue(

@@ -46,9 +46,7 @@ case class TurtleRecreateShapeInteraction
       TurtleCommandUsageGrader.forLimits(elementId, exerciseConfig.maxCommandUsage) ++ structureTests, environment)
   /** The hint button asks about the current program against the public task text. */
   override val scaffoldingElement: Option[ProgrammingHintScaffolder] = instructionText.map(task => new ProgrammingHintScaffolder(
-    ProgrammingHintScaffolder.Exercise(() => interactionVariable.currentHistory.historyStates.lastStateOption, defaultValue,
-      gradingElements, state => interactionVariable.currentHistory.historyGrading.gradingsMap.get(state).filter(_.state == state)
-        .toList.flatMap(_.graderResultMap.values)), task))
+    ProgrammingHintScaffolder.Exercise(defaultValue, gradingElements), task))
 
 }
 

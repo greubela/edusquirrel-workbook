@@ -1,15 +1,15 @@
 package it.evadid.workbook.interaction.variable
 
-import it.evadid.workbook.interaction.binding.SyncConnection
+import it.evadid.workbook.support.StandaloneAnswers
+import it.evadid.workbook.interaction.sync.SyncConnection
 import it.evadid.workbook.interaction.sync.UsageContext
-import it.evadid.workbook.support.executingWith
 import it.evadid.core.datastructures.language.WorkbookContent
 import it.evadid.core.datastructures.chat.MessengerModel
 import it.evadid.workbook.abstractions.InteractionFormat.TextInputWithLlmGradingAndScaffoldingFormat
 import it.evadid.core.datastructures.state.State
 import it.evadid.core.datastructures.language.AppLanguage.{English, German, HumanLanguage}
 import it.evadid.core.datastructures.language.LanguageMap
-import it.evadid.workbook.abstractions.scaffolding.{ScaffoldingResult, ScaffoldingStatus, WorkbookInteractionScaffolder}
+import it.evadid.workbook.abstractions.scaffolding.{ScaffoldingEvidence, ScaffoldingResult, ScaffoldingStatus, WorkbookInteractionScaffolder}
 import it.evadid.workbook.abstractions.{FeedbackEntity, WorkbookElement, WorkbookInteractionElement}
 import it.evadid.workbook.abstractions.grading.*
 import it.evadid.workbook.elements.interactionElements.basic.TextInteraction
@@ -46,29 +46,29 @@ class InteractionScaffoldingAndGradingControlSpec extends FunSuite {
   }
 
   private class CountingScaffolder(reply: String => Future[ScaffoldingResult[String, MessengerModel]])
-      extends WorkbookInteractionScaffolder[String, MessengerModel] {
+      extends WorkbookInteractionScaffolder[String, MessengerModel, MessengerModel] {
     val calls = State(0)
     override val scaffoldingEntity = FeedbackEntity.TestEntity
-    override def handleFeedbackGeneration(state: String, context: ExecutionContextInformation): Future[ScaffoldingResult[String, MessengerModel]] = {
+    override def handleFeedbackGeneration(state: String, evidence: ScaffoldingEvidence.Reader[String, MessengerModel], context: ExecutionContextInformation): Future[ScaffoldingResult[String, MessengerModel]] = {
       calls.update(_ + 1)
       reply(state)
     }
   }
 
   private def element(id: String, graders: List[WorkbookInteractionGrader[String, MessengerModel]],
-      scaffolder: Option[WorkbookInteractionScaffolder[String, MessengerModel]]) =
-    new WorkbookInteractionElement[TextInputWithLlmGradingAndScaffoldingFormat.type] {
+      scaffolder: Option[WorkbookInteractionScaffolder[String, MessengerModel, MessengerModel]]) =
+    StandaloneAnswers.of(new WorkbookInteractionElement[TextInputWithLlmGradingAndScaffoldingFormat.type] {
       override val elementId = id
       override val defaultValue = "answer"
       override lazy val childrenOfThisElement = List.empty[WorkbookElement]
       override val associatedFactory = TextInteraction.factory
       override val gradingElements = graders
       override val scaffoldingElement = scaffolder
-    }.interactionVariable
+    })
 
   private def variable(graders: List[WorkbookInteractionGrader[String, MessengerModel]]) = element("retry-tests", graders, None)
 
-  private def hintVariable(scaffolder: WorkbookInteractionScaffolder[String, MessengerModel]) =
+  private def hintVariable(scaffolder: WorkbookInteractionScaffolder[String, MessengerModel, MessengerModel]) =
     element("hint-cache-tests", Nil, Some(scaffolder))
 
   private def feedbackIn(result: GradingResult[String, MessengerModel], language: HumanLanguage): Option[String] =
@@ -350,36 +350,39 @@ class InteractionScaffoldingAndGradingControlSpec extends FunSuite {
   }
   private val nextUser = UsageContext("program", "workbook", "next user")
 
-  test("grading started before the binding is replaced cannot publish into the next user's history") {
+  /** A new session of the same interactions, as after a user change. */
+  private def rebind(value: StandaloneAnswers[?]): Unit =
+    value.controller.bind(nextUser, value.controller.info.interactions, SyncConnection.offline)
+
+  test("grading started before the session is replaced cannot publish into the next user's history") {
     val gate = Promise[Unit]()
     val grader = new CountingGrader(gate = Some(gate))
     val value = variable(List(grader))
     val pending = value.executingWith(context).control.getOrCalculateGrading(forceGrading = true)
-    value.bindTo(nextUser, SyncConnection.offline)
+    rebind(value)
     value.setStateFromUserInteraction("new user's answer", UpdateImportance.MAJOR)
     gate.success(())
     pending.map(_ => assert(!value.currentHistory.gradingEvents.exists(_.associatedState == "answer")))
   }
 
-  test("a replaced binding drops pending hints and starts with empty feedback caches") {
+  test("a replaced session drops pending hints and starts with empty feedback caches") {
     val gate = Promise[Unit]()
     val scaffolder = CountingScaffolder(state => gate.future.map(_ => ScaffoldingResult[String, MessengerModel](state,
       ScaffoldingStatus.ScaffoldingFeedback(LanguageMap.universalMap("private hint")), FeedbackEntity.TestEntity, None)))
     val value = hintVariable(scaffolder)
     val pending = value.executingWith(context).control.getOrCalculateScaffolding()
-    val retired = value.binding
-    value.bindTo(nextUser, SyncConnection.offline)
+    val retired = value.controller.bind(nextUser, value.controller.info.interactions, SyncConnection.offline)
     value.setStateFromUserInteraction("answer", UpdateImportance.MAJOR)
     gate.success(())
     pending.flatMap { _ =>
       assert(value.currentHistory.scaffoldingEvents.isEmpty)
-      assert(retired.currentHistory.scaffoldingEvents.forall(_.isInstanceOf[it.evadid.workbook.interaction.variable.events.ScaffoldingStartedEvent[?]]), "dropped, not recorded late")
+      assert(retired.historyOf(value.interaction).scaffoldingEvents.forall(_.isInstanceOf[it.evadid.workbook.interaction.variable.events.ScaffoldingStartedEvent[?]]), "dropped, not recorded late")
       assertEquals(value.control.getCurrentStateOfScaffolding("answer"), None)
       value.executingWith(context).control.getOrCalculateScaffolding()
     }.map(_ => assertEquals(scaffolder.calls.now(), 2))
   }
 
-  test("reconnecting a binding with new credentials keeps its pending feedback") {
+  test("reconnecting the session with new credentials keeps its pending feedback") {
     val gate = Promise[Unit]()
     val value = variable(List(new CountingGrader(gate = Some(gate))))
     val pending = value.executingWith(context).control.getOrCalculateGrading(forceGrading = true)

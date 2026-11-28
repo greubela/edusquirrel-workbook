@@ -19,7 +19,7 @@ object HtmlSlideshowEditor extends LineBasedRenderingFactory[Slideshow] {
    * When navigation succeeds, the method updates the bound interaction state through the model-level transition recorder instead of constructing event data directly.
    */
   override protected def createRendering(fullInfo: FullInfo, workbookElement: Slideshow): AtomarLineRendering = {
-    val stateVar = workbookElement.interactionVariable.createBoundStateWithUpdateImportance(MAJOR).toAirstreamVar
+    val stateVar = fullInfo.interactions.boundVar(workbookElement, MAJOR)
     val totalSlides = workbookElement.panelSize
 
     def safeIndex(state: SlideshowState): Int = {

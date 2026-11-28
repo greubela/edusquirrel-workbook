@@ -9,34 +9,33 @@ registries. See [formats and event semantics](../interaction-format.md).
 
 | Class | Responsibility |
 | --- | --- |
-| [HomepageSignalInfo](../../modules/client/src/main/scala/it/evadid/homepage/control/info/HomepageSignalInfo.scala) | Derives the workbook/user/destination/credential environment |
-| [RemoteInteractionCacheControl](../../modules/client/src/main/scala/it/evadid/homepage/control/change/RemoteInteractionCacheControl.scala) | Replaces bindings, restores fetched answers, batches phases and owns user-scoped reset progress |
-| [RemoteHistoryCache](../../modules/core/shared/src/main/scala/it/evadid/core/datastructures/storage/remote/RemoteHistoryCache.scala) | Immutable `CacheState`: local histories and per-location known event IDs, read freshness and cursors |
+| [HomepageState](../../modules/client/src/main/scala/it/evadid/homepage/control/change/HomepageState.scala) | Orders user, credential and workbook changes across the page and answer controls |
+| [InteractionController](../../modules/core/shared/src/main/scala/it/evadid/workbook/interaction/state/InteractionController.scala) | Transitions of the answers (`InteractionInfo`), per-entry store and read, session-scoped results |
+| [InteractionControl](../../modules/client/src/main/scala/it/evadid/homepage/control/change/InteractionControl.scala) | The controller over a `Var`: deferred stores, batched phases, user-scoped reset progress |
+| [RemoteHistoryCache](../../modules/core/shared/src/main/scala/it/evadid/core/datastructures/storage/remote/RemoteHistoryCache.scala) | Store and read logic over an immutable `CacheState`: local histories and per-location known event IDs, read freshness and cursors |
 | [FormattedSyncDestination](../../modules/core/shared/src/main/scala/it/evadid/workbook/interaction/sync/FormattedSyncDestination.scala) | Converts typed histories to/from envelopes at a destination boundary |
 | [BufferedSyncDestinationHandler](../../modules/core/shared/src/main/scala/it/evadid/workbook/interaction/sync/destination/BufferedSyncDestinationHandler.scala) | Merges queued deltas per context, serializes batches and gives each caller the confirmations of its own events |
 | [DatabaseSyncViaBackendServerHandler](../../modules/client/src/main/scala/it/evadid/homepage/workbook/syncDestination/DatabaseSyncViaBackendServerHandler.scala) | Sends database commands using captured credentials and connection configuration |
 | [BackendCommandHandler](../../modules/server/src/main/scala/it/evadid/server/BackendCommandHandler.scala) | Decodes typed requests and authorizes every context |
 | [Server history handlers](../../modules/server/src/main/scala/it/evadid/server/commandHandler/sql/sync/) | `HistorySql.forRequest` dispatches to the selected layout; `HistorySql` owns transactions; [`SqlStatements`](../../modules/server/src/main/scala/it/evadid/server/database/SqlStatements.scala) binds typed parameters and closes statements |
 
-Within the client control, `WorkbookBinding` captures an environment and
-`TypedBinding[F]` owns a `Var[RemoteHistoryCache.CacheState[...]]` for each
-interaction. `StateHelper.fromAirstreamVarToState` adapts that same store for
-shared core code. A separate `UserBinding` retains pending operations and reset
-state across workbook or credential changes.
+Each interaction's entry in `InteractionInfo` holds its `CacheState` (history and
+destination knowledge); see [answer state](../state-and-serialization.md#answer-state-and-sessions).
+Reset progress and pending operations are kept per user across workbooks and credentials.
 
 ## Binding and event flow
 
-1. An interaction update registers its typed history with the current binding.
+1. A change of a history is observed and its store requested after the current task.
 2. The cache computes missing events independently for each destination.
 3. A phase registers all requests before flushing shared handlers. Buffered futures
    complete with the actual read/write result; awaiting queued work requires a flush.
-4. Only the selected binding's signal can restore histories or publish confirmations.
-   Replacing it disconnects old observations and flushes its captured handlers.
+4. Results apply only to the session they started in, and only for destinations its
+   connection still uses.
 
-Bindings are replaced rather than changing active/closing flags. This isolates
-credentials and responses while allowing old and new requests to overlap. Retired
-requests may finish or fail; neither outcome can change a replacement binding.
-UI navigation starts sync after Airstream applies the environment transaction.
+A context change (user, workbook, full reset) sends pending stores, then replaces the
+session; a credential or destination change reconnects the same session. Both start a
+full read. This isolates credentials and responses while allowing old and new requests to
+overlap: a retired session's requests may finish or fail, but cannot change its successor.
 
 Backend databases store, read and delete histories only for a verified account. These
 commands are `requiresLogin` factories: the browser's remote client, which attaches the
@@ -169,12 +168,12 @@ Partial failure keeps sync paused until retry, including across navigation and
 credential changes. A different user has separate reset state; late completions
 cannot change it. Normal user switches start the replacement immediately, while
 a running reset finishes first because it clears shared local stores. Successful
-reset reloads the page. User changes and full resets invalidate pending feedback
-and computation caches so stale completions cannot publish into a new session.
+reset reloads the page. User changes and full resets start a new session, whose feedback
+caches are new, so stale completions cannot publish into it.
 
 ## Verification
 
-`RemoteInteractionCacheControlSpec` covers production buffers and HTTP adaptation
+`HomepageStateSpec` covers production buffers and HTTP adaptation
 with controlled responses: workbook/user/credential/destination switches,
 A → B → A, delayed successes/failures, confirmation isolation and reset ownership.
 `RemoteHistoryCacheSpec` and `BufferedSyncDestinationHandlerSpec` cover cache and
@@ -183,8 +182,8 @@ format rejection, exact ISO timestamp storage, signed/expanded years, nanosecond
 range boundaries, corruption rejection, rollback and authorization.
 
 ```sh
-sbt 'client/testOnly *RemoteInteractionCacheControlSpec'
-sbt 'coreJVM/testOnly *RemoteHistoryCacheSpec *BufferedSyncDestinationHandlerSpec'
+sbt 'client/testOnly *HomepageStateSpec'
+sbt 'coreJVM/testOnly *InteractionControllerSpec *RemoteHistoryCacheSpec *BufferedSyncDestinationHandlerSpec'
 # Only against the disposable localhost edusquirrel_account_test database:
 sbt 'server / MysqlIntegration / test'
 ```

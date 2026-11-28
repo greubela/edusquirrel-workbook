@@ -199,7 +199,7 @@ class CompressionActivitiesEditorSpec extends UiDomSuite {
       val (_, element) = activity(PreviousAnswer("earlier"))
       mounted(element) { root =>
         assert(one(root, "blockquote").textContent.contains(text("comparisonEmpty")))
-        earlier.interactionVariable.setStateFromUserInteraction(WrittenAnswer("Smaller files load faster"),
+        pageInfo.interactions.setStateFromUserInteraction(earlier, WrittenAnswer("Smaller files load faster"),
           it.evadid.workbook.interaction.sync.UpdateImportance.MAJOR)
         assertEquals(one(root, "blockquote").textContent, "Smaller files load faster")
       }

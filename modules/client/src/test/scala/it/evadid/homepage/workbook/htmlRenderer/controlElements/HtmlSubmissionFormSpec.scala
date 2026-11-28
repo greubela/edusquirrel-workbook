@@ -30,7 +30,7 @@ class HtmlSubmissionFormSpec extends UiDomSuite {
       _ => Future.successful(SubmitSessionResponse(1, confirmationSent = true))) {
     val currentUser: Var[Option[AllUserInfo]] = Var(user)
     val sent: Var[Seq[SubmitSessionEvent]] = Var(Seq.empty)
-    val form: HtmlSubmissionForm = HtmlSubmissionForm(fullInfo, submitter => fullInfo.homepageInfoNow().toSubmissionBy(submitter),
+    val form: HtmlSubmissionForm = HtmlSubmissionForm(fullInfo, submitter => fullInfo.homepageInfoNow().toSubmissionBy(submitter, fullInfo.interactions.info),
       currentUser.signal, event => { sent.update(_ :+ event); reply(event) }, BasicLogger())
   }
 
@@ -67,7 +67,7 @@ class HtmlSubmissionFormSpec extends UiDomSuite {
     val answered = TextInteraction("submitted-answer")
     val untouched = TextInteraction("submitted-untouched")
     inOpenWorkbookUntil(answered, untouched) {
-      answered.interactionVariable.setStateFromUserInteraction("my solution", UpdateImportance.MAJOR)
+      fullInfo.interactions.setStateFromUserInteraction(answered, "my solution", UpdateImportance.MAJOR)
       val boundBefore = fullInfo.homepageInfoNow().userInfo
       val fixture = Fixture(Some(online))
       mountedAsync(fixture.form.getDomElement()) { root =>
@@ -81,7 +81,7 @@ class HtmlSubmissionFormSpec extends UiDomSuite {
           assert(session.userInfo.id != online.user.id, "the submitter is a new user, not the signed-in account")
           assertEquals(session.userConfig, Some(UserConfig.defaults(isLocalAccount = true)))
           assert(session.userConfig.exists(config => !config.isOnlineAccount && config.syncDestinations.forall(!_.syncDestination.isRemote)))
-          val expected = fullInfo.homepageInfoNow().toSubmissionBy(session.userInfo).get.knownUsageData
+          val expected = fullInfo.homepageInfoNow().toSubmissionBy(session.userInfo, fullInfo.interactions.info).get.knownUsageData
           assertEquals(session.knownUsageData, expected, "every interaction's current history is submitted")
           assertEquals(session.knownUsageData.size, 2)
           val text = session.knownUsageData.values.map(_.toTyped.historyStates.lastStateOption.map(_.value.toString)).toSet

@@ -26,7 +26,7 @@ case class EvacuationConstructFloorInteraction(elementId: String,
   override lazy val childrenOfThisElement = Nil
 
   override val associatedFactory = EvacuationConstructFloorInteraction.factory
-  def isPassed: Boolean = requirements.isSatisfiedBy(interactionVariable.currentValue)
+  def isPassed(answer: InteractionStateType): Boolean = requirements.isSatisfiedBy(answer)
 
 }
 object EvacuationConstructFloorInteraction  {

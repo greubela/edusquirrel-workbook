@@ -13,7 +13,7 @@ import it.evadid.workbook.interaction.sync.UpdateImportance
 
 case object SquareMiddleHashRenderer extends LineBasedRenderingFactory[SquareMiddleHashInteraction] {
   override protected def createRendering(fullInfo: FullInfo, e: SquareMiddleHashInteraction): AtomarLineRendering = {
-    val state = e.interactionVariable.createBoundStateWithUpdateImportance(UpdateImportance.MAJOR).toAirstreamVar
+    val state = fullInfo.interactions.boundVar(e, UpdateImportance.MAJOR)
     val disabledSignal = e.isDisabledState.toAirstreamVar.signal
     def textFor(key: String): Signal[String] = laminarHelper(fullInfo).plaintextStringSignal(s"blockchainworkbook/$key")
     def numberField(first: Boolean): Element = label(

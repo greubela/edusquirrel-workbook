@@ -144,12 +144,12 @@ class QrCodeSpec extends FunSuite {
     for serializer <- List(WorkbookElementFactory.serializerRefBasedJson) do {
       val restored = serializer.deserialize(serializer.serialize(element)).asInstanceOf[CreateQrCodeInteraction]
       assertEquals(restored, element)
-      assert(restored.isPassed)
+      assert(restored.isPassed(restored.defaultValue))
       assertEquals(restored.defaultValue.modules, initial.modules)
     }
     assert(element.toStringConstructorLike.contains("requirements"))
     assert(element.toStringConstructorLike.contains("initialCode"))
     assertEquals(element.interactionFormat.stateSerializer.deserialize(element.interactionFormat.stateSerializer.serialize(initial)), initial)
-    assert(!CreateQrCodeInteraction("empty").isPassed)
+    assert(!CreateQrCodeInteraction("empty").isPassed(CreateQrCodeInteraction("empty").defaultValue))
   }
 }

@@ -36,14 +36,6 @@ case class Workbook(
   override val associatedFactory: WorkbookElementFactory[? <: WorkbookElement] = Workbook.factory
 
 
-  /** Restores saved histories of this workbook into its interactions; the user is not checked. Histories of
-    * other workbooks are ignored, even where their interactions reuse this workbook's element ids.
-    */
-  def restoreHistories(logger: Logger, data: Map[SyncContext, InteractionHistoryJson]): Unit = {
-    val own = data.collect { case (key, history) if key.scenarioId == workbookId => key.keyForSerialisation -> history }
-    allInteractionsInThisInstance.foreach(interaction => own.get(interaction.interactionVariable.keyForSerialization)
-      .foreach(history => interaction.interactionVariable.restoreHistory(logger, history)))
-  }
 }
 
 

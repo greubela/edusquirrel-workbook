@@ -40,7 +40,7 @@ object SimpleSubmission {
       case (context, history) if context.scenarioId == workbook.workbookId => context.keyForSerialisation -> history
     }
     val submitted = workbook.allInteractionsInThisInstance.distinctBy(_.elementId).flatMap { interaction =>
-      histories.get(interaction.interactionVariable.keyForSerialization).flatMap(stored =>
+      histories.get(interaction.keyForSerialization).flatMap(stored =>
         Try(latestAnswer(interaction, stored)).fold(error => {
           logger.logExceptionWarn(s"Left the unreadable history of ${interaction.elementId} out of the submission summary", error)
           None
