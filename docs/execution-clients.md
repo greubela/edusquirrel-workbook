@@ -92,25 +92,11 @@ explicit message instead of falling back: nameless attachments (name `data:` URL
 content explicitly), names with control characters and invalid declared media
 types are rejected. Without a declared type, the type follows from the file name.
 
-## Call an existing worker job
+## Call a worker job
 
-Inside a client component that is supplied a `FullInfo` context:
-
-```scala
-import it.evadid.distribution.commandTypes.WorkerCommands
-import it.evadid.homepage.control.model.FullInfo
-import scala.concurrent.Future
-import scala.concurrent.ExecutionContext.Implicits.global
-
-def workerHealth(fullInfo: FullInfo): Future[WorkerCommands.HealthResult] =
-  WorkerCommands.health
-    .sendCommandTo(fullInfo.defaults.workerExecuter, WorkerCommands.HealthRequest())
-    .map(_.result)
-```
-
-See the [worker guide](worker-execution-backend.md) for supported jobs, Python
-runtime semantics and termination. DOM-dependent rendering stays in the client;
-choosing worker execution does not move an editor or grader there automatically.
+Worker jobs, their Python runtime semantics and examples are described in the
+[worker guide](worker-execution-backend.md). Choosing worker execution does not move
+DOM-dependent rendering, an editor or a grader there.
 
 ## Build and verify
 
@@ -122,7 +108,4 @@ sbt 'worker/testOnly *BackendWorkerTest'
 npm run test:workbooks -- worker-execution
 ```
 
-Serve both generated bundles through the repository's normal preview/deployment
-layout. The client reuses a Scala.js-startup-preheated worker or starts the generated
-worker bundle on first use. No silent fallback to main-thread execution occurs
-when a generic worker crashes or times out.
+Serve both generated bundles through the repository's normal preview/deployment layout.

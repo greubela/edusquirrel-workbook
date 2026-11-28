@@ -9,11 +9,11 @@ and scheduling state belong to one `Var[SnapSessionResources]` per session.
 
 ## State and conversion
 
-- Snap uses a `Var[Option[ProgrammingStateSnapScalaModel]]` view of Eva's central answer Var (`None` while the answer is not shown as Snap); only meaningful model changes are published.
-- Model comparison ignores generated media and XML spelling; selectors, inputs, authored assets and script layout remain meaningful.
-- [ProgrammingStateSnapScalaModel](snap-scala-model.md) supports lossless typed editing, including native Snap blocks.
-- Python/Java conversion supports a subset of Snap. Preserve unsupported blocks in the saved project; never replace it with a lossy conversion.
-- The typed-state codec excludes thumbnails and pen trails from history; authored costumes and opaque project data remain.
+Snap edits a `Var[Option[ProgrammingStateSnapScalaModel]]` view of Eva's central answer
+(`None` while the answer is not shown as Snap) and publishes only meaningful changes: model
+comparison ignores generated media and XML spelling, while selectors, inputs, authored assets
+and script layout count. The saved [typed model](snap-scala-model.md) is lossless; never
+replace it with a lossy Python/Java conversion.
 
 ## Loading and ownership
 

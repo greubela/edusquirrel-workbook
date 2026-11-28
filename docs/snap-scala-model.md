@@ -60,7 +60,6 @@ Formatting identity is **not a required contract**. The current reader also reta
 
 - Document/node codecs retain the complete XML tree.
 - The `ProgrammingStateSnapScalaModel` codec excludes generated thumbnails and pen trails from JSON/MessagePack history. Authored costumes, sounds and opaque data remain.
-- Snap edits publish typed models through a view of the central Var. Model comparison ignores generated media and XML spelling; selectors, inputs and script layout remain meaningful.
 - XML → model conversion remains lossless. Python/Java conversion uses the checked executable subset and may reject valid native Snap programs.
 - Opaque legacy floating data is retained. Development schema changes require resetting saved answers.
 

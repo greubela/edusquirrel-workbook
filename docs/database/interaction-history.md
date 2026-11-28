@@ -42,8 +42,13 @@ Backend databases store, read and delete histories only for a verified account. 
 commands are `requiresLogin` factories: the browser's remote client, which attaches the
 signed token, fails them locally without a token or with an expired one.
 
-`EventSyncStrategy` selects transmissions, not retention. Defaults send
-`SYNC_MAJOR` to both backend layouts and `SYNC_LAST` to local IndexedDB.
+`EventSyncStrategy` selects transmissions, not retention, and never prunes persisted
+history. `SYNC_EVERYTHING` sends all missing events, TEMPORARY ones included; `SYNC_MAJOR`
+selects major answers plus the latest answer that is not TEMPORARY; `SYNC_LAST` selects only
+the latest answer. Both include all feedback of the selected answers, pending lifecycle events
+included. Other importance strategies filter individual events; latest/count strategies retain
+timestamp ties, and `Since` includes its boundary. Defaults send `SYNC_MAJOR` to both backend
+layouts and `SYNC_LAST` to local IndexedDB.
 Stores union events and apply `cleanedHistory()`, so superseded DEFAULT and
 TEMPORARY answers do not accumulate. IndexedDB merges within one read-write
 transaction. Malformed local records are excluded individually; malformed backend

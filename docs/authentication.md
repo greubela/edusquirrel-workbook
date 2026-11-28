@@ -43,12 +43,11 @@ development; reject unsupported data at its storage boundary.
 Unknown email addresses are reported as an unknown account without attempting SMTP.
 Delivery/transport failures display a server-error message and allow retry; they do
 not claim that the email address is wrong. Missing/invalid stored login codes are
-discarded, and requesting a code creates a new one. Only native JDBC timestamp
-values are accepted at this boundary; no legacy-format reader is provided.
+discarded, and requesting a code creates a new one. Token rows accept only JDBC timestamp text.
 
 Account identity and configurable preferences are separate: invalid database
 preferences are discarded and replaced by `UserConfig.defaults(isLocalAccount = false)`. They must
-not prevent login-code delivery or account lookup. No legacy schema is decoded.
+not prevent login-code delivery or account lookup.
 Creation and account updates use distinct command names, and updates require the
 authenticated user's ID. All account operations run through
 `UserAccountDatabase.execute`, which owns one connection and closes it on success
@@ -65,13 +64,8 @@ backend timeout from browser cancellation or a network failure.
 
 A command-pool error is a transport/handler summary; inspect its underlying server
 exception to diagnose an incident. Check submitted account identity, backend
-configuration and token expiry before changing client behavior. Token-row parsing
-must accept the database timestamp format as well as ISO timestamps. Server and
-client fixes require deployment of their respective artifacts; pushing source
-alone does not update a running installation. After copying the rebuilt
-`artifacts/newest/server.jar` to the server's configured bind-mount path, recreate
-the backend container (`docker compose up -d --force-recreate edusquirrel`).
-The Pages workflow deploys the browser separately.
+configuration and token expiry before changing client behavior. Fixes reach a running
+installation only through [deployment](deployment.md); pushing source alone changes nothing.
 
 ## Verification
 
@@ -89,36 +83,10 @@ the anonymous logging identity and proxy configuration.
 
 ### MySQL account queries
 
-The `mysql-accounts` job in `.github/workflows/tests.yml` runs
-`sbt 'server / MysqlIntegration / test'` against a temporary MySQL 8.4 service.
-It needs no repository secrets: test credentials are derived from the workflow
-run, and GitHub removes the service afterward. It runs in parallel with the
-ordinary checks and gates the reusable test workflow used before Pages deployment.
-Normal `server/test` runs do not require Docker or a database.
-
-The suite exercises the actual registration, update and login handlers plus
-`UserAccountRows` token queries. It checks duplicate accounts, email normalization,
-Unicode values, parameter binding, account isolation, token expiry/renewal,
-signed-token ownership, and malformed preferences. It never calls SMTP. The tests use the authoritative SQL creation script `deployment/database/setup.sql`,
-which is also packaged with the server and used by its schema inspector.
-
-To run locally with Docker:
-
-```sh
-export SQL_HOST=127.0.0.1 SQL_PORT=13306 SQL_DATABASE=edusquirrel_account_test
-export SQL_USER=account_test
-export SQL_PW="$(openssl rand -hex 16)"
-export SERVER_SECRET="$(openssl rand -hex 32)"
-docker run --detach --rm --name edusquirrel-account-tests \
-  -p 127.0.0.1:13306:3306 \
-  -e MYSQL_DATABASE="$SQL_DATABASE" -e MYSQL_USER="$SQL_USER" \
-  -e MYSQL_PASSWORD="$SQL_PW" -e MYSQL_RANDOM_ROOT_PASSWORD=yes \
-  --health-cmd='mysqladmin ping -h 127.0.0.1 --silent' \
-  --health-interval=5s --health-timeout=5s --health-retries=30 mysql:8.4
-```
-
-Once `docker inspect --format '{{.State.Health.Status}}' edusquirrel-account-tests`
-reports `healthy`, run the sbt command above. Finish with
-`docker stop edusquirrel-account-tests`. The suite clears its tables before each
-test and refuses to run unless the database name is `edusquirrel_account_test`
-and the host is localhost; never point it at a database containing valuable data.
+`sbt 'server / MysqlIntegration / test'` exercises the real registration, update and login
+handlers and `UserAccountRows` token queries against MySQL 8.4: duplicate accounts, email
+normalization, Unicode, parameter binding, account isolation, token expiry/renewal,
+signed-token ownership and malformed preferences. It never calls SMTP and uses the
+authoritative `deployment/database/setup.sql`. CI runs it against a temporary service; to run
+it locally, follow the [test guide](core-package-unit-tests.md#run-tests). Normal `server/test`
+runs need no database.
