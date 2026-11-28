@@ -39,16 +39,21 @@ object LabeledWorkbookElement {
   }
 
 
+  @upickle.implicits.key("WorkbookLabel")
   case class WorkbookLabel(contentId: LanguageMapContentId, labelType: LabelType) derives ReadWriter
 
   sealed trait LabelType(val associatedCssString: String) derives ReadWriter
 
+  @upickle.implicits.key("SafetyLabel")
   case object SafetyLabel extends LabelType("instruction-safety");
 
+  @upickle.implicits.key("GoalLabel")
   case object GoalLabel extends LabelType("instruction-goal");
 
+  @upickle.implicits.key("TaskLabel")
   case object TaskLabel extends LabelType("instruction-task");
 
+  @upickle.implicits.key("HintLabel")
   case object HintLabel extends LabelType("instruction-hint")
 
 }

@@ -5,9 +5,13 @@ import java.nio.charset.StandardCharsets
 
 /** The format-information bits differ from the ordinal ordering of correction strength. */
 enum QrErrorCorrection(val formatBits: Int) derives ReadWriter {
+  @upickle.implicits.key("L")
   case L extends QrErrorCorrection(1)
+  @upickle.implicits.key("M")
   case M extends QrErrorCorrection(0)
+  @upickle.implicits.key("Q")
   case Q extends QrErrorCorrection(3)
+  @upickle.implicits.key("H")
   case H extends QrErrorCorrection(2)
 }
 

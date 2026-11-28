@@ -13,8 +13,10 @@ import scala.util.chaining.*
 
 sealed trait AnswerTableCell derives ReadWriter
 
+@upickle.implicits.key("FixedTableCell")
 case class FixedTableCell(content: LanguageMapContentId) extends AnswerTableCell derives ReadWriter
 
+@upickle.implicits.key("EditableTableCell")
 case class EditableTableCell(expected: Option[Seq[String]] = None, choices: Seq[String] = Nil)
   extends AnswerTableCell derives ReadWriter {
   require(choices.forall(s => s.nonEmpty && s == s.trim) && choices.distinct == choices, "Choices must be distinct nonempty values")

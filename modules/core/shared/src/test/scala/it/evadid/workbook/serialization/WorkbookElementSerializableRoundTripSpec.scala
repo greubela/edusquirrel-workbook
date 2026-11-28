@@ -241,14 +241,16 @@ class WorkbookElementSerializableRoundTripSpec extends FunSuite {
     }
   }
 
-  test("every registered factory has a round-trip fixture") {
-    assertEquals(elements.map(_.getClass.getSimpleName).toSet, WorkbookElementFactory.registeredElementTypes)
+  test("every registered type has its own factory and a round-trip fixture") {
+    // A factory registered under two names would lose one of them here.
+    assertEquals(elements.map(WorkbookElementFactory.persistedTypeOf).toSet, WorkbookElementFactory.registeredElementTypes)
+    assert(elements.forall(element => element.toSerialized.elementType == WorkbookElementFactory.persistedTypeOf(element)))
   }
 
   test("parsing fails when references form a cycle") {
     val cyclicElements = List("first", "second").map { id =>
-      WorkbookElementSerializable(id, classOf[CodeTaskToggleInteraction].getSimpleName, Map())
-        .withElementAddedAs("reorder", it.evadid.workbook.serialization.WorkbookElementReference(if (id == "first") "second" else "first", Some(classOf[ReorderInteraction.ReorderCodeInteraction].getSimpleName)))
+      WorkbookElementSerializable(id, "CodeTaskToggleInteraction", Map())
+        .withElementAddedAs("reorder", it.evadid.workbook.serialization.WorkbookElementReference(if (id == "first") "second" else "first", Some("ReorderCodeInteraction")))
     }
 
     val error = intercept[SerializedException](WorkbookElementFactory.parseAll(cyclicElements))

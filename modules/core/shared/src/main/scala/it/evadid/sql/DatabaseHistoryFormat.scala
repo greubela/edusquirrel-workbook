@@ -18,10 +18,12 @@ object DatabaseHistoryFormat {
     DatabaseColumn("event_id", VarChar(36)), DatabaseColumn("timestamp_nano", VarChar(40)),
     DatabaseColumn("serialized_data", Json))
 
+  @upickle.implicits.key("RelationalFormat")
   case object RelationalFormat extends DatabaseHistoryFormat {
     val tables: Seq[DatabaseTable] = Seq(DatabaseTable("sync_context_id", columns = id +: identity)) ++
       Seq("answer_event", "scaffolding_event", "grading_event").map(name => DatabaseTable(name, columns = eventColumns))
   }
+  @upickle.implicits.key("BlobFormat")
   case object BlobFormat extends DatabaseHistoryFormat {
     val tables: Seq[DatabaseTable] = Seq(DatabaseTable("blob_history", columns =
       (id +: identity) :+ DatabaseColumn("history_json", Json)))

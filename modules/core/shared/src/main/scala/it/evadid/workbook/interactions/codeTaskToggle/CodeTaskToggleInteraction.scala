@@ -47,7 +47,7 @@ object CodeTaskToggleInteraction {
     override def toSerializableElement(e: CodeTaskToggleInteraction) = {
       WorkbookElementSerializable(
         e.elementId,
-        classOf[CodeTaskToggleInteraction].getSimpleName,
+        WorkbookElementFactory.persistedTypeOf(e),
         Map())
         .withElementAddedAs("reorder", e.reorder.asRef)
         .withElementAddedAs[LanguageMapContentId]("codeEditorTitle", e.codeEditorTitle)

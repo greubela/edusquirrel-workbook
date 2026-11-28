@@ -3,11 +3,14 @@ package it.evadid.workbook.interactions.evacuation
 import upickle.default.*
 
 enum EvacuationNeighbourhood derives ReadWriter {
-  case Four, Eight
+  @upickle.implicits.key("Four") case Four
+  @upickle.implicits.key("Eight") case Eight
 }
 
 enum EvacuationOutcome derives ReadWriter {
-  case Evacuated, Blocked, StepLimit
+  @upickle.implicits.key("Evacuated") case Evacuated
+  @upickle.implicits.key("Blocked") case Blocked
+  @upickle.implicits.key("StepLimit") case StepLimit
 }
 
 case class EvacuationSettings(neighbourhood: EvacuationNeighbourhood = EvacuationNeighbourhood.Four,

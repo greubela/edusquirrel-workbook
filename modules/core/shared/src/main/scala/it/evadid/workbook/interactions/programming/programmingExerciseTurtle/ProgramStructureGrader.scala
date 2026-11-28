@@ -22,8 +22,12 @@ import upickle.default.ReadWriter
 
 /** Structural requirements are inspected in parsed programs, never by searching source text. */
 enum ProgramStructureRequirement derives ReadWriter {
-  case UsesLoop, NoLoops, NoFunctions
+  @upickle.implicits.key("UsesLoop") case UsesLoop
+  @upickle.implicits.key("NoLoops") case NoLoops
+  @upickle.implicits.key("NoFunctions") case NoFunctions
+  @upickle.implicits.key("OnlyCommands")
   case OnlyCommands(commands: Seq[String])
+  @upickle.implicits.key("DefinesFunction")
   case DefinesFunction(name: String, parameters: Seq[String] = Seq.empty)
 }
 

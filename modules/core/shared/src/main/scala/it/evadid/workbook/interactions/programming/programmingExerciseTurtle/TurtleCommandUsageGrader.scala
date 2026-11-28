@@ -22,7 +22,8 @@ import upickle.default.ReadWriter
 import java.time.Instant
 
 enum CommandUsageMeasure derives ReadWriter {
-  case OccurrencesInCode, CallsDuringExecution
+  @upickle.implicits.key("OccurrencesInCode") case OccurrencesInCode
+  @upickle.implicits.key("CallsDuringExecution") case CallsDuringExecution
 }
 
 /** One independently stored grading result for one command and one measure. */

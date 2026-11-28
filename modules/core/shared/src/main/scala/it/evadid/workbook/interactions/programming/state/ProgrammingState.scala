@@ -71,10 +71,15 @@ object ProgrammingState {
 
   // One current wire schema, derived from typed payloads. No historical tags or migration paths.
   private enum Payload derives ReadWriter {
+    @upickle.implicits.key("Raw")
     case Raw(value: ProgrammingStateRaw)
+    @upickle.implicits.key("SnapModel")
     case SnapModel(value: ProgrammingStateSnapScalaModel)
+    @upickle.implicits.key("JavaStructured")
     case JavaStructured(value: ProgrammingStateJavaStructured)
+    @upickle.implicits.key("PythonStructured")
     case PythonStructured(value: ProgrammingStatePythonStructured)
+    @upickle.implicits.key("Expression")
     case Expression(value: ProgrammingStateBeExpression)
   }
   given ReadWriter[ProgrammingState] =
@@ -97,6 +102,7 @@ object ProgrammingState {
 
 }
 
+@upickle.implicits.key("ProgrammingStateBeExpression")
 final case class ProgrammingStateBeExpression(expression: BeExpression) extends ProgrammingState derives ReadWriter {
   /** Definitions the program calls without defining them and without a configured dependency providing them. */
   lazy val unknownDependency: Option[it.evadid.vm.code.defining.BeUnknownDependency] =
@@ -141,6 +147,7 @@ final case class ProgrammingStateBeExpression(expression: BeExpression) extends 
 
 
 /** Transport and in-progress source. Prefer the structured language states for saved answers. */
+@upickle.implicits.key("ProgrammingStateRaw")
 final case class ProgrammingStateRaw(language: ProgrammingLanguage, code: String) extends ProgrammingState derives ReadWriter {
   def toSnapScalaModel: Either[SyntaxFailure, ProgrammingStateSnapScalaModel] = derivations.snapModel
 
@@ -166,6 +173,7 @@ final case class ProgrammingStateRaw(language: ProgrammingLanguage, code: String
 /** Full Snap project state. Converting representations preserves native project XML.
   * Executing or translating this state still uses the existing checked subset converters.
   */
+@upickle.implicits.key("ProgrammingStateSnapScalaModel")
 final case class ProgrammingStateSnapScalaModel(
     model: snap.SnapScalaModel.Document
 ) extends ProgrammingState {
@@ -182,6 +190,7 @@ object ProgrammingStateSnapScalaModel {
     SourceParsing.parse(xml, SourceLanguage.Snap).syntax
       .fold(failure => throw failure.unparsable(), ProgrammingStateSnapScalaModel(_))
 
+  @upickle.implicits.key("Saved")
   private case class Saved(model: snap.SnapScalaModel.Document) derives ReadWriter
   given ReadWriter[ProgrammingStateSnapScalaModel] = upickle.default.readwriter[Saved].bimap(
     state => Saved(state.model.withoutGeneratedImages),
@@ -189,6 +198,7 @@ object ProgrammingStateSnapScalaModel {
 }
 
 /** Class values are full source declarations, including bodies that the VM cannot yet parse. */
+@upickle.implicits.key("ProgrammingStateJavaStructured")
 final case class ProgrammingStateJavaStructured(definedClasses: Map[BeEntityName, String]) extends ProgrammingState derives ReadWriter {
   override def toString: String = definedClasses.values.mkString("\n\n")
 }
@@ -202,6 +212,7 @@ object ProgrammingStateJavaStructured {
 }
 
 /** Classes precede module-level variables, functions and startup code when printed. */
+@upickle.implicits.key("ProgrammingStatePythonStructured")
 final case class ProgrammingStatePythonStructured(definedClasses: Map[BeEntityName, String], mainScript: String) extends ProgrammingState derives ReadWriter {
   /** Execute this source on the supplied worker client, preserving stdout/stderr on the console.
     * Turtle operations print their calls; they do not create a drawing window.

@@ -38,7 +38,7 @@ explicit data instead.
 | --- | --- |
 | Numeric geometry and SVG builders | Reconstruct numeric evidence; mutable builders resume from current geometry, not the constructor seed |
 | Programming expressions and data types | Preserve the active representation and literal/type descriptors; reject unsupported tags instead of reconstructing executable serializer callbacks |
-| Workbook elements | Factories keep their definition formats; self-contained root codecs include the reference registry and prerequisites |
+| Workbook elements | `ReadWriter[WorkbookElement]` writes a flat `SerializedWorkbook` listing each element once; single-element text formats embed referenced elements |
 | Interaction history | `InteractionFormat` owns typed event/history codecs; transport uses `InteractionHistoryJson` |
 | Execution transport | `ExecutionClientResponse` carries a typed result or serialized failure, from which the client builds `ExecutionInfo[T]`; requests/results must decode on the selected backend |
 | Snap primitive defaults | Supported tagged primitives retain integer/double distinctions and special floating values; arbitrary executable objects are rejected |

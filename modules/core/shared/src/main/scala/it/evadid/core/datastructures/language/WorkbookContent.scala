@@ -42,17 +42,20 @@ object WorkbookContent {
     IdBasedContent(id)
   }
 
+  @upickle.implicits.key("LanguageMapBasedContent")
   case class LanguageMapBasedContent(languageMap: LanguageMap[HumanLanguage]) extends WorkbookContent derives ReadWriter {
     override def getInLanguage(resolver: LanguageMapIdResolver)(implicit ec: ExecutionContext): Future[String] =
       resolver.languageFuture().map(lang => languageMap.getInLanguage(lang))
   }
 
+  @upickle.implicits.key("HardcodedContent")
   case class HardcodedContent(str: String) extends WorkbookContent derives ReadWriter {
     override def getInLanguage(resolver: LanguageMapIdResolver)(implicit ec: ExecutionContext): Future[String] = Future {
       str
     }
   }
 
+  @upickle.implicits.key("IdBasedContent")
   case class IdBasedContent(id: LanguageMapContentId) extends WorkbookContent derives ReadWriter {
     override def getInLanguage(resolver: LanguageMapIdResolver)(implicit ec: ExecutionContext): Future[String] = {
       resolver.resolveToString(id)

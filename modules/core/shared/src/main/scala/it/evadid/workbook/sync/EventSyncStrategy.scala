@@ -14,22 +14,26 @@ sealed trait EventSyncStrategy derives ReadWriter {
 }
 
 object EventSyncStrategy {
+  @upickle.implicits.key("SYNC_EVERYTHING")
   case object SYNC_EVERYTHING extends EventSyncStrategy {
     override def selectEvents[F <: InteractionFormat](events: Set[InteractionEvent[F]], stateOf: InteractionEvent[F] => StateReference) = events
   }
 
+  @upickle.implicits.key("KeepImportance")
   case class KeepImportance(importance: Set[UpdateImportance]) extends EventSyncStrategy derives ReadWriter {
     override def selectEvents[F <: InteractionFormat](events: Set[InteractionEvent[F]], stateOf: InteractionEvent[F] => StateReference) =
       events.filter(event => importance(event.updateImportance))
   }
 
   /** Keep every event tied for the latest timestamp among the selected importance levels. */
+  @upickle.implicits.key("KeepLatest")
   case class KeepLatest(importance: Set[UpdateImportance]) extends EventSyncStrategy derives ReadWriter {
     override def selectEvents[F <: InteractionFormat](events: Set[InteractionEvent[F]], stateOf: InteractionEvent[F] => StateReference) = {
       InteractionEvents.latestTies(events.filter(event => importance(event.updateImportance)))
     }
   }
 
+  @upickle.implicits.key("KeepLatestCount")
   case class KeepLatestCount(count: Int) extends EventSyncStrategy derives ReadWriter {
     require(count > 0, "Event count must be positive")
     override def selectEvents[F <: InteractionFormat](events: Set[InteractionEvent[F]], stateOf: InteractionEvent[F] => StateReference) = {
@@ -39,6 +43,7 @@ object EventSyncStrategy {
   }
 
   /** Preserve the latest event of each lifecycle kind as well as all events at the selected importance. */
+  @upickle.implicits.key("KeepLatestAndImportance")
   case class KeepLatestAndImportance(importance: Set[UpdateImportance]) extends EventSyncStrategy derives ReadWriter {
     override def selectEvents[F <: InteractionFormat](events: Set[InteractionEvent[F]], stateOf: InteractionEvent[F] => StateReference) = {
       val latest = events.groupBy(_.getClass.getName).values.flatMap(group => KeepLatest(UpdateImportance.values.toSet).selectEvents(group, stateOf)).toSet
@@ -47,6 +52,7 @@ object EventSyncStrategy {
   }
 
   /** Inclusive by default so events sharing a synchronization boundary are not lost. */
+  @upickle.implicits.key("Since")
   case class Since(timestamp: Instant, includeBoundary: Boolean = true) extends EventSyncStrategy derives ReadWriter {
     override def selectEvents[F <: InteractionFormat](events: Set[InteractionEvent[F]], stateOf: InteractionEvent[F] => StateReference) =
       events.filter(event => event.timestamp.isAfter(timestamp) || (includeBoundary && event.timestamp == timestamp))
@@ -55,6 +61,7 @@ object EventSyncStrategy {
   /** Send major answers and the latest answer that is not TEMPORARY, with all their feedback lifecycle events.
     * A TEMPORARY answer is not sent until a later MAJOR answer or an explicit sync commits it.
     */
+  @upickle.implicits.key("SYNC_MAJOR")
   case object SYNC_MAJOR extends EventSyncStrategy {
     override def selectEvents[F <: InteractionFormat](events: Set[InteractionEvent[F]], stateOf: InteractionEvent[F] => StateReference): Set[InteractionEvent[F]] = {
       val settled = answers(events).filter(_.updateImportance != UpdateImportance.TEMPORARY)
@@ -64,6 +71,7 @@ object EventSyncStrategy {
   }
 
   /** Send the latest answer of any importance with all its feedback lifecycle events, e.g. for local storage. */
+  @upickle.implicits.key("SYNC_LAST")
   case object SYNC_LAST extends EventSyncStrategy {
     override def selectEvents[F <: InteractionFormat](events: Set[InteractionEvent[F]], stateOf: InteractionEvent[F] => StateReference): Set[InteractionEvent[F]] = {
       val states = latest(answers(events)).map(stateOf)

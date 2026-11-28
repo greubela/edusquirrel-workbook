@@ -14,10 +14,13 @@ import upickle.default.*
 
 sealed trait SquareMiddleHashTask derives ReadWriter
 
+@upickle.implicits.key("ExploreSquareMiddleHash")
 case class ExploreSquareMiddleHash() extends SquareMiddleHashTask derives ReadWriter
 
+@upickle.implicits.key("FindHashCollision")
 case class FindHashCollision() extends SquareMiddleHashTask derives ReadWriter
 
+@upickle.implicits.key("FindHashPreimage")
 case class FindHashPreimage(target: String) extends SquareMiddleHashTask derives ReadWriter {
   require(target.matches("[0-9]{2}"), "A target hash must contain exactly two decimal digits")
 }

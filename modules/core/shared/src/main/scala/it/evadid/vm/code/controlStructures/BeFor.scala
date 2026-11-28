@@ -59,6 +59,8 @@ case class BeFor(
 
 object BeFor {
   enum Direction derives ReadWriter {
-    case Either, Up, Down
+    @upickle.implicits.key("Either") case Either
+    @upickle.implicits.key("Up") case Up
+    @upickle.implicits.key("Down") case Down
   }
 }

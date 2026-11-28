@@ -13,7 +13,8 @@ import upickle.default.*
 
 /** Data a program changes through the provided libraries; the editor shows it after running `main`. */
 enum ExerciseDataView derives ReadWriter {
-  case NumberList, Sudoku
+  @upickle.implicits.key("NumberList") case NumberList
+  @upickle.implicits.key("Sudoku") case Sudoku
 }
 
 /**

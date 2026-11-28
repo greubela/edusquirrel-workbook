@@ -4,7 +4,9 @@ import it.evadid.workbook.interactions.sorting.SortingAttempt
 import upickle.default.*
 
 enum AssignmentResult derives upickle.default.ReadWriter {
+  @upickle.implicits.key("Correct")
   case Correct
+  @upickle.implicits.key("Wrong")
   case Wrong
 }
 

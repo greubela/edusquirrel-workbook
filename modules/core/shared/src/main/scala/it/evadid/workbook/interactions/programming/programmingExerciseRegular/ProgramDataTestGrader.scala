@@ -21,7 +21,10 @@ import scala.util.control.NonFatal
 
 /** Operations of the number list, for expectations about which ones a method uses. */
 enum ListOperation derives ReadWriter {
-  case Get, Set, Swap, Length
+  @upickle.implicits.key("Get") case Get
+  @upickle.implicits.key("Set") case Set
+  @upickle.implicits.key("Swap") case Swap
+  @upickle.implicits.key("Length") case Length
 }
 
 object ListOperation {
@@ -35,14 +38,22 @@ object ListOperation {
 
 /** One checked property of a finished call: the data afterwards, the return value or the recorded commands. */
 enum DataExpectation derives ReadWriter {
+  @upickle.implicits.key("ListEquals")
   case ListEquals(values: Seq[Int])
+  @upickle.implicits.key("SudokuSolved")
   case SudokuSolved
+  @upickle.implicits.key("SudokuUnchanged")
   case SudokuUnchanged
+  @upickle.implicits.key("Returns")
   case Returns(value: Boolean)
+  @upickle.implicits.key("UsesListOperation")
   case UsesListOperation(operation: ListOperation)
+  @upickle.implicits.key("AvoidsListOperation")
   case AvoidsListOperation(operation: ListOperation)
   /** Every swap exchanges neighbouring positions, as in bubble sort. */
+  @upickle.implicits.key("OnlyAdjacentSwaps")
   case OnlyAdjacentSwaps
+  @upickle.implicits.key("SwapCount")
   case SwapCount(count: Int)
 }
 

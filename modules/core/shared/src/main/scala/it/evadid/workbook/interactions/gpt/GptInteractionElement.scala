@@ -28,7 +28,7 @@ object GptInteractionElement {
     override def toSerializableElement(e: GptInteractionElement) = {
       WorkbookElementSerializable(
         e.elementId,
-        classOf[GptInteractionElement].getSimpleName,
+        WorkbookElementFactory.persistedTypeOf(e),
         Map()
       ).withElementAddedAs[WorkbookElementReference]("underlyingTextInteraction", e.underlyingTextInteraction.asRef)
         .withElementAddedAs("exerciseText", e.exerciseText)

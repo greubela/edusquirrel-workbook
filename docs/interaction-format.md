@@ -32,6 +32,8 @@ packages can be renamed without touching saved data:
 | Event | `@key` on each event case class (`$type`) |
 | Grader | its companion's `codec` (`serializedType`), for workbook definitions |
 | Feedback reference | `GraderReference(<key>)` and `StateReference(<fingerprint>)` |
+| Workbook element type, `ElementRef(<type>/<id>)` | the literal key in `WorkbookElementFactory`'s registry |
+| Other sealed cases (`$type`) and enum values | `@upickle.implicits.key` on each case; hand-written codecs (`BeExpression`, `AppLanguage`, `ReorderType`) name theirs explicitly |
 
 Unknown names are rejected, without dynamic class loading or element-ID lookup;
 [PersistedNamesSpec](../modules/core/shared/src/test/scala/it/evadid/workbook/serialization/PersistedNamesSpec.scala)

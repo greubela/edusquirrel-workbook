@@ -43,7 +43,8 @@ object TurtleStitchProjectState {
 
 
   enum StorageFormat derives upickle.default.ReadWriter {
-    case BYTES_AS_RAW_STRING, BYTES_AS_BASE64_STRING
+    @upickle.implicits.key("BYTES_AS_RAW_STRING") case BYTES_AS_RAW_STRING
+    @upickle.implicits.key("BYTES_AS_BASE64_STRING") case BYTES_AS_BASE64_STRING
   }
 
   private val defaultStorageFormat: StorageFormat = StorageFormat.BYTES_AS_RAW_STRING

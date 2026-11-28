@@ -139,6 +139,7 @@ object TurtleGraphic {
   /** A turtle graphic represented directly by an SVG path D string.
    * The SVG path is converted to turtle commands when needed.
    */
+  @upickle.implicits.key("TurtleGraphicSvgString")
   case class TurtleGraphicSvgString(svgPathDString: String) extends TurtleGraphic derives upickle.default.ReadWriter {
     lazy val toTurtleProgram: Seq[TurtleCommand[Double]] = convert(svgPathDString)
 
@@ -147,6 +148,7 @@ object TurtleGraphic {
 
   /** A turtle graphic represented directly as a list of turtle commands.
    */
+  @upickle.implicits.key("TurtleGraphicProgram")
   case class TurtleGraphicProgram(program: Seq[TurtleCommand[Double]]) extends TurtleGraphic derives upickle.default.ReadWriter {
     lazy val toTurtleProgram: Seq[TurtleCommand[Double]] = program
 
@@ -161,6 +163,7 @@ object TurtleGraphic {
    * Lines are drawn with the pen down; jumps between lines (pen up/down) are automatically calculated
    * following the same rules as SVG to turtle conversion (no rotation > 180°).
    */
+  @upickle.implicits.key("TurtleLineBasedProgram")
   case class TurtleLineBasedProgram(lines: Seq[Line[Double]]) extends TurtleGraphic derives upickle.default.ReadWriter {
     lazy val toTurtleProgram: Seq[TurtleCommand[Double]] =
       TurtleLineBasedProgram.toTurtleProgram(lines)

@@ -8,6 +8,7 @@ import scala.annotation.tailrec
 
 /** Persisted experiment settings; computed results and browser resources are not learner state. */
 sealed trait CompressionExperiment derives ReadWriter
+@upickle.implicits.key("VideoBudget")
 case class VideoBudget(bitrateMbps: Double = 5, durationSeconds: Int = 300, copies: Int = 1, capacityMB: Int = 2000)
     extends CompressionExperiment derives ReadWriter {
   require(bitrateMbps.isFinite && bitrateMbps > 0 && bitrateMbps <= 10000)
@@ -16,6 +17,7 @@ case class VideoBudget(bitrateMbps: Double = 5, durationSeconds: Int = 300, copi
   def megabytes: Double = bitrateMbps * durationSeconds * copies / 8
   def fits: Boolean = megabytes <= capacityMB
 }
+@upickle.implicits.key("RunLengthText")
 case class RunLengthText(text: String = "AAABBBCCDDDDDA", achieved: Seq[Int] = Nil) extends CompressionExperiment derives ReadWriter {
   require(text.length <= 2000 && achieved.distinct == achieved && achieved.forall(i => i >= 0 && i < 3))
   def challenges: Seq[Boolean] = {
@@ -24,9 +26,11 @@ case class RunLengthText(text: String = "AAABBBCCDDDDDA", achieved: Seq[Int] = N
   }
   def edit(next: String): RunLengthText = { val v = copy(text = next); v.copy(achieved = (achieved ++ v.challenges.zipWithIndex.collect { case (true,i) => i }).distinct.sorted) }
 }
+@upickle.implicits.key("DictionaryText")
 case class DictionaryText(text: String, step: Int = 0) extends CompressionExperiment derives ReadWriter {
   require(text.length <= 2000 && step >= 0 && step <= CompressionAlgorithms.wordCount(text))
 }
+@upickle.implicits.key("TextBits")
 case class TextBits(original: String = "Passwort!", flippedBit: Option[Int] = None)
     extends CompressionExperiment derives ReadWriter {
   require(original.nonEmpty && original.length <= 32 && original.forall(c => c >= ' ' && c <= '~'))
@@ -36,6 +40,7 @@ case class TextBits(original: String = "Passwort!", flippedBit: Option[Int] = No
   }.toList
   def changed: String = bytes.map(_.toChar).mkString
 }
+@upickle.implicits.key("ImageBlocks")
 case class ImageBlocks(imageResource: String, luminanceBlock: Int = 1, chromaBlock: Int = 1, separateChannels: Boolean = true, imageWidth: Int = 960, imageHeight: Int = 640, zoom: Int = 100, comparison: Option[ImageFileComparison] = None)
     extends CompressionExperiment derives ReadWriter {
   require(imageResource.nonEmpty && List(luminanceBlock, chromaBlock).forall(CompressionAlgorithms.blockSizes.contains))
@@ -49,6 +54,7 @@ case class ImageBlocks(imageResource: String, luminanceBlock: Int = 1, chromaBlo
 case class ImageFileComparison(textBytes: Int, imageBytes: Int, note: Option[LanguageMapContentId] = None) derives ReadWriter {
   require(textBytes >= 0 && imageBytes > 0)
 }
+@upickle.implicits.key("ArchiveBudget")
 case class ArchiveBudget(fileCount: Int = 10, bytesPerFile: Int = 1024, archiveOverhead: Int = 320,
     openMilliseconds: Int = 100, bytesPerSecond: Int = 1024)
     extends CompressionExperiment derives ReadWriter {
@@ -67,6 +73,7 @@ case class StoragePackage(label: LanguageMapContentId, files: Seq[StorageFile]) 
   require(files.nonEmpty && files.size <= 100)
   def megabytes: Long = files.map(_.megabytes.toLong).sum
 }
+@upickle.implicits.key("StorageStudy")
 case class StorageStudy(packages: Seq[StoragePackage], selected: Int = 0, capacityMB: Int = 32000)
     extends CompressionExperiment derives ReadWriter {
   require(packages.nonEmpty && packages.size <= 10 && selected >= 0 && selected < packages.size && capacityMB > 0)
@@ -140,25 +147,32 @@ object CompressionAlgorithms {
 
 
 /** Small native activities keep learner values separate from their authored configuration. */
+@upickle.implicits.key("WrittenAnswer")
 case class WrittenAnswer(text: String = "", code: Boolean = false) extends CompressionExperiment derives ReadWriter
+@upickle.implicits.key("EthicalReflection")
 case class EthicalReflection(selected: Option[Int] = None, reason: String = "") extends CompressionExperiment derives ReadWriter {
   require(selected.forall(i => i >= 0 && i < 3))
 }
+@upickle.implicits.key("PhotoBudget")
 case class PhotoBudget(photoMB: Double = 4, capacityMB: Int = 2000) extends CompressionExperiment derives ReadWriter {
   require(photoMB.isFinite && photoMB > 0 && photoMB <= 1000000 && capacityMB > 0)
   def count: Long = math.floor(capacityMB / photoMB).toLong
 }
+@upickle.implicits.key("BitComparison")
 case class BitComparison(password: TextBits = TextBits("M3inGeh3im!"), imageBit: Option[Int] = None,
     passwordFlips: Int = 0, imageFlips: Int = 0) extends CompressionExperiment derives ReadWriter {
   require(imageBit.forall(i => i >= 0 && i < 128 * 128) && passwordFlips >= 0 && imageFlips >= 0)
 }
+@upickle.implicits.key("FileInspection")
 case class FileInspection(text: String, docxModelBytes: Int = 13460, expanded: Seq[String] = Nil, formattedContent: Option[LanguageMapContentId] = None) extends CompressionExperiment derives ReadWriter {
   require(docxModelBytes > 0)
 }
+@upickle.implicits.key("TransferSimulation")
 case class TransferSimulation(files: Seq[(String, String)], step: Int = 0) extends CompressionExperiment derives ReadWriter {
   require(files.nonEmpty && files.size <= 100 && step >= 0 && step <= files.size * 4)
   def payload: Int = files.map(f => CompressionAlgorithms.utf8Bytes(f._2)).sum
 }
+@upickle.implicits.key("FileOverview")
 case class FileOverview(scenarios: Seq[FileSimulation], selected: Int = 0) extends CompressionExperiment derives ReadWriter {
   require(scenarios.nonEmpty && selected >= 0 && selected < scenarios.size)
 }
@@ -168,6 +182,7 @@ case class SimulationFile(name: String, bytes: Long, kind: String, metadata: Seq
   def extension: String = name.split('.').last.toLowerCase
   def problematic: Boolean = metadata.exists(CompressionSimulation.problematic)
 }
+@upickle.implicits.key("FileSimulation")
 case class FileSimulation(scenario: String, files: Seq[SimulationFile], tutorial: Boolean = false,
     tool: String = "", selected: Seq[Int] = Nil, steps: Int = 0, hovered: Boolean = false,
     chosenTool: Boolean = false, clickedFile: Boolean = false, error: Boolean = false) extends CompressionExperiment derives ReadWriter {
@@ -257,4 +272,5 @@ object CompressionSimulation {
 }
 
 /** A native live comparison resolves the referenced interaction in the loaded workbook. */
+@upickle.implicits.key("PreviousAnswer")
 case class PreviousAnswer(referenceId: String) extends CompressionExperiment derives ReadWriter

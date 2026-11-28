@@ -13,10 +13,19 @@ import upickle.default.ReadWriter
 object SnapTurtleCatalog {
 
   enum PaletteTab derives ReadWriter:
-    case Motion, Pen, Embroidery, Control, Operators, Variables, Other
+    @upickle.implicits.key("Motion") case Motion
+    @upickle.implicits.key("Pen") case Pen
+    @upickle.implicits.key("Embroidery") case Embroidery
+    @upickle.implicits.key("Control") case Control
+    @upickle.implicits.key("Operators") case Operators
+    @upickle.implicits.key("Variables") case Variables
+    @upickle.implicits.key("Other") case Other
 
   enum SnapInputKind derives ReadWriter:
-    case Numeric, String, Bool, Color
+    @upickle.implicits.key("Numeric") case Numeric
+    @upickle.implicits.key("String") case String
+    @upickle.implicits.key("Bool") case Bool
+    @upickle.implicits.key("Color") case Color
 
   final case class ExtraBlockSpec(
       spec: String,

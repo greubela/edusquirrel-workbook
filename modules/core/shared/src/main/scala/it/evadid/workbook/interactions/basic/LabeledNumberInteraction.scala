@@ -24,8 +24,11 @@ object LabeledNumberInteraction {
    * such as "sin(3) + 4" while still offering numeric spinner controls.
    */
   enum NumberType derives ReadWriter {
+    @upickle.implicits.key("IntegerLike")
     case IntegerLike
+    @upickle.implicits.key("FractionLike")
     case FractionLike
+    @upickle.implicits.key("AlgebraicLike")
     case AlgebraicLike
   }
 
@@ -36,7 +39,7 @@ object LabeledNumberInteraction {
     override def finishSerialization(baseElement: WorkbookElementSerializable, infoElement: LabeledNumberInteraction): WorkbookElementSerializable = {
       baseElement
         .withElementAddedAs("numberLabel", infoElement.numberLabel)
-        .withElementAdded("numberType", infoElement.numberType.toString)
+        .withElementAddedAs[NumberType]("numberType", infoElement.numberType)
         .withElementAdded("defaultNumber", infoElement.defaultValue)
         .withElementAddedAs("diff", infoElement.diff)
     }
@@ -44,7 +47,7 @@ object LabeledNumberInteraction {
     override def finishDeserialization(element: WorkbookElementSerializable): LabeledNumberInteraction = {
       LabeledNumberInteraction(element.elementId,
         element.getElementAs[LanguageMapContentId]("numberLabel"),
-        NumberType.valueOf(element.getOptionalElementAs("numberType", "IntegerLike")),
+        element.getOptionalElementAs[NumberType]("numberType", NumberType.IntegerLike),
         element.getOptionalElementAs("defaultNumber", "0"),
         element.getOptionalElementAs[BigDecimal]("diff", BigDecimal(1))
       )

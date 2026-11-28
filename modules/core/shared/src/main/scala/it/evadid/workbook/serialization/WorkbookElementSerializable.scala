@@ -14,7 +14,7 @@ object WorkbookElementSerializable {
 
   def getSerializedVersion[T <: WorkbookElement](obj: T)(implicit rw: Writer[T]): WorkbookElementSerializable = {
     val map = ConstructorLikeSerializer.getAutoFieldsMap(obj)(using rw)
-    WorkbookElementSerializable(obj.elementId, obj.getClass.getSimpleName, map)
+    WorkbookElementSerializable(obj.elementId, WorkbookElementFactory.persistedTypeOf(obj), map)
   }
 
   def fromStringConstructorLike(str: String): WorkbookElementSerializable = {

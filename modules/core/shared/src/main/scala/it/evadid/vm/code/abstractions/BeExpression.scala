@@ -27,41 +27,40 @@ object BeExpression {
 
   // BeExpression is open, so its case-class codecs have no automatic sealed
   // parent tag. Explicitly tag them before merging the recursive expression codec.
-  private inline def taggedExpressionRW[T <: BeExpression](using tag: ClassTag[T], mirror: scala.deriving.Mirror.Of[T]): ReadWriter[T] = {
-    val name = tag.runtimeClass.getName
-    val shortName = tag.runtimeClass.getSimpleName
-    val reader = annotate(macroR[T], "$type", name, shortName)
-    val writer = annotate(macroW[T].asInstanceOf[ObjectWriter[T]], "$type", name, shortName)
+  /** `label` is the persisted `$type` of this expression kind, independent of its class name. */
+  private inline def taggedExpressionRW[T <: BeExpression](label: String)(using tag: ClassTag[T], mirror: scala.deriving.Mirror.Of[T]): ReadWriter[T] = {
+    val reader = annotate(macroR[T], "$type", label, label)
+    val writer = annotate(macroW[T].asInstanceOf[ObjectWriter[T]], "$type", label, label)
     ReadWriter.join(using reader, writer)
   }
 
   given rw: ReadWriter[BeExpression] = ReadWriter.merge(
-    taggedExpressionRW[BeFor],
-    taggedExpressionRW[BeIfElse],
-    taggedExpressionRW[BeRepeatNr],
+    taggedExpressionRW[BeFor]("BeFor"),
+    taggedExpressionRW[BeIfElse]("BeIfElse"),
+    taggedExpressionRW[BeRepeatNr]("BeRepeatNr"),
 
-    taggedExpressionRW[BeSequence],
-    taggedExpressionRW[BeWhile],
+    taggedExpressionRW[BeSequence]("BeSequence"),
+    taggedExpressionRW[BeWhile]("BeWhile"),
 
-    taggedExpressionRW[BeExpressionUnparsable],
-    taggedExpressionRW[BeExpressionUnsupported],
-    taggedExpressionRW[BeSingleLineComment],
+    taggedExpressionRW[BeExpressionUnparsable]("BeExpressionUnparsable"),
+    taggedExpressionRW[BeExpressionUnsupported]("BeExpressionUnsupported"),
+    taggedExpressionRW[BeSingleLineComment]("BeSingleLineComment"),
 
 
-    taggedExpressionRW[BeReturn],
-    taggedExpressionRW[BeStartProgram],
+    taggedExpressionRW[BeReturn]("BeReturn"),
+    taggedExpressionRW[BeStartProgram]("BeStartProgram"),
 
-    taggedExpressionRW[BeCurrentInstance],
-    taggedExpressionRW[BeMemberAccess],
-    taggedExpressionRW[BeAssignMember],
-    taggedExpressionRW[BeAssignVariable],
-    taggedExpressionRW[BeFunctionCall],
-    taggedExpressionRW[BeUseValue],
-    taggedExpressionRW[BeDefineVariable],
-    taggedExpressionRW[BeDefineFunction],
-    taggedExpressionRW[BeDefineClass],
-    taggedExpressionRW[BeDependency],
-    taggedExpressionRW[BeUnknownDependency],
+    taggedExpressionRW[BeCurrentInstance]("BeCurrentInstance"),
+    taggedExpressionRW[BeMemberAccess]("BeMemberAccess"),
+    taggedExpressionRW[BeAssignMember]("BeAssignMember"),
+    taggedExpressionRW[BeAssignVariable]("BeAssignVariable"),
+    taggedExpressionRW[BeFunctionCall]("BeFunctionCall"),
+    taggedExpressionRW[BeUseValue]("BeUseValue"),
+    taggedExpressionRW[BeDefineVariable]("BeDefineVariable"),
+    taggedExpressionRW[BeDefineFunction]("BeDefineFunction"),
+    taggedExpressionRW[BeDefineClass]("BeDefineClass"),
+    taggedExpressionRW[BeDependency]("BeDependency"),
+    taggedExpressionRW[BeUnknownDependency]("BeUnknownDependency"),
   )
 
 

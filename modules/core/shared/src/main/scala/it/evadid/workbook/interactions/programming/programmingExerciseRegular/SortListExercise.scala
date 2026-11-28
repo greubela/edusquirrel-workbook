@@ -18,10 +18,13 @@ import upickle.default.*
 /** How a sorting solution must work, beyond producing the sorted list. */
 enum SortingMethod derives ReadWriter {
   /** Any operations, as long as the list ends sorted. */
+  @upickle.implicits.key("AnyMethod")
   case AnyMethod
   /** Values only move by `NumberList.swap`, never by `set`. */
+  @upickle.implicits.key("SwapsOnly")
   case SwapsOnly
   /** Only neighbouring swaps, exactly one per inversion (bubble or insertion sort by swapping). */
+  @upickle.implicits.key("BubbleSort")
   case BubbleSort
 }
 

@@ -12,16 +12,21 @@ object SnapScalaModel {
   sealed trait Node derives ReadWriter {
   }
 
+  @upickle.implicits.key("Text")
   final case class Text(raw: String) extends Node derives ReadWriter {
     def value: String = decode(raw)
   }
+  @upickle.implicits.key("CData")
   final case class CData(value: String) extends Node derives ReadWriter {
   }
+  @upickle.implicits.key("XmlComment")
   final case class XmlComment(value: String) extends Node derives ReadWriter {
   }
+  @upickle.implicits.key("ProcessingInstruction")
   final case class ProcessingInstruction(value: String) extends Node derives ReadWriter {
   }
   /** DTDs are retained, never loaded or evaluated (including external entities). */
+  @upickle.implicits.key("Declaration")
   final case class Declaration(raw: String) extends Node derives ReadWriter {
   }
   final case class Attribute(name: String, rawValue: String, leading: String = " ",
@@ -72,6 +77,7 @@ object SnapScalaModel {
     final def definitions: Vector[BlockDefinition] = element.contained("blocks", "block-definition").collect { case b: BlockDefinition => b }
     final def withAttribute(name: String, value: String): SnapElement = classify(element.withAttribute(name, value))
   }
+  @upickle.implicits.key("Project")
   final case class Project(element: Element) extends SnapElement derives ReadWriter {
     def creator: Option[String] = element.named("creator").headOption.map(_.text)
     def originalCreator: Option[String] = element.named("origCreator").headOption.map(_.text)
@@ -84,6 +90,7 @@ object SnapScalaModel {
     def app: Option[String] = element.attribute("app")
     def version: Option[String] = element.attribute("version")
   }
+  @upickle.implicits.key("Scene")
   final case class Scene(element: Element) extends SnapElement derives ReadWriter {
     def role: Option[String] = element.attribute("role")
     /** `palette="single"`: one unified palette instead of category tabs. */
@@ -97,6 +104,7 @@ object SnapScalaModel {
     def stage: Option[Stage] = element.named("stage").collectFirst { case s: Stage => s }
     def primitiveDefinitions: Vector[BlockDefinition] = element.contained("primitives", "block-definition").collect { case b: BlockDefinition => b }
   }
+  @upickle.implicits.key("Stage")
   final case class Stage(element: Element) extends SnapElement derives ReadWriter {
     def costumeIndex: Option[Int] = element.integer("costume")
     def penLog: Option[Boolean] = element.boolean("penlog")
@@ -118,6 +126,7 @@ object SnapScalaModel {
     def watchers: Vector[Watcher] = element.contained("sprites", "watcher").collect { case w: Watcher => w }
     def selectedSprite: Option[Int] = element.named("sprites").headOption.flatMap(_.element.integer("select"))
   }
+  @upickle.implicits.key("Sprite")
   final case class Sprite(element: Element) extends SnapElement derives ReadWriter {
     def color: Option[Rgba] = element.attribute("color").flatMap(Rgba.parse)
     def index: Option[Int] = element.integer("idx")
@@ -134,6 +143,7 @@ object SnapScalaModel {
     def hidden: Option[Boolean] = element.boolean("hidden")
     def draggable: Option[Boolean] = element.boolean("draggable")
   }
+  @upickle.implicits.key("Script")
   final case class Script(element: Element) extends SnapElement derives ReadWriter {
     def x: Option[Double] = element.number("x")
     def y: Option[Double] = element.number("y")
@@ -146,13 +156,16 @@ object SnapScalaModel {
     }
     def selector: Option[String] = element.attribute("s")
   }
+  @upickle.implicits.key("Block")
   final case class Block(element: Element) extends BlockLike derives ReadWriter {
     def variable: Option[String] = element.attribute("var")
   }
+  @upickle.implicits.key("CustomBlock")
   final case class CustomBlock(element: Element) extends BlockLike derives ReadWriter {
     /** `scope="local"`: a call to a sprite-local definition. */
     def isLocal: Boolean = element.attribute("scope").exists(_.nonEmpty)
   }
+  @upickle.implicits.key("BlockDefinition")
   final case class BlockDefinition(element: Element) extends SnapElement derives ReadWriter {
     def primitiveSelector: Option[String] = element.attribute("selector")
     def primitive: Option[String] = element.attribute("primitive")
@@ -168,11 +181,13 @@ object SnapScalaModel {
     def body: Vector[Script] = element.named("script").collect { case s: Script => s }
     def inputs: Vector[InputDefinition] = element.contained("inputs", "input").collect { case i: InputDefinition => i }
   }
+  @upickle.implicits.key("Variable")
   final case class Variable(element: Element) extends SnapElement derives ReadWriter {
     def hidden: Option[Boolean] = element.boolean("hidden")
     def value: Option[SnapElement] = element.elements.headOption
     def transient: Option[Boolean] = element.boolean("transient")
   }
+  @upickle.implicits.key("Literal")
   final case class Literal(element: Element) extends SnapElement derives ReadWriter {
     def value: String = text
     def boolean: Option[BooleanValue] = element.named("bool").collectFirst { case b: BooleanValue => b }
@@ -180,6 +195,7 @@ object SnapScalaModel {
     def wish: Option[Wish] = element.named("wish").collectFirst { case w: Wish => w }
     def number: Option[Double] = text.toDoubleOption
   }
+  @upickle.implicits.key("BooleanValue")
   final case class BooleanValue(element: Element) extends SnapElement derives ReadWriter {
     def value: Option[Boolean] = text match {
       case "true" => Some(true)
@@ -187,6 +203,7 @@ object SnapScalaModel {
       case _ => None
     }
   }
+  @upickle.implicits.key("ListValue")
   final case class ListValue(element: Element) extends SnapElement derives ReadWriter {
     /** `struct="atomic"`: a flat list saved as one CSV text. */
     def isAtomic: Boolean = element.attribute("struct").contains("atomic")
@@ -195,18 +212,22 @@ object SnapScalaModel {
     def tail: Option[ListValue] = element.named("list").collectFirst { case l: ListValue => l }
     def items: Vector[Item] = element.named("item").collect { case i: Item => i }
   }
+  @upickle.implicits.key("Costume")
   final case class Costume(element: Element) extends SnapElement derives ReadWriter {
     def embed: Option[String] = element.attribute("embed")
     def image: Option[String] = element.attribute("image")
     def centerX: Option[Double] = element.number("center-x")
     def centerY: Option[Double] = element.number("center-y")
   }
+  @upickle.implicits.key("Sound")
   final case class Sound(element: Element) extends SnapElement derives ReadWriter {
     def data: Option[String] = element.attribute("sound")
   }
+  @upickle.implicits.key("Reference")
   final case class Reference(element: Element) extends SnapElement derives ReadWriter {
     def target: Option[String] = element.attribute("id")
   }
+  @upickle.implicits.key("Watcher")
   final case class Watcher(element: Element) extends SnapElement derives ReadWriter {
     def scope: Option[String] = element.attribute("scope")
     def selector: Option[String] = element.attribute("s")
@@ -218,6 +239,7 @@ object SnapScalaModel {
     def maximum: Option[Double] = element.number("max")
     def hidden: Option[Boolean] = element.boolean("hidden")
   }
+  @upickle.implicits.key("Context")
   final case class Context(element: Element) extends SnapElement derives ReadWriter {
     def inputs: Vector[InputDefinition] = element.contained("inputs", "input").collect { case i: InputDefinition => i }
     def receiver: Option[Receiver] = element.named("receiver").collectFirst { case r: Receiver => r }
@@ -227,9 +249,11 @@ object SnapScalaModel {
       case _ => false
     }
   }
+  @upickle.implicits.key("Item")
   final case class Item(element: Element) extends SnapElement derives ReadWriter {
     def value: Option[SnapElement] = element.elements.headOption
   }
+  @upickle.implicits.key("InputDefinition")
   final case class InputDefinition(element: Element) extends SnapElement derives ReadWriter {
     def inputType: Option[String] = element.attribute("type")
     def readonly: Option[Boolean] = element.boolean("readonly")
@@ -241,6 +265,7 @@ object SnapScalaModel {
     def minimum: Option[Double] = element.number("min")
     def maximum: Option[Double] = element.number("max")
   }
+  @upickle.implicits.key("Comment")
   final case class Comment(element: Element) extends SnapElement derives ReadWriter {
     def x: Option[Double] = element.number("x")
     def y: Option[Double] = element.number("y")
@@ -254,59 +279,100 @@ object SnapScalaModel {
       case _ => None
     }
   }
+  @upickle.implicits.key("Color")
   final case class Color(element: Element) extends SnapElement derives ReadWriter {
     def value: Option[Rgba] = Rgba.parse(text)
   }
+  @upickle.implicits.key("OptionValue")
   final case class OptionValue(element: Element) extends SnapElement derives ReadWriter
+  @upickle.implicits.key("Autolambda")
   final case class Autolambda(element: Element) extends SnapElement derives ReadWriter
+  @upickle.implicits.key("Receiver")
   final case class Receiver(element: Element) extends SnapElement derives ReadWriter
+  @upickle.implicits.key("Inheritance")
   final case class Inheritance(element: Element) extends SnapElement derives ReadWriter {
     def exemplar: Option[String] = element.attribute("exemplar")
   }
+  @upickle.implicits.key("Nesting")
   final case class Nesting(element: Element) extends SnapElement derives ReadWriter {
     def anchor: Option[String] = element.attribute("anchor")
     def synchronous: Option[Boolean] = element.boolean("synch")
     def scale: Option[Double] = element.number("scale")
   }
+  @upickle.implicits.key("Solution")
   final case class Solution(element: Element) extends SnapElement derives ReadWriter
+  @upickle.implicits.key("Dispatch")
   final case class Dispatch(element: Element) extends SnapElement derives ReadWriter
+  @upickle.implicits.key("Wish")
   final case class Wish(element: Element) extends SnapElement derives ReadWriter {
     def spec: Option[String] = element.attribute("s")
     def blockType: Option[BlockType] = element.attribute("type").flatMap(BlockType.fromXml)
     def category: Option[BlockCategory] = element.attribute("category").map(BlockCategory.fromXml)
   }
+  @upickle.implicits.key("Scenes")
   final case class Scenes(element: Element) extends SnapElement derives ReadWriter
+  @upickle.implicits.key("Sprites")
   final case class Sprites(element: Element) extends SnapElement derives ReadWriter
+  @upickle.implicits.key("Scripts")
   final case class Scripts(element: Element) extends SnapElement derives ReadWriter
+  @upickle.implicits.key("Variables")
   final case class Variables(element: Element) extends SnapElement derives ReadWriter
+  @upickle.implicits.key("Blocks")
   final case class Blocks(element: Element) extends SnapElement derives ReadWriter
+  @upickle.implicits.key("Primitives")
   final case class Primitives(element: Element) extends SnapElement derives ReadWriter
+  @upickle.implicits.key("Inputs")
   final case class Inputs(element: Element) extends SnapElement derives ReadWriter
+  @upickle.implicits.key("Costumes")
   final case class Costumes(element: Element) extends SnapElement derives ReadWriter
+  @upickle.implicits.key("Sounds")
   final case class Sounds(element: Element) extends SnapElement derives ReadWriter
+  @upickle.implicits.key("Wear")
   final case class Wear(element: Element) extends SnapElement derives ReadWriter
+  @upickle.implicits.key("Palette")
   final case class Palette(element: Element) extends SnapElement derives ReadWriter
+  @upickle.implicits.key("Category")
   final case class Category(element: Element) extends SnapElement derives ReadWriter
+  @upickle.implicits.key("Notes")
   final case class Notes(element: Element) extends SnapElement derives ReadWriter
+  @upickle.implicits.key("Thumbnail")
   final case class Thumbnail(element: Element) extends SnapElement derives ReadWriter
+  @upickle.implicits.key("PenTrails")
   final case class PenTrails(element: Element) extends SnapElement derives ReadWriter
+  @upickle.implicits.key("Headers")
   final case class Headers(element: Element) extends SnapElement derives ReadWriter
+  @upickle.implicits.key("Code")
   final case class Code(element: Element) extends SnapElement derives ReadWriter
+  @upickle.implicits.key("Header")
   final case class Header(element: Element) extends SnapElement derives ReadWriter
+  @upickle.implicits.key("Translations")
   final case class Translations(element: Element) extends SnapElement derives ReadWriter
+  @upickle.implicits.key("Options")
   final case class Options(element: Element) extends SnapElement derives ReadWriter
+  @upickle.implicits.key("Hidden")
   final case class Hidden(element: Element) extends SnapElement derives ReadWriter
+  @upickle.implicits.key("Dispatches")
   final case class Dispatches(element: Element) extends SnapElement derives ReadWriter
+  @upickle.implicits.key("Origin")
   final case class Origin(element: Element) extends SnapElement derives ReadWriter
+  @upickle.implicits.key("Remark")
   final case class Remark(element: Element) extends SnapElement derives ReadWriter
+  @upickle.implicits.key("Template")
   final case class Template(element: Element) extends SnapElement derives ReadWriter
+  @upickle.implicits.key("Media")
   final case class Media(element: Element) extends SnapElement derives ReadWriter
+  @upickle.implicits.key("SnapData")
   final case class SnapData(element: Element) extends SnapElement derives ReadWriter
+  @upickle.implicits.key("Creator")
   final case class Creator(element: Element) extends SnapElement derives ReadWriter
+  @upickle.implicits.key("OriginalCreator")
   final case class OriginalCreator(element: Element) extends SnapElement derives ReadWriter
+  @upickle.implicits.key("OriginalName")
   final case class OriginalName(element: Element) extends SnapElement derives ReadWriter
+  @upickle.implicits.key("Custom")
   final case class Custom(element: Element) extends SnapElement derives ReadWriter
   /** Containers and future/version-specific tags retain their entire ordered subtree. */
+  @upickle.implicits.key("Extension")
   final case class Extension(element: Element) extends SnapElement derives ReadWriter
 
   final case class Document(nodes: Vector[Node]) derives ReadWriter {

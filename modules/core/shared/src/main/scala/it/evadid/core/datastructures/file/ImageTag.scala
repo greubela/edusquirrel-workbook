@@ -8,8 +8,10 @@ object ImageTag {
 
   /*
   /* --- LICENCE TYPE --- */
+  @upickle.implicits.key("CopyrightInfo")
   case class CopyrightInfo extends ImageTag
 
+  @upickle.implicits.key("UNKNOWN_INFO")
   case object UNKNOWN_INFO extends CopyrightInfo("No Licence", LanguageMap.uni, "Unknown")
   
   case object CC_LICENCE extends LicenceType("CC Licence", "text-type-info")

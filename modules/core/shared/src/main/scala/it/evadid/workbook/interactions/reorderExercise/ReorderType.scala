@@ -11,7 +11,7 @@ sealed trait ReorderType  {
 
 object ReorderType {
 
-  case class CODELINES(associatedLanguage: ProgrammingLanguage) extends ReorderType derives upickle.default.ReadWriter
+  case class CODELINES(associatedLanguage: ProgrammingLanguage) extends ReorderType
 
   case object BASIC_STRINGS extends ReorderType
   
@@ -20,12 +20,19 @@ object ReorderType {
   private val allKnownTypes: Seq[ReorderType] =
     List(BASIC_STRINGS, LANGUAGE_MAP_IDS) ++ AppLanguage.programmingLanguages.map(CODELINES(_))
 
+  /** The persisted name; code lines name their language by its persisted name. */
+  def label(reorderType: ReorderType): String = reorderType match {
+    case BASIC_STRINGS => "BASIC_STRINGS"
+    case LANGUAGE_MAP_IDS => "LANGUAGE_MAP_IDS"
+    case CODELINES(language) => s"CODELINES(${AppLanguage.ser.serialize(language)})"
+  }
+
   private[reorderExercise] val serializer: Serializer[ReorderType] = new Serializer[ReorderType] {
 
-    override def serialize(obj: ReorderType): String = obj.toString
+    override def serialize(obj: ReorderType): String = label(obj)
 
     override def deserialize(str: String): ReorderType = {
-      allKnownTypes.find(_.toString == str)
+      allKnownTypes.find(label(_) == str)
         .getOrElse(throw new RuntimeException(s"Unknown reorder type: $str"))
     }
   }

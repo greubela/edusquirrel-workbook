@@ -52,7 +52,7 @@ object WorkbookElementFactory {
 
     override lazy val writerJsonRegularRefBased: Writer[T] =
       writer[ujson.Value].comap { element =>
-        val base = WorkbookElementSerializable(element.elementId, element.getClass.getSimpleName, Map.empty)
+        val base = WorkbookElementSerializable(element.elementId, WorkbookElementFactory.persistedTypeOf(element), Map.empty)
         ujson.Obj.from(Map("elementId" -> writeJs(element.elementId)) ++ finishSerialization(base, element).allConstructorFields)
       }
 
@@ -121,58 +121,65 @@ object WorkbookElementFactory {
     override def addElementsToSerialization(element: T): Map[String, ujson.Value] = Map()
   }
 
+  /** The persisted element type names; each saved element names its factory by this literal. */
   private lazy val knownFactoriesMap: Map[String, WorkbookElementFactory[? <: WorkbookElement]] = Map(
-    classOf[TwoColumnPanel].getSimpleName -> TwoColumnPanel.factory,
-    classOf[ExerciseGroup].getSimpleName -> ExerciseGroup.factory,
-    classOf[CompressionExperimentInteraction].getSimpleName -> CompressionExperimentInteraction.factory,
-    classOf[CreateQrCodeInteraction].getSimpleName -> CreateQrCodeInteraction.factory,
-    classOf[MailInteraction].getSimpleName -> MailInteraction.factory,
-    classOf[WorkbookContentChoiceInteraction].getSimpleName -> WorkbookContentChoiceInteraction.factory,
-    classOf[AnswerTableInteraction].getSimpleName -> AnswerTableInteraction.factory,
-    classOf[CoordinatePlotInteraction].getSimpleName -> CoordinatePlotInteraction.factory,
-    classOf[BinaryPixelInteraction].getSimpleName -> BinaryPixelInteraction.factory,
-    classOf[SquareMiddleHashInteraction].getSimpleName -> SquareMiddleHashInteraction.factory,
-    classOf[Sha256Interaction].getSimpleName -> Sha256Interaction.factory,
-    classOf[BlockchainInteraction].getSimpleName -> BlockchainInteraction.factory,
-    classOf[EvacuationSimulationInteraction].getSimpleName -> EvacuationSimulationInteraction.factory,
-    classOf[EvacuationConstructFloorInteraction].getSimpleName -> EvacuationConstructFloorInteraction.factory,
-    classOf[UnicodeComparisonInteraction].getSimpleName -> UnicodeComparisonInteraction.factory,
-    classOf[ThresholdNeuronInteraction].getSimpleName -> ThresholdNeuronInteraction.factory,
-    classOf[MailEditor].getSimpleName -> MailEditor.factory,
-    classOf[Workbook].getSimpleName -> Workbook.factory,
-    classOf[LabeledWorkbookElement[?]].getSimpleName -> LabeledWorkbookElement.factory,
-    classOf[CollapsibleInstructionElement].getSimpleName -> CollapsibleInstructionElement.factory,
-    classOf[DisplayLangMapContent].getSimpleName -> DisplayLangMapContent.factory,
-    classOf[WorkbookSubmissionElement].getSimpleName -> WorkbookSubmissionElement.factory,
-    classOf[TextInteraction].getSimpleName -> TextInteraction.factory,
-    classOf[MessagingInteraction].getSimpleName -> MessagingInteraction.factory,
-    classOf[LabeledCheckboxInteraction].getSimpleName -> LabeledCheckboxInteraction.factory,
-    classOf[LabeledNumberInteraction].getSimpleName -> LabeledNumberInteraction.factory,
-    classOf[SketchDownloadInteraction].getSimpleName -> SketchDownloadInteraction.factory,
-    classOf[CodeTaskToggleInteraction].getSimpleName -> CodeTaskToggleInteraction.factory,
-    classOf[ReorderInteraction.ReorderCodeInteraction].getSimpleName -> ReorderInteraction.ReorderCodeInteraction.factory,
-    classOf[ReorderInteraction.ReorderMapIdInteraction].getSimpleName -> ReorderInteraction.ReorderMapIdInteraction.factory,
-    classOf[MatchingInteraction].getSimpleName -> MatchingInteraction.factory,
-    classOf[LikertScaleInteraction].getSimpleName -> LikertScaleInteraction.factory,
-    classOf[SortingInteraction].getSimpleName -> SortingInteraction.factory,
-    classOf[SortingReasonInteraction].getSimpleName -> SortingReasonInteraction.factory,
-    classOf[GptInteractionElement].getSimpleName -> GptInteractionElement.factory,
-    classOf[TextInputWithScaffoldingAndGrading].getSimpleName -> TextInputWithScaffoldingAndGrading.factory,
-    classOf[WorkbookSection].getSimpleName -> WorkbookSection.factory,
-    classOf[ExerciseContainer].getSimpleName -> ExerciseContainer.factory,
-    classOf[Slideshow].getSimpleName -> Slideshow.factory,
-    classOf[TurtleRecreateShapeInteraction].getSimpleName -> TurtleRecreateShapeInteraction.factory,
-    classOf[TurtleStitchExploreProjectElement].getSimpleName -> TurtleStitchExploreProjectElement.factory,
-    classOf[TurtleStitchRecreateShapeInteractionLegacy].getSimpleName -> TurtleStitchRecreateShapeInteractionLegacy.factory,
-    classOf[SqlCommandExercise].getSimpleName -> SqlCommandExercise.factory,
-    classOf[ProgrammingExercise].getSimpleName -> ProgrammingExercise.factory,
-    classOf[ProgrammingExerciseFullJava].getSimpleName -> ProgrammingExerciseFullJava.factory,
-    classOf[SortListExercise].getSimpleName -> SortListExercise.factory,
-    //  classOf[ImageElement.FileBasedImageElement].getSimpleName -> ImageElement.FileBasedImageElement.factory,
-    classOf[WorkbookImageElement.LanguageMapBasedWorkbookImageElement].getSimpleName -> LanguageMapBasedWorkbookImageElement.factory
+    "TwoColumnPanel" -> TwoColumnPanel.factory,
+    "ExerciseGroup" -> ExerciseGroup.factory,
+    "CompressionExperimentInteraction" -> CompressionExperimentInteraction.factory,
+    "CreateQrCodeInteraction" -> CreateQrCodeInteraction.factory,
+    "MailInteraction" -> MailInteraction.factory,
+    "WorkbookContentChoiceInteraction" -> WorkbookContentChoiceInteraction.factory,
+    "AnswerTableInteraction" -> AnswerTableInteraction.factory,
+    "CoordinatePlotInteraction" -> CoordinatePlotInteraction.factory,
+    "BinaryPixelInteraction" -> BinaryPixelInteraction.factory,
+    "SquareMiddleHashInteraction" -> SquareMiddleHashInteraction.factory,
+    "Sha256Interaction" -> Sha256Interaction.factory,
+    "BlockchainInteraction" -> BlockchainInteraction.factory,
+    "EvacuationSimulationInteraction" -> EvacuationSimulationInteraction.factory,
+    "EvacuationConstructFloorInteraction" -> EvacuationConstructFloorInteraction.factory,
+    "UnicodeComparisonInteraction" -> UnicodeComparisonInteraction.factory,
+    "ThresholdNeuronInteraction" -> ThresholdNeuronInteraction.factory,
+    "MailEditor" -> MailEditor.factory,
+    "Workbook" -> Workbook.factory,
+    "LabeledWorkbookElement" -> LabeledWorkbookElement.factory,
+    "CollapsibleInstructionElement" -> CollapsibleInstructionElement.factory,
+    "DisplayLangMapContent" -> DisplayLangMapContent.factory,
+    "WorkbookSubmissionElement" -> WorkbookSubmissionElement.factory,
+    "TextInteraction" -> TextInteraction.factory,
+    "MessagingInteraction" -> MessagingInteraction.factory,
+    "LabeledCheckboxInteraction" -> LabeledCheckboxInteraction.factory,
+    "LabeledNumberInteraction" -> LabeledNumberInteraction.factory,
+    "SketchDownloadInteraction" -> SketchDownloadInteraction.factory,
+    "CodeTaskToggleInteraction" -> CodeTaskToggleInteraction.factory,
+    "ReorderCodeInteraction" -> ReorderInteraction.ReorderCodeInteraction.factory,
+    "ReorderMapIdInteraction" -> ReorderInteraction.ReorderMapIdInteraction.factory,
+    "MatchingInteraction" -> MatchingInteraction.factory,
+    "LikertScaleInteraction" -> LikertScaleInteraction.factory,
+    "SortingInteraction" -> SortingInteraction.factory,
+    "SortingReasonInteraction" -> SortingReasonInteraction.factory,
+    "GptInteractionElement" -> GptInteractionElement.factory,
+    "TextInputWithScaffoldingAndGrading" -> TextInputWithScaffoldingAndGrading.factory,
+    "WorkbookSection" -> WorkbookSection.factory,
+    "ExerciseContainer" -> ExerciseContainer.factory,
+    "Slideshow" -> Slideshow.factory,
+    "TurtleRecreateShapeInteraction" -> TurtleRecreateShapeInteraction.factory,
+    "TurtleStitchExploreProjectElement" -> TurtleStitchExploreProjectElement.factory,
+    "TurtleStitchRecreateShapeInteractionLegacy" -> TurtleStitchRecreateShapeInteractionLegacy.factory,
+    "SqlCommandExercise" -> SqlCommandExercise.factory,
+    "ProgrammingExercise" -> ProgrammingExercise.factory,
+    "ProgrammingExerciseFullJava" -> ProgrammingExerciseFullJava.factory,
+    "SortListExercise" -> SortListExercise.factory,
+    //  "FileBasedImageElement" -> ImageElement.FileBasedImageElement.factory,
+    "LanguageMapBasedWorkbookImageElement" -> LanguageMapBasedWorkbookImageElement.factory
   )
 
   private[workbook] def registeredElementTypes: Set[String] = knownFactoriesMap.keySet
+
+  private lazy val persistedTypes: Map[WorkbookElementFactory[? <: WorkbookElement], String] = knownFactoriesMap.map(_.swap)
+
+  /** The persisted type name of `element`, taken from the factory registry. */
+  def persistedTypeOf(element: WorkbookElement): String =
+    persistedTypes.getOrElse(element.associatedFactory, throw SerializedException(s"No persisted type registered for WorkbookElement ${element.elementId}"))
 
   private[workbook] def factoryFor(elementType: String): WorkbookElementFactory[? <: WorkbookElement] =
     knownFactoriesMap.getOrElse(elementType, throw SerializedException(s"No factory known for WorkbookElement with type $elementType"))
@@ -252,7 +259,7 @@ trait WorkbookElementFactory[T <: WorkbookElement] {
   def addElementsToSerialization(element: T): Map[String, ujson.Value] = Map.empty
 
   protected def toFactoryBase(element: T): WorkbookElementSerializable =
-    WorkbookElementSerializable(element.elementId, element.getClass.getSimpleName, Map.empty)
+    WorkbookElementSerializable(element.elementId, WorkbookElementFactory.persistedTypeOf(element), Map.empty)
 
   /** This element alone; the elements it references are serialized beside it, once each (see [[SerializedWorkbook]]). */
   def toSerializableElement(element: T): WorkbookElementSerializable =

@@ -58,6 +58,7 @@ object BeDataType {
   }
 
 
+  @upickle.implicits.key("ClassType")
   case class ClassType(className: BeEntityName) extends BeUnionType derives ReadWriter {
     def formatTypeForDisplay: LanguageMap[ProgrammingLanguage] = LanguageMap.universalMap(NamingStyle.fromAnyNotationToParts(className.universalInterpretation()).map(_.capitalize).mkString)
     def formatValueForDisplay(value: String): LanguageMap[ProgrammingLanguage] = LanguageMap.universalMap(value)
@@ -70,6 +71,7 @@ object BeDataType {
     }
   }
 
+  @upickle.implicits.key("AnyType")
   case object AnyType extends BeUnionType with AutoSerializableSingleton[AnyType.type] {
     private val displayMap: LanguageMap[ProgrammingLanguage] =
       LanguageMap.mapBasedLanguageMapWithFallback[ProgrammingLanguage](Map(Python -> "Any", Java -> "Object"), "Any")
@@ -84,6 +86,7 @@ object BeDataType {
     def canTakeValuesFrom(other: BeDataType): BeDataTypeAssigningPossible = AssigningPossibleWithSameType(this)
   }
 
+  @upickle.implicits.key("BeUnionAllowedTypes")
   case class BeUnionAllowedTypes(dataTypes: Set[BeDataType]) extends BeUnionType derives ReadWriter {
 
     def formatTypeForDisplay: LanguageMap[ProgrammingLanguage] = {
@@ -163,6 +166,7 @@ object BeDataType {
         .orElse(if (name == "BeDataTypeAtomic") Some(String) else None).get
   }
 
+  @upickle.implicits.key("BeDataTypeAtomic")
   case class BeDataTypeAtomic(
                                val pFormatTypeForDisplay: LanguageMap[ProgrammingLanguage],
                                val pFormatValueForDisplay: String => LanguageMap[ProgrammingLanguage],

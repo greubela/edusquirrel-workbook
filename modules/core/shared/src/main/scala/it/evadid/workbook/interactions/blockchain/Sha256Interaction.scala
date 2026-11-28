@@ -14,8 +14,10 @@ import it.evadid.workbook.abstractions.*
 import it.evadid.workbook.abstractions.InteractionFormat.*
 sealed trait Sha256Task derives ReadWriter
 
+@upickle.implicits.key("CompareSha256")
 case class CompareSha256() extends Sha256Task derives ReadWriter
 
+@upickle.implicits.key("FindSha256Prefix")
 case class FindSha256Prefix(zeros: Int = 1) extends Sha256Task derives ReadWriter {
   require(zeros >= 1 && zeros <= 4, "Teaching challenges allow one to four leading hexadecimal zeros")
 }

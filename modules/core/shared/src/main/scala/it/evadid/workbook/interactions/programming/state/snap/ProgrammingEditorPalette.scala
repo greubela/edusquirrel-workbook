@@ -6,10 +6,13 @@ import upickle.default.*
 /** How a programming palette is built from the catalogs. */
 enum PaletteLayout derives ReadWriter:
   /** Snap's native categories (all blocks per category). */
+  @upickle.implicits.key("NativeSnap")
   case NativeSnap
   /** An ordered subset of [[SnapPaletteCatalog]] tabs. */
+  @upickle.implicits.key("CatalogTabs")
   case CatalogTabs(tabs: Seq[PaletteTab])
   /** One mixed tab, blocks in the given order: Snap selectors and predefined module block ids ([[SnapModuleBlocks]]). */
+  @upickle.implicits.key("Mixed")
   case Mixed(selectors: Seq[String], allowCustomBlocks: Boolean = false, allowVariables: Boolean = false)
 
   def pythonCompatible: Boolean = {
@@ -43,22 +46,28 @@ object PaletteLayout {
 /** Which Snap block palette to show in the programming exercise editor. */
 enum ProgrammingEditorPalette(val layout: PaletteLayout) derives ReadWriter:
   /** Snap's native categories (all blocks per category). */
+  @upickle.implicits.key("Default")
   case Default extends ProgrammingEditorPalette(PaletteLayout.NativeSnap)
   /** Explicit allow-list aligned with Snap ↔ Python roundtrip support. */
+  @upickle.implicits.key("PythonCompatibleSnap")
   case PythonCompatibleSnap extends ProgrammingEditorPalette(PaletteLayout.CatalogTabs(SnapPaletteCatalog.TabOrder))
   /** Beginner turtle subset: start, repeat, motion, and pen only. */
+  @upickle.implicits.key("BeginnerTurtle")
   case BeginnerTurtle extends ProgrammingEditorPalette(PaletteLayout.Mixed(List(
     "receiveGo", "doRepeat", "forward", "turn", "gotoXY", "setHeading", "clear", "up", "down"
   )))
   /** Embroidery workbook palette (Python-compatible plus stitch blocks). */
+  @upickle.implicits.key("Embroidery")
   case Embroidery extends ProgrammingEditorPalette(PaletteLayout.CatalogTabs(List(
     PaletteTab.Motion, PaletteTab.Pen, PaletteTab.Embroidery, PaletteTab.Control
   )))
   /** List exercises: control, operators, variables and own blocks, plus the number-list blocks. */
+  @upickle.implicits.key("NumberList")
   case NumberList extends ProgrammingEditorPalette(PaletteLayout.Mixed(
     SnapPaletteCatalog.ControlLanguageSelectors ++ SnapPaletteCatalog.OperatorSelectors ++ SnapPaletteCatalog.VariableSelectors ++
       SnapModuleBlocks.numberList.map(_.id), allowCustomBlocks = true, allowVariables = true))
   /** Exercise-specific layout, serialized with the exercise rather than defined in the client. */
+  @upickle.implicits.key("Custom")
   case Custom(customLayout: PaletteLayout) extends ProgrammingEditorPalette(PaletteLayout.validated(customLayout))
 
   /** Native palettes include blocks that Python cannot represent. */

@@ -19,7 +19,7 @@ object WorkbookElement {
 sealed trait WorkbookElement {
   val elementId: String
   //  assert(elementId.matches("[a-zA-Z0-9.-]+"))
-  lazy val asRef = WorkbookElementReference(elementId, Option(this.getClass.getSimpleName))
+  lazy val asRef = WorkbookElementReference(elementId, Some(WorkbookElementFactory.persistedTypeOf(this)))
 
   lazy val childrenOfThisElement: Seq[WorkbookElement]
   lazy val allInteractionsInThisInstance: Seq[WorkbookInteractionElement[? <: InteractionFormat]] =

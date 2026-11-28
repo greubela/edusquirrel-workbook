@@ -7,8 +7,11 @@ import upickle.default.ReadWriter
 
 object JavaTurtleExecutionEvidence {
   enum Scalar derives ReadWriter {
+    @upickle.implicits.key("Int32")
     case Int32(value: Int)
+    @upickle.implicits.key("Float64")
     case Float64(bits: String)
+    @upickle.implicits.key("Bool")
     case Bool(value: Boolean)
 
     def toValue: E.Value = this match {
@@ -32,7 +35,10 @@ object JavaTurtleExecutionEvidence {
   }
 
   enum Outcome derives ReadWriter {
-    case Completed, LimitExceeded, DivisionByZero, NonFiniteCommand
+    @upickle.implicits.key("Completed") case Completed
+    @upickle.implicits.key("LimitExceeded") case LimitExceeded
+    @upickle.implicits.key("DivisionByZero") case DivisionByZero
+    @upickle.implicits.key("NonFiniteCommand") case NonFiniteCommand
   }
 
   case class LocatedExpression(invocation: Int, method: String, start: Int, end: Int,

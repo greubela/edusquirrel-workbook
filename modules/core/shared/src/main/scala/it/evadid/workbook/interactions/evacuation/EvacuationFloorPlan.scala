@@ -4,7 +4,9 @@ import upickle.default.*
 
 /** Browser-independent answer format. Rendering and simulation use the existing EVA2 floor model. */
 enum EvacuationTile derives ReadWriter {
-  case Floor, Wall, Exit
+  @upickle.implicits.key("Floor") case Floor
+  @upickle.implicits.key("Wall") case Wall
+  @upickle.implicits.key("Exit") case Exit
 }
 
 case class EvacuationFloorPlan(cols: Int, rows: Int, tiles: Seq[EvacuationTile], people: Set[Int] = Set.empty) derives ReadWriter {
