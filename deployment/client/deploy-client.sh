@@ -1,10 +1,9 @@
 #!/usr/bin/env bash
-# Mirrors the published part of the repository to CLIENT_FTP_ROOT over FTP(S), in the repository's
+# Mirrors the published part of the repository to CLIENT_FTP_ROOT over FTPS, in the repository's
 # layout: homepage/, resources/, favicon.ico, the client and worker of artifacts/newest and
 # artifacts/stable (never artifacts/history) and secrets/client.env as deployment/client/.env.
-# Only files that changed since the last deployment are uploaded.
-#
-# Every batch is verified by comparing remote file sizes; incomplete files are uploaded again.
+# Only files that changed since the last deployment are uploaded; every upload is checked by size.
+# The transfer runs in Node (webspace-sync.mjs, basic-ftp), independent of the local curl.
 #
 # Options:
 #   --dry-run          Show what would be uploaded or deleted without changing the webspace
@@ -14,20 +13,22 @@
 source "$(dirname "${BASH_SOURCE[0]}")/../lib/common.sh"
 LOG_PREFIX=client
 
-dry_run=false trust=()
+sync_args=()
 while [[ $# -gt 0 ]]; do
   case "$1" in
-    --dry-run) dry_run=true ;;
-    --trust) [[ $# -ge 2 ]] || die "--trust needs a path prefix"; trust+=(--trust "$2"); shift ;;
+    --dry-run) sync_args+=(--dry-run) ;;
+    --trust) [[ $# -ge 2 ]] || die "--trust needs a path prefix"; sync_args+=(--trust "$2"); shift ;;
     *) die "unknown argument: $1" ;;
   esac
   shift
 done
 
+# local.env exports CLIENT_FTP_*; webspace-sync.mjs reads the connection from the environment.
 load_env local.env
 require_vars CLIENT_FTP_HOST CLIENT_FTP_USER CLIENT_FTP_PASSWORD
-require_cmd node curl
+require_cmd node npm
 CLIENT_ENV="$SECRETS_DIR/client.env"
+SYNC="$DEPLOY_DIR/client/webspace-sync.mjs"
 
 # deployment/client/.env is publicly downloadable from the website.
 env_file_entries "$CLIENT_ENV" > "$DEPLOY_TMP/client-env"
@@ -37,94 +38,16 @@ while IFS= read -r -d '' key && IFS= read -r -d '' _; do
   fi
 done < "$DEPLOY_TMP/client-env"
 
-# The webspace mirrors the repository layout; stage its published part (see sync-plan.mjs stage).
+# The FTP client is a locked dev dependency of the repository.
+if ! (cd "$REPO_ROOT" && node -e 'import("basic-ftp")' >/dev/null 2>&1); then
+  log "installing the repository's Node dependencies (npm ci)"
+  (cd "$REPO_ROOT" && npm ci --no-audit --no-fund) || die "npm ci failed"
+fi
+
+# The webspace mirrors the repository layout; stage its published part.
 SITE="$REPO_ROOT/tmp/work/deployment/webspace"
 log "staging homepage, resources, artifacts (newest, stable) and deployment/client/.env"
-node "$DEPLOY_DIR/client/sync-plan.mjs" stage "$REPO_ROOT" "$SITE" "$CLIENT_ENV" 2>&1 | while IFS= read -r line; do
-  warn "$line"
-done
-[[ "${PIPESTATUS[0]}" -eq 0 ]] || die "staging the webspace failed (see above)"
+node "$SYNC" stage "$REPO_ROOT" "$SITE" "$CLIENT_ENV" || die "staging the webspace failed (see above)"
 
-# Credentials go through a private curl config file, never the command line.
-curl_auth="$DEPLOY_TMP/auth.curl"
-escape() { local value=${1//\\/\\\\}; printf '%s' "${value//\"/\\\"}"; }
-{
-  printf 'user = "%s:%s"\n' "$(escape "$CLIENT_FTP_USER")" "$(escape "$CLIENT_FTP_PASSWORD")"
-  printf 'silent\nshow-error\nftp-create-dirs\nconnect-timeout = 30\nretry = 2\n'
-  if [[ "${CLIENT_FTP_TLS:-true}" == true ]]; then printf 'ssl-reqd\n'; fi
-} > "$curl_auth"
-chmod 600 "$curl_auth"
-# curl for Windows (Git) has two TLS engines; Schannel ends FTPS data connections in a way some
-# servers reject with 451. Prefer OpenSSL; curl builds with a single engine ignore the setting.
-export CURL_SSL_BACKEND="${CLIENT_FTP_SSL_BACKEND:-openssl}"
-log "curl TLS: $(curl -V | head -n 1 | grep -oE '(OpenSSL|Schannel|LibreSSL|GnuTLS|mbedTLS|wolfSSL|BoringSSL|SecureTransport)[^ ]*' | tr '\n' ' ')"
-ftp() { curl --config "$curl_auth" "$@"; }
-# Upload configs name local files relative to the staged mirror (see sync-plan.mjs), so curl runs there.
-ftp_upload() { (cd "$SITE" && ftp "$@"); }
-
-base_url="ftp://$CLIENT_FTP_HOST${CLIENT_FTP_PORT:+:$CLIENT_FTP_PORT}"
-# Relative to the FTP login directory; surrounding slashes are dropped.
-root="${CLIENT_FTP_ROOT:-EvaHomepage/edusquirrel}" root="${root#/}" root="${root%/}"
-plan_dir="$DEPLOY_TMP/plan"
-mkdir -p "$plan_dir"
-
-log "reading the manifest of the last deployment from $CLIENT_FTP_HOST/$root"
-previous="$plan_dir/previous.sha256"
-manifest_url="$base_url/$root/.deploy-manifest.sha256"
-status=0
-ftp --output "$previous" "$manifest_url" 2> "$plan_dir/manifest-error.txt" || status=$?
-case "$status" in
-  0) ;;
-  78) rm -f "$previous" ;;  # The remote file does not exist: first deployment.
-  67) die "the FTP server rejected the login of '$CLIENT_FTP_USER' on $CLIENT_FTP_HOST (530). Check CLIENT_FTP_USER" \
-        "and CLIENT_FTP_PASSWORD in local.env against FileZilla's site settings; single-quote a password" \
-        "containing \$, spaces or quotes." ;;
-  *) die "cannot read $manifest_url: $(cat "$plan_dir/manifest-error.txt")" ;;
-esac
-
-node "$DEPLOY_DIR/client/sync-plan.mjs" "$SITE" "$previous" "$plan_dir" "$base_url" "$root" "${trust[@]+"${trust[@]}"}"
-summary() { node -e 'const s = require(process.argv[1]); console.log(eval(process.argv[2]))' "$plan_dir/summary.json" "$1"; }
-uploads="$(summary 's.uploads')" deletes="$(summary 's.deletes')"
-if [[ "$(summary 's.firstDeployment')" == true ]]; then
-  warn "no deployment manifest on the webspace: this deployment uploads every file not covered by --trust"
-fi
-log "$(summary 's.files') files staged; $uploads to upload, $deletes to delete"
-
-if [[ "$dry_run" == true ]]; then
-  summary 's.uploadList.map(p => "  upload " + p).concat(s.deleteList.map(p => "  delete " + p)).join("\n")' >&2
-  log "dry run: webspace unchanged"
-  exit 0
-fi
-
-shopt -s nullglob
-batches=("$plan_dir"/upload-*.curl)
-for batch in ${batches[@]+"${batches[@]}"}; do
-  number="${batch##*/upload-}" number="${number%.curl}"
-  log "uploading batch $((10#$number)) of ${#batches[@]}"
-  if ! ftp_upload --fail-early --config "$batch"; then
-    # Show the server's own reply: upload the batch's first file once more, verbosely, password masked.
-    IFS=$'\t' read -r first_url _ first_file < "$plan_dir/batch-$number.tsv"
-    warn "FTP dialogue for $first_file (one more attempt):"
-    ftp_upload --verbose --upload-file "$first_file" "$first_url" 2>&1 | tr -d '\r' \
-      | grep -E '^[<>] ' | sed -E 's/^> PASS .*/> PASS ****/' | tail -n 30 >&2 || true
-    die "upload failed; rerun to continue (finished batches are recorded)"
-  fi
-  # A server may confirm a transfer it stored incompletely, so compare the remote sizes.
-  for attempt in 1 2 3; do
-    ftp --config "$plan_dir/verify-$number.curl" > "$plan_dir/sizes.txt" 2>/dev/null || true
-    failed="$(node "$DEPLOY_DIR/client/sync-plan.mjs" verify "$plan_dir/batch-$number.tsv" "$plan_dir/sizes.txt" \
-      "$plan_dir/retry.curl")"
-    [[ "$failed" == 0 ]] && break
-    [[ "$attempt" == 3 ]] && die "$failed files still differ on the webspace after two retries (see above)"
-    warn "$failed files arrived incomplete; uploading them again"
-    ftp_upload --config "$plan_dir/retry.curl" || true
-  done
-  # Record progress so a rerun skips the batches that already arrived.
-  ftp --upload-file "$plan_dir/progress-$number.sha256" "$manifest_url" || die "could not record upload progress"
-done
-if [[ "$deletes" -gt 0 ]]; then
-  log "deleting $deletes files that earlier deployments uploaded"
-  ftp --config "$plan_dir/delete.curl" --list-only --output /dev/null "$base_url/" || warn "some deletions failed"
-fi
-ftp --upload-file "$plan_dir/manifest.sha256" "$manifest_url" || die "could not upload the deployment manifest"
-log "client deployed to $CLIENT_FTP_HOST/$root"
+node "$SYNC" sync "$SITE" ${sync_args[@]+"${sync_args[@]}"} \
+  || die "webspace upload failed (see above); rerun to continue, finished batches are recorded"
