@@ -43,9 +43,26 @@ class LlmConfigurationSpec extends FunSuite {
       val logged = it.evadid.distribution.command.ExecutionCommand(feedbackLlmCommandFactory.name, upickle.default.writeJs(request)).stripPrivacySensitiveInformation().json.toString
       assert(!logged.contains("session-secret"))
       assert(!logged.contains("question"))
+      val hint = request.copy(llmConfiguration = Some(config.copy(model = "gpt-5")), programmingHint = true)
+      assertEquals(Await.result(CompleteChatWithLLMCommand.handleFeedbackLlmRequest(hint, BasicLogger()), 10.seconds), "fixture response")
+      val hintBody = ujson.read(captured.poll(1, java.util.concurrent.TimeUnit.SECONDS)._2)
+      assertEquals(hintBody("model").str, "gpt-5")
+      assertEquals(hintBody("max_completion_tokens").num, 123d)
+      assert(!hintBody.obj.contains("max_tokens"))
       val chat = MessengerChatCompletionRequest("instructions", it.evadid.core.datastructures.chat.MessengerModel(Nil), Some(config))
       assertEquals(Await.result(CompleteChatWithLLMCommand.handleLlmChatRequest(chat, BasicLogger()), 10.seconds).text, "fixture response")
       assert(!it.evadid.distribution.command.ExecutionCommand(completeLLMCommandFactory.name, upickle.default.writeJs(chat)).stripPrivacySensitiveInformation().json.toString.contains("session-secret"))
     } finally server.stop(0)
+  }
+
+  test("only programming hints use the server's programming model") {
+    val legacy = upickle.default.read[FeedbackLlmRequest]("""{"prompt":"p","systemPrompt":"s"}""")
+    assert(!legacy.programmingHint)
+    val configured = environment.updated("OPENAI_PROGRAMMING_HINT_MODEL", "another-hint-model")
+    assertEquals(CompleteChatWithLLMCommand.resolve(None, configured.get, legacy.programmingHint).model, "backend-model")
+    assertEquals(CompleteChatWithLLMCommand.resolve(None, environment.get, programmingHint = true).model, "gpt-5")
+    assertEquals(CompleteChatWithLLMCommand.resolve(None, configured.get, programmingHint = true).model, "another-hint-model")
+    val session = LlmConfiguration("https://session.example", "own-model", None)
+    assertEquals(CompleteChatWithLLMCommand.resolve(Some(session), _ => fail("read server configuration"), programmingHint = true), session)
   }
 }

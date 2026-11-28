@@ -17,11 +17,13 @@ object CompleteChatWithLLMCommand {
   private val client = HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(30))
     .followRedirects(HttpClient.Redirect.NEVER).build()
 
-  private[server] def resolve(provided: Option[LlmConfiguration], env: String => Option[String]): LlmConfiguration = {
+  private[server] def resolve(provided: Option[LlmConfiguration], env: String => Option[String],
+      programmingHint: Boolean = false): LlmConfiguration = {
     // A supplied configuration is complete: never fill its fields from server credentials.
     val configuration = provided.getOrElse(LlmConfiguration(
       env("OPENAI_API_URL").getOrElse(LlmConfiguration.defaultEndpoint),
-      env("OPENAI_MODEL").getOrElse(LlmConfiguration.defaultModel),
+      if programmingHint then env("OPENAI_PROGRAMMING_HINT_MODEL").getOrElse("gpt-5")
+      else env("OPENAI_MODEL").getOrElse(LlmConfiguration.defaultModel),
       env("OPENAI_API_KEY"),
       env("OPENAI_MAX_TOKENS").map(value => Try(value.toInt)
         .getOrElse(throw IllegalArgumentException("Invalid backend LLM token limit")))))
@@ -35,11 +37,13 @@ object CompleteChatWithLLMCommand {
     configuration
   }
 
-  private def complete(system: String, messages: JsArray, provided: Option[LlmConfiguration]): Future[String] = Future {
-    val configuration = resolve(provided, name => Option(System.getenv(name)))
+  private def complete(system: String, messages: JsArray, provided: Option[LlmConfiguration],
+      programmingHint: Boolean = false): Future[String] = Future {
+    val configuration = resolve(provided, name => Option(System.getenv(name)), programmingHint)
+    val tokenLimitField = if configuration.model.startsWith("gpt-5") then "max_completion_tokens" else "max_tokens"
     val body = Json.obj("model" -> configuration.model, "messages" ->
       (Json.arr(Json.obj("role" -> "system", "content" -> system)) ++ messages)) ++
-      configuration.maxTokens.map(value => Json.obj("max_tokens" -> value)).getOrElse(Json.obj())
+      configuration.maxTokens.map(value => Json.obj(tokenLimitField -> value)).getOrElse(Json.obj())
     val builder = HttpRequest.newBuilder(URI.create(configuration.endpoint)).timeout(Duration.ofSeconds(60))
       .header("Content-Type", "application/json")
     configuration.apiKey.foreach(key => builder.header("Authorization", "Bearer " + key))
@@ -85,5 +89,6 @@ object CompleteChatWithLLMCommand {
   }
 
   def handleFeedbackLlmRequest(request: FeedbackLlmRequest, logger: Logger): Future[String] =
-    complete(request.systemPrompt, Json.arr(Json.obj("role" -> "user", "content" -> request.prompt)), request.llmConfiguration)
+    complete(request.systemPrompt, Json.arr(Json.obj("role" -> "user", "content" -> request.prompt)),
+      request.llmConfiguration, request.programmingHint)
 }

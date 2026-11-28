@@ -97,7 +97,8 @@ credentials attached to a destination. See [authentication](../authentication.md
 LLM requests carry `llmConfiguration: Option[LlmConfiguration]`. `Some(config)` is
 used as-is, including an absent API key or token limit. `None` selects server defaults:
 `OPENAI_API_URL` (default `https://api.openai.com/v1/chat/completions`), `OPENAI_MODEL`
-(default `gpt-4o-mini`), `OPENAI_API_KEY` and optional `OPENAI_MAX_TOKENS`. Redirects
+(default `gpt-4o-mini`), `OPENAI_API_KEY` and optional `OPENAI_MAX_TOKENS`. Programming
+hints use `OPENAI_PROGRAMMING_HINT_MODEL` (default `gpt-5`). Redirects
 are not followed. Local services may omit an API key; provider error bodies, API keys
 and prompts are excluded from command logs.
 
