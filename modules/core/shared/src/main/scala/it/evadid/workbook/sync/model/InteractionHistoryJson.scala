@@ -8,14 +8,16 @@ import it.evadid.workbook.history.events.EventId
 import java.time.LocalDateTime
 import upickle.default.*
 
-/** Self-describing transport and storage boundary; decoding never needs a workbook registry. */
-case class InteractionHistoryJson(format: InteractionFormat, historyJson: String) derives ReadWriter {
+/** Self-describing transport and storage boundary; decoding never needs a workbook registry. The history is nested
+  * as JSON, not as an escaped string.
+  */
+case class InteractionHistoryJson(format: InteractionFormat, historyJson: ujson.Value) derives ReadWriter {
   def toTyped: InteractionVariableHistory[format.type] = typedAs(format)
 
   def typedAs[F <: InteractionFormat](expected: F): InteractionVariableHistory[F] = {
     require(format == expected, s"History format ${format.name} does not match ${expected.name}")
-    ParsingContext(s"interaction history (${format.name})", historyJson) {
-      InteractionFormat.codecsFor(expected).historySerializer.deserialize(historyJson)
+    ParsingContext(s"interaction history (${format.name})", historyJson.render()) {
+      read[InteractionVariableHistory[F]](historyJson)(using InteractionFormat.codecsFor(expected).historyReadWriter)
     }
   }
 
@@ -40,7 +42,11 @@ case class InteractionHistoryJson(format: InteractionFormat, historyJson: String
 
 object InteractionHistoryJson {
   def fromHistory[F <: InteractionFormat](format: F, history: InteractionVariableHistory[F]): InteractionHistoryJson =
-    InteractionHistoryJson(format, InteractionFormat.codecsFor(format).historySerializer.serialize(history))
+    InteractionHistoryJson(format, writeJs(history)(using InteractionFormat.codecsFor(format).historyReadWriter))
+
+  /** An envelope for a history read as text, e.g. from a database column; malformed JSON fails here. */
+  def apply(format: InteractionFormat, historyJson: String): InteractionHistoryJson =
+    ParsingContext(s"interaction history (${format.name})", historyJson)(InteractionHistoryJson(format, ujson.read(historyJson)))
 
   def deserialize(value: String): InteractionHistoryJson = ParsingContext("interaction history envelope", value) {
     val decoded = read[InteractionHistoryJson](value)

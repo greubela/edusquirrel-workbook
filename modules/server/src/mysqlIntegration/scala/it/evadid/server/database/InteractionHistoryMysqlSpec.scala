@@ -85,7 +85,7 @@ class InteractionHistoryMysqlSpec extends FunSuite {
   /** The typed history of [[sync]] in a direct database read. */
   private def fetchedHistory(request: FetchEventsFromDbRequest) =
     fetchVia(request, logger).fetchedElements(sync).typedAs(format)
-  private def fetch(storage: DatabaseHistoryFormat = RelationalFormat): Map[SyncContext, String] =
+  private def fetch(storage: DatabaseHistoryFormat = RelationalFormat): Map[SyncContext, ujson.Value] =
     fetchVia(fetchRequest(storage, keys = Seq.empty), logger).fetchedElements.map((key, value) => key -> value.historyJson)
   private def scalar(sql: String): Long = MysqlTestDatabase.withConnection { connection =>
     Using.resource(connection.createStatement())(statement => Using.resource(statement.executeQuery(sql))(rows => { rows.next(); rows.getLong(1) }))
@@ -260,8 +260,8 @@ class InteractionHistoryMysqlSpec extends FunSuite {
     assertEquals(restored.historyStates.events.map(_.timestamp), Set(time, time.plusNanos(1)))
     assertEquals(restored.historyStates.lastStateOption.map(_.value), Some("second"))
     assertEquals(restored.historyGrading.gradingsMap.keySet, Set("first", "second"))
-    assert(!fetch()(sync).contains("answer_id"))
-    assert(!fetch()(sync).contains("sync_id"))
+    assert(!fetch()(sync).render().contains("answer_id"))
+    assert(!fetch()(sync).render().contains("sync_id"))
   }
 
   test("current gzip HTTP commands store, fetch, update feedback and delete in both formats") {
@@ -273,7 +273,7 @@ class InteractionHistoryMysqlSpec extends FunSuite {
           val response = send(storeCommand(StoreToDbRequest(sync, encoded(value), config, format)))
           assert(response.result.isRight, response.result.left.toOption.map(_.msg).getOrElse(""))
         }
-        def load(): Map[SyncContext, String] =
+        def load(): Map[SyncContext, ujson.Value] =
           send(command(fetchEventsFromDbCommand.name, fetchRequest(format))).throwIfContainsError.result.toOption.get.getAs[DbFetchResponse].fetchedElements.map((key, value) => key -> value.historyJson)
         save(answerOnly)
         assertEquals(read[History](load()(sync)), answerOnly)

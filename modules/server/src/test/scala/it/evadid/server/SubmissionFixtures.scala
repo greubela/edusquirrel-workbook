@@ -68,6 +68,6 @@ object SubmissionFixtures {
   def sessionWithUnreadableEssay: SessionData = {
     val stored = session()
     stored.copy(knownUsageData = stored.knownUsageData.updated(
-      context(workbook.workbookId, essay.keyForSerialization), InteractionHistoryJson(TextInteractionFormat, "{not json")))
+      context(workbook.workbookId, essay.keyForSerialization), InteractionHistoryJson(TextInteractionFormat, "{\"not\": \"a history\"}")))
   }
 }

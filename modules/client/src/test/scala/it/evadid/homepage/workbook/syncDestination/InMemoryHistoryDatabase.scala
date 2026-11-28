@@ -67,7 +67,7 @@ final class InMemoryHistoryDatabase {
 
   /** A saved record that cannot be read, as left by a broken or outdated client. */
   def corrupt(format: DatabaseHistoryFormat, key: SyncContext, like: InteractionHistoryJson): Unit =
-    rows.set(rows.now().updated(format -> key, like.copy(historyJson = "{\"not\": \"a history\"}")))
+    rows.set(rows.now().updated(format -> key, InteractionHistoryJson(like.format, "{\"not\": \"a history\"}")))
 
   val client: ExecutionClient = ExecutionClientPool(List(
     SQLCommands.bulkStoreToDbCommand.toLocalExecutionClient((request, _) =>

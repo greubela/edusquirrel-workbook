@@ -1,5 +1,6 @@
 package it.evadid.homepage.control.info
 
+import it.evadid.workbook.sync.model.InteractionHistoryJson
 import it.evadid.workbook.session.{AllWorkbookInfo, SessionData, WorkbookConfig}
 import it.evadid.core.datastructures.file.LoadedFile
 import it.evadid.core.datastructures.language.{AppLanguage, LanguageMapContentId}
@@ -77,7 +78,7 @@ class SessionDataRoundTripSpec extends EditorDomSuite {
     val session = read[SessionData](downloaded())
     val firstKey = session.knownUsageData.keys.find(_.keyForSerialisation == "first_history").get
     val broken = session.copy(knownUsageData = session.knownUsageData.updated(firstKey,
-      session.knownUsageData(firstKey).copy(historyJson = "{\"not\": \"a history\"}")))
+      InteractionHistoryJson(session.knownUsageData(firstKey).format, "{\"not\": \"a history\"}")))
     val target = client(Some(workbook("workbook/part-1", "first", "second")))
     target.interactions.restoreHistories(it.evadid.util.logging.BasicLogger(), broken.knownUsageData)
     assertEquals(answers(target), Map("first" -> "", "second" -> "my second answer"))

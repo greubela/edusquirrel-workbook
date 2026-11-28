@@ -111,6 +111,14 @@ class InteractionHistoryJsonSpec extends FunSuite {
     assert(!saved.contains("Grader.scala") && !saved.contains("stackTrace"), saved)
   }
 
+  test("the envelope nests the history as JSON; a history read as text is parsed once") {
+    val envelope = InteractionHistoryJson.fromHistory(TextInputWithLlmGradingAndScaffoldingFormat, feedbackHistory)
+    val json = ujson.read(envelope.serialized)
+    assert(json("historyJson").objOpt.isDefined, envelope.serialized)
+    assertEquals(InteractionHistoryJson(envelope.format, envelope.historyJson.render()), envelope)
+    intercept[IllegalArgumentException](InteractionHistoryJson(envelope.format, "{not json"))
+  }
+
   test("heterogeneous envelope sequences round-trip without a shared interaction type") {
     val text = InteractionVariableHistory.empty[TextInteractionFormat.type]
       .addEvent(AnswerChangedEvent[TextInteractionFormat.type](answer, time, UpdateImportance.MAJOR))
@@ -143,7 +151,7 @@ class InteractionHistoryJsonSpec extends FunSuite {
 
   test("validated deserialization rejects corrupt inner JSON and state data incompatible with its format") {
     val valid = InteractionHistoryJson.fromHistory(TextInputWithLlmGradingAndScaffoldingFormat, feedbackHistory)
-    intercept[Exception](InteractionHistoryJson.deserialize(valid.copy(historyJson = "not JSON").serialized))
+    intercept[Exception](InteractionHistoryJson.deserialize(InteractionHistoryJson(valid.format, "not JSON").serialized))
     intercept[Exception](InteractionHistoryJson.deserialize(valid.copy(format = LabeledCheckboxInteractionFormat).serialized))
     intercept[Exception](InteractionHistoryJson.deserialize("""{"format":"unknown-format","historyJson":"{}"}"""))
   }

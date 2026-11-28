@@ -57,7 +57,7 @@ class InteractionFormatSpec extends FunSuite {
     val envelope = InteractionHistoryJson.fromHistory(TextInteractionFormat, InteractionVariableHistory.empty[TextInteractionFormat.type])
     intercept[IllegalArgumentException](envelope.typedAs(LabeledCheckboxInteractionFormat))
     intercept[Exception](InteractionHistoryJson.deserialize("{\"format\":\"unknown-format\",\"historyJson\":\"{}\"}"))
-    intercept[Exception](envelope.copy(historyJson = "invalid").toTyped)
+    intercept[Exception](InteractionHistoryJson(envelope.format, "invalid").toTyped)
     intercept[IllegalArgumentException](envelope.between(time.plusNanos(1), time))
   }
   test("history codecs reject incompatible graders") {
