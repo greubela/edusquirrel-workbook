@@ -73,7 +73,7 @@ final class FeedbackControl[F <: InteractionFormat](target: FeedbackTarget[F]) {
       })
       val grading = if selected.isEmpty then Future.successful(completed) else {
         recordGradingStart(selected, forState)
-        GradedState.executeGradingSafe(selected, forState, forceGrading, importance, target.execution)
+        grade(selected, forState, forceGrading, importance)
           .map(_.merge(completed))(using target.execution.futureExecutionContext)
       }
       grading.map { graded =>
@@ -90,6 +90,13 @@ final class FeedbackControl[F <: InteractionFormat](target: FeedbackTarget[F]) {
     val computed = computedGradings.now().get(forState).fold(Map.empty)(_.graderResultMap)
       .collect { case (grader, result) if graders.exists(_.key == grader.key) => graders.find(_.key == grader.key).get -> result }
     GradedState(forState, computed ++ recorded)
+  }
+
+  /** Runs `selected` graders on `state`, each once, and collects their results. */
+  private def grade(selected: Seq[Grader], state: InteractionStateType, forceGrading: Boolean, importance: UpdateImportance): Future[Graded] = {
+    given ExecutionContext = target.execution.futureExecutionContext
+    Future.traverse(selected.distinctBy(_.key))(_.gradeStateSafe(state, forceGrading, importance, target.execution))
+      .map(results => GradedState(state, results.map(result => result.grader -> result).toMap))
   }
 
   private def recordGradingStart(selected: Seq[Grader], state: InteractionStateType): Unit = {
