@@ -13,7 +13,7 @@ import it.evadid.workbook.interaction.sync.UpdateImportance
 
 case object UnicodeComparisonRenderer extends LineBasedRenderingFactory[UnicodeComparisonInteraction] {
   override protected def createRendering(fullInfo: FullInfo, e: UnicodeComparisonInteraction): AtomarLineRendering = {
-    val state = e.interactionVariable.createBoundStateWithUpdateImportance(UpdateImportance.MAJOR, fullInfo.workbookContextInformation).toAirstreamVar
+    val state = e.interactionVariable.createBoundStateWithUpdateImportance(UpdateImportance.MAJOR).toAirstreamVar
     val locked = e.isDisabledState.toAirstreamVar.signal
     def localized(key: String): Signal[String] = laminarHelper(fullInfo).plaintextStringSignal(s"digitalWorkbooks/$key")
     def inputField(first: Boolean): Element = label(

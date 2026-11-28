@@ -4,16 +4,10 @@ import it.evadid.llm.LlmConfiguration
 import it.evadid.core.datastructures.language.AppLanguage.{English, HumanLanguage}
 import it.evadid.core.datastructures.language.control.LanguageMapIdResolver
 import it.evadid.distribution.clients.ExecutionClient
-import it.evadid.workbook.interaction.sync.SyncControl
 
 import scala.concurrent.ExecutionContext
 
 trait ExecutionContextInformation {
-
-  /** Captured feedback contexts become inactive when their user session ends. */
-  def isCurrent: Boolean = true
-
-  def syncControl: Option[SyncControl]
 
   def llmConfiguration: Option[LlmConfiguration] = None
 
@@ -39,8 +33,6 @@ object ExecutionContextInformation {
     override def languageMapIdResolver: Option[LanguageMapIdResolver] = None
 
     override def futureExecutionContext: ExecutionContext = ExecutionContext.global
-
-    override def syncControl: Option[SyncControl] = None
   }
 
 }

@@ -23,7 +23,6 @@ import scala.util.{Failure, Success}
 /** Authentication, session restoration and user transitions; navigation has its own control. */
 final class UserSessionControl(val fullInfo: FullInfo) {
   private given ExecutionContext = ExecutionContext.global
-  private def interactions: Seq[WorkbookInteractionElement[? <: InteractionFormat]] = fullInfo.current.allAvailableInteractions
   private val logger = fullInfo.loggerSystemInfo.contentControlLogger
   private val storage = new UserSessionStorage(logger, fullInfo.loggerSystemInfo.syncControlLogger)
 
@@ -100,7 +99,7 @@ final class UserSessionControl(val fullInfo: FullInfo) {
       if fullInfo.current.userInfo.isEmpty || sameUser then {
         val workbook = session.workbookToContinue(fullInfo.current.workbookInfo)
         fullInfo.workbookNavigationControl.changeWorkbook(Some(workbook))
-        workbook.loadedWorkbook.restoreHistories(logger, session.knownUsageData, fullInfo.workbookContextInformation)
+        workbook.loadedWorkbook.restoreHistories(logger, session.knownUsageData)
       } else logger.logWarn("Ignored a session file of another user")
     }
   }
@@ -180,14 +179,14 @@ final class UserSessionControl(val fullInfo: FullInfo) {
     if (newUserInfo == oldUser) Future.successful(()) else {
       val waitFor: Future[?] = if (oldUser.isEmpty) Future.successful(()) else {
         WorkbookUserDataAnalyzer().downloadAllData(fullInfo)
-        fullInfo.syncControl.ensureSynced()
+        fullInfo.bindings.ensureSynced()
       }
       val finishing = waitFor.recover { case scala.util.control.NonFatal(error) =>
         logger.logExceptionWarn("Could not finish synchronizing the previous user", error)
       }
       // Normal session changes replace the binding immediately; its captured IO finishes independently.
       // A full reset also clears shared local answer stores, so finish that deletion before switching users.
-      val ready = fullInfo.syncControl.resetState.now() match {
+      val ready = fullInfo.bindings.resetState.now() match {
         case _: SyncResetState.Running => finishing
         case _ => Future.unit
       }
@@ -195,7 +194,7 @@ final class UserSessionControl(val fullInfo: FullInfo) {
         installUser(newUserInfo)
         storage.saveSession(newUserInfo).flatMap { _ =>
           if (newUserInfo.isEmpty || fullInfo.current.workbookInfo.isEmpty) Future.successful(()) else {
-            fullInfo.syncControl.ensureSynced()
+            fullInfo.bindings.ensureSynced()
           }
         }
       }).recover {
@@ -207,17 +206,14 @@ final class UserSessionControl(val fullInfo: FullInfo) {
   def updateCredentials(credentials: UserCredentials): Future[?] = {
     require(fullInfo.current.userInfo.nonEmpty, "Create or log in to a profile first")
     fullInfo.homepageInfoState.update(info => info.copy(userInfo = info.userInfo.map(_.copy(credentials = credentials))))
-    storage.saveSession(fullInfo.current.userInfo).flatMap(_ => fullInfo.syncControl.ensureSynced())
+    storage.saveSession(fullInfo.current.userInfo).flatMap(_ => fullInfo.bindings.ensureSynced())
   }
 
   private def installUser(newUserInfo: Option[AllUserInfo]): Unit = {
     newUserInfo.foreach(info => rememberIdentity(info.user))
     storage.saveProfile(newUserInfo)
     // Browser storage is optional. It must never prevent clearing session credentials.
-    if (fullInfo.current.userInfo.map(_.user.personId) != newUserInfo.map(_.user.personId)) {
-      fullInfo.invalidateFeedbackSession()
-      interactions.foreach(_.interactionVariable.resetForNewSession())
-    }
+    // Another user changes the sync context: the binding controller binds the interactions anew.
     fullInfo.homepageInfoState.update(_.copy(userInfo = newUserInfo))
   }
 }

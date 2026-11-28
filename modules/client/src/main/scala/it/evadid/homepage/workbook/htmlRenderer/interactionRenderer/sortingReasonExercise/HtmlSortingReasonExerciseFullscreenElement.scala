@@ -17,7 +17,7 @@ case class HtmlSortingReasonExerciseFullscreenElement(
   private val itemCount = interaction.items.size
   private val fieldCount = interaction.fields.size
 
-  private val stateVar = interaction.interactionVariable.createBoundVarWithUpdateImportance(MINOR, fullInfo.workbookContextInformation)
+  private val stateVar = interaction.interactionVariable.createBoundVarWithUpdateImportance(MINOR)
   private val reasonDraftVar: Var[String] = Var("")
 
   private def contentIdSignal(contentId: LanguageMapContentId): Signal[String] =

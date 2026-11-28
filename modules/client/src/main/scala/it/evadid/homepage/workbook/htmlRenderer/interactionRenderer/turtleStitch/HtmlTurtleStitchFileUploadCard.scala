@@ -38,7 +38,7 @@ private[turtleStitch] case class HtmlTurtleStitchFileUploadCard(fullInfo: FullIn
   private def onFileReadSuccessfully(bytes: Array[Byte]): Unit = {
     println("file read successfully, content has " + bytes.length + " bytes!")
     TurtleStitchProjectState.parseFromBytes(bytes).match {
-      case Success(newState) => workbookInteraction.interactionVariable.setStateFromUserInteraction(newState, UpdateImportance.MAJOR, LocalDateTime.now(), fullInfo.workbookContextInformation)
+      case Success(newState) => workbookInteraction.interactionVariable.setStateFromUserInteraction(newState, UpdateImportance.MAJOR, LocalDateTime.now())
       case Failure(err) => println("HtmlTurtleStitchFileUploadCardRenderer::onFileReadSuccessfully error: " + err.getMessage)
     }
   }

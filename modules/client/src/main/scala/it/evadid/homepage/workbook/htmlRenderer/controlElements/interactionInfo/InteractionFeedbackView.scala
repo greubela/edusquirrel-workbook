@@ -87,6 +87,6 @@ private[interactionInfo] final class InteractionFeedbackView[F <: InteractionFor
       outcome.failed.foreach(error => fullInfo.loggerSystemInfo.uiAndDomLogger.logExceptionWarn("Could not request interaction feedback", error))
     }
   }
-  def requestGrading(): Unit = request(variable.control.getOrCalculateGrading(fullInfo.workbookContextInformation, forceGrading = true))
-  def requestScaffolding(): Unit = request(variable.control.getOrCalculateScaffolding(fullInfo.workbookContextInformation, retryErrors = true))
+  def requestGrading(): Unit = request(variable.control.getOrCalculateGrading(forceGrading = true))
+  def requestScaffolding(): Unit = request(variable.control.getOrCalculateScaffolding(retryErrors = true))
 }

@@ -18,7 +18,7 @@ final class WorkbookNavigationControl(fullInfo: FullInfo) {
     if (previous != newWorkbook || !sameInstance) {
       fullInfo.homepageInfoState.update(_.copy(workbookInfo = newWorkbook))
       // Var updates inside a UI observer run in a child transaction. Select the binding after that update.
-      if (newWorkbook.nonEmpty) Future.unit.flatMap(_ => fullInfo.syncControl.ensureSynced())
+      if (newWorkbook.nonEmpty) Future.unit.flatMap(_ => fullInfo.bindings.ensureSynced())
     }
   }
 

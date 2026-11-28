@@ -67,7 +67,7 @@ class HtmlSubmissionFormSpec extends UiDomSuite {
     val answered = TextInteraction("submitted-answer")
     val untouched = TextInteraction("submitted-untouched")
     inOpenWorkbookUntil(answered, untouched) {
-      answered.interactionVariable.setStateFromUserInteraction("my solution", UpdateImportance.MAJOR, context = ExecutionContextInformation.default)
+      answered.interactionVariable.setStateFromUserInteraction("my solution", UpdateImportance.MAJOR)
       val boundBefore = fullInfo.homepageInfoNow().userInfo
       val fixture = Fixture(Some(online))
       mountedAsync(fixture.form.getDomElement()) { root =>

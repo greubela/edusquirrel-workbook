@@ -71,8 +71,8 @@ class WorkbookContentChoiceInteractionSpec extends FunSuite {
     val state = selected(multiple, 0, 1)
     val format = multiple.interactionFormat
     assertEquals(format.stateSerializer.deserialize(format.stateSerializer.serialize(state)), state)
-    multiple.interactionVariable.setStateFromUserInteraction(state, it.evadid.workbook.interaction.sync.UpdateImportance.MAJOR, context = TestExecutionContext())
-    multiple.interactionVariable.control.getOrCalculateGrading(TestExecutionContext(), true).map { result =>
+    multiple.interactionVariable.setStateFromUserInteraction(state, it.evadid.workbook.interaction.sync.UpdateImportance.MAJOR)
+    multiple.interactionVariable.control.getOrCalculateGrading(true).map { result =>
       val history = multiple.interactionVariable.currentHistory
       val restored = format.historySerializer.deserialize(format.historySerializer.serialize(history))
       assertEquals(restored, history)

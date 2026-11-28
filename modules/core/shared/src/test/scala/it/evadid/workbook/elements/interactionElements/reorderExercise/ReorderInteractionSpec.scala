@@ -72,9 +72,9 @@ class ReorderInteractionSpec extends FunSuite {
 
   test("manual grading records a serializable result rather than renderer-only feedback") {
     val answer = state(0, 1, 2)
-    exercise.interactionVariable.setStateFromUserInteraction(answer, it.evadid.workbook.interaction.sync.UpdateImportance.MAJOR, context = TestExecutionContext())
-    exercise.interactionVariable.control.getOrCalculateGrading(TestExecutionContext()).flatMap { _ =>
-      exercise.interactionVariable.control.getOrCalculateGrading(TestExecutionContext(), true)
+    exercise.interactionVariable.setStateFromUserInteraction(answer, it.evadid.workbook.interaction.sync.UpdateImportance.MAJOR)
+    exercise.interactionVariable.control.getOrCalculateGrading().flatMap { _ =>
+      exercise.interactionVariable.control.getOrCalculateGrading(true)
     }.map { result =>
       assert(result.testsWithResults.forall(_.gradingStatus.isCorrect))
       val history = exercise.interactionVariable.currentHistory

@@ -13,7 +13,6 @@ import it.evadid.distribution.clients.ExecutionClient
 import it.evadid.homepage.control.change.*
 import it.evadid.homepage.control.info.*
 import it.evadid.homepage.control.singletons.HomepageDefaults
-import it.evadid.workbook.interaction.sync.SyncControl
 import it.evadid.workbook.meta.ExecutionContextInformation
 
 import scala.concurrent.{ExecutionContext, Future}
@@ -36,9 +35,6 @@ case class FullInfo(private[control] val defaultInfo: HomepageInfo) {
   private[control] val homepageInfoState: Var[HomepageInfo] = Var(defaultInfo)
 
   def homepageInfoNow(): HomepageInfo = homepageInfoState.now()
-
-  private[homepage] val feedbackSession = Var[AnyRef](new Object)
-  private[homepage] def invalidateFeedbackSession(): Unit = feedbackSession.set(new Object)
 
   /* INFO */
 
@@ -63,18 +59,18 @@ case class FullInfo(private[control] val defaultInfo: HomepageInfo) {
 
   val userSessionControl: UserSessionControl = new UserSessionControl(this)
 
-  val syncControl: RemoteInteractionCacheControl = RemoteInteractionCacheControl(this)
+  val bindings: BindingController = BindingController(this)
 
-  val reporters: InteractionReporterRegistry = InteractionReporterRegistry(signals.workbook, syncControl, owner)
+  val reporters: InteractionReporterRegistry = InteractionReporterRegistry(signals.workbook, bindings, owner)
 
-  def workbookContextInformation: ExecutionContextInformation = {
-    val owner = feedbackSession.now()
-    val token = backendToken
+  /** Feedback execution for the current user. */
+  def workbookContextInformation: ExecutionContextInformation = executionContextFor(homepageInfoNow())
+
+  /** Feedback execution with `info`'s credentials; the language is read when feedback runs. */
+  def executionContextFor(info: HomepageInfo): ExecutionContextInformation = {
+    val token = info.userInfo.flatMap(_.credentials.signedBackendToken)
     new ExecutionContextInformation() {
-      override def isCurrent: Boolean = feedbackSession.now() eq owner
-
-      override val llmConfiguration: Option[LlmConfiguration] =
-        homepageInfoNow().userInfo.flatMap(_.credentials.llmApiConfig)
+      override val llmConfiguration: Option[LlmConfiguration] = info.userInfo.flatMap(_.credentials.llmApiConfig)
 
       override lazy val availableExecutionClients: Seq[ExecutionClient] = List(defaults.workerExecuter, defaults.backendExecutorWithCredentials(token))
 
@@ -87,8 +83,6 @@ case class FullInfo(private[control] val defaultInfo: HomepageInfo) {
       })
 
       override def futureExecutionContext: ExecutionContext = ExecutionContext.global
-
-      override def syncControl: Option[SyncControl] = Some(FullInfo.this.syncControl)
     }
   }
 }

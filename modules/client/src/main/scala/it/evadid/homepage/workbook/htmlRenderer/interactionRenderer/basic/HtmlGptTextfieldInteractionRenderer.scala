@@ -71,7 +71,7 @@ object HtmlGptTextfieldInteractionRenderer extends LineBasedRenderingFactory[Gpt
     // The chat button exists only for exercises with a scaffolding conversation.
     val elements: Seq[Element] = workbookElement.scaffoldingInteractionOp.toList.map { scaffolding =>
       val chat: Var[MessengerModel] = scaffolding.interactionVariable
-        .createBoundVarWithUpdateImportance(MAJOR, fullInfo.workbookContextInformation)
+        .createBoundVarWithUpdateImportance(MAJOR)
         .bimap(_.messengerModel)(MessengerModelScaffolding.apply)
       // While the chat is open, every message the student adds asks the assistant for a reply.
       def openChat(): SimpleChatEditor = SimpleChatEditor(fullInfo, chat, bindings = Seq(
@@ -80,7 +80,7 @@ object HtmlGptTextfieldInteractionRenderer extends LineBasedRenderingFactory[Gpt
 
         val currentUser: ChatParticipant = fullInfo.current.userInfo.map(_.user).getOrElse(MessengerModel.pFallbackStudent)
 
-        workbookElement.initScaffoldingIfEmpty(fullInfo.workbookContextInformation, currentUser, fullInfo.workbookContextInformation.languageMapIdResolver.get).onComplete {
+        workbookElement.initScaffoldingIfEmpty(currentUser, fullInfo.workbookContextInformation.languageMapIdResolver.get).onComplete {
           case Success(bool) => if (bool) requestCompletion(fullInfo, chat.now(), chat)
           case e: Any => fullInfo.loggerSystemInfo.workbookElementLogger.logWarn(s"HtmlGptTextfieldInteractionRenderer::createRendering -> error of some sort..: ${e.toString}")
         }(using ExecutionContext.global)

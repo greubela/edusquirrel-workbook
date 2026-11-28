@@ -33,7 +33,7 @@ class SessionDataRoundTripSpec extends EditorDomSuite {
     info.loadedWorkbook.allContainedInteractionsById.map((id, interaction) => id -> interaction.interactionVariable.currentValue.toString)
   private def answer(info: AllWorkbookInfo, id: String, value: String): Unit =
     info.loadedWorkbook.allContainedInteractionsById(id).asInstanceOf[TextInteraction].interactionVariable
-      .setStateFromUserInteraction(value, UpdateImportance.MAJOR, context = ExecutionContextInformation.default)
+      .setStateFromUserInteraction(value, UpdateImportance.MAJOR)
 
   /** The text a download writes: answers of `id`'s interactions `first` and `second`. */
   private def downloaded(id: String = "workbook/part-1"): String = {
@@ -75,10 +75,10 @@ class SessionDataRoundTripSpec extends EditorDomSuite {
     val broken = session.copy(knownUsageData = session.knownUsageData.updated(firstKey,
       session.knownUsageData(firstKey).copy(historyJson = "{\"not\": \"a history\"}")))
     val target = workbook("workbook/part-1", "first", "second")
-    target.loadedWorkbook.restoreHistories(it.evadid.util.logging.BasicLogger(), broken.knownUsageData, ExecutionContextInformation.default)
+    target.loadedWorkbook.restoreHistories(it.evadid.util.logging.BasicLogger(), broken.knownUsageData)
     assertEquals(answers(target), Map("first" -> "", "second" -> "my second answer"))
     val elsewhere = workbook("workbook/part-2", "first", "second")
-    elsewhere.loadedWorkbook.restoreHistories(it.evadid.util.logging.BasicLogger(), session.knownUsageData, ExecutionContextInformation.default)
+    elsewhere.loadedWorkbook.restoreHistories(it.evadid.util.logging.BasicLogger(), session.knownUsageData)
     assertEquals(answers(elsewhere), Map("first" -> "", "second" -> ""))
   }
 

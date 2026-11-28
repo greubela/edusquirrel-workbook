@@ -14,7 +14,6 @@ import it.evadid.workbook.elements.structureElements.*
 import it.evadid.workbook.interaction.sync.SyncContext
 import it.evadid.workbook.interaction.sync.model.InteractionHistoryJson
 import it.evadid.workbook.jsonFactory.{WorkbookElementFactory, WorkbookElementReference, WorkbookElementSerializable}
-import it.evadid.workbook.meta.ExecutionContextInformation
 import ujson.Value
 import upickle.default
 import upickle.default.*
@@ -40,10 +39,10 @@ case class Workbook(
   /** Restores saved histories of this workbook into its interactions; the user is not checked. Histories of
     * other workbooks are ignored, even where their interactions reuse this workbook's element ids.
     */
-  def restoreHistories(logger: Logger, data: Map[SyncContext, InteractionHistoryJson], executionContextInformation: ExecutionContextInformation): Unit = {
+  def restoreHistories(logger: Logger, data: Map[SyncContext, InteractionHistoryJson]): Unit = {
     val own = data.collect { case (key, history) if key.scenarioId == workbookId => key.keyForSerialisation -> history }
     allInteractionsInThisInstance.foreach(interaction => own.get(interaction.interactionVariable.keyForSerialization)
-      .foreach(history => interaction.interactionVariable.restoreHistory(logger, history, executionContextInformation)))
+      .foreach(history => interaction.interactionVariable.restoreHistory(logger, history)))
   }
 }
 

@@ -12,7 +12,7 @@ import it.evadid.workbook.interaction.sync.UpdateImportance
 
 case object CoordinatePlotRenderer extends LineBasedRenderingFactory[CoordinatePlotInteraction] {
   override protected def createRendering(fullInfo: FullInfo, e: CoordinatePlotInteraction): AtomarLineRendering = {
-    val state = e.interactionVariable.createBoundStateWithUpdateImportance(UpdateImportance.MAJOR, fullInfo.workbookContextInformation).toAirstreamVar
+    val state = e.interactionVariable.createBoundStateWithUpdateImportance(UpdateImportance.MAJOR).toAirstreamVar
     AtomarLineRendering.basicLine(fullInfo, e, CoordinatePlotEditor(fullInfo, e, state, e.isDisabledState.toAirstreamVar).getDomElement())
   }
 }

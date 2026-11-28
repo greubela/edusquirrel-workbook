@@ -37,7 +37,7 @@ class InteractionReportersSpec extends EditorDomSuite {
     AllDisplayInfo(false, None), LanguageMapStorage.empty))
   private def complete(element: TextInputWithScaffoldingAndGrading, status: GradingStatus, offset: Long): Unit =
     element.interactionVariable.updateHistory(_.addGrading(GradingResult(element.gradingElements.head,
-      element.interactionVariable.currentValue, status, None, None, at.plusSeconds(offset))), ExecutionContextInformation.default)
+      element.interactionVariable.currentValue, status, None, None, at.plusSeconds(offset))))
 
   test("registry covers all formats and reuses entries across UI and user changes") {
     val element = exercise("shared")
@@ -147,14 +147,13 @@ class InteractionReportersSpec extends EditorDomSuite {
     try {
       val report = reporter.report.observe(using owner)
       def hint(status: ScaffoldingStatus, offset: Long): Unit = element.interactionVariable.updateHistory(
-        _.addScaffolding(ScaffoldingResult[String, MessengerModel]("", status, FeedbackEntity.TestEntity, None, at.plusSeconds(offset))),
-        ExecutionContextInformation.default)
+        _.addScaffolding(ScaffoldingResult[String, MessengerModel]("", status, FeedbackEntity.TestEntity, None, at.plusSeconds(offset))))
       hint(ScaffoldingStatus.ScaffoldingRequestedButNotFinished(), 1)
       assertEquals(report.now().scaffolding.status, ScaffoldingReport.Status.Pending)
       assert(report.now().scaffolding.feedback.isEmpty)
       hint(ScaffoldingStatus.ScaffoldingFeedback(LanguageMap.universalMap[HumanLanguage]("hint")), 2)
       assertEquals(report.now().scaffolding.status, ScaffoldingReport.Status.Ready)
-      element.interactionVariable.updateHistory(_.addState(InteractionVariableState("new", UpdateImportance.MAJOR, at.plusSeconds(3))), ExecutionContextInformation.default)
+      element.interactionVariable.updateHistory(_.addState(InteractionVariableState("new", UpdateImportance.MAJOR, at.plusSeconds(3))))
       hint(ScaffoldingStatus.ScaffoldingFeedback(LanguageMap.universalMap[HumanLanguage]("late")), 4)
       assertEquals(report.now().scaffolding.status, ScaffoldingReport.Status.NotRequested)
       assert(report.now().scaffolding.feedback.isEmpty)
@@ -163,14 +162,13 @@ class InteractionReportersSpec extends EditorDomSuite {
 
   test("sync classification ignores obsolete confirmations and shares its snapshot") {
     import SyncReporter.Status
-    assertEquals(SyncReporter.summarize[String](None).status, Status.Disabled)
-    assertEquals(SyncReporter.summarize(Some(InteractionVariableSyncReport(Set.empty[String], Set("obsolete")))).status, Status.Disabled)
-    assertEquals(SyncReporter.summarize(Some(InteractionVariableSyncReport(Set("a", "b"), Set.empty[String]))).status, Status.Unsynced)
-    assertEquals(SyncReporter.summarize(Some(InteractionVariableSyncReport(Set("a", "b"), Set("a", "obsolete")))).status, Status.Partial)
-    assertEquals(SyncReporter.summarize(Some(InteractionVariableSyncReport(Set("a", "b"), Set("a", "b")))).status, Status.Synced)
+    assertEquals(SyncReporter.summarize(InteractionVariableSyncReport(Set.empty[String], Set("obsolete"))).status, Status.Disabled)
+    assertEquals(SyncReporter.summarize(InteractionVariableSyncReport(Set("a", "b"), Set.empty[String])).status, Status.Unsynced)
+    assertEquals(SyncReporter.summarize(InteractionVariableSyncReport(Set("a", "b"), Set("a", "obsolete"))).status, Status.Partial)
+    assertEquals(SyncReporter.summarize(InteractionVariableSyncReport(Set("a", "b"), Set("a", "b"))).status, Status.Synced)
     val owner = new ManualOwner
     try {
-      val source = Var(Option.empty[InteractionVariableSyncReport[it.evadid.workbook.interaction.sync.SyncInformationWithContext]])
+      val source = Var(InteractionVariableSyncReport(Set.empty[it.evadid.workbook.interaction.sync.SyncInformationWithContext], Set.empty))
       val reporter = new SyncReporter(source.signal)
       val first = reporter.report.observe(using owner)
       val second = reporter.report.observe(using owner)

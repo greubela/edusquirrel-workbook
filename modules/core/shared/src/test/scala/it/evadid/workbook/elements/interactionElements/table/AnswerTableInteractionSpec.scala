@@ -86,11 +86,10 @@ class AnswerTableInteractionSpec extends FunSuite {
 
   test("per-cell results are persisted with their registered table graders") {
     val answer = TableAnswer(Seq("1", "hello", "reflection"))
-    val context = TestExecutionContext()
-    table.interactionVariable.setStateFromUserInteraction(answer, it.evadid.workbook.interaction.sync.UpdateImportance.MAJOR, context = context)
+    table.interactionVariable.setStateFromUserInteraction(answer, it.evadid.workbook.interaction.sync.UpdateImportance.MAJOR)
     val control = table.interactionVariable.control
     // Saving starts an automatic grading, which skips the cells; the check runs them once it finished.
-    control.getOrCalculateGrading(context).flatMap(_ => control.getOrCalculateGrading(context, forceGrading = true)).map { result =>
+    control.getOrCalculateGrading().flatMap(_ => control.getOrCalculateGrading(forceGrading = true)).map { result =>
       assertEquals(result.testsWithResults.size, 2)
       assert(result.testsWithResults.forall(_.gradingStatus.isCorrect))
       val history = table.interactionVariable.currentHistory

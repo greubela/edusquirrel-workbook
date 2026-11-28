@@ -200,7 +200,7 @@ class CompressionActivitiesEditorSpec extends UiDomSuite {
       mounted(element) { root =>
         assert(one(root, "blockquote").textContent.contains(text("comparisonEmpty")))
         earlier.interactionVariable.setStateFromUserInteraction(WrittenAnswer("Smaller files load faster"),
-          it.evadid.workbook.interaction.sync.UpdateImportance.MAJOR, context = it.evadid.workbook.meta.ExecutionContextInformation.default)
+          it.evadid.workbook.interaction.sync.UpdateImportance.MAJOR)
         assertEquals(one(root, "blockquote").textContent, "Smaller files load faster")
       }
     }

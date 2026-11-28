@@ -13,7 +13,7 @@ import it.evadid.workbook.interaction.sync.UpdateImportance
 
 case object ThresholdNeuronRenderer extends LineBasedRenderingFactory[ThresholdNeuronInteraction] {
   override protected def createRendering(fullInfo: FullInfo, e: ThresholdNeuronInteraction): AtomarLineRendering = {
-    val state = e.interactionVariable.createBoundVarWithUpdateImportance(UpdateImportance.MAJOR, fullInfo.workbookContextInformation)
+    val state = e.interactionVariable.createBoundVarWithUpdateImportance(UpdateImportance.MAJOR)
     val summary = p(cls := "neuron-preview", role := "status", text <-- state.signal.map(p => e.matches(p).count(identity))
       .combineWith(laminarHelper(fullInfo).plaintextStringSignal("digitalWorkbooks/neuronProgress"))
       .map((count, text) => text.replace("{count}", count.toString).replace("{total}", e.examples.size.toString)))

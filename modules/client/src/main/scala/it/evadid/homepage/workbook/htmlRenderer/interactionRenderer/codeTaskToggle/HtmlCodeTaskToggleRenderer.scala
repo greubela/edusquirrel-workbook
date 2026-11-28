@@ -16,7 +16,7 @@ import it.evadid.workbook.interaction.sync.UpdateImportance
 object HtmlCodeTaskToggleRenderer extends LineBasedRenderingFactory[CodeTaskToggleInteraction] {
 
   override protected def createRendering(fullInfo: FullInfo, interaction: CodeTaskToggleInteraction): AtomarLineRendering = {
-    val stateVar = interaction.interactionVariable.createBoundVarWithUpdateImportance(UpdateImportance.MINOR, fullInfo.workbookContextInformation)
+    val stateVar = interaction.interactionVariable.createBoundVarWithUpdateImportance(UpdateImportance.MINOR)
     val advancedCodeVar: Var[String] = stateVar.zoomLazy(_.advancedCode)((state, code) => state.copy(advancedCode = code))
 
     def reorderEditor(): Element = div(

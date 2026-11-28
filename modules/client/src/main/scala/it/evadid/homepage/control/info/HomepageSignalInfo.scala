@@ -5,28 +5,24 @@ import com.raquo.laminar.api.L.*
 import it.evadid.core.datastructures.language.*
 import it.evadid.core.datastructures.language.AppLanguage.*
 import it.evadid.core.datastructures.language.control.LanguageMapStorage
-import it.evadid.core.datastructures.storage.remote.WorkbookSyncEnvironment
+import it.evadid.workbook.interaction.binding.SyncConnection
 import it.evadid.core.datastructures.user.AllUserInfo
 import it.evadid.homepage.control.model.*
 import it.evadid.workbook.elements.structureElements.WorkbookSection
 
 case class HomepageSignalInfo(fullInfo: FullInfo) {
 
-  lazy val syncEnvironmentSignal: StrictSignal[Option[WorkbookSyncEnvironment]] = {
+  /** Changes with the sync context, the loaded workbook instance and the user's destinations and credentials. */
+  lazy val bindingEnvironment: StrictSignal[BindingEnvironment] = {
     fullInfo.homepageInfoState.signal.distinctByFn((previous, next) =>
       previous.toContext == next.toContext &&
         previous.workbookInfo.map(_.loadedWorkbook).zip(next.workbookInfo.map(_.loadedWorkbook)).forall((a, b) => a eq b) &&
         previous.workbookInfo.isDefined == next.workbookInfo.isDefined &&
         previous.userInfo.map(user => (user.config.syncDestinations, user.credentials)) ==
           next.userInfo.map(user => (user.config.syncDestinations, user.credentials))
-    ).map(curHomepageInfo => {
-      if (curHomepageInfo.userInfo.isEmpty || curHomepageInfo.workbookInfo.isEmpty) None
-      else Some(WorkbookSyncEnvironment(
-        curHomepageInfo.toContext,
-        curHomepageInfo.workbookInfo.toSet.flatMap(_.loadedWorkbook.allContainedInteractionsById.values),
-        curHomepageInfo.syncDestinations(fullInfo).toSet
-      ))
-    }).observe(using fullInfo.owner)
+    ).map(info => BindingEnvironment(info.toContext, info.workbookInfo.map(_.loadedWorkbook),
+      SyncConnection(info.syncDestinations(fullInfo).toSet, fullInfo.executionContextFor(info), fullInfo.loggerSystemInfo.syncControlLogger))
+    ).observe(using fullInfo.owner)
   }
 
   private def baseSignal: StrictSignal[HomepageInfo] = fullInfo.homepageInfoState.signal

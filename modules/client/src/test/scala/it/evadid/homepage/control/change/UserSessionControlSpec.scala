@@ -1,7 +1,7 @@
 package it.evadid.homepage.control.change
 
 import com.raquo.airstream.state.Var
-import it.evadid.core.datastructures.language.AppLanguage
+import it.evadid.core.datastructures.language.{AppLanguage, LanguageMapContentId}
 import it.evadid.core.datastructures.language.control.LanguageMapStorage
 import it.evadid.core.datastructures.user.*
 import it.evadid.core.datastructures.user.User.SingleAccessToken
@@ -158,19 +158,26 @@ class UserSessionControlSpec extends EditorDomSuite {
     }
   }
 
-  test("changing users resets the feedback session; repeating a change or signing out keeps state consistent") {
-    val info = page()
+  test("changing users replaces the bindings; repeating a change or signing out keeps state consistent") {
+    val element = it.evadid.workbook.elements.interactionElements.basic.TextInteraction("answer")
+    val section = it.evadid.workbook.elements.structureElements.WorkbookSection("section",
+      it.evadid.workbook.elements.structureElements.WorkbookSection.WorkbookSectionMetadata(LanguageMapContentId("spec/section")), Seq(element))
+    val workbook = it.evadid.workbook.elements.structureElements.Workbook("workbook", it.evadid.workbook.elements.structureElements.Workbook.WorkbookMetadata(
+      Set.empty, Set.empty, LanguageMapContentId("spec/title"), Seq(AppLanguage.English)), Seq(section))
+    val info = FullInfo(HomepageInfo(AppLanguage.German, Some(it.evadid.workbook.session.AllWorkbookInfo(workbook,
+      it.evadid.workbook.session.WorkbookConfig(Some(section)), Map.empty)), None, AllDisplayInfo(false, None), LanguageMapStorage.empty))
     val control = info.userSessionControl
     val first = AllUserInfo.createNewUser("First", "first@school.example", localConfig)
     val second = AllUserInfo.createNewUser("Second", "second@school.example", localConfig)
-    val session = info.feedbackSession.now()
+    val interaction = element.interactionVariable
+    val session = interaction.binding
     for {
       _ <- control.changeUser(Some(first))
-      afterFirst = info.feedbackSession.now()
+      afterFirst = interaction.binding
       _ <- control.changeUser(Some(first))
-      _ = assert(info.feedbackSession.now() eq afterFirst, "the same user keeps the session")
+      _ = assert(interaction.binding eq afterFirst, "the same user keeps the binding")
       _ <- control.changeUser(Some(second))
-      _ = assert(!(info.feedbackSession.now() eq afterFirst), "another user gets a new feedback session")
+      _ = assert(!(interaction.binding eq afterFirst), "another user gets a new binding")
       _ = assert(dom.window.localStorage.getItem("edusquirrel-alluserinfo").contains("second@school.example"))
       _ <- control.changeUser(None)
     } yield {

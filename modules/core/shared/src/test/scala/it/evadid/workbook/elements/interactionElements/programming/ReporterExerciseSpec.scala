@@ -45,10 +45,10 @@ class ReporterExerciseSpec extends FunSuite {
 
   test("the exercise interaction grades a student's reporter answer from its history") {
     val interaction = TurtleRecreateShapeInteraction("reporter-square", ProgrammingStateRaw(Python, "pass\n"), square)
-    interaction.interactionVariable.setStateFromUserInteraction(answer.toSnapXml, MAJOR, context = TestExecutionContext())
+    interaction.interactionVariable.setStateFromUserInteraction(answer.toSnapXml, MAJOR)
     // The edit's automatic grading skips the shape grader; the requested one after it runs it.
-    interaction.interactionVariable.control.getOrCalculateGrading(TestExecutionContext()).flatMap(_ =>
-      interaction.interactionVariable.control.getOrCalculateGrading(TestExecutionContext(), forceGrading = true)).map { graded =>
+    interaction.interactionVariable.control.getOrCalculateGrading().flatMap(_ =>
+      interaction.interactionVariable.control.getOrCalculateGrading(forceGrading = true)).map { graded =>
       assertEquals(graded.testsWithResults.head.gradingStatus, GradingStatus.Correct)
     }
   }

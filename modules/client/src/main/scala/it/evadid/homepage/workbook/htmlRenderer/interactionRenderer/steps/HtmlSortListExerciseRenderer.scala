@@ -37,7 +37,7 @@ case object HtmlSortListExerciseRenderer extends LineBasedRenderingFactory[SortL
       key => laminarHelper(fullInfo).plaintextStringSignal(LanguageMapContentId(s"basic/$key"))).getDomElement())
 
   override protected def createRendering(fullInfo: FullInfo, element: SortListExercise): AtomarLineRendering = {
-    val boundVar = element.interactionVariable.createBoundStateWithUpdateImportance(UpdateImportance.MAJOR, fullInfo.workbookContextInformation).toAirstreamVar
+    val boundVar = element.interactionVariable.createBoundStateWithUpdateImportance(UpdateImportance.MAJOR).toAirstreamVar
     val gradingReporter = fullInfo.reporters.reportersFor(element).grading
     def stepsCard = sortStepsCard(fullInfo, element, boundVar)
 

@@ -60,7 +60,7 @@ class ProgrammingHintScaffolderSpec extends FunSuite {
     Future.traverse(drafts) { (code, flagged) =>
       val fixture = new Fixture(reply("Look at the current statement.", "source-1"))
       val state = ProgrammingStateRaw(Python, code)
-      fixture.exercise.interactionVariable.setStateFromUserInteraction(state, UpdateImportance.MAJOR, java.time.LocalDateTime.now().plusSeconds(1), fixture.context())
+      fixture.exercise.interactionVariable.setStateFromUserInteraction(state, UpdateImportance.MAJOR, java.time.LocalDateTime.now().plusSeconds(1))
       fixture.hint(state).map(_ => assertEquals(fixture.requests.now().head.systemPrompt.contains("could not read this draft"), flagged, code))
     }
   }

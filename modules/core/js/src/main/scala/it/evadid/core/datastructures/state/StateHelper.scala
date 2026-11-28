@@ -8,7 +8,7 @@ import it.evadid.workbook.abstractions.InteractionFormat
 import it.evadid.workbook.interaction.sync.UpdateImportance
 import it.evadid.workbook.interaction.sync.UpdateImportance.TEMPORARY
 import it.evadid.workbook.interaction.variable.{InteractionVariable, InteractionVariableHistory}
-import it.evadid.workbook.meta.ExecutionContextInformation
+import it.evadid.workbook.interaction.binding.InteractionBinding
 
 import scala.concurrent.{ExecutionContext, Future}
 import com.raquo.airstream.state.{LazyDerivedVar, LazyStrictSignal}
@@ -24,12 +24,10 @@ object StateHelper {
 
   implicit class RichInteractionVariable[F <: InteractionFormat](underlying: InteractionVariable[F]) {
 
-    def historySignal: Signal[InteractionVariableHistory[F]] = {
-      val res: Signal[InteractionVariableHistory[F]] = underlying.observableHistoryWithDefault.toSignal(
-        underlying.observableHistoryWithDefault.now().get
-      )
-      res
-    }
+    /** The current binding's history; it follows a replaced binding. */
+    def historySignal: Signal[InteractionVariableHistory[F]] = underlying.observableHistory.toSignal(underlying.currentHistory)
+
+    def bindingSignal: Signal[InteractionBinding[F]] = underlying.bindingObservable.toSignal(underlying.binding)
 
   }
 
@@ -108,8 +106,8 @@ object StateHelper {
 
   implicit class InteractionVariableOnJS[F <: InteractionFormat](interactionVariable: InteractionVariable[F]) {
 
-    def createBoundVarWithUpdateImportance(updateImportance: UpdateImportance, context: ExecutionContextInformation): Var[InteractionFormat.State[F]] =
-      interactionVariable.createBoundStateWithUpdateImportance(updateImportance, context).toAirstreamVar
+    def createBoundVarWithUpdateImportance(updateImportance: UpdateImportance): Var[InteractionFormat.State[F]] =
+      interactionVariable.createBoundStateWithUpdateImportance(updateImportance).toAirstreamVar
 
 
     /** The current answer; it observes the variable only while the signal has observers. */

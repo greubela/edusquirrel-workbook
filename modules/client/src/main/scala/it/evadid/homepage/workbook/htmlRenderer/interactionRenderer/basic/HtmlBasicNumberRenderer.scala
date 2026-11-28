@@ -18,7 +18,7 @@ object HtmlBasicNumberRenderer extends LineBasedRenderingFactory[LabeledNumberIn
 
   override protected def createRendering(fullInfo: FullInfo, lni: LabeledNumberInteraction): AtomarLineRendering = {
 
-    val numberVar: Var[String] = lni.interactionVariable.createBoundStateWithUpdateImportance(UpdateImportance.MINOR, fullInfo.workbookContextInformation).toAirstreamVar
+    val numberVar: Var[String] = lni.interactionVariable.createBoundStateWithUpdateImportance(UpdateImportance.MINOR).toAirstreamVar
 
     val dom: ReactiveHtmlElement[HTMLLabelElement] =
       label(

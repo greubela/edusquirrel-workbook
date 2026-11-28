@@ -12,7 +12,7 @@ import it.evadid.workbook.interaction.sync.UpdateImportance
 case object HtmlSqlCommandExerciseRenderer extends LineBasedRenderingFactory[SqlCommandExercise] {
   override protected def createRendering(fullInfo: FullInfo, exercise: SqlCommandExercise): AtomarLineRendering = {
     val state = exercise.interactionVariable.createBoundStateWithUpdateImportance(
-      UpdateImportance.MAJOR, fullInfo.workbookContextInformation).toAirstreamVar
+      UpdateImportance.MAJOR).toAirstreamVar
     AtomarLineRendering.basicLine(fullInfo, exercise, div(
       button(typ := "button", "Open SQL editor", onClick --> (_ =>
         fullInfo.displayControl.setFullscreen(SqlEditor(fullInfo.loggerSystemInfo.uiAndDomLogger, state, exercise.databaseConfig, fullInfo.backendExecutor,

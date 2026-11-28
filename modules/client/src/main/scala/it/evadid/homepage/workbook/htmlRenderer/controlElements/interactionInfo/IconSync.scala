@@ -36,8 +36,8 @@ case class IconSync[F <: InteractionFormat](fullInfo: FullInfo, laminarHelper: L
   /** Like the grading icon, a click starts the work: the current answer is committed and synchronized. */
   def onSyncRequested(): Unit = {
     val variable = workbookInteractionElement.interactionVariable
-    variable.commitCurrentState(fullInfo.workbookContextInformation)
-    fullInfo.syncControl.synchronize(variable)
+    variable.commitCurrentState()
+    fullInfo.bindings.synchronize(variable)
     ()
   }
 }

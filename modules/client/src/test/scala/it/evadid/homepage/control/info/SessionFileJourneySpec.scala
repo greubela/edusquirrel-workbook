@@ -74,9 +74,9 @@ class SessionFileJourneySpec extends EditorDomSuite {
     val first = client(Some(workbook()), Some(user))
     val answer: ProgrammingState = program.toSnapXml
     interaction(first, "square").asInstanceOf[TurtleRecreateShapeInteraction].interactionVariable
-      .setStateFromUserInteraction(answer, UpdateImportance.MAJOR, context = ExecutionContextInformation.default)
+      .setStateFromUserInteraction(answer, UpdateImportance.MAJOR)
     interaction(first, "note").asInstanceOf[TextInteraction].interactionVariable
-      .setStateFromUserInteraction("my reasoning", UpdateImportance.MAJOR, context = ExecutionContextInformation.default)
+      .setStateFromUserInteraction("my reasoning", UpdateImportance.MAJOR)
     val logger = BasicLogger()
     captureDownload(WorkbookUserDataAnalyzer().downloadAllData(logger, DownloadToDisc(logger), first.homepageInfoNow())).flatMap { (name, content) =>
       assert(name.endsWith("_journey_workbook.eva") && name.contains(user.user.id), name)
@@ -88,8 +88,8 @@ class SessionFileJourneySpec extends EditorDomSuite {
         val restored = interaction(second, "square").asInstanceOf[TurtleRecreateShapeInteraction]
         assertEquals(restored.interactionVariable.currentValue, answer)
         assertEquals(interaction(second, "note").asInstanceOf[TextInteraction].interactionVariable.currentValue, "my reasoning")
-        restored.interactionVariable.control.getOrCalculateGrading(ExecutionContextInformation.default)
-          .flatMap(_ => restored.interactionVariable.control.getOrCalculateGrading(ExecutionContextInformation.default, forceGrading = true)).map { graded =>
+        restored.interactionVariable.control.getOrCalculateGrading()
+          .flatMap(_ => restored.interactionVariable.control.getOrCalculateGrading(forceGrading = true)).map { graded =>
           assertEquals(graded.testsWithResults.head.gradingStatus, GradingStatus.Correct, "the restored reporter answer still draws the square")
           List(Python, Java).foreach { language =>
             val converted = restored.interactionVariable.currentValue.convertToLanguage(language).finalState.get

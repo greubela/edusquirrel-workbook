@@ -1,5 +1,7 @@
 package it.evadid.workbook.interaction.variable
 
+import it.evadid.workbook.interaction.binding.SyncConnection
+import it.evadid.workbook.interaction.sync.UsageContext
 import it.evadid.core.datastructures.state.State
 import it.evadid.core.datastructures.state.async.AsyncDataState.AsyncDataSuccess
 import it.evadid.workbook.elements.interactionElements.basic.TextInteraction
@@ -21,21 +23,36 @@ class InteractionVariableBindingSpec extends FunSuite {
     val bound = variable.createBoundStateWithUpdateLogic(change => {
       seen.update(_ :+ (change.lastState.value -> change.newState.value))
       UpdateImportance.MAJOR
-    }, context)
+    })
     bound.set("a")
     assertEquals(seen.now(), Vector("" -> "a"))
     assertEquals(variable.safeLastState.updateImportance, UpdateImportance.MAJOR)
     assertEquals(variable.asAsync.stateNow(), AsyncDataSuccess("a"))
   }
 
-  test("a new feedback session restores the default history, rebinding the same owner keeps it") {
+  test("a new binding starts from the default answer; reconnecting the binding keeps its history") {
     val variable = TextInteraction("session").interactionVariable
-    variable.bindFeedbackSession("first")
-    variable.setStateFromUserInteraction("mine", UpdateImportance.MAJOR, LocalDateTime.now().plusSeconds(1), context)
-    variable.bindFeedbackSession("first")
+    val first = variable.bindTo(UsageContext("program", "workbook", "first"), SyncConnection.offline)
+    variable.setStateFromUserInteraction("mine", UpdateImportance.MAJOR, LocalDateTime.now().plusSeconds(1))
+    first.connect(SyncConnection.offline.copy(execution = TestExecutionContext()))
     assertEquals(variable.currentValue, "mine")
-    variable.bindFeedbackSession("second")
+    variable.bindTo(UsageContext("program", "workbook", "second"), SyncConnection.offline)
     assertEquals(variable.currentValue, "")
+    assertEquals(first.currentHistory.historyStates.lastStateOption.map(_.value), Some("mine"), "the retired binding keeps its own history")
+  }
+
+  test("observers and bound editor states follow a replaced binding") {
+    val variable = TextInteraction("observed").interactionVariable
+    val seen = State(Vector.empty[String])
+    variable.observableValue.addObserver(value => seen.update(_ :+ value))
+    val bound = variable.createBoundStateWithUpdateImportance(UpdateImportance.MAJOR)
+    bound.set("first user's answer")
+    val retired = variable.binding
+    variable.bindTo(UsageContext("program", "workbook", "next"), SyncConnection.offline)
+    retired.updateHistory(_.addState(InteractionVariableState("late write", UpdateImportance.MAJOR, LocalDateTime.now())))
+    bound.set("next user's answer")
+    assertEquals(seen.now(), Vector("", "first user's answer", "", "next user's answer"))
+    assertEquals(bound.now(), "next user's answer")
   }
 
   test("textarea edits are classified by timing, length and the typed character") {

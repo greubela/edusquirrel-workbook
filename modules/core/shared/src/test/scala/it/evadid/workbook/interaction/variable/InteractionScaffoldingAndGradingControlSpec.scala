@@ -1,5 +1,8 @@
 package it.evadid.workbook.interaction.variable
 
+import it.evadid.workbook.interaction.binding.SyncConnection
+import it.evadid.workbook.interaction.sync.UsageContext
+import it.evadid.workbook.support.executingWith
 import it.evadid.core.datastructures.language.WorkbookContent
 import it.evadid.core.datastructures.chat.MessengerModel
 import it.evadid.workbook.abstractions.InteractionFormat.TextInputWithLlmGradingAndScaffoldingFormat
@@ -77,14 +80,14 @@ class InteractionScaffoldingAndGradingControlSpec extends FunSuite {
       val correct = new CountingGrader()
       val incorrect = new CountingGrader(GradingStatus.Incorrect)
       val value = variable(List(failed, correct, incorrect))
-      value.control.getOrCalculateGrading(context, forceGrading = true).flatMap { first =>
+      value.executingWith(context).control.getOrCalculateGrading(forceGrading = true).flatMap { first =>
         assert(first.graderResultMap(failed).gradingStatus.isInstanceOf[GradingStatus.TestError])
         assert(first.graderResultMap(failed).gradingStatus.isError)
-        value.control.getOrCalculateGrading(context, forceGrading = true)
+        value.executingWith(context).control.getOrCalculateGrading(forceGrading = true)
       }.flatMap { second =>
         assertEquals(second.graderResultMap(failed).gradingStatus, GradingStatus.Correct)
         assertEquals(second.graderResultMap(incorrect).gradingStatus, GradingStatus.Incorrect)
-        value.control.getOrCalculateGrading(context, forceGrading = true)
+        value.executingWith(context).control.getOrCalculateGrading(forceGrading = true)
       }.map { _ =>
         assertEquals(failed.calls.now(), 2)
         assertEquals(correct.calls.now(), 1)
@@ -99,16 +102,16 @@ class InteractionScaffoldingAndGradingControlSpec extends FunSuite {
     val value = variable(List(onEveryChange, onMinor, manual))
     def statuses(graded: GradedState[String, MessengerModel]) =
       List(onEveryChange, onMinor, manual).map(grader => graded.graderResultMap(grader).gradingStatus.isCorrect)
-    value.setStateFromUserInteraction("half-typed", UpdateImportance.TEMPORARY, context = context)
-    value.control.getOrCalculateGrading(context).flatMap { temporary =>
+    value.setStateFromUserInteraction("half-typed", UpdateImportance.TEMPORARY)
+    value.executingWith(context).control.getOrCalculateGrading().flatMap { temporary =>
       assertEquals(statuses(temporary), List(true, false, false))
-      value.setStateFromUserInteraction("finished word", UpdateImportance.MINOR, context = context)
-      value.control.getOrCalculateGrading(context)
+      value.setStateFromUserInteraction("finished word", UpdateImportance.MINOR)
+      value.executingWith(context).control.getOrCalculateGrading()
     }.flatMap { minor =>
       assertEquals(statuses(minor), List(true, true, false))
-      value.setStateFromUserInteraction("half-typed again", UpdateImportance.TEMPORARY, context = context)
+      value.setStateFromUserInteraction("half-typed again", UpdateImportance.TEMPORARY)
       // A request joins a pending automatic grading; requesting afterwards grades the skipped graders.
-      value.control.getOrCalculateGrading(context).flatMap(_ => value.control.getOrCalculateGrading(context, forceGrading = true))
+      value.executingWith(context).control.getOrCalculateGrading().flatMap(_ => value.executingWith(context).control.getOrCalculateGrading(forceGrading = true))
     }.map(requested => assertEquals(statuses(requested), List(true, true, true)))
   }
 
@@ -117,13 +120,13 @@ class InteractionScaffoldingAndGradingControlSpec extends FunSuite {
     val retryGate = Promise[Unit]()
     val grader = new CountingGrader(failFirst = true, gate = Some(gate), retryGate = Some(retryGate))
     val value = variable(List(grader))
-    val first = value.control.getOrCalculateGrading(context, forceGrading = true)
-    val joined = value.control.getOrCalculateGrading(context, forceGrading = true)
+    val first = value.executingWith(context).control.getOrCalculateGrading(forceGrading = true)
+    val joined = value.executingWith(context).control.getOrCalculateGrading(forceGrading = true)
     assertEquals(grader.calls.now(), 1)
     gate.success(())
     first.flatMap { _ =>
-      val retry = value.control.getOrCalculateGrading(context, forceGrading = true)
-      val joinedRetry = value.control.getOrCalculateGrading(context, forceGrading = true)
+      val retry = value.executingWith(context).control.getOrCalculateGrading(forceGrading = true)
+      val joinedRetry = value.executingWith(context).control.getOrCalculateGrading(forceGrading = true)
       retryGate.success(())
       retry.map(_ => assertEquals(grader.calls.now(), 2))
     }
@@ -137,8 +140,8 @@ class InteractionScaffoldingAndGradingControlSpec extends FunSuite {
     value.updateHistory(_.addGradings(List(
       GradingResult(failed, "answer", GradingStatus.TestError(SerializedException("old failure"))),
       GradingResult(missing, "answer", GradingStatus.NotRequested),
-      GradingResult(incorrect, "answer", GradingStatus.Incorrect))), context)
-    value.control.getOrCalculateGrading(context).flatMap(_ => value.control.getOrCalculateGrading(context, forceGrading = true)).map { result =>
+      GradingResult(incorrect, "answer", GradingStatus.Incorrect))))
+    value.executingWith(context).control.getOrCalculateGrading().flatMap(_ => value.executingWith(context).control.getOrCalculateGrading(forceGrading = true)).map { result =>
       assertEquals(result.testsWithResults.size, 3)
       assertEquals(failed.calls.now(), 1)
       assertEquals(missing.calls.now(), 1)
@@ -153,15 +156,15 @@ class InteractionScaffoldingAndGradingControlSpec extends FunSuite {
       override val runningBehavior = GraderRunningBehavior.RUN_ONLY_MANUALLY
     }
     val value = variable(List(automatic, manual))
-    val first = value.control.getOrCalculateGrading(context)
-    val joined = value.control.getOrCalculateGrading(context, forceGrading = true)
+    val first = value.executingWith(context).control.getOrCalculateGrading()
+    val joined = value.executingWith(context).control.getOrCalculateGrading(forceGrading = true)
     gate.success(())
     first.zip(joined).flatMap { (original, shared) =>
       assertEquals(shared, original)
       assertEquals(shared.graderResultMap(manual).gradingStatus, GradingStatus.NotRequested)
       assertEquals(automatic.calls.now(), 1)
       assertEquals(manual.calls.now(), 0)
-      value.control.getOrCalculateGrading(context, forceGrading = true).map { explicit =>
+      value.executingWith(context).control.getOrCalculateGrading(forceGrading = true).map { explicit =>
         assertEquals(explicit.graderResultMap(manual).gradingStatus, GradingStatus.Correct)
         assertEquals(automatic.calls.now(), 1)
         assertEquals(manual.calls.now(), 1)
@@ -179,7 +182,7 @@ class InteractionScaffoldingAndGradingControlSpec extends FunSuite {
       }
     }
     val value = variable(List(grader))
-    value.control.getOrCalculateGrading(context, forceGrading = true).flatMap(_ => value.control.getOrCalculateGrading(context, forceGrading = true)).map { result =>
+    value.executingWith(context).control.getOrCalculateGrading(forceGrading = true).flatMap(_ => value.executingWith(context).control.getOrCalculateGrading(forceGrading = true)).map { result =>
       assertEquals(result.graderResultMap(grader).gradingStatus, GradingStatus.Correct)
       assertEquals(grader.calls.now(), 2)
     }
@@ -222,9 +225,9 @@ class InteractionScaffoldingAndGradingControlSpec extends FunSuite {
     val scaffolder = CountingScaffolder(_ => pending.future)
     val value = hintVariable(scaffolder)
     val context = TestExecutionContext(language = () => language.now())
-    val first = value.control.getOrCalculateScaffolding(context)
+    val first = value.executingWith(context).control.getOrCalculateScaffolding()
     language.set(English)
-    val second = value.control.getOrCalculateScaffolding(context)
+    val second = value.executingWith(context).control.getOrCalculateScaffolding()
     assertEquals(scaffolder.calls.now(), 1)
     val original = ScaffoldingResult[String, MessengerModel]("answer", ScaffoldingStatus.ScaffoldingFeedback(
       LanguageMap.mapBasedLanguageMap[HumanLanguage](Map(German -> "Ein Hinweis"))), FeedbackEntity.TestEntity, None)
@@ -233,7 +236,7 @@ class InteractionScaffoldingAndGradingControlSpec extends FunSuite {
       assertEquals(a, original)
       assertEquals(b, original)
       assertEquals(value.currentHistory.historyScaffolding.scaffoldingMap("answer"), original)
-      value.control.getOrCalculateScaffolding(context).map { cached =>
+      value.executingWith(context).control.getOrCalculateScaffolding().map { cached =>
         assertEquals(cached, original)
         assertEquals(scaffolder.calls.now(), 1)
       }
@@ -259,23 +262,23 @@ class InteractionScaffoldingAndGradingControlSpec extends FunSuite {
     val retryReply = Promise[ScaffoldingResult[String, MessengerModel]]()
     val scaffolder = CountingScaffolder(_ => if firstReply.isCompleted then retryReply.future else firstReply.future)
     val value = hintVariable(scaffolder)
-    val initial = value.control.getOrCalculateScaffolding(context)
+    val initial = value.executingWith(context).control.getOrCalculateScaffolding()
     val error = ScaffoldingResult[String, MessengerModel]("answer", ScaffoldingStatus.ScaffoldingError(SerializedException("outage")), FeedbackEntity.TestEntity, None)
     val hint = error.copy(scaffoldingStatus = ScaffoldingStatus.ScaffoldingFeedback(LanguageMap.universalMap[HumanLanguage]("A hint")))
     firstReply.success(error)
     for {
       _ <- initial
-      cached <- value.control.getOrCalculateScaffolding(context)
+      cached <- value.executingWith(context).control.getOrCalculateScaffolding()
       (first, second) <- {
         assertEquals(cached, error)
         assertEquals(scaffolder.calls.now(), 1)
-        val retry = value.control.getOrCalculateScaffolding(context, retryErrors = true)
-        val joined = value.control.getOrCalculateScaffolding(context, retryErrors = true)
+        val retry = value.executingWith(context).control.getOrCalculateScaffolding(retryErrors = true)
+        val joined = value.executingWith(context).control.getOrCalculateScaffolding(retryErrors = true)
         assertEquals(scaffolder.calls.now(), 2)
         retryReply.success(hint)
         retry.zip(joined)
       }
-      saved <- value.control.getOrCalculateScaffolding(context, retryErrors = true)
+      saved <- value.executingWith(context).control.getOrCalculateScaffolding(retryErrors = true)
     } yield {
       assertEquals(List(first, second, saved), List.fill(3)(hint))
       assertEquals(scaffolder.calls.now(), 2)
@@ -288,7 +291,7 @@ class InteractionScaffoldingAndGradingControlSpec extends FunSuite {
     val graded = variable(List(grader))
     assertEquals(graded.control.getCurrentStateOfGrading("answer").graderResultMap(grader).gradingStatus, GradingStatus.NotRequested)
     assertEquals(grader.calls.now(), 0)
-    val grading = graded.control.getOrCalculateGrading(context, forceGrading = true)
+    val grading = graded.executingWith(context).control.getOrCalculateGrading(forceGrading = true)
     assertEquals(graded.control.getCurrentStateOfGrading("answer").graderResultMap(grader).gradingStatus, GradingStatus.NotFinished)
     gate.success(())
     val reply = Promise[ScaffoldingResult[String, MessengerModel]]()
@@ -296,7 +299,7 @@ class InteractionScaffoldingAndGradingControlSpec extends FunSuite {
     val hinted = hintVariable(scaffolder)
     assertEquals(hinted.control.getCurrentStateOfScaffolding("answer"), None)
     assertEquals(scaffolder.calls.now(), 0)
-    val hint = hinted.control.getOrCalculateScaffolding(context)
+    val hint = hinted.executingWith(context).control.getOrCalculateScaffolding()
     assertEquals(hinted.control.getCurrentStateOfScaffolding("answer").get.scaffoldingStatus, ScaffoldingStatus.ScaffoldingRequestedButNotFinished())
     reply.success(ScaffoldingResult("answer", ScaffoldingStatus.ScaffoldingFeedback(
       LanguageMap.universalMap[HumanLanguage]("A hint")), FeedbackEntity.TestEntity, None))
@@ -312,12 +315,12 @@ class InteractionScaffoldingAndGradingControlSpec extends FunSuite {
     val scaffolder = CountingScaffolder(state => Future.successful(ScaffoldingResult[String, MessengerModel](state,
       ScaffoldingStatus.ScaffoldingFeedback(LanguageMap.universalMap[HumanLanguage]("Cached hint")), FeedbackEntity.TestEntity, None)))
     val hinted = hintVariable(scaffolder)
-    value.control.getOrCalculateGrading(context, forceGrading = true).zip(hinted.control.getOrCalculateScaffolding(context)).flatMap { expected =>
+    value.executingWith(context).control.getOrCalculateGrading(forceGrading = true).zip(hinted.executingWith(context).control.getOrCalculateScaffolding()).flatMap { expected =>
       value.resetLocalHistory()
       hinted.resetLocalHistory()
       assertEquals(value.control.getCurrentStateOfGrading("answer"), expected._1)
       assertEquals(hinted.control.getCurrentStateOfScaffolding("answer").get, expected._2)
-      value.control.getOrCalculateGrading(context, forceGrading = true).zip(hinted.control.getOrCalculateScaffolding(context)).map { reused =>
+      value.executingWith(context).control.getOrCalculateGrading(forceGrading = true).zip(hinted.executingWith(context).control.getOrCalculateScaffolding()).map { reused =>
         assertEquals(reused, expected)
         assertEquals(grader.calls.now(), 1)
         assertEquals(scaffolder.calls.now(), 1)
@@ -328,7 +331,7 @@ class InteractionScaffoldingAndGradingControlSpec extends FunSuite {
   }
 
   test("an interaction with no graders has an empty completed result") {
-    variable(Nil).control.getOrCalculateGrading(context, forceGrading = true).map(result => assertEquals(result.testsWithResults, Set.empty))
+    variable(Nil).executingWith(context).control.getOrCalculateGrading(forceGrading = true).map(result => assertEquals(result.testsWithResults, Set.empty))
   }
 
   test("received scaffolding lifecycle events expose pending and completed states without executing feedback") {
@@ -337,59 +340,52 @@ class InteractionScaffoldingAndGradingControlSpec extends FunSuite {
     val value = variable(Nil)
     val timestamp = java.time.LocalDateTime.of(2026, 11, 17, 12, 0)
     val entity = FeedbackEntity.LlmEntity
-    value.updateHistory(_.addEvent(ScaffoldingStartedEvent[F]("answer", timestamp, entity)), context)
+    value.updateHistory(_.addEvent(ScaffoldingStartedEvent[F]("answer", timestamp, entity)))
     assertEquals(value.control.getCurrentStateOfScaffolding("answer").map(_.scaffoldingStatus), Some(ScaffoldingStatus.ScaffoldingRequestedButNotFinished()))
     val completed = ScaffoldingResult[String, MessengerModel]("answer", ScaffoldingStatus.ScaffoldingFeedback(LanguageMap.universalMap("Hint")), entity, None, timestamp)
-    value.updateHistory(_.addEvent(ScaffoldingCompletedEvent[F](completed)), context)
+    value.updateHistory(_.addEvent(ScaffoldingCompletedEvent[F](completed)))
     assertEquals(value.control.getCurrentStateOfScaffolding("answer"), Some(completed))
-    value.updateHistory(_.addEvent(ScaffoldingStartedEvent[F]("answer", timestamp.plusNanos(1), entity)), context)
+    value.updateHistory(_.addEvent(ScaffoldingStartedEvent[F]("answer", timestamp.plusNanos(1), entity)))
     assertEquals(value.control.getCurrentStateOfScaffolding("answer").map(_.scaffoldingStatus), Some(ScaffoldingStatus.ScaffoldingRequestedButNotFinished()))
   }
-  test("grading started before a session reset cannot publish into the next user's history") {
+  private val nextUser = UsageContext("program", "workbook", "next user")
+
+  test("grading started before the binding is replaced cannot publish into the next user's history") {
     val gate = Promise[Unit]()
     val grader = new CountingGrader(gate = Some(gate))
     val value = variable(List(grader))
-    val pending = value.control.getOrCalculateGrading(context, forceGrading = true)
-    value.resetForNewSession()
-    value.setStateFromUserInteraction("new user's answer", UpdateImportance.MAJOR, context = context)
+    val pending = value.executingWith(context).control.getOrCalculateGrading(forceGrading = true)
+    value.bindTo(nextUser, SyncConnection.offline)
+    value.setStateFromUserInteraction("new user's answer", UpdateImportance.MAJOR)
     gate.success(())
     pending.map(_ => assert(!value.currentHistory.gradingEvents.exists(_.associatedState == "answer")))
   }
 
-  test("a session reset invalidates pending hints and completed feedback caches") {
+  test("a replaced binding drops pending hints and starts with empty feedback caches") {
     val gate = Promise[Unit]()
     val scaffolder = CountingScaffolder(state => gate.future.map(_ => ScaffoldingResult[String, MessengerModel](state,
       ScaffoldingStatus.ScaffoldingFeedback(LanguageMap.universalMap("private hint")), FeedbackEntity.TestEntity, None)))
     val value = hintVariable(scaffolder)
-    val firstOwner = new Object
-    value.bindFeedbackSession(firstOwner)
-    val pending = value.control.getOrCalculateScaffolding(context)
-    value.resetForNewSession()
-    value.bindFeedbackSession(new Object)
+    val pending = value.executingWith(context).control.getOrCalculateScaffolding()
+    val retired = value.binding
+    value.bindTo(nextUser, SyncConnection.offline)
+    value.setStateFromUserInteraction("answer", UpdateImportance.MAJOR)
     gate.success(())
     pending.flatMap { _ =>
       assert(value.currentHistory.scaffoldingEvents.isEmpty)
+      assert(retired.currentHistory.scaffoldingEvents.forall(_.isInstanceOf[it.evadid.workbook.interaction.variable.events.ScaffoldingStartedEvent[?]]), "dropped, not recorded late")
       assertEquals(value.control.getCurrentStateOfScaffolding("answer"), None)
-      value.control.getOrCalculateScaffolding(context)
+      value.executingWith(context).control.getOrCalculateScaffolding()
     }.map(_ => assertEquals(scaffolder.calls.now(), 2))
   }
 
-  test("inactive captured contexts cannot publish feedback even before the variable is rebound") {
+  test("reconnecting a binding with new credentials keeps its pending feedback") {
     val gate = Promise[Unit]()
-    val active = State(true)
-    val scoped = new ExecutionContextInformation {
-      override def isCurrent = active.now()
-      def syncControl = context.syncControl
-      def availableExecutionClients = context.availableExecutionClients
-      def getCurrentLanguage = context.getCurrentLanguage
-      def languageMapIdResolver = context.languageMapIdResolver
-      def futureExecutionContext = context.futureExecutionContext
-    }
     val value = variable(List(new CountingGrader(gate = Some(gate))))
-    val pending = value.control.getOrCalculateGrading(scoped, forceGrading = true)
-    active.set(false)
+    val pending = value.executingWith(context).control.getOrCalculateGrading(forceGrading = true)
+    value.executingWith(TestExecutionContext())
     gate.success(())
-    pending.map(_ => assert(value.currentHistory.historyGrading.gradingsMap.isEmpty))
+    pending.map(_ => assert(value.currentHistory.historyGrading.gradingsMap.nonEmpty))
   }
 
 }

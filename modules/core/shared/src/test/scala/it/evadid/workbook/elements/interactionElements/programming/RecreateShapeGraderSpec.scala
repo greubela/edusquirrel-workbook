@@ -36,7 +36,7 @@ class RecreateShapeGraderSpec extends FunSuite {
         val interaction = TurtleRecreateShapeInteraction(s"policy-$policy", ProgrammingStateRaw(Python, program),
           TurtleGraphic.TurtleGraphicSvgString(path), comparisonPolicy = policy)
         // The unedited default answer has no event, so its grading must be requested.
-        interaction.interactionVariable.control.getOrCalculateGrading(TestExecutionContext(), forceGrading = true).map { result =>
+        interaction.interactionVariable.control.getOrCalculateGrading(forceGrading = true).map { result =>
           assertEquals(result.testsWithResults.head.gradingStatus, expected, clues(policy, program))
         }
       }
@@ -50,12 +50,12 @@ class RecreateShapeGraderSpec extends FunSuite {
     val interaction = TurtleRecreateShapeInteraction("edited-staircase", first, target)
     val variable = interaction.interactionVariable
     // Each edit's automatic grading skips the shape grader; the requested one after it runs it.
-    def requested() = variable.control.getOrCalculateGrading(TestExecutionContext())
-      .flatMap(_ => variable.control.getOrCalculateGrading(TestExecutionContext(), forceGrading = true))
-    variable.setStateFromUserInteraction(first, MAJOR, context = TestExecutionContext())
+    def requested() = variable.control.getOrCalculateGrading()
+      .flatMap(_ => variable.control.getOrCalculateGrading(forceGrading = true))
+    variable.setStateFromUserInteraction(first, MAJOR)
     requested().flatMap { old =>
       assertEquals(old.testsWithResults.head.gradingStatus, GradingStatus.PartiallyCorrect)
-      variable.setStateFromUserInteraction(corrected, MAJOR, context = TestExecutionContext())
+      variable.setStateFromUserInteraction(corrected, MAJOR)
       requested().map { current =>
         assertEquals(current.state, corrected)
         assertEquals(current.testsWithResults.head.gradingStatus, GradingStatus.Correct)
@@ -68,11 +68,11 @@ class RecreateShapeGraderSpec extends FunSuite {
     val target = TurtleGraphic.TurtleGraphicSvgString("M0 0 L10 0")
     val interaction = TurtleRecreateShapeInteraction("manual-shape", ProgrammingStateRaw(Python, "forward(5)"), target)
     val variable = interaction.interactionVariable
-    variable.setStateFromUserInteraction(ProgrammingStateRaw(Python, "forward(10)"), MAJOR, context = TestExecutionContext())
-    variable.control.getOrCalculateGrading(TestExecutionContext()).flatMap { automatic =>
+    variable.setStateFromUserInteraction(ProgrammingStateRaw(Python, "forward(10)"), MAJOR)
+    variable.control.getOrCalculateGrading().flatMap { automatic =>
       assertEquals(automatic.testsWithResults.head.gradingStatus, GradingStatus.NotRequested)
       assert(variable.currentHistory.gradingEvents.isEmpty, "an edit records no grading events")
-      variable.control.getOrCalculateGrading(TestExecutionContext(), forceGrading = true).map { requested =>
+      variable.control.getOrCalculateGrading(forceGrading = true).map { requested =>
         assertEquals(requested.testsWithResults.head.gradingStatus, GradingStatus.Correct)
       }
     }

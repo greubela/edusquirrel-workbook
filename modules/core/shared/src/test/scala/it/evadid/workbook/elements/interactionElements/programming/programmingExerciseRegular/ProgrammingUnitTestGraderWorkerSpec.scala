@@ -128,7 +128,7 @@ class ProgrammingUnitTestGraderWorkerSpec extends FunSuite {
     grader.gradeStateSafe(state, forceGrading = true, UpdateImportance.MAJOR, context).flatMap { result =>
       assertEquals(result.gradingStatus, GradingStatus.Incorrect)
       assert(result.additionalData.flatMap(_.testInvocation).exists(_.target.contains("area")))
-      exercise.interactionVariable.updateHistory(_.addGrading(result), context)
+      exercise.interactionVariable.updateHistory(_.addGrading(result))
       exercise.scaffoldingElement.get.handleFeedbackGeneration(state, context).map { _ =>
         val check = ujson.read(llm.prompts.now().head)("checks")(0)
         assertEquals(check("id").str, "check-1")

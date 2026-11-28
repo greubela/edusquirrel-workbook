@@ -24,7 +24,7 @@ object GradingReporter {
   /** Capture F here; views receive format-independent summaries without casts. */
   def apply[F <: InteractionFormat](interaction: WorkbookInteractionElement[F]): GradingReporter = {
     val variable = interaction.interactionVariable
-    val report = variable.observableHistoryWithDefault.toSignal(variable.currentHistory).map { history =>
+    val report = variable.observableHistory.toSignal(variable.currentHistory).map { history =>
       val state = history.historyStates.lastStateOption.get.value
       Report(
         GradingSummary(interaction.gradingElements, variable.control.getCurrentStateOfGrading(state)),

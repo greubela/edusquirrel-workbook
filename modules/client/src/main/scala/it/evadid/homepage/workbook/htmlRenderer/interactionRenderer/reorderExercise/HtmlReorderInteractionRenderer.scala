@@ -18,12 +18,12 @@ object HtmlReorderInteractionRenderer extends LineBasedRenderingFactory[ReorderI
     val wrong = fullInfo.reporters.reportersFor(reorder).grading.checks.map(_.wrongParts).distinct
     val dom = reorder match {
       case exercise: ReorderInteraction.ReorderCodeInteraction =>
-        renderReorder(exercise.interactionVariable.createBoundVarWithUpdateImportance(MAJOR, fullInfo.workbookContextInformation), disabled, wrong,
+        renderReorder(exercise.interactionVariable.createBoundVarWithUpdateImportance(MAJOR), disabled, wrong,
           (state, index) => div(cls := "reorder-item-content", pre(code(state.elements(index))),
             exercise.hints.lift(index).map(id => span(cls := "reorder-item-hint", text <-- laminarHelper(fullInfo).plaintextStringSignal(id)))),
           "reorder-item--code")
       case exercise: ReorderInteraction.ReorderMapIdInteraction =>
-        renderReorder(exercise.interactionVariable.createBoundVarWithUpdateImportance(MAJOR, fullInfo.workbookContextInformation), disabled, wrong,
+        renderReorder(exercise.interactionVariable.createBoundVarWithUpdateImportance(MAJOR), disabled, wrong,
           (state, index) => span(text <-- laminarHelper(fullInfo).plaintextStringSignal(state.elements(index))), "")
     }
     AtomarLineRendering.basicLine(fullInfo, reorder, dom)

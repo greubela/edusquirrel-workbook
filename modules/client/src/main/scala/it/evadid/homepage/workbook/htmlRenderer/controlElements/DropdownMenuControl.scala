@@ -27,7 +27,7 @@ case class DropdownMenuControl(fullInfo: FullInfo, curWorkbook: Option[AllWorkbo
   private val credentialsOpen = Var(false)
 
 
-  private val resetState = fullInfo.syncControl.resetState
+  private val resetState = fullInfo.bindings.resetState
   private val resetLabel: Signal[String] = LabelSelection(resetState,
     Seq("basic/resetAllData", "basic/resetAllDataRunning", "basic/resetAllDataRetry"), laminarHelper(fullInfo).plaintextStringSignal) {
       case SyncResetState.Idle | SyncResetState.Completed => Some("basic/resetAllData")
@@ -44,7 +44,7 @@ case class DropdownMenuControl(fullInfo: FullInfo, curWorkbook: Option[AllWorkbo
       .getOrElse("Clear all configured local answer stores and delete your saved answers and feedback across all workbooks? This cannot be undone.")
     if !resetState.now().isInstanceOf[SyncResetState.Running] && dom.window.confirm(message) then {
       val owner = resetOwner
-      fullInfo.syncControl.resetAllData().onComplete {
+      fullInfo.bindings.resetAllData().onComplete {
         case Success(_) if resetOwner == owner => dom.window.location.reload()
         case Success(_) => ()
         case Failure(error) => logger.logExceptionWarn("Reset was not confirmed by every destination", error)

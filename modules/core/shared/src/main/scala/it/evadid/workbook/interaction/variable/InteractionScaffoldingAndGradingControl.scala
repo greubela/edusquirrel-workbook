@@ -13,19 +13,25 @@ import it.evadid.workbook.abstractions.grading.{GradedState, WorkbookInteraction
 import it.evadid.workbook.abstractions.scaffolding.ScaffoldingResult
 import it.evadid.workbook.abstractions.scaffolding.ScaffoldingStatus.{ScaffoldingError, ScaffoldingRequestedButNotFinished}
 import it.evadid.workbook.interaction.variable.events.{GradingStartedEvent, ScaffoldingStartedEvent}
+import it.evadid.workbook.interaction.binding.InteractionBinding
 import it.evadid.workbook.meta.ExecutionContextInformation
 
 import java.time.LocalDateTime
 import scala.concurrent.{ExecutionContext, Future}
 
-final class InteractionScaffoldingAndGradingControl[F <: InteractionFormat](val interactionVariable: InteractionVariable[F]) {
+/** Grading and scaffolding of one binding. Feedback runs with the binding's execution context and is recorded in its
+  * history; once the binding is replaced, requests fail and late results are dropped.
+  */
+final class InteractionScaffoldingAndGradingControl[F <: InteractionFormat](binding: InteractionBinding[F]) {
+  private def interactionVariable: InteractionVariable[F] = binding.variable
+  private def history: InteractionVariableHistory[F] = binding.currentHistory
   // Type members for convenience
   type InteractionStateType = InteractionFormat.State[F]
   type GradingInfoType = InteractionFormat.Grading[F]
   type ScaffoldingInfoType = InteractionFormat.Scaffolding[F]
 
   def getCurrentStateOfGrading(forState: InteractionStateType): GradedState[InteractionStateType, GradingInfoType] = interactionVariable.synchronized {
-    val history = interactionVariable.currentHistory
+    val history = binding.currentHistory
     val graders = interactionVariable.underlyingInteraction.gradingElements
     if history.gradingEvents.exists(_.associatedState == forState) then history.gradingForState(graders, forState)
     else gradingCache.getSyncIfInCache(forState, false).map(_.fillMapForUnavailable(graders, NotRequested))
@@ -33,14 +39,14 @@ final class InteractionScaffoldingAndGradingControl[F <: InteractionFormat](val 
   }
 
   private def recordGradingStart(graders: Seq[WorkbookInteractionGrader[InteractionStateType, GradingInfoType]],
-      state: InteractionStateType, context: ExecutionContextInformation): Unit = {
+      state: InteractionStateType): Unit = {
     val timestamp = LocalDateTime.now()
-    interactionVariable.updateHistory(history => graders.foldLeft(history)((current, grader) =>
-      current.addEvent(GradingStartedEvent[F](state, timestamp, grader))), context)
+    binding.publish(history => graders.foldLeft(history)((current, grader) =>
+      current.addEvent(GradingStartedEvent[F](state, timestamp, grader))))
   }
 
   def getCurrentStateOfScaffolding(forState: InteractionStateType): Option[ScaffoldingResult[InteractionStateType, ScaffoldingInfoType]] = interactionVariable.synchronized {
-    interactionVariable.currentHistory.scaffoldingForState(forState)
+    history.scaffoldingForState(forState)
       .orElse(scaffoldingCache.getSyncIfInCache(forState, false))
       .orElse(scaffoldingCache.getCurrentElementStatus(forState) match {
         case UNKNOWN() => None
@@ -50,20 +56,21 @@ final class InteractionScaffoldingAndGradingControl[F <: InteractionFormat](val 
   }
 
   // GRADING CALCULATION
-  def getOrCalculateGrading(contextInformation: ExecutionContextInformation, forceGrading: Boolean = false): Future[GradedState[InteractionStateType, GradingInfoType]] = interactionVariable.synchronized {
-    interactionVariable.currentHistory.historyStates.lastStateOption match {
-      case Some(current) => getOrCalculateGrading(contextInformation, forceGrading, current.value)
+  def getOrCalculateGrading(forceGrading: Boolean = false): Future[GradedState[InteractionStateType, GradingInfoType]] = interactionVariable.synchronized {
+    history.historyStates.lastStateOption match {
+      case Some(current) => getOrCalculateGrading(forceGrading, current.value)
       case None => Future.failed(SerializedException("Cannot start grading on an InteractionVariable with no current state"))
     }
   }
 
-  def getOrCalculateGrading(contextInformation: ExecutionContextInformation, forceGrading: Boolean, forState: InteractionStateType): Future[GradedState[InteractionStateType, GradingInfoType]] = interactionVariable.synchronized {
+  def getOrCalculateGrading(forceGrading: Boolean, forState: InteractionStateType): Future[GradedState[InteractionStateType, GradingInfoType]] = interactionVariable.synchronized {
+    val contextInformation = binding.execution
     val ec = contextInformation.futureExecutionContext
-    if feedbackSessionEnded(contextInformation) then sessionEndedFailure
+    if !binding.isCurrent then sessionEndedFailure
     else if (gradingCache.getCurrentElementStatus(forState) == STARTED()) {
       gradingCache.loadAsFuture(forState)(using ec)
-    } else if (interactionVariable.currentHistory.historyGrading.gradingsMap.contains(forState)) {
-      val saved = interactionVariable.currentHistory.historyGrading.gradingsMap(forState)
+    } else if (history.historyGrading.gradingsMap.contains(forState)) {
+      val saved = history.historyGrading.gradingsMap(forState)
       val storedKeys = saved.graderResultMap.keys.map(_.key).toSet
       if interactionVariable.underlyingInteraction.gradingElements.exists(grader => !storedKeys(grader.key) &&
         grader.shouldRunGrader(forceGrading, importanceOf(forState))) then
@@ -82,18 +89,12 @@ final class InteractionScaffoldingAndGradingControl[F <: InteractionFormat](val 
     }
   }
 
-  /** Feedback computed for an earlier user session or context must not be requested or published;
-    * a session change replaces this control.
-    */
-  private def feedbackSessionEnded(contextInformation: ExecutionContextInformation): Boolean =
-    !contextInformation.isCurrent || !(interactionVariable.control eq this)
-
   private def sessionEndedFailure[A]: Future[A] = Future.failed(new java.util.concurrent.CancellationException("Feedback session ended"))
 
   private def retryGradingIfNecessary(contextInformation: ExecutionContextInformation, forceGrading: Boolean, existing: GradedState[InteractionStateType, GradingInfoType]): Future[GradedState[InteractionStateType, GradingInfoType]] = interactionVariable.synchronized {
     if (!forceGrading || existing.shouldRetry.isEmpty) Future.successful(existing)
     else {
-      recordGradingStart(existing.shouldRetry, existing.state, contextInformation)
+      recordGradingStart(existing.shouldRetry, existing.state)
       publishGrading(existing.state, existing.retryFailed(contextInformation, forceGrading, importanceOf(existing.state)), contextInformation)
     }
   }
@@ -103,7 +104,7 @@ final class InteractionScaffoldingAndGradingControl[F <: InteractionFormat](val 
       contextInformation: ExecutionContextInformation): Future[GradedState[InteractionStateType, GradingInfoType]] = {
     val ec = contextInformation.futureExecutionContext
     val published = grading.map { gradedState =>
-      interactionVariable.publishFeedback(this, contextInformation)(_.addGrading(gradedState))
+      binding.publish(_.addGrading(gradedState))
       gradedState
     }(using ec)
     gradingCache.informAboutExistingFuture(forState, published, true)
@@ -112,18 +113,18 @@ final class InteractionScaffoldingAndGradingControl[F <: InteractionFormat](val 
 
   /** The importance the answer was recorded with (its latest event); an answer without an event has DEFAULT importance. */
   private def importanceOf(forState: InteractionStateType): UpdateImportance =
-    interactionVariable.currentHistory.allStates.filter(_.newState == forState).maxByOption(_.timestamp)
+    history.allStates.filter(_.newState == forState).maxByOption(_.timestamp)
       .map(_.updateImportance).getOrElse(UpdateImportance.DEFAULT)
 
   private def startGrading(contextInformation: ExecutionContextInformation, forceGrading: Boolean, forState: InteractionStateType): Future[GradedState[InteractionStateType, GradingInfoType]] = interactionVariable.synchronized {
     val graders: Seq[WorkbookInteractionGrader[InteractionStateType, GradingInfoType]] = interactionVariable.underlyingInteraction.gradingElements
     val activeKeys = graders.map(_.key).toSet
-    val existing = interactionVariable.currentHistory.historyGrading.gradingsMap.get(forState)
+    val existing = history.historyGrading.gradingsMap.get(forState)
       .map(_.graderResultMap.filter((grader, _) => activeKeys(grader.key))).getOrElse(Map.empty)
     val storedKeys = existing.keys.map(_.key).toSet
     val selected = graders.filterNot(grader => storedKeys(grader.key))
     val importance = importanceOf(forState)
-    recordGradingStart(selected.filter(_.shouldRunGrader(forceGrading, importance)), forState, contextInformation)
+    recordGradingStart(selected.filter(_.shouldRunGrader(forceGrading, importance)), forState)
     val grading = GradedState.executeGradingSafe(selected, forState, forceGrading, importance, contextInformation)
       .map(_.merge(GradedState(forState, existing)))(using contextInformation.futureExecutionContext)
     publishGrading(forState, grading, contextInformation)
@@ -131,9 +132,9 @@ final class InteractionScaffoldingAndGradingControl[F <: InteractionFormat](val 
 
   // SCAFFOLDING CALCULATION
 
-  def getOrCalculateScaffolding(contextInformation: ExecutionContextInformation, retryErrors: Boolean = false): Future[ScaffoldingResult[InteractionStateType, ScaffoldingInfoType]] = interactionVariable.synchronized {
-    interactionVariable.currentHistory.historyStates.lastStateOption match {
-      case Some(current) => calculateScaffolding(contextInformation, current.value, retryErrors)
+  def getOrCalculateScaffolding(retryErrors: Boolean = false): Future[ScaffoldingResult[InteractionStateType, ScaffoldingInfoType]] = interactionVariable.synchronized {
+    history.historyStates.lastStateOption match {
+      case Some(current) => calculateScaffolding(binding.execution, current.value, retryErrors)
       case None => Future.failed(SerializedException("Cannot start scaffolding on an InteractionVariable with no current state"))
     }
   }
@@ -141,11 +142,11 @@ final class InteractionScaffoldingAndGradingControl[F <: InteractionFormat](val 
   private def calculateScaffolding(contextInformation: ExecutionContextInformation, forState: InteractionStateType, retryErrors: Boolean): Future[ScaffoldingResult[InteractionStateType, ScaffoldingInfoType]] = interactionVariable.synchronized {
     val ec = contextInformation.futureExecutionContext
     val cached = scaffoldingCache.getCurrentElementStatus(forState)
-    if feedbackSessionEnded(contextInformation) then sessionEndedFailure
+    if !binding.isCurrent then sessionEndedFailure
     else if cached == STARTED() then scaffoldingCache.loadAsFuture(forState)(using ec)
     else if retryErrors && getCurrentStateOfScaffolding(forState).exists(_.scaffoldingStatus.isError) then startScaffolding(contextInformation, forState)
-    else if (interactionVariable.currentHistory.historyScaffolding.scaffoldingMap.contains(forState)) {
-      Future.successful(interactionVariable.currentHistory.historyScaffolding.scaffoldingMap(forState))
+    else if (history.historyScaffolding.scaffoldingMap.contains(forState)) {
+      Future.successful(history.historyScaffolding.scaffoldingMap(forState))
     } else if (cached != UNKNOWN()) {
       scaffoldingCache.loadAsFuture(forState)(using ec)
     } else {
@@ -158,9 +159,9 @@ final class InteractionScaffoldingAndGradingControl[F <: InteractionFormat](val 
     interactionVariable.underlyingInteraction.scaffoldingElement match {
       case None => Future.failed(SerializedException("Cannot calculate scaffolding on an interaction without scaffoldert!"))
       case Some(scaffolder) =>
-        interactionVariable.updateHistory(_.addEvent(ScaffoldingStartedEvent[F](forState, LocalDateTime.now(), scaffolder.scaffoldingEntity)), contextInformation)
+        binding.publish(_.addEvent(ScaffoldingStartedEvent[F](forState, LocalDateTime.now(), scaffolder.scaffoldingEntity)))
         val published = scaffolder.generateFeedbackSafe(forState, contextInformation).map { scaffResult =>
-          interactionVariable.publishFeedback(this, contextInformation)(_.addScaffolding(scaffResult))
+          binding.publish(_.addScaffolding(scaffResult))
           scaffResult
         }(using ec)
         scaffoldingCache.informAboutExistingFuture(forState, published, replaceIfExist = true)
@@ -175,7 +176,7 @@ final class InteractionScaffoldingAndGradingControl[F <: InteractionFormat](val 
   private val gradingCache: AsyncDataCache[InteractionStateType, GradedState[InteractionStateType, GradingInfoType]] = new AsyncDataCache[InteractionStateType, GradedState[InteractionStateType, GradingInfoType]](logger) {
 
     override protected def executeLoading(in: InteractionStateType)(ec: ExecutionContext): Future[GradedState[InteractionStateType, GradingInfoType]] = {
-      getOrCalculateGrading(ExecutionContextInformation.default, false, in)
+      getOrCalculateGrading(false, in)
     }
 
     override protected def formatInputForLogging(in: InteractionStateType): String = in.toString
@@ -185,7 +186,7 @@ final class InteractionScaffoldingAndGradingControl[F <: InteractionFormat](val 
 
   private val scaffoldingCache: AsyncDataCache[InteractionStateType, ScaffoldingResult[InteractionStateType, ScaffoldingInfoType]] = new AsyncDataCache[InteractionStateType, ScaffoldingResult[InteractionStateType, ScaffoldingInfoType]](logger) {
     override protected def executeLoading(in: InteractionStateType)(ec: ExecutionContext): Future[ScaffoldingResult[InteractionStateType, ScaffoldingInfoType]] = {
-      calculateScaffolding(ExecutionContextInformation.default, in, retryErrors = false)
+      calculateScaffolding(binding.execution, in, retryErrors = false)
     }
     override protected def formatInputForLogging(in: InteractionStateType): String = in.toString
     override protected def formatOutputForLogging(out: ScaffoldingResult[InteractionStateType, ScaffoldingInfoType]): String = out.toString

@@ -12,7 +12,7 @@ import it.evadid.workbook.interaction.sync.UpdateImportance
 
 case object CreateQrCodeInteractionRenderer extends LineBasedRenderingFactory[CreateQrCodeInteraction] {
   override protected def createRendering(fullInfo: FullInfo, element: CreateQrCodeInteraction): AtomarLineRendering = {
-    val state = element.interactionVariable.createBoundVarWithUpdateImportance(UpdateImportance.MAJOR, fullInfo.workbookContextInformation)
+    val state = element.interactionVariable.createBoundVarWithUpdateImportance(UpdateImportance.MAJOR)
     AtomarLineRendering.editorCardLine(fullInfo, element, ElementCard(fullInfo, LanguageMapContentId("basic/qrTitle"), QrCodeView.preview(fullInfo, state.signal, element.requirements)),
       () => QrCodeEditor(fullInfo, state, element.requirements), editorFirst = true)
   }

@@ -14,7 +14,7 @@ import it.evadid.workbook.interaction.sync.UpdateImportance.MAJOR
 
 case object EvacuationConstructFloorRenderer extends LineBasedRenderingFactory[EvacuationConstructFloorInteraction] {
   override protected def createRendering(fullInfo: FullInfo, e: EvacuationConstructFloorInteraction): AtomarLineRendering = {
-    val state = e.interactionVariable.createBoundVarWithUpdateImportance(MAJOR, fullInfo.workbookContextInformation)
+    val state = e.interactionVariable.createBoundVarWithUpdateImportance(MAJOR)
     val preview = p(cls := "evacuation-preview", role := "status",
       text <-- state.signal.combineWith(laminarHelper(fullInfo).plaintextStringSignal("digitalWorkbooks/evacuationPreview"))
         .map((plan, template) => template.replace("{cols}", plan.cols.toString).replace("{rows}", plan.rows.toString)

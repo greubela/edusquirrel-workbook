@@ -10,7 +10,7 @@ import it.evadid.workbook.interaction.sync.UpdateImportance.MINOR
 case class HtmlSortingExerciseFullscreenElement(fullInfo: FullInfo, interaction: SortingInteraction) extends HtmlAppElement {
 
   private val board = SortingBoard(
-    fullInfo, interaction.interactionVariable.createBoundVarWithUpdateImportance(MINOR, fullInfo.workbookContextInformation),
+    fullInfo, interaction.interactionVariable.createBoundVarWithUpdateImportance(MINOR),
     interaction.fields,
     interaction.items.map(item => SortingBoard.Item(item.label, item.correctFieldIndex, item.wrongFeedback)))
 

@@ -16,7 +16,7 @@ import it.evadid.workbook.interaction.sync.UpdateImportance
 
 class WorkbookDefinitionsSpec extends FunSuite {
   private def submit[F <: it.evadid.workbook.abstractions.InteractionFormat](interaction: it.evadid.workbook.abstractions.WorkbookInteractionElement[F]): Unit =
-    interaction.interactionVariable.setStateFromUserInteraction(interaction.defaultValue, UpdateImportance.MAJOR, context = ExecutionContextInformation.default)
+    interaction.interactionVariable.setStateFromUserInteraction(interaction.defaultValue, UpdateImportance.MAJOR)
   private val factories = DigitalWorkbookCatalog.entries.flatMap(entry => entry.native.map(native => entry.id -> native.factory)) :+
     ("design" -> CreateTestWorkbook.apply)
 
@@ -69,7 +69,7 @@ class WorkbookDefinitionsSpec extends FunSuite {
       val restored = read[SessionData](write(session))
       assertEquals(restored, session)
       val fresh = factory(null).createWorkbook
-      fresh.restoreHistories(BasicLogger(), restored.knownUsageData, ExecutionContextInformation.default)
+      fresh.restoreHistories(BasicLogger(), restored.knownUsageData)
       fresh.allContainedInteractionsById.foreach { (id, interaction) =>
         def submitted(history: it.evadid.workbook.interaction.variable.InteractionVariableHistory[?]): Set[(Any, Any)] =
           history.allStates.map(event => (event.newState: Any) -> event.updateImportance)

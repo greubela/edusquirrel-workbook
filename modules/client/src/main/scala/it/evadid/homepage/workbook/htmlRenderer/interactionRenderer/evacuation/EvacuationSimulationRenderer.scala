@@ -13,7 +13,7 @@ import it.evadid.workbook.interaction.sync.UpdateImportance.MAJOR
 
 case object EvacuationSimulationRenderer extends LineBasedRenderingFactory[EvacuationSimulationInteraction] {
   override protected def createRendering(fullInfo: FullInfo, e: EvacuationSimulationInteraction): AtomarLineRendering = {
-    val state = e.interactionVariable.createBoundVarWithUpdateImportance(MAJOR, fullInfo.workbookContextInformation)
+    val state = e.interactionVariable.createBoundVarWithUpdateImportance(MAJOR)
     val preview = p(cls := "evacuation-simulation-preview", role := "status",
       text <-- state.signal.combineWith(laminarHelper(fullInfo).plaintextStringSignal("digitalWorkbooks/evacuationSimulationPreview"))
         .map((value, template) => template.replace("{runs}", value.measurements.size.toString)

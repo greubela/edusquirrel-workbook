@@ -69,11 +69,11 @@ case class IconGradingAndScaffolding[F <: InteractionFormat](
   }
 
   def onScaffoldingRequested(): Unit = {
-    workbookInteractionElement.interactionVariable.control.getOrCalculateScaffolding(fullInfo.workbookContextInformation, retryErrors = true)
+    workbookInteractionElement.interactionVariable.control.getOrCalculateScaffolding(retryErrors = true)
   }
 
   def onGradingRequested(): Unit = {
-    workbookInteractionElement.interactionVariable.control.getOrCalculateGrading(fullInfo.workbookContextInformation, forceGrading = true)
+    workbookInteractionElement.interactionVariable.control.getOrCalculateGrading(forceGrading = true)
   }
 
 }

@@ -11,7 +11,6 @@ import it.evadid.core.datastructures.state.observable.ObservableValueImpl
 import it.evadid.workbook.elements.interactionElements.basic.TextInteraction
 import it.evadid.workbook.interaction.sync.UpdateImportance
 import it.evadid.workbook.interaction.variable.{InteractionVariable, InteractionVariableState}
-import it.evadid.workbook.meta.ExecutionContextInformation
 import it.evadid.util.JsDomSuite
 import java.time.LocalDateTime
 import scala.concurrent.{Future, Promise}
@@ -156,8 +155,7 @@ class StateHelperSpec extends JsDomSuite {
 
   test("interaction variables bind to Vars and signals that follow every history change") {
     val variable = InteractionVariable(TextInteraction("state-helper-answer"))
-    val context = ExecutionContextInformation.default
-    val bound = variable.createBoundVarWithUpdateImportance(UpdateImportance.MAJOR, context)
+    val bound = variable.createBoundVarWithUpdateImportance(UpdateImportance.MAJOR)
     val owner = new ManualOwner
     val signal = variable.createInteractionSignal.observe(using owner)
     assertEquals((bound.now(), signal.now()), ("", ""))
@@ -166,7 +164,7 @@ class StateHelperSpec extends JsDomSuite {
     assertEquals(variable.currentHistory.historyStates.lastStateOption.map(_.updateImportance), Some(UpdateImportance.MAJOR))
     assertEquals(signal.now(), "typed")
     variable.updateHistory(_.addState(InteractionVariableState("restored", UpdateImportance.MAJOR,
-      LocalDateTime.now().plusSeconds(5))), context)
+      LocalDateTime.now().plusSeconds(5))))
     assertEquals((bound.now(), signal.now()), ("restored", "restored"))
     owner.killSubscriptions()
   }

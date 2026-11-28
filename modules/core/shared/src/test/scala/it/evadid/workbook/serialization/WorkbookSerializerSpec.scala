@@ -65,8 +65,7 @@ class WorkbookSerializerSpec extends FunSuite {
     val text = TextInteraction("live-answer")
     val section = WorkbookSection("live-section", WorkbookSectionMetadata(LanguageMapContentId("section/live")), Seq(text))
     val original = workbook.copy(sections = Seq(section))
-    text.interactionVariable.setStateFromUserInteraction("learner answer", UpdateImportance.MAJOR,
-      context = ExecutionContextInformation.default)
+    text.interactionVariable.setStateFromUserInteraction("learner answer", UpdateImportance.MAJOR)
     assertEquals(text.interactionVariable.currentValue, "learner answer")
     val json = write[Workbook](original)
     assert(!json.contains("learner answer"))

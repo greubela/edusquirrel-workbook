@@ -54,7 +54,7 @@ class ContentChoiceRendererSpec extends EditorDomSuite {
       assertEquals(exercise.interactionVariable.currentValue, answer)
       assertEquals(element.ref.querySelectorAll(".choice-feedback").length, 0)
       assertEquals(element.ref.querySelectorAll(".feedback-entry").length, 1)
-      exercise.interactionVariable.control.getOrCalculateGrading(fullInfo.workbookContextInformation).map { graded =>
+      exercise.interactionVariable.control.getOrCalculateGrading().map { graded =>
         assert(graded.testsWithResults.forall(_.gradingStatus.isCorrect))
       }
     }.andThen { case _ => close() }
@@ -72,14 +72,14 @@ class ContentChoiceRendererSpec extends EditorDomSuite {
     val control = exercise.interactionVariable.control
     val context = fullInfo.workbookContextInformation
     // Selecting starts an automatic grading that skips the manual grader; the check runs it afterwards.
-    def check() = control.getOrCalculateGrading(context).flatMap(_ => control.getOrCalculateGrading(context, forceGrading = true))
+    def check() = control.getOrCalculateGrading().flatMap(_ => control.getOrCalculateGrading(forceGrading = true))
     def option(index: Int) = element.ref.querySelectorAll(".choice-interaction label")(index)
     def marked(index: Int) = option(index).classList.contains("answer-part--wrong")
     def tracker = Option(element.ref.querySelector(".interaction-info__attempts"))
     def select(index: Int) = option(index).querySelector("input").asInstanceOf[dom.html.Input].click()
     Future.unit.flatMap { _ =>
       select(1)
-      control.getOrCalculateGrading(context)
+      control.getOrCalculateGrading()
     }.flatMap { unchecked =>
       assertEquals(unchecked.totalEvaluation(), GradingStatus.NotRequested)
       assert(!marked(1))

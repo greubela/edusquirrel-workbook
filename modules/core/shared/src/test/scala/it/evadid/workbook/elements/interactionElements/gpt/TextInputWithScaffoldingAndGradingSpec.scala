@@ -1,5 +1,6 @@
 package it.evadid.workbook.elements.interactionElements.gpt
 
+import it.evadid.workbook.support.executingWith
 import it.evadid.workbook.interaction.sync.UpdateImportance
 
 import it.evadid.core.datastructures.language.WorkbookContent
@@ -302,9 +303,9 @@ class TextInputWithScaffoldingAndGradingSpec extends FunSuite {
   test("the interaction grading pipeline passes the resolver and collects independent criteria into its own history") {
     val f = new Fixture(List(Right("First feedback.\nCORRECT"), Right("Second feedback.\nCORRECT")))
     val element = twoCriteriaEssay("pipeline")
-    element.interactionVariable.setStateFromUserInteraction("answer", it.evadid.workbook.interaction.sync.UpdateImportance.MAJOR, context = TestExecutionContext())
-    element.interactionVariable.control.getOrCalculateGrading(TestExecutionContext()).flatMap { _ =>
-      element.interactionVariable.control.getOrCalculateGrading(f.context, forceGrading = true)
+    element.interactionVariable.setStateFromUserInteraction("answer", it.evadid.workbook.interaction.sync.UpdateImportance.MAJOR)
+    element.interactionVariable.control.getOrCalculateGrading().flatMap { _ =>
+      element.interactionVariable.executingWith(f.context).control.getOrCalculateGrading(forceGrading = true)
     }.map { _ =>
       val results = element.interactionVariable.currentHistory.historyGrading.gradingsMap("answer").testsWithResults
       assertEquals(results.size, 2)
@@ -354,10 +355,9 @@ class TextInputWithScaffoldingAndGradingSpec extends FunSuite {
         reply.future
       }
     }
-    element.interactionVariable.setStateFromUserInteraction("answer", it.evadid.workbook.interaction.sync.UpdateImportance.MAJOR, context = TestExecutionContext())
-    def grade() = element.interactionVariable.control.getOrCalculateGrading(
-      TestExecutionContext(List(client), Some(f.resolver), language = () => f.language.now()), forceGrading = true)
-    val first = element.interactionVariable.control.getOrCalculateGrading(TestExecutionContext()).flatMap(_ => grade())
+    element.interactionVariable.setStateFromUserInteraction("answer", it.evadid.workbook.interaction.sync.UpdateImportance.MAJOR)
+    def grade() = element.interactionVariable.executingWith(TestExecutionContext(List(client), Some(f.resolver), language = () => f.language.now())).control.getOrCalculateGrading(forceGrading = true)
+    val first = element.interactionVariable.control.getOrCalculateGrading().flatMap(_ => grade())
     started.future.flatMap { _ =>
       f.language.set(English)
       val second = grade()

@@ -12,7 +12,7 @@ import it.evadid.workbook.interaction.sync.UpdateImportance.MAJOR
 
 case object BlockchainRenderer extends LineBasedRenderingFactory[BlockchainInteraction] {
   override protected def createRendering(fullInfo: FullInfo, e: BlockchainInteraction): AtomarLineRendering = {
-    val state = e.interactionVariable.createBoundVarWithUpdateImportance(MAJOR, fullInfo.workbookContextInformation)
+    val state = e.interactionVariable.createBoundVarWithUpdateImportance(MAJOR)
     val summary = p(cls := "blockchain-preview", role := "status",
       text <-- state.signal.map(_.validPrefixLength(e.difficultyZeros))
         .combineWith(laminarHelper(fullInfo).plaintextStringSignal("blockchainworkbook/blockProgress"))

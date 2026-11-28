@@ -10,6 +10,6 @@ import it.evadid.workbook.interaction.sync.UpdateImportance
 case object HtmlMailInteractionRenderer extends LineBasedRenderingFactory[MailInteraction] {
   override protected def createRendering(fullInfo: FullInfo, element: MailInteraction): AtomarLineRendering =
     MailRendering.cardLine(fullInfo, element,
-      element.interactionVariable.createBoundVarWithUpdateImportance(UpdateImportance.MAJOR, fullInfo.workbookContextInformation),
+      element.interactionVariable.createBoundVarWithUpdateImportance(UpdateImportance.MAJOR),
       element.account, element.allowCompose)
 }

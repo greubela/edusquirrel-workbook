@@ -32,8 +32,8 @@ class SlideshowGraderSpec extends FunSuite {
   test("automatic grading is stored and round-trips with the slideshow format") {
     val exercise = deck
     val answer = exercise.defaultValue.recordTransitionByIndex(0, 1).recordTransitionByIndex(1, 2)
-    exercise.interactionVariable.setStateFromUserInteraction(answer, MAJOR, context = TestExecutionContext())
-    exercise.interactionVariable.control.getOrCalculateGrading(TestExecutionContext()).map { result =>
+    exercise.interactionVariable.setStateFromUserInteraction(answer, MAJOR)
+    exercise.interactionVariable.control.getOrCalculateGrading().map { result =>
       assert(result.testsWithResults.forall(_.gradingStatus.isCorrect))
       val history = exercise.interactionVariable.currentHistory
       val serializer = exercise.interactionFormat.historySerializer

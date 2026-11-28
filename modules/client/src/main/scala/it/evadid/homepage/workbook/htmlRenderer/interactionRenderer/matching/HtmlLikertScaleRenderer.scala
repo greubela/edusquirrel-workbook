@@ -17,7 +17,7 @@ import it.evadid.workbook.interaction.sync.UpdateImportance
 object HtmlLikertScaleRenderer extends LineBasedRenderingFactory[LikertScaleInteraction] {
 
   override protected def createRendering(fullInfo: FullInfo, e: LikertScaleInteraction): AtomarLineRendering = {
-    val state = e.interactionVariable.createBoundStateWithUpdateImportance(UpdateImportance.MAJOR, fullInfo.workbookContextInformation).toAirstreamVar
+    val state = e.interactionVariable.createBoundStateWithUpdateImportance(UpdateImportance.MAJOR).toAirstreamVar
     val locked = e.isDisabledState.toAirstreamVar
     val clearLabel = laminarHelper(fullInfo).plaintextStringSignal(LanguageMapContentId("basic/likertClear"))
 

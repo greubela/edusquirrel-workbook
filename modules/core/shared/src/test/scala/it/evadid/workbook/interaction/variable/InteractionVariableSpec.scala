@@ -1,5 +1,7 @@
 package it.evadid.workbook.interaction.variable
 
+import it.evadid.workbook.interaction.binding.SyncConnection
+import it.evadid.workbook.interaction.sync.UsageContext
 import it.evadid.core.datastructures.language.LanguageMapContentId
 import it.evadid.util.logging.Logger
 import it.evadid.util.logging.derived.PrintToStdLogger
@@ -33,11 +35,11 @@ class InteractionVariableSpec extends FunSuite {
 
   test("user edits append states; repeating the same value and importance is ignored") {
     val variable = TextInteraction("essay").interactionVariable
-    variable.setStateFromUserInteraction("draft", MINOR, at, context)
-    variable.setStateFromUserInteraction("draft", MINOR, at.plusSeconds(1), context)
+    variable.setStateFromUserInteraction("draft", MINOR, at)
+    variable.setStateFromUserInteraction("draft", MINOR, at.plusSeconds(1))
     assertEquals(variable.currentHistory.allStates.map(_.newState), Set("draft"), "the default is superseded by the first edit")
-    variable.setStateFromUserInteraction("draft", MAJOR, at.plusSeconds(2), context)
-    variable.updateStateFromUserInteraction(_ + "!", MINOR, at.plusSeconds(3), context)
+    variable.setStateFromUserInteraction("draft", MAJOR, at.plusSeconds(2))
+    variable.updateStateFromUserInteraction(_ + "!", MINOR, at.plusSeconds(3))
     assertEquals(variable.currentValue, "draft!")
     assertEquals(variable.currentHistory.allStates.toList.sortBy(_.timestamp).map(event => event.newState -> event.updateImportance),
       List("draft" -> MINOR, "draft" -> MAJOR, "draft!" -> MINOR))
@@ -47,32 +49,32 @@ class InteractionVariableSpec extends FunSuite {
     val variable = TextInteraction("essay").interactionVariable
     val seen = it.evadid.core.datastructures.state.State(Vector.empty[String])
     variable.observableValue.addObserver(value => seen.update(_ :+ value))
-    val bound = variable.createBoundStateWithUpdateImportance(MINOR, context)
+    val bound = variable.createBoundStateWithUpdateImportance(MINOR)
     bound.set("typed")
     assertEquals(variable.currentValue, "typed")
-    variable.setStateFromUserInteraction("restored", MAJOR, LocalDateTime.now().plusSeconds(5), context)
+    variable.setStateFromUserInteraction("restored", MAJOR, LocalDateTime.now().plusSeconds(5))
     assertEquals(bound.now(), "restored")
     assert(seen.now().endsWith(Seq("typed", "restored")), seen.now().toString)
   }
 
   test("restoring a stored record merges it; the newest answer becomes current, also across sessions") {
     val variable = TextInteraction("essay").interactionVariable
-    variable.setStateFromUserInteraction("local", MINOR, at.plusSeconds(1), context)
-    variable.restoreHistory(logger, InteractionHistoryJson.fromHistory(TextInteractionFormat, text("remote" -> 2, "older" -> 0)), context)
+    variable.setStateFromUserInteraction("local", MINOR, at.plusSeconds(1))
+    variable.restoreHistory(logger, InteractionHistoryJson.fromHistory(TextInteractionFormat, text("remote" -> 2, "older" -> 0)))
     assertEquals(variable.currentValue, "remote")
     assertEquals(variable.currentHistory.allStates.map(_.newState), Set("older", "local", "remote"))
     val before = variable.currentHistory
-    variable.restoreHistory(logger, before, context)
+    variable.restoreHistory(logger, before)
     assertEquals(variable.currentHistory, before, "restoring what is already known changes nothing")
   }
 
   test("an unreadable or foreign stored record is discarded without touching the current history") {
     val variable = TextInteraction("essay").interactionVariable
-    variable.setStateFromUserInteraction("kept", MINOR, at, context)
+    variable.setStateFromUserInteraction("kept", MINOR, at)
     val before = variable.currentHistory
-    variable.restoreHistory(logger, InteractionHistoryJson(TextInteractionFormat, "{\"not\": \"a history\"}"), context)
+    variable.restoreHistory(logger, InteractionHistoryJson(TextInteractionFormat, "{\"not\": \"a history\"}"))
     variable.restoreHistory(logger, InteractionHistoryJson.fromHistory(BinaryPixelInteractionFormat,
-      InteractionVariableHistory.empty[BinaryPixelInteractionFormat.type]), context)
+      InteractionVariableHistory.empty[BinaryPixelInteractionFormat.type]))
     assertEquals(variable.currentHistory, before)
   }
 
@@ -82,20 +84,20 @@ class InteractionVariableSpec extends FunSuite {
     val before = variable.currentHistory
     val resized = InteractionVariableHistory[BinaryPixelInteractionFormat.type](InteractionEvents(Set(
       AnswerChangedEvent[BinaryPixelInteractionFormat.type](BinaryPixelImage.blank(3, 3), at, MAJOR))))
-    variable.restoreHistory(logger, InteractionHistoryJson.fromHistory(BinaryPixelInteractionFormat, resized), context)
-    variable.restoreHistory(logger, resized, context)
+    variable.restoreHistory(logger, InteractionHistoryJson.fromHistory(BinaryPixelInteractionFormat, resized))
+    variable.restoreHistory(logger, resized)
     assertEquals(variable.currentHistory, before)
-    intercept[IllegalArgumentException](variable.setStateFromUserInteraction(BinaryPixelImage.blank(3, 3), MAJOR, at, context))
+    intercept[IllegalArgumentException](variable.setStateFromUserInteraction(BinaryPixelImage.blank(3, 3), MAJOR, at))
     assertEquals(variable.currentHistory, before, "a rejected edit leaves the history unchanged")
   }
 
   test("resets return to the default answer") {
     val variable = TextInteraction("essay").interactionVariable
-    variable.setStateFromUserInteraction("draft", MAJOR, at, context)
+    variable.setStateFromUserInteraction("draft", MAJOR, at)
     variable.resetLocalHistory()
     assertEquals(variable.currentValue, "")
-    variable.setStateFromUserInteraction("again", MAJOR, at, context)
-    variable.resetForNewSession()
+    variable.setStateFromUserInteraction("again", MAJOR, at)
+    variable.bindTo(UsageContext("program", "workbook", "other user"), SyncConnection.offline)
     assertEquals(variable.currentValue, "")
     assertEquals(variable.currentHistory.allStates.map(_.updateImportance), Set(DEFAULT))
   }
