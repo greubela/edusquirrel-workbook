@@ -5,7 +5,7 @@ import com.raquo.laminar.api.L.{label as labelTag, *}
 import it.evadid.homepage.webElements.basic.PageScrollLock
 import it.evadid.homepage.webElements.editor.code.JavaEditor.JavaEditorLabels.Key
 import it.evadid.vm.naming.BeEntityName
-import it.evadid.workbook.elements.interactionElements.programming.state.ProgrammingStateJavaStructured
+import it.evadid.workbook.interactions.programming.state.ProgrammingStateJavaStructured
 import org.scalajs.dom
 
 import scala.collection.immutable.VectorMap

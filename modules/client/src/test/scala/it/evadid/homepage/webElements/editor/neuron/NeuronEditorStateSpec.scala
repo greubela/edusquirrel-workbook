@@ -2,7 +2,7 @@ package it.evadid.homepage.webElements.editor.neuron
 
 import com.raquo.airstream.state.Var
 import it.evadid.core.datastructures.language.LanguageMapContentId
-import it.evadid.workbook.elements.interactionElements.neuron.*
+import it.evadid.workbook.interactions.neuron.*
 import munit.FunSuite
 
 class NeuronEditorStateSpec extends FunSuite {

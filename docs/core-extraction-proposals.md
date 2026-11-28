@@ -26,4 +26,4 @@ Keep [`MlRouter`](../modules/client/src/main/scala/it/evadid/homepage/workbook/l
 
 Separate turtle assessment from display data first; move ML inference when its JSON contract is covered by a fixture.
 
-Compression algorithms and experiment models already live in shared `workbook.model.compression`; moving `CompressionActivitiesEditor` would mostly move DOM events and Laminar bindings. `WorkbookUserDataAnalyzer` primarily reads client session/control state and triggers downloads. Those are poor whole-file candidates. Snap's native runtime, Pyodide loading and CodeMirror lifecycle belong outside shared core: their browser adapters should remain in the client or workers.
+Compression algorithms and experiment models already live in shared `workbook.interactions.compression`; moving `CompressionActivitiesEditor` would mostly move DOM events and Laminar bindings. `WorkbookUserDataAnalyzer` primarily reads client session/control state and triggers downloads. Those are poor whole-file candidates. Snap's native runtime, Pyodide loading and CodeMirror lifecycle belong outside shared core: their browser adapters should remain in the client or workers.

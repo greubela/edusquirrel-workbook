@@ -8,8 +8,8 @@ an editor button, the saved symbol and requirement feedback. Its fullscreen
 The Test workbook contains a sample exercise requiring at least 32 payload bytes.
 
 ```scala
-import it.evadid.workbook.elements.interactionElements.qr.*
-import it.evadid.workbook.model.qr.*
+import it.evadid.workbook.interactions.qr.*
+import it.evadid.workbook.interactions.qr.*
 
 CreateQrCodeInteraction(
   elementId = "summary-create-qr",
@@ -28,7 +28,7 @@ Its requirement results are not automatically attached to `gradingElements`; see
 
 ## Shared model
 
-The model under `it.evadid.workbook.model.qr` implements ISO/IEC 18004 QR Model 2
+The model under `it.evadid.workbook.interactions.qr` implements ISO/IEC 18004 QR Model 2
 byte mode, versions 1–40 and correction levels L/M/Q/H, without a runtime QR
 library. Other compression modes, Micro QR and structured append are outside
 this model.

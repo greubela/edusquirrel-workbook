@@ -1,5 +1,6 @@
 package it.evadid.core.datastructures.storage
 
+
 import it.evadid.core.datastructures.state.State
 import it.evadid.core.datastructures.state.async.AsyncDataState.*
 import it.evadid.core.datastructures.state.async.{AsyncData, AsyncDataState, AsyncState}
@@ -9,7 +10,7 @@ import it.evadid.distribution.command.SerializedException
 import it.evadid.util.logging.Logger
 import upickle.default.*
 
-import java.time.LocalDateTime
+import java.time.Instant
 import scala.collection.mutable
 import scala.concurrent.*
 import scala.util.{Failure, Success, Try}
@@ -119,7 +120,7 @@ abstract class AsyncDataCache[I, O](val baseLogger: Logger, val retryFailedOnNex
     loadEach(inputs)(input => loadAsFuture(input))
   }
 
-  def loadAllAsFuture(inputs: IterableOnce[I], maximumAge: LocalDateTime)(implicit ec: ExecutionContext): Future[Map[I, Either[Throwable, O]]] = syncLock.synchronized {
+  def loadAllAsFuture(inputs: IterableOnce[I], maximumAge: Instant)(implicit ec: ExecutionContext): Future[Map[I, Either[Throwable, O]]] = syncLock.synchronized {
     loadEach(inputs)(input => loadAsFuture(input, maximumAge))
   }
 
@@ -133,7 +134,7 @@ abstract class AsyncDataCache[I, O](val baseLogger: Logger, val retryFailedOnNex
     Future.traverse(inputs.iterator.toList)(handleInput).map(_.toMap)
   }
 
-  def loadAsFuture(input: I, maximumAge: LocalDateTime)(implicit ec: ExecutionContext): Future[O] = syncLock.synchronized {
+  def loadAsFuture(input: I, maximumAge: Instant)(implicit ec: ExecutionContext): Future[O] = syncLock.synchronized {
     cachedRequests.synchronized {
       ensureCache(input, (cache: CachedRequest[I, O]) => cache.requestCompletedAt.forall(_.isBefore(maximumAge)))
     }.createFuture
@@ -206,13 +207,13 @@ object AsyncDataCache {
 
     def getVariable: State[AsyncDataState[Nothing, O]]
 
-    def requestCompletedAt: Option[LocalDateTime] = None
+    def requestCompletedAt: Option[Instant] = None
 
     def associatedStatus: CacheElementStatus
 
   }
 
-  private[storage] case class SucceededRequest[I, O](associatedStore: AsyncDataCache[I, O], outputVar: State[AsyncDataState[Nothing, O]], output: O, timestamp: LocalDateTime = LocalDateTime.now()) extends CachedRequest[I, O] {
+  private[storage] case class SucceededRequest[I, O](associatedStore: AsyncDataCache[I, O], outputVar: State[AsyncDataState[Nothing, O]], output: O, timestamp: Instant = Instant.now()) extends CachedRequest[I, O] {
 
     override val outputIfPresent: Option[O] = Some(output)
 
@@ -220,12 +221,12 @@ object AsyncDataCache {
 
     def getVariable: State[AsyncDataState[Nothing, O]] = outputVar
 
-    override def requestCompletedAt: Option[LocalDateTime] = Some(timestamp)
+    override def requestCompletedAt: Option[Instant] = Some(timestamp)
 
     override def associatedStatus: CacheElementStatus = PRESENT()
   }
 
-  private[storage] case class FailedRequest[I, O](associatedStore: AsyncDataCache[I, O], input: I, outputVar: State[AsyncDataState[Nothing, O]], cause: Throwable, timestamp: LocalDateTime = LocalDateTime.now()) extends CachedRequest[I, O] {
+  private[storage] case class FailedRequest[I, O](associatedStore: AsyncDataCache[I, O], input: I, outputVar: State[AsyncDataState[Nothing, O]], cause: Throwable, timestamp: Instant = Instant.now()) extends CachedRequest[I, O] {
 
     override val outputIfPresent: Option[O] = None
 
@@ -236,7 +237,7 @@ object AsyncDataCache {
 
     def getVariable: State[AsyncDataState[Nothing, O]] = outputVar
 
-    override def requestCompletedAt: Option[LocalDateTime] = Some(timestamp)
+    override def requestCompletedAt: Option[Instant] = Some(timestamp)
 
     override def associatedStatus: CacheElementStatus = FAILED(SerializedException(cause))
   }

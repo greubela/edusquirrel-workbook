@@ -10,7 +10,7 @@ import it.evadid.vm.conversion.snapexpression.{SnapControlFlow, SnapExpressionSu
 import it.evadid.vm.naming.BeEntityName
 import it.evadid.vm.modules.BeModules
 import it.evadid.vm.types.{BeDataValueLiteral, BeScope}
-import it.evadid.workbook.elements.interactionElements.programming.state.snap.SnapTurtleCatalog
+import it.evadid.workbook.interactions.programming.state.snap.SnapTurtleCatalog
 import scala.annotation.tailrec
 
 private[simulation] object TurtleCommandSites {

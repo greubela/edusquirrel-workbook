@@ -99,7 +99,17 @@ sealed trait TurtleCommand[+T] derives ReadWriter {
 }
 
 enum TurtleStitchMode derives ReadWriter {
-  case Running, Cross, Bean, Zigzag, Z, Satin, Tatami, Jump, Tie, Trim, StopRunning
+  @upickle.implicits.key("Running") case Running
+  @upickle.implicits.key("Cross") case Cross
+  @upickle.implicits.key("Bean") case Bean
+  @upickle.implicits.key("Zigzag") case Zigzag
+  @upickle.implicits.key("Z") case Z
+  @upickle.implicits.key("Satin") case Satin
+  @upickle.implicits.key("Tatami") case Tatami
+  @upickle.implicits.key("Jump") case Jump
+  @upickle.implicits.key("Tie") case Tie
+  @upickle.implicits.key("Trim") case Trim
+  @upickle.implicits.key("StopRunning") case StopRunning
 
   def name: BeEntityName = TurtleCommand.resolveCanonicalNames(this match {
     case Running => "running_stitch"
@@ -117,32 +127,57 @@ enum TurtleStitchMode derives ReadWriter {
 }
 
 object TurtleCommand {
+  @upickle.implicits.key("Forward")
   case class Forward[+T](distance: T) extends TurtleCommand[T] derives ReadWriter
+  @upickle.implicits.key("Backward")
   case class Backward[+T](distance: T) extends TurtleCommand[T] derives ReadWriter
+  @upickle.implicits.key("Left")
   case class Left[+T](degrees: T) extends TurtleCommand[T] derives ReadWriter
+  @upickle.implicits.key("Right")
   case class Right[+T](degrees: T) extends TurtleCommand[T] derives ReadWriter
+  @upickle.implicits.key("SetHeading")
   case class SetHeading[+T](degrees: T) extends TurtleCommand[T] derives ReadWriter
+  @upickle.implicits.key("SetX")
   case class SetX[+T](x: T) extends TurtleCommand[T] derives ReadWriter
+  @upickle.implicits.key("SetY")
   case class SetY[+T](y: T) extends TurtleCommand[T] derives ReadWriter
+  @upickle.implicits.key("Dot")
   case class Dot[+T](size: T) extends TurtleCommand[T] derives ReadWriter
+  @upickle.implicits.key("PenSize")
   case class PenSize[+T](size: T) extends TurtleCommand[T] derives ReadWriter
+  @upickle.implicits.key("Speed")
   case class Speed[+T](speed: T) extends TurtleCommand[T] derives ReadWriter
+  @upickle.implicits.key("Goto")
   case class Goto[+T](x: T, y: T) extends TurtleCommand[T] derives ReadWriter
+  @upickle.implicits.key("Towards")
   case class Towards[+T](x: T, y: T) extends TurtleCommand[T] derives ReadWriter
+  @upickle.implicits.key("ArcLeft")
   case class ArcLeft[+T](radius: T, extent: T) extends TurtleCommand[T] derives ReadWriter
+  @upickle.implicits.key("ArcRight")
   case class ArcRight[+T](radius: T, extent: T) extends TurtleCommand[T] derives ReadWriter
+  @upickle.implicits.key("PenUp")
   case object PenUp extends TurtleCommand[Nothing]
+  @upickle.implicits.key("PenDown")
   case object PenDown extends TurtleCommand[Nothing]
+  @upickle.implicits.key("ShowTurtle")
   case object ShowTurtle extends TurtleCommand[Nothing]
+  @upickle.implicits.key("HideTurtle")
   case object HideTurtle extends TurtleCommand[Nothing]
+  @upickle.implicits.key("Home")
   case object Home extends TurtleCommand[Nothing]
+  @upickle.implicits.key("Reset")
   case object Reset extends TurtleCommand[Nothing]
+  @upickle.implicits.key("Clear")
   case object Clear extends TurtleCommand[Nothing]
+  @upickle.implicits.key("Circle")
   case class Circle[+T](radius: T, extent: Option[T] = None, steps: Option[T] = None) extends TurtleCommand[T] derives ReadWriter
+  @upickle.implicits.key("Color")
   case class Color[+T](color: String) extends TurtleCommand[T] derives ReadWriter
   /** Parameters are retained verbatim; the preview currently applies only the stitch mode. */
+  @upickle.implicits.key("Stitch")
   case class Stitch[+T](mode: TurtleStitchMode, numeric: Seq[T] = Nil, text: Seq[String] = Nil) extends TurtleCommand[T] derives ReadWriter
   /** Unsupported or malformed VM calls remain observable without drawing geometry. */
+  @upickle.implicits.key("Unsupported")
   case class Unsupported[+T](entityName: BeEntityName, numeric: Seq[T], text: Seq[String]) extends TurtleCommand[T] derives ReadWriter
 
 

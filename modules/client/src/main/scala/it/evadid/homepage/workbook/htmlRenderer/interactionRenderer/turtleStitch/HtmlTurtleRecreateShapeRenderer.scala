@@ -1,8 +1,10 @@
 package it.evadid.homepage.workbook.htmlRenderer.interactionRenderer.turtleStitch
 
+import it.evadid.workbook.control.InteractionSignals.*
+
 import it.evadid.homepage.control.model.FullInfo
 
-import it.evadid.workbook.interaction.sync.UpdateImportance
+import it.evadid.workbook.sync.UpdateImportance
 
 import com.raquo.airstream.state.Var
 import it.evadid.core.datastructures.language.LanguageMapContentId
@@ -19,30 +21,30 @@ import it.evadid.homepage.workbook.htmlRenderer.workbookEditors.{EditorWithWorkb
 import it.evadid.workbook.abstractions.RoleInWorkbook.EXERCISE_DESCRIPTION
 import it.evadid.workbook.abstractions.TypeOfTextDisplay.PLAINTEXT
 import it.evadid.workbook.abstractions.{LangMapContentIdType, TypeOfTextDisplay}
-import it.evadid.workbook.elements.displayElements.DisplayLangMapContent
-import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseTurtle.TurtleRecreateShapeInteraction
+import it.evadid.workbook.elements.display.DisplayLangMapContent
+import it.evadid.workbook.interactions.programming.programmingExerciseTurtle.TurtleRecreateShapeInteraction
 import it.evadid.homepage.webElements.editor.code.program.ProgramAnalyzer
 import it.evadid.vm.conversion.dependencies.ProgrammingEnvironment
 
 case object HtmlTurtleRecreateShapeRenderer extends LineBasedRenderingFactory[TurtleRecreateShapeInteraction] {
 
   /** Editor side module replaying the drawing of the bound answer step by step. */
-  private[homepage] def turtleStepsCard(fullInfo: FullInfo, source: com.raquo.laminar.api.L.Signal[it.evadid.workbook.elements.interactionElements.programming.state.ProgrammingState],
+  private[homepage] def turtleStepsCard(fullInfo: FullInfo, source: com.raquo.laminar.api.L.Signal[it.evadid.workbook.interactions.programming.state.ProgrammingState],
       environment: ProgrammingEnvironment, analyzer: ProgramAnalyzer = ProgramAnalyzer.shared,
       frame: Seq[it.evadid.core.datastructures.geometry.Point[Double]] = Nil): ElementCard =
     ElementCard(fullInfo, LanguageMapContentId("basic/turtleStepsTitle"),
       new it.evadid.homepage.workbook.htmlRenderer.interactionRenderer.steps.TurtleStepPanel(source,
         key => laminarHelper(fullInfo).plaintextStringSignal(LanguageMapContentId(s"basic/$key")), environment, analyzer = analyzer, frame = frame).getDomElement())
 
-  private def framePoints(target: it.evadid.workbook.elements.interactionElements.programming.programmingExerciseTurtle.TurtleGraphic) =
+  private def framePoints(target: it.evadid.workbook.interactions.programming.programmingExerciseTurtle.TurtleGraphic) =
     scala.util.Try(target.renderMovements.flatMap(movement => Seq(movement.start, movement.end)).distinct).getOrElse(Nil)
 
   override protected def createRendering(fullInfo: FullInfo, workbookElement: TurtleRecreateShapeInteraction): AtomarLineRendering = {
-    val boundVar = workbookElement.interactionVariable.createBoundStateWithUpdateImportance(UpdateImportance.MAJOR, fullInfo.workbookContextInformation).toAirstreamVar
+    val boundVar = fullInfo.interactions.boundVar(workbookElement, UpdateImportance.MAJOR)
 
     val gradingReporter = fullInfo.reporters.reportersFor(workbookElement).grading
     val shapeGrader = workbookElement.gradingElements.collectFirst {
-      case grader: it.evadid.workbook.elements.interactionElements.programming.programmingExerciseTurtle.RecreateShapeGrader => grader
+      case grader: it.evadid.workbook.interactions.programming.programmingExerciseTurtle.RecreateShapeGrader => grader
     }.getOrElse(throw IllegalArgumentException("A shape exercise needs its shape grader."))
     // Drawings and the shape comparison follow the answer itself, after a short pause in typing.
     val shapeGradingPreview = CompareShapePreview(fullInfo, boundVar.signal, shapeGrader.desiredResult, shapeGrader.comparisonPolicy, workbookElement.environment)

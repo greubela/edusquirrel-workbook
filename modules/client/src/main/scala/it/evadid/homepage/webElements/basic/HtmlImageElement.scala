@@ -9,7 +9,7 @@ import it.evadid.distribution.command.SerializedException
 import it.evadid.homepage.control.model.FullInfo
 import it.evadid.homepage.webElements.*
 import it.evadid.homepage.webElements.basic.FullImage.*
-import it.evadid.workbook.elements.displayElements.WorkbookImageElement
+import it.evadid.workbook.elements.display.WorkbookImageElement
 
 import scala.concurrent.Future
 import scala.concurrent.ExecutionContext.Implicits.global

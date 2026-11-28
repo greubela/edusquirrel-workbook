@@ -4,8 +4,7 @@ import it.evadid.vm.naming.{BeEntityName, NamingStyle}
 import it.evadid.core.datastructures.language.AppLanguage.*
 import it.evadid.core.datastructures.language.LanguageMap
 import it.evadid.core.util.io.Serializer
-import it.evadid.core.util.io.serializer.AutoSerializable
-import it.evadid.core.util.io.serializer.AutoSerializable.{AutoSerializableMainType, AutoSerializableSingleton, AutoSerializableSubType}
+import it.evadid.distribution.command.SerializedException
 import upickle.ReadWriter
 import upickle.default.*
 
@@ -25,19 +24,22 @@ sealed trait BeDataType {
 
 object BeDataType {
 
-  private given rwAtom: ReadWriter[BeDataTypeAtomic] = AutoSerializable.getReadWriter[BeDataTypeAtomic, BeSerializableAtomicType](using macroRW)
+  /** Atomic types are saved by their registered name, e.g. `"Int"`. */
+  private given rwAtom: ReadWriter[BeDataTypeAtomic] = readwriter[String].bimap[BeDataTypeAtomic](
+    atomic => namedAtomicTypes.find(_._2 eq atomic).map(_._1).getOrElse(throw new IllegalArgumentException("Cannot serialize an unregistered atomic data type")),
+    name => namedAtomicTypes.find(_._1 == name).map(_._2).getOrElse(throw SerializedException(s"Unknown atomic data type $name")))
 
   // Atomic and singleton codecs write JSON strings. They cannot be merged by
   // macroRW, which requires case-class readers for every sealed-trait member.
   given rw: ReadWriter[BeDataType] = readwriter[ujson.Value].bimap[BeDataType](
     {
-      case AnyType => ujson.Str("Singleton(AnyType$)")
+      case AnyType => ujson.Str("AnyType")
       case atomic: BeDataTypeAtomic => writeJs(atomic)(using rwAtom)
       case named: ClassType => writeJs(named)
       case union: BeUnionAllowedTypes => writeJs(union)
     },
     {
-      case ujson.Str("Singleton(AnyType$)") => AnyType
+      case ujson.Str("AnyType") => AnyType
       case json: ujson.Str => read[BeDataTypeAtomic](json)(using rwAtom)
       case json: ujson.Obj if json.obj.contains("className") => read[ClassType](json)
       case json: ujson.Obj => read[BeUnionAllowedTypes](json)
@@ -58,6 +60,7 @@ object BeDataType {
   }
 
 
+  @upickle.implicits.key("ClassType")
   case class ClassType(className: BeEntityName) extends BeUnionType derives ReadWriter {
     def formatTypeForDisplay: LanguageMap[ProgrammingLanguage] = LanguageMap.universalMap(NamingStyle.fromAnyNotationToParts(className.universalInterpretation()).map(_.capitalize).mkString)
     def formatValueForDisplay(value: String): LanguageMap[ProgrammingLanguage] = LanguageMap.universalMap(value)
@@ -70,7 +73,8 @@ object BeDataType {
     }
   }
 
-  case object AnyType extends BeUnionType with AutoSerializableSingleton[AnyType.type] {
+  @upickle.implicits.key("AnyType")
+  case object AnyType extends BeUnionType {
     private val displayMap: LanguageMap[ProgrammingLanguage] =
       LanguageMap.mapBasedLanguageMapWithFallback[ProgrammingLanguage](Map(Python -> "Any", Java -> "Object"), "Any")
 
@@ -84,6 +88,7 @@ object BeDataType {
     def canTakeValuesFrom(other: BeDataType): BeDataTypeAssigningPossible = AssigningPossibleWithSameType(this)
   }
 
+  @upickle.implicits.key("BeUnionAllowedTypes")
   case class BeUnionAllowedTypes(dataTypes: Set[BeDataType]) extends BeUnionType derives ReadWriter {
 
     def formatTypeForDisplay: LanguageMap[ProgrammingLanguage] = {
@@ -155,26 +160,12 @@ object BeDataType {
   lazy val allAtomic = namedAtomicTypes.map(_._2)
 
 
-  case class BeSerializableAtomicType(name: String) extends AutoSerializableSubType[BeDataTypeAtomic, BeSerializableAtomicType] derives upickle.default.ReadWriter {
-    lazy val toTypedMainType: BeDataTypeAtomic =
-      namedAtomicTypes.find(_._1 == name).map(_._2)
-        // Earlier atomic representations used the same class name for every
-        // type; retain their original first-match interpretation as String.
-        .orElse(if (name == "BeDataTypeAtomic") Some(String) else None).get
-  }
-
   case class BeDataTypeAtomic(
                                val pFormatTypeForDisplay: LanguageMap[ProgrammingLanguage],
                                val pFormatValueForDisplay: String => LanguageMap[ProgrammingLanguage],
                                val pIsValidLiteral: String => Boolean,
                                val allowImplicitCastTo: Set[BeDataType] = Set()
-                             ) extends BeDataType with AutoSerializableMainType[BeDataTypeAtomic, BeSerializableAtomicType] {
-
-    lazy val rwSub: ReadWriter[BeSerializableAtomicType] = macroRW
-
-    lazy val toSerializableSubType: BeSerializableAtomicType =
-      BeSerializableAtomicType(namedAtomicTypes.find(_._2 eq this).map(_._1)
-        .getOrElse(throw new IllegalArgumentException("Cannot serialize an unregistered atomic data type")))
+                             ) extends BeDataType {
 
     def canTakeValuesFrom(other: BeDataType): BeDataTypeAssigningPossible = other match {
       case BeUnionAllowedTypes(otherTypes) => {

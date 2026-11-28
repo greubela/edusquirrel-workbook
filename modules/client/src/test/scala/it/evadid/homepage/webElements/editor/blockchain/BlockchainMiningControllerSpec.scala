@@ -1,7 +1,7 @@
 package it.evadid.homepage.webElements.editor.blockchain
 
 import com.raquo.airstream.state.Var
-import it.evadid.workbook.model.blockchain.*
+import it.evadid.workbook.interactions.blockchain.*
 import munit.FunSuite
 import scala.collection.mutable.Queue
 

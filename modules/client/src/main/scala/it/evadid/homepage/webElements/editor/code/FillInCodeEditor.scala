@@ -6,7 +6,7 @@ import it.evadid.core.datastructures.language.AppLanguage.ProgrammingLanguage
 import it.evadid.core.datastructures.language.LanguageMapContentId
 import it.evadid.homepage.webElements.editor.code.codemirror.CodeMirrorEditor
 import it.evadid.util.logging.Logger
-import it.evadid.workbook.elements.interactionElements.codeTaskToggle.{AdvancedCodeCheckResult, AdvancedCodeRequirement}
+import it.evadid.workbook.interactions.codeTaskToggle.{AdvancedCodeCheckResult, AdvancedCodeRequirement}
 
 /** Fill-in-the-blank style code editor with TODO legend and requirement checking. */
 object FillInCodeEditor {

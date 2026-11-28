@@ -3,7 +3,7 @@ package it.evadid.homepage.webElements.editor.compression
 import com.raquo.laminar.api.L.*
 import it.evadid.core.datastructures.language.LanguageMapContentId
 import it.evadid.homepage.webElements.UiDomSuite
-import it.evadid.workbook.model.compression.*
+import it.evadid.workbook.interactions.compression.*
 import org.scalajs.dom
 import scala.concurrent.ExecutionContext
 

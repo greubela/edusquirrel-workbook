@@ -1,7 +1,7 @@
 package it.evadid.homepage.webElements.editor.code.SnapEditor
 
 import it.evadid.facades.Snap.*
-import it.evadid.workbook.elements.interactionElements.programming.state.snap.*
+import it.evadid.workbook.interactions.programming.state.snap.*
 import scala.scalajs.js
 
 import SnapProjectRuntime.*

@@ -6,7 +6,7 @@ import it.evadid.distribution.commandTypes.SubmissionCommands
 import it.evadid.homepage.workbook.htmlRenderer.HtmlRenderFactory.LineBasedRenderingFactory
 import it.evadid.homepage.workbook.htmlRenderer.atomarLineRenderings.AtomarLineRendering
 import it.evadid.homepage.workbook.htmlRenderer.controlElements.HtmlSubmissionForm
-import it.evadid.workbook.elements.displayElements.WorkbookSubmissionElement
+import it.evadid.workbook.elements.display.WorkbookSubmissionElement
 
 import scala.concurrent.ExecutionContext
 
@@ -16,7 +16,7 @@ object HtmlWorkbookSubmissionRenderer extends LineBasedRenderingFactory[Workbook
 
   override protected def createRendering(fullInfo: FullInfo, element: WorkbookSubmissionElement): AtomarLineRendering = {
     val logger = fullInfo.loggerSystemInfo.uiAndDomLogger
-    val form = HtmlSubmissionForm(fullInfo, submitter => fullInfo.homepageInfoNow().toSubmissionBy(submitter), fullInfo.signals.user,
+    val form = HtmlSubmissionForm(fullInfo, submitter => fullInfo.homepageInfoNow().toSubmissionBy(submitter, fullInfo.interactions.info), fullInfo.signals.user,
       event => SubmissionCommands.submitSessionCommand.sendCommandTo(fullInfo.defaults.backendExecutorWithCredentials(None),
         event, Some(logger)).map(_.result), logger)
     AtomarLineRendering.basicLine(fullInfo, element, form.getDomElement())

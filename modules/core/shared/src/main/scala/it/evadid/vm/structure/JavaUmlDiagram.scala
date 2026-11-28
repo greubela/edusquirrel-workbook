@@ -7,7 +7,7 @@ import it.evadid.vm.conversion.dependencies.KnownDependencies
 import it.evadid.vm.parsing.source.{JavaClassStructured, SourceParsing}
 import it.evadid.vm.parsing.source.SourceParsing.SourceLanguage
 import it.evadid.vm.naming.BeEntityName
-import it.evadid.workbook.elements.interactionElements.programming.state.ProgrammingStateJavaStructured
+import it.evadid.workbook.interactions.programming.state.ProgrammingStateJavaStructured
 
 /** Java classes in the language-independent UML model, from the declarations of [[SourceParsing]]'s first step. */
 object JavaUmlDiagram {

@@ -5,7 +5,7 @@ import it.evadid.homepage.control.model.FullInfo
 import com.raquo.laminar.api.L.*
 import it.evadid.homepage.webElements.basic.LabelSelection
 import it.evadid.homepage.webElements.HtmlAppElement
-import it.evadid.workbook.model.compression.*
+import it.evadid.workbook.interactions.compression.*
 import org.scalajs.dom
 import scala.scalajs.js.typedarray.Float64Array
 import scala.util.Try

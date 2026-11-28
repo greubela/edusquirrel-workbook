@@ -5,9 +5,9 @@ import it.evadid.distribution.clients.{ExecutionClient, ExecutionClientPool}
 import it.evadid.distribution.commandTypes.SQLCommands
 import it.evadid.distribution.commandTypes.SQLCommands.{DbFetchResponse, DeleteInDbRequest, FetchEventsFromDbRequest}
 import it.evadid.sql.DatabaseHistoryFormat
-import it.evadid.workbook.interaction.sync.{SyncContext, SyncSuccess}
-import it.evadid.workbook.interaction.sync.model.InteractionHistoryJson
-import it.evadid.workbook.interaction.variable.events.EventId
+import it.evadid.workbook.sync.{SyncContext, SyncSuccess}
+import it.evadid.workbook.sync.model.InteractionHistoryJson
+import it.evadid.workbook.history.events.EventId
 import scala.concurrent.{ExecutionContext, Future}
 
 /** A dummy history database answering the backend's history commands like the server's
@@ -41,12 +41,10 @@ final class InMemoryHistoryDatabase {
     entries.map { (key, incoming) =>
       val current = rows.now()
       val saved = current.get(format -> key)
-      val merged = saved.fold(incoming) { saved =>
-        require(saved.format == incoming.format, s"History format cannot change for ${key.keyForSerialisation}")
-        saved.merge(incoming)
-      }
+      // A changed format replaces the record, as on the server.
+      val merged = saved.filter(_.format == incoming.format).fold(incoming)(_.merge(incoming))
       rows.set(current.updated(format -> key, merged))
-      SyncSuccess.immutable(incoming.eventIds, saved.fold(Set.empty)(_.eventIds), merged.eventIds)
+      SyncSuccess.immutable(incoming.eventIds, saved.filter(_.format == incoming.format).fold(Set.empty)(_.eventIds), merged.eventIds)
     }.foldLeft(SyncSuccess.emptyNow[EventId]())(_.combine(_))
 
   /** The server's read rule: unreadable records are discarded, the others filtered by strategy and range. */
@@ -67,7 +65,7 @@ final class InMemoryHistoryDatabase {
 
   /** A saved record that cannot be read, as left by a broken or outdated client. */
   def corrupt(format: DatabaseHistoryFormat, key: SyncContext, like: InteractionHistoryJson): Unit =
-    rows.set(rows.now().updated(format -> key, like.copy(historyJson = "{\"not\": \"a history\"}")))
+    rows.set(rows.now().updated(format -> key, InteractionHistoryJson(like.format, "{\"not\": \"a history\"}")))
 
   val client: ExecutionClient = ExecutionClientPool(List(
     SQLCommands.bulkStoreToDbCommand.toLocalExecutionClient((request, _) =>

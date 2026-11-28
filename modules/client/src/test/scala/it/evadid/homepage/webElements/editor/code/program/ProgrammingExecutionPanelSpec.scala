@@ -9,7 +9,7 @@ import it.evadid.homepage.webElements.editor.code.EditorDomSuite
 import it.evadid.homepage.webElements.editor.code.worker.{LocalWorker, SharedWorker}
 import it.evadid.vm.analysis.ProgramAnalysis
 import it.evadid.vm.simulation.python.PythonTurtleCalls
-import it.evadid.workbook.elements.interactionElements.programming.state.*
+import it.evadid.workbook.interactions.programming.state.*
 import org.scalajs.dom
 
 import scala.collection.mutable.ListBuffer

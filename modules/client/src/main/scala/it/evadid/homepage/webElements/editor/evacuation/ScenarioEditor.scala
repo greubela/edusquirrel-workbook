@@ -6,8 +6,8 @@ import com.raquo.laminar.api.L.*
 import it.evadid.evacuation.eva2.control.modes.ScenarioEditorMode
 import it.evadid.evacuation.eva2.model.EvaFloorMap
 import it.evadid.homepage.webElements.HtmlAppElement
-import it.evadid.workbook.model.evacuation.*
-import it.evadid.workbook.elements.interactionElements.evacuation.EvacuationFloorRequirements
+import it.evadid.workbook.interactions.evacuation.*
+import it.evadid.workbook.interactions.evacuation.EvacuationFloorRequirements
 
 /** Local EVA2 state; no standalone ProgramState, resource downloads or simulation timers. */
 case class ScenarioEditor(fullInfo: FullInfo, answer: Var[EvacuationFloorPlan], initial: EvacuationFloorPlan, locked: Signal[Boolean],

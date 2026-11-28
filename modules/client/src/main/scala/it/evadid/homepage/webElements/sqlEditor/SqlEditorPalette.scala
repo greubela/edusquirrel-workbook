@@ -1,6 +1,6 @@
 package it.evadid.homepage.webElements.sqlEditor
 
-import it.evadid.workbook.elements.interactionElements.programming.state.snap.SnapPaletteCatalog
+import it.evadid.workbook.interactions.programming.state.snap.SnapPaletteCatalog
 
 /** Editor templates and comparison buttons, separate from shared SQL clause handling. */
 object SqlEditorPalette {

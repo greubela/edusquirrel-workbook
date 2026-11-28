@@ -28,6 +28,10 @@ dynamic payload may use `ujson.Value`; formats without additional grading/scaffo
 data use `Unit`. Prefer `derives ReadWriter` for boundary models. Keep an explicit companion
 codec where constructor evidence, an open hierarchy, validation or wire
 compatibility requires it. Library-type codecs belong in `DefaultSerializer`.
+`Serializer[T]` is the text-format layer with careful parsing (`tryDeserialize`,
+`tryDeserializeAll`, `safeSeqReadWriter`); a JSON one comes from `Serializer.fromUpickleJson`.
+Convert a type to its saved form with `ReadWriter.bimap`, never by wrapping a JSON
+serializer in `uPickleReadWrite`, which would save JSON inside a string.
 Live callbacks, futures, reactive subscriptions, DOM/worker handles, services,
 connections and controllers are not snapshots: a boundary type stores their
 explicit data instead.
@@ -38,7 +42,7 @@ explicit data instead.
 | --- | --- |
 | Numeric geometry and SVG builders | Reconstruct numeric evidence; mutable builders resume from current geometry, not the constructor seed |
 | Programming expressions and data types | Preserve the active representation and literal/type descriptors; reject unsupported tags instead of reconstructing executable serializer callbacks |
-| Workbook elements | Factories keep their definition formats; self-contained root codecs include the reference registry and prerequisites |
+| Workbook elements | `ReadWriter[WorkbookElement]` writes a flat `SerializedWorkbook` listing each element once; single-element text formats embed referenced elements |
 | Interaction history | `InteractionFormat` owns typed event/history codecs; transport uses `InteractionHistoryJson` |
 | Execution transport | `ExecutionClientResponse` carries a typed result or serialized failure, from which the client builds `ExecutionInfo[T]`; requests/results must decode on the selected backend |
 | Snap primitive defaults | Supported tagged primitives retain integer/double distinctions and special floating values; arbitrary executable objects are rejected |

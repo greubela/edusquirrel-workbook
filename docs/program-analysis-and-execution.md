@@ -30,7 +30,7 @@ edit terminates it.
 ```scala
 import com.raquo.laminar.api.L.*
 import it.evadid.homepage.webElements.editor.code.program.{ProgramAnalyzer, ProgramRunner}
-import it.evadid.workbook.elements.interactionElements.programming.state.ProgrammingState
+import it.evadid.workbook.interactions.programming.state.ProgrammingState
 import scala.scalajs.concurrent.JSExecutionContext.Implicits.queue
 
 def consoleOutput(answer: Signal[ProgrammingState]): Element = {

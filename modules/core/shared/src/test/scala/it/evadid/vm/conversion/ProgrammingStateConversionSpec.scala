@@ -3,8 +3,8 @@ package it.evadid.vm.conversion
 import it.evadid.vm.compilation.java.turtle.JavaTurtleCompiler
 import it.evadid.core.datastructures.language.AppLanguage.{Java, Python, SnapLanguage}
 import it.evadid.vm.conversion.pythonsnap.PythonToSnap
-import it.evadid.workbook.elements.interactionElements.programming.state.*
-import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseRegular.*
+import it.evadid.workbook.interactions.programming.state.*
+import it.evadid.workbook.interactions.programming.programmingExerciseRegular.*
 
 import it.evadid.vm.compilation.java.turtle.{JavaTurtleSymbolResolver as R, JavaTurtleSourceParser}
 import it.evadid.vm.simulation.java.JavaTurtleInterpreter as T

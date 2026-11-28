@@ -10,7 +10,7 @@ import it.evadid.vm.code.usage.*
 import it.evadid.vm.conversion.printing.ModuleLayout
 import it.evadid.vm.naming.BeEntityName
 import it.evadid.vm.types.{BeDataType, BeDataValueLiteral, BeDataValueUnit, BeUseValueReference}
-import it.evadid.workbook.elements.interactionElements.programming.state.*
+import it.evadid.workbook.interactions.programming.state.*
 import munit.FunSuite
 
 /** The expression tree a parser builds, written as a language-neutral outline.

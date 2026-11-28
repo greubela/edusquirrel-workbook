@@ -9,7 +9,7 @@ import it.evadid.vm.code.controlStructures.{BeRepeatNr, BeWhile}
 import it.evadid.vm.code.usage.{BeFunctionCall, BeUseValue}
 import it.evadid.vm.types.BeChildRole.{BodySequence, ConditionInControlStructure, ExpressionInSequence, FunctionParameter}
 import it.evadid.vm.types.{BeDataType, BeDataValueLiteral}
-import it.evadid.workbook.elements.interactionElements.programming.state.{ProgrammingStateBeExpression, ProgrammingStateRaw}
+import it.evadid.workbook.interactions.programming.state.{ProgrammingStateBeExpression, ProgrammingStateRaw}
 import munit.FunSuite
 
 class BeProgramEditingSpec extends FunSuite {

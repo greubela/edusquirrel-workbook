@@ -7,16 +7,23 @@ import upickle.default.ReadWriter
 
 /** One recorded operation on the provided number list; indices start at 0. Reads record the value they returned. */
 enum ListCommand derives ReadWriter {
+  @upickle.implicits.key("Get")
   case Get(index: Int, value: Int)
+  @upickle.implicits.key("Set")
   case Set(index: Int, value: Int)
+  @upickle.implicits.key("Swap")
   case Swap(first: Int, second: Int)
+  @upickle.implicits.key("Length")
   case Length(length: Int)
 }
 
 /** One recorded operation on the provided sudoku; rows and columns start at 0, 0 marks an empty cell. */
 enum SudokuCommand derives ReadWriter {
+  @upickle.implicits.key("Get")
   case Get(row: Int, column: Int, value: Int)
+  @upickle.implicits.key("Set")
   case Set(row: Int, column: Int, value: Int)
+  @upickle.implicits.key("Remove")
   case Remove(row: Int, column: Int)
 }
 

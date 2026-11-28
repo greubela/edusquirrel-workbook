@@ -3,12 +3,12 @@ package it.evadid.distribution.command
 import it.evadid.distribution.formats.ExecutionClientResponse
 import it.evadid.distribution.formats.ExecutionClientResponse.*
 import it.evadid.util.logging.BasicLogger
-import java.time.LocalDateTime
+import java.time.Instant
 import munit.FunSuite
 import upickle.default.*
 
 class ExecutionClientResponseSpec extends FunSuite {
-  private val time = LocalDateTime.parse("2026-11-12T12:00:00")
+  private val time = java.time.Instant.parse("2026-11-12T12:00:00Z")
   private val timestamps = ExecutionClientResponseTimestamps(time, time, time)
   private val command = ExecutionCommand("test", ujson.Obj())
 

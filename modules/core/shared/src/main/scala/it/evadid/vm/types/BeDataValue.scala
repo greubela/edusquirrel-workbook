@@ -15,6 +15,7 @@ sealed trait BeDataValue derives ReadWriter{
 }
 
 
+@upickle.implicits.key("BeDataValueUnit")
 case class BeDataValueUnit() extends BeDataValue derives upickle.default.ReadWriter {
 
   val displayAsString: String = ""
@@ -22,12 +23,14 @@ case class BeDataValueUnit() extends BeDataValue derives upickle.default.ReadWri
   val currentType: BeDataType = BeDataType.Unit
 }
 
+@upickle.implicits.key("BeUseValueReference")
 case class BeUseValueReference(variable: BeDefineVariable) extends BeDataValue derives upickle.default.ReadWriter {
 
   override def currentType: BeDataType = variable.variableType
 
 }
 
+@upickle.implicits.key("BeDataValueLiteral")
 case class BeDataValueLiteral(literalString: String) extends BeDataValue derives upickle.default.ReadWriter {
   def displayAsString: String = literalString
 

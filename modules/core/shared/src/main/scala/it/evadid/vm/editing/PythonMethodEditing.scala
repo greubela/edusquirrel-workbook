@@ -3,7 +3,7 @@ package it.evadid.vm.editing
 import it.evadid.vm.naming.BeEntityName
 import it.evadid.vm.parsing.source.*
 import it.evadid.vm.parsing.source.SourceParsing.SourceLanguage
-import it.evadid.workbook.elements.interactionElements.programming.state.ProgrammingStatePythonStructured
+import it.evadid.workbook.interactions.programming.state.ProgrammingStatePythonStructured
 
 /** Source ranges for Python's module, classes and functions, using the shared tolerant parsing stages. */
 object PythonMethodEditing {

@@ -3,13 +3,13 @@ package it.evadid.vm.conversion.pythonsnap
 import it.evadid.vm.parsing.source.SourceParsing
 import it.evadid.vm.parsing.source.SourceParsing.SourceLanguage
 
-import it.evadid.workbook.elements.interactionElements.programming.state.ProgrammingStateSnapScalaModel
-import it.evadid.workbook.elements.interactionElements.programming.state.snap.SnapCanvasLayout
+import it.evadid.workbook.interactions.programming.state.ProgrammingStateSnapScalaModel
+import it.evadid.workbook.interactions.programming.state.snap.SnapCanvasLayout
 
 import it.evadid.vm.conversion.expressionsnap.ExpressionToSnap
 
 import it.evadid.core.datastructures.language.AppLanguage.Python
-import it.evadid.workbook.elements.interactionElements.programming.state.ProgrammingStateRaw
+import it.evadid.workbook.interactions.programming.state.ProgrammingStateRaw
 
 import it.evadid.vm.conversion.snapexpression.SnapExpressionSupport.*
 

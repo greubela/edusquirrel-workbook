@@ -1,9 +1,9 @@
 # Full Snap project model in shared core
 
-`ProgrammingStateSnapScalaModel` represents the complete **saved Snap project**, independently of the smaller executable Turtle subset. XML transport uses `ProgrammingStateRaw(SnapLanguage, code)` in [ProgrammingState.scala](../modules/core/shared/src/main/scala/it/evadid/workbook/elements/interactionElements/programming/state/ProgrammingState.scala). Prefer the typed model for saved answers.
+`ProgrammingStateSnapScalaModel` represents the complete **saved Snap project**, independently of the smaller executable Turtle subset. XML transport uses `ProgrammingStateRaw(SnapLanguage, code)` in [ProgrammingState.scala](../modules/core/shared/src/main/scala/it/evadid/workbook/interactions/programming/state/ProgrammingState.scala). Prefer the typed model for saved answers.
 
 All project node types live in
-[SnapScalaModel.scala](../modules/core/shared/src/main/scala/it/evadid/workbook/elements/interactionElements/programming/state/snap/SnapScalaModel.scala).
+[SnapScalaModel.scala](../modules/core/shared/src/main/scala/it/evadid/workbook/interactions/programming/state/snap/SnapScalaModel.scala).
 They model the bundled Snap/TurtleStitch serializer vocabulary as immutable data.
 This is a persistence model: it does not create Morphic objects, execute scripts
 or expand cyclic references.
@@ -13,7 +13,7 @@ Each Snap node has one authoritative `Element` containing ordered attributes and
 ## Closed vocabularies
 
 Where the bundled serializer (`turtlestitchsrc/store.js`) writes a fixed set of values, the accessor is typed by
-[SnapVocabulary.scala](../modules/core/shared/src/main/scala/it/evadid/workbook/elements/interactionElements/programming/state/snap/SnapVocabulary.scala):
+[SnapVocabulary.scala](../modules/core/shared/src/main/scala/it/evadid/workbook/interactions/programming/state/snap/SnapVocabulary.scala):
 `PenPoint`, `RotationStyle`, `LineEnds`, `ColorModel`, `BlockType`, `WatcherStyle` and `BlockCategory`
 (Snap's built-ins, TurtleStitch's `embroidery`, or `Custom(name)` for a `<palette>` category; names are
 case-sensitive). Flags written only in one spelling are booleans (`Scene.unifiedPalette`, `BlockDefinition.isRuleHat`,
@@ -23,9 +23,9 @@ in the element. Slot types (`%n`, `%mult%s`, …) and a watcher's owner name rem
 ## Conversion and editing
 
 ```scala
-import it.evadid.workbook.elements.interactionElements.programming.state.*
+import it.evadid.workbook.interactions.programming.state.*
 import it.evadid.core.datastructures.language.AppLanguage.SnapLanguage
-import it.evadid.workbook.elements.interactionElements.programming.state.snap.SnapScalaModel.*
+import it.evadid.workbook.interactions.programming.state.snap.SnapScalaModel.*
 
 val xmlState = ProgrammingStateRaw(SnapLanguage,
   "<project name='Example'><scenes><scene><stage><sprites>" +

@@ -1,0 +1,95 @@
+package it.evadid.workbook.elements.structure
+
+import it.evadid.core.datastructures.language.AppLanguage.HumanLanguage
+import it.evadid.core.datastructures.language.LanguageMapContentId
+import it.evadid.core.datastructures.user.User
+import it.evadid.core.util.io.serializer.ConstructorLikeSerializer
+import it.evadid.core.util.io.serializer.ConstructorLikeSerializer.VariableDisplayConfig
+import it.evadid.util.logging.Logger
+import it.evadid.workbook.abstractions.WorkbookStructuringType.WORKBOOK
+import it.evadid.workbook.abstractions.*
+import it.evadid.workbook.elements.structure.Workbook.WorkbookMetadata
+import it.evadid.workbook.elements.structure.*
+import it.evadid.workbook.sync.SyncContext
+import it.evadid.workbook.sync.model.InteractionHistoryJson
+import it.evadid.workbook.serialization.{WorkbookElementFactory, WorkbookElementReference, WorkbookElementSerializable}
+import ujson.Value
+import upickle.default
+import upickle.default.*
+
+case class Workbook(
+                     elementId: String,
+                     metadata: WorkbookMetadata,
+                     sections: Seq[WorkbookSection],
+                   ) extends WorkbookStructureElement[WorkbookSection] {
+
+  val workbookId: String = elementId
+
+  override val groupElements: Seq[WorkbookSection] = sections
+
+  override lazy val structureType: WorkbookStructuringType = WORKBOOK
+
+  lazy val allContainedInteractionsById: Map[String, WorkbookInteractionElement[? <: InteractionFormat]] =
+    allInteractionsInThisInstance.map(interaction => interaction.elementId -> interaction).toMap
+
+  override val associatedFactory: WorkbookElementFactory[? <: WorkbookElement] = Workbook.factory
+
+
+}
+
+
+object Workbook {
+  given ReadWriter[Workbook] = WorkbookElement.subtypeCodec
+
+
+  case class WorkbookMetadata(
+                               author: Set[User],
+                               contributors: Set[User],
+                               workbookTitle: LanguageMapContentId,
+                               availableLanguages: Seq[HumanLanguage]
+                             ) derives ReadWriter {
+
+  }
+
+
+  lazy val factory: WorkbookElementFactory[Workbook] = new WorkbookElementFactory[Workbook]() {
+    /** Only the single-element text formats embed the referenced elements; a saved workbook lists them beside it. */
+    override def serializedElementKeysThatContainOtherSerializations(element: WorkbookElementSerializable): Set[String] =
+      Set("serializedElements").filter(element.allConstructorFields.contains)
+
+    def idsRequiredForDeserialization(element: WorkbookElementSerializable): Set[String] = {
+      element.getElementsAs[WorkbookElementReference]("sections").map(curRef => curRef.referencedId).toSet
+    }
+
+    def fromSerializedElement(element: WorkbookElementSerializable, parsedElements: Map[String, WorkbookElement]): Workbook = {
+      val sections = element.getAndResolveWorkbookElements[WorkbookSection]("sections", parsedElements)
+      Workbook(
+        element.elementId,
+        element.getElementAs[WorkbookMetadata]("metadata"),
+        sections
+      )
+    }
+
+    override lazy val elementMapAndOrderForConstructorLike: Map[Int, Seq[ConstructorLikeSerializer.VariableDisplayConfig]] = {
+      Map(
+        0 -> List(VariableDisplayConfig("elementId", true)),
+        1 -> List(VariableDisplayConfig("metadata", true)),
+        2 -> List(VariableDisplayConfig("sections", false)),
+        3 -> List(VariableDisplayConfig("serializedElements", false))
+      )
+    }
+    override def toSerializableElement(workbook: Workbook): WorkbookElementSerializable =
+      toFactoryBase(workbook).withElementAddedAs("metadata", workbook.metadata)
+        .withElementsAddedAs[WorkbookElementReference]("sections", workbook.sections.map(_.asRef))
+
+    override def addElementsToSerialization(element: Workbook): Map[String, Value] = {
+      val allRequiredIds = element.sections.map(_.elementId).toSet ++ element.allChildrenFullSubtree.flatMap { child =>
+        child.associatedFactory.idsRequiredForDeserialization(child.toSerialized)
+      }
+      val requiredToSerialize = element.allChildrenFullSubtree.filter(child => allRequiredIds.contains(child.elementId))
+      Map(
+        "serializedElements" -> writeJs(requiredToSerialize.map(_.toSerialized))
+      )
+    }
+  }
+}

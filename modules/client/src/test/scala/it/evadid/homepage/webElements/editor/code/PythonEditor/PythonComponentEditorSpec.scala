@@ -6,7 +6,7 @@ import it.evadid.homepage.webElements.editor.code.EvaTestContext
 import it.evadid.homepage.webElements.editor.code.EvaEditor.EvaEditorLabels
 import it.evadid.homepage.webElements.editor.config.CodeMirrorEditorConfig
 import it.evadid.vm.naming.BeEntityName
-import it.evadid.workbook.elements.interactionElements.programming.state.ProgrammingStatePythonStructured
+import it.evadid.workbook.interactions.programming.state.ProgrammingStatePythonStructured
 import scala.scalajs.js
 import it.evadid.homepage.webElements.editor.code.EditorDomSuite
 import scala.concurrent.Future

@@ -2,7 +2,9 @@ package it.evadid.server.database
 
 import it.evadid.core.util.io.ParsingContext
 import it.evadid.util.logging.Logger
-import java.sql.{Connection, PreparedStatement, ResultSet, Timestamp}
+import it.evadid.core.util.io.serializer.DefaultSerializer
+import java.sql.{Connection, PreparedStatement, ResultSet}
+import java.time.Instant
 import scala.util.Using
 
 /** Prepared statements with typed bindings on a caller-owned connection.
@@ -28,7 +30,16 @@ final class SqlStatements(connection: Connection, logger: Logger) {
 }
 
 object SqlStatements {
-  type Value = String | Long | Timestamp
+  type Value = String | Long | Instant
+
+  /** Database times are [[DefaultSerializer.instantText]]: UTC with nine fractional digits, which MySQL's
+    * `DATETIME` (six at most) cannot hold.
+    */
+  def instant(text: String): Instant = {
+    val parsed = Instant.parse(text)
+    require(DefaultSerializer.instantText(parsed) == text, "Database times must be canonical ISO 8601 UTC text with nine fractional digits")
+    parsed
+  }
 
   /** Reads every row of `resultSet`, starting at the first, and closes it. */
   def rows[A](resultSet: ResultSet)(read: ResultSet => A): Seq[A] =
@@ -37,6 +48,6 @@ object SqlStatements {
   private def bind(statement: PreparedStatement, position: Int, value: Value): Unit = value match {
     case number: Long => statement.setLong(position, number)
     case text: String => statement.setString(position, text)
-    case timestamp: Timestamp => statement.setTimestamp(position, timestamp)
+    case instant: Instant => statement.setString(position, DefaultSerializer.instantText(instant))
   }
 }

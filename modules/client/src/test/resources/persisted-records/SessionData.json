@@ -1,0 +1,148 @@
+{
+  "timestampStorage": "2026-11-28T12:00:00.000000000Z",
+  "knownUsageData": [
+    [
+      {
+        "programId": "program",
+        "scenarioId": "scenario",
+        "userId": "student",
+        "keyForSerialisation": "answer_history"
+      },
+      {
+        "format": "TextInteractionFormat",
+        "historyJson": {
+          "events": {
+            "values": [
+              {
+                "$type": "AnswerChangedEvent",
+                "newState": "",
+                "timestamp": "2026-11-28T12:00:00.000000000Z",
+                "updateImportance": "MAJOR",
+                "eventId": "00000000-0000-4000-8000-000000000001"
+              }
+            ]
+          }
+        }
+      }
+    ]
+  ],
+  "userInfo": {
+    "name": "Student",
+    "id": "student",
+    "mail": "student@example.invalid"
+  },
+  "userConfig": {
+    "syncDestinations": [
+      {
+        "syncDestination": {
+          "$type": "LocalIndexedDbSyncDefinition",
+          "dbName": "EvaDidInteractionDB",
+          "storeName": "variableHistoryStore",
+          "dbVersion": 1
+        },
+        "syncStrategy": "SYNC_LAST"
+      },
+      {
+        "syncDestination": {
+          "$type": "SyncDestinationBasedOnHistoryDatabase",
+          "databaseConfig": "BackendDatabase",
+          "format": "RelationalFormat",
+          "buffered": true
+        },
+        "syncStrategy": "SYNC_MAJOR"
+      },
+      {
+        "syncDestination": {
+          "$type": "SyncDestinationBasedOnHistoryDatabase",
+          "databaseConfig": "BackendDatabase",
+          "format": "BlobFormat",
+          "buffered": true
+        },
+        "syncStrategy": "SYNC_MAJOR"
+      }
+    ],
+    "isOnlineAccount": true
+  },
+  "workbookInfo": {
+    "loadedWorkbook": {
+      "rootId": "snapshot-workbook",
+      "elements": [
+        {
+          "elementId": "snapshot-workbook",
+          "elementType": "Workbook",
+          "allConstructorFields": {
+            "metadata": {
+              "author": [
+                {
+                  "name": "Author",
+                  "id": "author",
+                  "mail": "author@example.invalid"
+                }
+              ],
+              "contributors": [],
+              "workbookTitle": "LangMapId(snapshot/title)",
+              "availableLanguages": [
+                "English"
+              ]
+            },
+            "sections": [
+              "ElementRef(WorkbookSection/section)"
+            ]
+          }
+        },
+        {
+          "elementId": "section",
+          "elementType": "WorkbookSection",
+          "allConstructorFields": {
+            "metadata": {
+              "sectionTitle": "LangMapId(snapshot/section)",
+              "requiredBefore": [],
+              "recommendedBefore": []
+            },
+            "requiredBefore": [],
+            "recommendedBefore": [],
+            "content": [
+              "ElementRef(TextInteraction/answer)"
+            ]
+          }
+        },
+        {
+          "elementId": "answer",
+          "elementType": "TextInteraction",
+          "allConstructorFields": {}
+        }
+      ]
+    },
+    "config": {
+      "activeSection": {
+        "rootId": "section",
+        "elements": [
+          {
+            "elementId": "section",
+            "elementType": "WorkbookSection",
+            "allConstructorFields": {
+              "metadata": {
+                "sectionTitle": "LangMapId(snapshot/section)",
+                "requiredBefore": [],
+                "recommendedBefore": []
+              },
+              "requiredBefore": [],
+              "recommendedBefore": [],
+              "content": [
+                "ElementRef(TextInteraction/answer)"
+              ]
+            }
+          },
+          {
+            "elementId": "answer",
+            "elementType": "TextInteraction",
+            "allConstructorFields": {}
+          }
+        ]
+      }
+    },
+    "estimatedDurations": {
+      "section": 5
+    }
+  }
+}

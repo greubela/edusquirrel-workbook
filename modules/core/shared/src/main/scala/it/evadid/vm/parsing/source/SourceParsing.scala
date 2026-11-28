@@ -14,8 +14,11 @@ object SourceParsing {
   /** A language this pipeline reads, typed by the source it produces. */
   sealed abstract class SourceLanguage[S <: ParsedSource](val language: ProgrammingLanguage, private[source] val create: String => S)
   object SourceLanguage {
+    @upickle.implicits.key("Java")
     case object Java extends SourceLanguage[JavaSource](AppLanguage.Java, JavaSource(_))
+    @upickle.implicits.key("Python")
     case object Python extends SourceLanguage[PythonSource](AppLanguage.Python, PythonSource(_))
+    @upickle.implicits.key("Snap")
     case object Snap extends SourceLanguage[SnapSource](AppLanguage.SnapLanguage, SnapSource(_))
   }
 

@@ -12,8 +12,8 @@ case class DisplayControl(fullInfo: FullInfo) {
     updateDisplay(_.copy(fullscreenElement = Some(element)))
 
   def updateDisplay(func: AllDisplayInfo => AllDisplayInfo): Unit =
-    fullInfo.homepageInfoState.update(curInfo => curInfo.copy(displayInfo = func(curInfo.displayInfo)))
+    fullInfo.homepage.updateDisplay(func)
 
   def changeLanguage(language: HumanLanguage): Unit =
-    fullInfo.homepageInfoState.update(_.copy(currentLanguage = language))
+    fullInfo.homepage.setLanguage(language)
 }

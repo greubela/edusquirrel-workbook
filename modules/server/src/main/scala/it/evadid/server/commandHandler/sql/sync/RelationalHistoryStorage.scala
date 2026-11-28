@@ -1,26 +1,24 @@
 package it.evadid.server.commandHandler.sql.sync
 
 import it.evadid.distribution.commandTypes.SQLCommands.*
+import it.evadid.core.util.io.serializer.DefaultSerializer
 import it.evadid.util.logging.Logger
 import it.evadid.workbook.abstractions.InteractionFormat
-import it.evadid.workbook.interaction.sync.{EventSyncStrategy, SyncContext, SyncSuccess, UsageContext}
-import it.evadid.workbook.interaction.sync.model.InteractionHistoryJson
-import it.evadid.workbook.interaction.variable.InteractionVariableHistory
-import it.evadid.workbook.interaction.variable.events.*
+import it.evadid.workbook.sync.{EventSyncStrategy, SyncContext, SyncSuccess, UsageContext}
+import it.evadid.workbook.sync.model.InteractionHistoryJson
+import it.evadid.workbook.history.InteractionHistory
+import it.evadid.workbook.history.events.*
 import java.sql.Connection
-import java.time.LocalDateTime
-import java.time.format.{DateTimeFormatter, DateTimeFormatterBuilder}
-import java.time.temporal.ChronoField
-import java.util.Locale
+import java.time.Instant
 
 /** Each event is independent: feedback ranges do not require the answer to fall in the same range. */
 class RelationalHistoryStorage(connection: Connection, logger: Logger) extends HistorySql(connection, logger) {
-  // ISO 8601 with a fixed nine-digit fraction keeps ordinary dates lexicographically sortable.
-  private val timestampFormat = new DateTimeFormatterBuilder()
-    .append(DateTimeFormatter.ISO_LOCAL_DATE).appendLiteral('T').appendPattern("HH:mm:ss")
-    .appendFraction(ChronoField.NANO_OF_SECOND, 9, 9, true).toFormatter(Locale.ROOT)
-  private def timestampText(value: LocalDateTime): String = timestampFormat.format(value)
-  private def fourDigitYear(value: LocalDateTime): Boolean = value.getYear >= 0 && value.getYear <= 9999
+  // The canonical nine-digit text keeps ordinary dates lexicographically sortable.
+  private def timestampText(value: Instant): String = DefaultSerializer.instantText(value)
+  private val yearZero = Instant.parse("0000-01-01T00:00:00Z")
+  private val yearTenThousand = Instant.parse("+10000-01-01T00:00:00Z")
+  /** Range bounds outside years 0 to 9999, such as `Instant.MIN` and `MAX`, leave that side of the range open. */
+  private def fourDigitYear(value: Instant): Boolean = !value.isBefore(yearZero) && value.isBefore(yearTenThousand)
 
   private val tables = List("answer_event", "grading_event", "scaffolding_event")
 
@@ -39,7 +37,11 @@ class RelationalHistoryStorage(connection: Connection, logger: Logger) extends H
     statements.update("INSERT INTO sync_context_id (program_id,scenario_id,user_id,variable_id,format) VALUES (?,?,?,?,?) ON DUPLICATE KEY UPDATE id=id",
       (identity :+ format.name)*)
     val (sync, savedFormat) = statements.query("SELECT id,format FROM sync_context_id WHERE program_id=? AND scenario_id=? AND user_id=? AND variable_id=? FOR UPDATE", identity*)(row => row.getLong(1) -> row.getString(2)).head
-    require(InteractionFormat.fromName(savedFormat) == format, s"History format cannot change for ${context.keyForSerialisation}")
+    // The exercise changed its type: its earlier events belong to another exercise and are replaced.
+    if savedFormat != format.name then {
+      tables.foreach(table => statements.update(s"DELETE FROM $table WHERE sync_id=?", sync))
+      statements.update("UPDATE sync_context_id SET format=? WHERE id=?", format.name, sync)
+    }
     history.events.values.toList.map(event => storeEvent[format.type](sync, format)(event))
       .foldLeft(SyncSuccess.emptyNow[EventId]())(_.combine(_))
   }
@@ -63,7 +65,7 @@ class RelationalHistoryStorage(connection: Connection, logger: Logger) extends H
       (List(context.programId, context.scenarioId, context.userId) ++ keys)*)(row => context.toSyncContext(row.getString(2)) -> (row.getLong(1), row.getString(3)))
   }
 
-  private def readHistory[F <: InteractionFormat](sync: Long, format: F, range: Option[(LocalDateTime, LocalDateTime)]): InteractionHistoryJson = {
+  private def readHistory[F <: InteractionFormat](sync: Long, format: F, range: Option[(Instant, Instant)]): InteractionHistoryJson = {
     // ISO expanded positive years begin with '+', which sorts before four-digit years.
     // Include them in lower-bound candidates; precise typed filtering below handles all years.
     // Bounds outside 0000..9999 are left to that filter rather than using an incorrect text order.
@@ -83,13 +85,13 @@ class RelationalHistoryStorage(connection: Connection, logger: Logger) extends H
           val event = InteractionFormat.codecsFor(format).eventSerializer.deserialize(row.getString("serialized_data"))
           require(eventId == event.eventId.value, "Stored event_id must match the serialized client eventId")
           require(row.getString("timestamp_nano") == timestampText(event.timestamp),
-            "timestamp_nano must match the serialized event as canonical ISO 8601 with nanosecond precision")
+            "timestamp_nano must match the serialized event as canonical nine-digit ISO 8601 UTC text")
           require(table == tableFor(event), "Event stored in the wrong table")
           event
         }.fold(error => { logger.logExceptionWarn(s"Discarded the unreadable $table row $eventId", error); None }, Some(_))
       }.flatten
     }.toSet
-    InteractionHistoryJson.fromHistory(format, InteractionVariableHistory(InteractionEvents(events)))
+    InteractionHistoryJson.fromHistory(format, InteractionHistory(format, InteractionEvents(events)))
   }
 
   def fetch(request: FetchEventsFromDbRequest): DbFetchResponse = transaction {

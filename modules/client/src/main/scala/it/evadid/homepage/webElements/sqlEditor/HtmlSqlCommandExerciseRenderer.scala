@@ -1,18 +1,19 @@
 package it.evadid.homepage.webElements.sqlEditor
 
+import it.evadid.workbook.control.InteractionSignals.*
+
 import it.evadid.homepage.control.model.FullInfo
 
 import com.raquo.laminar.api.L.*
 import it.evadid.core.datastructures.state.StateHelper.StateBasedVar
 import it.evadid.homepage.workbook.htmlRenderer.HtmlRenderFactory.LineBasedRenderingFactory
 import it.evadid.homepage.workbook.htmlRenderer.atomarLineRenderings.AtomarLineRendering
-import it.evadid.workbook.elements.interactionElements.sql.SqlCommandExercise
-import it.evadid.workbook.interaction.sync.UpdateImportance
+import it.evadid.workbook.interactions.sql.SqlCommandExercise
+import it.evadid.workbook.sync.UpdateImportance
 
 case object HtmlSqlCommandExerciseRenderer extends LineBasedRenderingFactory[SqlCommandExercise] {
   override protected def createRendering(fullInfo: FullInfo, exercise: SqlCommandExercise): AtomarLineRendering = {
-    val state = exercise.interactionVariable.createBoundStateWithUpdateImportance(
-      UpdateImportance.MAJOR, fullInfo.workbookContextInformation).toAirstreamVar
+    val state = fullInfo.interactions.boundVar(exercise, UpdateImportance.MAJOR)
     AtomarLineRendering.basicLine(fullInfo, exercise, div(
       button(typ := "button", "Open SQL editor", onClick --> (_ =>
         fullInfo.displayControl.setFullscreen(SqlEditor(fullInfo.loggerSystemInfo.uiAndDomLogger, state, exercise.databaseConfig, fullInfo.backendExecutor,

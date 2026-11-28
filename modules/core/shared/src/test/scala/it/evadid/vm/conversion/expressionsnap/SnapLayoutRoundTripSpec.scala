@@ -28,7 +28,7 @@ class SnapLayoutRoundTripSpec extends FunSuite {
     // The semantic Snap reader keeps detached scripts in unusedCode; the raw TurtleStitch reader keeps them in order plus layout.
     val exported = SnapProjectXml.toXml(SourceParsing.parse(xml, SourceLanguage.Snap).parsed.toTry.get.expression)
     assertEquals("<script ".r.findAllIn(exported).size, 2, exported)
-    def commands(snap: String) = it.evadid.workbook.elements.interactionElements.programming.state
+    def commands(snap: String) = it.evadid.workbook.interactions.programming.state
       .ProgrammingStateRaw(it.evadid.core.datastructures.language.AppLanguage.SnapLanguage, snap).toBeExpression.turtleCommandExecutionInfo.completedCommands
     assertEquals(commands(exported), commands(xml))
     assertEquals(commands(xml).map(_.args), List(List(10.0)))

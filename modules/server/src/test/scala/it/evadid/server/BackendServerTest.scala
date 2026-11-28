@@ -5,7 +5,7 @@ import it.evadid.util.logging.BasicLogger
 import munit.FunSuite
 
 import java.net.InetAddress
-import java.time.LocalDateTime
+import java.time.Instant
 
 class BackendServerTest extends FunSuite {
   test("account changes are limited to the authenticated user's ID") {
@@ -18,7 +18,7 @@ class BackendServerTest extends FunSuite {
 
     intercept[IllegalArgumentException] {
       BackendCommandHandler.handleExecution(
-        LocalDateTime.parse("2026-01-01T08:00:00"),
+        java.time.Instant.parse("2026-01-01T08:00:00Z"),
         command,
         None,
         InetAddress.getLoopbackAddress,
@@ -27,7 +27,7 @@ class BackendServerTest extends FunSuite {
     }
   }
   test("server failures use the response envelope understood by execution clients") {
-    val time = LocalDateTime.parse("2026-01-01T08:00:00")
+    val time = java.time.Instant.parse("2026-01-01T08:00:00Z")
     val logger = BasicLogger()
     val command = ExecutionCommand("invalid", ujson.Obj())
     val response = BackendServer.fail(time, "Could not parse command", None, Some(command), logger)

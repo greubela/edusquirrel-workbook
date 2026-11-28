@@ -4,11 +4,6 @@ import com.raquo.laminar.api.L.*
 import it.evadid.core.datastructures.state.async.AsyncDataState.*
 import it.evadid.core.datastructures.state.async.{AsyncData, AsyncDataState}
 import it.evadid.core.datastructures.state.observable.{ObservableValue, ObservableValueImpl}
-import it.evadid.workbook.abstractions.InteractionFormat
-import it.evadid.workbook.interaction.sync.UpdateImportance
-import it.evadid.workbook.interaction.sync.UpdateImportance.TEMPORARY
-import it.evadid.workbook.interaction.variable.{InteractionVariable, InteractionVariableHistory}
-import it.evadid.workbook.meta.ExecutionContextInformation
 
 import scala.concurrent.{ExecutionContext, Future}
 import com.raquo.airstream.state.{LazyDerivedVar, LazyStrictSignal}
@@ -20,17 +15,6 @@ object StateHelper {
     def toAirstreamVar: Var[T] = fromStateToAirstreamVar(state)
 
     def toSignal: Signal[T] = toAirstreamVar.signal
-  }
-
-  implicit class RichInteractionVariable[F <: InteractionFormat](underlying: InteractionVariable[F]) {
-
-    def historySignal: Signal[InteractionVariableHistory[F]] = {
-      val res: Signal[InteractionVariableHistory[F]] = underlying.observableHistoryWithDefault.toSignal(
-        underlying.observableHistoryWithDefault.now().get
-      )
-      res
-    }
-
   }
 
   implicit class RichObservableValue[T](underlying: ObservableValue[T]) {
@@ -103,18 +87,6 @@ object StateHelper {
     /** Observes the data only while the signal has observers. */
     def toStateSignal: Signal[AsyncDataState[?, S]] =
       underlying.observeAllStates.toSignal(AsyncDataLoading[F, S]())
-
-  }
-
-  implicit class InteractionVariableOnJS[F <: InteractionFormat](interactionVariable: InteractionVariable[F]) {
-
-    def createBoundVarWithUpdateImportance(updateImportance: UpdateImportance, context: ExecutionContextInformation): Var[InteractionFormat.State[F]] =
-      interactionVariable.createBoundStateWithUpdateImportance(updateImportance, context).toAirstreamVar
-
-
-    /** The current answer; it observes the variable only while the signal has observers. */
-    def createInteractionSignal: Signal[InteractionFormat.State[F]] =
-      interactionVariable.observableValue.toSignal(interactionVariable.currentValue)
 
   }
 

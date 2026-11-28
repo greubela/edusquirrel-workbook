@@ -2,7 +2,7 @@ package it.evadid.homepage.webElements.editor.blockchain
 
 import com.raquo.laminar.api.L.*
 import it.evadid.homepage.webElements.UiDomSuite
-import it.evadid.workbook.model.blockchain.{TeachingBlock, TeachingChain}
+import it.evadid.workbook.interactions.blockchain.{TeachingBlock, TeachingChain}
 import org.scalajs.dom
 import scala.concurrent.ExecutionContext
 

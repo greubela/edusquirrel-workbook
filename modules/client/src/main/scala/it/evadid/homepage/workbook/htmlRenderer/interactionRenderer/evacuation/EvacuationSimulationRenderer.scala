@@ -1,19 +1,21 @@
 package it.evadid.homepage.workbook.htmlRenderer.interactionRenderer.evacuation
 
+import it.evadid.workbook.control.InteractionSignals.*
+
 import it.evadid.homepage.control.model.FullInfo
 
 import com.raquo.laminar.api.L.*
-import it.evadid.core.datastructures.state.StateHelper.{InteractionVariableOnJS, StateBasedVar}
+import it.evadid.core.datastructures.state.StateHelper.StateBasedVar
 import it.evadid.core.datastructures.language.LanguageMapContentId
 import it.evadid.homepage.webElements.editor.evacuation.EvacuationSimulationEditor
 import it.evadid.homepage.workbook.htmlRenderer.HtmlRenderFactory.LineBasedRenderingFactory
 import it.evadid.homepage.workbook.htmlRenderer.atomarLineRenderings.{AtomarLineRendering, ElementCard}
-import it.evadid.workbook.elements.interactionElements.evacuation.EvacuationSimulationInteraction
-import it.evadid.workbook.interaction.sync.UpdateImportance.MAJOR
+import it.evadid.workbook.interactions.evacuation.EvacuationSimulationInteraction
+import it.evadid.workbook.sync.UpdateImportance.MAJOR
 
 case object EvacuationSimulationRenderer extends LineBasedRenderingFactory[EvacuationSimulationInteraction] {
   override protected def createRendering(fullInfo: FullInfo, e: EvacuationSimulationInteraction): AtomarLineRendering = {
-    val state = e.interactionVariable.createBoundVarWithUpdateImportance(MAJOR, fullInfo.workbookContextInformation)
+    val state = fullInfo.interactions.boundVar(e, MAJOR)
     val preview = p(cls := "evacuation-simulation-preview", role := "status",
       text <-- state.signal.combineWith(laminarHelper(fullInfo).plaintextStringSignal("digitalWorkbooks/evacuationSimulationPreview"))
         .map((value, template) => template.replace("{runs}", value.measurements.size.toString)

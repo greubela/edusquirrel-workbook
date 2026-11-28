@@ -1,7 +1,6 @@
 package it.evadid.server.database
 
 import it.evadid.sql.DatabaseConfigWithCredentials
-import it.evadid.server.database.newConnection
 import java.sql.Connection
 import scala.util.Using
 

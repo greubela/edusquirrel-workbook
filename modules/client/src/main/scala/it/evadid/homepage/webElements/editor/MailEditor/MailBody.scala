@@ -3,7 +3,7 @@ package it.evadid.homepage.webElements.editor.MailEditor
 import com.raquo.laminar.api.L.*
 import org.scalajs.dom
 import scala.scalajs.js
-import it.evadid.workbook.elements.interactionElements.emailSimulator.Mail
+import it.evadid.workbook.interactions.emailSimulator.Mail
 
 /** Rebuild an inert HTML fragment. No supplied attributes, URLs or active content reach the document. */
 object MailBody {

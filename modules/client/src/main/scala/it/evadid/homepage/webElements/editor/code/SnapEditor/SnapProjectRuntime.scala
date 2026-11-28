@@ -2,7 +2,7 @@ package it.evadid.homepage.webElements.editor.code.SnapEditor
 
 import it.evadid.facades.Snap.*
 import it.evadid.homepage.webElements.editor.code.SnapEditor.execution.{JavaTurtleSnapPrimitives, SnapExtraPrimitives}
-import it.evadid.workbook.elements.interactionElements.programming.state.ProgrammingStateRaw
+import it.evadid.workbook.interactions.programming.state.ProgrammingStateRaw
 import org.scalajs.dom.html.Canvas
 import scala.scalajs.js
 import scala.scalajs.js.JSConverters.*

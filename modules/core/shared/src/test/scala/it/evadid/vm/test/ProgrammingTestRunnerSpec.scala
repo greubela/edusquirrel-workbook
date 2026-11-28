@@ -9,9 +9,9 @@ import it.evadid.distribution.commandTypes.WorkerCommands
 import it.evadid.distribution.commandTypes.WorkerCommands.{PythonCallback, RunPythonRequest, RunPythonResult}
 import it.evadid.util.logging.Logger
 import it.evadid.vm.conversion.unittest.ProgramForUnitTestExecution
-import it.evadid.workbook.elements.interactionElements.programming.ProgrammingTestInvocation
-import it.evadid.workbook.elements.interactionElements.programming.ProgrammingTestInvocation.Scalar
-import it.evadid.workbook.elements.interactionElements.programming.state.{ProgrammingStateBeExpression, ProgrammingStateRaw}
+import it.evadid.workbook.interactions.programming.ProgrammingTestInvocation
+import it.evadid.workbook.interactions.programming.ProgrammingTestInvocation.Scalar
+import it.evadid.workbook.interactions.programming.state.{ProgrammingStateBeExpression, ProgrammingStateRaw}
 import munit.FunSuite
 
 import scala.concurrent.{ExecutionContext, Future}

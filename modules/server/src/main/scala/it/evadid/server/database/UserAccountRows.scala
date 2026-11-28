@@ -1,13 +1,14 @@
 package it.evadid.server.database
 
+
 import it.evadid.core.datastructures.user.{AllUserInfo, User, UserConfig, UserCredentials}
 import it.evadid.core.datastructures.user.User.*
 import it.evadid.core.datastructures.user.UserTokenInfo.SignedToken
 import it.evadid.core.util.io.ParsingContext
 import it.evadid.sql.DatabaseConfigWithCredentials
 import it.evadid.util.logging.Logger
-import java.sql.{Connection, ResultSet, Timestamp}
-import java.time.LocalDateTime
+import java.sql.{Connection, ResultSet}
+import java.time.Instant
 import scala.util.Try
 import scala.util.control.NonFatal
 import upickle.default.*
@@ -88,7 +89,7 @@ final class UserAccountRows(connection: Connection, logger: Logger) {
         logger.logWarn("Cannot ensure token since user is unknown!")
         None
       case (_, None) => createNewToken("missing or invalid")
-      case (_, Some(stored)) if stored.expires.isBefore(LocalDateTime.now()) => createNewToken(s"old expired at ${stored.expires}")
+      case (_, Some(stored)) if stored.expires.isBefore(Instant.now()) => createNewToken(s"old expired at ${stored.expires}")
       case _ => token
     }
   }
@@ -99,7 +100,7 @@ final class UserAccountRows(connection: Connection, logger: Logger) {
       |ON DUPLICATE KEY UPDATE
       |  `token` = VALUES(`token`),
       |  `tokenExpires` = VALUES(`tokenExpires`)""".stripMargin,
-    userId, token.token, Timestamp.valueOf(token.expires))
+    userId, token.token, token.expires)
 
   def upsertUser(user: User, userConfig: UserConfig): Int = statements.update(
     """INSERT INTO `user` (`id`, `name`, `mail`, `config`)
@@ -113,7 +114,7 @@ final class UserAccountRows(connection: Connection, logger: Logger) {
 }
 
 object UserAccountRows {
-  /** Reads a JDBC timestamp text such as `2026-10-13 01:40:00.123456`; other formats are rejected. */
-  private[server] def parseDatabaseTimestamp(databaseTimestampString: String): LocalDateTime =
-    Timestamp.valueOf(databaseTimestampString).toLocalDateTime
+  /** Reads a stored time such as `2026-10-13T01:40:00.123456789Z`; other forms are rejected. */
+  private[server] def parseDatabaseTimestamp(databaseTimestampString: String): Instant =
+    SqlStatements.instant(databaseTimestampString)
 }

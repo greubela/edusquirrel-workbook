@@ -5,7 +5,7 @@ import it.evadid.homepage.control.model.FullInfo
 import com.raquo.laminar.api.L.*
 import it.evadid.homepage.webElements.basic.LabelSelection
 import it.evadid.homepage.webElements.HtmlAppElement
-import it.evadid.workbook.elements.interactionElements.neuron.*
+import it.evadid.workbook.interactions.neuron.*
 import it.evadid.core.datastructures.language.LanguageMapContentId
 
 case class ThresholdNeuronEditor(fullInfo: FullInfo, state: Var[NeuronParameters], labels: Seq[LanguageMapContentId], examples: Seq[NeuronExample], initial: NeuronParameters)

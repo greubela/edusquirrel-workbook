@@ -2,7 +2,7 @@ package it.evadid.core.serialization
 
 import it.evadid.core.datastructures.geometry.*
 import it.evadid.core.datastructures.matrix.*
-import it.evadid.workbook.interaction.sync.*
+import it.evadid.workbook.sync.*
 import munit.FunSuite
 import upickle.default.*
 
@@ -18,10 +18,10 @@ class DefaultValueCodecsSpec extends FunSuite {
     val sync = usage.toSyncContext("variable")
     roundTrip(usage)
     roundTrip(sync)
-    val history = write(it.evadid.workbook.interaction.variable.InteractionVariableHistory.empty[TextInteractionFormat.type])
+    val history = write(it.evadid.workbook.history.InteractionHistory.empty(TextInteractionFormat))
   }
   test("registry descriptors have a default codec") {
-    val descriptor = it.evadid.workbook.jsonFactory.WorkbookElementSerializable("id", "TextInteraction", Map("value" -> ujson.Str("x")))
+    val descriptor = it.evadid.workbook.serialization.WorkbookElementSerializable("id", "TextInteraction", Map("value" -> ujson.Str("x")))
     roundTrip(descriptor)
   }
 
@@ -39,7 +39,7 @@ class DefaultValueCodecsSpec extends FunSuite {
     import it.evadid.core.datastructures.numbers.NumberConstraintImpl
     roundTrip(NumberConstraintImpl(Some(BigDecimal("1.5")), Some(BigDecimal("9.25"))))
     roundTrip(NumberConstraintImpl[Double](None, None))
-    import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseTurtle.TurtleStitchProjectState
+    import it.evadid.workbook.interactions.programming.programmingExerciseTurtle.TurtleStitchProjectState
     roundTrip(TurtleStitchProjectState.empty())
     roundTrip(TurtleStitchProjectState.parseFromStringOrEmpty("<project>Grüße</project>"))
   }

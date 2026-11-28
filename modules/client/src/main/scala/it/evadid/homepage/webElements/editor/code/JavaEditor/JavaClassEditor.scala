@@ -9,7 +9,7 @@ import it.evadid.util.logging.Logger
 import it.evadid.vm.naming.BeEntityName
 import it.evadid.vm.parsing.source.SourceParsing
 import it.evadid.vm.parsing.source.SourceParsing.SourceLanguage
-import it.evadid.workbook.elements.interactionElements.programming.state.ProgrammingStateJavaStructured
+import it.evadid.workbook.interactions.programming.state.ProgrammingStateJavaStructured
 
 /** Edits the complete source of one class, identified by its name in the answer. Renaming the class in its
   * declaration renames its entry; code typed outside the class (such as a second class) needs the whole program.

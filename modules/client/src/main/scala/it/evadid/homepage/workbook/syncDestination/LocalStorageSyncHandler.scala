@@ -2,9 +2,9 @@ package it.evadid.homepage.workbook.syncDestination
 
 import it.evadid.distribution.command.SerializedException
 import it.evadid.util.logging.derived.SyncLogger
-import it.evadid.workbook.interaction.sync.*
-import it.evadid.workbook.interaction.sync.destination.SyncDestinationDefinition.LocalStorageSyncDefinition
-import it.evadid.workbook.interaction.sync.destination.{SyncDestinationDefinition, SyncDestinationHandler}
+import it.evadid.workbook.sync.*
+import it.evadid.workbook.sync.destination.SyncDestinationDefinition.LocalStorageSyncDefinition
+import it.evadid.workbook.sync.destination.{SyncDestinationDefinition, SyncDestinationHandler}
 import org.scalajs.dom
 import org.scalajs.dom.Storage
 

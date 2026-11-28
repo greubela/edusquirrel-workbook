@@ -10,7 +10,7 @@ import it.evadid.vm.editing.PythonMethodEditing
 import it.evadid.vm.naming.BeEntityName
 import it.evadid.vm.parsing.source.{PythonFunctionStructured, SourceParsing, SourceText}
 import it.evadid.vm.parsing.source.SourceParsing.SourceLanguage
-import it.evadid.workbook.elements.interactionElements.programming.state.ProgrammingStatePythonStructured
+import it.evadid.workbook.interactions.programming.state.ProgrammingStatePythonStructured
 
 /** Edits one function of the module or a method of a class, shown without its class indentation. Any code typed
   * before or after the function needs its module or class, which then shows the whole draft.

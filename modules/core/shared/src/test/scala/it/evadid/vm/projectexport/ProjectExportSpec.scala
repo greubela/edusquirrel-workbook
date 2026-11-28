@@ -4,11 +4,11 @@ import it.evadid.core.util.InfoUtil
 
 import it.evadid.core.datastructures.language.AppLanguage.{Java, Python, SnapLanguage, Rust}
 import it.evadid.vm.simulation.data.{DataWorld, SudokuGrid}
-import it.evadid.workbook.elements.interactionElements.programming.state.{ProgrammingStateJavaStructured, ProgrammingStatePythonStructured, ProgrammingStateRaw}
+import it.evadid.workbook.interactions.programming.state.{ProgrammingStateJavaStructured, ProgrammingStatePythonStructured, ProgrammingStateRaw}
 import munit.FunSuite
 
 import java.nio.charset.StandardCharsets.UTF_8
-import java.time.LocalDateTime
+import java.time.Instant
 
 class ProjectExportSpec extends FunSuite {
   /** Reads an archive back through its central directory, checking every local header against it. */
@@ -47,13 +47,13 @@ class ProjectExportSpec extends FunSuite {
 
   test("archives store the modification time and are reproducible") {
     val entries = Seq(ZipArchive.Entry("a.txt", "a".getBytes(UTF_8)))
-    val time = LocalDateTime.of(2026, 11, 20, 13, 45, 30)
+    val time = it.evadid.core.util.LocalZone.instantOf(java.time.LocalDateTime.of(2026, 11, 20, 13, 45, 30))
     val bytes = ZipArchive.write(entries, time)
     def u16(at: Int) = (bytes(at) & 0xFF) | ((bytes(at + 1) & 0xFF) << 8)
     assertEquals(u16(10), (13 << 11) | (45 << 5) | 15)
     assertEquals(u16(12), ((2026 - 1980) << 9) | (11 << 5) | 20)
     assertEquals(ZipArchive.write(entries, time).toSeq, bytes.toSeq)
-    val early = ZipArchive.write(entries, LocalDateTime.of(1970, 1, 1, 0, 0))
+    val early = ZipArchive.write(entries, java.time.LocalDateTime.of(1970, 1, 1, 0, 0).toInstant(java.time.ZoneOffset.UTC))
     assertEquals((early(12) & 0xFF) | ((early(13) & 0xFF) << 8), (1 << 5) | 1, "dates before 1980 become 1980-01-01")
   }
 

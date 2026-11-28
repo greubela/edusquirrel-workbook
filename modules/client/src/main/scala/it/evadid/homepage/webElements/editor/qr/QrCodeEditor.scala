@@ -6,8 +6,8 @@ import it.evadid.homepage.workbook.htmlRenderer.LaminarRenderHelper
 
 import com.raquo.laminar.api.L.*
 import it.evadid.homepage.webElements.HtmlAppElement
-import it.evadid.workbook.elements.interactionElements.qr.QrCodeRequirements
-import it.evadid.workbook.model.qr.{QrCode, QrCodeRegion, QrErrorCorrection}
+import it.evadid.workbook.interactions.qr.QrCodeRequirements
+import it.evadid.workbook.interactions.qr.{QrCode, QrCodeRegion, QrErrorCorrection}
 
 /** Text edits are live. Invalid drafts stay visible but never replace the last valid saved symbol. */
 case class QrCodeEditor(fullInfo: FullInfo, state: Var[QrCode], requirements: QrCodeRequirements) extends HtmlAppElement {

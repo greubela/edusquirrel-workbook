@@ -30,6 +30,6 @@ for(const scenario of scenarios)for(const original of scenario.files){
  }
 }
 const chunks=[];for(let i=0;i<cases.length;i+=20)chunks.push(JSON.stringify(cases.slice(i,i+20)).slice(1,-1));
-const scala=`package it.evadid.workbook.model.compression\n\n/** Generated offline from the retained original by tools/dev/generate-compression-parity.mjs. */\nobject OriginalCompressionFixtures {\n  val json: String = List(\n${chunks.map(c=>'    '+JSON.stringify(c)).join(',\n')}\n  ).mkString("[", ",", "]")\n}\n`;
-fs.writeFileSync(path.join(root,'modules/core/shared/src/test/scala/it/evadid/workbook/model/compression/OriginalCompressionFixtures.scala'),scala);
+const scala=`package it.evadid.workbook.interactions.compression\n\n/** Generated offline from the retained original by tools/dev/generate-compression-parity.mjs. */\nobject OriginalCompressionFixtures {\n  val json: String = List(\n${chunks.map(c=>'    '+JSON.stringify(c)).join(',\n')}\n  ).mkString("[", ",", "]")\n}\n`;
+fs.writeFileSync(path.join(root,'modules/core/shared/src/test/scala/it/evadid/workbook/interactions/compression/OriginalCompressionFixtures.scala'),scala);
 console.log(`${cases.length} original input states × 3 operations`);

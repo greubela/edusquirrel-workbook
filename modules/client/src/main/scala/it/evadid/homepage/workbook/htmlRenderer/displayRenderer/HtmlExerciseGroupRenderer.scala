@@ -6,7 +6,7 @@ import com.raquo.laminar.api.L.*
 import it.evadid.homepage.workbook.htmlRenderer.HtmlRenderFactory
 import it.evadid.homepage.workbook.htmlRenderer.HtmlRenderFactory.LineBasedRenderingFactory
 import it.evadid.homepage.workbook.htmlRenderer.atomarLineRenderings.AtomarLineRendering
-import it.evadid.workbook.elements.structureElements.ExerciseGroup
+import it.evadid.workbook.elements.structure.ExerciseGroup
 
 object HtmlExerciseGroupRenderer extends LineBasedRenderingFactory[ExerciseGroup] {
   override protected def createRendering(fullInfo: FullInfo, workbookElement: ExerciseGroup): AtomarLineRendering =

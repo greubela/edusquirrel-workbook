@@ -70,7 +70,7 @@ the selected layout, not supplied by the exercise author.
 
 Mixed entries may also name predefined module blocks by id (`NumberList.get`,
 `NumberList.set`, `NumberList.swap`, `NumberList.length`; see
-[`SnapModuleBlocks`](../modules/core/shared/src/main/scala/it/evadid/workbook/elements/interactionElements/programming/state/snap/SnapModuleBlocks.scala)).
+[`SnapModuleBlocks`](../modules/core/shared/src/main/scala/it/evadid/workbook/interactions/programming/state/snap/SnapModuleBlocks.scala)).
 `ProgrammingEditorPalette.NumberList` combines them with control, operator and
 variable blocks and Make a block. The editor imports the listed definitions into
 the project as Snap imports a blocks library when they are missing, adding the

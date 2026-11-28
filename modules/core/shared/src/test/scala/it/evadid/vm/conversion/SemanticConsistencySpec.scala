@@ -2,7 +2,7 @@ package it.evadid.vm.conversion
 
 import it.evadid.core.datastructures.language.AppLanguage.{Java, ProgrammingLanguage, Python, SnapLanguage}
 import it.evadid.vm.code.errors.ProgrammingConversionKind
-import it.evadid.workbook.elements.interactionElements.programming.state.*
+import it.evadid.workbook.interactions.programming.state.*
 import munit.FunSuite
 
 /** Programs keep their meaning in every language, including where the languages' rules differ:

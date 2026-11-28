@@ -1,5 +1,7 @@
 package it.evadid.homepage.workbook.htmlRenderer.interactionRenderer.basic
 
+import it.evadid.workbook.control.InteractionSignals.*
+
 import it.evadid.homepage.control.model.FullInfo
 
 import com.raquo.laminar.api.L.*
@@ -7,14 +9,14 @@ import com.raquo.laminar.nodes.ReactiveHtmlElement
 import it.evadid.core.datastructures.state.StateHelper.StateBasedVar
 import it.evadid.homepage.workbook.htmlRenderer.HtmlRenderFactory.LineBasedRenderingFactory
 import it.evadid.homepage.workbook.htmlRenderer.atomarLineRenderings.*
-import it.evadid.workbook.elements.interactionElements.basic.LabeledCheckboxInteraction
-import it.evadid.workbook.interaction.sync.UpdateImportance
+import it.evadid.workbook.interactions.basic.LabeledCheckboxInteraction
+import it.evadid.workbook.sync.UpdateImportance
 import org.scalajs.dom.HTMLLabelElement
 
 object HtmlBasicCheckboxRenderer extends LineBasedRenderingFactory[LabeledCheckboxInteraction] {
 
   override protected def createRendering(fullInfo: FullInfo, lci: LabeledCheckboxInteraction): AtomarLineRendering = {
-    val checkboxVar: Var[Boolean] = lci.interactionVariable.createBoundStateWithUpdateImportance(UpdateImportance.MAJOR, fullInfo.workbookContextInformation).toAirstreamVar
+    val checkboxVar: Var[Boolean] = fullInfo.interactions.boundVar(lci, UpdateImportance.MAJOR)
 
     val dom: ReactiveHtmlElement[HTMLLabelElement] =
       label(

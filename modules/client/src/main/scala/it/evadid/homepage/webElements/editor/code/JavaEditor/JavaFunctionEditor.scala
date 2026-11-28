@@ -10,7 +10,7 @@ import it.evadid.vm.parsing.source.{JavaFunctionStructured, SourceParsing}
 import it.evadid.vm.parsing.source.SourceParsing.SourceLanguage
 import it.evadid.util.logging.Logger
 import it.evadid.vm.naming.BeEntityName
-import it.evadid.workbook.elements.interactionElements.programming.state.ProgrammingStateJavaStructured
+import it.evadid.workbook.interactions.programming.state.ProgrammingStateJavaStructured
 
 /** Edits one method or constructor, identified by its class and signature. */
 final class JavaFunctionEditor(

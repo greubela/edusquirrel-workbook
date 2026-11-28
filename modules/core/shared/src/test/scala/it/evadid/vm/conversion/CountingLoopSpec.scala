@@ -6,7 +6,7 @@ import it.evadid.vm.code.controlStructures.{BeFor, BeRepeatNr, BeWhile}
 import it.evadid.vm.code.usage.{BeAssignVariable, BeUseValue}
 import it.evadid.vm.conversion.printing.ModuleLayout
 import it.evadid.vm.types.BeDataValueLiteral
-import it.evadid.workbook.elements.interactionElements.programming.state.*
+import it.evadid.workbook.interactions.programming.state.*
 import munit.FunSuite
 
 /** Counting loops become the most specific shared loop: a fixed repetition when the counter is never

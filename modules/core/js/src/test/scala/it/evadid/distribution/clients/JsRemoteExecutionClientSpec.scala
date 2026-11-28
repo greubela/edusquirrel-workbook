@@ -1,5 +1,8 @@
 package it.evadid.distribution.clients
 
+import java.time.Instant
+
+
 import it.evadid.distribution.command.ExecutionCommand
 import it.evadid.util.logging.BasicLogger
 import munit.FunSuite
@@ -119,7 +122,7 @@ class JsRemoteExecutionClientSpec extends FunSuite {
   }
 
   test("HTTP errors containing an execution envelope preserve the actionable server reason") {
-    val time = java.time.LocalDateTime.parse("2026-11-10T12:00:00")
+    val time = java.time.Instant.parse("2026-11-10T12:00:00Z")
     val envelope = it.evadid.distribution.formats.ExecutionClientResponse(
       it.evadid.distribution.formats.ExecutionClientResponse.ExecutionClientResponseTimestamps(time, time, time),
       Left(it.evadid.distribution.command.SerializedException("Execution command exceeds the byte request limit. Reduce the saved history.")),
@@ -139,7 +142,7 @@ class JsRemoteExecutionClientSpec extends FunSuite {
   }
 
   test("commands are posted to the configured backend address and decode the execution response") {
-    val time = java.time.LocalDateTime.parse("2026-11-20T09:00:00")
+    val time = java.time.Instant.parse("2026-11-20T09:00:00Z")
     val command = ExecutionCommand("health", ujson.Obj())
     val envelope = it.evadid.distribution.formats.ExecutionClientResponse.forValue(
       it.evadid.distribution.formats.ExecutionClientResponse.ExecutionClientResponseTimestamps(time, time, time), "ok", command)
@@ -196,9 +199,9 @@ class JsRemoteExecutionClientSpec extends FunSuite {
     import it.evadid.core.datastructures.user.{User, UserTokenInfo}
     import it.evadid.core.datastructures.user.UserTokenInfo.SignedToken
     import it.evadid.distribution.commandTypes.{SQLCommands, UserCommands}
-    import java.time.LocalDateTime
-    def signed(expiresAt: LocalDateTime) = Some(SignedToken(UserTokenInfo(User.createNewUser("Ada", "ada@school.example"),
-      LocalDateTime.now().minusDays(1), expiresAt), "signature"))
+    import java.time.Instant
+    def signed(expiresAt: Instant) = Some(SignedToken(UserTokenInfo(User.createNewUser("Ada", "ada@school.example"),
+      Instant.now().minus(java.time.Duration.ofDays(1)), expiresAt), "signature"))
     val requests = scala.collection.mutable.ListBuffer.empty[String]
     def execute(token: Option[SignedToken], name: String) =
       JsRemoteExecutionClient("localhost", 443, token).executeResponse(BasicLogger(), ExecutionCommand(name, ujson.Obj()))
@@ -210,10 +213,10 @@ class JsRemoteExecutionClientSpec extends FunSuite {
     }) {
       for {
         withoutToken <- execute(None, store)
-        expired <- execute(signed(LocalDateTime.now().minusMinutes(1)), SQLCommands.fetchEventsFromDbCommand.name)
+        expired <- execute(signed(Instant.now().minus(java.time.Duration.ofMinutes(1))), SQLCommands.fetchEventsFromDbCommand.name)
         _ = assertEquals(requests.toList, Nil, "nothing is sent that the backend would refuse")
         _ <- execute(None, UserCommands.loginCommand.name)
-        _ <- execute(signed(LocalDateTime.now().plusDays(1)), store)
+        _ <- execute(signed(Instant.now().plus(java.time.Duration.ofDays(1))), store)
       } yield {
         assert(withoutToken.exists(_.contains("requires a signed-in account")), withoutToken)
         assert(expired.exists(_.contains("expired")), expired)

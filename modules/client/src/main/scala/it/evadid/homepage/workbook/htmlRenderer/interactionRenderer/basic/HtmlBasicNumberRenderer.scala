@@ -1,5 +1,7 @@
 package it.evadid.homepage.workbook.htmlRenderer.interactionRenderer.basic
 
+import it.evadid.workbook.control.InteractionSignals.*
+
 import it.evadid.homepage.control.model.FullInfo
 
 import com.raquo.laminar.api.L.*
@@ -7,9 +9,9 @@ import com.raquo.laminar.nodes.ReactiveHtmlElement
 import it.evadid.core.datastructures.state.StateHelper.StateBasedVar
 import it.evadid.homepage.workbook.htmlRenderer.HtmlRenderFactory.LineBasedRenderingFactory
 import it.evadid.homepage.workbook.htmlRenderer.atomarLineRenderings.*
-import it.evadid.workbook.elements.interactionElements.basic.LabeledNumberInteraction
-import it.evadid.workbook.elements.interactionElements.basic.LabeledNumberInteraction.NumberType
-import it.evadid.workbook.interaction.sync.UpdateImportance
+import it.evadid.workbook.interactions.basic.LabeledNumberInteraction
+import it.evadid.workbook.interactions.basic.LabeledNumberInteraction.NumberType
+import it.evadid.workbook.sync.UpdateImportance
 import org.scalajs.dom.HTMLLabelElement
 
 object HtmlBasicNumberRenderer extends LineBasedRenderingFactory[LabeledNumberInteraction] {
@@ -18,7 +20,7 @@ object HtmlBasicNumberRenderer extends LineBasedRenderingFactory[LabeledNumberIn
 
   override protected def createRendering(fullInfo: FullInfo, lni: LabeledNumberInteraction): AtomarLineRendering = {
 
-    val numberVar: Var[String] = lni.interactionVariable.createBoundStateWithUpdateImportance(UpdateImportance.MINOR, fullInfo.workbookContextInformation).toAirstreamVar
+    val numberVar: Var[String] = fullInfo.interactions.boundVar(lni, UpdateImportance.MINOR)
 
     val dom: ReactiveHtmlElement[HTMLLabelElement] =
       label(

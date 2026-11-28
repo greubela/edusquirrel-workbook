@@ -1,22 +1,24 @@
 package it.evadid.homepage.workbook.htmlRenderer.interactionRenderer.codeTaskToggle
 
+import it.evadid.workbook.control.InteractionSignals.*
+
 import it.evadid.homepage.control.model.FullInfo
 
 import com.raquo.laminar.api.L.*
 import it.evadid.core.datastructures.language.LanguageMapContentId
-import it.evadid.core.datastructures.state.StateHelper.InteractionVariableOnJS
+
 import it.evadid.homepage.webElements.editor.code.FillInCodeEditor
 import it.evadid.homepage.workbook.htmlRenderer.HtmlRenderFactory.LineBasedRenderingFactory
 import it.evadid.homepage.workbook.htmlRenderer.atomarLineRenderings.AtomarLineRendering
 import it.evadid.homepage.workbook.htmlRenderer.interactionRenderer.reorderExercise.HtmlReorderInteractionRenderer
-import it.evadid.workbook.elements.interactionElements.codeTaskToggle.CodeTaskToggleInteraction
-import it.evadid.workbook.interaction.sync.UpdateImportance
+import it.evadid.workbook.interactions.codeTaskToggle.CodeTaskToggleInteraction
+import it.evadid.workbook.sync.UpdateImportance
 
 
 object HtmlCodeTaskToggleRenderer extends LineBasedRenderingFactory[CodeTaskToggleInteraction] {
 
   override protected def createRendering(fullInfo: FullInfo, interaction: CodeTaskToggleInteraction): AtomarLineRendering = {
-    val stateVar = interaction.interactionVariable.createBoundVarWithUpdateImportance(UpdateImportance.MINOR, fullInfo.workbookContextInformation)
+    val stateVar = fullInfo.interactions.boundVar(interaction, UpdateImportance.MINOR)
     val advancedCodeVar: Var[String] = stateVar.zoomLazy(_.advancedCode)((state, code) => state.copy(advancedCode = code))
 
     def reorderEditor(): Element = div(

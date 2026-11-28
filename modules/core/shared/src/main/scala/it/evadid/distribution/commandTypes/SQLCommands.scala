@@ -1,15 +1,15 @@
 package it.evadid.distribution.commandTypes
 
 import it.evadid.core.util.io.serializer.DefaultSerializer.given
-import java.time.LocalDateTime
+import java.time.Instant
 import it.evadid.distribution.command.ExecutionCommandFactory
 import it.evadid.sql.DatabaseConfiguration
 import it.evadid.sql.DatabaseHistoryFormat
 import it.evadid.sql.CommandLog
 import it.evadid.workbook.abstractions.InteractionFormat
-import it.evadid.workbook.interaction.sync.*
-import it.evadid.workbook.interaction.sync.model.InteractionHistoryJson
-import it.evadid.workbook.interaction.variable.events.EventId
+import it.evadid.workbook.sync.*
+import it.evadid.workbook.sync.model.InteractionHistoryJson
+import it.evadid.workbook.history.events.EventId
 import upickle.default.*
 
 object SQLCommands {
@@ -52,8 +52,8 @@ object SQLCommands {
   case class FetchEventsFromDbRequest(
                                        usageContext: UsageContext,
                                        keys: Seq[String],
-                                       starting: LocalDateTime,
-                                       until: LocalDateTime,
+                                       starting: Instant,
+                                       until: Instant,
                                        databaseConfig: DatabaseConfiguration,
                                        databaseFormat: DatabaseHistoryFormat,
                                        strategy: EventSyncStrategy

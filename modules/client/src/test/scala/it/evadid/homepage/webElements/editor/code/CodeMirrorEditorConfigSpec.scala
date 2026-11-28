@@ -1,5 +1,6 @@
 package it.evadid.homepage.webElements.editor.code
 
+
 import it.evadid.core.datastructures.language.AppLanguage.Python
 import it.evadid.core.datastructures.vectorShapes.renderer.FlowchartGutter
 import it.evadid.distribution.clients.WebWorkerExecutionClient
@@ -12,7 +13,7 @@ import munit.FunSuite
 import org.scalajs.dom
 import upickle.default.*
 
-import java.time.LocalDateTime
+import java.time.Instant
 import scala.collection.mutable.ListBuffer
 import scala.concurrent.Future
 import scala.scalajs.js
@@ -36,12 +37,12 @@ class CodeMirrorEditorConfigSpec extends FunSuite {
     }
     def reply(result: FlowchartGutter.Chart, index: Int = 0): Unit = {
       val request = read[WorkerExecutionProtocol.Request](sent(index))
-      val now = LocalDateTime.now()
+      val now = Instant.now()
       receive(ExecutionClientResponse.forValue(ExecutionClientResponseTimestamps(now, now, now), result, request.command), index)
     }
     def fail(index: Int = 0): Unit = {
       val request = read[WorkerExecutionProtocol.Request](sent(index))
-      val now = LocalDateTime.now()
+      val now = Instant.now()
       receive(ExecutionClientResponse.forError(ExecutionClientResponseTimestamps(now, now, now),
         SerializedException("chart failed"), request.command), index)
     }

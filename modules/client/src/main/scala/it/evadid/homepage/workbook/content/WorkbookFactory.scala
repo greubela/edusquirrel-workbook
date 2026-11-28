@@ -9,18 +9,18 @@ import it.evadid.core.datastructures.user.User
 import it.evadid.homepage.control.model.*
 import it.evadid.workbook.abstractions.*
 import it.evadid.workbook.abstractions.TypeOfTextDisplay.URL_RELATIVE_TO_WORKBOOK_RESOURCES
-import it.evadid.workbook.elements.displayElements.*
-import it.evadid.workbook.elements.displayElements.WorkbookImageElement.LanguageMapBasedWorkbookImageElement
-import it.evadid.workbook.elements.displayElements.LabeledWorkbookElement.{LabelType, WorkbookLabel}
-import it.evadid.workbook.elements.interactionElements.basic.*
-import it.evadid.workbook.elements.interactionElements.basic.LabeledNumberInteraction.NumberType
-import it.evadid.workbook.elements.interactionElements.codeTaskToggle.{AdvancedCodeRequirement, CodeTaskToggleInteraction, SketchDownloadInteraction}
-import it.evadid.workbook.elements.interactionElements.reorderExercise.ReorderInteraction
-import it.evadid.workbook.elements.interactionElements.sorting.sortingExercise.{SortingInteraction, SortingItem}
-import it.evadid.workbook.elements.interactionElements.sorting.sortingReasonExercise.{SortingReasonInteraction, SortingReasonItem}
-import it.evadid.workbook.elements.structureElements.*
-import it.evadid.workbook.elements.structureElements.Workbook.WorkbookMetadata
-import it.evadid.workbook.elements.structureElements.WorkbookSection.WorkbookSectionMetadata
+import it.evadid.workbook.elements.display.*
+import it.evadid.workbook.elements.display.WorkbookImageElement.LanguageMapBasedWorkbookImageElement
+import it.evadid.workbook.elements.display.LabeledWorkbookElement.{LabelType, WorkbookLabel}
+import it.evadid.workbook.interactions.basic.*
+import it.evadid.workbook.interactions.basic.LabeledNumberInteraction.NumberType
+import it.evadid.workbook.interactions.codeTaskToggle.{AdvancedCodeRequirement, CodeTaskToggleInteraction, SketchDownloadInteraction}
+import it.evadid.workbook.interactions.reorderExercise.ReorderInteraction
+import it.evadid.workbook.interactions.sorting.sortingExercise.{SortingInteraction, SortingItem}
+import it.evadid.workbook.interactions.sorting.sortingReasonExercise.{SortingReasonInteraction, SortingReasonItem}
+import it.evadid.workbook.elements.structure.*
+import it.evadid.workbook.elements.structure.Workbook.WorkbookMetadata
+import it.evadid.workbook.elements.structure.WorkbookSection.WorkbookSectionMetadata
 
 trait WorkbookFactory {
 
@@ -86,9 +86,9 @@ trait WorkbookFactory {
   /** Text-choice authoring convenience; definitions and saved answers use WorkbookContent. Choices are graded when
    * the learner checks them, not on every selection. */
   protected def contentChoice(elementId: String, instruction: LanguageMapContentId, options: Seq[LanguageMapContentId],
-      allowMultiple: Boolean = false, expected: Option[Seq[Int]] = None): it.evadid.workbook.elements.interactionElements.choice.WorkbookContentChoiceInteraction = {
+      allowMultiple: Boolean = false, expected: Option[Seq[Int]] = None): it.evadid.workbook.interactions.choice.WorkbookContentChoiceInteraction = {
     import it.evadid.core.datastructures.language.WorkbookContent
-    import it.evadid.workbook.elements.interactionElements.choice.WorkbookContentChoiceInteraction
+    import it.evadid.workbook.interactions.choice.WorkbookContentChoiceInteraction
     import WorkbookContentChoiceInteraction.*
     import it.evadid.workbook.abstractions.grading.*
     require(expected.forall(indices => indices.distinct == indices && indices.forall(options.indices.contains) && (allowMultiple || indices.size <= 1)),

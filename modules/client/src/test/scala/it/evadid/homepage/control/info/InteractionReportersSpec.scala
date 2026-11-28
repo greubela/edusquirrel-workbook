@@ -13,18 +13,19 @@ import it.evadid.homepage.webElements.editor.code.EditorDomSuite
 import it.evadid.workbook.abstractions.{InteractionFormat, WorkbookInteractionElement, FeedbackEntity}
 import it.evadid.workbook.abstractions.grading.{GradingResult, GradingStatus}
 import it.evadid.workbook.abstractions.scaffolding.{ScaffoldingResult, ScaffoldingStatus}
-import it.evadid.workbook.elements.interactionElements.gpt.TextInputWithScaffoldingAndGrading
+import it.evadid.workbook.interactions.gpt.TextInputWithScaffoldingAndGrading
 import TextInputWithScaffoldingAndGrading.ContentForLlmInteraction
-import it.evadid.workbook.elements.interactionElements.basic.TextInteraction
-import it.evadid.workbook.elements.structureElements.{Workbook, WorkbookSection}
-import it.evadid.workbook.interaction.variable.InteractionVariableState
-import it.evadid.workbook.interaction.sync.UpdateImportance
-import it.evadid.workbook.meta.{ExecutionContextInformation, InteractionVariableSyncReport, ScaffoldingReport}
+import it.evadid.workbook.interactions.basic.TextInteraction
+import it.evadid.workbook.elements.structure.{Workbook, WorkbookSection}
+import it.evadid.workbook.history.InteractionState
+import it.evadid.workbook.sync.UpdateImportance
+import it.evadid.workbook.abstractions.ExecutionContextInformation
+import it.evadid.workbook.reports.{InteractionSyncReport, ScaffoldingReport}
 import it.evadid.core.datastructures.chat.MessengerModel
-import java.time.LocalDateTime
+import java.time.Instant
 
 class InteractionReportersSpec extends EditorDomSuite {
-  private val at = LocalDateTime.of(2026, 11, 19, 12, 0)
+  private val at = java.time.LocalDateTime.of(2026, 11, 19, 12, 0).toInstant(java.time.ZoneOffset.UTC)
   private def exercise(id: String) = TextInputWithScaffoldingAndGrading(id, LanguageMapContentId("test/task"),
     contentGrading = Seq(ContentForLlmInteraction(LanguageMapContentId("test/check"), Map.empty)),
     contentScaffolding = Some(ContentForLlmInteraction(LanguageMapContentId("test/hint"), Map.empty)))
@@ -35,9 +36,10 @@ class InteractionReportersSpec extends EditorDomSuite {
   }
   private def info(workbook: AllWorkbookInfo) = FullInfo(HomepageInfo(English, Some(workbook), None,
     AllDisplayInfo(false, None), LanguageMapStorage.empty))
-  private def complete(element: TextInputWithScaffoldingAndGrading, status: GradingStatus, offset: Long): Unit =
-    element.interactionVariable.updateHistory(_.addGrading(GradingResult(element.gradingElements.head,
-      element.interactionVariable.currentValue, status, None, None, at.plusSeconds(offset))), ExecutionContextInformation.default)
+  /** Records a grading of `element`'s answer; the page ignores it unless the element's workbook is open. */
+  private def complete(page: FullInfo, element: TextInputWithScaffoldingAndGrading, status: GradingStatus, offset: Long): Unit =
+    page.interactions.updateHistory(element)(_.addGrading(GradingResult(element.gradingElements.head,
+      page.interactions.currentValue(element), status, None, None, at.plusSeconds(offset))))
 
   test("registry covers all formats and reuses entries across UI and user changes") {
     val element = exercise("shared")
@@ -49,17 +51,18 @@ class InteractionReportersSpec extends EditorDomSuite {
     assertEquals(initial.keySet, Set[WorkbookInteractionElement[? <: InteractionFormat]](element, other))
     val reporter = full.reporters.reportersFor(element)
     assert(reporter eq initial(element))
-    full.homepageInfoState.update(_.copy(currentLanguage = German, displayInfo = AllDisplayInfo(true, None)))
-    full.homepageInfoState.update(_.copy(workbookInfo = Some(loaded.copy(config = WorkbookConfig(None)))))
+    full.homepage.setLanguage(German)
+    full.homepage.updateDisplay(_ => AllDisplayInfo(true, None))
+    full.state.switchWorkbook(Some(loaded.copy(config = WorkbookConfig(None))))
     val user = AllUserInfo.createNewUser("Student", "test@example.invalid", UserConfig(Seq.empty, true))
-    full.homepageInfoState.update(_.copy(userInfo = Some(user)))
+    full.state.switchUser(Some(user))
     assert(registry.now() eq initial)
     assert(full.reporters.reportersFor(element).grading eq reporter.grading)
     val owner = new ManualOwner
     try {
       val sync = reporter.sync.report.observe(using owner)
       assertEquals(sync.now().status, SyncReporter.Status.Disabled)
-      full.homepageInfoState.update(_.copy(userInfo = None))
+      full.state.switchUser(None)
       assert(reporter.sync eq full.reporters.reportersFor(element).sync)
       assertEquals(sync.now().status, SyncReporter.Status.Disabled)
     } finally owner.killSubscriptions()
@@ -76,13 +79,13 @@ class InteractionReportersSpec extends EditorDomSuite {
     reporter.report.foreach(value => first.set(Some(value)))(using firstOwner)
     reporter.report.foreach(value => second.set(Some(value)))(using secondOwner)
     assert(first.now().get eq second.now().get)
-    complete(element, GradingStatus.Correct, 1)
+    complete(full, element, GradingStatus.Correct, 1)
     assert(first.now().get eq second.now().get)
     assertEquals(first.now().get.grading.correct, 1)
     assert(first.now().get.grading.status.isCorrect)
     firstOwner.killSubscriptions()
     secondOwner.killSubscriptions()
-    complete(element, GradingStatus.Incorrect, 2)
+    complete(full, element, GradingStatus.Incorrect, 2)
     assert(first.now().get.grading.status.isCorrect)
     val remounted = new ManualOwner
     try {
@@ -103,19 +106,19 @@ class InteractionReportersSpec extends EditorDomSuite {
     try {
       val active = full.reporters.all.flatMapSwitch(entries =>
         if entries.isEmpty then Val(Option.empty[GradingReporter.Report]) else entries.values.head.grading.report.map(Some(_))).observe(using owner)
-      full.homepageInfoState.update(_.copy(workbookInfo = Some(newWorkbook)))
+      full.state.switchWorkbook(Some(newWorkbook))
       assert(!(full.reporters.reportersFor(newElement) eq oldReporter))
       intercept[IllegalArgumentException](full.reporters.reportersFor(oldElement))
-      complete(oldElement, GradingStatus.Correct, 1)
-      assertEquals(active.now().get.grading.correct, 0)
-      complete(newElement, GradingStatus.Incorrect, 2)
+      complete(full, oldElement, GradingStatus.Correct, 1)
+      assertEquals(active.now().get.grading.correct, 0, "a closed workbook's interaction has no answers on the page")
+      complete(full, newElement, GradingStatus.Incorrect, 2)
       assertEquals(active.now().get.grading.status, GradingStatus.Incorrect)
-      full.homepageInfoState.update(_.copy(workbookInfo = Some(oldWorkbook)))
-      assertEquals(active.now().get.grading.correct, 1)
+      full.state.switchWorkbook(Some(oldWorkbook))
+      assertEquals(active.now().get.grading.correct, 0, "reopening starts from the stored answers")
       assert(!(full.reporters.reportersFor(oldElement) eq oldReporter))
-      complete(newElement, GradingStatus.Correct, 3)
-      assertEquals(active.now().get.grading.correct, 1)
-      full.homepageInfoState.update(_.copy(workbookInfo = None))
+      complete(full, newElement, GradingStatus.Correct, 3)
+      assertEquals(active.now().get.grading.correct, 0)
+      full.state.switchWorkbook(None)
       assert(full.reporters.all.now().isEmpty)
       assert(active.now().isEmpty)
     } finally owner.killSubscriptions()
@@ -146,15 +149,13 @@ class InteractionReportersSpec extends EditorDomSuite {
     val owner = new ManualOwner
     try {
       val report = reporter.report.observe(using owner)
-      def hint(status: ScaffoldingStatus, offset: Long): Unit = element.interactionVariable.updateHistory(
-        _.addScaffolding(ScaffoldingResult[String, MessengerModel]("", status, FeedbackEntity.TestEntity, None, at.plusSeconds(offset))),
-        ExecutionContextInformation.default)
+      def hint(status: ScaffoldingStatus, offset: Long): Unit = full.interactions.updateHistory(element)(_.addScaffolding(ScaffoldingResult[String, MessengerModel]("", status, FeedbackEntity.TestEntity, None, at.plusSeconds(offset))))
       hint(ScaffoldingStatus.ScaffoldingRequestedButNotFinished(), 1)
       assertEquals(report.now().scaffolding.status, ScaffoldingReport.Status.Pending)
       assert(report.now().scaffolding.feedback.isEmpty)
       hint(ScaffoldingStatus.ScaffoldingFeedback(LanguageMap.universalMap[HumanLanguage]("hint")), 2)
       assertEquals(report.now().scaffolding.status, ScaffoldingReport.Status.Ready)
-      element.interactionVariable.updateHistory(_.addState(InteractionVariableState("new", UpdateImportance.MAJOR, at.plusSeconds(3))), ExecutionContextInformation.default)
+      full.interactions.updateHistory(element)(_.addState(InteractionState("new", UpdateImportance.MAJOR, at.plusSeconds(3))))
       hint(ScaffoldingStatus.ScaffoldingFeedback(LanguageMap.universalMap[HumanLanguage]("late")), 4)
       assertEquals(report.now().scaffolding.status, ScaffoldingReport.Status.NotRequested)
       assert(report.now().scaffolding.feedback.isEmpty)
@@ -163,14 +164,13 @@ class InteractionReportersSpec extends EditorDomSuite {
 
   test("sync classification ignores obsolete confirmations and shares its snapshot") {
     import SyncReporter.Status
-    assertEquals(SyncReporter.summarize[String](None).status, Status.Disabled)
-    assertEquals(SyncReporter.summarize(Some(InteractionVariableSyncReport(Set.empty[String], Set("obsolete")))).status, Status.Disabled)
-    assertEquals(SyncReporter.summarize(Some(InteractionVariableSyncReport(Set("a", "b"), Set.empty[String]))).status, Status.Unsynced)
-    assertEquals(SyncReporter.summarize(Some(InteractionVariableSyncReport(Set("a", "b"), Set("a", "obsolete")))).status, Status.Partial)
-    assertEquals(SyncReporter.summarize(Some(InteractionVariableSyncReport(Set("a", "b"), Set("a", "b")))).status, Status.Synced)
+    assertEquals(SyncReporter.summarize(InteractionSyncReport(Set.empty[String], Set("obsolete"))).status, Status.Disabled)
+    assertEquals(SyncReporter.summarize(InteractionSyncReport(Set("a", "b"), Set.empty[String])).status, Status.Unsynced)
+    assertEquals(SyncReporter.summarize(InteractionSyncReport(Set("a", "b"), Set("a", "obsolete"))).status, Status.Partial)
+    assertEquals(SyncReporter.summarize(InteractionSyncReport(Set("a", "b"), Set("a", "b"))).status, Status.Synced)
     val owner = new ManualOwner
     try {
-      val source = Var(Option.empty[InteractionVariableSyncReport[it.evadid.workbook.interaction.sync.SyncInformationWithContext]])
+      val source = Var(InteractionSyncReport(Set.empty[it.evadid.workbook.sync.SyncInformationWithContext], Set.empty))
       val reporter = new SyncReporter(source.signal)
       val first = reporter.report.observe(using owner)
       val second = reporter.report.observe(using owner)

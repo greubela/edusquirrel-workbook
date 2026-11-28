@@ -1,7 +1,7 @@
 package it.evadid.vm.conversion
 
 import it.evadid.core.datastructures.language.AppLanguage.*
-import it.evadid.workbook.elements.interactionElements.programming.state.*
+import it.evadid.workbook.interactions.programming.state.*
 import java.nio.file.Files
 import java.io.ByteArrayOutputStream
 import javax.tools.ToolProvider

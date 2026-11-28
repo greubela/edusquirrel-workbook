@@ -3,7 +3,7 @@ package it.evadid.vm.analysis
 import it.evadid.core.datastructures.language.AppLanguage.{Java, Python}
 import it.evadid.vm.parsing.source.{SourceParsing, SourceLines}
 import it.evadid.vm.parsing.source.SourceParsing.SourceLanguage
-import it.evadid.workbook.elements.interactionElements.programming.state.ProgrammingStateRaw
+import it.evadid.workbook.interactions.programming.state.ProgrammingStateRaw
 import munit.FunSuite
 
 class LocatedSourceWarningsSpec extends FunSuite {

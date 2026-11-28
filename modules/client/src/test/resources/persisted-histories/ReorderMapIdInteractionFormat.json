@@ -1,0 +1,78 @@
+{
+  "format": "ReorderMapIdInteractionFormat",
+  "historyJson": {
+    "events": {
+      "values": [
+        {
+          "$type": "AnswerChangedEvent",
+          "newState": {
+            "elements": [
+              "LangMapId(monksworkbook/a1-item0)",
+              "LangMapId(monksworkbook/a1-item1)",
+              "LangMapId(monksworkbook/a1-item2)",
+              "LangMapId(monksworkbook/a1-item3)",
+              "LangMapId(monksworkbook/a1-item4)",
+              "LangMapId(monksworkbook/a1-item5)",
+              "LangMapId(monksworkbook/a1-item6)",
+              "LangMapId(monksworkbook/a1-item7)"
+            ],
+            "currentOrder": [
+              3,
+              6,
+              5,
+              1,
+              0,
+              2,
+              4,
+              7
+            ],
+            "correctOrder": [
+              0,
+              1,
+              2,
+              3,
+              4,
+              5,
+              6,
+              7
+            ],
+            "elementType": "LANGUAGE_MAP_IDS"
+          },
+          "timestamp": "2026-11-28T12:00:00.123456789Z",
+          "updateImportance": "MAJOR",
+          "eventId": "00000000-0000-4000-8000-000000000001"
+        },
+        {
+          "$type": "GradingStartedEvent",
+          "state": "StateReference(sha256:eb3d5ed1d48ffe38370d405ff6ed4627e6fbafb867fafe5e2c32a6654f894dd0)",
+          "timestamp": "2026-11-28T12:00:00.123456790Z",
+          "grader": "GraderReference(sha256:41ae5f0d0d1e43c11fb3a4edb6ca3041bcbed8a8a271ba1d05282683ee65bc70)",
+          "eventId": "00000000-0000-4000-8000-000000000002"
+        },
+        {
+          "$type": "GradingCompletedEvent",
+          "record": {
+            "grader": "GraderReference(sha256:41ae5f0d0d1e43c11fb3a4edb6ca3041bcbed8a8a271ba1d05282683ee65bc70)",
+            "state": "StateReference(sha256:eb3d5ed1d48ffe38370d405ff6ed4627e6fbafb867fafe5e2c32a6654f894dd0)",
+            "gradingStatus": "Incorrect",
+            "feedbackInformation": {
+              "$type": "LanguageMapBasedContent",
+              "languageMap": {
+                "$type": "LanguageMapMapBased",
+                "pMap": [
+                  [
+                    "English",
+                    "Feedback"
+                  ]
+                ]
+              }
+            },
+            "additionalData": null,
+            "gradingTime": "2026-11-28T12:00:00.123456791Z"
+          },
+          "eventId": "00000000-0000-4000-8000-000000000003"
+        }
+      ]
+    }
+  }
+}

@@ -14,7 +14,7 @@ import it.evadid.vm.code.usage.{BeFunctionCall, BeUseValue}
 import it.evadid.vm.conversion.parsed.DefaultDefinitions
 import it.evadid.vm.naming.BeEntityName
 import it.evadid.vm.types.{BeDataType, BeDataValueLiteral, StringLiteral}
-import it.evadid.workbook.elements.interactionElements.programming.state.snap.*
+import it.evadid.workbook.interactions.programming.state.snap.*
 
 object TurtleStitchToBeExpressionParser {
   final case class ParseWithLayout(expression: BeExpression, canvasLayout: SnapCanvasLayout)

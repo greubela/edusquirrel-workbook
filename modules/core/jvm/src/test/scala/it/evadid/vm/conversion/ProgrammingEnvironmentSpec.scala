@@ -4,7 +4,7 @@ import it.evadid.core.datastructures.language.AppLanguage.{Java, Python}
 import it.evadid.vm.code.defining.BeIntrinsic
 import it.evadid.vm.code.usage.BeFunctionCall
 import it.evadid.vm.conversion.dependencies.{ProgrammingEnvironment, ProgrammingLibrary}
-import it.evadid.workbook.elements.interactionElements.programming.state.*
+import it.evadid.workbook.interactions.programming.state.*
 import munit.FunSuite
 
 class ProgrammingEnvironmentSpec extends FunSuite {
@@ -48,13 +48,13 @@ class ProgrammingEnvironmentSpec extends FunSuite {
   }
 
   test("exercise types bring default environments to their graders; content can override them") {
-    import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseTurtle.*
-    import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseRegular.SortListExercise
+    import it.evadid.workbook.interactions.programming.programmingExerciseTurtle.*
+    import it.evadid.workbook.interactions.programming.programmingExerciseRegular.SortListExercise
     def environments(graders: Seq[Any]) = graders.collect {
       case grader: RecreateShapeGrader => grader.environment
       case grader: TurtleCommandUsageGrader => grader.environment
       case grader: ProgramStructureGrader => grader.environment
-      case grader: it.evadid.workbook.elements.interactionElements.programming.programmingExerciseRegular.ProgramDataTestGrader => grader.environment
+      case grader: it.evadid.workbook.interactions.programming.programmingExerciseRegular.ProgramDataTestGrader => grader.environment
     }.toSet
     val shape = TurtleRecreateShapeInteraction("shape", ProgrammingStateRaw(Python, "forward(10)"), TurtleGraphic.TurtleGraphicSvgString("M0,0 L10,0"),
       structureTests = Seq(ProgramStructureGrader(ProgramStructureRequirement.UsesLoop, "loop", it.evadid.core.datastructures.language.LanguageMapContentId("x/y"))))
@@ -67,14 +67,14 @@ class ProgrammingEnvironmentSpec extends FunSuite {
 
   test("graders read the program in their exercise's environment") {
     import it.evadid.workbook.abstractions.grading.{GradingImportance, GradingStatus}
-    import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseTurtle.{RecreateShapeGrader, TurtleGraphic}
+    import it.evadid.workbook.interactions.programming.programmingExerciseTurtle.{RecreateShapeGrader, TurtleGraphic}
     import scala.concurrent.Await
     import scala.concurrent.duration.*
     val grader = RecreateShapeGrader(TurtleGraphic.TurtleGraphicSvgString("M0,0 L10,0"), GradingImportance.REQUIRED_TEST)
     val state = ProgrammingStateRaw(Python, "forward(10)\n")
     def grade(environment: ProgrammingEnvironment) = Await.result(grader.inEnvironment(environment)
-      .gradeStateSafe(state, true, it.evadid.workbook.interaction.sync.UpdateImportance.MAJOR,
-        it.evadid.workbook.meta.ExecutionContextInformation.default), 10.seconds).gradingStatus
+      .gradeStateSafe(state, true, it.evadid.workbook.sync.UpdateImportance.MAJOR,
+        it.evadid.workbook.abstractions.ExecutionContextInformation.default), 10.seconds).gradingStatus
     assertEquals(grade(turtleOnly), GradingStatus.Correct)
     // Without the turtle library, `forward` is undefined code and draws nothing.
     assertNotEquals(grade(ProgrammingEnvironment.of(ProgrammingLibrary.System)), GradingStatus.Correct)

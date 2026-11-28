@@ -1,18 +1,20 @@
 package it.evadid.homepage.workbook.htmlRenderer.interactionRenderer.blockchain
 
+import it.evadid.workbook.control.InteractionSignals.*
+
 import it.evadid.homepage.control.model.FullInfo
 
 import com.raquo.laminar.api.L.*
-import it.evadid.core.datastructures.state.StateHelper.{InteractionVariableOnJS, StateBasedVar}
+import it.evadid.core.datastructures.state.StateHelper.StateBasedVar
 import it.evadid.homepage.webElements.editor.blockchain.BlockchainEditor
 import it.evadid.homepage.workbook.htmlRenderer.HtmlRenderFactory.LineBasedRenderingFactory
 import it.evadid.homepage.workbook.htmlRenderer.atomarLineRenderings.{AtomarLineRendering, ElementCard}
-import it.evadid.workbook.elements.interactionElements.blockchain.BlockchainInteraction
-import it.evadid.workbook.interaction.sync.UpdateImportance.MAJOR
+import it.evadid.workbook.interactions.blockchain.BlockchainInteraction
+import it.evadid.workbook.sync.UpdateImportance.MAJOR
 
 case object BlockchainRenderer extends LineBasedRenderingFactory[BlockchainInteraction] {
   override protected def createRendering(fullInfo: FullInfo, e: BlockchainInteraction): AtomarLineRendering = {
-    val state = e.interactionVariable.createBoundVarWithUpdateImportance(MAJOR, fullInfo.workbookContextInformation)
+    val state = fullInfo.interactions.boundVar(e, MAJOR)
     val summary = p(cls := "blockchain-preview", role := "status",
       text <-- state.signal.map(_.validPrefixLength(e.difficultyZeros))
         .combineWith(laminarHelper(fullInfo).plaintextStringSignal("blockchainworkbook/blockProgress"))

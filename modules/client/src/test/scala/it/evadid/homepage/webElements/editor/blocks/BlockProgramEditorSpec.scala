@@ -13,7 +13,7 @@ import it.evadid.vm.BeProgram
 import it.evadid.vm.code.controlStructures.BeRepeatNr
 import it.evadid.vm.editing.{BeBlockLibrary, BeNodePath, BeProgramEditing, BeSequenceSlot}
 import it.evadid.vm.types.BeChildRole.{BodySequence, ExpressionInSequence, FunctionParameter}
-import it.evadid.workbook.elements.interactionElements.programming.state.{ProgrammingState, ProgrammingStateBeExpression, ProgrammingStateRaw}
+import it.evadid.workbook.interactions.programming.state.{ProgrammingState, ProgrammingStateBeExpression, ProgrammingStateRaw}
 import org.scalajs.dom
 
 import scala.scalajs.js

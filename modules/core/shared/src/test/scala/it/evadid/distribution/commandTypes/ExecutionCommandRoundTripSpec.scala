@@ -16,18 +16,18 @@ import it.evadid.vm.parsing.source.SourceParsing
 import it.evadid.vm.simulation.python.PythonTurtleCalls
 import it.evadid.vm.simulation.java.JavaTurtleExecutionEvidence as Evidence
 import it.evadid.workbook.abstractions.InteractionFormat.TextInteractionFormat
-import it.evadid.workbook.elements.interactionElements.programming.state.ProgrammingStateRaw
-import it.evadid.workbook.elements.interactionElements.sql.SqlDatabaseConfig
-import it.evadid.workbook.interaction.sync.{EventSyncStrategy, SyncSuccess, UpdateImportance, UsageContext}
-import it.evadid.workbook.interaction.sync.model.InteractionHistoryJson
-import it.evadid.workbook.interaction.variable.InteractionVariableHistory
-import it.evadid.workbook.interaction.variable.events.{AnswerChangedEvent, EventId}
-import it.evadid.workbook.model.qr.{QrCode, QrErrorCorrection}
-import it.evadid.workbook.elements.structureElements.Workbook
-import it.evadid.workbook.elements.structureElements.Workbook.WorkbookMetadata
+import it.evadid.workbook.interactions.programming.state.ProgrammingStateRaw
+import it.evadid.workbook.interactions.sql.SqlDatabaseConfig
+import it.evadid.workbook.sync.{EventSyncStrategy, SyncSuccess, UpdateImportance, UsageContext}
+import it.evadid.workbook.sync.model.InteractionHistoryJson
+import it.evadid.workbook.history.InteractionHistory
+import it.evadid.workbook.history.events.{AnswerChangedEvent, EventId}
+import it.evadid.workbook.interactions.qr.{QrCode, QrErrorCorrection}
+import it.evadid.workbook.elements.structure.Workbook
+import it.evadid.workbook.elements.structure.Workbook.WorkbookMetadata
 import it.evadid.workbook.session.{AllWorkbookInfo, SessionData, WorkbookConfig}
 import it.evadid.core.datastructures.language.LanguageMapContentId
-import java.time.LocalDateTime
+import java.time.Instant
 import munit.FunSuite
 import scala.concurrent.{ExecutionContext, Future}
 import upickle.default.*
@@ -35,7 +35,7 @@ import upickle.default.*
 /** Every registered command carries a representative request to its handler and its response back unchanged. */
 class ExecutionCommandRoundTripSpec extends FunSuite {
   private given ExecutionContext = ExecutionContext.global
-  private val at = LocalDateTime.of(2026, 4, 2, 10, 15, 30, 123456789)
+  private val at = java.time.LocalDateTime.of(2026, 4, 2, 10, 15, 30, 123456789).toInstant(java.time.ZoneOffset.UTC)
 
   /** One registered command with a representative request and response. */
   private final case class Sample[I: ReadWriter, O: ReadWriter](factory: ExecutionCommandFactory[I, O], request: I, response: O) {
@@ -58,10 +58,10 @@ class ExecutionCommandRoundTripSpec extends FunSuite {
   }
 
   private val user = AllUserInfo.createNewUser("Student", "student@example.invalid", UserConfig(Nil, false))
-  private val signed = SignedToken(UserTokenInfo(user.user, at, at.plusDays(1)), "signature")
+  private val signed = SignedToken(UserTokenInfo(user.user, at, at.plus(java.time.Duration.ofDays(1))), "signature")
   private val usage = UsageContext("edusquirrel", "workbook", user.user.personId)
   private val key = usage.toSyncContext("answer_history")
-  private val history = InteractionHistoryJson.fromHistory(TextInteractionFormat, InteractionVariableHistory.empty[TextInteractionFormat.type]
+  private val history = InteractionHistoryJson.fromHistory(TextInteractionFormat, InteractionHistory.empty(TextInteractionFormat)
     .addEvent(AnswerChangedEvent[TextInteractionFormat.type]("answer \"quoted\" 学校", at, UpdateImportance.MAJOR)))
   private val synced = SyncSuccess[EventId](Set(EventId.random()), Set.empty, Set(EventId.random()), Set.empty, at)
   private val removed = SyncSuccess.removed(Set(key)).copy(timestampCommitted = at)
@@ -82,8 +82,8 @@ class ExecutionCommandRoundTripSpec extends FunSuite {
     Sample(SQLCommands.StoreToDbCommand, SQLCommands.StoreToDbRequest(key, history, BackendDatabase, DatabaseHistoryFormat.RelationalFormat), synced),
     Sample(SQLCommands.bulkStoreToDbCommand, SQLCommands.BulkStoreToDbRequest(Vector(key, usage.toSyncContext("other")),
       Vector(history, history), BackendDatabase, DatabaseHistoryFormat.BlobFormat), synced),
-    Sample(SQLCommands.fetchEventsFromDbCommand, SQLCommands.FetchEventsFromDbRequest(usage, Seq("answer_history"), LocalDateTime.MIN,
-      LocalDateTime.MAX, BackendDatabase, DatabaseHistoryFormat.RelationalFormat, EventSyncStrategy.KEEP_LAST_AND_MAJOR),
+    Sample(SQLCommands.fetchEventsFromDbCommand, SQLCommands.FetchEventsFromDbRequest(usage, Seq("answer_history"), Instant.MIN,
+      Instant.MAX, BackendDatabase, DatabaseHistoryFormat.RelationalFormat, EventSyncStrategy.KEEP_LAST_AND_MAJOR),
       SQLCommands.DbFetchResponse(Map(key -> history))),
     Sample(SQLCommands.clearValuesDbCommand, SQLCommands.DeleteInDbRequest(usage, Some("answer_history"), BackendDatabase,
       DatabaseHistoryFormat.BlobFormat), removed),

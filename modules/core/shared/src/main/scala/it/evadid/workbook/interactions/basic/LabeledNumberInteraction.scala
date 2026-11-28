@@ -1,0 +1,71 @@
+package it.evadid.workbook.interactions.basic
+
+import it.evadid.core.datastructures.language.LanguageMapContentId
+import it.evadid.core.util.io.Serializer
+import it.evadid.distribution.command.ExecutionCommandFactory
+import it.evadid.distribution.commandTypes.SqlEditorCommands.{Request, Response}
+import it.evadid.workbook.abstractions.{InteractionFormat, WorkbookElement, WorkbookInteractionElement, *}
+import it.evadid.workbook.interactions.basic.LabeledNumberInteraction.NumberType
+import it.evadid.workbook.serialization.WorkbookElementFactory.SimpleWorkbookElementFactory
+import it.evadid.workbook.serialization.WorkbookElementSerializable
+import it.evadid.core.util.io.serializer.{DefaultSerializer}
+import it.evadid.core.util.io.serializer.DefaultSerializer.given
+import it.evadid.workbook.abstractions.InteractionFormat.TextInteractionFormat
+import it.evadid.workbook.history.InteractionHistory
+import upickle.default.ReadWriter
+import upickle.default.*
+object LabeledNumberInteraction {
+
+
+  /**
+   * Describes the kind of numeric value a [[LabeledNumberInteraction]] edits.
+   *
+   * The value is stored as text so renderers can preserve exact algebraic input
+   * such as "sin(3) + 4" while still offering numeric spinner controls.
+   */
+  enum NumberType derives ReadWriter {
+    @upickle.implicits.key("IntegerLike")
+    case IntegerLike
+    @upickle.implicits.key("FractionLike")
+    case FractionLike
+    @upickle.implicits.key("AlgebraicLike")
+    case AlgebraicLike
+  }
+
+  case class NumberInteractionConfig(numberType: NumberType) derives ReadWriter
+
+  val factory: SimpleWorkbookElementFactory[LabeledNumberInteraction] = new SimpleWorkbookElementFactory[LabeledNumberInteraction]() {
+    override protected val constructorFieldOrder = List("elementId", "numberLabel", "numberType", "defaultNumber", "diff")
+    override def finishSerialization(baseElement: WorkbookElementSerializable, infoElement: LabeledNumberInteraction): WorkbookElementSerializable = {
+      baseElement
+        .withElementAddedAs("numberLabel", infoElement.numberLabel)
+        .withElementAddedAs[NumberType]("numberType", infoElement.numberType)
+        .withElementAdded("defaultNumber", infoElement.defaultValue)
+        .withElementAddedAs("diff", infoElement.diff)
+    }
+
+    override def finishDeserialization(element: WorkbookElementSerializable): LabeledNumberInteraction = {
+      LabeledNumberInteraction(element.elementId,
+        element.getElementAs[LanguageMapContentId]("numberLabel"),
+        element.getOptionalElementAs[NumberType]("numberType", NumberType.IntegerLike),
+        element.getOptionalElementAs("defaultNumber", "0"),
+        element.getOptionalElementAs[BigDecimal]("diff", BigDecimal(1))
+      )
+    }
+  }
+}
+
+case class LabeledNumberInteraction(
+                                     override val elementId: String,
+                                     numberLabel: LanguageMapContentId,
+                                     numberType: NumberType,
+                                     override val defaultValue: String = "0",
+                                     diff: BigDecimal = BigDecimal(1),
+                                   ) extends WorkbookInteractionElement[TextInteractionFormat.type] {
+
+  override val associatedFactory = LabeledNumberInteraction.factory
+
+  lazy val childrenOfThisElement: Seq[WorkbookElement] = List()
+
+
+}

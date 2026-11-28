@@ -1,9 +1,9 @@
 package it.evadid.homepage.workbook.syncDestination
 
 import it.evadid.util.logging.derived.SyncLogger
-import it.evadid.workbook.interaction.sync.*
-import it.evadid.workbook.interaction.sync.destination.*
-import it.evadid.workbook.interaction.sync.destination.SyncDestinationDefinition.LocalIndexedDbSyncDefinition
+import it.evadid.workbook.sync.*
+import it.evadid.workbook.sync.destination.*
+import it.evadid.workbook.sync.destination.SyncDestinationDefinition.LocalIndexedDbSyncDefinition
 import org.scalajs.dom
 import org.scalajs.dom.{IDBDatabase, IDBObjectStore, IDBTransaction, IDBTransactionMode}
 

@@ -4,8 +4,8 @@ import it.evadid.core.datastructures.geometry.Point
 import it.evadid.core.datastructures.vectorShapes.svg.TurtleDrawingComparison.Segment
 import it.evadid.core.datastructures.vectorShapes.svg.TurtleCommand
 import it.evadid.homepage.workbook.htmlRenderer.interactionRenderer.turtleStitch.TurtleJsxGraphRenderer.{LineResult, RenderedAngle, RenderedLine, Scene}
-import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseTurtle.{TurtleDrawingPolicy, TurtleGraphic, TurtleGradingLogic}
-import it.evadid.workbook.elements.interactionElements.programming.state.snap.SnapTurtleCatalog
+import it.evadid.workbook.interactions.programming.programmingExerciseTurtle.{TurtleDrawingPolicy, TurtleGraphic, TurtleGradingLogic}
+import it.evadid.workbook.interactions.programming.state.snap.SnapTurtleCatalog
 
 object TurtleDrawingGrading {
   private val tolerance = 0.25

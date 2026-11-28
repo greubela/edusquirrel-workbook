@@ -1,12 +1,12 @@
 package it.evadid.core.datastructures.chat
 
 import it.evadid.core.datastructures.language.AppLanguage.German
-import java.time.LocalDateTime
+import java.time.Instant
 import munit.FunSuite
 import upickle.default.*
 
 class ChatPackageSpec extends FunSuite {
-  private val time = LocalDateTime.of(2025, 1, 1, 12, 0)
+  private val time = java.time.LocalDateTime.of(2025, 1, 1, 12, 0).toInstant(java.time.ZoneOffset.UTC)
   private val author = ChatParticipant("Ada", "id", SenderRole.USER, Some(" AD "))
 
   test("person conversions preserve identity, roles and normalized abbreviations") {
@@ -53,7 +53,7 @@ class ChatPackageSpec extends FunSuite {
   test("fresh messages explicitly persist their timestamps") {
     val message = Message("Fresh feedback", author)
     val json = writeJs(message)
-    assertEquals(json("timestamp").str, message.timestamp.toString)
+    assertEquals(json("timestamp").str, it.evadid.core.util.io.serializer.DefaultSerializer.instantText(message.timestamp))
     assertEquals(read[Message](json), message)
   }
 }

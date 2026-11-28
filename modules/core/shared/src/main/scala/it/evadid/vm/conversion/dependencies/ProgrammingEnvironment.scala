@@ -8,14 +8,19 @@ import upickle.default.ReadWriter
 /** A library programs can call without defining it, named stably for exercise content. */
 enum ProgrammingLibrary(val intrinsics: Set[BeIntrinsic]) derives ReadWriter {
   /** Turtle graphics (`forward`, `Turtle.forward`). */
+  @upickle.implicits.key("Turtle")
   case Turtle extends ProgrammingLibrary(Set(BeIntrinsic.Turtle))
   /** Console output (`print`, `System.out.println`, `System.err.println`). */
+  @upickle.implicits.key("System")
   case System extends ProgrammingLibrary(Set(BeIntrinsic.Print, BeIntrinsic.PrintErr))
   /** Reading the text behind a URL (`fetch_text`, `Web.fetchText`). */
+  @upickle.implicits.key("Web")
   case Web extends ProgrammingLibrary(Set(BeIntrinsic.FetchText))
   /** The number list of sorting exercises. */
+  @upickle.implicits.key("NumberList")
   case NumberList extends ProgrammingLibrary(Set(BeIntrinsic.NumberList))
   /** The sudoku grid of data exercises. */
+  @upickle.implicits.key("Sudoku")
   case Sudoku extends ProgrammingLibrary(Set(BeIntrinsic.Sudoku))
 }
 

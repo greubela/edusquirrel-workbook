@@ -6,25 +6,25 @@ import it.evadid.core.datastructures.user.{User, UserConfig}
 import it.evadid.sql.{DatabaseConfigWithCredentials, DatabaseHistoryFormat}
 import it.evadid.workbook.abstractions.InteractionFormat.{ChoiceInteractionFormat, TextInteractionFormat}
 import it.evadid.workbook.abstractions.grading.{GraderRunningBehavior, GradingResult, GradingStatus}
-import it.evadid.workbook.elements.interactionElements.basic.TextInteraction
-import it.evadid.workbook.elements.interactionElements.choice.WorkbookContentChoiceInteraction
-import it.evadid.workbook.elements.interactionElements.choice.WorkbookContentChoiceInteraction.*
-import it.evadid.workbook.elements.structureElements.Workbook.WorkbookMetadata
-import it.evadid.workbook.elements.structureElements.WorkbookSection.WorkbookSectionMetadata
-import it.evadid.workbook.elements.structureElements.{Workbook, WorkbookSection}
-import it.evadid.workbook.interaction.sync.destination.SyncDestinationDefinition.SyncDestinationBasedOnHistoryDatabase
-import it.evadid.workbook.interaction.sync.model.InteractionHistoryJson
-import it.evadid.workbook.interaction.sync.{EventSyncStrategy, SyncContext, SyncInformation, UpdateImportance, UsageContext}
-import it.evadid.workbook.interaction.variable.{InteractionVariableHistory, InteractionVariableState}
+import it.evadid.workbook.interactions.basic.TextInteraction
+import it.evadid.workbook.interactions.choice.WorkbookContentChoiceInteraction
+import it.evadid.workbook.interactions.choice.WorkbookContentChoiceInteraction.*
+import it.evadid.workbook.elements.structure.Workbook.WorkbookMetadata
+import it.evadid.workbook.elements.structure.WorkbookSection.WorkbookSectionMetadata
+import it.evadid.workbook.elements.structure.{Workbook, WorkbookSection}
+import it.evadid.workbook.sync.destination.SyncDestinationDefinition.SyncDestinationBasedOnHistoryDatabase
+import it.evadid.workbook.sync.model.InteractionHistoryJson
+import it.evadid.workbook.sync.{EventSyncStrategy, SyncContext, SyncInformation, UpdateImportance, UsageContext}
+import it.evadid.workbook.history.{InteractionHistory, InteractionState}
 import it.evadid.workbook.session.{AllWorkbookInfo, SessionData, WorkbookConfig}
 
-import java.time.LocalDateTime
+import java.time.Instant
 
 /** A submitted session with a revised text answer, a graded choice, an unanswered task, a foreign-workbook history and
   * destination credentials that must never leave the backend. */
 object SubmissionFixtures {
   private def id(key: String) = LanguageMapContentId(s"submission/$key")
-  private val savedAt = LocalDateTime.of(2026, 11, 27, 10, 15, 30)
+  private val savedAt = java.time.LocalDateTime.of(2026, 11, 27, 10, 15, 30).toInstant(java.time.ZoneOffset.UTC)
 
   val essay: TextInteraction = TextInteraction("essay")
   val quiz: WorkbookContentChoiceInteraction = WorkbookContentChoiceInteraction("quiz",
@@ -39,26 +39,26 @@ object SubmissionFixtures {
 
   val student: User = User("Änne Student", "student-1", "student@example.org")
 
-  val quizAnswer: ChoiceState = quiz.select(quiz.defaultValue, 0, selected = true, savedAt.minusMinutes(5))
+  val quizAnswer: ChoiceState = quiz.select(quiz.defaultValue, 0, selected = true, savedAt.minus(java.time.Duration.ofMinutes(5)))
 
   private def context(scenario: String, key: String): SyncContext = UsageContext("edusquirrel", scenario, student.id).toSyncContext(key)
 
-  private val essayHistory = InteractionHistoryJson.fromHistory(TextInteractionFormat, InteractionVariableHistory.empty[TextInteractionFormat.type]
-    .addState(InteractionVariableState("first draft", UpdateImportance.MAJOR, savedAt.minusMinutes(20)))
-    .addState(InteractionVariableState("final answer", UpdateImportance.MAJOR, savedAt.minusMinutes(10))))
+  private val essayHistory = InteractionHistoryJson.fromHistory(TextInteractionFormat, InteractionHistory.empty(TextInteractionFormat)
+    .addState(InteractionState("first draft", UpdateImportance.MAJOR, savedAt.minus(java.time.Duration.ofMinutes(20))))
+    .addState(InteractionState("final answer", UpdateImportance.MAJOR, savedAt.minus(java.time.Duration.ofMinutes(10)))))
 
-  private val quizHistory = InteractionHistoryJson.fromHistory(ChoiceInteractionFormat, InteractionVariableHistory.empty[ChoiceInteractionFormat.type]
-    .addState(InteractionVariableState(quizAnswer, UpdateImportance.MAJOR, savedAt.minusMinutes(5)))
-    .addGrading(GradingResult(quiz.gradingElements.head, quizAnswer, GradingStatus.Correct, None, None, savedAt.minusMinutes(4))))
+  private val quizHistory = InteractionHistoryJson.fromHistory(ChoiceInteractionFormat, InteractionHistory.empty(ChoiceInteractionFormat)
+    .addState(InteractionState(quizAnswer, UpdateImportance.MAJOR, savedAt.minus(java.time.Duration.ofMinutes(5))))
+    .addGrading(GradingResult(quiz.gradingElements.head, quizAnswer, GradingStatus.Correct, None, None, savedAt.minus(java.time.Duration.ofMinutes(4)))))
 
   /** Destination credentials are stripped before logging and mailing. */
   val credentials: DatabaseConfigWithCredentials =
     DatabaseConfigWithCredentials("mysql", "db.example.invalid", "3306", "school", "private-user", "private-password")
 
   def session(mail: String = student.mail): SessionData = SessionData(savedAt, Map(
-    context(workbook.workbookId, essay.interactionVariable.keyForSerialization) -> essayHistory,
-    context(workbook.workbookId, quiz.interactionVariable.keyForSerialization) -> quizHistory,
-    context("another-workbook", essay.interactionVariable.keyForSerialization) -> quizHistory),
+    context(workbook.workbookId, essay.keyForSerialization) -> essayHistory,
+    context(workbook.workbookId, quiz.keyForSerialization) -> quizHistory,
+    context("another-workbook", essay.keyForSerialization) -> quizHistory),
     student.copy(mail = mail),
     Some(UserConfig(Seq(SyncInformation(SyncDestinationBasedOnHistoryDatabase(credentials, DatabaseHistoryFormat.BlobFormat, buffered = false),
       EventSyncStrategy.SYNC_MAJOR)), isOnlineAccount = true)),
@@ -68,6 +68,6 @@ object SubmissionFixtures {
   def sessionWithUnreadableEssay: SessionData = {
     val stored = session()
     stored.copy(knownUsageData = stored.knownUsageData.updated(
-      context(workbook.workbookId, essay.interactionVariable.keyForSerialization), InteractionHistoryJson(TextInteractionFormat, "{not json")))
+      context(workbook.workbookId, essay.keyForSerialization), InteractionHistoryJson(TextInteractionFormat, "{\"not\": \"a history\"}")))
   }
 }

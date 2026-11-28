@@ -6,7 +6,7 @@ factory and renderer registries recognize it. The renderer binds the answer to
 workbook synchronization and opens the editor using the same bound state.
 
 ```scala
-import it.evadid.workbook.elements.interactionElements.sql.*
+import it.evadid.workbook.interactions.sql.*
 
 SqlCommandExercise(
   elementId = "sql-students",

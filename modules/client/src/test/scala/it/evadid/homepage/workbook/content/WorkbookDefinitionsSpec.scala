@@ -1,22 +1,25 @@
 package it.evadid.homepage.workbook.content
 
 import it.evadid.homepage.workbook.content.test.CreateTestWorkbook
-import it.evadid.workbook.jsonFactory.WorkbookElementFactory
-import it.evadid.workbook.elements.structureElements.Workbook
+import it.evadid.workbook.serialization.WorkbookElementFactory
+import it.evadid.workbook.elements.structure.Workbook
 import upickle.default.*
 import munit.FunSuite
 import it.evadid.core.datastructures.language.AppLanguage
 import it.evadid.core.datastructures.language.control.LanguageMapStorage
 import it.evadid.core.datastructures.user.{AllUserInfo, UserConfig}
 import it.evadid.workbook.session.{AllWorkbookInfo, SessionData}
-import it.evadid.homepage.control.model.{AllDisplayInfo, HomepageInfo}
+import it.evadid.homepage.control.model.{AllDisplayInfo, FullInfo, HomepageInfo}
+import it.evadid.homepage.webElements.editor.code.EditorDomSuite
 import it.evadid.util.logging.BasicLogger
-import it.evadid.workbook.meta.ExecutionContextInformation
-import it.evadid.workbook.interaction.sync.UpdateImportance
+import it.evadid.workbook.abstractions.ExecutionContextInformation
+import it.evadid.workbook.sync.UpdateImportance
 
-class WorkbookDefinitionsSpec extends FunSuite {
-  private def submit[F <: it.evadid.workbook.abstractions.InteractionFormat](interaction: it.evadid.workbook.abstractions.WorkbookInteractionElement[F]): Unit =
-    interaction.interactionVariable.setStateFromUserInteraction(interaction.defaultValue, UpdateImportance.MAJOR, context = ExecutionContextInformation.default)
+class WorkbookDefinitionsSpec extends EditorDomSuite {
+  private def submit[F <: it.evadid.workbook.abstractions.InteractionFormat](page: FullInfo, interaction: it.evadid.workbook.abstractions.WorkbookInteractionElement[F]): Unit =
+    page.interactions.setStateFromUserInteraction(interaction, interaction.defaultValue, UpdateImportance.MAJOR)
+  private def page(workbook: AllWorkbookInfo, user: AllUserInfo): FullInfo =
+    FullInfo(HomepageInfo(AppLanguage.English, Some(workbook), Some(user), AllDisplayInfo(false, None), LanguageMapStorage.empty))
   private val factories = DigitalWorkbookCatalog.entries.flatMap(entry => entry.native.map(native => entry.id -> native.factory)) :+
     ("design" -> CreateTestWorkbook.apply)
 
@@ -36,6 +39,9 @@ class WorkbookDefinitionsSpec extends FunSuite {
       val ids = workbook.allChildrenFullSubtree.map(_.elementId)
       assert(ids.nonEmpty, workbook.workbookId)
       assertEquals(ids.distinct.size, ids.size, workbook.workbookId)
+      // Answers are stored under these keys within the workbook; a duplicate would merge two exercises' answers.
+      val storageKeys = workbook.allInteractionsInThisInstance.map(_.keyForSerialization)
+      assertEquals(storageKeys.diff(storageKeys.distinct), Nil, workbook.workbookId)
       assertEquals(read[Workbook](write[Workbook](workbook)), workbook, workbook.workbookId)
       for serializer <- List(WorkbookElementFactory.serializerRefBasedJson, WorkbookElementFactory.serializerConstructorLike) do
         assertEquals(serializer.deserialize(serializer.serialize(workbook)), workbook, workbook.workbookId)
@@ -60,21 +66,22 @@ class WorkbookDefinitionsSpec extends FunSuite {
     test(s"$name session file restores every interaction's answer into a fresh instance") {
       val studied = factory(null).createEverything
       val interactions = studied.loadedWorkbook.allContainedInteractionsById
-      // Each interaction's own default answer, submitted, exercises its real state and history codecs.
-      interactions.values.foreach(interaction => submit(interaction))
       val user = AllUserInfo.createNewUser("Student", "catalogue@example.invalid", UserConfig(Nil, false))
-      val session = HomepageInfo(AppLanguage.English, Some(studied), Some(user),
-        AllDisplayInfo(false, None), LanguageMapStorage.empty).toSessionData.get
+      val studying = page(studied, user)
+      // Each interaction's own default answer, submitted, exercises its real state and history codecs.
+      interactions.values.foreach(interaction => submit(studying, interaction))
+      val session = studying.homepageInfoNow().toSessionData(studying.interactions.info).get
       assertEquals(session.knownUsageData.size, interactions.size, "one history per interaction")
       val restored = read[SessionData](write(session))
       assertEquals(restored, session)
-      val fresh = factory(null).createWorkbook
-      fresh.restoreHistories(BasicLogger(), restored.knownUsageData, ExecutionContextInformation.default)
-      fresh.allContainedInteractionsById.foreach { (id, interaction) =>
-        def submitted(history: it.evadid.workbook.interaction.variable.InteractionVariableHistory[?]): Set[(Any, Any)] =
-          history.allStates.map(event => (event.newState: Any) -> event.updateImportance)
-        assertEquals(submitted(interaction.interactionVariable.currentHistory), submitted(interactions(id).interactionVariable.currentHistory), id)
-        assert(interaction.interactionVariable.currentHistory.allStates.exists(_.updateImportance == UpdateImportance.MAJOR), id)
+      val fresh = factory(null).createEverything
+      val continuing = page(fresh, user)
+      continuing.interactions.restoreHistories(BasicLogger(), restored.knownUsageData)
+      fresh.loadedWorkbook.allContainedInteractionsById.foreach { (id, interaction) =>
+        def submitted(history: it.evadid.workbook.history.InteractionHistory[?]): Set[(Any, Any)] =
+          history.answerEvents.map(event => (event.newState: Any) -> event.updateImportance)
+        assertEquals(submitted(continuing.interactions.currentHistory(interaction)), submitted(studying.interactions.currentHistory(interactions(id))), id)
+        assert(continuing.interactions.currentHistory(interaction).answerEvents.exists(_.updateImportance == UpdateImportance.MAJOR), id)
       }
     }
   }

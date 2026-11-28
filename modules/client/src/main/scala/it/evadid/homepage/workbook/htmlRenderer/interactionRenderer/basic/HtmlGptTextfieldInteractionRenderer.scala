@@ -1,5 +1,8 @@
 package it.evadid.homepage.workbook.htmlRenderer.interactionRenderer.basic
 
+
+import it.evadid.workbook.control.InteractionSignals.*
+
 import it.evadid.homepage.control.model.FullInfo
 
 import com.raquo.laminar.api.L.*
@@ -7,19 +10,19 @@ import com.raquo.laminar.nodes.ReactiveSvgElement
 import it.evadid.core.datastructures.chat.{ChatParticipant, Message, MessengerModel, SenderRole}
 import it.evadid.core.datastructures.language.AppLanguage.*
 import it.evadid.core.datastructures.language.LanguageMapContentId
-import it.evadid.core.datastructures.state.StateHelper.InteractionVariableOnJS
+
 import it.evadid.distribution.commandTypes.LLMCommands
 import it.evadid.distribution.commandTypes.LLMCommands.MessengerChatCompletionRequest
 import it.evadid.homepage.webElements.basic.HtmlButtonElement
 import it.evadid.homepage.webElements.editor.SimpleChatEditor
 import it.evadid.homepage.workbook.htmlRenderer.HtmlRenderFactory.LineBasedRenderingFactory
 import it.evadid.homepage.workbook.htmlRenderer.atomarLineRenderings.AtomarLineRendering
-import it.evadid.workbook.elements.interactionElements.basic.MessagingInteraction.MessengerModelScaffolding
-import it.evadid.workbook.elements.interactionElements.gpt.GptInteractionElement
-import it.evadid.workbook.interaction.sync.UpdateImportance.MAJOR
+import it.evadid.workbook.interactions.basic.MessagingInteraction.MessengerModelScaffolding
+import it.evadid.workbook.interactions.gpt.GptInteractionElement
+import it.evadid.workbook.sync.UpdateImportance.MAJOR
 import org.scalajs.dom.SVGSVGElement
 
-import java.time.LocalDateTime
+import java.time.Instant
 import scala.concurrent.ExecutionContext
 import scala.util.{Failure, Success}
 
@@ -32,7 +35,7 @@ object HtmlGptTextfieldInteractionRenderer extends LineBasedRenderingFactory[Gpt
   private def sendError(fullInfo: FullInfo, err: Throwable, mmState: Var[MessengerModel]): Unit = {
     laminarHelper(fullInfo).uiAndDomLogger.logExceptionWarn(s"error while sending message to LLM, a error message will appear in the chat", err)
     val errText: String = s"@student: Unfortunately, I could not generate an answer. The error I got was ${err.getMessage}. I printed additional information on the browser console!"
-    val errMsg = Message(errText, MessengerModel.pWorkbook, LocalDateTime.now())
+    val errMsg = Message(errText, MessengerModel.pWorkbook, Instant.now())
     mmState.update(_.addMessage(errMsg))
   }
 
@@ -70,8 +73,7 @@ object HtmlGptTextfieldInteractionRenderer extends LineBasedRenderingFactory[Gpt
 
     // The chat button exists only for exercises with a scaffolding conversation.
     val elements: Seq[Element] = workbookElement.scaffoldingInteractionOp.toList.map { scaffolding =>
-      val chat: Var[MessengerModel] = scaffolding.interactionVariable
-        .createBoundVarWithUpdateImportance(MAJOR, fullInfo.workbookContextInformation)
+      val chat: Var[MessengerModel] = fullInfo.interactions.boundVar(scaffolding, MAJOR)
         .bimap(_.messengerModel)(MessengerModelScaffolding.apply)
       // While the chat is open, every message the student adds asks the assistant for a reply.
       def openChat(): SimpleChatEditor = SimpleChatEditor(fullInfo, chat, bindings = Seq(
@@ -80,7 +82,7 @@ object HtmlGptTextfieldInteractionRenderer extends LineBasedRenderingFactory[Gpt
 
         val currentUser: ChatParticipant = fullInfo.current.userInfo.map(_.user).getOrElse(MessengerModel.pFallbackStudent)
 
-        workbookElement.initScaffoldingIfEmpty(fullInfo.workbookContextInformation, currentUser, fullInfo.workbookContextInformation.languageMapIdResolver.get).onComplete {
+        workbookElement.initScaffoldingIfEmpty(fullInfo.interactions, currentUser, fullInfo.workbookContextInformation.languageMapIdResolver.get).onComplete {
           case Success(bool) => if (bool) requestCompletion(fullInfo, chat.now(), chat)
           case e: Any => fullInfo.loggerSystemInfo.workbookElementLogger.logWarn(s"HtmlGptTextfieldInteractionRenderer::createRendering -> error of some sort..: ${e.toString}")
         }(using ExecutionContext.global)

@@ -5,10 +5,10 @@ import it.evadid.homepage.webElements.editor.code.EditorDomSuite
 import it.evadid.vm.simulation.data.DataWorld
 import com.raquo.laminar.api.L.{Val, Var}
 import it.evadid.homepage.webElements.editor.code.program.ProgrammingExecutionLabels
-import it.evadid.workbook.elements.interactionElements.programming.state.{ProgrammingState, ProgrammingStateRaw, ProgrammingStateSnapScalaModel}
+import it.evadid.workbook.interactions.programming.state.{ProgrammingState, ProgrammingStateRaw, ProgrammingStateSnapScalaModel}
 import org.scalajs.dom
 
-import java.time.LocalDateTime
+import java.time.Instant
 import scala.scalajs.js
 
 class ProjectDownloadSpec extends EditorDomSuite {
@@ -22,7 +22,7 @@ class ProjectDownloadSpec extends EditorDomSuite {
   test("downloads the exported project as a ZIP named after the project") {
     val recorder = Recorder()
     val result = ProjectDownload.download(program, Java, "Tauschen üben", DataWorld(list = Vector(2, 1)), recorder,
-      () => LocalDateTime.of(2026, 11, 20, 8, 0))
+      () => java.time.LocalDateTime.of(2026, 11, 20, 8, 0).toInstant(java.time.ZoneOffset.UTC))
     assertEquals(result.map(_.folder), Right("Tauschen_ueben"))
     assertEquals(recorder.saved.map(entry => (entry._1, entry._2)), Vector(("Tauschen_ueben.zip", "application/zip")))
     assert(recorder.saved.head._3 > 100)
@@ -39,7 +39,7 @@ class ProjectDownloadSpec extends EditorDomSuite {
     val recorder = Recorder()
     val state = Var[ProgrammingState](ProgrammingStateRaw(Python, "print(1)\n"))
     val labels = ProgrammingExecutionLabels(Val("console"), Val("run"), Val("stop"), Val("running"), Val("stopped"), Val("unavailable"), Val("Download"))
-    val close = mount(ProjectDownloadButton(state.signal, labels, "brick-task", recorder, () => LocalDateTime.of(2026, 11, 27, 13, 5, 9)))
+    val close = mount(ProjectDownloadButton(state.signal, labels, "brick-task", recorder, () => it.evadid.core.util.LocalZone.instantOf(java.time.LocalDateTime.of(2026, 11, 27, 13, 5, 9))))
     val button = dom.document.querySelector(".programming-execution__download").asInstanceOf[dom.html.Button]
     try {
       button.click()

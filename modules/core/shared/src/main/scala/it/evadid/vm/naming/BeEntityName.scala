@@ -32,6 +32,7 @@ object BeEntityName {
 
   def fromMapInCodeNotation(partsMap: Map[HumanLanguage, String]): BeEntityName = BeEntityNamePartsBased(LanguageMap.mapBasedLanguageMap(partsMap))
 
+  @upickle.implicits.key("BeEntityNamePartsBased")
   private case class BeEntityNamePartsBased(languageMapWithPartsString: LanguageMap[HumanLanguage]) extends BeEntityName derives upickle.default.ReadWriter {
 
     override def getNameIn(humanLanguage: HumanLanguage, namingStyle: NamingStyle): String = {
@@ -43,6 +44,7 @@ object BeEntityName {
     override def spelling(humanLanguage: HumanLanguage): String = languageMapWithPartsString.getInLanguage(humanLanguage)
   }
 
+  @upickle.implicits.key("BeEntityNameLiteral")
   private case class BeEntityNameLiteral(literalName: String) extends BeEntityName derives upickle.default.ReadWriter {
     override def getNameIn(humanLanguage: HumanLanguage, namingStyle: NamingStyle): String = literalName
 

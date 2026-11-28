@@ -1,13 +1,15 @@
 package it.evadid.homepage.workbook.htmlRenderer.interactionRenderer.sortingReasonExercise
 
+import it.evadid.workbook.control.InteractionSignals.*
+
 import com.raquo.laminar.api.L.*
 import it.evadid.core.datastructures.language.LanguageMapContentId
-import it.evadid.core.datastructures.state.StateHelper.InteractionVariableOnJS
+
 import it.evadid.homepage.control.model.FullInfo
 import it.evadid.homepage.webElements.HtmlAppElement
 import it.evadid.homepage.workbook.htmlRenderer.interactionRenderer.sortingExercise.SortingBoard
-import it.evadid.workbook.elements.interactionElements.sorting.sortingReasonExercise.SortingReasonInteraction
-import it.evadid.workbook.interaction.sync.UpdateImportance.MINOR
+import it.evadid.workbook.interactions.sorting.sortingReasonExercise.SortingReasonInteraction
+import it.evadid.workbook.sync.UpdateImportance.MINOR
 
 case class HtmlSortingReasonExerciseFullscreenElement(
   fullInfo: FullInfo,
@@ -17,7 +19,7 @@ case class HtmlSortingReasonExerciseFullscreenElement(
   private val itemCount = interaction.items.size
   private val fieldCount = interaction.fields.size
 
-  private val stateVar = interaction.interactionVariable.createBoundVarWithUpdateImportance(MINOR, fullInfo.workbookContextInformation)
+  private val stateVar = fullInfo.interactions.boundVar(interaction, MINOR)
   private val reasonDraftVar: Var[String] = Var("")
 
   private def contentIdSignal(contentId: LanguageMapContentId): Signal[String] =

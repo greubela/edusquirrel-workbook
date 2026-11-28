@@ -7,19 +7,18 @@ import munit.FunSuite
 
 import java.lang.reflect.{InvocationHandler, Method, Proxy}
 import java.sql.{Connection, PreparedStatement, ResultSet}
-import java.time.LocalDateTime
+import java.time.Instant
 
 class LoginTokenTimestampSpec extends FunSuite {
 
-  List("2026-10-13 01:40:00", "2026-10-13 01:40:00.0",
-    "2026-10-13 01:40:00.123456", "2026-10-13 01:40:00.123456789").foreach { value =>
+  List("2026-10-13T01:40:00.000000000Z", "2026-10-13T01:40:00.123456789Z").foreach { value =>
     test(s"token expiry accepts $value") {
-      assertEquals(UserAccountRows.parseDatabaseTimestamp(value), LocalDateTime.parse(value.replace(' ', 'T')))
+      assertEquals(UserAccountRows.parseDatabaseTimestamp(value), Instant.parse(value))
     }
   }
 
   test("unsupported expiry formats are rejected rather than interpreted as legacy data") {
-    List("not a timestamp", "2026-10-13T01:40:00").foreach(value =>
+    List("not a timestamp", "2026-10-13T01:40:00", "2026-10-13T01:40:00Z", "2026-10-13 01:40:00.123456", "2026-10-13T01:40:00.123456Z").foreach(value =>
       intercept[RuntimeException](UserAccountRows.parseDatabaseTimestamp(value)))
   }
 
@@ -39,7 +38,7 @@ class LoginTokenTimestampSpec extends FunSuite {
     }
   }
 
-  for ((code, expiry) <- List("secret" -> "2026-10-13 01:40:00.123456", "" -> "2026-10-13 01:40:00.123456",
+  for ((code, expiry) <- List("secret" -> "2026-10-13T01:40:00.123456000Z", "" -> "2026-10-13T01:40:00.123456000Z",
       "secret" -> "invalid expiry", "secret" -> "2026-10-13T01:40:00", "secret" -> null)) {
   test(s"stored token with blank code=${code.isEmpty} and expiry=$expiry is read or safely discarded") {
     var row = -1
@@ -52,9 +51,9 @@ class LoginTokenTimestampSpec extends FunSuite {
       case _ => null
     }}
     val token = UserAccountRows(answering(result, "test token query"), BasicLogger()).findAccessTokens("user-1")
-    if code.nonEmpty && expiry == "2026-10-13 01:40:00.123456" then {
+    if code.nonEmpty && expiry == "2026-10-13T01:40:00.123456000Z" then {
       assertEquals(token.map(_.token), Some("secret"))
-      assertEquals(token.map(_.expires), Some(LocalDateTime.parse("2026-10-13T01:40:00.123456")))
+      assertEquals(token.map(_.expires), Some(java.time.Instant.parse("2026-10-13T01:40:00.123456Z")))
     } else assertEquals(token, None)
   }
   }

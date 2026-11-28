@@ -4,11 +4,11 @@ import it.evadid.core.datastructures.language.LanguageMapContentId
 import it.evadid.core.datastructures.user.User
 import it.evadid.homepage.control.model.FullInfo
 import it.evadid.homepage.workbook.content.WorkbookFactory
-import it.evadid.workbook.elements.interactionElements.blockchain.*
-import it.evadid.workbook.elements.interactionElements.choice.WorkbookContentChoiceInteraction
-import it.evadid.workbook.elements.interactionElements.table.*
-import it.evadid.workbook.elements.structureElements.Workbook
-import it.evadid.workbook.model.blockchain.*
+import it.evadid.workbook.interactions.blockchain.*
+import it.evadid.workbook.interactions.choice.WorkbookContentChoiceInteraction
+import it.evadid.workbook.interactions.table.*
+import it.evadid.workbook.elements.structure.Workbook
+import it.evadid.workbook.interactions.blockchain.*
 
 /** Adaptation of learner activities through p. 29; content-equivalence review remains outstanding. */
 case class CreateBlockchainWorkbook(fullInfo: FullInfo) extends WorkbookFactory {

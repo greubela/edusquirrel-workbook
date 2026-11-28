@@ -7,6 +7,7 @@ sealed trait DatabaseConfiguration derives ReadWriter {
 }
 
 /** Resolve the database exclusively from the receiving backend's environment. */
+@upickle.implicits.key("BackendDatabase")
 case object BackendDatabase extends DatabaseConfiguration {
   def withoutCredentials: DatabaseConfiguration = this
 }
@@ -21,10 +22,12 @@ sealed trait DatabaseConnection extends DatabaseConfiguration derives ReadWriter
 }
 
 /** A complete public destination whose credentials are resolved only by the server. */
+@upickle.implicits.key("DatabaseConfig")
 case class DatabaseConfig(dbFormat: String, host: String, port: String, database: String)
   extends DatabaseConnection derives ReadWriter
 
 /** Transient user-supplied connection; never persist it or include it in logs. */
+@upickle.implicits.key("DatabaseConfigWithCredentials")
 case class DatabaseConfigWithCredentials(dbFormat: String, host: String, port: String, database: String,
     user: String, password: String) extends DatabaseConnection derives ReadWriter {
   override def toString: String = s"DatabaseConfigWithCredentials($dbFormat,$host,$port,$database,credentials=redacted)"

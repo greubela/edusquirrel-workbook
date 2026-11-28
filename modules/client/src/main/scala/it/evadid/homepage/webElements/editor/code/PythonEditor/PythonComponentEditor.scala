@@ -18,7 +18,7 @@ import it.evadid.vm.naming.BeEntityName
 import it.evadid.vm.parsing.source.SourceParsing
 import it.evadid.vm.parsing.source.SourceParsing.SourceLanguage
 import it.evadid.vm.structure.PythonUmlDiagram
-import it.evadid.workbook.elements.interactionElements.programming.state.*
+import it.evadid.workbook.interactions.programming.state.*
 import org.scalajs.dom
 
 /** Python's class/function/full views share source parsing, UML rendering and CodeMirror with Java. Its modes and

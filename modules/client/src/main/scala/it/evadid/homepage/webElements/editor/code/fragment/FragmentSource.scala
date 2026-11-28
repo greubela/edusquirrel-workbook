@@ -5,7 +5,7 @@ import it.evadid.vm.editing.PythonMethodEditing
 import it.evadid.vm.naming.BeEntityName
 import it.evadid.vm.parsing.source.{SourceParsing, SourceSpan}
 import it.evadid.vm.parsing.source.SourceParsing.SourceLanguage
-import it.evadid.workbook.elements.interactionElements.programming.state.{ProgrammingStateJavaStructured, ProgrammingStatePythonStructured}
+import it.evadid.workbook.interactions.programming.state.{ProgrammingStateJavaStructured, ProgrammingStatePythonStructured}
 
 import scala.collection.immutable.VectorMap
 

@@ -4,7 +4,7 @@ import it.evadid.util.logging.Logger
 import it.evadid.vm.naming.BeEntityName
 import it.evadid.vm.parsing.source.*
 import it.evadid.vm.parsing.source.SourceParsing.SourceLanguage
-import it.evadid.workbook.elements.interactionElements.programming.state.*
+import it.evadid.workbook.interactions.programming.state.*
 
 import scala.collection.immutable.VectorMap
 

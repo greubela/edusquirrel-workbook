@@ -1,7 +1,6 @@
 package it.evadid.homepage.webElements.editor.code.SnapEditor
 
 import com.raquo.airstream.state.Var
-import it.evadid.homepage.webElements.editor.code.SnapEditor.SnapCodeEditorConfig
 import org.scalajs.dom
 import org.scalajs.dom.html.Canvas
 

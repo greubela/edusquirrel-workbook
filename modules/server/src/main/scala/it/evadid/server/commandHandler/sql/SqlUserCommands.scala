@@ -1,5 +1,6 @@
 package it.evadid.server.commandHandler.sql
 
+
 import it.evadid.core.datastructures.user.{AllUserInfo, User, UserConfig, UserCredentials}
 import it.evadid.core.datastructures.user.User.*
 import it.evadid.core.datastructures.user.UserTokenInfo.SignedToken
@@ -14,7 +15,7 @@ import it.evadid.util.JvmUtils
 import it.evadid.util.logging.Logger
 
 import java.sql.{Connection, ResultSet, Timestamp}
-import java.time.LocalDateTime
+import java.time.Instant
 import scala.concurrent.{ExecutionContext, Future}
 import scala.util.Try
 import scala.util.control.NonFatal
@@ -77,7 +78,7 @@ object SqlUserCommands {
       case Some(stored) if submitted.token != stored.token =>
         logger.logWarn("Dismissing Token: Token Invalid!")
         false
-      case Some(stored) if stored.expires.isBefore(LocalDateTime.now()) =>
+      case Some(stored) if stored.expires.isBefore(Instant.now()) =>
         logger.logWarn(s"Dismissing Token: Token was expired (expired at ${stored.expires})!")
         false
       case Some(_) => true

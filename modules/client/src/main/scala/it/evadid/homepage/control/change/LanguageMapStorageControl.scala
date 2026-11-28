@@ -9,8 +9,8 @@ import it.evadid.homepage.control.model.FullInfo
 import it.evadid.homepage.workbook.syncDestination.LocalIndexedDbStorageSyncHandler
 import it.evadid.util.logging.Logger
 import it.evadid.util.logging.derived.SyncLogger
-import it.evadid.workbook.interaction.sync.destination.*
-import it.evadid.workbook.interaction.sync.destination.SyncDestinationForKey
+import it.evadid.workbook.sync.destination.*
+import it.evadid.workbook.sync.destination.SyncDestinationForKey
 import upickle.default.*
 
 import scala.concurrent.{ExecutionContext, Future, Promise}
@@ -57,8 +57,7 @@ case class LanguageMapStorageControl(fullInfo: FullInfo, contentControlLogger: L
       error => syncLogger.logExceptionWarn("Language cache/startup refresh unavailable", error))
 
   private def addTriples(loadedSources: Set[LanguageMapInputSource], loadedTriples: ParsedTriples): Unit =
-    fullInfo.homepageInfoState.update(curInfo => curInfo.copy(
-      languageMapStore = curInfo.languageMapStore.withLoadedTriples(contentControlLogger, loadedSources, loadedTriples)))
+    fullInfo.homepage.updateLanguageMaps(_.withLoadedTriples(contentControlLogger, loadedSources, loadedTriples))
 
   private def addTriplesAndStoreToCache(loadedSources: Set[LanguageMapInputSource], loadedTriples: ParsedTriples): Unit = {
     addTriples(loadedSources, loadedTriples)

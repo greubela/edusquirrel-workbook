@@ -1,12 +1,13 @@
 package it.evadid.core.datastructures.chat
 
+
 import it.evadid.core.datastructures.chat.SenderRole.USER
 import it.evadid.core.datastructures.language.AppLanguage.HumanLanguage
 import it.evadid.core.util.io.Serializer
 import it.evadid.core.util.io.serializer.DefaultSerializer
 import upickle.ReadWriter
 
-import java.time.LocalDateTime
+import java.time.Instant
 import upickle.default.*
 
 case class MessengerModel(messages: Seq[Message]) derives ReadWriter{
@@ -19,14 +20,14 @@ case class MessengerModel(messages: Seq[Message]) derives ReadWriter{
     MessengerModel(newMessages)
   }
 
-  def addMessage(text: String, author: ChatParticipant, timestamp: LocalDateTime = LocalDateTime.now()): MessengerModel =
+  def addMessage(text: String, author: ChatParticipant, timestamp: Instant = Instant.now()): MessengerModel =
     addMessage(Message(text, author, timestamp))
 
 }
 
 object MessengerModel {
 
-  def fromJson(json: String): MessengerModel = Serializer.fromUpickleJson(MessengerModel.derived$ReadWriter).deserialize(json)
+  def fromJson(json: String): MessengerModel = Serializer.fromUpickleJson(using MessengerModel.derived$ReadWriter).deserialize(json)
 
   //def testCompletion: MessengerModel = MessengerModel(List(Message("Please write a short poem :)", Person("test", "test", SenderRole.USER, None))))
 
@@ -39,13 +40,13 @@ object MessengerModel {
   val pFallbackStudent = ChatParticipant("Student", "student", USER, Some("ST"))
 
   // may not be vals because of the implicit timestamp!
-  def prefaceExercise = Message("@assistant: the current exercise reads as follows:", pWorkbook, LocalDateTime.now())
+  def prefaceExercise = Message("@assistant: the current exercise reads as follows:", pWorkbook, Instant.now())
 
-  def prefaceStudentAnswer = Message("@assistant: the student's answer reads as follows. Note that the student might not have finished typing. In this case, just ask whether there are any questions:", pWorkbook, LocalDateTime.now())
+  def prefaceStudentAnswer = Message("@assistant: the student's answer reads as follows. Note that the student might not have finished typing. In this case, just ask whether there are any questions:", pWorkbook, Instant.now())
 
-  def prefaceGuidelines = Message("@assistant: the teacher explained the reasoning behind the exercise as follows to you:", pWorkbook, LocalDateTime.now())
+  def prefaceGuidelines = Message("@assistant: the teacher explained the reasoning behind the exercise as follows to you:", pWorkbook, Instant.now())
 
-  def langHint(lang: HumanLanguage) = Message(s"@assistant: Please provide feedback to the student. Do so in ${lang.name} or the language the student used last!", pWorkbook, LocalDateTime.now())
+  def langHint(lang: HumanLanguage) = Message(s"@assistant: Please provide feedback to the student. Do so in ${lang.name} or the language the student used last!", pWorkbook, Instant.now())
 
   def getScaffoldingInitMessage(pStudent: ChatParticipant, exerciseText: String, studentAnswer: String, scaffoldingHints: Seq[String], curLanguage: HumanLanguage): MessengerModel = {
     val exerciseMsgs = List(prefaceExercise, Message(exerciseText, pTeacher))

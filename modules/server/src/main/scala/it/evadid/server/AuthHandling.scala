@@ -1,5 +1,6 @@
 package it.evadid.server
 
+
 import it.evadid.core.datastructures.user.UserTokenInfo.SignedToken
 import it.evadid.core.datastructures.user.{User, UserTokenInfo}
 import it.evadid.core.util.io.serializer.DefaultSerializer
@@ -10,7 +11,7 @@ import play.api.libs.json.{Json, OFormat}
 import play.api.mvc.{Cookies, Headers}
 
 import java.net.InetAddress
-import java.time.{Clock, LocalDateTime}
+import java.time.{Clock, Instant}
 import scala.util.{Failure, Success}
 
 object AuthHandling {
@@ -31,7 +32,7 @@ object AuthHandling {
 
   def findAuthCookies(cookies: Cookies, headers: Headers): Seq[SignedToken] = {
     val claimedAuth: Seq[String] = cookies.filter(_.name == SignedToken.cookieKey).map(_.value).toList ++ headers.toSimpleMap.get(SignedToken.cookieKey).toList
-    val deserialized = it.evadid.core.util.io.Serializer.fromImplicitRW[SignedToken].tryDeserializeAll(claimedAuth)
+    val deserialized = it.evadid.core.util.io.Serializer.fromUpickleJson[SignedToken].tryDeserializeAll(claimedAuth)
     deserialized.inputAfterOperation.toList
   }
 
@@ -40,7 +41,7 @@ object AuthHandling {
       case Success(jsonClaims) => try {
         val parsedUserInfo = upickle.default.read[UserTokenInfo](jsonClaims.toString)
 
-        if (parsedUserInfo.expiresAt.isBefore(LocalDateTime.now())) {
+        if (parsedUserInfo.expiresAt.isBefore(Instant.now())) {
           logger.logWarn(s"Dismissed token because it expired at ${parsedUserInfo.expiresAt}!")
           false
         }
@@ -67,8 +68,8 @@ object AuthHandling {
 
 
   def createToken(user: User): SignedToken = {
-    val now = LocalDateTime.now()
-    val tokenInfo = UserTokenInfo(user, now, now.plusYears(1))
+    val now = Instant.now()
+    val tokenInfo = UserTokenInfo(user, now, now.atOffset(java.time.ZoneOffset.UTC).plusYears(1).toInstant)
     val claim = tokenInfo.toJson
     val token = JwtJson.encode(claim, serverSecret, algo)
     SignedToken(tokenInfo, token)

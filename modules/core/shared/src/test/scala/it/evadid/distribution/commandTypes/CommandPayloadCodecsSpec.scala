@@ -1,5 +1,8 @@
 package it.evadid.distribution.commandTypes
 
+import java.time.Instant
+
+
 import it.evadid.sql.BackendDatabase
 import it.evadid.distribution.clients.LocalExecutionClient
 import it.evadid.distribution.command.{ExecutionCommand, ExecutionCommandFactory, SerializedException}
@@ -49,12 +52,12 @@ class CommandPayloadCodecsSpec extends FunSuite {
   test("bulk histories round-trip with matching keys, redact credentials and reject ambiguous entries") {
     import SQLCommands.*
     import it.evadid.sql.*
-    import it.evadid.workbook.interaction.sync.UsageContext
-    import it.evadid.workbook.interaction.sync.model.InteractionHistoryJson
+    import it.evadid.workbook.sync.UsageContext
+    import it.evadid.workbook.sync.model.InteractionHistoryJson
     import it.evadid.workbook.abstractions.InteractionFormat.TextInteractionFormat
-    import it.evadid.workbook.interaction.variable.InteractionVariableHistory
+    import it.evadid.workbook.history.InteractionHistory
     val key = UsageContext("program", "workbook", "user").toSyncContext("one")
-    val history = InteractionHistoryJson.fromHistory(TextInteractionFormat, InteractionVariableHistory.empty[TextInteractionFormat.type])
+    val history = InteractionHistoryJson.fromHistory(TextInteractionFormat, InteractionHistory.empty(TextInteractionFormat))
     val credentials = DatabaseConfigWithCredentials("mysql", "localhost", "3306", "test", "private-user", "private-password")
     val request = BulkStoreToDbRequest(Vector(key), Vector(history), credentials, DatabaseHistoryFormat.BlobFormat)
     assertEquals(read[BulkStoreToDbRequest](write(request)), request)
@@ -67,13 +70,13 @@ class CommandPayloadCodecsSpec extends FunSuite {
 
   test("online accounts sync to IndexedDB and both backend formats; local accounts only to IndexedDB") {
     import it.evadid.core.datastructures.user.UserConfig
-    import it.evadid.workbook.interaction.sync.EventSyncStrategy.*
-    import it.evadid.workbook.interaction.sync.SyncInformation
-    import it.evadid.workbook.interaction.sync.destination.SyncDestinationDefinition.*
+    import it.evadid.workbook.sync.EventSyncStrategy.*
+    import it.evadid.workbook.sync.SyncInformation
+    import it.evadid.workbook.sync.destination.SyncDestinationDefinition.*
     val defaults = UserConfig.defaultSyncDestinations(isLocalAccount = false)
     assertEquals(defaults.size, 3)
     assertEquals(defaults.map(info => info.syncDestination -> info.syncStrategy).toSet,
-      Set[(it.evadid.workbook.interaction.sync.destination.SyncDestinationDefinition, it.evadid.workbook.interaction.sync.EventSyncStrategy)](defaultBrowserHistory -> SYNC_LAST, defaultDatabase -> SYNC_MAJOR, defaultBlobDatabase -> SYNC_MAJOR))
+      Set[(it.evadid.workbook.sync.destination.SyncDestinationDefinition, it.evadid.workbook.sync.EventSyncStrategy)](defaultBrowserHistory -> SYNC_LAST, defaultDatabase -> SYNC_MAJOR, defaultBlobDatabase -> SYNC_MAJOR))
     assertEquals(UserConfig.defaultSyncDestinations(isLocalAccount = true), Seq(SyncInformation(defaultBrowserHistory, SYNC_LAST)))
     assertEquals(UserConfig.defaults(isLocalAccount = true).isOnlineAccount, false)
     val online = UserConfig.defaults(isLocalAccount = false)
@@ -83,7 +86,7 @@ class CommandPayloadCodecsSpec extends FunSuite {
 
   test("full resets use an explicit current command and reject ambiguous scopes") {
     import it.evadid.sql.{DatabaseConfig, DatabaseHistoryFormat}
-    import it.evadid.workbook.interaction.sync.UsageContext
+    import it.evadid.workbook.sync.UsageContext
     val request = SQLCommands.DeleteInDbRequest(UsageContext("program", "workbook", "user"), None,
       BackendDatabase, DatabaseHistoryFormat.RelationalFormat, allWorkbooks = true)
     assertEquals(read[SQLCommands.DeleteInDbRequest](write(request)), request)
@@ -93,8 +96,8 @@ class CommandPayloadCodecsSpec extends FunSuite {
 
   test("default sync requests use the current explicit database wire fields on JVM and JavaScript") {
     import it.evadid.sql.{DatabaseConfig, DatabaseHistoryFormat}
-    import it.evadid.workbook.interaction.sync.UsageContext
-    val request = SQLCommands.FetchEventsFromDbRequest(UsageContext("edusquirrel", "workbookTest", "student"), Seq.empty, java.time.LocalDateTime.MIN, java.time.LocalDateTime.MAX, BackendDatabase, DatabaseHistoryFormat.RelationalFormat, it.evadid.workbook.interaction.sync.EventSyncStrategy.SYNC_EVERYTHING)
+    import it.evadid.workbook.sync.UsageContext
+    val request = SQLCommands.FetchEventsFromDbRequest(UsageContext("edusquirrel", "workbookTest", "student"), Seq.empty, java.time.Instant.MIN, java.time.Instant.MAX, BackendDatabase, DatabaseHistoryFormat.RelationalFormat, it.evadid.workbook.sync.EventSyncStrategy.SYNC_EVERYTHING)
     val encoded = writeJs(request)
     assertEquals(encoded("databaseConfig"), ujson.Str("BackendDatabase"))
     assert(!write(request).contains("herrgreubel"))
@@ -102,14 +105,14 @@ class CommandPayloadCodecsSpec extends FunSuite {
 
   test("both explicit database configurations work in destinations and requests while logs exclude credentials") {
     import it.evadid.sql.{DatabaseConfiguration, DatabaseConfig, DatabaseConfigWithCredentials, DatabaseHistoryFormat}
-    import it.evadid.workbook.interaction.sync.UsageContext
-    import it.evadid.workbook.interaction.sync.destination.SyncDestinationDefinition.*
+    import it.evadid.workbook.sync.UsageContext
+    import it.evadid.workbook.sync.destination.SyncDestinationDefinition.*
     val context = UsageContext("program", "scenario", "user")
     val supplied = DatabaseConfigWithCredentials("mysql", "localhost", "3306", "history", "private-owner", "private-password")
     List[DatabaseConfiguration](supplied.withoutCredentials, supplied).foreach { config =>
       val destination = SyncDestinationBasedOnHistoryDatabase(config, DatabaseHistoryFormat.RelationalFormat, buffered = false)
       assertEquals(read[SyncDestinationBasedOnHistoryDatabase](write(destination)), destination)
-      val request = SQLCommands.FetchEventsFromDbRequest(context, Seq.empty, java.time.LocalDateTime.MIN, java.time.LocalDateTime.MAX, config, DatabaseHistoryFormat.RelationalFormat, it.evadid.workbook.interaction.sync.EventSyncStrategy.SYNC_EVERYTHING)
+      val request = SQLCommands.FetchEventsFromDbRequest(context, Seq.empty, java.time.Instant.MIN, java.time.Instant.MAX, config, DatabaseHistoryFormat.RelationalFormat, it.evadid.workbook.sync.EventSyncStrategy.SYNC_EVERYTHING)
       assertEquals(read[SQLCommands.FetchEventsFromDbRequest](write(request)), request)
       val command = ExecutionCommand(SQLCommands.fetchEventsFromDbCommand.name, writeJs(request))
       val safe = command.stripPrivacySensitiveInformation()
@@ -356,17 +359,17 @@ class CommandPayloadCodecsSpec extends FunSuite {
     import it.evadid.core.datastructures.language.{AppLanguage, LanguageMapContentId}
     import it.evadid.core.datastructures.user.User
     import it.evadid.workbook.abstractions.InteractionFormat.TextInteractionFormat
-    import it.evadid.workbook.elements.structureElements.Workbook
-    import it.evadid.workbook.elements.structureElements.Workbook.WorkbookMetadata
-    import it.evadid.workbook.interaction.sync.{UpdateImportance, UsageContext}
-    import it.evadid.workbook.interaction.sync.model.InteractionHistoryJson
-    import it.evadid.workbook.interaction.variable.{InteractionVariableHistory, InteractionVariableState}
+    import it.evadid.workbook.elements.structure.Workbook
+    import it.evadid.workbook.elements.structure.Workbook.WorkbookMetadata
+    import it.evadid.workbook.sync.{UpdateImportance, UsageContext}
+    import it.evadid.workbook.sync.model.InteractionHistoryJson
+    import it.evadid.workbook.history.{InteractionHistory, InteractionState}
     import it.evadid.workbook.session.{AllWorkbookInfo, SessionData, WorkbookConfig}
     val learner = User("private name", "private-id", "private@example.invalid")
-    val history = InteractionHistoryJson.fromHistory(TextInteractionFormat, InteractionVariableHistory.empty[TextInteractionFormat.type]
-      .addState(InteractionVariableState("private answer", UpdateImportance.MAJOR, java.time.LocalDateTime.now())))
+    val history = InteractionHistoryJson.fromHistory(TextInteractionFormat, InteractionHistory.empty(TextInteractionFormat)
+      .addState(InteractionState("private answer", UpdateImportance.MAJOR, Instant.now())))
     val workbook = Workbook("workbook", WorkbookMetadata(Set.empty, Set.empty, LanguageMapContentId("test/title"), List(AppLanguage.English)), Seq.empty)
-    val session = SessionData(java.time.LocalDateTime.now(), Map(UsageContext("p", "workbook", learner.id).toSyncContext("a") -> history),
+    val session = SessionData(Instant.now(), Map(UsageContext("p", "workbook", learner.id).toSyncContext("a") -> history),
       learner, None, AllWorkbookInfo(workbook, WorkbookConfig(None), Map.empty))
     val logged = ExecutionCommand(SubmissionCommands.submitSessionCommand.name, writeJs(SubmissionCommands.SubmitSessionEvent(session)))
       .stripPrivacySensitiveInformation()

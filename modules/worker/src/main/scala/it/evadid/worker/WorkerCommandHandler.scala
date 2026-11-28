@@ -5,7 +5,7 @@ import it.evadid.distribution.clients.{ExecutionClient, ExecutionClientPool}
 import it.evadid.distribution.commandTypes.WorkerCommands.*
 import it.evadid.core.datastructures.vectorShapes.renderer.FlowchartGutter
 import it.evadid.vm.parsing.source.SourceParsing
-import it.evadid.workbook.model.qr.QrCode
+import it.evadid.workbook.interactions.qr.QrCode
 import scala.concurrent.{ExecutionContext, Future}
 
 /** Runs only inside worker.js; jobs never access DOM or server credentials. */

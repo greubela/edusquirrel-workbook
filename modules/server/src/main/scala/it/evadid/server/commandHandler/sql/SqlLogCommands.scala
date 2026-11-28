@@ -11,8 +11,8 @@ import it.evadid.sql.{BackendDatabase, CommandLog, DatabaseConfigWithCredentials
 import it.evadid.util.logging.Logger
 
 import java.net.InetAddress
-import java.sql.{Connection, Timestamp}
-import java.time.LocalDateTime
+import java.sql.Connection
+import java.time.Instant
 import scala.util.Using
 import scala.util.control.NonFatal
 import upickle.default.{read, write}
@@ -26,7 +26,7 @@ object SqlLogCommands {
   private[server] def submittedSessionForLog(command: ExecutionCommand): String =
     write(read[SubmitSessionEvent](command.json).sessionData.withoutCredentials)
 
-  def handleLog(commandReceived: LocalDateTime, executionCommand: ExecutionCommand, verifiedToken: Option[SignedToken], remoteAddress: InetAddress, logger: Logger): Unit = {
+  def handleLog(commandReceived: Instant, executionCommand: ExecutionCommand, verifiedToken: Option[SignedToken], remoteAddress: InetAddress, logger: Logger): Unit = {
     executionCommand.storeLogIntoTable.foreach { log =>
       try Using.resource(DatabaseRequestConnection.resolve(log.table.inDatabase.getOrElse(BackendDatabase),
         DatabaseConfigWithCredentials.readFromEnv()).newConnection()) { connection =>
@@ -36,7 +36,7 @@ object SqlLogCommands {
     }
   }
 
-  private[sql] def handleLog(commandReceived: LocalDateTime, executionCommand: ExecutionCommand,
+  private[sql] def handleLog(commandReceived: Instant, executionCommand: ExecutionCommand,
       verifiedToken: Option[SignedToken], remoteAddress: InetAddress, logger: Logger, connection: Connection): Unit = {
     val control = SqlLogCommands(connection, logger)
     val res = control.logCommand(commandReceived, executionCommand, verifiedToken, remoteAddress, executionCommand.storeLogIntoTable)
@@ -49,9 +49,9 @@ class SqlLogCommands(connection: Connection, logger: Logger) {
 
   private val statements = SqlStatements(connection, logger)
 
-  def logCommand(commandReceived: LocalDateTime, executionCommand: ExecutionCommand, verifiedToken: Option[SignedToken],
+  def logCommand(commandReceived: Instant, executionCommand: ExecutionCommand, verifiedToken: Option[SignedToken],
                  remoteAddress: InetAddress, storeLogIntoTable: Option[CommandLog]): Int = {
-    val timestamp = Timestamp.valueOf(commandReceived)
+    val timestamp = commandReceived
     val address = remoteAddress.getHostAddress
     val userId = verifiedToken.map(_.info.user.id).getOrElse(User.Anonymous.id)
     storeLogIntoTable.fold(0) {
@@ -64,7 +64,7 @@ class SqlLogCommands(connection: Connection, logger: Logger) {
   }
 
   /** Inserts one row; column names are fixed by [[CommandLog]] and the table name is a validated identifier. */
-  private def insert(table: DatabaseTable, row: Seq[(String, Timestamp | String)]): Int =
+  private def insert(table: DatabaseTable, row: Seq[(String, Instant | String)]): Int =
     statements.update(s"INSERT INTO `${table.name}` (${row.map(column => s"`${column._1}`").mkString(", ")}) " +
       s"VALUES (${row.map(_ => "?").mkString(", ")})", row.map(_._2)*)
 

@@ -1,7 +1,7 @@
 package it.evadid.vm.conversion.javaexpression
 
 import it.evadid.core.datastructures.language.AppLanguage.{Java, Python, SnapLanguage}
-import it.evadid.workbook.elements.interactionElements.programming.state.*
+import it.evadid.workbook.interactions.programming.state.*
 import it.evadid.vm.code.tree.BeExpressionReference
 import it.evadid.vm.code.usage.*
 import it.evadid.vm.types.*

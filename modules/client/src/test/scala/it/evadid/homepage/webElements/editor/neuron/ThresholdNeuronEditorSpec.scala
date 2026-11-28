@@ -3,7 +3,7 @@ package it.evadid.homepage.webElements.editor.neuron
 import com.raquo.laminar.api.L.*
 import it.evadid.core.datastructures.language.LanguageMapContentId
 import it.evadid.homepage.webElements.UiDomSuite
-import it.evadid.workbook.elements.interactionElements.neuron.{NeuronExample, NeuronParameters}
+import it.evadid.workbook.interactions.neuron.{NeuronExample, NeuronParameters}
 import org.scalajs.dom
 
 class ThresholdNeuronEditorSpec extends UiDomSuite {

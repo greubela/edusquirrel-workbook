@@ -4,7 +4,7 @@ import it.evadid.core.datastructures.language.LanguageMapContentId
 import it.evadid.homepage.webElements.UiDomSuite
 import it.evadid.homepage.webElements.editor.code.EditorDomSuite
 import it.evadid.homepage.workbook.htmlRenderer.HtmlRenderFactory
-import it.evadid.workbook.elements.interactionElements.matching.MatchingInteraction
+import it.evadid.workbook.interactions.matching.MatchingInteraction
 import org.scalajs.dom
 import scala.scalajs.js
 
@@ -80,10 +80,10 @@ class HtmlMatchingInteractionRendererSpec extends UiDomSuite {
       assert(left(root, 0).classList.contains("matching-item--awaiting"))
       click(left(root, 0))
       assert(!isSelected(right))
-      assertEquals(interaction.interactionVariable.currentValue.selectedRightIndicesByLeftIndex, Seq(Some(1), None))
+      assertEquals(pageInfo.interactions.currentValue(interaction).selectedRightIndicesByLeftIndex, Seq(Some(1), None))
       click(left(root, 1))
       click(one(root, ".matching-item--right[data-index='0']"))
-      assertEquals(interaction.interactionVariable.currentValue.selectedRightIndicesByLeftIndex, Seq(Some(1), Some(0)))
+      assertEquals(pageInfo.interactions.currentValue(interaction).selectedRightIndicesByLeftIndex, Seq(Some(1), Some(0)))
     })
   }
 

@@ -3,8 +3,8 @@ package it.evadid.homepage.webElements.editor.plot
 import com.raquo.laminar.api.L.*
 import it.evadid.core.datastructures.language.LanguageMapContentId
 import it.evadid.homepage.webElements.UiDomSuite
-import it.evadid.workbook.elements.interactionElements.plot.CoordinatePlotInteraction
-import it.evadid.workbook.model.plot.{PlotAnswer, PlotAxis, PlotPoint}
+import it.evadid.workbook.interactions.plot.CoordinatePlotInteraction
+import it.evadid.workbook.interactions.plot.{PlotAnswer, PlotAxis, PlotPoint}
 import org.scalajs.dom
 
 class CoordinatePlotEditorSpec extends UiDomSuite {

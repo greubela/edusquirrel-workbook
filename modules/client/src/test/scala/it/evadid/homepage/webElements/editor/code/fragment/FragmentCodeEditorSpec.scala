@@ -8,7 +8,7 @@ import it.evadid.homepage.webElements.editor.code.PythonEditor.{PythonClassEdito
 import it.evadid.util.logging.Logger
 import it.evadid.util.logging.derived.PrintToStdLogger
 import it.evadid.vm.naming.BeEntityName
-import it.evadid.workbook.elements.interactionElements.programming.state.{ProgrammingStateJavaStructured, ProgrammingStatePythonStructured}
+import it.evadid.workbook.interactions.programming.state.{ProgrammingStateJavaStructured, ProgrammingStatePythonStructured}
 
 import scala.concurrent.Future
 import scala.scalajs.concurrent.JSExecutionContext.Implicits.queue
@@ -147,7 +147,7 @@ class FragmentCodeEditorSpec extends EditorDomSuite {
   }
 
   test("a statement typed inside the method of an answer view widens nothing and reaches the answer") {
-    import it.evadid.workbook.elements.interactionElements.programming.state.ProgrammingState
+    import it.evadid.workbook.interactions.programming.state.ProgrammingState
     // As in Eva: the editor's answer is a view of the central answer.
     val central = Var[ProgrammingState](ProgrammingStateJavaStructured(helperClass + "\n\n" + mainClass))
     val view = it.evadid.homepage.webElements.editor.code.ProgrammingStateView(central, ProgrammingStateJavaStructured(Map.empty)) {

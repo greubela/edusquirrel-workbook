@@ -1,6 +1,6 @@
 package it.evadid.homepage.webElements.editor.code.SnapEditor.execution
 
-import it.evadid.workbook.elements.interactionElements.programming.state.snap.SnapTurtleCatalog
+import it.evadid.workbook.interactions.programming.state.snap.SnapTurtleCatalog
 import munit.FunSuite
 import scala.scalajs.js
 

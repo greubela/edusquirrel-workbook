@@ -3,7 +3,6 @@ package it.evadid.core.datastructures.vectorShapes.svg
 import it.evadid.core.datastructures.geometry.Point
 import it.evadid.core.datastructures.vectorShapes.svg.SvgPathBuilderCommand.*
 import it.evadid.core.datastructures.vectorShapes.svg.TurtlePathBuilder.{TurtlePenStyle, TurtleState, TurtleStyledSegment}
-import it.evadid.core.util.io.serializer.AutoSerializable.*
 
 
 case class TurtlePathBuilder[T : Fractional](

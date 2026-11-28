@@ -1,5 +1,6 @@
 package it.evadid.server.commandHandler.sql
 
+
 import it.evadid.server.database.{UserAccountRows, newConnection}
 
 
@@ -22,7 +23,7 @@ import it.evadid.server.SubmissionFixtures
 import it.evadid.sql.{CommandLog, DatabaseTable}
 import it.evadid.workbook.session.SessionData
 import upickle.default.{read, writeJs}
-import java.time.LocalDateTime
+import java.time.Instant
 import scala.concurrent.Await
 import scala.concurrent.duration.*
 import scala.io.Source
@@ -88,10 +89,10 @@ class UserAccountMysqlSpec extends FunSuite {
     val credentials = UserCredentials(singleAccessToken = Some(SingleAccessToken("ephemeral-login-secret")),
       llmApiConfig = Some(it.evadid.llm.LlmConfiguration("https://fixture.invalid/chat", "model", Some("ephemeral-llm-secret"))),
       databaseConfig = Some(DatabaseConfigWithCredentials("mysql", "fixture.invalid", "3306", "history", "owner", "ephemeral-db-secret")))
-    val destination = it.evadid.workbook.interaction.sync.destination.SyncDestinationDefinition.SyncDestinationBasedOnHistoryDatabase(
+    val destination = it.evadid.workbook.sync.destination.SyncDestinationDefinition.SyncDestinationBasedOnHistoryDatabase(
       credentials.databaseConfig.get, it.evadid.sql.DatabaseHistoryFormat.RelationalFormat, buffered = false)
-    val settings = UserConfig(List(it.evadid.workbook.interaction.sync.SyncInformation(destination,
-      it.evadid.workbook.interaction.sync.EventSyncStrategy.SYNC_MAJOR)), isOnlineAccount = true)
+    val settings = UserConfig(List(it.evadid.workbook.sync.SyncInformation(destination,
+      it.evadid.workbook.sync.EventSyncStrategy.SYNC_MAJOR)), isOnlineAccount = true)
     val info = AllUserInfo(alice, credentials, settings)
     assert(Await.result(SqlUserCommands.handleCreateAccountCommand(CreateAccountRequest(info), logger), 10.seconds).accountCreated)
     Await.result(SqlUserCommands.handleUpdateAccountCommand(UpdateAccountRequest(info), logger), 10.seconds)
@@ -115,7 +116,7 @@ class UserAccountMysqlSpec extends FunSuite {
   test("invalid stored login codes are discarded and replaced rather than preventing login") {
     assert(register().accountCreated)
     val renewed = queries { control =>
-      control.upsertToken(alice.id, SingleAccessToken("", LocalDateTime.now().plusHours(1)))
+      control.upsertToken(alice.id, SingleAccessToken("", Instant.now().plus(java.time.Duration.ofHours(1))))
       assertEquals(control.findAccessTokens(alice.id), None)
       val token = control.ensureAndGetUserTokenFromDb(alice.id, logger).get
       assert(token.token.matches("[0-9a-f]{40}"))
@@ -166,7 +167,7 @@ class UserAccountMysqlSpec extends FunSuite {
     assert(register().accountCreated)
     queries { control =>
       assertEquals(control.ensureAndGetUserTokenFromDb("missing", logger), None)
-      val before = LocalDateTime.now().minusSeconds(1)
+      val before = Instant.now().minusSeconds(1)
       val first = control.ensureAndGetUserTokenFromDb(alice.id, logger).get
       assert(first.expires.isAfter(before))
       val stored = control.findAccessTokens(alice.id).get
@@ -175,12 +176,12 @@ class UserAccountMysqlSpec extends FunSuite {
       assert(math.abs(java.time.Duration.between(first.expires, stored.expires).toNanos) <= 1000)
       assertEquals(control.ensureAndGetUserTokenFromDb(alice.id, logger), Some(stored))
 
-      val expired = SingleAccessToken("expired-fixture", LocalDateTime.now().minusDays(1).withNano(123456000))
+      val expired = SingleAccessToken("expired-fixture", Instant.now().minus(java.time.Duration.ofDays(1)).truncatedTo(java.time.temporal.ChronoUnit.SECONDS).plusNanos(123456000))
       control.upsertToken(alice.id, expired)
       assertEquals(control.findAccessTokens(alice.id), Some(expired))
       val renewed = control.ensureAndGetUserTokenFromDb(alice.id, logger).get
       assert(renewed.token != expired.token)
-      assert(renewed.expires.isAfter(LocalDateTime.now()))
+      assert(renewed.expires.isAfter(Instant.now()))
       assertEquals(control.findAccessTokens(alice.id).map(_.token), Some(renewed.token))
     }
   }
@@ -188,20 +189,20 @@ class UserAccountMysqlSpec extends FunSuite {
   test("login validates the stored code, account and database expiry rather than the submitted expiry") {
     assert(register().accountCreated)
     assert(register(bob).accountCreated)
-    val token = SingleAccessToken("alice-fixture", LocalDateTime.now().plusHours(1).withNano(123456000))
+    val token = SingleAccessToken("alice-fixture", Instant.now().plus(java.time.Duration.ofHours(1)).truncatedTo(java.time.temporal.ChronoUnit.SECONDS).plusNanos(123456000))
     queries(_.upsertToken(alice.id, token))
     assert(!login(alice.mail, token.copy(token = "wrong")).loginSucceeded)
     assert(!login(bob.mail, token).loginSucceeded)
     val unknown = login("missing@example.invalid", token)
     assert(!unknown.userKnown)
     assert(!unknown.loginSucceeded)
-    val response = login("ALICE@EXAMPLE.INVALID", token.copy(expires = LocalDateTime.now().minusYears(1)))
+    val response = login("ALICE@EXAMPLE.INVALID", token.copy(expires = Instant.now().minus(java.time.Duration.ofDays(366))))
     assert(response.loginSucceeded)
     assertEquals(response.allUserInfo.map(_.user), Some(normalized(alice)))
     assertEquals(response.allUserInfo.map(_.config), Some(config))
     assert(response.allUserInfo.flatMap(_.credentials.signedBackendToken).exists(AuthHandling.isTokenValid(logger, _)))
 
-    queries(_.upsertToken(alice.id, token.copy(expires = LocalDateTime.now().minusDays(1))))
+    queries(_.upsertToken(alice.id, token.copy(expires = Instant.now().minus(java.time.Duration.ofDays(1)))))
     assert(!login(alice.mail, token).loginSucceeded)
   }
 
@@ -249,9 +250,9 @@ class UserAccountMysqlSpec extends FunSuite {
     val token = register().token.get
     val address = InetAddress.getByName("2001:db8::42")
     val ordinary = ExecutionCommand("login-command", ujson.Obj("event" -> "fixture"))
-    SqlLogCommands.handleLog(LocalDateTime.now(), ordinary, Some(token), address, logger)
+    SqlLogCommands.handleLog(Instant.now(), ordinary, Some(token), address, logger)
     val sync = ExecutionCommand(SQLCommands.StoreToDbCommand.name, ujson.Obj("event" -> "sync fixture"))
-    SqlLogCommands.handleLog(LocalDateTime.now(), sync, None, InetAddress.getByName("192.0.2.12"), logger)
+    SqlLogCommands.handleLog(Instant.now(), sync, None, InetAddress.getByName("192.0.2.12"), logger)
     assertEquals(logRows("commandLog").map(_.take(3)), List(List(ordinary.name, alice.id, address.getHostAddress)))
     assertEquals(logRows("syncedLog").map(_.take(3)), List(List(sync.name, User.Anonymous.id, "192.0.2.12")))
   }
@@ -259,12 +260,12 @@ class UserAccountMysqlSpec extends FunSuite {
   test("logging preserves privacy filtering and disabled destinations perform no SQL") {
     val command = ExecutionCommand(LLMCommands.feedbackLlmCommandFactory.name,
       ujson.Obj("prompt" -> "private learner answer", "systemPrompt" -> "private instructions"))
-    SqlLogCommands.handleLog(LocalDateTime.now(), command, None, InetAddress.getLoopbackAddress, logger)
+    SqlLogCommands.handleLog(Instant.now(), command, None, InetAddress.getLoopbackAddress, logger)
     val payload = logRows("commandLog").head(3)
     assert(ujson.read(payload)("json")("redacted").bool)
     assert(!payload.contains("private"))
     val disabled = ExecutionCommandFactory[String, String]("disabled", storeLogIntoTable = None)
-    val result = SqlLogCommands(null, logger).logCommand(LocalDateTime.now(), ExecutionCommand(disabled.name, ujson.Obj()),
+    val result = SqlLogCommands(null, logger).logCommand(Instant.now(), ExecutionCommand(disabled.name, ujson.Obj()),
       None, InetAddress.getLoopbackAddress, disabled.storeLogIntoTable)
     assertEquals(result, 0)
     assertEquals(logRows("commandLog").size, 1)
@@ -278,7 +279,7 @@ class UserAccountMysqlSpec extends FunSuite {
       Using.resource(connection.createStatement())(_.executeUpdate("CREATE TABLE `customCommandLog` LIKE `commandLog`"))
       try {
         val command = ExecutionCommand(definition.name, ujson.Obj("event" -> "custom"))
-        val result = SqlLogCommands(connection, logger).logCommand(LocalDateTime.now(), command,
+        val result = SqlLogCommands(connection, logger).logCommand(Instant.now(), command,
           None, InetAddress.getByName("192.0.2.1"), definition.storeLogIntoTable)
         assertEquals(result, 1)
         assertEquals(logRows("customCommandLog").map(_.take(3)),
@@ -291,14 +292,14 @@ class UserAccountMysqlSpec extends FunSuite {
   test("an anonymous submission is logged once in submissionLog, without credentials and outside commandLog") {
     val session = SubmissionFixtures.session()
     val command = ExecutionCommand(submitSessionCommand.name, writeJs(SubmitSessionEvent(session)))
-    val received = LocalDateTime.of(2026, 11, 27, 10, 16, 0, 123456000)
+    val received = java.time.LocalDateTime.of(2026, 11, 27, 10, 16, 0, 123456000).toInstant(java.time.ZoneOffset.UTC)
     SqlLogCommands.handleLog(received, command, None, InetAddress.getByName("2001:db8::7"), logger)
     val rows = withDatabase { connection =>
       Using.resource(connection.createStatement()) { statement =>
         Using.resource(statement.executeQuery(
           "SELECT `timestamp`, `ipAddress`, `userid`, `sessionDataSerialized` FROM `submissionLog`")) { result =>
           Iterator.continually(result.next()).takeWhile(identity).map(_ =>
-            (result.getTimestamp(1).toLocalDateTime, result.getString(2), result.getString(3), result.getString(4))).toList
+            (it.evadid.server.database.SqlStatements.instant(result.getString(1)), result.getString(2), result.getString(3), result.getString(4))).toList
         }
       }
     }

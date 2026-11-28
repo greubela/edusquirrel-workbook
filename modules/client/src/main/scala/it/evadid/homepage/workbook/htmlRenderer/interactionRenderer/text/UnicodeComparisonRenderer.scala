@@ -1,5 +1,7 @@
 package it.evadid.homepage.workbook.htmlRenderer.interactionRenderer.text
 
+import it.evadid.workbook.control.InteractionSignals.*
+
 import it.evadid.homepage.control.model.FullInfo
 
 import com.raquo.laminar.api.L.*
@@ -7,13 +9,13 @@ import it.evadid.homepage.webElements.basic.LabelSelection
 import it.evadid.core.datastructures.state.StateHelper.StateBasedVar
 import it.evadid.homepage.workbook.htmlRenderer.HtmlRenderFactory.LineBasedRenderingFactory
 import it.evadid.homepage.workbook.htmlRenderer.atomarLineRenderings.AtomarLineRendering
-import it.evadid.workbook.elements.interactionElements.text.*
-import it.evadid.workbook.model.text.UnicodeText
-import it.evadid.workbook.interaction.sync.UpdateImportance
+import it.evadid.workbook.interactions.text.*
+import it.evadid.workbook.interactions.text.UnicodeText
+import it.evadid.workbook.sync.UpdateImportance
 
 case object UnicodeComparisonRenderer extends LineBasedRenderingFactory[UnicodeComparisonInteraction] {
   override protected def createRendering(fullInfo: FullInfo, e: UnicodeComparisonInteraction): AtomarLineRendering = {
-    val state = e.interactionVariable.createBoundStateWithUpdateImportance(UpdateImportance.MAJOR, fullInfo.workbookContextInformation).toAirstreamVar
+    val state = fullInfo.interactions.boundVar(e, UpdateImportance.MAJOR)
     val locked = e.isDisabledState.toAirstreamVar.signal
     def localized(key: String): Signal[String] = laminarHelper(fullInfo).plaintextStringSignal(s"digitalWorkbooks/$key")
     def inputField(first: Boolean): Element = label(

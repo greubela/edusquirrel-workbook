@@ -1,26 +1,36 @@
 package it.evadid.workbook.abstractions.grading
 
-import it.evadid.workbook.interaction.sync.UpdateImportance
-import it.evadid.core.util.io.Serializer
+import it.evadid.workbook.sync.UpdateImportance
 import it.evadid.distribution.command.SerializedException
-import it.evadid.workbook.abstractions.{FeedbackEntity, InteractionFormat}
+import it.evadid.workbook.abstractions.{FeedbackEntity, GraderReference, InteractionFormat}
 import it.evadid.workbook.abstractions.grading.GradingStatus.*
-import it.evadid.workbook.elements.interactionElements.gpt.TextInputLlmGrader
-import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseRegular.{ProgramDataTestGrader, ProgrammingUnitTestGrader}
-import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseTurtle.{RecreateShapeGrader, TurtleCommandUsageGrader, ProgramStructureGrader}
-import it.evadid.workbook.elements.interactionElements.slideshow.SlideshowGrader
-import it.evadid.workbook.elements.interactionElements.choice.ChoiceGrader
-import it.evadid.workbook.elements.interactionElements.reorderExercise.{ReorderCodeGrader, ReorderMapIdGrader}
-import it.evadid.workbook.elements.interactionElements.table.TableCellGrader
-import it.evadid.workbook.meta.ExecutionContextInformation
+import it.evadid.workbook.interactions.gpt.TextInputLlmGrader
+import it.evadid.workbook.interactions.programming.programmingExerciseRegular.{ProgramDataTestGrader, ProgrammingUnitTestGrader}
+import it.evadid.workbook.interactions.programming.programmingExerciseTurtle.{RecreateShapeGrader, TurtleCommandUsageGrader, ProgramStructureGrader}
+import it.evadid.workbook.interactions.slideshow.SlideshowGrader
+import it.evadid.workbook.interactions.choice.ChoiceGrader
+import it.evadid.workbook.interactions.reorderExercise.{ReorderCodeGrader, ReorderMapIdGrader}
+import it.evadid.workbook.interactions.table.TableCellGrader
+import it.evadid.workbook.interactions.matching.MatchingGrader
+import it.evadid.workbook.abstractions.ExecutionContextInformation
 import upickle.default.*
+
+import scala.reflect.ClassTag
 
 import scala.concurrent.{ExecutionContext, Future}
 
 trait WorkbookInteractionGrader[T, GA] {
-  protected def identityContent: ujson.Value = it.evadid.core.util.crypto.ContentIdentity.json(this)
+  /** The stable name this grader type is persisted and identified under, independent of its class name. */
+  def persistedType: String
+  /** The grader's persisted type and parameters; two graders of one type differ by their parameters. */
+  protected def identityContent: ujson.Value = this match {
+    case product: Product => it.evadid.core.util.crypto.ContentIdentity.typed(persistedType, product)
+    case _ => throw IllegalArgumentException(s"$persistedType graders need an explicit identityContent")
+  }
   private lazy val contentKey: String = it.evadid.core.util.crypto.ContentIdentity.key(identityContent)
   def key: String = contentKey
+  /** How saved feedback refers to this grader. */
+  final def reference: GraderReference = GraderReference(key)
 
   given ec: ExecutionContext = ExecutionContext.global
 
@@ -59,25 +69,39 @@ trait WorkbookInteractionGrader[T, GA] {
 
 object WorkbookInteractionGrader {
 
-  type WorkbookInteractionGraderUntyped = WorkbookInteractionGrader[?, ?]
+  /** The codec of one grader type, stored under its persisted name in `serializedType`. */
+  final class Codec[G <: WorkbookInteractionGrader[?, ?]](val persistedType: String, val readWriter: ReadWriter[G], val runtimeClass: Class[?])
 
-  private val knownGraderReadWrites: Map[String, Serializer[WorkbookInteractionGraderUntyped]] = Map(
-    Serializer.serializerForSubclass(classOf[ChoiceGrader]),
-    Serializer.serializerForSubclass(classOf[ReorderCodeGrader]),
-    Serializer.serializerForSubclass(classOf[ReorderMapIdGrader]),
-    Serializer.serializerForSubclass(classOf[TableCellGrader]),
-    Serializer.serializerForSubclass(classOf[SlideshowGrader]),
-    Serializer.serializerForSubclass(classOf[RecreateShapeGrader]),
-    Serializer.serializerForSubclass(classOf[TurtleCommandUsageGrader]),
-    Serializer.serializerForSubclass(classOf[ProgramStructureGrader]),
-    Serializer.serializerForSubclass(classOf[TextInputLlmGrader]),
-    Serializer.serializerForSubclass(classOf[ProgrammingUnitTestGrader]),
-    Serializer.serializerForSubclass(classOf[ProgramDataTestGrader])
-  )
+  def codec[G <: WorkbookInteractionGrader[?, ?]](persistedType: String)(using readWriter: ReadWriter[G], tag: ClassTag[G]): Codec[G] =
+    Codec(persistedType, readWriter, tag.runtimeClass)
 
-  val universalSerializer: Serializer[WorkbookInteractionGraderUntyped] = Serializer.universalTraitSerializer(knownGraderReadWrites)
+  /** Reads and writes the graders of `codecs`, tagged with their persisted type. */
+  def readWriter[T, A](codecs: Codec[? <: WorkbookInteractionGrader[T, A]]*): ReadWriter[WorkbookInteractionGrader[T, A]] = {
+    val byName = codecs.map(codec => codec.persistedType -> codec).toMap
+    require(byName.size == codecs.size, s"Grader types must have distinct persisted names: ${codecs.map(_.persistedType)}")
+    def codecOf(name: String): Codec[? <: WorkbookInteractionGrader[T, A]] =
+      byName.getOrElse(name, throw SerializedException(s"No grader codec registered for '$name' (known: ${byName.keySet})"))
+    readwriter[ujson.Value].bimap[WorkbookInteractionGrader[T, A]](
+      grader => {
+        val codec = codecOf(grader.persistedType).asInstanceOf[Codec[WorkbookInteractionGrader[T, A]]]
+        if !codec.runtimeClass.isInstance(grader) then
+          throw SerializedException(s"Grader ${grader.persistedType} does not have the type registered under that name")
+        val json = writeJs(grader)(using codec.readWriter)
+        json.obj.update("serializedType", grader.persistedType)
+        json
+      },
+      json => {
+        val name = json.obj.get("serializedType").map(_.str)
+          .getOrElse(throw SerializedException("Missing 'serializedType' of a saved grader"))
+        read[WorkbookInteractionGrader[T, A]](json)(using codecOf(name).readWriter.asInstanceOf[ReadWriter[WorkbookInteractionGrader[T, A]]])
+      })
+  }
 
-  given [T: ReadWriter, A: ReadWriter]: ReadWriter[WorkbookInteractionGrader[T, A]] = WorkbookInteractionGrader.universalSerializer.deriveForSubclass[WorkbookInteractionGrader[T, A]].uPickleReadWrite
+  /** Every grader type; formats restrict their graders to the types they accept. */
+  lazy val knownCodecs: Seq[Codec[? <: WorkbookInteractionGrader[?, ?]]] = List(ChoiceGrader.codec, ReorderCodeGrader.codec,
+    ReorderMapIdGrader.codec, TableCellGrader.codec, SlideshowGrader.codec, RecreateShapeGrader.codec, TurtleCommandUsageGrader.codec,
+    ProgramStructureGrader.codec, TextInputLlmGrader.codec, ProgrammingUnitTestGrader.codec, ProgramDataTestGrader.codec, MatchingGrader.codec)
 
-
+  given [T, A]: ReadWriter[WorkbookInteractionGrader[T, A]] =
+    readWriter(knownCodecs.map(_.asInstanceOf[Codec[? <: WorkbookInteractionGrader[T, A]]])*)
 }

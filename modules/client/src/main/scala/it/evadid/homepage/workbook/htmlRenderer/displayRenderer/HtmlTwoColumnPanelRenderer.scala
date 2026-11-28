@@ -6,7 +6,7 @@ import com.raquo.laminar.api.L.*
 import it.evadid.homepage.workbook.htmlRenderer.HtmlRenderFactory
 import it.evadid.homepage.workbook.htmlRenderer.HtmlRenderFactory.LineBasedRenderingFactory
 import it.evadid.homepage.workbook.htmlRenderer.atomarLineRenderings.AtomarLineRendering
-import it.evadid.workbook.elements.displayElements.TwoColumnPanel
+import it.evadid.workbook.elements.display.TwoColumnPanel
 
 object HtmlTwoColumnPanelRenderer extends LineBasedRenderingFactory[TwoColumnPanel] {
   override protected def createRendering(fullInfo: FullInfo, workbookElement: TwoColumnPanel): AtomarLineRendering =

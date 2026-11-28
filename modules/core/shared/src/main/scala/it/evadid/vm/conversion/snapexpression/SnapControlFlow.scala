@@ -1,6 +1,6 @@
 package it.evadid.vm.conversion.snapexpression
 
-import it.evadid.workbook.elements.interactionElements.programming.state.snap.{SnapModuleBlocks, SnapTurtleCatalog, SnapVocabulary}
+import it.evadid.workbook.interactions.programming.state.snap.{SnapModuleBlocks, SnapTurtleCatalog, SnapVocabulary}
 
 import it.evadid.core.datastructures.language.AppLanguage.English
 import it.evadid.core.datastructures.vectorShapes.svg.TurtleCommand
@@ -14,7 +14,7 @@ import it.evadid.vm.code.usage.{BeAssignVariable, BeCallTarget, BeFunctionCall, 
 import it.evadid.vm.conversion.parsed.DefaultDefinitions
 import it.evadid.vm.naming.{BeEntityName, NamingStyle}
 import it.evadid.vm.types.{BeDataType, BeDataValueLiteral, BeUseValueReference}
-import it.evadid.workbook.elements.interactionElements.programming.state.snap.SnapTurtleCatalog.SnapInputKind
+import it.evadid.workbook.interactions.programming.state.snap.SnapTurtleCatalog.SnapInputKind
 
 /**
  * Shared helpers for Snap control-flow blocks ↔ BeProgram AST mapping.

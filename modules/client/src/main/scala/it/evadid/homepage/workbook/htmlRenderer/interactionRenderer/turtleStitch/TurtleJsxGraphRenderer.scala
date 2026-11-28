@@ -3,7 +3,7 @@ package it.evadid.homepage.workbook.htmlRenderer.interactionRenderer.turtleStitc
 import com.raquo.laminar.api.L.*
 import it.evadid.core.datastructures.geometry.Point
 import it.evadid.core.datastructures.vectorShapes.svg.TurtleCommand
-import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseTurtle.{TurtleGradingLogic, TurtleGraphic}
+import it.evadid.workbook.interactions.programming.programmingExerciseTurtle.{TurtleGradingLogic, TurtleGraphic}
 import TurtleGradingLogic.{GradingLine, TurtleGraphicComparison, TurtleLineStatus}
 import it.evadid.facades
 import it.evadid.facades.JSXGraph
