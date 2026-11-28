@@ -14,7 +14,7 @@ jobs:
     timeout-minutes: 15
     env:
       TZ: Europe/Berlin
-      COURSIER_REPOSITORIES: https://maven-central.storage-download.googleapis.com/maven2|https://repo.maven.apache.org/maven2
+      COURSIER_REPOSITORIES: https://repo.maven.apache.org/maven2|https://maven-central.storage-download.googleapis.com/maven2
       SBT_OPTS: >-
         -Dsbt.override.build.repos=true
         -Dsbt.repository.config=${{ github.workspace }}/project/repositories
