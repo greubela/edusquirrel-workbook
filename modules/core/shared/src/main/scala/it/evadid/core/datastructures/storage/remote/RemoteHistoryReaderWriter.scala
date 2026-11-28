@@ -2,9 +2,9 @@ package it.evadid.core.datastructures.storage.remote
 
 import it.evadid.util.logging.derived.SyncLogger
 import it.evadid.workbook.abstractions.InteractionFormat
-import it.evadid.workbook.interaction.variable.InteractionVariableHistory
-import it.evadid.workbook.interaction.sync.SyncSuccess
-import it.evadid.workbook.interaction.variable.events.{EventId, InteractionEvent}
+import it.evadid.workbook.model.history.InteractionVariableHistory
+import it.evadid.workbook.sync.SyncSuccess
+import it.evadid.workbook.model.history.events.{EventId, InteractionEvent}
 import java.time.LocalDateTime
 import scala.concurrent.Future
 
@@ -14,9 +14,9 @@ trait RemoteHistoryDataReader[K, F <: InteractionFormat] {
     * Apply the strategy to the stored history before applying the timestamp bounds.
     */
   def fetchEventsBetween(logger: SyncLogger, keys: Seq[K], starting: LocalDateTime, until: LocalDateTime,
-      strategy: it.evadid.workbook.interaction.sync.EventSyncStrategy): Future[Map[K, Seq[InteractionEvent[F]]]]
+      strategy: it.evadid.workbook.sync.EventSyncStrategy): Future[Map[K, Seq[InteractionEvent[F]]]]
 
-  def fetchAll(logger: SyncLogger, keys: Set[K], strategy: it.evadid.workbook.interaction.sync.EventSyncStrategy): Future[Map[K, Seq[InteractionEvent[F]]]] =
+  def fetchAll(logger: SyncLogger, keys: Set[K], strategy: it.evadid.workbook.sync.EventSyncStrategy): Future[Map[K, Seq[InteractionEvent[F]]]] =
     fetchEventsBetween(logger, keys.toSeq, LocalDateTime.MIN, LocalDateTime.MAX, strategy)
 
   def flush(logger: SyncLogger, forceFlush: Boolean): Unit = ()

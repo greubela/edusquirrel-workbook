@@ -2,7 +2,6 @@ package it.evadid.homepage.webElements.editor.code.SnapEditor
 
 import it.evadid.homepage.control.info.HomepageLoggerInfo
 import it.evadid.homepage.webElements.editor.code.SnapEditor.SnapCodeEditor.*
-import it.evadid.homepage.webElements.editor.code.SnapEditor.SnapCodeEditorImpl
 import org.scalajs.dom.CanvasRenderingContext2D
 import org.scalajs.dom.html.Canvas
 

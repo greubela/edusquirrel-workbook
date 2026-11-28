@@ -1,8 +1,8 @@
 package it.evadid.homepage.workbook.content.wip
 
 import it.evadid.core.datastructures.vectorShapes.svg.TurtleCommand
-import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseTurtle.TurtleGraphic
-import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseTurtle.TurtleGraphic.TurtleGraphicProgram
+import it.evadid.workbook.interactions.programming.programmingExerciseTurtle.TurtleGraphic
+import it.evadid.workbook.interactions.programming.programmingExerciseTurtle.TurtleGraphic.TurtleGraphicProgram
 
 import scala.collection.mutable.ListBuffer
 

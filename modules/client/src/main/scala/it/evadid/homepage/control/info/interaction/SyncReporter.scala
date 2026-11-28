@@ -1,8 +1,8 @@
 package it.evadid.homepage.control.info.interaction
 
 import com.raquo.laminar.api.L.*
-import it.evadid.workbook.interaction.sync.SyncInformationWithContext
-import it.evadid.workbook.meta.InteractionVariableSyncReport
+import it.evadid.workbook.sync.SyncInformationWithContext
+import it.evadid.workbook.reports.InteractionVariableSyncReport
 
 /** A single classification drives both sync icon and tooltip. */
 final class SyncReporter(source: Signal[InteractionVariableSyncReport[SyncInformationWithContext]]) {

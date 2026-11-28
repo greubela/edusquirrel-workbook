@@ -10,11 +10,10 @@ registries. See [formats and event semantics](../interaction-format.md).
 | Class | Responsibility |
 | --- | --- |
 | [HomepageState](../../modules/client/src/main/scala/it/evadid/homepage/control/change/HomepageState.scala) | Orders user, credential and workbook changes across the page and answer controls |
-| [InteractionController](../../modules/core/shared/src/main/scala/it/evadid/workbook/interaction/state/InteractionController.scala) | Transitions of the answers (`InteractionInfo`), per-entry store and read, session-scoped results |
-| [InteractionControl](../../modules/client/src/main/scala/it/evadid/homepage/control/change/InteractionControl.scala) | The controller over a `Var`: deferred stores, batched phases, user-scoped reset progress |
+| [InteractionController](../../modules/core/shared/src/main/scala/it/evadid/workbook/control/InteractionController.scala) | Transitions of the answers (`InteractionInfo`), deferred stores, batched store/read phases, user-scoped reset progress, session-scoped results |
 | [RemoteHistoryCache](../../modules/core/shared/src/main/scala/it/evadid/core/datastructures/storage/remote/RemoteHistoryCache.scala) | Store and read logic over an immutable `CacheState`: local histories and per-location known event IDs, read freshness and cursors |
-| [FormattedSyncDestination](../../modules/core/shared/src/main/scala/it/evadid/workbook/interaction/sync/FormattedSyncDestination.scala) | Converts typed histories to/from envelopes at a destination boundary |
-| [BufferedSyncDestinationHandler](../../modules/core/shared/src/main/scala/it/evadid/workbook/interaction/sync/destination/BufferedSyncDestinationHandler.scala) | Merges queued deltas per context, serializes batches and gives each caller the confirmations of its own events |
+| [FormattedSyncDestination](../../modules/core/shared/src/main/scala/it/evadid/workbook/sync/FormattedSyncDestination.scala) | Converts typed histories to/from envelopes at a destination boundary |
+| [BufferedSyncDestinationHandler](../../modules/core/shared/src/main/scala/it/evadid/workbook/sync/destination/BufferedSyncDestinationHandler.scala) | Merges queued deltas per context, serializes batches and gives each caller the confirmations of its own events |
 | [DatabaseSyncViaBackendServerHandler](../../modules/client/src/main/scala/it/evadid/homepage/workbook/syncDestination/DatabaseSyncViaBackendServerHandler.scala) | Sends database commands using captured credentials and connection configuration |
 | [BackendCommandHandler](../../modules/server/src/main/scala/it/evadid/server/BackendCommandHandler.scala) | Decodes typed requests and authorizes every context |
 | [Server history handlers](../../modules/server/src/main/scala/it/evadid/server/commandHandler/sql/sync/) | `HistorySql.forRequest` dispatches to the selected layout; `HistorySql` owns transactions; [`SqlStatements`](../../modules/server/src/main/scala/it/evadid/server/database/SqlStatements.scala) binds typed parameters and closes statements |
@@ -55,7 +54,7 @@ requests or persisted database events fail explicitly.
 
 Each destination is tracked by the IDs of the events it is known to hold: those a
 read returned or a committed write acknowledged.
-[`SyncSuccess[T]`](../../modules/core/shared/src/main/scala/it/evadid/workbook/interaction/sync/SyncSuccess.scala)
+[`SyncSuccess[T]`](../../modules/core/shared/src/main/scala/it/evadid/workbook/sync/SyncSuccess.scala)
 names the added, changed, unchanged and removed elements (`EventId`s for history
 stores, `SyncContext`s for removals, keys for raw key-value stores); its
 `elementsStored` were present at commit. A requested write alone is not evidence.
@@ -128,9 +127,9 @@ import it.evadid.distribution.clients.ExecutionClient
 import it.evadid.distribution.commandTypes.SQLCommands
 import it.evadid.sql.BackendDatabase
 import it.evadid.sql.DatabaseHistoryFormat.BlobFormat
-import it.evadid.workbook.interaction.sync.{SyncSuccess, UsageContext}
-import it.evadid.workbook.interaction.sync.model.InteractionHistoryJson
-import it.evadid.workbook.interaction.variable.events.EventId
+import it.evadid.workbook.sync.{SyncSuccess, UsageContext}
+import it.evadid.workbook.sync.model.InteractionHistoryJson
+import it.evadid.workbook.model.history.events.EventId
 import scala.concurrent.{ExecutionContext, Future}
 
 def storePair(backend: ExecutionClient, context: UsageContext,

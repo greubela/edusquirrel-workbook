@@ -65,7 +65,7 @@ class JavaFlowchartGutterSpec extends FunSuite {
   }
 
   test("verbatim library definitions are not charted") {
-    val source = it.evadid.workbook.elements.interactionElements.programming.state.ProgrammingStateRaw(Python, "forward(10)").toJava.code
+    val source = it.evadid.workbook.interactions.programming.state.ProgrammingStateRaw(Python, "forward(10)").toJava.code
     val result = chart(source)
     assert(result.nodes.nonEmpty)
     val turtleStart = source.linesIterator.indexWhere(_.startsWith("class Turtle")) + 1

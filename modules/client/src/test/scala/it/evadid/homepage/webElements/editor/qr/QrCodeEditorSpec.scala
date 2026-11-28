@@ -2,8 +2,8 @@ package it.evadid.homepage.webElements.editor.qr
 
 import com.raquo.laminar.api.L.*
 import it.evadid.homepage.webElements.UiDomSuite
-import it.evadid.workbook.elements.interactionElements.qr.QrCodeRequirements
-import it.evadid.workbook.model.qr.{QrCode, QrErrorCorrection}
+import it.evadid.workbook.interactions.qr.QrCodeRequirements
+import it.evadid.workbook.interactions.qr.{QrCode, QrErrorCorrection}
 import org.scalajs.dom
 
 class QrCodeEditorSpec extends UiDomSuite {

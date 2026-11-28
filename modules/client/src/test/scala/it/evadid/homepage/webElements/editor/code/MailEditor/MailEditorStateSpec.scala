@@ -2,7 +2,7 @@ package it.evadid.homepage.webElements.editor.code.MailEditor
 
 import com.raquo.laminar.api.L.*
 import it.evadid.homepage.webElements.editor.MailEditor.{MailBody, MailEditorState}
-import it.evadid.workbook.elements.interactionElements.emailSimulator.*
+import it.evadid.workbook.interactions.emailSimulator.*
 import it.evadid.homepage.workbook.content.wip.{CreatePhishingWorkbook, PhishingMailboxData}
 import munit.FunSuite
 

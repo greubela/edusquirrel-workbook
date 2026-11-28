@@ -5,8 +5,8 @@ import it.evadid.core.datastructures.language.LanguageMapContentId
 import it.evadid.core.datastructures.vectorShapes.svg.TurtleCommand
 import it.evadid.vm.compilation.java.turtle.JavaTurtleCompiler
 import it.evadid.vm.simulation.java.JavaTurtleInterpreter
-import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseTurtle.TurtleRecreateShapeInteraction
-import it.evadid.workbook.elements.interactionElements.programming.state.{ProgrammingState, ProgrammingStateJavaStructured, ProgrammingStateSnapScalaModel}
+import it.evadid.workbook.interactions.programming.programmingExerciseTurtle.TurtleRecreateShapeInteraction
+import it.evadid.workbook.interactions.programming.state.{ProgrammingState, ProgrammingStateJavaStructured, ProgrammingStateSnapScalaModel}
 import munit.FunSuite
 
 import scala.scalajs.js
@@ -45,10 +45,10 @@ class MonksWorkbookSpec extends FunSuite {
 
   test("Monk choices, tables, slideshows and reorder tasks all expose shared graders") {
     import it.evadid.workbook.abstractions.WorkbookInteractionElement
-    import it.evadid.workbook.elements.interactionElements.choice.WorkbookContentChoiceInteraction
-    import it.evadid.workbook.elements.interactionElements.table.AnswerTableInteraction
-    import it.evadid.workbook.elements.interactionElements.slideshow.Slideshow
-    import it.evadid.workbook.elements.interactionElements.reorderExercise.ReorderInteraction.ReorderMapIdInteraction
+    import it.evadid.workbook.interactions.choice.WorkbookContentChoiceInteraction
+    import it.evadid.workbook.interactions.table.AnswerTableInteraction
+    import it.evadid.workbook.interactions.slideshow.Slideshow
+    import it.evadid.workbook.interactions.reorderExercise.ReorderInteraction.ReorderMapIdInteraction
     val exercises = workbook.allChildrenFullSubtree.collect {
       case exercise: WorkbookContentChoiceInteraction => exercise
       case exercise: AnswerTableInteraction => exercise
@@ -59,8 +59,8 @@ class MonksWorkbookSpec extends FunSuite {
     exercises.foreach(exercise => assert(exercise.gradingElements.nonEmpty, exercise.elementId))
   }
   test("the assignment tasks are graded matchings and the survey is an ungraded scale with opt-in consent") {
-    import it.evadid.workbook.elements.interactionElements.basic.LabeledCheckboxInteraction
-    import it.evadid.workbook.elements.interactionElements.matching.{LikertScaleInteraction, MatchingInteraction}
+    import it.evadid.workbook.interactions.basic.LabeledCheckboxInteraction
+    import it.evadid.workbook.interactions.matching.{LikertScaleInteraction, MatchingInteraction}
     val elements = workbook.allChildrenFullSubtree
     val matchings = elements.collect { case matching: MatchingInteraction => matching }
     assertEquals(matchings.map(_.elementId).toSet, Set("monks-a4-match", "monks-c1-match"))
@@ -76,7 +76,7 @@ class MonksWorkbookSpec extends FunSuite {
   }
 
   test("the workbook ends with the submission form") {
-    import it.evadid.workbook.elements.displayElements.WorkbookSubmissionElement
+    import it.evadid.workbook.elements.display.WorkbookSubmissionElement
     assertEquals(workbook.allChildrenFullSubtree.collect { case form: WorkbookSubmissionElement => form.elementId }, Seq("monks-submission"))
     assertEquals(workbook.sections.last.groupElements.last.childrenOfThisElement.last, WorkbookSubmissionElement("monks-submission"))
   }
@@ -134,8 +134,8 @@ class MonksWorkbookSpec extends FunSuite {
   }
 
   test("each editor shows the lead text that precedes it in the workbook as its instruction") {
-    import it.evadid.workbook.elements.displayElements.DisplayLangMapContent
-    import it.evadid.workbook.elements.structureElements.ExerciseContainer
+    import it.evadid.workbook.elements.display.DisplayLangMapContent
+    import it.evadid.workbook.elements.structure.ExerciseContainer
     val pairs = workbook.allChildrenFullSubtree.collect { case container: ExerciseContainer => container.containerContent }
       .flatMap(content => content.zip(content.drop(1)))
       .collect { case (lead, task: TurtleRecreateShapeInteraction) => (lead, task) }

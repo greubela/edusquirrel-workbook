@@ -6,7 +6,7 @@ import it.evadid.distribution.commandTypes.SubmissionCommands
 import it.evadid.homepage.workbook.htmlRenderer.HtmlRenderFactory.LineBasedRenderingFactory
 import it.evadid.homepage.workbook.htmlRenderer.atomarLineRenderings.AtomarLineRendering
 import it.evadid.homepage.workbook.htmlRenderer.controlElements.HtmlSubmissionForm
-import it.evadid.workbook.elements.displayElements.WorkbookSubmissionElement
+import it.evadid.workbook.elements.display.WorkbookSubmissionElement
 
 import scala.concurrent.ExecutionContext
 

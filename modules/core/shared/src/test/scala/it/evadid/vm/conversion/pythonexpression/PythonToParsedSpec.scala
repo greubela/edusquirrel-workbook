@@ -32,7 +32,7 @@ class PythonToParsedSpec extends FunSuite {
   }
 
   private def drawn(code: String): List[Double] =
-    it.evadid.workbook.elements.interactionElements.programming.state.ProgrammingStateRaw(it.evadid.core.datastructures.language.AppLanguage.Python, code)
+    it.evadid.workbook.interactions.programming.state.ProgrammingStateRaw(it.evadid.core.datastructures.language.AppLanguage.Python, code)
       .toBeExpression.turtleCommandExecutionInfo.completedCommands.map(_.args.head)
 
   test("range loops repeat, count with steps like Python or are reported") {

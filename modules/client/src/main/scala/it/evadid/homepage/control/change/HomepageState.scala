@@ -2,7 +2,8 @@ package it.evadid.homepage.control.change
 
 import it.evadid.core.datastructures.user.{AllUserInfo, UserCredentials}
 import it.evadid.homepage.control.model.HomepageInfo
-import it.evadid.workbook.interaction.state.{InteractionController, InteractionScope}
+import it.evadid.workbook.control.InteractionController
+import it.evadid.workbook.model.InteractionScope
 import it.evadid.workbook.session.AllWorkbookInfo
 
 import scala.concurrent.{ExecutionContext, Future}

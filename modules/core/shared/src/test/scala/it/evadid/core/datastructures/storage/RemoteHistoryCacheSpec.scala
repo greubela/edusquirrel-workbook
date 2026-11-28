@@ -4,9 +4,9 @@ import it.evadid.core.datastructures.state.State
 import it.evadid.core.datastructures.storage.remote.{RemoteHistoryCache, RemoteHistoryDataReader, RemoteHistoryDataWriter, RemoteHistoryReaderWriter}
 import it.evadid.util.logging.Logger
 import it.evadid.util.logging.derived.{PrintToStdLogger, SyncLogger}
-import it.evadid.workbook.interaction.sync.{EventSyncStrategy, SyncContext, SyncSuccess, UpdateImportance, UsageContext}
-import it.evadid.workbook.interaction.variable.events.*
-import it.evadid.workbook.interaction.variable.InteractionVariableHistory
+import it.evadid.workbook.sync.{EventSyncStrategy, SyncContext, SyncSuccess, UpdateImportance, UsageContext}
+import it.evadid.workbook.model.history.events.*
+import it.evadid.workbook.model.history.InteractionVariableHistory
 import java.time.LocalDateTime
 import munit.FunSuite
 import scala.concurrent.{ExecutionContext, Future, Promise}
@@ -356,7 +356,7 @@ class RemoteHistoryCacheSpec extends FunSuite {
       override val importance = GradingImportance.REQUIRED_TEST
       override val runningBehavior = GraderRunningBehavior.RUN_ALWAYS
       override val gradingEntity = FeedbackEntity.TestEntity
-      override protected def handleGrading(state: String, context: it.evadid.workbook.meta.ExecutionContextInformation)
+      override protected def handleGrading(state: String, context: it.evadid.workbook.abstractions.ExecutionContextInformation)
           : Future[GradingResult[String, Unit]] = throw AssertionError("The cache must not execute graders")
     }
     val grading: Event = GradingCompletedEvent(GradingResult(grader, "1", GradingStatus.Correct, None, None, time.plusSeconds(5)))

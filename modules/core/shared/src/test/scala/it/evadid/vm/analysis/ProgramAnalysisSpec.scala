@@ -1,7 +1,7 @@
 package it.evadid.vm.analysis
 
 import it.evadid.core.datastructures.language.AppLanguage.{Java, Python}
-import it.evadid.workbook.elements.interactionElements.programming.state.*
+import it.evadid.workbook.interactions.programming.state.*
 import munit.FunSuite
 
 class ProgramAnalysisSpec extends FunSuite {

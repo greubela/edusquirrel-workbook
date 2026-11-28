@@ -3,7 +3,7 @@ package it.evadid.homepage.webElements.editor.code.SnapEditor
 import com.raquo.airstream.ownership.ManualOwner
 import com.raquo.airstream.state.Var
 import it.evadid.core.datastructures.language.AppLanguage.Java
-import it.evadid.workbook.elements.interactionElements.programming.state.{ProgrammingStateRaw, ProgrammingStateSnapScalaModel}
+import it.evadid.workbook.interactions.programming.state.{ProgrammingStateRaw, ProgrammingStateSnapScalaModel}
 import munit.FunSuite
 import SnapProjectBindingSpec.FakeNative
 

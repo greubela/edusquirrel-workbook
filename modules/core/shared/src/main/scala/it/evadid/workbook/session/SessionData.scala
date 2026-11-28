@@ -3,8 +3,8 @@ package it.evadid.workbook.session
 import it.evadid.core.datastructures.user.{User, UserConfig}
 import it.evadid.core.util.InfoUtil
 import it.evadid.core.util.io.serializer.DefaultSerializer.given
-import it.evadid.workbook.interaction.sync.SyncContext
-import it.evadid.workbook.interaction.sync.model.InteractionHistoryJson
+import it.evadid.workbook.sync.SyncContext
+import it.evadid.workbook.sync.model.InteractionHistoryJson
 import upickle.default.*
 
 import java.time.LocalDateTime

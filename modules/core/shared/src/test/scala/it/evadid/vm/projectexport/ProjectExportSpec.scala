@@ -4,7 +4,7 @@ import it.evadid.core.util.InfoUtil
 
 import it.evadid.core.datastructures.language.AppLanguage.{Java, Python, SnapLanguage, Rust}
 import it.evadid.vm.simulation.data.{DataWorld, SudokuGrid}
-import it.evadid.workbook.elements.interactionElements.programming.state.{ProgrammingStateJavaStructured, ProgrammingStatePythonStructured, ProgrammingStateRaw}
+import it.evadid.workbook.interactions.programming.state.{ProgrammingStateJavaStructured, ProgrammingStatePythonStructured, ProgrammingStateRaw}
 import munit.FunSuite
 
 import java.nio.charset.StandardCharsets.UTF_8

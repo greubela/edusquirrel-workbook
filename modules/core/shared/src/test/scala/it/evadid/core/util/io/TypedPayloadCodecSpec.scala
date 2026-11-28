@@ -6,8 +6,8 @@ import it.evadid.vm.parsing.java.clean.model.JavaType.{JAVA_ANY, JAVA_UNPARSABLE
 import it.evadid.vm.parsing.python.clean.model.PythonType.{PYTHON_ANY, PYTHON_UNPARSABLE_TYPE}
 import it.evadid.workbook.abstractions.FeedbackEntity
 import it.evadid.workbook.abstractions.scaffolding.{ScaffoldingResult, ScaffoldingStatus}
-import it.evadid.workbook.elements.interactionElements.basic.TextInteraction
-import it.evadid.workbook.interaction.variable.{InteractionVariableHistory, InteractionVariableScaffoldingHistory}
+import it.evadid.workbook.interactions.basic.TextInteraction
+import it.evadid.workbook.model.history.{InteractionVariableHistory, InteractionVariableScaffoldingHistory}
 import java.time.LocalDateTime
 import munit.FunSuite
 import upickle.default.*

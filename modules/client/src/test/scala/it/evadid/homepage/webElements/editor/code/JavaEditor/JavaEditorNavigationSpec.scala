@@ -4,7 +4,7 @@ import it.evadid.homepage.webElements.editor.code.JavaEditor.JavaEditorNavigatio
 import it.evadid.homepage.webElements.editor.code.fragment.FragmentCodeEditor.Scope
 import it.evadid.vm.naming.BeEntityName
 import it.evadid.vm.structure.JavaUmlDiagram
-import it.evadid.workbook.elements.interactionElements.programming.state.ProgrammingStateJavaStructured
+import it.evadid.workbook.interactions.programming.state.ProgrammingStateJavaStructured
 import munit.FunSuite
 
 /** The navigation transitions of the Java component editor, without any DOM. */

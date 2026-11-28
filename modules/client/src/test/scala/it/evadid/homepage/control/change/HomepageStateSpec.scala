@@ -1,6 +1,6 @@
 package it.evadid.homepage.control.change
 
-import it.evadid.workbook.interaction.state.InteractionSignals.*
+import it.evadid.workbook.control.InteractionSignals.*
 
 import it.evadid.workbook.session.{AllWorkbookInfo, WorkbookConfig}
 import com.raquo.laminar.api.L.*
@@ -22,16 +22,16 @@ import it.evadid.homepage.workbook.syncDestination.InMemoryHistoryDatabase
 import it.evadid.sql.{DatabaseConfigWithCredentials, DatabaseHistoryFormat}
 import it.evadid.sql.DatabaseHistoryFormat.BlobFormat
 import it.evadid.workbook.abstractions.InteractionFormat.TextInteractionFormat
-import it.evadid.workbook.elements.interactionElements.basic.TextInteraction
-import it.evadid.workbook.elements.structureElements.{Workbook, WorkbookSection}
-import it.evadid.workbook.elements.structureElements.Workbook.WorkbookMetadata
-import it.evadid.workbook.elements.structureElements.WorkbookSection.WorkbookSectionMetadata
-import it.evadid.workbook.interaction.sync.*
-import it.evadid.workbook.interaction.sync.destination.SyncDestinationDefinition.*
-import it.evadid.workbook.interaction.sync.model.InteractionHistoryJson
-import it.evadid.workbook.interaction.variable.InteractionVariableHistory
-import it.evadid.workbook.interaction.variable.events.{AnswerChangedEvent, EventId}
-import it.evadid.workbook.meta.ExecutionContextInformation
+import it.evadid.workbook.interactions.basic.TextInteraction
+import it.evadid.workbook.elements.structure.{Workbook, WorkbookSection}
+import it.evadid.workbook.elements.structure.Workbook.WorkbookMetadata
+import it.evadid.workbook.elements.structure.WorkbookSection.WorkbookSectionMetadata
+import it.evadid.workbook.sync.*
+import it.evadid.workbook.sync.destination.SyncDestinationDefinition.*
+import it.evadid.workbook.sync.model.InteractionHistoryJson
+import it.evadid.workbook.model.history.InteractionVariableHistory
+import it.evadid.workbook.model.history.events.{AnswerChangedEvent, EventId}
+import it.evadid.workbook.abstractions.ExecutionContextInformation
 import scala.concurrent.{ExecutionContext, Future, Promise}
 import scala.scalajs.js
 import scala.scalajs.js.JSConverters.*

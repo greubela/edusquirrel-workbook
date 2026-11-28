@@ -1,6 +1,6 @@
 package it.evadid.homepage.workbook.htmlRenderer.interactionRenderer.compression
 
-import it.evadid.workbook.interaction.state.InteractionSignals.*
+import it.evadid.workbook.control.InteractionSignals.*
 
 import it.evadid.homepage.control.model.FullInfo
 
@@ -10,14 +10,14 @@ import it.evadid.homepage.webElements.basic.HtmlButtonElement
 import it.evadid.homepage.webElements.editor.compression.{CompressionEditor, CompressionActivitiesEditor, CompressionExperimentView}
 import it.evadid.homepage.workbook.htmlRenderer.HtmlRenderFactory.LineBasedRenderingFactory
 import it.evadid.homepage.workbook.htmlRenderer.atomarLineRenderings.{AtomarLineRendering, ElementCard}
-import it.evadid.workbook.elements.interactionElements.compression.CompressionExperimentInteraction
-import it.evadid.workbook.interaction.sync.UpdateImportance
+import it.evadid.workbook.interactions.compression.CompressionExperimentInteraction
+import it.evadid.workbook.sync.UpdateImportance
 
 case object CompressionExperimentRenderer extends LineBasedRenderingFactory[CompressionExperimentInteraction] {
   override protected def createRendering(fullInfo: FullInfo, e: CompressionExperimentInteraction): AtomarLineRendering = {
     val state = fullInfo.interactions.boundVar(e, UpdateImportance.MAJOR)
     e.initial match {
-      case _: it.evadid.workbook.model.compression.WrittenAnswer | _: it.evadid.workbook.model.compression.EthicalReflection | _: it.evadid.workbook.model.compression.PreviousAnswer =>
+      case _: it.evadid.workbook.interactions.compression.WrittenAnswer | _: it.evadid.workbook.interactions.compression.EthicalReflection | _: it.evadid.workbook.interactions.compression.PreviousAnswer =>
         return AtomarLineRendering.basicLine(fullInfo, e, CompressionActivitiesEditor(fullInfo, state,e.initial,e.isDisabledState.toAirstreamVar.signal).getDomElement(), "compression-inline")
       case _ => ()
     }

@@ -1,7 +1,7 @@
 package it.evadid.homepage.webElements.editor.qr
 
 import munit.FunSuite
-import it.evadid.workbook.model.qr.{QrCode, QrCodeRegion, QrErrorCorrection}
+import it.evadid.workbook.interactions.qr.{QrCode, QrCodeRegion, QrErrorCorrection}
 
 class QrCodeViewSpec extends FunSuite {
   test("region paths partition dark modules at layout boundaries for every correction level") {

@@ -5,8 +5,7 @@ import com.raquo.airstream.state.Var
 import it.evadid.core.datastructures.language.AppLanguage
 import it.evadid.facades.Snap
 import it.evadid.facades.Snap.*
-import it.evadid.homepage.webElements.editor.code.SnapEditor.{CanvasVisibility, SnapCodeEditorConfig}
-import it.evadid.workbook.elements.interactionElements.programming.state.{ProgrammingStateRaw, ProgrammingStateSnapScalaModel}
+import it.evadid.workbook.interactions.programming.state.{ProgrammingStateRaw, ProgrammingStateSnapScalaModel}
 import org.scalajs.dom
 import org.scalajs.dom.html.Canvas
 import scala.scalajs.js

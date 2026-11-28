@@ -18,7 +18,7 @@ on demand. The HTTP backend remains available as `backendExecutor`. See
 ```scala
 import it.evadid.distribution.commandTypes.WorkerCommands
 import it.evadid.homepage.control.model.FullInfo
-import it.evadid.workbook.elements.interactionElements.programming.state.snap.SnapScalaModel
+import it.evadid.workbook.interactions.programming.state.snap.SnapScalaModel
 import scala.concurrent.{ExecutionContext, Future}
 
 def parseBlocks(fullInfo: FullInfo, xml: String)

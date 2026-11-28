@@ -6,7 +6,7 @@ import it.evadid.core.datastructures.language.AppLanguage.{Java, Python}
 import it.evadid.homepage.webElements.editor.code.EditorDomSuite
 import it.evadid.homepage.workbook.htmlRenderer.interactionRenderer.turtleStitch.TurtleJsxGraphRenderer
 import it.evadid.homepage.workbook.htmlRenderer.interactionRenderer.turtleStitch.TurtleJsxGraphRenderer.{LineResult, RenderedLine, Scene}
-import it.evadid.workbook.elements.interactionElements.programming.state.{ProgrammingState, ProgrammingStateRaw}
+import it.evadid.workbook.interactions.programming.state.{ProgrammingState, ProgrammingStateRaw}
 import org.scalajs.dom
 import upickle.default.*
 

@@ -51,8 +51,8 @@ for text in ['', 'Hello QR!', 'https://evadid.it/', 'Grüße 🐿', 'A' * 200]:
     auto.append((text, qr.get_version(), qr.get_mask(), checksum(
         [[qr.get_module(x, y) for x in range(qr.get_size())] for y in range(qr.get_size())])))
 
-p = Path('modules/core/shared/src/test/scala/it/evadid/workbook/model/qr/QrCodeFixtures.scala')
-p.write_text('''package it.evadid.workbook.model.qr
+p = Path('modules/core/shared/src/test/scala/it/evadid/workbook/interactions/qr/QrCodeFixtures.scala')
+p.write_text('''package it.evadid.workbook.interactions.qr
 
 // Generated with tools/dev/generate-qr-fixtures.py; independent test oracles only.
 private[qr] object QrCodeFixtures {

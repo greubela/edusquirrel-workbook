@@ -3,7 +3,7 @@ package it.evadid.vm.simulation
 import it.evadid.core.datastructures.language.AppLanguage.{Java, Python}
 import it.evadid.vm.simulation.data.{DataWorld, ListCommand, SudokuCommand, SudokuGrid}
 import it.evadid.vm.simulation.turtle.{TurtleExecutionLimits, TurtleExecutionStatus}
-import it.evadid.workbook.elements.interactionElements.programming.state.{ProgrammingStateJavaStructured, ProgrammingStateRaw}
+import it.evadid.workbook.interactions.programming.state.{ProgrammingStateJavaStructured, ProgrammingStateRaw}
 import it.evadid.vm.modules.BeModules
 import munit.FunSuite
 

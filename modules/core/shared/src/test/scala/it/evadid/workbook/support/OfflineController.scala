@@ -2,9 +2,10 @@ package it.evadid.workbook.support
 
 import it.evadid.core.datastructures.state.State
 import it.evadid.workbook.abstractions.{InteractionFormat, WorkbookInteractionElement}
-import it.evadid.workbook.interaction.state.{InteractionController, InteractionInfo, InteractionScope}
-import it.evadid.workbook.interaction.sync.{SyncConnection, UsageContext}
-import it.evadid.workbook.meta.ExecutionContextInformation
+import it.evadid.workbook.control.InteractionController
+import it.evadid.workbook.model.{InteractionInfo, InteractionScope}
+import it.evadid.workbook.sync.{SyncConnection, UsageContext}
+import it.evadid.workbook.abstractions.ExecutionContextInformation
 
 /** Controllers that hold the answers of single exercises without any sync destination, for exercise tests. */
 object OfflineController {

@@ -1,6 +1,6 @@
 package it.evadid.homepage.control.info
 
-import it.evadid.workbook.interaction.state.InteractionInfo
+import it.evadid.workbook.model.InteractionInfo
 
 import it.evadid.homepage.control.model.*
 import it.evadid.util.DownloadToDisc

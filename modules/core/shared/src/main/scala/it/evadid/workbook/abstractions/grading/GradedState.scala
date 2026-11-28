@@ -1,13 +1,13 @@
 package it.evadid.workbook.abstractions.grading
 
-import it.evadid.workbook.interaction.sync.UpdateImportance
+import it.evadid.workbook.sync.UpdateImportance
 
 import it.evadid.distribution.command.SerializedException
 import it.evadid.util.MapUtils
 import it.evadid.workbook.abstractions.FeedbackEntity.LlmEntity
 import it.evadid.workbook.abstractions.{InteractionFormat, *}
 import it.evadid.workbook.abstractions.grading.GradingStatus.*
-import it.evadid.workbook.meta.ExecutionContextInformation
+import it.evadid.workbook.abstractions.ExecutionContextInformation
 import upickle.default.*
 
 import java.time.LocalDateTime
@@ -29,7 +29,7 @@ case class GradedState[T, GA]
   }
 
   def totalEvaluation(): GradingStatus =
-    it.evadid.workbook.meta.GradingSummary(graderResultMap.keys.toSeq, this).status
+    it.evadid.workbook.reports.GradingSummary(graderResultMap.keys.toSeq, this).status
 
   def retryFailed(contextInformation: ExecutionContextInformation, forceGrading: Boolean, importance: UpdateImportance): Future[GradedState[T, GA]] = {
     if (!forceGrading || shouldRetry.isEmpty) Future.successful(this)

@@ -1,8 +1,8 @@
 package it.evadid.workbook.serialization
 
-import it.evadid.workbook.elements.displayElements.TwoColumnPanel
-import it.evadid.workbook.elements.structureElements.ExerciseGroup
-import it.evadid.workbook.elements.interactionElements.basic.TextInteraction
+import it.evadid.workbook.elements.display.TwoColumnPanel
+import it.evadid.workbook.elements.structure.ExerciseGroup
+import it.evadid.workbook.interactions.basic.TextInteraction
 import munit.FunSuite
 
 class WorkbookDisplayCompositionSpec extends FunSuite {

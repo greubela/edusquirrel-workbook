@@ -4,7 +4,7 @@ import it.evadid.core.datastructures.language.AppLanguage
 import it.evadid.vm.code.errors.ProgrammingConversionException
 import it.evadid.vm.conversion.snapexpression.{SnapExpressionSupport, SnapToExpression}
 import it.evadid.vm.conversion.turtlestitchexpression.{TurtleStitchModelMapper, TurtleStitchProgramModel, TurtleStitchToBeExpressionParser}
-import it.evadid.workbook.elements.interactionElements.programming.state.snap.SnapScalaModel
+import it.evadid.workbook.interactions.programming.state.snap.SnapScalaModel
 import scala.util.Try
 
 /** Snap's steps: lexical tokens, the XML document, the TurtleStitch project, and the expression tree. */

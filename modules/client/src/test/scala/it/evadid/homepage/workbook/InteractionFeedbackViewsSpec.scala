@@ -7,14 +7,14 @@ import it.evadid.core.datastructures.language.{LanguageMap, LanguageMapContentId
 import it.evadid.core.datastructures.language.AppLanguage.{English, German, HumanLanguage}
 import it.evadid.homepage.control.singletons.HtmlFullWorkbookApp.fullInfo
 import it.evadid.homepage.webElements.editor.code.EditorDomSuite
-import it.evadid.workbook.meta.GradingSummary
-import it.evadid.workbook.meta.GradingSummary.Group
+import it.evadid.workbook.reports.GradingSummary
+import it.evadid.workbook.reports.GradingSummary.Group
 import it.evadid.homepage.workbook.htmlRenderer.controlElements.interactionInfo.editorSidePanel.InteractionInfoSidebar
 import it.evadid.vm.test.ProgrammingTestSuite
 import it.evadid.workbook.abstractions.grading.*
-import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseRegular.{ProgrammingExercise, ProgrammingUnitTestGrader}
-import it.evadid.workbook.elements.interactionElements.programming.state.ProgrammingState
-import it.evadid.workbook.meta.ExecutionContextInformation
+import it.evadid.workbook.interactions.programming.programmingExerciseRegular.{ProgrammingExercise, ProgrammingUnitTestGrader}
+import it.evadid.workbook.interactions.programming.state.ProgrammingState
+import it.evadid.workbook.abstractions.ExecutionContextInformation
 import it.evadid.homepage.control.info.interaction.GradingReporter
 import java.time.LocalDateTime
 import com.raquo.laminar.api.L.div
@@ -31,11 +31,11 @@ class InteractionFeedbackViewsSpec extends EditorDomSuite {
     val statuses = List(GradingStatus.Correct, GradingStatus.Correct, GradingStatus.PartiallyCorrect,
       GradingStatus.Incorrect, GradingStatus.NotFinished,
       GradingStatus.TestError(it.evadid.distribution.command.SerializedException("private execution error")), GradingStatus.NotRequested)
-    val state: ProgrammingState = it.evadid.workbook.elements.interactionElements.programming.state.ProgrammingStateRaw(Python, "forward(10)")
+    val state: ProgrammingState = it.evadid.workbook.interactions.programming.state.ProgrammingStateRaw(Python, "forward(10)")
     val results = graders.zip(statuses).map((g, status) => GradingResult(g, state, status))
     val obsolete = GradingResult(grader("removed-grader"), state, GradingStatus.Correct)
     val stale = GradingResult(graders.last,
-      it.evadid.workbook.elements.interactionElements.programming.state.ProgrammingStateRaw(Python, "forward(999)"), GradingStatus.Correct)
+      it.evadid.workbook.interactions.programming.state.ProgrammingStateRaw(Python, "forward(999)"), GradingStatus.Correct)
     val summary = GradingSummary(graders, GradedState(state, (results ++ List(obsolete, stale)).map(result => result.grader -> result).toMap))
     assertEquals(summary.correct, 2)
     assertEquals(summary.total, 8)
@@ -130,9 +130,9 @@ class InteractionFeedbackViewsSpec extends EditorDomSuite {
       val close = mount(sidebar)
       try {
         assert(sidebar.ref.textContent.contains("FEEDBACK-FOR-OLD-ANSWER"))
-        val next = it.evadid.workbook.elements.interactionElements.programming.state.ProgrammingStateRaw(Python, "forward(20)")
-        fullInfo.interactions.updateHistory(exercise)(_.addState(it.evadid.workbook.interaction.variable.InteractionVariableState(
-          next, it.evadid.workbook.interaction.sync.UpdateImportance.MAJOR, date.plusHours(1))))
+        val next = it.evadid.workbook.interactions.programming.state.ProgrammingStateRaw(Python, "forward(20)")
+        fullInfo.interactions.updateHistory(exercise)(_.addState(it.evadid.workbook.model.history.InteractionVariableState(
+          next, it.evadid.workbook.sync.UpdateImportance.MAJOR, date.plusHours(1))))
         assert(!sidebar.ref.textContent.contains("FEEDBACK-FOR-OLD-ANSWER"))
         assertEquals(sidebar.ref.querySelectorAll(".feedback-entry.feedback-status--neutral").length, 1)
         assertEquals(sidebar.ref.querySelectorAll(".feedback-entry .feedback-date").length, 0)
@@ -140,7 +140,7 @@ class InteractionFeedbackViewsSpec extends EditorDomSuite {
     }
   }
   test("available hints open automatically and disabled interactions cannot request feedback") {
-    import it.evadid.workbook.elements.interactionElements.gpt.TextInputWithScaffoldingAndGrading
+    import it.evadid.workbook.interactions.gpt.TextInputWithScaffoldingAndGrading
     import TextInputWithScaffoldingAndGrading.ContentForLlmInteraction
     import it.evadid.workbook.abstractions.scaffolding.{ScaffoldingResult, ScaffoldingStatus}
     import it.evadid.workbook.abstractions.FeedbackEntity

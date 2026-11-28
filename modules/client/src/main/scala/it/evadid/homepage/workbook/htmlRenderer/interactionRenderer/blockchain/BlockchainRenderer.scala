@@ -1,6 +1,6 @@
 package it.evadid.homepage.workbook.htmlRenderer.interactionRenderer.blockchain
 
-import it.evadid.workbook.interaction.state.InteractionSignals.*
+import it.evadid.workbook.control.InteractionSignals.*
 
 import it.evadid.homepage.control.model.FullInfo
 
@@ -9,8 +9,8 @@ import it.evadid.core.datastructures.state.StateHelper.StateBasedVar
 import it.evadid.homepage.webElements.editor.blockchain.BlockchainEditor
 import it.evadid.homepage.workbook.htmlRenderer.HtmlRenderFactory.LineBasedRenderingFactory
 import it.evadid.homepage.workbook.htmlRenderer.atomarLineRenderings.{AtomarLineRendering, ElementCard}
-import it.evadid.workbook.elements.interactionElements.blockchain.BlockchainInteraction
-import it.evadid.workbook.interaction.sync.UpdateImportance.MAJOR
+import it.evadid.workbook.interactions.blockchain.BlockchainInteraction
+import it.evadid.workbook.sync.UpdateImportance.MAJOR
 
 case object BlockchainRenderer extends LineBasedRenderingFactory[BlockchainInteraction] {
   override protected def createRendering(fullInfo: FullInfo, e: BlockchainInteraction): AtomarLineRendering = {

@@ -10,8 +10,8 @@ import it.evadid.vm.code.others.BeStartProgram
 import it.evadid.vm.conversion.expressionpython.ExpressionToPython
 import it.evadid.vm.conversion.snapexpression.SnapExpressionSupport
 import it.evadid.vm.conversion.turtlestitchexpression.TurtleStitchToBeExpressionParser
-import it.evadid.workbook.elements.interactionElements.programming.state.ProgrammingStateRaw
-import it.evadid.workbook.elements.interactionElements.programming.state.snap.{SnapCanvasLayout, SnapCanvasScript}
+import it.evadid.workbook.interactions.programming.state.ProgrammingStateRaw
+import it.evadid.workbook.interactions.programming.state.snap.{SnapCanvasLayout, SnapCanvasScript}
 
 /**
  * XML → BeProgram / Python derivation for ProgrammingExercise consumers.

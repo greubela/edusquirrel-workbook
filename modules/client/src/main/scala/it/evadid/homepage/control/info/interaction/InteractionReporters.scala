@@ -1,8 +1,8 @@
 package it.evadid.homepage.control.info.interaction
 
-import it.evadid.workbook.interaction.state.InteractionSignals.*
+import it.evadid.workbook.control.InteractionSignals.*
 
-import it.evadid.workbook.interaction.state.InteractionController
+import it.evadid.workbook.control.InteractionController
 import it.evadid.workbook.abstractions.{InteractionFormat, WorkbookInteractionElement}
 
 /** Workbook-scoped shared reporters of one interaction. */

@@ -1,8 +1,8 @@
 package it.evadid.homepage.control.model
 
-import it.evadid.workbook.interaction.state.InteractionInfo
+import it.evadid.workbook.model.InteractionInfo
 
-import it.evadid.workbook.interaction.state.InteractionScope
+import it.evadid.workbook.model.InteractionScope
 
 
 import it.evadid.llm.LlmConfiguration
@@ -18,9 +18,9 @@ import it.evadid.homepage.control.change.*
 import it.evadid.homepage.control.info.*
 import it.evadid.homepage.control.singletons.HomepageDefaults
 import it.evadid.core.datastructures.state.State
-import it.evadid.workbook.interaction.state.InteractionController
-import it.evadid.workbook.interaction.sync.SyncConnection
-import it.evadid.workbook.meta.ExecutionContextInformation
+import it.evadid.workbook.control.InteractionController
+import it.evadid.workbook.sync.SyncConnection
+import it.evadid.workbook.abstractions.ExecutionContextInformation
 
 import scala.concurrent.{ExecutionContext, Future}
 

@@ -11,7 +11,7 @@ import it.evadid.homepage.webElements.HtmlAppElement
 import it.evadid.homepage.webElements.basic.HtmlButtonElement
 import it.evadid.homepage.webElements.basic.HtmlButtonElement.ButtonConfig
 import it.evadid.homepage.workbook.htmlRenderer.HtmlRenderFactory
-import it.evadid.workbook.elements.structureElements.{Workbook, WorkbookSection}
+import it.evadid.workbook.elements.structure.{Workbook, WorkbookSection}
 import org.scalajs.dom.HTMLDivElement
 
 case class HtmlWorkbookBodyElement(fullInfo: FullInfo, workbook: AllWorkbookInfo, user: AllUserInfo) extends HtmlAppElement {

@@ -9,9 +9,9 @@ import it.evadid.homepage.control.singletons.HtmlFullWorkbookApp.fullInfo
 import it.evadid.homepage.webElements.editor.code.EditorDomSuite
 import it.evadid.homepage.workbook.htmlRenderer.interactionRenderer.choice.WorkbookContentChoiceInteractionRenderer
 import it.evadid.workbook.abstractions.grading.{GraderRunningBehavior, GradingStatus}
-import it.evadid.workbook.elements.interactionElements.choice.WorkbookContentChoiceInteraction
+import it.evadid.workbook.interactions.choice.WorkbookContentChoiceInteraction
 import WorkbookContentChoiceInteraction.*
-import it.evadid.workbook.elements.structureElements.{Workbook, WorkbookSection}
+import it.evadid.workbook.elements.structure.{Workbook, WorkbookSection}
 import org.scalajs.dom
 import scala.concurrent.Future
 import scala.scalajs.concurrent.JSExecutionContext.Implicits.queue

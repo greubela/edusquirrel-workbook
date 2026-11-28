@@ -3,7 +3,7 @@ package it.evadid.vm.conversion
 import it.evadid.core.datastructures.language.AppLanguage.{Java, ProgrammingLanguage, Python, SnapLanguage}
 import it.evadid.util.logging.LoggingLevel
 import it.evadid.vm.code.errors.{ProgrammingConversionError, ProgrammingConversionKind}
-import it.evadid.workbook.elements.interactionElements.programming.state.*
+import it.evadid.workbook.interactions.programming.state.*
 import munit.FunSuite
 
 /** Unfinished or unsupported source: its own language keeps the text for editing, every other

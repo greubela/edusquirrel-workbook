@@ -1,7 +1,7 @@
 package it.evadid.server.commandHandler.sql.sync
 
 import it.evadid.sql.DatabaseHistoryFormat
-import it.evadid.workbook.interaction.sync.destination.SyncDestinationDefinition
+import it.evadid.workbook.sync.destination.SyncDestinationDefinition
 import munit.FunSuite
 import upickle.default.*
 

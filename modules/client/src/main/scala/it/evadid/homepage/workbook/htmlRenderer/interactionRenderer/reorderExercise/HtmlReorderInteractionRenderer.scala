@@ -1,6 +1,6 @@
 package it.evadid.homepage.workbook.htmlRenderer.interactionRenderer.reorderExercise
 
-import it.evadid.workbook.interaction.state.InteractionSignals.*
+import it.evadid.workbook.control.InteractionSignals.*
 
 import it.evadid.homepage.control.model.FullInfo
 
@@ -9,8 +9,8 @@ import com.raquo.laminar.api.L.*
 import it.evadid.core.datastructures.state.StateHelper.StateBasedVar
 import it.evadid.homepage.workbook.htmlRenderer.HtmlRenderFactory.LineBasedRenderingFactory
 import it.evadid.homepage.workbook.htmlRenderer.atomarLineRenderings.AtomarLineRendering
-import it.evadid.workbook.elements.interactionElements.reorderExercise.{ReorderInteraction, ReorderInteractionState}
-import it.evadid.workbook.interaction.sync.UpdateImportance.MAJOR
+import it.evadid.workbook.interactions.reorderExercise.{ReorderInteraction, ReorderInteractionState}
+import it.evadid.workbook.sync.UpdateImportance.MAJOR
 import org.scalajs.dom
 
 object HtmlReorderInteractionRenderer extends LineBasedRenderingFactory[ReorderInteraction.ReorderCodeInteraction | ReorderInteraction.ReorderMapIdInteraction] {

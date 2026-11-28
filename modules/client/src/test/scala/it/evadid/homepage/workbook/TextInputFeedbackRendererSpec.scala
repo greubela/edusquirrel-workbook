@@ -13,12 +13,12 @@ import it.evadid.homepage.workbook.htmlRenderer.controlElements.interactionInfo.
 import it.evadid.workbook.abstractions.FeedbackEntity
 import it.evadid.workbook.abstractions.scaffolding.{ScaffoldingResult, ScaffoldingStatus}
 import it.evadid.homepage.control.info.interaction.GradingReporter
-import it.evadid.workbook.interaction.variable.InteractionVariableState
-import it.evadid.workbook.interaction.sync.UpdateImportance
+import it.evadid.workbook.model.history.InteractionVariableState
+import it.evadid.workbook.sync.UpdateImportance
 import java.time.LocalDateTime
 import it.evadid.workbook.abstractions.grading.{GradedState, GradingResult, GradingStatus}
-import it.evadid.workbook.elements.interactionElements.gpt.TextInputWithScaffoldingAndGrading
-import it.evadid.workbook.elements.interactionElements.gpt.TextInputWithScaffoldingAndGrading.ContentForLlmInteraction
+import it.evadid.workbook.interactions.gpt.TextInputWithScaffoldingAndGrading
+import it.evadid.workbook.interactions.gpt.TextInputWithScaffoldingAndGrading.ContentForLlmInteraction
 
 
 class TextInputFeedbackRendererSpec extends EditorDomSuite {

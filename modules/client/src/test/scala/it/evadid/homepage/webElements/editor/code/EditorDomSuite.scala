@@ -3,9 +3,9 @@ package it.evadid.homepage.webElements.editor.code
 import com.raquo.laminar.api.L.*
 import it.evadid.core.datastructures.language.{AppLanguage, LanguageMapContentId}
 import it.evadid.workbook.abstractions.WorkbookElement
-import it.evadid.workbook.elements.structureElements.{Workbook, WorkbookSection}
-import it.evadid.workbook.elements.structureElements.Workbook.WorkbookMetadata
-import it.evadid.workbook.elements.structureElements.WorkbookSection.WorkbookSectionMetadata
+import it.evadid.workbook.elements.structure.{Workbook, WorkbookSection}
+import it.evadid.workbook.elements.structure.Workbook.WorkbookMetadata
+import it.evadid.workbook.elements.structure.WorkbookSection.WorkbookSectionMetadata
 import it.evadid.workbook.session.{AllWorkbookInfo, WorkbookConfig}
 import munit.FunSuite
 import org.scalajs.dom

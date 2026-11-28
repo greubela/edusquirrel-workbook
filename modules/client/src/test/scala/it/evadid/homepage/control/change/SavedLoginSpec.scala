@@ -6,8 +6,8 @@ import it.evadid.core.datastructures.user.{AllUserInfo, SavedUserPreferences, Us
 import it.evadid.homepage.control.model.{AllDisplayInfo, FullInfo, HomepageInfo}
 import it.evadid.homepage.webElements.editor.code.EditorDomSuite
 import it.evadid.sql.DatabaseConfigWithCredentials
-import it.evadid.workbook.interaction.sync.{EventSyncStrategy, SyncInformation}
-import it.evadid.workbook.interaction.sync.destination.SyncDestinationDefinition.defaultDatabase
+import it.evadid.workbook.sync.{EventSyncStrategy, SyncInformation}
+import it.evadid.workbook.sync.destination.SyncDestinationDefinition.defaultDatabase
 import org.scalajs.dom
 import upickle.default.write
 

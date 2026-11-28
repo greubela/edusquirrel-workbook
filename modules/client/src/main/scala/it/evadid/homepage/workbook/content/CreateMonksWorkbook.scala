@@ -6,18 +6,18 @@ import it.evadid.core.datastructures.user.User
 import it.evadid.core.datastructures.vectorShapes.svg.TurtleCommand
 import it.evadid.homepage.control.model.FullInfo
 import it.evadid.workbook.abstractions.{TypeOfTextDisplay, WorkbookDisplayElement, WorkbookElement}
-import it.evadid.workbook.elements.displayElements.WorkbookImageElement.LanguageMapBasedWorkbookImageElement
-import it.evadid.workbook.elements.displayElements.WorkbookSubmissionElement
-import it.evadid.workbook.elements.interactionElements.basic.TextInteraction
-import it.evadid.workbook.elements.interactionElements.choice.WorkbookContentChoiceInteraction
-import it.evadid.workbook.elements.interactionElements.matching.{LikertScaleInteraction, MatchingInteraction}
-import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseTurtle.{RecreateTurtleDidacticConfig, TurtleGraphic, TurtleRecreateShapeInteraction}
-import it.evadid.workbook.elements.interactionElements.programming.state.ProgrammingStateJavaStructured
-import it.evadid.workbook.elements.interactionElements.programming.state.snap.ProgrammingEditorPalette
-import it.evadid.workbook.elements.interactionElements.reorderExercise.ReorderInteraction.ReorderMapIdInteraction
-import it.evadid.workbook.elements.interactionElements.slideshow.*
-import it.evadid.workbook.elements.interactionElements.table.{AnswerTableInteraction, EditableTableCell}
-import it.evadid.workbook.elements.structureElements.{ExerciseGroup, Workbook}
+import it.evadid.workbook.elements.display.WorkbookImageElement.LanguageMapBasedWorkbookImageElement
+import it.evadid.workbook.elements.display.WorkbookSubmissionElement
+import it.evadid.workbook.interactions.basic.TextInteraction
+import it.evadid.workbook.interactions.choice.WorkbookContentChoiceInteraction
+import it.evadid.workbook.interactions.matching.{LikertScaleInteraction, MatchingInteraction}
+import it.evadid.workbook.interactions.programming.programmingExerciseTurtle.{RecreateTurtleDidacticConfig, TurtleGraphic, TurtleRecreateShapeInteraction}
+import it.evadid.workbook.interactions.programming.state.ProgrammingStateJavaStructured
+import it.evadid.workbook.interactions.programming.state.snap.ProgrammingEditorPalette
+import it.evadid.workbook.interactions.reorderExercise.ReorderInteraction.ReorderMapIdInteraction
+import it.evadid.workbook.interactions.slideshow.*
+import it.evadid.workbook.interactions.table.{AnswerTableInteraction, EditableTableCell}
+import it.evadid.workbook.elements.structure.{ExerciseGroup, Workbook}
 
 
 /** Recursion workbook "Die Mönche von Mons Komputarius".

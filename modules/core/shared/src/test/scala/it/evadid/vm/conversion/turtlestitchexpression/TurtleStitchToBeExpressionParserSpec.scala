@@ -8,7 +8,7 @@ import it.evadid.vm.conversion.pythonsnap.PythonToSnap
 import it.evadid.vm.conversion.snapexpression.SnapCustomBlockRules
 import it.evadid.vm.conversion.snapexpression.SnapExpressionSupport
 import it.evadid.vm.conversion.snapmodelxml.SnapModelToXml.toXml
-import it.evadid.workbook.elements.interactionElements.programming.state.{ProgrammingState, ProgrammingStateRaw}
+import it.evadid.workbook.interactions.programming.state.{ProgrammingState, ProgrammingStateRaw}
 import it.evadid.vm.conversion.snappython.SnapProgramDerivation
 import it.evadid.vm.conversion.expressionsnap.SnapProjectXml
 import it.evadid.vm.code.others.BeStartProgram

@@ -5,7 +5,7 @@ import com.raquo.airstream.ownership.ManualOwner
 import com.raquo.laminar.api.L.*
 import it.evadid.homepage.webElements.editor.code.EditorDomSuite
 import it.evadid.core.datastructures.uml.*
-import it.evadid.workbook.elements.interactionElements.programming.state.ProgrammingStateJavaStructured
+import it.evadid.workbook.interactions.programming.state.ProgrammingStateJavaStructured
 import org.scalajs.dom
 
 class UmlStructureSelectorSpec extends EditorDomSuite {
@@ -87,7 +87,7 @@ class UmlStructureSelectorSpec extends EditorDomSuite {
   }
 
   test("the generated Turtle library is a read-only box; an edited copy is clickable") {
-    val source = it.evadid.workbook.elements.interactionElements.programming.state.ProgrammingStateRaw(
+    val source = it.evadid.workbook.interactions.programming.state.ProgrammingStateRaw(
       it.evadid.core.datastructures.language.AppLanguage.Python, "forward(10)").toJava.code
     assert(source.contains("class Turtle {"), source)
     val program = Var(ProgrammingStateJavaStructured(source))

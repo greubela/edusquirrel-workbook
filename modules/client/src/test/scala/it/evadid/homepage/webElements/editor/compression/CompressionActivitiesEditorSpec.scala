@@ -4,8 +4,8 @@ import com.raquo.laminar.api.L.*
 import it.evadid.core.datastructures.language.LanguageMapContentId
 import it.evadid.homepage.webElements.UiDomSuite
 import it.evadid.homepage.webElements.editor.code.EditorDomSuite
-import it.evadid.workbook.elements.interactionElements.compression.CompressionExperimentInteraction
-import it.evadid.workbook.model.compression.*
+import it.evadid.workbook.interactions.compression.CompressionExperimentInteraction
+import it.evadid.workbook.interactions.compression.*
 import org.scalajs.dom
 import scala.concurrent.ExecutionContext
 import scala.scalajs.js
@@ -200,7 +200,7 @@ class CompressionActivitiesEditorSpec extends UiDomSuite {
       mounted(element) { root =>
         assert(one(root, "blockquote").textContent.contains(text("comparisonEmpty")))
         pageInfo.interactions.setStateFromUserInteraction(earlier, WrittenAnswer("Smaller files load faster"),
-          it.evadid.workbook.interaction.sync.UpdateImportance.MAJOR)
+          it.evadid.workbook.sync.UpdateImportance.MAJOR)
         assertEquals(one(root, "blockquote").textContent, "Smaller files load faster")
       }
     }

@@ -1,0 +1,43 @@
+package it.evadid.workbook.interactions.programming.programmingExerciseTurtle
+
+
+import it.evadid.vm.conversion.dependencies.ProgrammingEnvironment
+import it.evadid.workbook.abstractions.FeedbackEntity
+import it.evadid.workbook.abstractions.FeedbackEntity.TestEntity
+import it.evadid.workbook.abstractions.grading.{GradingResult, *}
+import it.evadid.workbook.abstractions.grading.GraderRunningBehavior.RUN_ONLY_MANUALLY
+import it.evadid.workbook.abstractions.grading.GradingImportance.{OPTIONAL_TEST, REQUIRED_TEST}
+import it.evadid.workbook.abstractions.grading.GradingStatus.{Correct, Incorrect, PartiallyCorrect}
+import it.evadid.workbook.interactions.programming.programmingExerciseTurtle.TurtleGradingLogic.TurtleGraphicComparison
+import it.evadid.workbook.interactions.programming.programmingExerciseTurtle.TurtleGradingLogic.TurtleLineStatus.CORRECT
+import it.evadid.workbook.interactions.programming.state.ProgrammingState
+import it.evadid.workbook.interactions.programming.{AdditionalProgrammingTestInfo, ProgrammingTestGrader}
+import it.evadid.workbook.abstractions.ExecutionContextInformation
+import upickle.default.*
+
+import scala.concurrent.Future
+
+case class RecreateShapeGrader(desiredResult: TurtleGraphic, override val importance: GradingImportance, testId: String = "shape",
+    comparisonPolicy: TurtleDrawingPolicy = TurtleDrawingPolicy.Strokes,
+    /** The libraries the exercise provides; its exercise sets it ([[ProgrammingTestGrader.inEnvironment]]). */
+    environment: ProgrammingEnvironment = ProgrammingEnvironment.all)
+  extends ProgrammingTestGrader derives ReadWriter {
+  override def inEnvironment(environment: ProgrammingEnvironment): RecreateShapeGrader = copy(environment = environment)
+
+  require(testId != null && testId.nonEmpty && testId == testId.trim, "A programming test needs a nonempty ID.")
+
+  override protected def handleGrading(
+                                        state: ProgrammingState,
+                                        contextInformation: ExecutionContextInformation
+                                      ): Future[GradingResult[ProgrammingState, AdditionalProgrammingTestInfo]] = Future {
+
+    val comparison = state.inEnvironment(environment).expression.turtleComparison(desiredResult, comparisonPolicy)
+    GradingResult[ProgrammingState, AdditionalProgrammingTestInfo](this, state, comparison.gradingStatus)
+  }(using contextInformation.futureExecutionContext)
+
+  /** Runs the program and records the target with each result, so it grades on request, not on every edit. */
+  override def runningBehavior: GraderRunningBehavior = RUN_ONLY_MANUALLY
+
+  override def gradingEntity: FeedbackEntity = TestEntity
+
+}

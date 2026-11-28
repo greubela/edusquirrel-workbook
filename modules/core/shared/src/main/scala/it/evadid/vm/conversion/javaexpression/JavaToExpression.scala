@@ -18,7 +18,7 @@ import it.evadid.vm.parsing.java.clean.model.JavaAST.*
 import it.evadid.vm.parsing.java.clean.model.JavaType
 import it.evadid.vm.parsing.java.clean.model.JavaType.*
 import it.evadid.vm.types.{BeChildInfo, BeChildRole, BeScope}
-import it.evadid.workbook.elements.interactionElements.programming.state.ProgrammingStateBeExpression
+import it.evadid.workbook.interactions.programming.state.ProgrammingStateBeExpression
 
 /** Java front end: fastparse syntax tree → [[ParsedProgram]] → shared expression tree.
   *

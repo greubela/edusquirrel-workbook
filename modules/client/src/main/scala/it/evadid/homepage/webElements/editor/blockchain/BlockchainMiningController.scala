@@ -1,7 +1,7 @@
 package it.evadid.homepage.webElements.editor.blockchain
 
 import com.raquo.laminar.api.L.*
-import it.evadid.workbook.model.blockchain.TeachingChain
+import it.evadid.workbook.interactions.blockchain.TeachingChain
 
 /** Each scheduled chunk checks its snapshot, preventing cancelled or stale jobs from writing. */
 class BlockchainMiningController(state: Var[TeachingChain], zeros: Int,

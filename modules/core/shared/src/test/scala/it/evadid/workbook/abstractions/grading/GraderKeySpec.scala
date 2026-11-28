@@ -1,8 +1,8 @@
 package it.evadid.workbook.abstractions.grading
 
 import it.evadid.core.datastructures.language.LanguageMapContentId
-import it.evadid.workbook.elements.interactionElements.gpt.{TextInputLlmGrader, TextInputWithScaffoldingAndGrading}
-import it.evadid.workbook.elements.interactionElements.slideshow.SlideshowGrader
+import it.evadid.workbook.interactions.gpt.{TextInputLlmGrader, TextInputWithScaffoldingAndGrading}
+import it.evadid.workbook.interactions.slideshow.SlideshowGrader
 import upickle.default.*
 
 class GraderKeySpec extends munit.FunSuite {
@@ -30,6 +30,6 @@ class GraderKeySpec extends munit.FunSuite {
   }
 
   test("content identity uses the same SHA-256 vector on JVM and JavaScript") {
-    assertEquals(SlideshowGrader(false).key, "sha256:36531a7273a1bd39bf8a2c70151701c6310dad7d2f7452005f212995e653ae52")
+    assertEquals(SlideshowGrader(false).key, "sha256:f6ea9ef550fa7b89d0e25ce8146e0e88119cdca8957fb0cdde22deed1257d657")
   }
 }

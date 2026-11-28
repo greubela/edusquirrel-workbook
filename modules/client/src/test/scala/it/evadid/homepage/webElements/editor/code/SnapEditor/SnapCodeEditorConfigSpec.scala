@@ -1,8 +1,7 @@
 package it.evadid.homepage.webElements.editor.code.SnapEditor
 
-import it.evadid.homepage.webElements.editor.code.SnapEditor.{LibraryBlock, SnapCategoryColor, SnapCodeEditorConfig}
 import it.evadid.vm.code.abstractions.BeExpression
-import it.evadid.workbook.elements.interactionElements.programming.state.snap.{PaletteLayout, ProgrammingEditorPalette, SnapPaletteCatalog}
+import it.evadid.workbook.interactions.programming.state.snap.{PaletteLayout, ProgrammingEditorPalette, SnapPaletteCatalog}
 import munit.FunSuite
 
 class SnapCodeEditorConfigSpec extends FunSuite {
@@ -131,7 +130,7 @@ class SnapCodeEditorConfigSpec extends FunSuite {
   }
 
   test("inline category palettes select only the requested categories and retain their controls") {
-    import it.evadid.workbook.elements.interactionElements.programming.state.snap.SnapTurtleCatalog.PaletteTab
+    import it.evadid.workbook.interactions.programming.state.snap.SnapTurtleCatalog.PaletteTab
     val tabs = List(PaletteTab.Variables, PaletteTab.Motion)
     val config = SnapCodeEditorConfig.forPalette(ProgrammingEditorPalette.Custom(PaletteLayout.CatalogTabs(tabs)))
     assertEquals(config.libraryTabs.map(_.name), List("Variables", "Motion"))

@@ -1,14 +1,16 @@
 # Interaction models, renderers and editors
 
-An interaction defines an exercise and owns its saved answer. Its renderer binds
-that answer to workbook controls; an optional editor changes the supplied value.
+An interaction defines an exercise; its saved answer lives in the central answer state.
+Its renderer binds that answer to workbook controls; an optional editor changes the supplied value.
 Keep the saved answer as the single source of truth.
 
 ## Responsibilities and locations
 
 | Layer | Location | Responsibility |
 | --- | --- | --- |
-| Model | `modules/core/shared/.../workbook/` | Exercise definitions, saved values, requirements, grading/scaffolding and codecs |
+| Definitions | `modules/core/shared/.../workbook/abstractions/`, `elements/` | General element, format, grader and scaffolder contracts; structure and display elements |
+| Interactions | `modules/core/shared/.../workbook/interactions/<kind>/` | Specific exercises with their graders, scaffolders, states and domain models |
+| Answer state | `modules/core/shared/.../workbook/model/`, `control/` | Immutable answers and histories, and the controller that changes, grades and syncs them |
 | Renderer | `modules/client/.../homepage/workbook/htmlRenderer/` | Workbook placement, localization, previews and editor composition |
 | Editor | `modules/client/.../homepage/webElements/editor/` | Controls and transient drafts, bound to a supplied `Var[T]` |
 | Platform adapters | `modules/core/js/`, `modules/core/jvm/` | Browser/JVM integration kept outside shared models |
@@ -39,8 +41,8 @@ shares one value between preview and fullscreen editor:
 import com.raquo.laminar.api.L.*
 import it.evadid.homepage.control.model.FullInfo
 import it.evadid.homepage.webElements.editor.qr.{QrCodeEditor, QrCodeView}
-import it.evadid.workbook.elements.interactionElements.qr.CreateQrCodeInteraction
-import it.evadid.workbook.interaction.sync.UpdateImportance
+import it.evadid.workbook.interactions.qr.CreateQrCodeInteraction
+import it.evadid.workbook.sync.UpdateImportance
 
 def qrControls(fullInfo: FullInfo, element: CreateQrCodeInteraction): Element = {
   val answer = fullInfo.interactions.boundVar(element, UpdateImportance.MAJOR)
@@ -88,7 +90,7 @@ Feedback views derive everything from the history; nothing is stored separately:
 
 - `GradingReporter.report` derives one current-answer snapshot; the core `GradingSummary`
   and `ScaffoldingReport` own grouping, counts and status, while views own labels, icons and CSS.
-  [`CheckReport`](../modules/core/shared/src/main/scala/it/evadid/workbook/meta/CheckReport.scala)
+  [`CheckReport`](../modules/core/shared/src/main/scala/it/evadid/workbook/reports/CheckReport.scala)
   derives the learner's checks and the `wrongParts` that renderers mark.
 - `fullInfo.reporters.reportersFor(element)` returns the shared `grading` and `sync` reporters of
   one loaded workbook instance. Components consume them rather than constructing their own;
@@ -115,7 +117,7 @@ Step replays (`htmlRenderer/interactionRenderer/steps/`) keep only the selected 
 | --- | --- |
 | [QR](qr-code-interaction.md) | Shared requirements, bound preview and standalone fullscreen editor |
 | [Turtle recreation](embroidery-preview-workbook.md) | `TurtleRecreateShapeInteraction` owns a program and target drawing; the renderer composes the programming editor and comparison preview |
-| Text feedback | Inline text editor and standard hint controls; see [the model](../modules/core/shared/src/main/scala/it/evadid/workbook/elements/interactionElements/gpt/TextInputWithScaffoldingAndGrading.scala) and [renderer](../modules/client/src/main/scala/it/evadid/homepage/workbook/htmlRenderer/interactionRenderer/basic/TextInputWithScaffoldingAndGradingRenderer.scala) |
+| Text feedback | Inline text editor and standard hint controls; see [the model](../modules/core/shared/src/main/scala/it/evadid/workbook/interactions/gpt/TextInputWithScaffoldingAndGrading.scala) and [renderer](../modules/client/src/main/scala/it/evadid/homepage/workbook/htmlRenderer/interactionRenderer/basic/TextInputWithScaffoldingAndGradingRenderer.scala) |
 
 The text-feedback example is in the test workbook's “Text answers with hints and AI
 feedback” section.

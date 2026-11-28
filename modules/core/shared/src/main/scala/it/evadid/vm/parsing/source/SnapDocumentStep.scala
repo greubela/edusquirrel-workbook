@@ -2,7 +2,7 @@ package it.evadid.vm.parsing.source
 
 import fastparse.*
 import fastparse.NoWhitespace.*
-import it.evadid.workbook.elements.interactionElements.programming.state.snap.SnapScalaModel.*
+import it.evadid.workbook.interactions.programming.state.snap.SnapScalaModel.*
 
 /** Step 2: a fastparse XML grammar that keeps every node's lexical spelling (attribute spacing, quotes, closing
   * tags). DTDs are retained as text and never resolved or fetched.

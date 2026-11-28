@@ -7,12 +7,12 @@ import it.evadid.core.datastructures.language.control.LanguageMapStorage
 import it.evadid.core.datastructures.user.{AllUserInfo, UserConfig}
 import it.evadid.homepage.control.model.*
 import it.evadid.homepage.webElements.editor.code.EditorDomSuite
-import it.evadid.workbook.elements.interactionElements.basic.TextInteraction
-import it.evadid.workbook.elements.structureElements.{Workbook, WorkbookSection}
-import it.evadid.workbook.elements.structureElements.Workbook.WorkbookMetadata
-import it.evadid.workbook.elements.structureElements.WorkbookSection.WorkbookSectionMetadata
-import it.evadid.workbook.interaction.sync.UpdateImportance
-import it.evadid.workbook.meta.ExecutionContextInformation
+import it.evadid.workbook.interactions.basic.TextInteraction
+import it.evadid.workbook.elements.structure.{Workbook, WorkbookSection}
+import it.evadid.workbook.elements.structure.Workbook.WorkbookMetadata
+import it.evadid.workbook.elements.structure.WorkbookSection.WorkbookSectionMetadata
+import it.evadid.workbook.sync.UpdateImportance
+import it.evadid.workbook.abstractions.ExecutionContextInformation
 import scala.concurrent.{ExecutionContext, Future}
 import upickle.default.*
 

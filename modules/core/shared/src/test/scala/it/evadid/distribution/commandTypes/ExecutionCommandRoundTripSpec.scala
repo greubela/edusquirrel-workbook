@@ -16,15 +16,15 @@ import it.evadid.vm.parsing.source.SourceParsing
 import it.evadid.vm.simulation.python.PythonTurtleCalls
 import it.evadid.vm.simulation.java.JavaTurtleExecutionEvidence as Evidence
 import it.evadid.workbook.abstractions.InteractionFormat.TextInteractionFormat
-import it.evadid.workbook.elements.interactionElements.programming.state.ProgrammingStateRaw
-import it.evadid.workbook.elements.interactionElements.sql.SqlDatabaseConfig
-import it.evadid.workbook.interaction.sync.{EventSyncStrategy, SyncSuccess, UpdateImportance, UsageContext}
-import it.evadid.workbook.interaction.sync.model.InteractionHistoryJson
-import it.evadid.workbook.interaction.variable.InteractionVariableHistory
-import it.evadid.workbook.interaction.variable.events.{AnswerChangedEvent, EventId}
-import it.evadid.workbook.model.qr.{QrCode, QrErrorCorrection}
-import it.evadid.workbook.elements.structureElements.Workbook
-import it.evadid.workbook.elements.structureElements.Workbook.WorkbookMetadata
+import it.evadid.workbook.interactions.programming.state.ProgrammingStateRaw
+import it.evadid.workbook.interactions.sql.SqlDatabaseConfig
+import it.evadid.workbook.sync.{EventSyncStrategy, SyncSuccess, UpdateImportance, UsageContext}
+import it.evadid.workbook.sync.model.InteractionHistoryJson
+import it.evadid.workbook.model.history.InteractionVariableHistory
+import it.evadid.workbook.model.history.events.{AnswerChangedEvent, EventId}
+import it.evadid.workbook.interactions.qr.{QrCode, QrErrorCorrection}
+import it.evadid.workbook.elements.structure.Workbook
+import it.evadid.workbook.elements.structure.Workbook.WorkbookMetadata
 import it.evadid.workbook.session.{AllWorkbookInfo, SessionData, WorkbookConfig}
 import it.evadid.core.datastructures.language.LanguageMapContentId
 import java.time.LocalDateTime

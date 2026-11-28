@@ -6,7 +6,7 @@ This allows servers to exchange histories for workbooks they do not know.
 
 | Class | Responsibility |
 | --- | --- |
-| `SerializedWorkbook` (`workbook.jsonFactory`) | Root ID and serialized element definitions; collects children and section prerequisites, rejecting conflicting IDs |
+| `SerializedWorkbook` (`workbook.serialization`) | Root ID and serialized element definitions; collects children and section prerequisites, rejecting conflicting IDs |
 | `WorkbookElementFactory` | Encodes element definitions and resolves graph references when reconstructing elements |
 | `SessionData` (`workbook.session`, shared) | Save timestamp, user identity, public user configuration, workbook definition (`AllWorkbookInfo`) and `Map[SyncContext, InteractionHistoryJson]` |
 | `WorkbookUserDataAnalyzer` / `UserSessionControl` | Export/download and login/import orchestration |
@@ -18,7 +18,7 @@ and section prerequisites travel with the root. The concrete reader checks the
 root kind.
 
 ```scala
-import it.evadid.workbook.elements.structureElements.Workbook
+import it.evadid.workbook.elements.structure.Workbook
 import upickle.default.*
 
 def workbookToString(workbook: Workbook): String = write[Workbook](workbook)

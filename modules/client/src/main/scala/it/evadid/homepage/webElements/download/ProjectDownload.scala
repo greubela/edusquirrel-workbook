@@ -3,7 +3,7 @@ package it.evadid.homepage.webElements.download
 import it.evadid.core.datastructures.language.AppLanguage.{Java, ProgrammingLanguage, Python, SnapLanguage}
 import it.evadid.vm.projectexport.{ExportedProject, ProjectExport}
 import it.evadid.vm.simulation.data.DataWorld
-import it.evadid.workbook.elements.interactionElements.programming.state.ProgrammingState
+import it.evadid.workbook.interactions.programming.state.ProgrammingState
 import org.scalajs.dom
 
 import java.time.LocalDateTime

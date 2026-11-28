@@ -6,7 +6,7 @@ import it.evadid.homepage.workbook.htmlRenderer.LaminarRenderHelper
 import it.evadid.homepage.workbook.htmlRenderer.controlElements.interactionInfo.InteractionInfoPanelIcons.*
 import it.evadid.workbook.abstractions.TypeOfTextDisplay.*
 import it.evadid.workbook.abstractions.{InteractionFormat, WorkbookInteractionElement}
-import it.evadid.workbook.meta.{GradingSummary, ScaffoldingReport}
+import it.evadid.workbook.reports.{GradingSummary, ScaffoldingReport}
 import it.evadid.homepage.control.info.interaction.GradingReporter
 
 

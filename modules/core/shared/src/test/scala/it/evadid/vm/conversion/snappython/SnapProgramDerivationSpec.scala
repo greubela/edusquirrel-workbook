@@ -1,14 +1,14 @@
 package it.evadid.vm.conversion.snappython
 
-import it.evadid.workbook.elements.interactionElements.programming.state.ProgrammingStateSnapScalaModel
+import it.evadid.workbook.interactions.programming.state.ProgrammingStateSnapScalaModel
 import it.evadid.core.datastructures.language.AppLanguage.{Java, Python, SnapLanguage}
 import it.evadid.vm.conversion.expressionsnap.ExpressionToSnap
 import it.evadid.vm.conversion.pythonsnap.PythonToSnap
 
-import it.evadid.workbook.elements.interactionElements.programming.state.{ProgrammingState, ProgrammingStateRaw}
+import it.evadid.workbook.interactions.programming.state.{ProgrammingState, ProgrammingStateRaw}
 
 import it.evadid.vm.BeProgram
-import it.evadid.workbook.elements.interactionElements.programming.state.snap.{SnapCanvasLayout, SnapCanvasScript}
+import it.evadid.workbook.interactions.programming.state.snap.{SnapCanvasLayout, SnapCanvasScript}
 import munit.FunSuite
 
 class SnapProgramDerivationSpec extends FunSuite {

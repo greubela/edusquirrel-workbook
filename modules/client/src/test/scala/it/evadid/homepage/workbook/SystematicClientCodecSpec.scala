@@ -23,9 +23,9 @@ class SystematicClientCodecSpec extends FunSuite {
     import it.evadid.core.datastructures.language.AppLanguage.English
     import it.evadid.core.datastructures.language.LanguageMapContentId
     import it.evadid.workbook.session.SessionData
-    import it.evadid.workbook.elements.structureElements.Workbook
-    import it.evadid.workbook.interaction.sync.SyncContext
-    import it.evadid.workbook.interaction.sync.model.InteractionHistoryJson
+    import it.evadid.workbook.elements.structure.Workbook
+    import it.evadid.workbook.sync.SyncContext
+    import it.evadid.workbook.sync.model.InteractionHistoryJson
     import Workbook.WorkbookMetadata
     val user = User("Fixture", "fixture", "fixture@example.com")
     val workbook = Workbook("fixture", WorkbookMetadata(Set(user), Set.empty, LanguageMapContentId("fixture/title"), List(English)), Nil)

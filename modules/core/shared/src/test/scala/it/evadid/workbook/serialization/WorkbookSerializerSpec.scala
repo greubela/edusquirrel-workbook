@@ -5,14 +5,13 @@ import it.evadid.core.datastructures.language.AppLanguage.English
 import it.evadid.core.datastructures.language.LanguageMapContentId
 import it.evadid.core.datastructures.user.User
 import it.evadid.workbook.abstractions.WorkbookElement
-import it.evadid.workbook.elements.interactionElements.basic.TextInteraction
-import it.evadid.workbook.elements.displayElements.TwoColumnPanel
-import it.evadid.workbook.elements.structureElements.{ExerciseContainer, Workbook, WorkbookSection}
-import it.evadid.workbook.elements.structureElements.WorkbookSection.WorkbookSectionMetadata
-import it.evadid.workbook.interaction.sync.UpdateImportance
-import it.evadid.workbook.meta.ExecutionContextInformation
-import it.evadid.workbook.elements.structureElements.Workbook.WorkbookMetadata
-import it.evadid.workbook.jsonFactory.WorkbookElementFactory
+import it.evadid.workbook.interactions.basic.TextInteraction
+import it.evadid.workbook.elements.display.TwoColumnPanel
+import it.evadid.workbook.elements.structure.{ExerciseContainer, Workbook, WorkbookSection}
+import it.evadid.workbook.elements.structure.WorkbookSection.WorkbookSectionMetadata
+import it.evadid.workbook.sync.UpdateImportance
+import it.evadid.workbook.abstractions.ExecutionContextInformation
+import it.evadid.workbook.elements.structure.Workbook.WorkbookMetadata
 import munit.FunSuite
 import upickle.default.*
 import upickle.core.TraceVisitor.TraceException
@@ -83,8 +82,8 @@ class WorkbookSerializerSpec extends FunSuite {
   }
 
   test("populated workbooks round-trip repeatedly with native metadata and registry JSON") {
-    import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseRegular.ProgrammingExercise
-    import it.evadid.workbook.elements.interactionElements.programming.state.snap.ProgrammingEditorPalette
+    import it.evadid.workbook.interactions.programming.programmingExerciseRegular.ProgrammingExercise
+    import it.evadid.workbook.interactions.programming.state.snap.ProgrammingEditorPalette
     val first = WorkbookSection("first", WorkbookSectionMetadata(LanguageMapContentId("section/first")), List(TextInteraction("text")))
     val second = WorkbookSection("second", WorkbookSectionMetadata(LanguageMapContentId("section/second"), List(first), List(first)),
       List(ProgrammingExercise("programming", editorPalette = ProgrammingEditorPalette.Embroidery, referencePython = Some("print(\"hello\")\n"))))
@@ -125,7 +124,7 @@ class WorkbookSerializerSpec extends FunSuite {
   }
 
   test("embedded registries reject unresolved references instead of re-expanding forever") {
-    import it.evadid.workbook.jsonFactory.{WorkbookElementSerializable, WorkbookElementReference}
+    import it.evadid.workbook.serialization.{WorkbookElementSerializable, WorkbookElementReference}
     val root = workbook.toSerialized
       .withElementsAddedAs("sections", List(WorkbookElementReference("missing", Some("WorkbookSection"))))
       .withElementsAddedAs("serializedElements", List(TextInteraction("unrelated").toSerialized))
@@ -136,8 +135,8 @@ class WorkbookSerializerSpec extends FunSuite {
 
 
   test("workbooks discover interactions inside sections, exercise containers and display wrappers") {
-    import it.evadid.workbook.elements.displayElements.LabeledWorkbookElement
-    import it.evadid.workbook.elements.displayElements.LabeledWorkbookElement.{GoalLabel, WorkbookLabel}
+    import it.evadid.workbook.elements.display.LabeledWorkbookElement
+    import it.evadid.workbook.elements.display.LabeledWorkbookElement.{GoalLabel, WorkbookLabel}
     val answer = TextInteraction("saved-answer")
     val wrapped = LabeledWorkbookElement("label", answer, WorkbookLabel(LanguageMapContentId("serializer/goal"), GoalLabel))
     val container = ExerciseContainer("exercise", LanguageMapContentId("serializer/exercise"), List(wrapped))

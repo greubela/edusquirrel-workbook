@@ -6,16 +6,16 @@ import it.evadid.core.datastructures.user.{User, UserConfig}
 import it.evadid.sql.{DatabaseConfigWithCredentials, DatabaseHistoryFormat}
 import it.evadid.workbook.abstractions.InteractionFormat.{ChoiceInteractionFormat, TextInteractionFormat}
 import it.evadid.workbook.abstractions.grading.{GraderRunningBehavior, GradingResult, GradingStatus}
-import it.evadid.workbook.elements.interactionElements.basic.TextInteraction
-import it.evadid.workbook.elements.interactionElements.choice.WorkbookContentChoiceInteraction
-import it.evadid.workbook.elements.interactionElements.choice.WorkbookContentChoiceInteraction.*
-import it.evadid.workbook.elements.structureElements.Workbook.WorkbookMetadata
-import it.evadid.workbook.elements.structureElements.WorkbookSection.WorkbookSectionMetadata
-import it.evadid.workbook.elements.structureElements.{Workbook, WorkbookSection}
-import it.evadid.workbook.interaction.sync.destination.SyncDestinationDefinition.SyncDestinationBasedOnHistoryDatabase
-import it.evadid.workbook.interaction.sync.model.InteractionHistoryJson
-import it.evadid.workbook.interaction.sync.{EventSyncStrategy, SyncContext, SyncInformation, UpdateImportance, UsageContext}
-import it.evadid.workbook.interaction.variable.{InteractionVariableHistory, InteractionVariableState}
+import it.evadid.workbook.interactions.basic.TextInteraction
+import it.evadid.workbook.interactions.choice.WorkbookContentChoiceInteraction
+import it.evadid.workbook.interactions.choice.WorkbookContentChoiceInteraction.*
+import it.evadid.workbook.elements.structure.Workbook.WorkbookMetadata
+import it.evadid.workbook.elements.structure.WorkbookSection.WorkbookSectionMetadata
+import it.evadid.workbook.elements.structure.{Workbook, WorkbookSection}
+import it.evadid.workbook.sync.destination.SyncDestinationDefinition.SyncDestinationBasedOnHistoryDatabase
+import it.evadid.workbook.sync.model.InteractionHistoryJson
+import it.evadid.workbook.sync.{EventSyncStrategy, SyncContext, SyncInformation, UpdateImportance, UsageContext}
+import it.evadid.workbook.model.history.{InteractionVariableHistory, InteractionVariableState}
 import it.evadid.workbook.session.{AllWorkbookInfo, SessionData, WorkbookConfig}
 
 import java.time.LocalDateTime

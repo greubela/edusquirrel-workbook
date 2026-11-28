@@ -1,6 +1,6 @@
 package it.evadid.workbook.abstractions.grading
 
-import it.evadid.workbook.interaction.sync.UpdateImportance
+import it.evadid.workbook.sync.UpdateImportance
 import upickle.default.*
 
 /** When a grader runs without an explicit request (e.g. the check button, which always runs it). */

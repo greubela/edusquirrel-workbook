@@ -1,6 +1,6 @@
 package it.evadid.homepage.workbook.htmlRenderer.interactionRenderer.basic
 
-import it.evadid.workbook.interaction.state.InteractionSignals.*
+import it.evadid.workbook.control.InteractionSignals.*
 
 import it.evadid.homepage.control.model.FullInfo
 
@@ -16,9 +16,9 @@ import it.evadid.homepage.webElements.basic.HtmlButtonElement
 import it.evadid.homepage.webElements.editor.SimpleChatEditor
 import it.evadid.homepage.workbook.htmlRenderer.HtmlRenderFactory.LineBasedRenderingFactory
 import it.evadid.homepage.workbook.htmlRenderer.atomarLineRenderings.AtomarLineRendering
-import it.evadid.workbook.elements.interactionElements.basic.MessagingInteraction.MessengerModelScaffolding
-import it.evadid.workbook.elements.interactionElements.gpt.GptInteractionElement
-import it.evadid.workbook.interaction.sync.UpdateImportance.MAJOR
+import it.evadid.workbook.interactions.basic.MessagingInteraction.MessengerModelScaffolding
+import it.evadid.workbook.interactions.gpt.GptInteractionElement
+import it.evadid.workbook.sync.UpdateImportance.MAJOR
 import org.scalajs.dom.SVGSVGElement
 
 import java.time.LocalDateTime

@@ -4,40 +4,40 @@ import it.evadid.core.datastructures.chat.MessengerModel
 import it.evadid.core.datastructures.language.LanguageMapContentId
 import it.evadid.core.util.io.Serializer
 import it.evadid.workbook.abstractions.scaffolding.AdditionalInfoLlmScaffolding
-import it.evadid.workbook.elements.interactionElements.basic.MessagingInteraction.MessengerModelScaffolding
-import it.evadid.workbook.elements.interactionElements.blockchain.{Sha256Answer, SquareMiddleHashAnswer}
-import it.evadid.workbook.elements.interactionElements.codeTaskToggle.CodeTaskToggleState
-import it.evadid.workbook.elements.interactionElements.emailSimulator.{InboxState, InboxStateScaffolding}
-import it.evadid.workbook.elements.interactionElements.neuron.NeuronParameters
-import it.evadid.workbook.elements.interactionElements.programming.AdditionalProgrammingTestInfo
-import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseTurtle.TurtleStitchProjectState
-import it.evadid.workbook.elements.interactionElements.programming.state.ProgrammingState
-import it.evadid.workbook.elements.interactionElements.reorderExercise.ReorderInteractionState
-import it.evadid.workbook.elements.interactionElements.slideshow.SlideshowState
-import it.evadid.workbook.elements.interactionElements.sorting.sortingExercise.SortingInteractionState
-import it.evadid.workbook.elements.interactionElements.sorting.sortingReasonExercise.SortingReasonInteractionState
-import it.evadid.workbook.elements.interactionElements.table.TableAnswer
-import it.evadid.workbook.elements.interactionElements.text.UnicodeComparisonAnswer
-import it.evadid.workbook.elements.interactionElements.todo.*
-import it.evadid.workbook.interaction.variable.InteractionVariableHistory
-import it.evadid.workbook.interaction.variable.events.*
+import it.evadid.workbook.interactions.basic.MessagingInteraction.MessengerModelScaffolding
+import it.evadid.workbook.interactions.blockchain.{Sha256Answer, SquareMiddleHashAnswer}
+import it.evadid.workbook.interactions.codeTaskToggle.CodeTaskToggleState
+import it.evadid.workbook.interactions.emailSimulator.{InboxState, InboxStateScaffolding}
+import it.evadid.workbook.interactions.neuron.NeuronParameters
+import it.evadid.workbook.interactions.programming.AdditionalProgrammingTestInfo
+import it.evadid.workbook.interactions.programming.programmingExerciseTurtle.TurtleStitchProjectState
+import it.evadid.workbook.interactions.programming.state.ProgrammingState
+import it.evadid.workbook.interactions.reorderExercise.ReorderInteractionState
+import it.evadid.workbook.interactions.slideshow.SlideshowState
+import it.evadid.workbook.interactions.sorting.sortingExercise.SortingInteractionState
+import it.evadid.workbook.interactions.sorting.sortingReasonExercise.SortingReasonInteractionState
+import it.evadid.workbook.interactions.table.TableAnswer
+import it.evadid.workbook.interactions.text.UnicodeComparisonAnswer
+import it.evadid.workbook.interactions.todo.*
+import it.evadid.workbook.model.history.InteractionVariableHistory
+import it.evadid.workbook.model.history.events.*
 import it.evadid.core.util.io.serializer.DefaultSerializer.given
-import it.evadid.workbook.model.blockchain.TeachingChain
-import it.evadid.workbook.model.compression.CompressionExperiment
-import it.evadid.workbook.model.evacuation.{EvacuationExperiment, EvacuationFloorPlan}
-import it.evadid.workbook.model.pixel.BinaryPixelImage
-import it.evadid.workbook.model.plot.PlotAnswer
-import it.evadid.workbook.model.qr.QrCode
+import it.evadid.workbook.interactions.blockchain.TeachingChain
+import it.evadid.workbook.interactions.compression.CompressionExperiment
+import it.evadid.workbook.interactions.evacuation.{EvacuationExperiment, EvacuationFloorPlan}
+import it.evadid.workbook.interactions.pixel.BinaryPixelImage
+import it.evadid.workbook.interactions.plot.PlotAnswer
+import it.evadid.workbook.interactions.qr.QrCode
 import it.evadid.workbook.abstractions.grading.{GradingResult, WorkbookInteractionGrader}
-import it.evadid.workbook.elements.interactionElements.choice.WorkbookContentChoiceInteraction.ChoiceState
-import it.evadid.workbook.elements.interactionElements.gpt.TextInputLlmGrader
-import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseRegular.ProgrammingUnitTestGrader
-import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseTurtle.{ProgramStructureGrader, RecreateShapeGrader, TurtleCommandUsageGrader}
-import it.evadid.workbook.elements.interactionElements.slideshow.SlideshowGrader
-import it.evadid.workbook.elements.interactionElements.choice.ChoiceGrader
-import it.evadid.workbook.elements.interactionElements.reorderExercise.{ReorderCodeGrader, ReorderMapIdGrader}
-import it.evadid.workbook.elements.interactionElements.matching.{MatchingGrader, MatchingInteractionState}
-import it.evadid.workbook.elements.interactionElements.table.{TableAnswer, TableCellGrader}
+import it.evadid.workbook.interactions.choice.WorkbookContentChoiceInteraction.ChoiceState
+import it.evadid.workbook.interactions.gpt.TextInputLlmGrader
+import it.evadid.workbook.interactions.programming.programmingExerciseRegular.ProgrammingUnitTestGrader
+import it.evadid.workbook.interactions.programming.programmingExerciseTurtle.{ProgramStructureGrader, RecreateShapeGrader, TurtleCommandUsageGrader}
+import it.evadid.workbook.interactions.slideshow.SlideshowGrader
+import it.evadid.workbook.interactions.choice.ChoiceGrader
+import it.evadid.workbook.interactions.reorderExercise.{ReorderCodeGrader, ReorderMapIdGrader}
+import it.evadid.workbook.interactions.matching.{MatchingGrader, MatchingInteractionState}
+import it.evadid.workbook.interactions.table.{TableAnswer, TableCellGrader}
 import upickle.default.*
 
 /** A workbook-independent, finite association of saved state, feedback and their codecs. */

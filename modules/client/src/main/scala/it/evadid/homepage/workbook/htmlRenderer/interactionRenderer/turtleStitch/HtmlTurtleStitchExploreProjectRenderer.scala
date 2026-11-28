@@ -6,7 +6,7 @@ import com.raquo.laminar.api.L.*
 import it.evadid.core.datastructures.language.LanguageMapContentId
 import it.evadid.homepage.workbook.htmlRenderer.HtmlRenderFactory.LineBasedRenderingFactory
 import it.evadid.homepage.workbook.htmlRenderer.atomarLineRenderings.{AtomarLineRendering, ElementCard}
-import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseTurtle.TurtleStitchExploreProjectElement
+import it.evadid.workbook.interactions.programming.programmingExerciseTurtle.TurtleStitchExploreProjectElement
 
 object HtmlTurtleStitchExploreProjectRenderer extends LineBasedRenderingFactory[TurtleStitchExploreProjectElement] {
 

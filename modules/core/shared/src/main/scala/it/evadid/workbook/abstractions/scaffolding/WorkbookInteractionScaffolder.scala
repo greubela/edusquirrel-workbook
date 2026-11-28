@@ -1,9 +1,9 @@
 package it.evadid.workbook.abstractions.scaffolding
 
 import it.evadid.workbook.abstractions.grading.GradingResult
-import it.evadid.workbook.interaction.variable.InteractionVariableState
+import it.evadid.workbook.model.history.InteractionVariableState
 import it.evadid.workbook.abstractions.{FeedbackEntity, InteractionFormat}
-import it.evadid.workbook.meta.ExecutionContextInformation
+import it.evadid.workbook.abstractions.ExecutionContextInformation
 
 import scala.concurrent.{ExecutionContext, Future}
 

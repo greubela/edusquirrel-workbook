@@ -1,6 +1,6 @@
 package it.evadid.homepage.workbook.htmlRenderer.interactionRenderer.pixel
 
-import it.evadid.workbook.interaction.state.InteractionSignals.*
+import it.evadid.workbook.control.InteractionSignals.*
 
 import it.evadid.homepage.control.model.FullInfo
 
@@ -11,9 +11,9 @@ import com.raquo.laminar.keys.HtmlAttr
 import it.evadid.core.datastructures.state.StateHelper.StateBasedVar
 import it.evadid.homepage.workbook.htmlRenderer.HtmlRenderFactory.LineBasedRenderingFactory
 import it.evadid.homepage.workbook.htmlRenderer.atomarLineRenderings.AtomarLineRendering
-import it.evadid.workbook.elements.interactionElements.pixel.BinaryPixelInteraction
-import it.evadid.workbook.model.pixel.*
-import it.evadid.workbook.interaction.sync.UpdateImportance
+import it.evadid.workbook.interactions.pixel.BinaryPixelInteraction
+import it.evadid.workbook.interactions.pixel.*
+import it.evadid.workbook.sync.UpdateImportance
 
 case object BinaryPixelRenderer extends LineBasedRenderingFactory[BinaryPixelInteraction] {
   private val headerScope = new HtmlAttr[String]("scope", StringAsIsCodec)

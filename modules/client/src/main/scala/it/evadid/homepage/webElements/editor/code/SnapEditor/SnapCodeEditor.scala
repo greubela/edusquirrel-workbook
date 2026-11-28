@@ -10,9 +10,8 @@ import it.evadid.core.datastructures.language.AppLanguage.{English, HumanLanguag
 import it.evadid.homepage.webElements.HtmlAppElement
 import it.evadid.homepage.webElements.editor.code.EvaEditor.{EvaEditorContext, EvaEditorLabels, EvaEditorTab}
 import it.evadid.homepage.webElements.editor.code.SnapEditor.execution.JavaTurtleSnapPrimitives
-import it.evadid.homepage.webElements.editor.code.SnapEditor.SnapCodeEditorConfig
 import it.evadid.util.logging.Logger
-import it.evadid.workbook.elements.interactionElements.programming.state.*
+import it.evadid.workbook.interactions.programming.state.*
 import org.scalajs.dom
 import org.scalajs.dom.html.Canvas
 

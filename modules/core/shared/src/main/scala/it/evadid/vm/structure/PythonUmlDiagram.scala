@@ -11,7 +11,7 @@ import it.evadid.core.datastructures.vectorShapes.svg.TurtleCommand
 import it.evadid.vm.code.defining.{BeDependency, BeUnknownDependency}
 import it.evadid.vm.conversion.dependencies.KnownDependencies
 import it.evadid.vm.conversion.expressionpython.BeExpressionToPythonString
-import it.evadid.workbook.elements.interactionElements.programming.state.ProgrammingStatePythonStructured
+import it.evadid.workbook.interactions.programming.state.ProgrammingStatePythonStructured
 
 /** Python declarations in the same UML model as Java; unfinished source still exposes its declarations. */
 object PythonUmlDiagram {

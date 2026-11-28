@@ -2,7 +2,7 @@ package it.evadid.vm.conversion
 
 import it.evadid.vm.code.errors.{ProgrammingConversionError, ProgrammingConversionException}
 
-import it.evadid.workbook.elements.interactionElements.programming.state.ProgrammingState
+import it.evadid.workbook.interactions.programming.state.ProgrammingState
 import it.evadid.util.logging.LoggingLevel
 
 /** Conversion diagnostics are values, independent of the editor displaying them. */

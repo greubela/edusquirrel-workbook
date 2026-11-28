@@ -14,7 +14,7 @@ import it.evadid.vm.modules.{BeModule, BeModules, ModuleCommand, SystemCommand}
 import it.evadid.vm.simulation.data.{DataLibraries, DataWorld, ListCommand, SudokuCommand, SudokuGrid}
 import it.evadid.vm.simulation.turtle.{TurtleCommandSites, TurtleExecutionLimits, TurtleExecutionStatus}
 import it.evadid.vm.types.{BeDataValueLiteral, BeUseValueReference}
-import it.evadid.workbook.elements.interactionElements.programming.state.snap.SnapTurtleCatalog
+import it.evadid.workbook.interactions.programming.state.snap.SnapTurtleCatalog
 
 import scala.annotation.tailrec
 import scala.util.control.NonFatal

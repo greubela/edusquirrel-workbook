@@ -2,8 +2,8 @@ package it.evadid.distribution.commandTypes
 
 import it.evadid.distribution.command.ExecutionCommandFactory
 import it.evadid.core.datastructures.vectorShapes.renderer.FlowchartGutter
-import it.evadid.workbook.elements.interactionElements.programming.state.snap.SnapScalaModel
-import it.evadid.workbook.model.qr.{QrCode, QrErrorCorrection}
+import it.evadid.workbook.interactions.programming.state.snap.SnapScalaModel
+import it.evadid.workbook.interactions.qr.{QrCode, QrErrorCorrection}
 import it.evadid.vm.simulation.java.{JavaTurtleExecutionEvidence, JavaTurtleInterpreter, JavaTurtleTrace}
 import upickle.default.*
 
@@ -13,7 +13,7 @@ object WorkerCommands {
   case class HealthResult(service: String, commands: Seq[String]) derives ReadWriter
   case class ParseSnapXmlRequest(xml: String, tag: String) derives ReadWriter
   /** A program and the libraries its exercise provides. */
-  case class ProgramAnalysisRequest(state: it.evadid.workbook.elements.interactionElements.programming.state.ProgrammingState,
+  case class ProgramAnalysisRequest(state: it.evadid.workbook.interactions.programming.state.ProgrammingState,
       environment: it.evadid.vm.conversion.dependencies.ProgrammingEnvironment) derives ReadWriter
   case class FlowchartRequest(language: it.evadid.core.datastructures.language.AppLanguage.ProgrammingLanguage, source: String) derives ReadWriter
   case class CalculateQrCodeRequest(text: String, errorCorrection: QrErrorCorrection = QrErrorCorrection.M,

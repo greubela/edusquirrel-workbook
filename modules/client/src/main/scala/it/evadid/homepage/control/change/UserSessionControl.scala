@@ -11,7 +11,7 @@ import it.evadid.distribution.commandTypes.UserCommands
 import it.evadid.distribution.commandTypes.UserCommands.{CreateAccountRequest, LoginRequest, LoginResponse}
 import it.evadid.homepage.control.info.WorkbookUserDataAnalyzer
 import it.evadid.homepage.control.model.*
-import it.evadid.workbook.interaction.sync.SyncResetState
+import it.evadid.workbook.sync.SyncResetState
 import it.evadid.workbook.abstractions.InteractionFormat
 import it.evadid.workbook.abstractions.WorkbookInteractionElement
 import upickle.default.*

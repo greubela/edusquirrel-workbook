@@ -182,9 +182,9 @@ object TurtleStitchProgramModel {
 
   final case class CustomBlockDefinition(
       spec: String,
-      blockType: it.evadid.workbook.elements.interactionElements.programming.state.snap.SnapVocabulary.BlockType,
-      category: it.evadid.workbook.elements.interactionElements.programming.state.snap.SnapVocabulary.BlockCategory =
-        it.evadid.workbook.elements.interactionElements.programming.state.snap.SnapVocabulary.BlockCategory.Other,
+      blockType: it.evadid.workbook.interactions.programming.state.snap.SnapVocabulary.BlockType,
+      category: it.evadid.workbook.interactions.programming.state.snap.SnapVocabulary.BlockCategory =
+        it.evadid.workbook.interactions.programming.state.snap.SnapVocabulary.BlockCategory.Other,
       selector: Option[String] = None,
       primitive: Option[String] = None,
       helper: Option[String] = None,

@@ -1,10 +1,10 @@
 package it.evadid.homepage.workbook.htmlRenderer.interactionRenderer.steps
 
-import it.evadid.workbook.interaction.state.InteractionSignals.*
+import it.evadid.workbook.control.InteractionSignals.*
 
 import it.evadid.homepage.control.model.FullInfo
 
-import it.evadid.workbook.interaction.sync.UpdateImportance
+import it.evadid.workbook.sync.UpdateImportance
 
 import com.raquo.laminar.api.L.*
 import it.evadid.core.datastructures.language.LanguageMapContentId
@@ -12,14 +12,14 @@ import it.evadid.core.datastructures.state.StateHelper.StateBasedVar
 import it.evadid.homepage.webElements.basic.HtmlButtonElement
 import it.evadid.homepage.webElements.editor.code.EvaEditor.EvaEditorConfig
 import it.evadid.homepage.webElements.editor.code.SnapEditor.SnapCodeEditorConfig
-import it.evadid.workbook.elements.interactionElements.programming.state.snap.ProgrammingEditorPalette
+import it.evadid.workbook.interactions.programming.state.snap.ProgrammingEditorPalette
 import it.evadid.homepage.workbook.htmlRenderer.HtmlRenderFactory.LineBasedRenderingFactory
 import it.evadid.homepage.workbook.htmlRenderer.atomarLineRenderings.{AtomarLineRendering, ElementCard}
 import it.evadid.homepage.workbook.htmlRenderer.workbookEditors.{EditorWithWorkbookPanel, WorkbookEvaEditor}
 import it.evadid.workbook.abstractions.{LangMapContentIdType, RoleInWorkbook, TypeOfTextDisplay}
-import it.evadid.workbook.elements.displayElements.DisplayLangMapContent
-import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseRegular.SortListExercise
-import it.evadid.workbook.elements.interactionElements.programming.state.{ProgrammingState, ProgrammingStateJavaStructured, ProgrammingStatePythonStructured, ProgrammingStateRaw}
+import it.evadid.workbook.elements.display.DisplayLangMapContent
+import it.evadid.workbook.interactions.programming.programmingExerciseRegular.SortListExercise
+import it.evadid.workbook.interactions.programming.state.{ProgrammingState, ProgrammingStateJavaStructured, ProgrammingStatePythonStructured, ProgrammingStateRaw}
 
 /** Sorting counterpart of the recreate-turtle renderer: editor, current source and a step-by-step replay. */
 case object HtmlSortListExerciseRenderer extends LineBasedRenderingFactory[SortListExercise] {

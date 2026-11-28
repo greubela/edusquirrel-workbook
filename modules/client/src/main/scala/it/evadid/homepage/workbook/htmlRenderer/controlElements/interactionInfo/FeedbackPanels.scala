@@ -6,7 +6,7 @@ import it.evadid.homepage.webElements.basic.LabelSelection
 import it.evadid.homepage.workbook.htmlRenderer.controlElements.interactionInfo.FeedbackPresentation.*
 import it.evadid.homepage.workbook.htmlRenderer.controlElements.interactionInfo.InteractionInfoPanelIcons.{FeedbackIcon, createFeedbackIcon}
 import it.evadid.workbook.abstractions.InteractionFormat
-import it.evadid.workbook.meta.{GradingSummary, ScaffoldingReport}
+import it.evadid.workbook.reports.{GradingSummary, ScaffoldingReport}
 import java.time.format.DateTimeFormatter
 
 /**

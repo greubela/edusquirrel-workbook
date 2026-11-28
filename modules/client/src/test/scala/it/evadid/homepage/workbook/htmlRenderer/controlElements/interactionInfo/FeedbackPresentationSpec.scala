@@ -7,9 +7,9 @@ import it.evadid.homepage.control.info.interaction.GradingReporter
 import it.evadid.homepage.webElements.editor.code.EditorDomSuite
 import it.evadid.homepage.workbook.htmlRenderer.controlElements.interactionInfo.FeedbackPresentation.*
 import it.evadid.workbook.abstractions.grading.{GradedState, GradingResult, GradingStatus}
-import it.evadid.workbook.elements.interactionElements.gpt.TextInputWithScaffoldingAndGrading
-import it.evadid.workbook.elements.interactionElements.gpt.TextInputWithScaffoldingAndGrading.ContentForLlmInteraction
-import it.evadid.workbook.meta.{GradingSummary, ScaffoldingReport}
+import it.evadid.workbook.interactions.gpt.TextInputWithScaffoldingAndGrading
+import it.evadid.workbook.interactions.gpt.TextInputWithScaffoldingAndGrading.ContentForLlmInteraction
+import it.evadid.workbook.reports.{GradingSummary, ScaffoldingReport}
 
 class FeedbackPresentationSpec extends EditorDomSuite {
   private def criteria(count: Int) = TextInputWithScaffoldingAndGrading(s"criteria-$count", LanguageMapContentId("test/task"),

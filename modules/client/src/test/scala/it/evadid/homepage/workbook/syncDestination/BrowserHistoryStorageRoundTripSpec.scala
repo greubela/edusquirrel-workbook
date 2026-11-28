@@ -7,11 +7,11 @@ import it.evadid.util.logging.BasicLogger
 import it.evadid.util.logging.derived.SyncLogger
 import it.evadid.workbook.abstractions.InteractionFormat
 import it.evadid.workbook.abstractions.InteractionFormat.{ProgrammingExerciseWithLlmScaffoldingAndGrading, TextInteractionFormat}
-import it.evadid.workbook.elements.interactionElements.programming.state.{ProgrammingState, ProgrammingStateRaw}
-import it.evadid.workbook.interaction.sync.*
-import it.evadid.workbook.interaction.sync.destination.SyncDestinationDefinition.LocalStorageSyncDefinition
-import it.evadid.workbook.interaction.variable.InteractionVariableHistory
-import it.evadid.workbook.interaction.variable.events.{AnswerChangedEvent, InteractionEvent, InteractionEvents}
+import it.evadid.workbook.interactions.programming.state.{ProgrammingState, ProgrammingStateRaw}
+import it.evadid.workbook.sync.*
+import it.evadid.workbook.sync.destination.SyncDestinationDefinition.LocalStorageSyncDefinition
+import it.evadid.workbook.model.history.InteractionVariableHistory
+import it.evadid.workbook.model.history.events.{AnswerChangedEvent, InteractionEvent, InteractionEvents}
 import org.scalajs.dom
 import java.time.LocalDateTime
 import scala.concurrent.ExecutionContext

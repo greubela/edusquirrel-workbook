@@ -11,14 +11,14 @@ import it.evadid.homepage.webElements.editor.code.EditorDomSuite
 import it.evadid.util.DownloadToDisc
 import it.evadid.util.logging.BasicLogger
 import it.evadid.workbook.abstractions.grading.GradingStatus
-import it.evadid.workbook.elements.interactionElements.basic.TextInteraction
-import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseTurtle.{TurtleGraphic, TurtleRecreateShapeInteraction}
-import it.evadid.workbook.elements.interactionElements.programming.state.{ProgrammingState, ProgrammingStateRaw}
-import it.evadid.workbook.elements.structureElements.{Workbook, WorkbookSection}
-import it.evadid.workbook.elements.structureElements.Workbook.WorkbookMetadata
-import it.evadid.workbook.elements.structureElements.WorkbookSection.WorkbookSectionMetadata
-import it.evadid.workbook.interaction.sync.UpdateImportance
-import it.evadid.workbook.meta.ExecutionContextInformation
+import it.evadid.workbook.interactions.basic.TextInteraction
+import it.evadid.workbook.interactions.programming.programmingExerciseTurtle.{TurtleGraphic, TurtleRecreateShapeInteraction}
+import it.evadid.workbook.interactions.programming.state.{ProgrammingState, ProgrammingStateRaw}
+import it.evadid.workbook.elements.structure.{Workbook, WorkbookSection}
+import it.evadid.workbook.elements.structure.Workbook.WorkbookMetadata
+import it.evadid.workbook.elements.structure.WorkbookSection.WorkbookSectionMetadata
+import it.evadid.workbook.sync.UpdateImportance
+import it.evadid.workbook.abstractions.ExecutionContextInformation
 import scala.concurrent.{ExecutionContext, Future, Promise}
 import scala.scalajs.js
 

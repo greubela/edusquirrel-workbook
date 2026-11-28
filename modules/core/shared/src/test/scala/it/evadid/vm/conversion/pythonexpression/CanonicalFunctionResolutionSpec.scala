@@ -111,17 +111,17 @@ class CanonicalFunctionResolutionSpec extends FunSuite {
   }
 
   test("printing aliases and user print functions keep separate semantics through Java") {
-    val builtin = it.evadid.workbook.elements.interactionElements.programming.state.ProgrammingStateRaw(Python, "print(3)\n")
+    val builtin = it.evadid.workbook.interactions.programming.state.ProgrammingStateRaw(Python, "print(3)\n")
     assert(builtin.toJava.code.contains("System.out.println(3);"), builtin.toJava.code)
     assertEquals(builtin.toJava.toPython.code.trim, builtin.toBeExpression.toPython.code.trim)
-    val user = it.evadid.workbook.elements.interactionElements.programming.state.ProgrammingStateRaw(Python,
+    val user = it.evadid.workbook.interactions.programming.state.ProgrammingStateRaw(Python,
       "def print(value: float):\n    forward(value)\nprint(3)\n")
     assert(!user.toJava.code.contains("System.out.println"), user.toJava.code)
     assertEquals(user.toJava.toPython.code.trim, user.toBeExpression.toPython.code.trim)
   }
 
   test("Java rejects a user class that would hide native turtle operations") {
-    val source = it.evadid.workbook.elements.interactionElements.programming.state.ProgrammingStateRaw(Python,
+    val source = it.evadid.workbook.interactions.programming.state.ProgrammingStateRaw(Python,
       "class Turtle:\n    pass\nforward(3)\n")
     val result = source.convertToLanguage(it.evadid.core.datastructures.language.AppLanguage.Java)
     assert(result.finalState.isEmpty)

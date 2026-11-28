@@ -1,6 +1,6 @@
 package it.evadid.vm.simulation.python
 
-import it.evadid.workbook.elements.interactionElements.programming.state.snap.SnapTurtleCatalog
+import it.evadid.workbook.interactions.programming.state.snap.SnapTurtleCatalog
 
 /** Runs a Python file with console-only turtle methods, restoring the interpreter's module afterward. */
 object PythonConsoleProgram {

@@ -64,9 +64,17 @@ The root sbt project aggregates client, server, worker and the optional desktop 
 
 Start with [MainApp.scala](modules/client/src/main/scala/MainApp.scala) and [HomepageStartupLogic.scala](modules/client/src/main/scala/it/evadid/homepage/control/startup/HomepageStartupLogic.scala) for page mounting.
 
-Shared workbook abstractions live in
-[WorkbookElement.scala](modules/core/shared/src/main/scala/it/evadid/workbook/abstractions/WorkbookElement.scala).
-Their implementations are under `modules/core/shared/src/main/scala/it/evadid/workbook/elements/`.
+Shared workbook code lives under `modules/core/shared/src/main/scala/it/evadid/workbook/`:
+
+| Package | Contents |
+|---|---|
+| `abstractions` | General definitions: [WorkbookElement.scala](modules/core/shared/src/main/scala/it/evadid/workbook/abstractions/WorkbookElement.scala), `InteractionFormat`, grader and scaffolder contracts |
+| `elements.structure`, `elements.display` | General elements: workbooks, sections, groups and display content |
+| `interactions.<kind>` | Specific interactions with their graders, scaffolders and domain models |
+| `model`, `model.history` | Central answer state (`InteractionInfo`) and the immutable histories and events |
+| `control` | `InteractionController` and feedback control, which change that state |
+| `sync`, `serialization`, `reports`, `session` | Sync destinations and strategies, definition codecs, status reports, saved sessions |
+
 Interactions declare their `InteractionFormat` and grading/scaffolding definitions;
 the format owns saved-state and feedback codecs. Structure elements compose them
 into workbooks. See the

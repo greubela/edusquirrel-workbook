@@ -1,6 +1,6 @@
 package it.evadid.homepage.workbook.htmlRenderer.interactionRenderer.matching
 
-import it.evadid.workbook.interaction.state.InteractionSignals.*
+import it.evadid.workbook.control.InteractionSignals.*
 
 import it.evadid.homepage.control.model.FullInfo
 
@@ -10,8 +10,8 @@ import it.evadid.core.datastructures.state.StateHelper.StateBasedVar
 import it.evadid.homepage.workbook.htmlRenderer.HtmlRenderFactory.LineBasedRenderingFactory
 import it.evadid.homepage.workbook.htmlRenderer.InlineMarkdown
 import it.evadid.homepage.workbook.htmlRenderer.atomarLineRenderings.AtomarLineRendering
-import it.evadid.workbook.elements.interactionElements.matching.LikertScaleInteraction
-import it.evadid.workbook.interaction.sync.UpdateImportance
+import it.evadid.workbook.interactions.matching.LikertScaleInteraction
+import it.evadid.workbook.sync.UpdateImportance
 
 /** Survey matrix: one row per statement, one radio button per scale point. On wide screens the scale labels
  * form a shared header row; on narrow screens every row shows its own labels (see `.likert-*` CSS).

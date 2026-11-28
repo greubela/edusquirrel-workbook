@@ -5,7 +5,7 @@ import it.evadid.homepage.control.model.FullInfo
 import com.raquo.laminar.api.L.*
 import it.evadid.homepage.webElements.basic.LabelSelection
 import it.evadid.homepage.webElements.HtmlAppElement
-import it.evadid.workbook.elements.interactionElements.emailSimulator.*
+import it.evadid.workbook.interactions.emailSimulator.*
 
 case class MailEditor(fullInfo: FullInfo, underlyingVar: Var[InboxStateScaffolding], account: String = "opa.jürgen@gmail.com",
                       allowCompose: Boolean = true) extends HtmlAppElement {

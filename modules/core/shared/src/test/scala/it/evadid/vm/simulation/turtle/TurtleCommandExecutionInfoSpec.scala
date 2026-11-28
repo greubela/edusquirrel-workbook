@@ -2,7 +2,7 @@ package it.evadid.vm.simulation.turtle
 
 import it.evadid.core.datastructures.language.AppLanguage.{Java, Python, SnapLanguage}
 import it.evadid.core.datastructures.vectorShapes.svg.TurtleCommand
-import it.evadid.workbook.elements.interactionElements.programming.state.{ProgrammingStateRaw}
+import it.evadid.workbook.interactions.programming.state.ProgrammingStateRaw
 import it.evadid.vm.naming.{BeEntityName, NamingStyle}
 import it.evadid.core.datastructures.language.AppLanguage.{English, German}
 import munit.FunSuite

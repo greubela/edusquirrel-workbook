@@ -1,48 +1,47 @@
 package it.evadid.workbook.serialization
 
 import it.evadid.core.datastructures.language.AppLanguage.{Java, Python, SnapLanguage}
-import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseTurtle.MaxCommandUsage
+import it.evadid.workbook.interactions.programming.programmingExerciseTurtle.MaxCommandUsage
 import it.evadid.core.datastructures.language.LanguageMapContentId
 import it.evadid.workbook.abstractions.{InteractionFormat, LangMapContentIdType, RoleInWorkbook, TypeOfTextDisplay, WorkbookElement, WorkbookInteractionElement}
-import it.evadid.workbook.elements.displayElements.{CollapsibleInstructionElement, DisplayLangMapContent, WorkbookSubmissionElement}
-import it.evadid.workbook.elements.interactionElements.basic.{LabeledCheckboxInteraction, LabeledNumberInteraction, MessagingInteraction, TextInteraction}
-import it.evadid.workbook.elements.interactionElements.basic.LabeledNumberInteraction.NumberType
-import it.evadid.workbook.elements.interactionElements.codeTaskToggle.{AdvancedCodeRequirement, CodeTaskToggleInteraction, SketchDownloadInteraction}
-import it.evadid.workbook.elements.interactionElements.gpt.{GptInteractionElement, TextInputWithScaffoldingAndGrading}
-import it.evadid.workbook.elements.interactionElements.reorderExercise.ReorderInteraction
-import it.evadid.workbook.elements.interactionElements.matching.{LikertScaleInteraction, MatchingInteraction}
-import it.evadid.workbook.elements.interactionElements.sorting.sortingExercise.{SortingInteraction, SortingItem}
-import it.evadid.workbook.elements.interactionElements.sorting.sortingReasonExercise.{SortingReasonInteraction, SortingReasonItem}
-import it.evadid.workbook.jsonFactory.{WorkbookElementFactory, WorkbookElementSerializable}
+import it.evadid.workbook.elements.display.{CollapsibleInstructionElement, DisplayLangMapContent, WorkbookSubmissionElement}
+import it.evadid.workbook.interactions.basic.{LabeledCheckboxInteraction, LabeledNumberInteraction, MessagingInteraction, TextInteraction}
+import it.evadid.workbook.interactions.basic.LabeledNumberInteraction.NumberType
+import it.evadid.workbook.interactions.codeTaskToggle.{AdvancedCodeRequirement, CodeTaskToggleInteraction, SketchDownloadInteraction}
+import it.evadid.workbook.interactions.gpt.{GptInteractionElement, TextInputWithScaffoldingAndGrading}
+import it.evadid.workbook.interactions.reorderExercise.ReorderInteraction
+import it.evadid.workbook.interactions.matching.{LikertScaleInteraction, MatchingInteraction}
+import it.evadid.workbook.interactions.sorting.sortingExercise.{SortingInteraction, SortingItem}
+import it.evadid.workbook.interactions.sorting.sortingReasonExercise.{SortingReasonInteraction, SortingReasonItem}
 import upickle.default.*
-import it.evadid.workbook.elements.interactionElements.choice.WorkbookContentChoiceInteraction
+import it.evadid.workbook.interactions.choice.WorkbookContentChoiceInteraction
 import WorkbookContentChoiceInteraction.*
 import it.evadid.core.datastructures.language.WorkbookContent
 import it.evadid.workbook.abstractions.grading.GraderRunningBehavior
-import it.evadid.workbook.elements.interactionElements.neuron.*
-import it.evadid.workbook.elements.interactionElements.table.*
-import it.evadid.workbook.elements.interactionElements.pixel.*
-import it.evadid.workbook.model.pixel.*
-import it.evadid.workbook.elements.interactionElements.blockchain.*
-import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseRegular.{ProgrammingExercise, ProgrammingExerciseFullJava, SortListExercise, SortingMethod}
-import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseTurtle.{ProgramStructureGrader, ProgramStructureRequirement}
-import it.evadid.workbook.elements.interactionElements.programming.state.{ProgrammingState, ProgrammingStateRaw}
-import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseTurtle.{TurtleDrawingPolicy, TurtleGraphic}
-import it.evadid.workbook.elements.interactionElements.text.*
-import it.evadid.workbook.elements.interactionElements.sql.{SqlCommandExercise, SqlDatabaseConfig}
+import it.evadid.workbook.interactions.neuron.*
+import it.evadid.workbook.interactions.table.*
+import it.evadid.workbook.interactions.pixel.*
+import it.evadid.workbook.interactions.pixel.*
+import it.evadid.workbook.interactions.blockchain.*
+import it.evadid.workbook.interactions.programming.programmingExerciseRegular.{ProgrammingExercise, ProgrammingExerciseFullJava, SortListExercise, SortingMethod}
+import it.evadid.workbook.interactions.programming.programmingExerciseTurtle.{ProgramStructureGrader, ProgramStructureRequirement}
+import it.evadid.workbook.interactions.programming.state.{ProgrammingState, ProgrammingStateRaw}
+import it.evadid.workbook.interactions.programming.programmingExerciseTurtle.{TurtleDrawingPolicy, TurtleGraphic}
+import it.evadid.workbook.interactions.text.*
+import it.evadid.workbook.interactions.sql.{SqlCommandExercise, SqlDatabaseConfig}
 import it.evadid.distribution.command.SerializedException
 import munit.FunSuite
 
 class WorkbookElementSerializableRoundTripSpec extends FunSuite {
-  import it.evadid.workbook.elements.displayElements.{WorkbookImageElement, LabeledWorkbookElement}
+  import it.evadid.workbook.elements.display.{WorkbookImageElement, LabeledWorkbookElement}
   import LabeledWorkbookElement.{WorkbookLabel, HintLabel}
-  import it.evadid.workbook.elements.structureElements.{Workbook, WorkbookSection, ExerciseContainer}
-  import it.evadid.workbook.elements.interactionElements.slideshow.Slideshow
-  import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseTurtle.*
-  import it.evadid.workbook.elements.interactionElements.programming.state.snap.ProgrammingEditorPalette
-  import it.evadid.workbook.elements.interactionElements.emailSimulator.*
-  import it.evadid.workbook.elements.interactionElements.qr.*
-  import it.evadid.workbook.model.qr.QrCode
+  import it.evadid.workbook.elements.structure.{Workbook, WorkbookSection, ExerciseContainer}
+  import it.evadid.workbook.interactions.slideshow.Slideshow
+  import it.evadid.workbook.interactions.programming.programmingExerciseTurtle.*
+  import it.evadid.workbook.interactions.programming.state.snap.ProgrammingEditorPalette
+  import it.evadid.workbook.interactions.emailSimulator.*
+  import it.evadid.workbook.interactions.qr.*
+  import it.evadid.workbook.interactions.qr.QrCode
   import it.evadid.vm.test.SampleBeTest
   import it.evadid.vm.conversion.dependencies.{ProgrammingEnvironment, ProgrammingLibrary}
 
@@ -65,11 +64,11 @@ class WorkbookElementSerializableRoundTripSpec extends FunSuite {
     val special = " Quotes: \"hello\"; backslash: \\; newline:\nGrüße )({} "
     val inbox = InboxState.withMails(List(Mail("mail", "sender@example.test", special, special, special, MailFolder.Inbox, Some(special), "2026-10-08", expectedFolder = Some(MailFolder.Archive))))
     List(
-      it.evadid.workbook.elements.interactionElements.compression.CompressionExperimentInteraction("compression", content("compression/title"),
-        it.evadid.workbook.model.compression.RunLengthText(special)),
+      it.evadid.workbook.interactions.compression.CompressionExperimentInteraction("compression", content("compression/title"),
+        it.evadid.workbook.interactions.compression.RunLengthText(special)),
       SqlCommandExercise("sql", SqlDatabaseConfig("school_exercises"), s"SELECT '$special';"),
-      it.evadid.workbook.elements.interactionElements.plot.CoordinatePlotInteraction("plot", content("plot/title"),
-        content("plot/x"), content("plot/y"), it.evadid.workbook.model.plot.PlotAxis(0, 3, 0.5), it.evadid.workbook.model.plot.PlotAxis(0, 30, 10)),
+      it.evadid.workbook.interactions.plot.CoordinatePlotInteraction("plot", content("plot/title"),
+        content("plot/x"), content("plot/y"), it.evadid.workbook.interactions.plot.PlotAxis(0, 3, 0.5), it.evadid.workbook.interactions.plot.PlotAxis(0, 30, 10)),
       WorkbookContentChoiceInteraction("choice", ChoiceConfig(content("choice/prompt"), Some(true), GraderRunningBehavior.RUN_ALWAYS), Seq("choice/a", "choice/b").map(key => ChoiceOptionWorkbookContent(WorkbookContent(content(key)), None))),
       ThresholdNeuronInteraction("neuron", List(content("neuron/input")),
         List(NeuronExample(content("neuron/row"), List(1), true)), NeuronParameters(List(1), 1)),
@@ -82,16 +81,16 @@ class WorkbookElementSerializableRoundTripSpec extends FunSuite {
         List(PixelPreset(content("pixels/preset"), BinaryPixelImage.fromRows(List("10"))))),
       SquareMiddleHashInteraction("hash", content("hash/title"), FindHashPreimage("22"), SquareMiddleHashAnswer("65")),
       Sha256Interaction("sha256", content("hash/sha256"), FindSha256Prefix(2), Sha256Answer("286")),
-      it.evadid.workbook.elements.interactionElements.evacuation.EvacuationSimulationInteraction("evacuation-simulation"),
-      it.evadid.workbook.elements.interactionElements.evacuation.EvacuationConstructFloorInteraction("evacuation"),
+      it.evadid.workbook.interactions.evacuation.EvacuationSimulationInteraction("evacuation-simulation"),
+      it.evadid.workbook.interactions.evacuation.EvacuationConstructFloorInteraction("evacuation"),
       UnicodeComparisonInteraction("unicode", content("text/unicode"), UnicodeComparisonAnswer("paypal.com", "payраl.com")),
-      BlockchainInteraction("chain", content("hash/chain"), it.evadid.workbook.model.blockchain.TeachingChain(
-        List(it.evadid.workbook.model.blockchain.TeachingBlock("Anna → Lukas: 4 HP")))),
+      BlockchainInteraction("chain", content("hash/chain"), it.evadid.workbook.interactions.blockchain.TeachingChain(
+        List(it.evadid.workbook.interactions.blockchain.TeachingBlock("Anna → Lukas: 4 HP")))),
       workbook, section,
       ExerciseContainer("container", content("container/title"), List(input)),
       LabeledWorkbookElement("labeled", input, WorkbookLabel(content("label/hint"), HintLabel)),
-      it.evadid.workbook.elements.displayElements.TwoColumnPanel("columns", image, input),
-      it.evadid.workbook.elements.structureElements.ExerciseGroup("group", List(image, input)),
+      it.evadid.workbook.elements.display.TwoColumnPanel("columns", image, input),
+      it.evadid.workbook.elements.structure.ExerciseGroup("group", List(image, input)),
       image, Slideshow("slideshow", List(image)),
       GptInteractionElement("gpt", input, content("exercise/text"), List(content("hint/text")), List(content("criterion/text"))),
       TurtleStitchExploreProjectElement("turtle-explore", special),
@@ -108,7 +107,7 @@ class WorkbookElementSerializableRoundTripSpec extends FunSuite {
       MailInteraction("mail-interaction", inbox, special, allowCompose = false),
       CreateQrCodeInteraction("qr", QrCodeRequirements(minBytes = 2, maxBytes = Some(200), requiredMask = Some(3)), QrCode.fromText(special)),
       TextInteraction("text-1"),
-      it.evadid.workbook.elements.interactionElements.gpt.TextInputWithScaffoldingAndGrading("text-feedback",
+      it.evadid.workbook.interactions.gpt.TextInputWithScaffoldingAndGrading("text-feedback",
         content("text/task"), Some(content("text/solution")), Some(TextInputWithScaffoldingAndGrading.ContentForLlmInteraction(content("text/hint"), Map.empty)), List(TextInputWithScaffoldingAndGrading.ContentForLlmInteraction(content("text/criterion"), Map.empty))),
       MessagingInteraction("messaging-1"),
       LabeledCheckboxInteraction("checkbox-1", content("label/checkbox")),
@@ -248,7 +247,7 @@ class WorkbookElementSerializableRoundTripSpec extends FunSuite {
   test("parsing fails when references form a cycle") {
     val cyclicElements = List("first", "second").map { id =>
       WorkbookElementSerializable(id, classOf[CodeTaskToggleInteraction].getSimpleName, Map())
-        .withElementAddedAs("reorder", it.evadid.workbook.jsonFactory.WorkbookElementReference(if (id == "first") "second" else "first", Some(classOf[ReorderInteraction.ReorderCodeInteraction].getSimpleName)))
+        .withElementAddedAs("reorder", it.evadid.workbook.serialization.WorkbookElementReference(if (id == "first") "second" else "first", Some(classOf[ReorderInteraction.ReorderCodeInteraction].getSimpleName)))
     }
 
     val error = intercept[SerializedException](WorkbookElementFactory.parseAll(cyclicElements))

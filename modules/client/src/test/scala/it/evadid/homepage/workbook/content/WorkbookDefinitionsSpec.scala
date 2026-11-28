@@ -1,8 +1,8 @@
 package it.evadid.homepage.workbook.content
 
 import it.evadid.homepage.workbook.content.test.CreateTestWorkbook
-import it.evadid.workbook.jsonFactory.WorkbookElementFactory
-import it.evadid.workbook.elements.structureElements.Workbook
+import it.evadid.workbook.serialization.WorkbookElementFactory
+import it.evadid.workbook.elements.structure.Workbook
 import upickle.default.*
 import munit.FunSuite
 import it.evadid.core.datastructures.language.AppLanguage
@@ -12,8 +12,8 @@ import it.evadid.workbook.session.{AllWorkbookInfo, SessionData}
 import it.evadid.homepage.control.model.{AllDisplayInfo, FullInfo, HomepageInfo}
 import it.evadid.homepage.webElements.editor.code.EditorDomSuite
 import it.evadid.util.logging.BasicLogger
-import it.evadid.workbook.meta.ExecutionContextInformation
-import it.evadid.workbook.interaction.sync.UpdateImportance
+import it.evadid.workbook.abstractions.ExecutionContextInformation
+import it.evadid.workbook.sync.UpdateImportance
 
 class WorkbookDefinitionsSpec extends EditorDomSuite {
   private def submit[F <: it.evadid.workbook.abstractions.InteractionFormat](page: FullInfo, interaction: it.evadid.workbook.abstractions.WorkbookInteractionElement[F]): Unit =
@@ -75,7 +75,7 @@ class WorkbookDefinitionsSpec extends EditorDomSuite {
       val continuing = page(fresh, user)
       continuing.interactions.restoreHistories(BasicLogger(), restored.knownUsageData)
       fresh.loadedWorkbook.allContainedInteractionsById.foreach { (id, interaction) =>
-        def submitted(history: it.evadid.workbook.interaction.variable.InteractionVariableHistory[?]): Set[(Any, Any)] =
+        def submitted(history: it.evadid.workbook.model.history.InteractionVariableHistory[?]): Set[(Any, Any)] =
           history.allStates.map(event => (event.newState: Any) -> event.updateImportance)
         assertEquals(submitted(continuing.interactions.currentHistory(interaction)), submitted(studying.interactions.currentHistory(interactions(id))), id)
         assert(continuing.interactions.currentHistory(interaction).allStates.exists(_.updateImportance == UpdateImportance.MAJOR), id)

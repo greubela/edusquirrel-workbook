@@ -9,8 +9,8 @@ import it.evadid.homepage.control.model.FullInfo
 import it.evadid.homepage.workbook.syncDestination.LocalIndexedDbStorageSyncHandler
 import it.evadid.util.logging.Logger
 import it.evadid.util.logging.derived.SyncLogger
-import it.evadid.workbook.interaction.sync.destination.*
-import it.evadid.workbook.interaction.sync.destination.SyncDestinationForKey
+import it.evadid.workbook.sync.destination.*
+import it.evadid.workbook.sync.destination.SyncDestinationForKey
 import upickle.default.*
 
 import scala.concurrent.{ExecutionContext, Future, Promise}

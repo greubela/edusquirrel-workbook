@@ -4,7 +4,7 @@ import it.evadid.vm.parsing.source.SourceParsing
 import it.evadid.vm.parsing.source.SourceParsing.SourceLanguage
 import it.evadid.core.datastructures.language.AppLanguage.Java
 import it.evadid.vm.code.errors.{ProgrammingConversionException, ProgrammingConversionKind}
-import it.evadid.workbook.elements.interactionElements.programming.state.{ProgrammingStateBeExpression, ProgrammingStateRaw}
+import it.evadid.workbook.interactions.programming.state.{ProgrammingStateBeExpression, ProgrammingStateRaw}
 import munit.FunSuite
 
 class JavaToExpressionSpec extends FunSuite {

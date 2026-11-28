@@ -8,7 +8,7 @@ import it.evadid.evacuation.eva2.algorithm.escaping.strategies.ClosestGoalStrate
 import it.evadid.evacuation.eva2.configuration.ui.ShowMovementOption
 import it.evadid.evacuation.eva2.control.modes.ScenarioPlayerMode
 import it.evadid.evacuation.eva2.model.EvaFloorMap
-import it.evadid.workbook.model.evacuation.*
+import it.evadid.workbook.interactions.evacuation.*
 
 /** Playback delegates state navigation to EVA2. Scheduler injection makes cancellation testable. */
 class EvacuationPlayback(schedule: (() => Unit) => (() => Unit)) {

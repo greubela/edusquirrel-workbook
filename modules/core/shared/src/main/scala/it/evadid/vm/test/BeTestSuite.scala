@@ -1,8 +1,8 @@
 package it.evadid.vm.test
 
 import it.evadid.workbook.abstractions.InteractionFormat
-import it.evadid.workbook.elements.interactionElements.programming.ProgrammingTestGrader
-import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseRegular.ProgrammingUnitTestGrader
+import it.evadid.workbook.interactions.programming.ProgrammingTestGrader
+import it.evadid.workbook.interactions.programming.programmingExerciseRegular.ProgrammingUnitTestGrader
 import upickle.default.ReadWriter
 
 sealed trait BeTestSuite derives ReadWriter {

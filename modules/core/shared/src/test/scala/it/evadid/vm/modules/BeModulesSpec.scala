@@ -4,7 +4,7 @@ import it.evadid.core.datastructures.language.AppLanguage.{Java, Python}
 import it.evadid.core.datastructures.vectorShapes.svg.TurtleCommand
 import it.evadid.vm.simulation.data.{DataLibraries, DataWorld, ListCommand, SudokuCommand}
 import it.evadid.vm.simulation.turtle.TurtleExecutionStatus
-import it.evadid.workbook.elements.interactionElements.programming.state.ProgrammingStateRaw
+import it.evadid.workbook.interactions.programming.state.ProgrammingStateRaw
 import munit.FunSuite
 
 class BeModulesSpec extends FunSuite {

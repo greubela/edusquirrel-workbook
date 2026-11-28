@@ -1,19 +1,19 @@
 package it.evadid.workbook.support
 
-import it.evadid.workbook.interaction.state.InteractionInfo
+import it.evadid.workbook.model.InteractionInfo
 
-import it.evadid.workbook.interaction.state.InteractionScope
+import it.evadid.workbook.model.InteractionScope
 
 import it.evadid.core.datastructures.state.State
 import it.evadid.util.logging.BasicLogger
 import it.evadid.util.logging.derived.SyncLogger
 import it.evadid.workbook.abstractions.{InteractionFormat, WorkbookInteractionElement}
-import it.evadid.workbook.interaction.state.InteractionController
-import it.evadid.workbook.interaction.sync.*
-import it.evadid.workbook.interaction.sync.destination.{SyncDestinationDefinition, SyncDestinationHandlerBasic}
-import it.evadid.workbook.interaction.sync.model.InteractionHistoryJson
-import it.evadid.workbook.interaction.variable.InteractionVariableHistory
-import it.evadid.workbook.meta.ExecutionContextInformation
+import it.evadid.workbook.control.InteractionController
+import it.evadid.workbook.sync.*
+import it.evadid.workbook.sync.destination.{SyncDestinationDefinition, SyncDestinationHandlerBasic}
+import it.evadid.workbook.sync.model.InteractionHistoryJson
+import it.evadid.workbook.model.history.InteractionVariableHistory
+import it.evadid.workbook.abstractions.ExecutionContextInformation
 
 import scala.concurrent.{ExecutionContext, Future, Promise}
 

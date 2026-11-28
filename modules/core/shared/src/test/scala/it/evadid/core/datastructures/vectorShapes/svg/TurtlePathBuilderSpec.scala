@@ -1,7 +1,6 @@
 package it.evadid.core.datastructures.vectorShapes.svg
 
 import it.evadid.core.datastructures.geometry.Point
-import it.evadid.core.datastructures.vectorShapes.svg.TurtleCommand
 import munit.FunSuite
 
 class TurtlePathBuilderSpec extends FunSuite {

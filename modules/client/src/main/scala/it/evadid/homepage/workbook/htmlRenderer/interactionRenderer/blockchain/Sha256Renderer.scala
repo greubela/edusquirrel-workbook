@@ -1,6 +1,6 @@
 package it.evadid.homepage.workbook.htmlRenderer.interactionRenderer.blockchain
 
-import it.evadid.workbook.interaction.state.InteractionSignals.*
+import it.evadid.workbook.control.InteractionSignals.*
 
 import it.evadid.homepage.control.model.FullInfo
 
@@ -9,9 +9,9 @@ import it.evadid.homepage.webElements.basic.LabelSelection
 import it.evadid.core.datastructures.state.StateHelper.StateBasedVar
 import it.evadid.homepage.workbook.htmlRenderer.HtmlRenderFactory.LineBasedRenderingFactory
 import it.evadid.homepage.workbook.htmlRenderer.atomarLineRenderings.AtomarLineRendering
-import it.evadid.workbook.elements.interactionElements.blockchain.*
+import it.evadid.workbook.interactions.blockchain.*
 import it.evadid.core.util.crypto.Sha256
-import it.evadid.workbook.interaction.sync.UpdateImportance
+import it.evadid.workbook.sync.UpdateImportance
 
 case object Sha256Renderer extends LineBasedRenderingFactory[Sha256Interaction] {
   override protected def createRendering(fullInfo: FullInfo, e: Sha256Interaction): AtomarLineRendering = {

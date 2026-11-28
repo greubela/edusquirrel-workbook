@@ -1,6 +1,8 @@
 package it.evadid.core.util.crypto
 
-/** Canonical parameter encoding: maps/sets are unordered; sequences retain their order. */
+/** Canonical parameter encoding: maps/sets are unordered; sequences retain their order. Products are identified by
+  * their constructor name and parameters, not their package, so moving a class keeps the keys derived from it.
+  */
 object ContentIdentity {
   private def canonical(value: ujson.Value): ujson.Value = value match {
     case value: ujson.Obj => ujson.Obj.from(value.obj.toList.sortBy(_._1).map((name, item) => name -> canonical(item)))
@@ -26,7 +28,7 @@ object ContentIdentity {
     case value: collection.Set[?] => ujson.Obj("set" -> ujson.Arr.from(value.iterator.map(json).toList.sortBy(ujson.write(_))))
     case value: Seq[?] => ujson.Obj("sequence" -> ujson.Arr.from(value.map(json)))
     case value: Product =>
-      ujson.Obj("type" -> value.getClass.getName, "constructor" -> value.productPrefix,
+      ujson.Obj("constructor" -> value.productPrefix,
         "parameters" -> ujson.Obj.from(value.productElementNames.zip(value.productIterator).map((name, item) => name -> json(item))))
     case value => throw IllegalArgumentException(s"No canonical identity encoding for ${value.getClass.getName}; provide identityContent explicitly")
   }

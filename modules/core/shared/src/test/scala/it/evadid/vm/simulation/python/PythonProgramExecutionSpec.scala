@@ -2,7 +2,7 @@ package it.evadid.vm.simulation.python
 
 import it.evadid.distribution.clients.ExecutionClient
 import it.evadid.distribution.commandTypes.WorkerCommands.*
-import it.evadid.workbook.elements.interactionElements.programming.state.ProgrammingStatePythonStructured
+import it.evadid.workbook.interactions.programming.state.ProgrammingStatePythonStructured
 import munit.FunSuite
 import scala.concurrent.{ExecutionContext, Future}
 

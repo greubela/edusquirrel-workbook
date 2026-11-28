@@ -14,10 +14,10 @@ import it.evadid.homepage.workbook.htmlRenderer.interactionRenderer.basic.{HtmlP
 import it.evadid.homepage.workbook.htmlRenderer.interactionRenderer.steps.HtmlSortListExerciseRenderer
 import it.evadid.homepage.workbook.htmlRenderer.interactionRenderer.turtleStitch.HtmlTurtleRecreateShapeRenderer
 import it.evadid.workbook.abstractions.WorkbookElement
-import it.evadid.workbook.elements.interactionElements.basic.TextInteraction
-import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseRegular.{ExerciseDataView, ProgrammingExerciseFullJava, SortListExercise}
-import it.evadid.workbook.elements.interactionElements.programming.state.{ProgrammingState, ProgrammingStateRaw}
-import it.evadid.workbook.elements.structureElements.{Workbook, WorkbookSection}
+import it.evadid.workbook.interactions.basic.TextInteraction
+import it.evadid.workbook.interactions.programming.programmingExerciseRegular.{ExerciseDataView, ProgrammingExerciseFullJava, SortListExercise}
+import it.evadid.workbook.interactions.programming.state.{ProgrammingState, ProgrammingStateRaw}
+import it.evadid.workbook.elements.structure.{Workbook, WorkbookSection}
 import org.scalajs.dom
 
 import scala.concurrent.ExecutionContext
@@ -122,7 +122,7 @@ class DataExerciseRenderersSpec extends EditorDomSuite {
     load(sortExercise)
     val sortCard = HtmlSortListExerciseRenderer.sortStepsCard(fullInfo, sortExercise, Var(sortExercise.initProgram)).getDomElement()
     val turtleCard = HtmlTurtleRecreateShapeRenderer.turtleStepsCard(fullInfo, Var(ProgrammingStateRaw(Python, "forward(10)\nright(90)\n")).signal,
-      it.evadid.workbook.elements.interactionElements.programming.programmingExerciseTurtle.TurtleRecreateShapeInteraction.defaultEnvironment,
+      it.evadid.workbook.interactions.programming.programmingExerciseTurtle.TurtleRecreateShapeInteraction.defaultEnvironment,
       it.evadid.homepage.webElements.editor.code.worker.LocalWorker.analyzer()).getDomElement()
     val close = mount(div(sortCard, turtleCard))
     (for {

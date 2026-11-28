@@ -1,6 +1,6 @@
 package it.evadid.homepage.workbook.htmlRenderer.interactionRenderer.blockchain
 
-import it.evadid.workbook.interaction.state.InteractionSignals.*
+import it.evadid.workbook.control.InteractionSignals.*
 
 import it.evadid.homepage.control.model.FullInfo
 
@@ -9,9 +9,9 @@ import it.evadid.homepage.webElements.basic.LabelSelection
 import it.evadid.core.datastructures.state.StateHelper.StateBasedVar
 import it.evadid.homepage.workbook.htmlRenderer.HtmlRenderFactory.LineBasedRenderingFactory
 import it.evadid.homepage.workbook.htmlRenderer.atomarLineRenderings.AtomarLineRendering
-import it.evadid.workbook.elements.interactionElements.blockchain.*
-import it.evadid.workbook.model.blockchain.SquareMiddleHash
-import it.evadid.workbook.interaction.sync.UpdateImportance
+import it.evadid.workbook.interactions.blockchain.*
+import it.evadid.workbook.interactions.blockchain.SquareMiddleHash
+import it.evadid.workbook.sync.UpdateImportance
 
 case object SquareMiddleHashRenderer extends LineBasedRenderingFactory[SquareMiddleHashInteraction] {
   override protected def createRendering(fullInfo: FullInfo, e: SquareMiddleHashInteraction): AtomarLineRendering = {

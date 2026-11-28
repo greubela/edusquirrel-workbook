@@ -4,9 +4,9 @@ import it.evadid.core.datastructures.state.State
 import it.evadid.core.datastructures.storage.remote.RemoteHistoryCache.*
 import it.evadid.util.logging.derived.SyncLogger
 import it.evadid.workbook.abstractions.InteractionFormat
-import it.evadid.workbook.interaction.sync.{EventSyncStrategy, SyncSuccess}
-import it.evadid.workbook.interaction.variable.InteractionVariableHistory
-import it.evadid.workbook.interaction.variable.events.{EventId, InteractionEvent, InteractionEvents}
+import it.evadid.workbook.sync.{EventSyncStrategy, SyncSuccess}
+import it.evadid.workbook.model.history.InteractionVariableHistory
+import it.evadid.workbook.model.history.events.{EventId, InteractionEvent, InteractionEvents}
 import java.time.LocalDateTime
 import scala.concurrent.{ExecutionContext, Future}
 import scala.util.{Failure, Success, Try}

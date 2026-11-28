@@ -1,13 +1,13 @@
 package it.evadid.homepage.workbook.htmlRenderer.interactionRenderer.emailSimulator
 
-import it.evadid.workbook.interaction.state.InteractionSignals.*
+import it.evadid.workbook.control.InteractionSignals.*
 
 
 import it.evadid.homepage.control.model.FullInfo
 import it.evadid.homepage.workbook.htmlRenderer.HtmlRenderFactory.LineBasedRenderingFactory
 import it.evadid.homepage.workbook.htmlRenderer.atomarLineRenderings.AtomarLineRendering
-import it.evadid.workbook.elements.interactionElements.emailSimulator.MailEditor
-import it.evadid.workbook.interaction.sync.UpdateImportance
+import it.evadid.workbook.interactions.emailSimulator.MailEditor
+import it.evadid.workbook.sync.UpdateImportance
 
 case object HtmlMailEditorRenderer extends LineBasedRenderingFactory[MailEditor] {
   override protected def createRendering(fullInfo: FullInfo, element: MailEditor): AtomarLineRendering =

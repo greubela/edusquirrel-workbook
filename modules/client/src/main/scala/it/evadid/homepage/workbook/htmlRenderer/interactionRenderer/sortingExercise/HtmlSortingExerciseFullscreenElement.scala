@@ -1,13 +1,13 @@
 package it.evadid.homepage.workbook.htmlRenderer.interactionRenderer.sortingExercise
 
-import it.evadid.workbook.interaction.state.InteractionSignals.*
+import it.evadid.workbook.control.InteractionSignals.*
 
 import com.raquo.laminar.api.L.*
 
 import it.evadid.homepage.control.model.FullInfo
 import it.evadid.homepage.webElements.HtmlAppElement
-import it.evadid.workbook.elements.interactionElements.sorting.sortingExercise.SortingInteraction
-import it.evadid.workbook.interaction.sync.UpdateImportance.MINOR
+import it.evadid.workbook.interactions.sorting.sortingExercise.SortingInteraction
+import it.evadid.workbook.sync.UpdateImportance.MINOR
 
 case class HtmlSortingExerciseFullscreenElement(fullInfo: FullInfo, interaction: SortingInteraction) extends HtmlAppElement {
 

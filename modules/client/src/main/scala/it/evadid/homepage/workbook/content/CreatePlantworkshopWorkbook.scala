@@ -6,14 +6,14 @@ import it.evadid.core.datastructures.user.User
 import it.evadid.homepage.control.model.*
 import it.evadid.workbook.abstractions.TypeOfTextDisplay.URL_RELATIVE_TO_WORKBOOK_RESOURCES
 import it.evadid.workbook.abstractions.{WorkbookDisplayElement, WorkbookElement}
-import it.evadid.workbook.elements.displayElements.{WorkbookImageElement, TwoColumnPanel}
-import it.evadid.workbook.elements.displayElements.WorkbookImageElement.LanguageMapBasedWorkbookImageElement
-import it.evadid.workbook.elements.displayElements.LabeledWorkbookElement.{GoalLabel, HintLabel, SafetyLabel, TaskLabel}
-import it.evadid.workbook.elements.interactionElements.basic.LabeledCheckboxInteraction
-import it.evadid.workbook.elements.interactionElements.codeTaskToggle.AdvancedCodeRequirement
-import it.evadid.workbook.elements.interactionElements.slideshow.*
-import it.evadid.workbook.elements.structureElements.Workbook.WorkbookMetadata
-import it.evadid.workbook.elements.structureElements.{Workbook, WorkbookSection, ExerciseGroup}
+import it.evadid.workbook.elements.display.{WorkbookImageElement, TwoColumnPanel}
+import it.evadid.workbook.elements.display.WorkbookImageElement.LanguageMapBasedWorkbookImageElement
+import it.evadid.workbook.elements.display.LabeledWorkbookElement.{GoalLabel, HintLabel, SafetyLabel, TaskLabel}
+import it.evadid.workbook.interactions.basic.LabeledCheckboxInteraction
+import it.evadid.workbook.interactions.codeTaskToggle.AdvancedCodeRequirement
+import it.evadid.workbook.interactions.slideshow.*
+import it.evadid.workbook.elements.structure.Workbook.WorkbookMetadata
+import it.evadid.workbook.elements.structure.{Workbook, WorkbookSection, ExerciseGroup}
 
 case class CreatePlantworkshopWorkbook(
                                         override val fullInfo: FullInfo,

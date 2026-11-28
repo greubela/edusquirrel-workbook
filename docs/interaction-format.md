@@ -29,10 +29,10 @@ or element-ID lookup.
 
 ```scala
 import it.evadid.workbook.abstractions.InteractionFormat.TextInteractionFormat
-import it.evadid.workbook.interaction.variable.InteractionVariableHistory
-import it.evadid.workbook.interaction.sync.model.InteractionHistoryJson
-import it.evadid.workbook.interaction.sync.UpdateImportance
-import it.evadid.workbook.interaction.variable.events.AnswerChangedEvent
+import it.evadid.workbook.model.history.InteractionVariableHistory
+import it.evadid.workbook.sync.model.InteractionHistoryJson
+import it.evadid.workbook.sync.UpdateImportance
+import it.evadid.workbook.model.history.events.AnswerChangedEvent
 import java.time.LocalDateTime
 
 val history = InteractionVariableHistory.empty[TextInteractionFormat.type].addEvent(
@@ -54,7 +54,7 @@ type resolution; [storage](database/interaction-history.md) defines how malforme
 
 `InteractionVariableHistory[F]` stores one `InteractionEvents[F]` set. Its events
 are answer changes, grading starts/completions and scaffolding starts/completions.
-Every event has a client-generated [`EventId`](../modules/core/shared/src/main/scala/it/evadid/workbook/interaction/variable/events/EventId.scala)
+Every event has a client-generated [`EventId`](../modules/core/shared/src/main/scala/it/evadid/workbook/model/history/events/EventId.scala)
 (a canonical UUID), its associated answer, `LocalDateTime` and importance. Completed
 feedback derives its answer and timestamp from the typed result.
 
@@ -75,7 +75,7 @@ Transmission strategies are described with [storage](database/interaction-histor
 
 ## Verification
 
-[`InteractionHistoryJsonSpec`](../modules/core/shared/src/test/scala/it/evadid/workbook/interaction/sync/model/InteractionHistoryJsonSpec.scala)
+[`InteractionHistoryJsonSpec`](../modules/core/shared/src/test/scala/it/evadid/workbook/sync/model/InteractionHistoryJsonSpec.scala)
 checks JSON/MessagePack envelope round trips for every format, populated answer and
 feedback histories, heterogeneous sequences, timestamp precision and malformed inputs.
 

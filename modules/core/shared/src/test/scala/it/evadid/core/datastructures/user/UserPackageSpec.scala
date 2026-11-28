@@ -70,7 +70,7 @@ class UserPackageSpec extends FunSuite {
   }
 
   test("online defaults include both backend history layouts") {
-    import it.evadid.workbook.interaction.sync.destination.SyncDestinationDefinition.*
+    import it.evadid.workbook.sync.destination.SyncDestinationDefinition.*
     val remote = UserConfig.defaults(isLocalAccount = false).syncDestinations.map(_.syncDestination).collect {
       case database: SyncDestinationBasedOnHistoryDatabase => database
     }
@@ -86,10 +86,10 @@ class UserPackageSpec extends FunSuite {
       singleAccessToken = Some(User.SingleAccessToken("login-secret")),
       llmApiConfig = Some(LlmConfiguration("https://example.com/chat", "model", Some("llm-secret"))),
       databaseConfig = Some(DatabaseConfigWithCredentials("mysql", "localhost", "3306", "history", "owner", "db-secret")))
-    val destination = it.evadid.workbook.interaction.sync.destination.SyncDestinationDefinition.SyncDestinationBasedOnHistoryDatabase(
+    val destination = it.evadid.workbook.sync.destination.SyncDestinationDefinition.SyncDestinationBasedOnHistoryDatabase(
       credentials.databaseConfig.get, it.evadid.sql.DatabaseHistoryFormat.RelationalFormat, buffered = false)
-    val config = UserConfig(List(it.evadid.workbook.interaction.sync.SyncInformation(destination,
-      it.evadid.workbook.interaction.sync.EventSyncStrategy.KEEP_LAST_MAJOR)), isOnlineAccount = false)
+    val config = UserConfig(List(it.evadid.workbook.sync.SyncInformation(destination,
+      it.evadid.workbook.sync.EventSyncStrategy.KEEP_LAST_MAJOR)), isOnlineAccount = false)
     val info = AllUserInfo(user, credentials, config)
     assertEquals(read[AllUserInfo](write(info)), info)
     val saved = write(SavedUserPreferences(info.user, info.config.withoutCredentials))

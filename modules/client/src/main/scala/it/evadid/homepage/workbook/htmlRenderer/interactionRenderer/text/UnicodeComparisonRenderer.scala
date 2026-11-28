@@ -1,6 +1,6 @@
 package it.evadid.homepage.workbook.htmlRenderer.interactionRenderer.text
 
-import it.evadid.workbook.interaction.state.InteractionSignals.*
+import it.evadid.workbook.control.InteractionSignals.*
 
 import it.evadid.homepage.control.model.FullInfo
 
@@ -9,9 +9,9 @@ import it.evadid.homepage.webElements.basic.LabelSelection
 import it.evadid.core.datastructures.state.StateHelper.StateBasedVar
 import it.evadid.homepage.workbook.htmlRenderer.HtmlRenderFactory.LineBasedRenderingFactory
 import it.evadid.homepage.workbook.htmlRenderer.atomarLineRenderings.AtomarLineRendering
-import it.evadid.workbook.elements.interactionElements.text.*
-import it.evadid.workbook.model.text.UnicodeText
-import it.evadid.workbook.interaction.sync.UpdateImportance
+import it.evadid.workbook.interactions.text.*
+import it.evadid.workbook.interactions.text.UnicodeText
+import it.evadid.workbook.sync.UpdateImportance
 
 case object UnicodeComparisonRenderer extends LineBasedRenderingFactory[UnicodeComparisonInteraction] {
   override protected def createRendering(fullInfo: FullInfo, e: UnicodeComparisonInteraction): AtomarLineRendering = {

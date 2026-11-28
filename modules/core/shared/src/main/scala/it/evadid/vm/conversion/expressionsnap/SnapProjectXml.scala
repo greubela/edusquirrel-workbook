@@ -2,11 +2,11 @@ package it.evadid.vm.conversion.expressionsnap
 
 import it.evadid.vm.conversion.snapxml.SnapXmlText
 
-import it.evadid.workbook.elements.interactionElements.programming.state.snap.SnapCanvasLayout
-import it.evadid.workbook.elements.interactionElements.programming.state.snap.SnapCanvasScript
-import it.evadid.workbook.elements.interactionElements.programming.state.snap.SnapModuleBlocks
-import it.evadid.workbook.elements.interactionElements.programming.state.snap.SnapTurtleCatalog
-import it.evadid.workbook.elements.interactionElements.programming.state.snap.SnapVocabulary
+import it.evadid.workbook.interactions.programming.state.snap.SnapCanvasLayout
+import it.evadid.workbook.interactions.programming.state.snap.SnapCanvasScript
+import it.evadid.workbook.interactions.programming.state.snap.SnapModuleBlocks
+import it.evadid.workbook.interactions.programming.state.snap.SnapTurtleCatalog
+import it.evadid.workbook.interactions.programming.state.snap.SnapVocabulary
 
 import it.evadid.vm.conversion.snapexpression.SnapControlFlow
 import it.evadid.vm.conversion.snapexpression.SnapCustomBlockRules
@@ -22,7 +22,7 @@ import it.evadid.vm.code.others.{BeReturn, BeStartProgram}
 import it.evadid.vm.code.usage.{BeAssignVariable, BeFunctionCall, BeUseValue}
 import it.evadid.vm.naming.BeEntityName
 import it.evadid.vm.types.{BeDataType, BeDataValueLiteral, BeUseValueReference, StringLiteral}
-import it.evadid.workbook.elements.interactionElements.programming.state.snap.SnapTurtleCatalog.SnapInputKind
+import it.evadid.workbook.interactions.programming.state.snap.SnapTurtleCatalog.SnapInputKind
 import it.evadid.vm.conversion.expressionsnap.SnapCustomBlockMerge.{CustomBlockPlan, CustomBlockPlans}
 
 /**

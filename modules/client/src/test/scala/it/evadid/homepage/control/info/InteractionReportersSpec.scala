@@ -13,13 +13,14 @@ import it.evadid.homepage.webElements.editor.code.EditorDomSuite
 import it.evadid.workbook.abstractions.{InteractionFormat, WorkbookInteractionElement, FeedbackEntity}
 import it.evadid.workbook.abstractions.grading.{GradingResult, GradingStatus}
 import it.evadid.workbook.abstractions.scaffolding.{ScaffoldingResult, ScaffoldingStatus}
-import it.evadid.workbook.elements.interactionElements.gpt.TextInputWithScaffoldingAndGrading
+import it.evadid.workbook.interactions.gpt.TextInputWithScaffoldingAndGrading
 import TextInputWithScaffoldingAndGrading.ContentForLlmInteraction
-import it.evadid.workbook.elements.interactionElements.basic.TextInteraction
-import it.evadid.workbook.elements.structureElements.{Workbook, WorkbookSection}
-import it.evadid.workbook.interaction.variable.InteractionVariableState
-import it.evadid.workbook.interaction.sync.UpdateImportance
-import it.evadid.workbook.meta.{ExecutionContextInformation, InteractionVariableSyncReport, ScaffoldingReport}
+import it.evadid.workbook.interactions.basic.TextInteraction
+import it.evadid.workbook.elements.structure.{Workbook, WorkbookSection}
+import it.evadid.workbook.model.history.InteractionVariableState
+import it.evadid.workbook.sync.UpdateImportance
+import it.evadid.workbook.abstractions.ExecutionContextInformation
+import it.evadid.workbook.reports.{InteractionVariableSyncReport, ScaffoldingReport}
 import it.evadid.core.datastructures.chat.MessengerModel
 import java.time.LocalDateTime
 
@@ -169,7 +170,7 @@ class InteractionReportersSpec extends EditorDomSuite {
     assertEquals(SyncReporter.summarize(InteractionVariableSyncReport(Set("a", "b"), Set("a", "b"))).status, Status.Synced)
     val owner = new ManualOwner
     try {
-      val source = Var(InteractionVariableSyncReport(Set.empty[it.evadid.workbook.interaction.sync.SyncInformationWithContext], Set.empty))
+      val source = Var(InteractionVariableSyncReport(Set.empty[it.evadid.workbook.sync.SyncInformationWithContext], Set.empty))
       val reporter = new SyncReporter(source.signal)
       val first = reporter.report.observe(using owner)
       val second = reporter.report.observe(using owner)

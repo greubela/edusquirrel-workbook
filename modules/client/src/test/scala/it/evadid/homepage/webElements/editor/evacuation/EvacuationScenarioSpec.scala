@@ -2,7 +2,7 @@ package it.evadid.homepage.webElements.editor.evacuation
 
 import it.evadid.core.datastructures.matrix.*
 import it.evadid.evacuation.eva2.control.modes.ScenarioEditorMode
-import it.evadid.workbook.model.evacuation.*
+import it.evadid.workbook.interactions.evacuation.*
 import munit.FunSuite
 
 class EvacuationScenarioSpec extends FunSuite {

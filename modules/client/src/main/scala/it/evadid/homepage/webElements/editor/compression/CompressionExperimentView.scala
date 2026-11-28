@@ -5,7 +5,7 @@ import it.evadid.homepage.control.model.FullInfo
 import com.raquo.laminar.api.L.*
 import it.evadid.homepage.webElements.basic.LabelSelection
 import it.evadid.homepage.workbook.htmlRenderer.LaminarRenderHelper
-import it.evadid.workbook.model.compression.*
+import it.evadid.workbook.interactions.compression.*
 
 object CompressionExperimentView {
   def localized(fullInfo: FullInfo, key: String): Signal[String] = LaminarRenderHelper(fullInfo).plaintextStringSignal(s"CompressionWorkbook/$key")

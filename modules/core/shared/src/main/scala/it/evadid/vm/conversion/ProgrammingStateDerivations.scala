@@ -12,7 +12,7 @@ import it.evadid.vm.parsing.source.{JavaSource, PythonSource, SourceParsing, Syn
 import it.evadid.vm.parsing.source.SourceParsing.SourceLanguage
 import it.evadid.vm.conversion.snapexpression.SnapToExpression
 import it.evadid.vm.conversion.snapmodelxml.SnapModelToXml.*
-import it.evadid.workbook.elements.interactionElements.programming.state.*
+import it.evadid.workbook.interactions.programming.state.*
 
 /** Owned by one immutable state and the environment it is read in. Views and graders share its parsing and
   * projections. Library calls bind only to the libraries `environment` provides ([[dependencies.ProgrammingEnvironment]]).

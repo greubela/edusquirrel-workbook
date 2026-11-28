@@ -6,7 +6,7 @@ import it.evadid.core.datastructures.color.{RGBColor, WebColor}
 import it.evadid.vm.code.abstractions.BeExpression
 import it.evadid.vm.code.usage.{BeFunctionCall, BeUseValue}
 import it.evadid.vm.types.{BeDataValueLiteral, BeUseValueReference}
-import it.evadid.workbook.elements.interactionElements.programming.state.snap.SnapTurtleCatalog.SnapInputKind
+import it.evadid.workbook.interactions.programming.state.snap.SnapTurtleCatalog.SnapInputKind
 
 /**
  * Snap-specific literal codec. Color slots stay here rather than becoming a VM value type:

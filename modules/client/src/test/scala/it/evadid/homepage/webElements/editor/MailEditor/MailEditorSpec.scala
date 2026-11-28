@@ -2,7 +2,7 @@ package it.evadid.homepage.webElements.editor.MailEditor
 
 import com.raquo.laminar.api.L.*
 import it.evadid.homepage.webElements.UiDomSuite
-import it.evadid.workbook.elements.interactionElements.emailSimulator.{MailEditor as _, *}
+import it.evadid.workbook.interactions.emailSimulator.{MailEditor as _, *}
 import org.scalajs.dom
 
 class MailEditorSpec extends UiDomSuite {

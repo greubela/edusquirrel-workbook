@@ -1,13 +1,13 @@
 package it.evadid.homepage.workbook.htmlRenderer.interactionRenderer.turtleStitch
 
-import it.evadid.workbook.interaction.state.InteractionSignals.*
+import it.evadid.workbook.control.InteractionSignals.*
 
 import it.evadid.homepage.control.model.FullInfo
 
 import it.evadid.core.datastructures.language.AppLanguage.{Java, Python, SnapLanguage}
-import it.evadid.workbook.abstractions.InteractionFormat.{TurtleProjectFormat}
+import it.evadid.workbook.abstractions.InteractionFormat.TurtleProjectFormat
 
-import it.evadid.workbook.elements.interactionElements.programming.state.{ProgrammingState, ProgrammingStateRaw}
+import it.evadid.workbook.interactions.programming.state.{ProgrammingState, ProgrammingStateRaw}
 import com.raquo.laminar.api.L.*
 import it.evadid.core.datastructures.file
 import it.evadid.core.datastructures.file.FileDescription
@@ -22,7 +22,7 @@ import it.evadid.homepage.webElements.editor.code.SnapEditor.SnapPreviewEditor
 import it.evadid.homepage.webElements.editor.code.SnapEditor.SnapCodeEditorConfig
 import it.evadid.homepage.workbook.htmlRenderer.LaminarRenderHelper
 import it.evadid.workbook.abstractions.WorkbookInteractionElement
-import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseTurtle.TurtleStitchProjectState
+import it.evadid.workbook.interactions.programming.programmingExerciseTurtle.TurtleStitchProjectState
 import it.evadid.homepage.webElements.basic.FullImage
 
 import scala.concurrent.ExecutionContext

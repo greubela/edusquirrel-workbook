@@ -3,7 +3,7 @@ package it.evadid.workbook.support
 import it.evadid.core.datastructures.language.AppLanguage.{English, HumanLanguage}
 import it.evadid.core.datastructures.language.control.LanguageMapIdResolver
 import it.evadid.distribution.clients.ExecutionClient
-import it.evadid.workbook.meta.ExecutionContextInformation
+import it.evadid.workbook.abstractions.ExecutionContextInformation
 
 import scala.concurrent.ExecutionContext
 

@@ -1,6 +1,6 @@
 package it.evadid.homepage.workbook.htmlRenderer.interactionRenderer.qr
 
-import it.evadid.workbook.interaction.state.InteractionSignals.*
+import it.evadid.workbook.control.InteractionSignals.*
 
 import it.evadid.homepage.control.model.FullInfo
 
@@ -9,8 +9,8 @@ import it.evadid.core.datastructures.language.LanguageMapContentId
 import it.evadid.homepage.webElements.editor.qr.{QrCodeEditor, QrCodeView}
 import it.evadid.homepage.workbook.htmlRenderer.HtmlRenderFactory.LineBasedRenderingFactory
 import it.evadid.homepage.workbook.htmlRenderer.atomarLineRenderings.{AtomarLineRendering, ElementCard}
-import it.evadid.workbook.elements.interactionElements.qr.CreateQrCodeInteraction
-import it.evadid.workbook.interaction.sync.UpdateImportance
+import it.evadid.workbook.interactions.qr.CreateQrCodeInteraction
+import it.evadid.workbook.sync.UpdateImportance
 
 case object CreateQrCodeInteractionRenderer extends LineBasedRenderingFactory[CreateQrCodeInteraction] {
   override protected def createRendering(fullInfo: FullInfo, element: CreateQrCodeInteraction): AtomarLineRendering = {

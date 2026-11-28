@@ -23,7 +23,7 @@ import it.evadid.util.logging.Logger
 import it.evadid.vm.parsing.source.SourceParsing
 import it.evadid.vm.parsing.source.SourceParsing.SourceLanguage
 import it.evadid.vm.naming.BeEntityName
-import it.evadid.workbook.elements.interactionElements.programming.state.*
+import it.evadid.workbook.interactions.programming.state.*
 import org.scalajs.dom.SVGSVGElement
 
 import java.util.UUID

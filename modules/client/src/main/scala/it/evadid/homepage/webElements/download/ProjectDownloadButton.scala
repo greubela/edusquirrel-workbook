@@ -3,7 +3,7 @@ package it.evadid.homepage.webElements.download
 import com.raquo.laminar.api.L.*
 import it.evadid.homepage.webElements.editor.code.EvaEditor.EvaActionIcons
 import it.evadid.homepage.webElements.editor.code.program.ProgrammingExecutionLabels
-import it.evadid.workbook.elements.interactionElements.programming.state.ProgrammingState
+import it.evadid.workbook.interactions.programming.state.ProgrammingState
 
 import it.evadid.core.util.InfoUtil
 

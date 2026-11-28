@@ -6,8 +6,8 @@ import it.evadid.vm.BeProgram
 import it.evadid.vm.code.abstractions.BeExpression
 import it.evadid.vm.conversion.ConversionResult.converted
 import it.evadid.vm.conversion.snapexpression.SnapExpressionSupport
-import it.evadid.workbook.elements.interactionElements.programming.state.ProgrammingStateRaw
-import it.evadid.workbook.elements.interactionElements.programming.state.snap.SnapCanvasLayout
+import it.evadid.workbook.interactions.programming.state.ProgrammingStateRaw
+import it.evadid.workbook.interactions.programming.state.snap.SnapCanvasLayout
 
 object ExpressionToSnap {
   def convert(expression: BeExpression): ProgrammingStateRaw = {

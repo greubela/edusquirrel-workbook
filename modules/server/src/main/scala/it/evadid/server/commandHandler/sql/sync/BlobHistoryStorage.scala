@@ -3,10 +3,10 @@ package it.evadid.server.commandHandler.sql.sync
 import it.evadid.distribution.commandTypes.SQLCommands.*
 import it.evadid.util.logging.Logger
 import it.evadid.workbook.abstractions.InteractionFormat
-import it.evadid.workbook.interaction.sync.{SyncContext, SyncSuccess, UsageContext}
-import it.evadid.workbook.interaction.sync.model.InteractionHistoryJson
-import it.evadid.workbook.interaction.variable.InteractionVariableHistory
-import it.evadid.workbook.interaction.variable.events.EventId
+import it.evadid.workbook.sync.{SyncContext, SyncSuccess, UsageContext}
+import it.evadid.workbook.sync.model.InteractionHistoryJson
+import it.evadid.workbook.model.history.InteractionVariableHistory
+import it.evadid.workbook.model.history.events.EventId
 import java.sql.Connection
 
 /** Serializes concurrent merges by locking the context row inside the transaction. */

@@ -1,6 +1,6 @@
 package it.evadid.workbook.session
 
-import it.evadid.workbook.elements.structureElements.Workbook
+import it.evadid.workbook.elements.structure.Workbook
 
 case class AllWorkbookInfo(
                             loadedWorkbook: Workbook,

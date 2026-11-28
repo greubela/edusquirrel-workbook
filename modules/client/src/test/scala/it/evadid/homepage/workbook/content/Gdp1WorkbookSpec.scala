@@ -1,20 +1,20 @@
 package it.evadid.homepage.workbook.content
 
-import it.evadid.workbook.interaction.sync.UpdateImportance
+import it.evadid.workbook.sync.UpdateImportance
 
 import munit.FunSuite
 import it.evadid.core.datastructures.language.AppLanguage.{SnapLanguage, Python, Java}
 import it.evadid.homepage.webElements.editor.code.SnapEditor.SnapCodeEditorConfig
-import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseTurtle.*
-import it.evadid.workbook.elements.interactionElements.programming.state.{ProgrammingState, ProgrammingStateJavaStructured, ProgrammingStatePythonStructured, ProgrammingStateRaw}
-import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseRegular.{ExerciseDataView, ProgramDataTestGrader, ProgrammingExerciseFullJava, SortListExercise}
+import it.evadid.workbook.interactions.programming.programmingExerciseTurtle.*
+import it.evadid.workbook.interactions.programming.state.{ProgrammingState, ProgrammingStateJavaStructured, ProgrammingStatePythonStructured, ProgrammingStateRaw}
+import it.evadid.workbook.interactions.programming.programmingExerciseRegular.{ExerciseDataView, ProgramDataTestGrader, ProgrammingExerciseFullJava, SortListExercise}
 import it.evadid.workbook.abstractions.grading.{GradingResult, GradingStatus, WorkbookInteractionGrader}
-import it.evadid.workbook.elements.interactionElements.programming.AdditionalProgrammingTestInfo
-import it.evadid.workbook.elements.interactionElements.gpt.TextInputWithScaffoldingAndGrading
-import it.evadid.workbook.meta.ExecutionContextInformation
-import it.evadid.workbook.interaction.sync.model.InteractionHistoryJson
+import it.evadid.workbook.interactions.programming.AdditionalProgrammingTestInfo
+import it.evadid.workbook.interactions.gpt.TextInputWithScaffoldingAndGrading
+import it.evadid.workbook.abstractions.ExecutionContextInformation
+import it.evadid.workbook.sync.model.InteractionHistoryJson
 import it.evadid.workbook.abstractions.InteractionFormat.TurtleRecreateShapeInteractionFormat
-import it.evadid.workbook.interaction.variable.InteractionVariableHistory
+import it.evadid.workbook.model.history.InteractionVariableHistory
 import scala.concurrent.{ExecutionContext, Future}
 import upickle.default.*
 

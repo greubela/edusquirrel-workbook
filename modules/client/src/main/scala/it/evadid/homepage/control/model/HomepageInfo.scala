@@ -5,11 +5,11 @@ import it.evadid.core.datastructures.language.AppLanguage.*
 import it.evadid.core.datastructures.language.control.LanguageMapStorage
 import it.evadid.core.datastructures.user.{AllUserInfo, User, UserConfig}
 import it.evadid.homepage.workbook.syncDestination.{DatabaseSyncViaBackendServerHandler, LocalIndexedDbStorageSyncHandler, LocalStorageSyncHandler}
-import it.evadid.workbook.interaction.sync.destination.SyncDestinationDefinition.{LocalIndexedDbSyncDefinition, LocalStorageSyncDefinition, SyncDestinationBasedOnHistoryDatabase}
-import it.evadid.workbook.interaction.sync.destination.{SyncDestinationDefinition, SyncDestinationHistoryHandler}
-import it.evadid.workbook.interaction.sync.{SyncInformationWithContext, UsageContext}
-import it.evadid.workbook.interaction.state.InteractionInfo
-import it.evadid.workbook.interaction.sync.model.InteractionHistoryJson
+import it.evadid.workbook.sync.destination.SyncDestinationDefinition.{LocalIndexedDbSyncDefinition, LocalStorageSyncDefinition, SyncDestinationBasedOnHistoryDatabase}
+import it.evadid.workbook.sync.destination.{SyncDestinationDefinition, SyncDestinationHistoryHandler}
+import it.evadid.workbook.sync.{SyncInformationWithContext, UsageContext}
+import it.evadid.workbook.model.InteractionInfo
+import it.evadid.workbook.sync.model.InteractionHistoryJson
 
 import java.time.LocalDateTime
 

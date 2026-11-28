@@ -1,6 +1,6 @@
 package it.evadid.homepage.workbook.htmlRenderer.controlElements
 
-import it.evadid.workbook.interaction.state.InteractionSignals.*
+import it.evadid.workbook.control.InteractionSignals.*
 
 import it.evadid.homepage.control.model.FullInfo
 
@@ -21,7 +21,7 @@ import scala.scalajs.concurrent.JSExecutionContext.Implicits.queue
 import scala.util.{Failure, Success}
 import org.scalajs.dom
 import it.evadid.core.datastructures.state.StateHelper.RichObservableValue
-import it.evadid.workbook.interaction.sync.SyncResetState
+import it.evadid.workbook.sync.SyncResetState
 
 case class DropdownMenuControl(fullInfo: FullInfo, curWorkbook: Option[AllWorkbookInfo], curUser: Option[AllUserInfo]) extends HtmlAppElement {
 

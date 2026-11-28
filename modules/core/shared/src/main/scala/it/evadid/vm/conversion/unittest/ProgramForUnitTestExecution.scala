@@ -1,11 +1,11 @@
 package it.evadid.vm.conversion.unittest
 
 import it.evadid.core.datastructures.language.AppLanguage.{Java, Python, SnapLanguage}
-import it.evadid.workbook.elements.interactionElements.programming.state.ProgrammingState
-import it.evadid.workbook.elements.interactionElements.programming.state.ProgrammingStateBeExpression
-import it.evadid.workbook.elements.interactionElements.programming.state.ProgrammingStateSnapScalaModel
-import it.evadid.workbook.elements.interactionElements.programming.state.ProgrammingStateRaw
-import it.evadid.workbook.elements.interactionElements.programming.state.{ProgrammingStateJavaStructured, ProgrammingStatePythonStructured}
+import it.evadid.workbook.interactions.programming.state.ProgrammingState
+import it.evadid.workbook.interactions.programming.state.ProgrammingStateBeExpression
+import it.evadid.workbook.interactions.programming.state.ProgrammingStateSnapScalaModel
+import it.evadid.workbook.interactions.programming.state.ProgrammingStateRaw
+import it.evadid.workbook.interactions.programming.state.{ProgrammingStateJavaStructured, ProgrammingStatePythonStructured}
 
 import it.evadid.vm.conversion.expressionpython.ExpressionToPython
 import it.evadid.vm.conversion.snapexpression.SnapExpressionSupport

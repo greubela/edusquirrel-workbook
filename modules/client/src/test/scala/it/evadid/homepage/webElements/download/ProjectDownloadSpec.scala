@@ -5,7 +5,7 @@ import it.evadid.homepage.webElements.editor.code.EditorDomSuite
 import it.evadid.vm.simulation.data.DataWorld
 import com.raquo.laminar.api.L.{Val, Var}
 import it.evadid.homepage.webElements.editor.code.program.ProgrammingExecutionLabels
-import it.evadid.workbook.elements.interactionElements.programming.state.{ProgrammingState, ProgrammingStateRaw, ProgrammingStateSnapScalaModel}
+import it.evadid.workbook.interactions.programming.state.{ProgrammingState, ProgrammingStateRaw, ProgrammingStateSnapScalaModel}
 import org.scalajs.dom
 
 import java.time.LocalDateTime

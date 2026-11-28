@@ -64,20 +64,21 @@ def observedAnswer(answer: Var[String]): Element = div(
 )
 ```
 
-`FullInfo` is the client context. Two controls each own one `Var`:
-`HomepageControl` the `HomepageInfo` (workbook, user, display, language) and
-`InteractionControl` the `InteractionInfo` (the answers). `HomepageState` performs
-changes that concern both; see [answer state](#answer-state-and-sessions). Renderers use
-these controls and `fullInfo.signals`; standalone editors receive their value,
-configuration and required services instead of reaching into that global context.
+`FullInfo` is the client context. `HomepageControl` owns the `Var[HomepageInfo]`
+(workbook, user, display, language); the core `InteractionController` owns the answers
+(`InteractionInfo`) in a core `State`. `HomepageState` performs changes that concern
+both; see [answer state](#answer-state-and-sessions). Renderers read the answers through
+the `InteractionSignals` views (signals and Var views over the controller) and
+`fullInfo.signals`; standalone editors receive their value, configuration and required
+services instead of reaching into that global context.
 
 ## Two-way views and external editors
 
 Use `bimap` when the two conversions express a valid view of the same value:
 
 ```scala
-import it.evadid.workbook.elements.interactionElements.programming.state.ProgrammingState
-import it.evadid.workbook.elements.interactionElements.programming.state.ProgrammingStatePythonStructured
+import it.evadid.workbook.interactions.programming.state.ProgrammingState
+import it.evadid.workbook.interactions.programming.state.ProgrammingStatePythonStructured
 
 def pythonView(program: Var[ProgrammingState]): Var[String] =
   program.bimap(_.toPythonStructured.toString)(code => ProgrammingStatePythonStructured(code))
@@ -111,19 +112,22 @@ finished state while the observable continues to update.
 
 Interactions are exercise definitions without state. The answers of one sync context
 (program, workbook, user) form one immutable
-[`InteractionInfo`](../modules/core/shared/src/main/scala/it/evadid/workbook/interaction/state/InteractionInfo.scala):
+[`InteractionInfo`](../modules/core/shared/src/main/scala/it/evadid/workbook/model/InteractionInfo.scala):
 per interaction its `InteractionVariableHistory[F]` and what each destination is known to
 hold, plus the `SyncConnection` (destinations with credentials, execution context) and a
 session identity. An interaction belongs to it by serialization key and instance; another
 instance under the same key reads its default answer and its writes are ignored.
 
-The core [`InteractionController`](../modules/core/shared/src/main/scala/it/evadid/workbook/interaction/state/InteractionController.scala)
-makes every change as a pure transition of that state, so updates compose inside an
-Airstream transaction, and owns the feedback computations of the current session. Effects
-follow the observed change: a changed history is stored (the client defers this to the next
-task, so an answer and its grading starts share one store), and a changed answer runs the
-graders that run automatically for its importance. The client `InteractionControl` is this
-controller over a `Var`; another front end can supply any core `State`.
+The core [`InteractionController`](../modules/core/shared/src/main/scala/it/evadid/workbook/control/InteractionController.scala)
+makes every change as a pure transition of its core `State`, and owns the feedback
+computations of the current session, the sync phases (store, read, reset with a per-user
+pause) and the pending stores. Effects follow the observed change: a changed history is
+stored through the injected scheduler (the client defers to the next task, so an answer and
+its grading starts share one store), and a changed answer runs the graders that run
+automatically for its importance. The client adds only Airstream views
+([`InteractionSignals`](../modules/core/js/src/main/scala/it/evadid/workbook/control/InteractionSignals.scala))
+and the page's window listeners, which send pending stores when the page is hidden; another
+front end uses the same controller.
 
 `HomepageState` forwards page changes in a fixed order: send the pending stores, select the
 user, credentials or workbook, let the answers follow the page, read everything. Following

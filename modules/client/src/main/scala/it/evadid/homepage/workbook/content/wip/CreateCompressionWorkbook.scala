@@ -6,13 +6,13 @@ import it.evadid.core.datastructures.user.User
 import it.evadid.homepage.control.model.*
 import it.evadid.homepage.workbook.content.WorkbookFactory
 import it.evadid.workbook.abstractions.{TypeOfTextDisplay, WorkbookElement}
-import it.evadid.workbook.elements.displayElements.CollapsibleInstructionElement
-import it.evadid.workbook.elements.displayElements.WorkbookImageElement.LanguageMapBasedWorkbookImageElement
-import it.evadid.workbook.elements.interactionElements.choice.WorkbookContentChoiceInteraction
-import it.evadid.workbook.elements.interactionElements.compression.CompressionExperimentInteraction
-import it.evadid.workbook.elements.interactionElements.slideshow.*
-import it.evadid.workbook.elements.structureElements.Workbook
-import it.evadid.workbook.model.compression.*
+import it.evadid.workbook.elements.display.CollapsibleInstructionElement
+import it.evadid.workbook.elements.display.WorkbookImageElement.LanguageMapBasedWorkbookImageElement
+import it.evadid.workbook.interactions.choice.WorkbookContentChoiceInteraction
+import it.evadid.workbook.interactions.compression.CompressionExperimentInteraction
+import it.evadid.workbook.interactions.slideshow.*
+import it.evadid.workbook.elements.structure.Workbook
+import it.evadid.workbook.interactions.compression.*
 
 /** Native reconstruction of every chapter and activity in the retained standalone workbook. */
 case class CreateCompressionWorkbook(override val fullInfo: FullInfo) extends WorkbookFactory {

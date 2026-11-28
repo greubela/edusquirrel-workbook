@@ -5,8 +5,8 @@ import it.evadid.homepage.webElements.HtmlAppElement
 import it.evadid.vm.simulation.ProgramExecution
 import it.evadid.vm.simulation.data.SudokuGrid
 import it.evadid.vm.simulation.turtle.TurtleExecutionStatus
-import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseRegular.ExerciseDataView
-import it.evadid.workbook.elements.interactionElements.programming.state.ProgrammingState
+import it.evadid.workbook.interactions.programming.programmingExerciseRegular.ExerciseDataView
+import it.evadid.workbook.interactions.programming.state.ProgrammingState
 
 import scala.concurrent.{ExecutionContext, Future}
 import scala.util.control.NonFatal

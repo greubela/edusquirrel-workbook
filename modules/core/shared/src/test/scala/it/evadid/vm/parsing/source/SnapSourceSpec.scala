@@ -3,7 +3,7 @@ package it.evadid.vm.parsing.source
 import it.evadid.core.datastructures.language.AppLanguage.{Java, Python, SnapLanguage}
 import it.evadid.vm.conversion.snapmodelxml.SnapModelToXml.*
 import it.evadid.vm.parsing.source.SourceParsing.SourceLanguage
-import it.evadid.workbook.elements.interactionElements.programming.state.{ProgrammingStateRaw, ProgrammingStateSnapScalaModel}
+import it.evadid.workbook.interactions.programming.state.{ProgrammingStateRaw, ProgrammingStateSnapScalaModel}
 import munit.FunSuite
 
 class SnapSourceSpec extends FunSuite {

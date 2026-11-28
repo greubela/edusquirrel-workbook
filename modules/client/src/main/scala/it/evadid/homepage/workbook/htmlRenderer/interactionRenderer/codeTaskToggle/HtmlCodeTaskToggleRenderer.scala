@@ -1,6 +1,6 @@
 package it.evadid.homepage.workbook.htmlRenderer.interactionRenderer.codeTaskToggle
 
-import it.evadid.workbook.interaction.state.InteractionSignals.*
+import it.evadid.workbook.control.InteractionSignals.*
 
 import it.evadid.homepage.control.model.FullInfo
 
@@ -11,8 +11,8 @@ import it.evadid.homepage.webElements.editor.code.FillInCodeEditor
 import it.evadid.homepage.workbook.htmlRenderer.HtmlRenderFactory.LineBasedRenderingFactory
 import it.evadid.homepage.workbook.htmlRenderer.atomarLineRenderings.AtomarLineRendering
 import it.evadid.homepage.workbook.htmlRenderer.interactionRenderer.reorderExercise.HtmlReorderInteractionRenderer
-import it.evadid.workbook.elements.interactionElements.codeTaskToggle.CodeTaskToggleInteraction
-import it.evadid.workbook.interaction.sync.UpdateImportance
+import it.evadid.workbook.interactions.codeTaskToggle.CodeTaskToggleInteraction
+import it.evadid.workbook.sync.UpdateImportance
 
 
 object HtmlCodeTaskToggleRenderer extends LineBasedRenderingFactory[CodeTaskToggleInteraction] {

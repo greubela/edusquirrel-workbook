@@ -2,7 +2,7 @@ package it.evadid.homepage.workbook.htmlRenderer.interactionRenderer.turtleStitc
 
 import it.evadid.homepage.control.model.FullInfo
 
-import it.evadid.workbook.abstractions.InteractionFormat.{TurtleProjectFormat}
+import it.evadid.workbook.abstractions.InteractionFormat.TurtleProjectFormat
 
 import com.raquo.laminar.api.L.*
 import com.raquo.laminar.nodes.ReactiveHtmlElement
@@ -10,8 +10,8 @@ import it.evadid.core.datastructures.language.LanguageMapContentId
 import it.evadid.homepage.webElements.HtmlAppElement
 import it.evadid.homepage.webElements.basic.HtmlButtonElement
 import it.evadid.workbook.abstractions.WorkbookInteractionElement
-import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseTurtle.TurtleStitchProjectState
-import it.evadid.workbook.interaction.sync.UpdateImportance
+import it.evadid.workbook.interactions.programming.programmingExerciseTurtle.TurtleStitchProjectState
+import it.evadid.workbook.sync.UpdateImportance
 import org.scalajs.dom
 import org.scalajs.dom.{File, HTMLInputElement}
 

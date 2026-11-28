@@ -19,7 +19,7 @@ class ResultMergeSpec extends FunSuite {
     override val importance = GradingImportance.REQUIRED_TEST
     override val runningBehavior = GraderRunningBehavior.RUN_ALWAYS
     override val gradingEntity = FeedbackEntity.TestEntity
-    override protected def handleGrading(state: String, context: it.evadid.workbook.meta.ExecutionContextInformation) =
+    override protected def handleGrading(state: String, context: it.evadid.workbook.abstractions.ExecutionContextInformation) =
       Future.successful(GradingResult(this, state, GradingStatus.Correct))
   }
   private val t0 = LocalDateTime.of(2026, 1, 1, 10, 0)

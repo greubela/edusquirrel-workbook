@@ -7,7 +7,7 @@ import com.raquo.laminar.api.L.{Signal, Val}
 import it.evadid.homepage.webElements.editor.code.EvaEditor.{EvaEditorConfig, EvaEditorLabels}
 import it.evadid.util.logging.Logger
 import it.evadid.util.logging.derived.PrintToStdLogger
-import it.evadid.workbook.elements.interactionElements.programming.state.*
+import it.evadid.workbook.interactions.programming.state.*
 import it.evadid.core.datastructures.language.AppLanguage.*
 import it.evadid.vm.conversion.dependencies.{ProgrammingEnvironment, ProgrammingLibrary}
 

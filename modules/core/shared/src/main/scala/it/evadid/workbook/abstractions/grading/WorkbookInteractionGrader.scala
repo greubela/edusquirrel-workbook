@@ -1,18 +1,18 @@
 package it.evadid.workbook.abstractions.grading
 
-import it.evadid.workbook.interaction.sync.UpdateImportance
+import it.evadid.workbook.sync.UpdateImportance
 import it.evadid.core.util.io.Serializer
 import it.evadid.distribution.command.SerializedException
 import it.evadid.workbook.abstractions.{FeedbackEntity, InteractionFormat}
 import it.evadid.workbook.abstractions.grading.GradingStatus.*
-import it.evadid.workbook.elements.interactionElements.gpt.TextInputLlmGrader
-import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseRegular.{ProgramDataTestGrader, ProgrammingUnitTestGrader}
-import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseTurtle.{RecreateShapeGrader, TurtleCommandUsageGrader, ProgramStructureGrader}
-import it.evadid.workbook.elements.interactionElements.slideshow.SlideshowGrader
-import it.evadid.workbook.elements.interactionElements.choice.ChoiceGrader
-import it.evadid.workbook.elements.interactionElements.reorderExercise.{ReorderCodeGrader, ReorderMapIdGrader}
-import it.evadid.workbook.elements.interactionElements.table.TableCellGrader
-import it.evadid.workbook.meta.ExecutionContextInformation
+import it.evadid.workbook.interactions.gpt.TextInputLlmGrader
+import it.evadid.workbook.interactions.programming.programmingExerciseRegular.{ProgramDataTestGrader, ProgrammingUnitTestGrader}
+import it.evadid.workbook.interactions.programming.programmingExerciseTurtle.{RecreateShapeGrader, TurtleCommandUsageGrader, ProgramStructureGrader}
+import it.evadid.workbook.interactions.slideshow.SlideshowGrader
+import it.evadid.workbook.interactions.choice.ChoiceGrader
+import it.evadid.workbook.interactions.reorderExercise.{ReorderCodeGrader, ReorderMapIdGrader}
+import it.evadid.workbook.interactions.table.TableCellGrader
+import it.evadid.workbook.abstractions.ExecutionContextInformation
 import upickle.default.*
 
 import scala.concurrent.{ExecutionContext, Future}

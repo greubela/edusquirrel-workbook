@@ -4,9 +4,9 @@ import it.evadid.core.util.io.serializer.DefaultSerializer.given
 import it.evadid.util.logging.Logger
 import it.evadid.workbook.abstractions.grading.GradingStatus
 import it.evadid.workbook.abstractions.{InteractionFormat, WorkbookInteractionElement}
-import it.evadid.workbook.interaction.sync.model.InteractionHistoryJson
-import it.evadid.workbook.jsonFactory.WorkbookElementReference
-import it.evadid.workbook.meta.GradingSummary
+import it.evadid.workbook.sync.model.InteractionHistoryJson
+import it.evadid.workbook.serialization.WorkbookElementReference
+import it.evadid.workbook.reports.GradingSummary
 import it.evadid.workbook.session.SessionData
 import upickle.default.*
 

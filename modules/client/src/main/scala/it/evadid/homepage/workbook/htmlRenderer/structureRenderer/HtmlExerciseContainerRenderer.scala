@@ -7,7 +7,7 @@ import it.evadid.homepage.webElements.HtmlAppElement
 import it.evadid.homepage.workbook.htmlRenderer.atomarLineRenderings.{AtomarLineRendering, RenderingAsContainerTitle}
 import it.evadid.homepage.workbook.htmlRenderer.{HtmlRenderFactory, HtmlWorkbookElement}
 import it.evadid.workbook.abstractions.WorkbookElement
-import it.evadid.workbook.elements.structureElements.ExerciseContainer
+import it.evadid.workbook.elements.structure.ExerciseContainer
 
 object HtmlExerciseContainerRenderer extends HtmlRenderFactory[ExerciseContainer] {
 

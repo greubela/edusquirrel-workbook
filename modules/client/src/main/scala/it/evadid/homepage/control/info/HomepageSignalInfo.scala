@@ -7,7 +7,7 @@ import it.evadid.core.datastructures.language.AppLanguage.*
 import it.evadid.core.datastructures.language.control.LanguageMapStorage
 import it.evadid.core.datastructures.user.AllUserInfo
 import it.evadid.homepage.control.model.*
-import it.evadid.workbook.elements.structureElements.WorkbookSection
+import it.evadid.workbook.elements.structure.WorkbookSection
 
 case class HomepageSignalInfo(fullInfo: FullInfo) {
 

@@ -1,7 +1,7 @@
 package it.evadid.homepage.webElements.editor.MailEditor
 
 import com.raquo.laminar.api.L.*
-import it.evadid.workbook.elements.interactionElements.emailSimulator.*
+import it.evadid.workbook.interactions.emailSimulator.*
 
 /** UI decisions are independent of DOM, fullscreen and synchronization services. */
 class MailEditorState(val state: Var[InboxStateScaffolding], val allowCompose: Boolean) {

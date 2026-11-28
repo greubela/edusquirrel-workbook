@@ -16,10 +16,10 @@ import it.evadid.distribution.commandTypes.MailCommands.{SendMailRequest, SendMa
 import it.evadid.distribution.commandTypes.SQLCommands.*
 import it.evadid.distribution.commandTypes.UserCommands.*
 import it.evadid.workbook.abstractions.TypeOfTextDisplay
-import it.evadid.workbook.interaction.sync.SyncInformation.*
-import it.evadid.workbook.interaction.sync.*
-import it.evadid.workbook.interaction.sync.{SyncContext, UpdateImportance, UsageContext}
-import it.evadid.workbook.interaction.variable.*
+import it.evadid.workbook.sync.SyncInformation.*
+import it.evadid.workbook.sync.*
+import it.evadid.workbook.sync.{SyncContext, UpdateImportance, UsageContext}
+import it.evadid.workbook.model.history.*
 import upickle.ReadWriter
 import upickle.default.*
 

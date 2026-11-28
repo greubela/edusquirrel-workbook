@@ -3,7 +3,7 @@ package it.evadid.homepage.webElements.editor.code.SnapEditor
 import com.raquo.airstream.ownership.Owner
 import com.raquo.airstream.state.Var
 import it.evadid.core.datastructures.language.AppLanguage.SnapLanguage
-import it.evadid.workbook.elements.interactionElements.programming.state.{ProgrammingStateRaw, ProgrammingStateSnapScalaModel}
+import it.evadid.workbook.interactions.programming.state.{ProgrammingStateRaw, ProgrammingStateSnapScalaModel}
 
 /** Binds a native Snap project to the answer: edits in Snap are written into `project`, and other values of `project`
   * are opened in Snap.

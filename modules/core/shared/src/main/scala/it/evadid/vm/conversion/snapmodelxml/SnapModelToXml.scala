@@ -2,7 +2,7 @@ package it.evadid.vm.conversion.snapmodelxml
 
 import it.evadid.vm.conversion.snapmodelxml.SnapModelToXml.*
 
-import it.evadid.workbook.elements.interactionElements.programming.state.snap.SnapScalaModel.*
+import it.evadid.workbook.interactions.programming.state.snap.SnapScalaModel.*
 
 /** Lossless XML emission retains the lexical spelling carried by the immutable Snap model. */
 object SnapModelToXml {

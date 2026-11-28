@@ -5,8 +5,8 @@ import it.evadid.workbook.abstractions.InteractionFormat.{TextInputWithLlmGradin
   TextInteractionFormat, LabeledCheckboxInteractionFormat, SqlCommandExerciseFormat}
 import it.evadid.workbook.abstractions.FeedbackEntity.LlmEntity
 
-import it.evadid.workbook.elements.interactionElements.programming.state.ProgrammingState
-import it.evadid.workbook.elements.interactionElements.programming.state.ProgrammingStateRaw
+import it.evadid.workbook.interactions.programming.state.ProgrammingState
+import it.evadid.workbook.interactions.programming.state.ProgrammingStateRaw
 
 import it.evadid.core.datastructures.chat.{Message, MessengerModel}
 import it.evadid.core.datastructures.language.{LanguageMap, LanguageMapContentId, WorkbookContent}
@@ -26,14 +26,14 @@ import java.util.zip.GZIPOutputStream
 import java.net.URI
 import java.net.http.{HttpClient, HttpRequest, HttpResponse}
 import it.evadid.server.commandHandler.sql.sync.HistorySql
-import it.evadid.workbook.interaction.sync.model.InteractionHistoryJson
-import it.evadid.workbook.interaction.variable.events.*
+import it.evadid.workbook.sync.model.InteractionHistoryJson
+import it.evadid.workbook.model.history.events.*
 import it.evadid.workbook.abstractions.{FeedbackEntity, InteractionFormat}
 import it.evadid.workbook.abstractions.grading.{GradedState, GradingResult, GradingStatus, WorkbookInteractionGrader}
 import it.evadid.workbook.abstractions.scaffolding.{ScaffoldingResult, ScaffoldingStatus}
-import it.evadid.workbook.elements.interactionElements.gpt.{TextInputLlmGrader, TextInputWithScaffoldingAndGrading}
-import it.evadid.workbook.interaction.sync.{EventSyncStrategy, SyncContext, SyncSuccess, UpdateImportance, UsageContext}
-import it.evadid.workbook.interaction.variable.*
+import it.evadid.workbook.interactions.gpt.{TextInputLlmGrader, TextInputWithScaffoldingAndGrading}
+import it.evadid.workbook.sync.{EventSyncStrategy, SyncContext, SyncSuccess, UpdateImportance, UsageContext}
+import it.evadid.workbook.model.history.*
 import it.evadid.util.logging.{BasicLogger, Logger}
 import java.time.LocalDateTime
 import scala.util.Using

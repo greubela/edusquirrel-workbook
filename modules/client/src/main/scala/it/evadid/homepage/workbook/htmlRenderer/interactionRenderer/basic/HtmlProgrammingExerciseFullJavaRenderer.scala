@@ -1,12 +1,12 @@
 package it.evadid.homepage.workbook.htmlRenderer.interactionRenderer.basic
 
-import it.evadid.workbook.interaction.state.InteractionSignals.*
+import it.evadid.workbook.control.InteractionSignals.*
 
 import it.evadid.homepage.control.model.FullInfo
 
-import it.evadid.workbook.interaction.sync.UpdateImportance
+import it.evadid.workbook.sync.UpdateImportance
 
-import it.evadid.workbook.abstractions.InteractionFormat.{ProgrammingExerciseWithLlmScaffoldingAndGrading}
+import it.evadid.workbook.abstractions.InteractionFormat.ProgrammingExerciseWithLlmScaffoldingAndGrading
 
 import com.raquo.laminar.api.L.*
 import it.evadid.core.datastructures.language.{AppLanguage, LanguageMapContentId}
@@ -18,13 +18,13 @@ import it.evadid.homepage.workbook.htmlRenderer.HtmlRenderFactory.LineBasedRende
 import it.evadid.homepage.workbook.htmlRenderer.atomarLineRenderings.{AtomarLineRendering, ElementCard}
 import it.evadid.homepage.workbook.htmlRenderer.workbookEditors.{EditorWithWorkbookPanel, WorkbookEvaEditor}
 import it.evadid.workbook.abstractions.scaffolding.AdditionalInfoLlmScaffolding
-import it.evadid.workbook.elements.interactionElements.programming.AdditionalProgrammingTestInfo
-import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseRegular.ProgrammingExerciseFullJava
-import it.evadid.workbook.elements.interactionElements.programming.programmingExerciseTurtle.TurtleDrawingPolicy
-import it.evadid.workbook.elements.interactionElements.programming.state.ProgrammingState
+import it.evadid.workbook.interactions.programming.AdditionalProgrammingTestInfo
+import it.evadid.workbook.interactions.programming.programmingExerciseRegular.ProgrammingExerciseFullJava
+import it.evadid.workbook.interactions.programming.programmingExerciseTurtle.TurtleDrawingPolicy
+import it.evadid.workbook.interactions.programming.state.ProgrammingState
 import it.evadid.homepage.control.info.interaction.GradingReporter
 import it.evadid.workbook.abstractions.{LangMapContentIdType, RoleInWorkbook, TypeOfTextDisplay}
-import it.evadid.workbook.elements.displayElements.DisplayLangMapContent
+import it.evadid.workbook.elements.display.DisplayLangMapContent
 
 case object HtmlProgrammingExerciseFullJavaRenderer extends LineBasedRenderingFactory[ProgrammingExerciseFullJava] {
   private[homepage] def editorState(fullInfo: FullInfo, element: ProgrammingExerciseFullJava): Var[ProgrammingState] =
@@ -42,7 +42,7 @@ case object HtmlProgrammingExerciseFullJavaRenderer extends LineBasedRenderingFa
       ElementCard(fullInfo, LanguageMapContentId("basic/programDataTitle"),
         new ProgramDataPreview(boundVar, view, key => laminarHelper(fullInfo).plaintextStringSignal(LanguageMapContentId(s"basic/$key"))).getDomElement())
     } ++ element.gradingElements.collect {
-      case grader: it.evadid.workbook.elements.interactionElements.programming.programmingExerciseTurtle.RecreateShapeGrader =>
+      case grader: it.evadid.workbook.interactions.programming.programmingExerciseTurtle.RecreateShapeGrader =>
         ElementCard(fullInfo, LanguageMapContentId("basic/turtleGradingPanel"),
           it.evadid.homepage.workbook.htmlRenderer.interactionRenderer.turtleStitch.CompareShapePreview(
             fullInfo, boundVar.signal, grader.desiredResult, grader.comparisonPolicy, element.environment).getDomElement())

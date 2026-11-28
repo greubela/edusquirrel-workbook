@@ -12,10 +12,10 @@ import it.evadid.homepage.workbook.htmlRenderer.controlElements.interactionInfo.
 import it.evadid.workbook.abstractions.grading.{GradedState, GradingResult, GradingStatus, WorkbookInteractionGrader}
 import it.evadid.core.datastructures.chat.MessengerModel
 import it.evadid.workbook.abstractions.scaffolding.{ScaffoldingResult, ScaffoldingStatus}
-import it.evadid.workbook.meta.{GradingSummary, ScaffoldingReport}
+import it.evadid.workbook.reports.{GradingSummary, ScaffoldingReport}
 import it.evadid.workbook.abstractions.FeedbackEntity
-import it.evadid.workbook.elements.interactionElements.gpt.TextInputWithScaffoldingAndGrading
-import it.evadid.workbook.elements.interactionElements.gpt.TextInputWithScaffoldingAndGrading.ContentForLlmInteraction
+import it.evadid.workbook.interactions.gpt.TextInputWithScaffoldingAndGrading
+import it.evadid.workbook.interactions.gpt.TextInputWithScaffoldingAndGrading.ContentForLlmInteraction
 
 class InteractionInfoPanelSpec extends EditorDomSuite {
   private def exercise = TextInputWithScaffoldingAndGrading("info-icons", LanguageMapContentId("test/task"),

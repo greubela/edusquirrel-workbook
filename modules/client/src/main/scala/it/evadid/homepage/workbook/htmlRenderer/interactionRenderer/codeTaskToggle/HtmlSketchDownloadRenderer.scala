@@ -7,8 +7,8 @@ import com.raquo.laminar.api.L.*
 import it.evadid.core.util.InfoUtil
 import it.evadid.homepage.workbook.htmlRenderer.HtmlRenderFactory.LineBasedRenderingFactory
 import it.evadid.homepage.workbook.htmlRenderer.atomarLineRenderings.AtomarLineRendering
-import it.evadid.workbook.elements.interactionElements.codeTaskToggle.SketchDownloadInteraction
-import it.evadid.workbook.elements.interactionElements.reorderExercise.ReorderInteraction
+import it.evadid.workbook.interactions.codeTaskToggle.SketchDownloadInteraction
+import it.evadid.workbook.interactions.reorderExercise.ReorderInteraction
 
 import java.time.LocalDateTime
 

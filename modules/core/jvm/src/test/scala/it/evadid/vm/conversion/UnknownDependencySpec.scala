@@ -6,7 +6,7 @@ import it.evadid.vm.code.defining.{BeDefineFunction, BeUnknownDependency}
 import it.evadid.vm.conversion.dependencies.UnknownDependencies
 import it.evadid.vm.conversion.dependencies.UnknownDependencies.UnknownCall
 import it.evadid.vm.types.BeDataType
-import it.evadid.workbook.elements.interactionElements.programming.state.*
+import it.evadid.workbook.interactions.programming.state.*
 import munit.FunSuite
 
 import java.nio.file.Files

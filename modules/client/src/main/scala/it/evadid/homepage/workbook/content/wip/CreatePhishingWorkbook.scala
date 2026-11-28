@@ -4,10 +4,10 @@ import it.evadid.core.datastructures.language.LanguageMapContentId
 import it.evadid.core.datastructures.user.User
 import it.evadid.homepage.control.model.FullInfo
 import it.evadid.homepage.workbook.content.WorkbookFactory
-import it.evadid.workbook.elements.interactionElements.emailSimulator.{MailEditor, MailInteraction}
-import it.evadid.workbook.elements.interactionElements.table.*
-import it.evadid.workbook.elements.interactionElements.text.*
-import it.evadid.workbook.elements.structureElements.Workbook
+import it.evadid.workbook.interactions.emailSimulator.{MailEditor, MailInteraction}
+import it.evadid.workbook.interactions.table.*
+import it.evadid.workbook.interactions.text.*
+import it.evadid.workbook.elements.structure.Workbook
 
 /** Partial adaptation: mailbox, warning signs, Unicode/domain analysis and malware exercises. */
 case class CreatePhishingWorkbook(fullInfo: FullInfo) extends WorkbookFactory {

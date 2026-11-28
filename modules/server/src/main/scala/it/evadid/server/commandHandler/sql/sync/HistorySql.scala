@@ -3,8 +3,8 @@ package it.evadid.server.commandHandler.sql.sync
 import it.evadid.util.logging.Logger
 import it.evadid.distribution.commandTypes.SQLCommands.{BulkStoreToDbRequest, DbFetchResponse, DbRequest, DeleteInDbRequest, FetchEventsFromDbRequest, StoreToDbRequest}
 import it.evadid.sql.DatabaseHistoryFormat
-import it.evadid.workbook.interaction.sync.{SyncContext, SyncSuccess}
-import it.evadid.workbook.interaction.variable.events.EventId
+import it.evadid.workbook.sync.{SyncContext, SyncSuccess}
+import it.evadid.workbook.model.history.events.EventId
 import it.evadid.server.database.{DatabaseRequestConnection, SqlStatements}
 import java.sql.Connection
 

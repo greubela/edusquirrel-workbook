@@ -1,6 +1,6 @@
 package it.evadid.homepage.workbook.htmlRenderer.interactionRenderer.slideshow
 
-import it.evadid.workbook.interaction.state.InteractionSignals.*
+import it.evadid.workbook.control.InteractionSignals.*
 
 import it.evadid.homepage.control.model.FullInfo
 
@@ -9,9 +9,9 @@ import it.evadid.core.datastructures.state.StateHelper.StateBasedVar
 import it.evadid.homepage.workbook.htmlRenderer.HtmlRenderFactory
 import it.evadid.homepage.workbook.htmlRenderer.HtmlRenderFactory.LineBasedRenderingFactory
 import it.evadid.homepage.workbook.htmlRenderer.atomarLineRenderings.*
-import it.evadid.workbook.elements.interactionElements.slideshow.*
-import it.evadid.workbook.interaction.sync.UpdateImportance
-import it.evadid.workbook.interaction.sync.UpdateImportance.MAJOR
+import it.evadid.workbook.interactions.slideshow.*
+import it.evadid.workbook.sync.UpdateImportance
+import it.evadid.workbook.sync.UpdateImportance.MAJOR
 
 /** Navigation records visits; completion is evaluated by the shared slideshow grader. */
 object HtmlSlideshowEditor extends LineBasedRenderingFactory[Slideshow] {

@@ -5,7 +5,7 @@ import it.evadid.distribution.commandTypes.WorkerCommands
 import it.evadid.homepage.webElements.editor.code.worker.{SharedWorker, SharedWorkerCache}
 import it.evadid.vm.analysis.ProgramAnalysis
 import it.evadid.vm.conversion.dependencies.ProgrammingEnvironment
-import it.evadid.workbook.elements.interactionElements.programming.state.ProgrammingState
+import it.evadid.workbook.interactions.programming.state.ProgrammingState
 
 import scala.concurrent.Future
 import scala.scalajs.concurrent.JSExecutionContext.Implicits.queue

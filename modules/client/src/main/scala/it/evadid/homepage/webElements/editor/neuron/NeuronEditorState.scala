@@ -1,7 +1,7 @@
 package it.evadid.homepage.webElements.editor.neuron
 
 import com.raquo.airstream.state.Var
-import it.evadid.workbook.elements.interactionElements.neuron.*
+import it.evadid.workbook.interactions.neuron.*
 
 /** Invalid drafts remain local; only parameters safe for every example enter persistent state. */
 final class NeuronEditorState(val state: Var[NeuronParameters], examples: Seq[NeuronExample]) {

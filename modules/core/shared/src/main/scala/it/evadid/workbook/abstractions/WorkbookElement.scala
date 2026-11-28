@@ -1,11 +1,10 @@
 package it.evadid.workbook.abstractions
-import it.evadid.workbook.abstractions.InteractionFormat
 import it.evadid.workbook.abstractions.InteractionFormat.*
 import it.evadid.workbook.abstractions.grading.WorkbookInteractionGrader
 import it.evadid.workbook.abstractions.scaffolding.WorkbookInteractionScaffolder
-import it.evadid.workbook.jsonFactory.{WorkbookElementFactory, WorkbookElementReference, WorkbookElementSerializable}
+import it.evadid.workbook.serialization.{WorkbookElementFactory, WorkbookElementReference, WorkbookElementSerializable}
 
-import it.evadid.workbook.jsonFactory.SerializedWorkbook
+import it.evadid.workbook.serialization.SerializedWorkbook
 
 object WorkbookElement {
   given upickle.default.ReadWriter[WorkbookElement] =
@@ -69,7 +68,7 @@ trait WorkbookInteractionElement[F <: InteractionFormat](using v: ValueOf[F]) ex
 
   /** Wrong parts of an answer, as indices whose meaning the interaction defines (an option, an editable cell, ...).
    * Parts left unanswered are not wrong. Renderers permanently mark the parts that a failed check found wrong, see
-   * [[it.evadid.workbook.meta.CheckReport]]; interactions without such parts, like programming tasks, keep the default. */
+   * [[it.evadid.workbook.reports.CheckReport]]; interactions without such parts, like programming tasks, keep the default. */
   def wrongParts(answer: InteractionStateType): Set[Int] = Set.empty
 
   val defaultValue: InteractionStateType

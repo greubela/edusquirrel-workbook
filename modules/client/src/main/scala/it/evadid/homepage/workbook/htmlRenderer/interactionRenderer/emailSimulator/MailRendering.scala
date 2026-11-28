@@ -8,7 +8,7 @@ import it.evadid.homepage.webElements.editor.MailEditor.MailEditor as Editor
 import it.evadid.homepage.workbook.htmlRenderer.LaminarRenderHelper
 import it.evadid.homepage.workbook.htmlRenderer.atomarLineRenderings.{AtomarLineRendering, ElementCard}
 import it.evadid.workbook.abstractions.WorkbookElement
-import it.evadid.workbook.elements.interactionElements.emailSimulator.*
+import it.evadid.workbook.interactions.emailSimulator.*
 
 /** The workbook line shared by the mail interactions: an editor button and a folder summary of the inbox. */
 object MailRendering {

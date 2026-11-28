@@ -9,7 +9,7 @@ import it.evadid.vm.conversion.dependencies.{JavaTurtleLibrary, KnownDependencie
 import it.evadid.vm.parsing.source.SourceParsing
 import it.evadid.vm.parsing.source.SourceParsing.SourceLanguage
 import it.evadid.vm.simulation.data.{DataLibrarySources, DataWorld}
-import it.evadid.workbook.elements.interactionElements.programming.state.{ProgrammingState, ProgrammingStateJavaStructured, ProgrammingStateRaw}
+import it.evadid.workbook.interactions.programming.state.{ProgrammingState, ProgrammingStateJavaStructured, ProgrammingStateRaw}
 
 import scala.util.control.NonFatal
 

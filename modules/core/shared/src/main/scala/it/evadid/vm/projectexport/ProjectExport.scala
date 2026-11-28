@@ -5,7 +5,7 @@ import it.evadid.core.util.InfoUtil
 import it.evadid.core.datastructures.language.AppLanguage.{Java, ProgrammingLanguage, Python, SnapLanguage}
 import it.evadid.vm.modules.BeModules
 import it.evadid.vm.simulation.data.{DataLibrarySources, DataWorld}
-import it.evadid.workbook.elements.interactionElements.programming.state.{ProgrammingState, ProgrammingStateRaw}
+import it.evadid.workbook.interactions.programming.state.{ProgrammingState, ProgrammingStateRaw}
 
 import scala.util.control.NonFatal
 

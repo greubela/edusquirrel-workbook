@@ -159,10 +159,10 @@ class UserSessionControlSpec extends EditorDomSuite {
   }
 
   test("changing users replaces the bindings; repeating a change or signing out keeps state consistent") {
-    val element = it.evadid.workbook.elements.interactionElements.basic.TextInteraction("answer")
-    val section = it.evadid.workbook.elements.structureElements.WorkbookSection("section",
-      it.evadid.workbook.elements.structureElements.WorkbookSection.WorkbookSectionMetadata(LanguageMapContentId("spec/section")), Seq(element))
-    val workbook = it.evadid.workbook.elements.structureElements.Workbook("workbook", it.evadid.workbook.elements.structureElements.Workbook.WorkbookMetadata(
+    val element = it.evadid.workbook.interactions.basic.TextInteraction("answer")
+    val section = it.evadid.workbook.elements.structure.WorkbookSection("section",
+      it.evadid.workbook.elements.structure.WorkbookSection.WorkbookSectionMetadata(LanguageMapContentId("spec/section")), Seq(element))
+    val workbook = it.evadid.workbook.elements.structure.Workbook("workbook", it.evadid.workbook.elements.structure.Workbook.WorkbookMetadata(
       Set.empty, Set.empty, LanguageMapContentId("spec/title"), Seq(AppLanguage.English)), Seq(section))
     val info = FullInfo(HomepageInfo(AppLanguage.German, Some(it.evadid.workbook.session.AllWorkbookInfo(workbook,
       it.evadid.workbook.session.WorkbookConfig(Some(section)), Map.empty)), None, AllDisplayInfo(false, None), LanguageMapStorage.empty))

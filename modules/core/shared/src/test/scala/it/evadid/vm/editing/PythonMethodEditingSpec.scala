@@ -2,7 +2,7 @@ package it.evadid.vm.editing
 
 import it.evadid.vm.naming.BeEntityName
 import it.evadid.vm.structure.PythonUmlDiagram
-import it.evadid.workbook.elements.interactionElements.programming.state.ProgrammingStatePythonStructured
+import it.evadid.workbook.interactions.programming.state.ProgrammingStatePythonStructured
 import munit.FunSuite
 
 class PythonMethodEditingSpec extends FunSuite {
