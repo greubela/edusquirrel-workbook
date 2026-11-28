@@ -49,8 +49,7 @@ class UtilityCoverageSpec extends FunSuite {
   }
 
   test("logs show UTC; file names and human dates show the viewer's local time") {
-    val zone = java.time.ZoneId.systemDefault()
-    def localInstant(time: java.time.LocalDateTime) = time.atZone(zone).toInstant
+    def localInstant(time: java.time.LocalDateTime) = LocalZone.instantOf(time)
     val fixed = java.time.LocalDateTime.of(2024, 2, 3, 4, 5, 6).toInstant(java.time.ZoneOffset.UTC)
     assertEquals(InfoUtil.datetimeFormattedForLog(fixed), "2024-02-03 04:05:06")
     assertEquals(InfoUtil.datetimeFormattedForLog(Some(fixed)), "2024-02-03 04:05:06")

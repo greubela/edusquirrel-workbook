@@ -4,9 +4,15 @@ import java.time.{Instant, LocalDateTime, ZoneId}
 import java.time.format.DateTimeFormatter
 
 object InfoUtil {
-  /** `instant` in the viewer's zone, for display only; instants beyond the local range show as its bounds. */
-  def localDateTime(instant: Instant, zone: ZoneId = ZoneId.systemDefault()): LocalDateTime =
-    scala.util.Try(LocalDateTime.ofInstant(instant, zone)).getOrElse(if instant.isBefore(Instant.EPOCH) then LocalDateTime.MIN else LocalDateTime.MAX)
+  /** `instant` in the viewer's zone ([[LocalZone]]), for display only; instants beyond the local range show as its bounds. */
+  def localDateTime(instant: Instant): LocalDateTime =
+    scala.util.Try(LocalZone.offsetAt(instant)).fold(_ => bound(instant), localDateTime(instant, _))
+
+  /** `instant` in `zone`; instants beyond the local range show as its bounds. */
+  def localDateTime(instant: Instant, zone: ZoneId): LocalDateTime =
+    scala.util.Try(LocalDateTime.ofInstant(instant, zone)).getOrElse(bound(instant))
+
+  private def bound(instant: Instant): LocalDateTime = if instant.isBefore(Instant.EPOCH) then LocalDateTime.MIN else LocalDateTime.MAX
 
   // Formatters are immutable and thread-safe. Parsing a pattern is costly, in Scala.js also because it
   // throws and catches exceptions internally, so each pattern is parsed once.

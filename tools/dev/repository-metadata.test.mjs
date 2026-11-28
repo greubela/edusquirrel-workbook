@@ -24,6 +24,14 @@ test('workbook elements have only the canonical graph codec, never a derived one
   assert.deepEqual(found.stdout.trim().split('\n').filter(Boolean), []);
 });
 
+test('browser code resolves no named time zones, so no time zone database is bundled', () => {
+  const cwd = path.resolve(import.meta.dirname, '../..');
+  const found = spawnSync('git', ['grep', '-lE', 'ZoneId\\.(systemDefault|of)\\(|ZonedDateTime', '--',
+    'modules/core/shared/src/main', 'modules/core/js/src/main', 'modules/client/src/main', 'modules/worker/src/main'], {cwd, encoding: 'utf8'});
+  assert.ok(found.status === 0 || found.status === 1, found.stderr);
+  assert.deepEqual(found.stdout.trim().split('\n').filter(Boolean), []);
+});
+
 test('points in time are Instants, never device-zone local date-times', () => {
   const cwd = path.resolve(import.meta.dirname, '../..');
   // git grep exits with 1 when nothing matches.

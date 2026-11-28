@@ -22,7 +22,7 @@ import com.raquo.laminar.api.L.div
 
 class InteractionFeedbackViewsSpec extends EditorDomSuite {
   // Shown in local time, so the fixture is a local wall time.
-  private val date = java.time.LocalDateTime.of(2026, 11, 15, 12, 30).atZone(java.time.ZoneId.systemDefault()).toInstant
+  private val date = it.evadid.core.util.LocalZone.instantOf(java.time.LocalDateTime.of(2026, 11, 15, 12, 30))
   private def grader(id: String, hidden: Boolean = false) = ProgrammingUnitTestGrader(id, s"assert '$id'",
     if hidden then GradingImportance.HIDDEN_TEST else GradingImportance.REQUIRED_TEST)
   private def feedback = LanguageMap.mapBasedLanguageMap[HumanLanguage](Map(German -> "Öffentliche Rückmeldung", English -> "Public feedback"))

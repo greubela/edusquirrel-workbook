@@ -83,7 +83,8 @@ or malformed IDs are rejected rather than generated on read.
 All saved and exchanged points in time are `Instant`s written in one text form,
 `DefaultSerializer.instantText`: ISO 8601 UTC with exactly nine fractional digits
 (`2026-11-28T12:00:00.123456789Z`). The JSON codec and every database time column use it,
-so event order survives device zones and DST. Display converts with `InfoUtil.localDateTime`.
+so event order survives device zones and DST. Display converts with `InfoUtil.localDateTime`, whose
+`LocalZone` takes the offset from the browser on JS, so no time zone database is bundled.
 Saved error statuses (`TestError`, `ScaffoldingError`) keep only the messages of an error
 and its causes; stack traces stay in logs. State/feedback history views are derived projections,
 not separate persisted stores. A newer grading start represents a retry in progress;
