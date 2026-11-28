@@ -146,7 +146,7 @@ class InteractionHistoryMysqlSpec extends FunSuite {
       val delta = history("next", time.plusNanos(1))
       storeAllVia(initial.copy(syncContexts = Seq(sync), histories = Seq(encoded(delta))), logger)
       assertEquals(read[History](fetch(storage)(sync)), history().mergeWith(delta))
-      val invalid = InteractionHistoryJson(format, "invalid JSON")
+      val invalid = InteractionHistoryJson(format, """{"not": "a history"}""")
       val failed = initial.copy(histories = Seq(encoded(history("should roll back")), invalid))
       intercept[Exception](storeAllVia(failed, logger))
       assertEquals(read[History](fetch(storage)(sync)), history().mergeWith(delta))
@@ -552,7 +552,8 @@ class InteractionHistoryMysqlSpec extends FunSuite {
     store(history())
     MysqlTestDatabase.withConnection { connection =>
       Using.resource(connection.createStatement())(_.executeUpdate(
-        "ALTER TABLE grading_event ADD CONSTRAINT reject_fixture CHECK (LOCATE('reject-fixture', CAST(serialized_data AS CHAR)) = 0)"))
+        // Feedback rows refer to their answer, so the constraint rejects the answer's reference.
+        s"ALTER TABLE grading_event ADD CONSTRAINT reject_fixture CHECK (LOCATE('${InteractionFormat.referenceOf(format, "reject-fixture").fingerprint}', CAST(serialized_data AS CHAR)) = 0)"))
     }
     intercept[java.sql.SQLException](store(history("reject-fixture", time.plus(java.time.Duration.ofDays(1)))))
     assertEquals(read[History](fetch()(sync)), history())
@@ -643,7 +644,7 @@ class InteractionHistoryMysqlSpec extends FunSuite {
     }
   }
 
-  test("a history saved under an unknown format name is discarded and the other histories still load") {
+  test("a history saved under an unknown format name is discarded, the others still load, and a write replaces it") {
     val other = context.toSyncContext("other_history")
     Seq(RelationalFormat -> "sync_context_id", BlobFormat -> "blob_history").foreach { (storage, table) =>
       MysqlTestDatabase.withConnection(MysqlTestDatabase.reset)
@@ -655,8 +656,10 @@ class InteractionHistoryMysqlSpec extends FunSuite {
       val fetched = fetch(storage)
       assertEquals(fetched.keySet, Set(other), storage.toString)
       assertEquals(read[History](fetched(other)).allStates, history("other").allStates)
-      // Writing to it is refused rather than overwriting data this version cannot read.
-      intercept[IllegalArgumentException](store(history("later", time.plus(java.time.Duration.ofDays(1))), storage))
+      // Writing to it replaces the record this version cannot read.
+      val later = history("later", time.plus(java.time.Duration.ofDays(1)))
+      store(later, storage)
+      assertEquals(read[History](fetch(storage)(sync)), later, storage.toString)
     }
   }
 
@@ -687,7 +690,7 @@ class InteractionHistoryMysqlSpec extends FunSuite {
       val complete = request.copy(starting = Instant.MIN, until = Instant.MAX)
       val selected = fetchedHistory(complete)
       assertEquals(selected.size, 1)
-      assertEquals(selected.allStates.map(_.newState), Set("newest"))
+      assertEquals(selected.events.values.map(selected.stateOf), Set(selected.referenceOf("newest")))
     }
   Seq(BlobFormat, RelationalFormat).foreach { storage =>
     test(s"$storage SYNC_MAJOR preserves pending feedback outside the answer window and ignores newer defaults") {
