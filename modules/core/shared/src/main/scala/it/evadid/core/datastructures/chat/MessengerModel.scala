@@ -27,7 +27,7 @@ case class MessengerModel(messages: Seq[Message]) derives ReadWriter{
 
 object MessengerModel {
 
-  def fromJson(json: String): MessengerModel = Serializer.fromUpickleJson(MessengerModel.derived$ReadWriter).deserialize(json)
+  def fromJson(json: String): MessengerModel = Serializer.fromUpickleJson(using MessengerModel.derived$ReadWriter).deserialize(json)
 
   //def testCompletion: MessengerModel = MessengerModel(List(Message("Please write a short poem :)", Person("test", "test", SenderRole.USER, None))))
 

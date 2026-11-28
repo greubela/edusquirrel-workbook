@@ -22,7 +22,7 @@ case class SubmittedInteractionState(interaction: WorkbookElementReference, form
 case class SubmittingUser(userName: String, userMail: String, userIp: InetAddress)
 
 object SubmittingUser {
-  /** Addresses are written as literals; reading accepts the same literals. */
+  /** Addresses are written as literals, without name lookups; reading accepts the same literals. */
   private given ReadWriter[InetAddress] = readwriter[String].bimap(_.getHostAddress, InetAddress.getByName)
   given ReadWriter[SubmittingUser] = macroRW
 }

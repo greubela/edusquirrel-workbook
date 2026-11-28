@@ -9,7 +9,7 @@ import scala.concurrent.{ExecutionContext, Future, Promise}
 
 class SyncDestinationHandlerForTypeSpec extends FunSuite {
   private given ExecutionContext = ExecutionContext.global
-  private val integer = Serializer.fromUpickleJson(upickle.default.readwriter[Int])
+  private val integer = Serializer.fromUpickleJson(using upickle.default.readwriter[Int])
 
   private class Destination(records: Map[String, String]) extends SyncDestinationHandlerBasic {
     val logger = BasicLogger()

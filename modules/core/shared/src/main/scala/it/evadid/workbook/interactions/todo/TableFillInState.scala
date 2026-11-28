@@ -15,5 +15,5 @@ case class TableFillInState(blankValues: Seq[String]) derives upickle.default.Re
 }
 
 object TableFillInState {
-  val serializer: Serializer[TableFillInState] = Serializer.fromUpickleJson(summon[ReadWriter[TableFillInState]])
+  val serializer: Serializer[TableFillInState] = Serializer.fromUpickleJson[TableFillInState]
 }

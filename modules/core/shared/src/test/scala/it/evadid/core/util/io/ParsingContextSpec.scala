@@ -21,7 +21,7 @@ class ParsingContextSpec extends FunSuite {
     val failure = IllegalArgumentException("invalid writer")
     val codec = readwriter[String].bimap[Int](_ => throw failure, _.toInt)
     val error = intercept[it.evadid.distribution.command.SerializedException] {
-      Serializer.fromUpickleJson(codec).serialize(123)
+      Serializer.fromUpickleJson(using codec).serialize(123)
     }
     assert(error.msg.contains("Error serializing"))
     assert(error.msg.contains("invalid writer"))

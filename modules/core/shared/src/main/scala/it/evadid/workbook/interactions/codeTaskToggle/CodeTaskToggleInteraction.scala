@@ -40,7 +40,7 @@ case class CodeTaskToggleInteraction(
 object CodeTaskToggleInteraction {
   private given requirementRW: ReadWriter[AdvancedCodeRequirement] = macroRW
 
-  private[workbook] val requirementsSerializer = Serializer.fromUpickleJson(summon[ReadWriter[Seq[AdvancedCodeRequirement]]])
+  private[workbook] val requirementsSerializer = Serializer.fromUpickleJson[Seq[AdvancedCodeRequirement]]
   val factory: WorkbookElementFactory[CodeTaskToggleInteraction] = new WorkbookElementFactory[CodeTaskToggleInteraction] {
     override lazy val elementMapAndOrderForConstructorLike = constructorLayout("elementId", "reorder", "codeEditorTitle", "advancedCodeTemplate", "advancedRequirements", "advancedSuccessMessage")
 

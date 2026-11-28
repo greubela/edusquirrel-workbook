@@ -6,15 +6,8 @@ import munit.FunSuite
 import upickle.default.*
 
 import java.time.Instant
-import scala.util.{Failure, Success, Try}
 
 class DefaultSerializerSpec extends FunSuite {
-  test("Try values keep successful payloads and the message of failures") {
-    assertEquals(read[Try[Int]](write[Try[Int]](Success(4))), Success(4))
-    val failure = read[Try[Int]](write[Try[Int]](Failure(IllegalStateException("broken"))))
-    assertEquals(failure.failed.map(_.getMessage), Success("broken"))
-    assertEquals(read[Try[Int]]("{}").failed.map(_.getMessage), Success("Unknown failure"))
-  }
 
   test("instants are written as UTC text with exactly nine fractional digits") {
     val time = Instant.parse("2026-11-20T07:05:30Z")

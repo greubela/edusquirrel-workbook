@@ -21,7 +21,7 @@ case class MailInteraction(elementId: String, initialInbox: InboxState = InboxSt
 
 object MailInteraction {
 
-  val mailInteractionSer: Serializer[InboxStateScaffolding] = Serializer.fromUpickleJson(summon[ReadWriter[InboxStateScaffolding]])
+  val mailInteractionSer: Serializer[InboxStateScaffolding] = Serializer.fromUpickleJson[InboxStateScaffolding]
   val factory: WorkbookElementFactory.SimpleWorkbookElementFactory[MailInteraction] =
     new WorkbookElementFactory.SimpleWorkbookElementFactory[MailInteraction] {
       override protected val constructorFieldOrder = List("elementId", "initialInbox", "account", "allowCompose")

@@ -15,5 +15,5 @@ case class FillInBlanksState(blankValues: Seq[String]) derives upickle.default.R
 }
 
 object FillInBlanksState {
-  val serializer: Serializer[FillInBlanksState] = Serializer.fromUpickleJson(summon[ReadWriter[FillInBlanksState]])
+  val serializer: Serializer[FillInBlanksState] = Serializer.fromUpickleJson[FillInBlanksState]
 }

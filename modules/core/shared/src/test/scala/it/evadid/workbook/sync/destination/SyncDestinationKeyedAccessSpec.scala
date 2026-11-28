@@ -12,7 +12,7 @@ import scala.concurrent.{ExecutionContext, Future}
 
 class SyncDestinationKeyedAccessSpec extends FunSuite {
   private given ExecutionContext = ExecutionContext.global
-  private val integer = Serializer.fromUpickleJson(upickle.default.readwriter[Int])
+  private val integer = Serializer.fromUpickleJson(using upickle.default.readwriter[Int])
   private val positive = new Serializer[Int] {
     def serialize(value: Int): String = { require(value > 0, "not positive"); value.toString }
     def deserialize(value: String): Int = value.toInt

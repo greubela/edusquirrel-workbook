@@ -24,5 +24,5 @@ case class MatchingInteractionState(selectedRightIndicesByLeftIndex: Seq[Option[
 }
 
 object MatchingInteractionState {
-  val serializer: Serializer[MatchingInteractionState] = Serializer.fromUpickleJson(summon[ReadWriter[MatchingInteractionState]])
+  val serializer: Serializer[MatchingInteractionState] = Serializer.fromUpickleJson[MatchingInteractionState]
 }

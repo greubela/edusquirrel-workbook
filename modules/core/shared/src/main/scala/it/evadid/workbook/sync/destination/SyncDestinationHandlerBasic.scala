@@ -32,7 +32,7 @@ trait SyncDestinationHandlerBasic {
 
   // Typed
   def forSpecificType[K, V](implicit keyRw: ReadWriter[K], valueRw: ReadWriter[V]): SyncDestinationHandlerForType[K, V] = {
-    forSpecificType[K, V](Serializer.fromUpickleJson(keyRw), Serializer.fromUpickleJson(valueRw))
+    forSpecificType[K, V](Serializer.fromUpickleJson(using keyRw), Serializer.fromUpickleJson(using valueRw))
   }
 
   def forSpecificType[K, V](keySerializer: Serializer[K], valueSerializer: Serializer[V]): SyncDestinationHandlerForType[K, V] = SyncDestinationHandlerForType.fromBasic(this, keySerializer, valueSerializer)

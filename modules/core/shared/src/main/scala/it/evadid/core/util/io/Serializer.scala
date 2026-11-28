@@ -27,13 +27,13 @@ trait Serializer[T] extends TypeConverter[T, String] {
 
   def trySerialize(obj: T): Either[SerializedException, String] = try {
     Right(serialize(obj))
-  } catch case (err: Throwable) => {
+  } catch case NonFatal(err) => {
     Left(SerializedException(s"Error during Serialization of '${obj.toString.take(60)}': ${err.getMessage}", err))
   }
 
   def tryDeserialize(str: String): Either[SerializedException, T] = try {
     Right(deserialize(str))
-  } catch case (err: Throwable) => {
+  } catch case NonFatal(err) => {
     Left(SerializedException(s"Error during Deserialisation of '${str.take(60)}': ${err.getMessage}", err))
   }
 
@@ -42,8 +42,6 @@ trait Serializer[T] extends TypeConverter[T, String] {
   def deserialize(str: String): T
 
   lazy val uPickleReadWrite: ReadWriter[T] = readwriter[String].bimap[T](nonString => serialize(nonString), string => deserialize(string))
-
-  def deriveForSubclass[SubClass <: T]: Serializer[SubClass] = map[SubClass](_.asInstanceOf[SubClass], _.asInstanceOf[T])
 
   def map[O](funcForward: T => O, funcBackward: O => T): Serializer[O] = new Serializer[O] {
     override def serialize(obj: O): String = try {
@@ -76,63 +74,6 @@ object Serializer {
     override def serialize(value: String): String = value
     override def deserialize(value: String): String = value
   }
-
-  def serializerForSubclass[SubType <: TraitType : ReadWriter, TraitType](exClass: Class[SubType]): (String, Serializer[TraitType]) = {
-    val rw: ReadWriter[SubType] = summon[ReadWriter[SubType]]
-    val baseSer = new Serializer[TraitType]() {
-      override def serialize(obj: TraitType): String =
-        if (obj.getClass.getSimpleName != exClass.getSimpleName) throw SerializedException(s"Cannot serialize object of type '${obj.getClass.getSimpleName} with serializer for ${exClass.getSimpleName}")
-        else try {
-          write(obj.asInstanceOf[SubType])(using rw)
-        } catch case (err: Throwable) => {
-          throw SerializedException(s"Error at serializing object '${obj}' (${obj.getClass.getSimpleName})", err)
-        }
-
-      override def deserialize(str: String): TraitType = {
-        val res = try ParsingContext(exClass.getSimpleName, str) { read(str)(using rw) }
-        catch case NonFatal(error) => throw SerializedException(error)
-        try {
-          res.asInstanceOf[TraitType]
-        } catch case (err: Throwable) => {
-          throw SerializedException(s"Could not transform ${res} (${res.getClass.getSimpleName}) to expected Type!", err)
-        }
-      }
-    }
-    exClass.getSimpleName -> baseSer
-  }
-
-
-  def universalTraitSerializer[T](knownSubtypeSerializer: Map[String, Serializer[T]]): Serializer[T] = new Serializer[T] {
-
-    private def serializerFor(obj: T): Serializer[T] = try {
-      knownSubtypeSerializer(obj.getClass.getSimpleName)
-    } catch case (err: Throwable) => {
-      throw SerializedException(s"Cannot Serialize object of class ${obj.getClass.getSimpleName} because no serializer known for it (known serializer: ${knownSubtypeSerializer.keySet})!", err)
-    }
-
-    override def serialize(toWrite: T): String = {
-      val serializer = serializerFor(toWrite)
-      try {
-        val json = ujson.read(serializer.serialize(toWrite))
-        json.obj.update("serializedType", toWrite.getClass.getSimpleName)
-        write(json)
-      } catch case (err: Throwable) => {
-        throw SerializedException(s"Cannot Serialize value '${toWrite}' with UniversalSerializer -> ${toWrite.getClass.getSimpleName}", err)
-      }
-    }
-
-    override def deserialize(str: String): T = {
-      val json = upickle.default.read[ujson.Value](str)
-      val typeName = json.obj.get("serializedType").map(_.str).getOrElse {
-        throw SerializedException("Missing 'serializedType' tag in JSON object string, cannot parse with universal serializer!")
-      }
-      val specificSerializer = knownSubtypeSerializer.getOrElse(typeName, throw new NoSuchElementException(s"No known grader serializer registered for key: $typeName"))
-      specificSerializer.deserialize(str)
-    }
-
-  }
-
-  def fromImplicitRW[T](implicit rw: ReadWriter[T]): Serializer[T] = Serializer.fromUpickleJson(rw)
 
   def constructorLikeSerializer[T](constructorName: String)(forward: T => String)(backward: String => T): Serializer[T] = {
     constructorLikeSerializer(constructorName, new Serializer[T]() {
@@ -168,12 +109,7 @@ object Serializer {
   def singletonSerializer[T](singletonObject: T, singletonString: Option[String] = None): Serializer[T] = new Serializer[T] {
     val outputString: String = singletonString.getOrElse(singletonObject.toString)
 
-    private val validRepresentations: Set[String] = Set(
-      singletonObject.toString,
-      singletonObject.getClass.getSimpleName,
-      singletonObject.getClass.getName,
-      s"Singleton(${singletonObject.getClass.getSimpleName})"
-    ) ++ singletonString
+    private val validRepresentations: Set[String] = Set(singletonObject.toString) ++ singletonString
 
     override def serialize(obj: T): String =
       if (validRepresentations.contains(obj.toString)) outputString
@@ -186,7 +122,8 @@ object Serializer {
   }
 
 
-  def fromUpickleJson[T](upickle: ReadWriter[T]): Serializer[T] = new Serializer[T] {
+  /** `T` as JSON text through its uPickle codec. */
+  def fromUpickleJson[T](using upickle: ReadWriter[T]): Serializer[T] = new Serializer[T] {
     def serialize(in: T): String =
       try write(in)(using upickle)
       catch case NonFatal(error) =>

@@ -28,6 +28,10 @@ dynamic payload may use `ujson.Value`; formats without additional grading/scaffo
 data use `Unit`. Prefer `derives ReadWriter` for boundary models. Keep an explicit companion
 codec where constructor evidence, an open hierarchy, validation or wire
 compatibility requires it. Library-type codecs belong in `DefaultSerializer`.
+`Serializer[T]` is the text-format layer with careful parsing (`tryDeserialize`,
+`tryDeserializeAll`, `safeSeqReadWriter`); a JSON one comes from `Serializer.fromUpickleJson`.
+Convert a type to its saved form with `ReadWriter.bimap`, never by wrapping a JSON
+serializer in `uPickleReadWrite`, which would save JSON inside a string.
 Live callbacks, futures, reactive subscriptions, DOM/worker handles, services,
 connections and controllers are not snapshots: a boundary type stores their
 explicit data instead.

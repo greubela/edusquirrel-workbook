@@ -33,8 +33,8 @@ class SortingReasonInteractionStateSpec extends FunSuite {
       lastSessionErrorCount = 3
     )
 
-    val roundTrip = it.evadid.core.util.io.Serializer.fromImplicitRW[SortingReasonInteractionState].deserialize(
-      it.evadid.core.util.io.Serializer.fromImplicitRW[SortingReasonInteractionState].serialize(state)
+    val roundTrip = it.evadid.core.util.io.Serializer.fromUpickleJson[SortingReasonInteractionState].deserialize(
+      it.evadid.core.util.io.Serializer.fromUpickleJson[SortingReasonInteractionState].serialize(state)
     )
     assertEquals(roundTrip, state)
   }

@@ -25,5 +25,5 @@ case class ChoiceSelectionState(selectedOptionIndices: Seq[Int]) derives upickle
 }
 
 object ChoiceSelectionState {
-  val serializer: Serializer[ChoiceSelectionState] = Serializer.fromUpickleJson(summon[ReadWriter[ChoiceSelectionState]])
+  val serializer: Serializer[ChoiceSelectionState] = Serializer.fromUpickleJson[ChoiceSelectionState]
 }

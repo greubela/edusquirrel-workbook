@@ -98,7 +98,7 @@ object ProgrammingState {
     })
 
   lazy val serializer: it.evadid.core.util.io.Serializer[ProgrammingState] =
-    it.evadid.core.util.io.Serializer.fromImplicitRW
+    it.evadid.core.util.io.Serializer.fromUpickleJson
 
 }
 

@@ -16,7 +16,7 @@ class ConstructorLikeSerializerSpec extends FunSuite {
     0 -> List(VariableDisplayConfig("id", true), VariableDisplayConfig("count", true)),
     3 -> List(VariableDisplayConfig("enabled", false))
   )
-  private val base = Serializer.fromImplicitRW[Example]
+  private val base = Serializer.fromUpickleJson[Example]
   private val constructor = new ConstructorLikeSerializer[Example] {
     val regularSerializer = base
     val constructorName = "Example"

@@ -22,7 +22,7 @@ case class SyncContext(
 
 object SyncContext {
 
-  def serializer: Serializer[SyncContext] = Serializer.fromImplicitRW[SyncContext]
+  def serializer: Serializer[SyncContext] = Serializer.fromUpickleJson[SyncContext]
 
 }
 

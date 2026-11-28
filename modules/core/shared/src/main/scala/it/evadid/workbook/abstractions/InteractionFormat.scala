@@ -103,11 +103,11 @@ object InteractionFormat {
       history => ujson.Obj("events" -> writeJs(history.events)),
       json => InteractionHistory(format, read[InteractionEvents[F]](json("events"))))
 
-    val stateSerializer: Serializer[State[F]] = Serializer.fromImplicitRW
-    val gradingInfoSerializer: Serializer[Grading[F]] = Serializer.fromImplicitRW
-    val scaffoldingInfoSerializer: Serializer[Scaffolding[F]] = Serializer.fromImplicitRW
-    val eventSerializer: Serializer[InteractionEvent[F]] = Serializer.fromImplicitRW
-    val historySerializer: Serializer[InteractionHistory[F]] = Serializer.fromImplicitRW
+    val stateSerializer: Serializer[State[F]] = Serializer.fromUpickleJson
+    val gradingInfoSerializer: Serializer[Grading[F]] = Serializer.fromUpickleJson
+    val scaffoldingInfoSerializer: Serializer[Scaffolding[F]] = Serializer.fromUpickleJson
+    val eventSerializer: Serializer[InteractionEvent[F]] = Serializer.fromUpickleJson
+    val historySerializer: Serializer[InteractionHistory[F]] = Serializer.fromUpickleJson
   }
 
   /** Programs are referenced by their source text. */

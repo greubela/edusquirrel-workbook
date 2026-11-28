@@ -95,6 +95,5 @@ class SystematicDerivedCodecSpec extends FunSuite {
         assertEquals(decoded.isValidLiteral("12"), value.isValidLiteral("12"))
       }
     }
-    roundTrip(BeDataType.BeSerializableAtomicType("Int"))
   }
 }

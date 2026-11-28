@@ -5,11 +5,6 @@ import munit.FunSuite
 import upickle.default.*
 
 class SerializerFailureSpec extends FunSuite {
-  private trait Shape
-  private case class Circle(radius: Int) extends Shape derives ReadWriter
-  private case class Square(side: Int) extends Shape derives ReadWriter
-
-  private val circleOnly: Serializer[Shape] = Serializer.serializerForSubclass[Circle, Shape](classOf[Circle])._2
   private val failing = new Serializer[Int] {
     def serialize(value: Int): String = if value < 0 then throw IllegalStateException("negative") else value.toString
     def deserialize(text: String): Int = text.toInt
@@ -26,20 +21,6 @@ class SerializerFailureSpec extends FunSuite {
     assertEquals(failing.tryDeserializeAll(List("1", "two")), TypeConverter.ConverterResult(Set(1), Set("two")))
   }
 
-  test("subclass serializers reject other subtypes and payloads of the wrong shape") {
-    assertEquals(circleOnly.deserialize(circleOnly.serialize(Circle(2))), Circle(2))
-    intercept[SerializedException](circleOnly.serialize(Square(1)))
-    intercept[SerializedException](circleOnly.deserialize("""{"side":1}"""))
-    val universal = Serializer.universalTraitSerializer[Shape](Map("Circle" -> circleOnly))
-    val error = intercept[SerializedException](universal.serialize(Square(3)))
-    assert(error.getMessage.contains("no serializer known"), error.getMessage)
-    val nonObject = Serializer.universalTraitSerializer[Shape](Map("Circle" -> new Serializer[Shape] {
-      def serialize(value: Shape): String = "[1]"
-      def deserialize(text: String): Shape = Circle(0)
-    }))
-    intercept[SerializedException](nonObject.serialize(Circle(1)))
-  }
-
   test("constructor-like serializers wrap and unwrap their payload and reject other constructors") {
     val wrapped = Serializer.constructorLikeSerializer[Int]("Box")(_.toString)(_.trim.toInt)
     assertEquals(wrapped.serialize(5), "Box(5)")
@@ -48,16 +29,17 @@ class SerializerFailureSpec extends FunSuite {
     intercept[SerializedException](wrapped.deserialize("Box(x)"))
   }
 
-  test("singleton serializers accept every known spelling and reject others") {
+  test("singleton serializers accept their literal only, never a class name") {
     val none = Serializer.noneParser()
     assertEquals(none.serialize(None), "None")
     assertEquals(none.deserialize("None"), None)
-    assertEquals(none.deserialize("None$"), None)
+    intercept[SerializedException](none.deserialize("None$"))
     intercept[SerializedException](none.deserialize("null"))
     intercept[SerializedException](none.serialize(Some(())))
     val unit = Serializer.singletonSerializer[String]("unit")
     assertEquals(unit.serialize("unit"), "unit")
-    assertEquals(unit.deserialize("Singleton(String)"), "unit")
+    assertEquals(unit.deserialize("unit"), "unit")
+    intercept[SerializedException](unit.deserialize("Singleton(String)"))
   }
 
   test("string literals accept both quote styles, triple quotes and optional bare text") {

@@ -21,5 +21,5 @@ case class DropdownBlanksState(selectedOptionIndicesByBlankIndex: Seq[Option[Int
 }
 
 object DropdownBlanksState {
-  val serializer: Serializer[DropdownBlanksState] = Serializer.fromUpickleJson(summon[ReadWriter[DropdownBlanksState]])
+  val serializer: Serializer[DropdownBlanksState] = Serializer.fromUpickleJson[DropdownBlanksState]
 }
