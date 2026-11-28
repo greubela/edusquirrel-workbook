@@ -14,14 +14,24 @@ class CodeMirrorHighlightingSpec extends CodeMirrorSuite {
     "    TODO_list = HIGH",
     "    [x]").mkString("\n")
 
+  /** Runs `body` once the background parse covers the whole document, as decorations depend on it. */
   private def withView[A](styleComments: Option[Boolean])(body: (js.Dynamic, js.Dynamic, js.Dynamic, js.Dynamic) => A): Future[A] =
     withLibraries { libs =>
       val plugin = styleComments.fold(CodeMirrorHighlighting.extension())(CodeMirrorHighlighting.extension)
       val language = js.Dynamic.newInstance(libs.Compartment)()
       val view = js.Dynamic.newInstance(libs.EditorView)(js.Dynamic.literal(doc = source, parent = host(),
         extensions = js.Array(language.of(libs.python()), plugin)))
-      try Future.successful(body(libs, view, view.plugin(plugin.asInstanceOf[js.Any]), language))
-      finally view.destroy()
+      parsed(libs, view, attempts = 500).map(_ => body(libs, view, view.plugin(plugin.asInstanceOf[js.Any]), language))
+        .andThen(_ => view.destroy())
+    }
+
+  private def parsed(libs: js.Dynamic, view: js.Dynamic, attempts: Int): Future[Unit] =
+    if libs.syntaxTree(view.state).length.asInstanceOf[Int] >= view.state.doc.length.asInstanceOf[Int] then Future.unit
+    else if attempts == 0 then Future.failed(AssertionError("the document was not parsed"))
+    else {
+      val waited = scala.concurrent.Promise[Unit]()
+      js.timers.setTimeout(10)(waited.success(()))
+      waited.future.flatMap(_ => parsed(libs, view, attempts - 1))
     }
 
   private val plain = "cm-plain-name"
