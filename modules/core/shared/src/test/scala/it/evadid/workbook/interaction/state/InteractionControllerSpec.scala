@@ -17,6 +17,7 @@ import it.evadid.workbook.interaction.variable.events.{AnswerChangedEvent, Inter
 import it.evadid.workbook.interaction.variable.{InteractionVariableHistory, InteractionVariableState}
 import it.evadid.workbook.meta.ExecutionContextInformation
 import it.evadid.workbook.model.pixel.BinaryPixelImage
+import it.evadid.workbook.support.GatedHistoryStore
 import munit.FunSuite
 
 import java.time.LocalDateTime
@@ -142,46 +143,11 @@ class InteractionControllerSpec extends FunSuite {
 
   // SYNCHRONIZATION
 
-  /** A key-value store whose operations wait for `gate` while it is set. */
-  private class Store extends SyncDestinationHandlerBasic {
-    val values = State(Map.empty[String, String])
-    val gate = State(Option.empty[Promise[Unit]])
-    val syncLogger: SyncLogger = InteractionControllerSpec.this.syncLogger
-    val underlyingDefinition = SyncDestinationDefinition.defaultBrowserHistory
-    private def gated[A](operation: => A): Future[A] = gate.now().fold(Future.unit)(_.future).map(_ => synchronized(operation))
-    def readAll(implicit ec: ExecutionContext): Future[Map[String, String]] = gated(values.now())
-    def readElement(key: String)(implicit ec: ExecutionContext): Future[String] = gated(values.now()(key))
-    def storeElement(key: String, value: String)(implicit ec: ExecutionContext): Future[SyncSuccess[String]] =
-      updateElement(key, previous => value -> SyncSuccess.written(key, previous, value))
-    def updateElement[R](key: String, update: Option[String] => (String, R))(using ec: ExecutionContext): Future[R] = gated {
-      val (value, result) = update(values.now().get(key))
-      values.update(_.updated(key, value))
-      result
-    }
-    def clearValue(key: String)(implicit ec: ExecutionContext): Future[SyncSuccess[String]] = gated {
-      values.update(_ - key)
-      SyncSuccess.removed(Set(key))
-    }
-    def clearAll()(implicit ec: ExecutionContext): Future[SyncSuccess[String]] = gated {
-      val removed = values.now().keySet
-      values.set(Map.empty)
-      SyncSuccess.removed(removed)
-    }
-    def seed(interaction: TextInteraction, answer: String): Unit = values.set(Map(SyncContext.serializer.serialize(
-      context.toSyncContext(interaction.keyForSerialization)) -> InteractionHistoryJson.fromHistory(TextInteractionFormat,
-      InteractionVariableHistory.empty[Text].addEvent(AnswerChangedEvent(answer, LocalDateTime.now().plusDays(1), MAJOR))).serialized))
-  }
-
-  private def connection(store: Store): SyncConnection = {
-    val information = SyncInformation(SyncDestinationDefinition.defaultBrowserHistory, EventSyncStrategy.SYNC_EVERYTHING)
-    SyncConnection(Set(information.forContext(context, _ => store.forHistory())), ExecutionContextInformation.default, syncLogger)
-  }
-
-  private def connected(store: Store, interactions: WorkbookInteractionElement[? <: InteractionFormat]*): InteractionController = {
-    val controller = InteractionController(State(InteractionController.emptyState(context)))
-    controller.bind(context, interactions, connection(store))
-    controller
-  }
+  private def connection(store: GatedHistoryStore): SyncConnection = store.connection()
+  private def connected(store: GatedHistoryStore, interactions: WorkbookInteractionElement[? <: InteractionFormat]*) =
+    store.controllerFor(interactions*)
+  private def seed(store: GatedHistoryStore, interaction: TextInteraction, answer: String): Unit = store.seed(interaction,
+    InteractionVariableHistory.empty[Text].addEvent(AnswerChangedEvent(answer, LocalDateTime.now().plusDays(1), MAJOR)))
 
   private def confirmed(answers: InteractionController, interaction: TextInteraction): Int =
     answers.report(interaction).destinationsWithSufficientWrites.size
@@ -202,13 +168,13 @@ class InteractionControllerSpec extends FunSuite {
 
   test("a stored and read answer is confirmed; a new connection keeps the answers but not the confirmation") {
     val essay = TextInteraction("essay")
-    val store = Store()
+    val store = GatedHistoryStore(context)
     val answers = connected(store, essay)
     answers.setStateFromUserInteraction(essay, "answer", MAJOR)
     answers.store(essay, forceFlush = true).flatMap(_ => answers.fetch(essay, forceFlush = true)).map { _ =>
       assertEquals(confirmed(answers, essay), 1)
       val session = answers.info.session
-      answers.connect(connection(Store()))
+      answers.connect(connection(GatedHistoryStore(context)))
       assertEquals(confirmed(answers, essay), 0)
       assertEquals(answers.currentValue(essay), "answer")
       assertEquals(answers.info.session, session)
@@ -217,15 +183,15 @@ class InteractionControllerSpec extends FunSuite {
 
   test("results of a replaced connection neither confirm nor change the answers") {
     val essay = TextInteraction("essay")
-    val retired = Store()
+    val retired = GatedHistoryStore(context)
     val answers = connected(retired, essay)
     answers.setStateFromUserInteraction(essay, "answer", MAJOR)
     val held = Promise[Unit]()
     retired.gate.set(Some(held))
-    retired.seed(essay, "retired remote answer")
+    seed(retired, essay, "retired remote answer")
     val write = answers.store(essay, forceFlush = true)
     val read = answers.fetch(essay, forceFlush = true)
-    answers.connect(connection(Store()))
+    answers.connect(connection(GatedHistoryStore(context)))
     held.success(())
     write.flatMap(_ => read).map { _ =>
       assertEquals(confirmed(answers, essay), 0)
@@ -235,11 +201,11 @@ class InteractionControllerSpec extends FunSuite {
 
   test("results of a replaced session reach only that session") {
     val essay = TextInteraction("essay")
-    val store = Store()
+    val store = GatedHistoryStore(context)
     val answers = connected(store, essay)
     val held = Promise[Unit]()
     store.gate.set(Some(held))
-    store.seed(essay, "first user's answer")
+    seed(store, essay, "first user's answer")
     val read = answers.fetch(essay, forceFlush = true)
     answers.bind(context.copy(userId = "next"), Seq(essay), SyncConnection.offline)
     held.success(())
@@ -248,7 +214,7 @@ class InteractionControllerSpec extends FunSuite {
 
   test("a read answer that the exercise rejects is discarded") {
     val pixels = BinaryPixelInteraction("pixels", LanguageMapContentId("spec/pixels"), BinaryPixelImage.blank(2, 2))
-    val store = Store()
+    val store = GatedHistoryStore(context)
     val answers = connected(store, pixels)
     val resized = InteractionVariableHistory[BinaryPixelInteractionFormat.type](InteractionEvents(Set(
       AnswerChangedEvent[BinaryPixelInteractionFormat.type](BinaryPixelImage.blank(3, 3), LocalDateTime.now(), MAJOR))))
