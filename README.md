@@ -130,31 +130,15 @@ Task definitions are in [BuildCommands.scala](project/BuildCommands.scala). Java
 
 ## Tests
 
-Run all Scala suites, including both shared platforms:
+The [test guide](docs/core-package-unit-tests.md) lists the Scala, static, browser and MySQL
+checks. All Scala suites, on both shared platforms:
 
 ```sh
 sbt 'coreJVM/test' 'coreJS/test' 'client/test' 'server/test' 'worker/test'
 ```
 
-Run the static integrity checks and browser integration checks (authentication, editor lifecycle,
-saved answers and worker execution):
-
-```sh
-npm ci
-npm run test:static
-sbt -batch buildClientDev buildWorkerDev
-npx playwright install chromium
-npm run test:workbooks
-```
-
-The browser runner runs two isolated suites at a time and reports per-file durations.
-It uses Playwright's installed Chromium, or `CHROMIUM_PATH` when set
-(for example `/usr/bin/chromium`). It serves the native CodeMirror packages from pinned local npm dependencies, so
-editor tests do not depend on a live CDN. Both runners
-disable Node test-worker isolation for compatibility with restricted environments.
-The [test workflow](.github/workflows/tests.yml) runs these checks and every Scala
-module on pull requests and, through the Pages workflow, before publication from main. Individual test files can still be run
-with `node --test`.
+The [test workflow](.github/workflows/tests.yml) runs every check on pull requests and before
+publication from main.
 
 Standard sbt launchers read [.sbtopts](.sbtopts), so local builds and CI resolve
 sbt, plugins and Scala dependencies through Google's Maven Central mirror,
@@ -171,8 +155,8 @@ repository. Keep dependency caches between runs rather than deleting them to ret
 
 ## Deployment
 
-[deploy.sh](deploy.sh) deploys the backend server (SSH/Docker Compose), checks or recreates the
-MySQL schema and uploads the changed website files to the webspace over FTPS. Credentials live in
+[deploy.sh](deploy.sh) deploys the backend server (SSH/Docker Compose), checks the MySQL schema
+(creating it in an empty database) and uploads changed website files over FTPS. Credentials live in
 ignored `deployment/secrets/*.env` files created from their `*.example` templates; see the
 [deployment guide](docs/deployment.md).
 
@@ -207,7 +191,7 @@ avoid exhaustive class/method lists and historical test-run logs.
 - [Email simulator](docs/email-simulator.md): state, grading, content handling and verification.
 - [SQL editor](docs/sql-editor.md): SQL exercises, their database references and execution.
 - [QR interaction](docs/qr-code-interaction.md): encoding model, requirements, region colors and reference tests.
-- [Plant workshop](docs/PlantWorkshop_Quickstart.md): implemented sections and remaining migration work.
+- [Plant workshop](docs/plant-workshop-workbook.md): sections, code tasks and the retired standalone page.
 - [Eva programming state](docs/eva-editor-programming-state.md), [Snap editor](docs/snap-editor.md) and [block editor](docs/block-editor.md): representations and editor lifecycle.
 - [Program analysis and execution](docs/program-analysis-and-execution.md): static BeExpression analysis (drawings, dependencies) and dynamic Pyodide runs (console).
 - [Core extraction proposals](docs/core-extraction-proposals.md): reviewed dependency boundaries and proposed follow-up tasks.

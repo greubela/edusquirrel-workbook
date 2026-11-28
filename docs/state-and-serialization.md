@@ -46,24 +46,9 @@ without mirroring its value. Functional updates, including updates through `biMa
 compose in the Var's transaction queue. Releasing the owner detaches observations;
 a pending operation can still read and update its original store.
 
-A renderer obtains a bound state from the interaction:
-
-```scala
-import com.raquo.laminar.api.L.*
-import it.evadid.core.datastructures.state.StateHelper.InteractionVariableOnJS
-import it.evadid.homepage.control.model.FullInfo
-import it.evadid.workbook.elements.interactionElements.basic.TextInteraction
-import it.evadid.workbook.interaction.sync.UpdateImportance
-
-def answerInput(fullInfo: FullInfo, element: TextInteraction): Element = {
-  val answer = element.interactionVariable
-    .createBoundVarWithUpdateImportance(UpdateImportance.MAJOR, fullInfo.workbookContextInformation)
-  div(
-    textArea(value <-- answer.signal, onInput.mapToValue --> answer.writer),
-    p(text <-- answer.signal)
-  )
-}
-```
+A renderer obtains a bound `Var` from its interaction with
+`createBoundVarWithUpdateImportance`; the [QR example](workbook-interaction-architecture.md#renderer-and-editor-boundary)
+shares it between preview and editor.
 
 The bound `Var` is a view of the interaction: it reads and writes the history and
 observes it only while its signal has observers, so creating one per mount leaks
@@ -107,11 +92,8 @@ an edit or a restoration. Native library adapters can compare against their live
 document to avoid unnecessary redraws, but that comparison is not a second
 persistent state or an edit classification.
 
-`state.fingerprint()` identifies the
-stored representation; it is not a general semantic-equivalence test.
-[SnapProjectBinding](../modules/client/src/main/scala/it/evadid/homepage/webElements/editor/code/SnapEditor/SnapProjectBinding.scala)
-compares cleaned XML with the project Snap shows (Snap has no change events and
-normalizes projects); its subscriptions and polling belong to the mounted session.
+`state.fingerprint()` identifies the stored representation; it is not a general
+semantic-equivalence test.
 
 `State.biMap` composes pure forward/reverse functions against its backing store.
 Core `State` transitions are synchronous; a Var-backed view follows Airstream's
@@ -130,10 +112,8 @@ answer/start/completion events. The format singleton provides all associated
 codecs; see [interaction formats](interaction-format.md) for the types and wire
 contract. Update a bound state instead of writing directly to storage.
 
-`createBoundStateWithUpdateLogic` chooses significance from each edit. Code editors
-keep keystrokes local: the typing editors (CodeMirror, Snap) write the answer, bound with
-MAJOR importance, after a typing pause, when focus leaves them, when the page is hidden and
-when they unmount (see [Eva's programming state](eva-editor-programming-state.md)).
+`createBoundStateWithUpdateLogic` chooses significance from each edit; typing editors
+publish after a pause rather than per keystroke ([Eva](eva-editor-programming-state.md)).
 Importance is not a debounce interval or a guarantee of immediate persistence:
 
 | Importance | Meaning |
@@ -143,27 +123,16 @@ Importance is not a debounce interval or a guarantee of immediate persistence:
 | `MINOR` | Intermediate edit |
 | `MAJOR` | Significant edit or completed feedback |
 
-`EventSyncStrategy` selects events to transmit and never prunes persisted history.
-`SYNC_EVERYTHING` sends all missing events, TEMPORARY ones included. `SYNC_MAJOR`
-selects major answers plus the latest answer that is not TEMPORARY; `SYNC_LAST`
-selects only the latest answer. Both include all feedback associated with selected
-answers, including pending lifecycle events. Other importance strategies filter
-individual events; latest/count strategies retain timestamp ties. `Since` includes
-its boundary. `cleanedHistory()` is the one history cleanup: it drops DEFAULT answers
-once another answer exists and TEMPORARY answers once a later answer exists, with
-feedback tied only to them; the current answer always stays.
+Which events are cleaned up is part of the [event contract](interaction-format.md#event-contract);
+which are transmitted is chosen by the [sync strategies](database/interaction-history.md#binding-and-event-flow).
 
 Grading and scaffolding run through `interactionVariable.control`. Pending requests
 are shared; explicit retries rerun execution errors and unexecuted tests while
 reusing completed assessments. Feedback stays associated with its captured answer.
-Grading starts/completions are projected by configured grader identity; a newer
-start represents a running retry and a completion wins a timestamp tie. Language
-changes do not repeat computations; multilingual feedback merges into `LanguageMap`.
-
 User changes and full resets rotate the feedback session and replace computation
-caches. Completion callbacks check their generation and captured context before
-publishing. A same-user `resetLocalHistory` keeps completed computations reusable.
-Captured contexts retain the initiating user's backend token and LLM settings.
+caches; completion callbacks check their generation and captured context before
+publishing; a same-user `resetLocalHistory` keeps completed computations reusable. Captured
+contexts retain the initiating user's backend token and LLM settings.
 
 ## Synchronization boundary
 
@@ -183,19 +152,10 @@ allow pending writes to be attempted, then fail the returned future. Production
 bindings, event cursors, bulk requests and reset behavior are documented in
 [history storage and synchronization](database/interaction-history.md).
 
-## Codecs and element definitions
+## Codecs
 
-Types that cross a [serialization boundary](serialization-boundaries.md) use
-concrete models and derived uPickle codecs; other types have none. Do not add `ReadWriter[Any]` or
-serialize arbitrary values with `toString`. A genuinely dynamic payload may use
-`ujson.Value`, but history logic operates on typed events, not JSON fields.
-Formats without additional grading/scaffolding data use `Unit`.
-
-`WorkbookElementFactory` remains responsible for element definitions. The default
-`ReadWriter[WorkbookElement]` includes the registry needed to resolve children and
-section prerequisites and rejects conflicting IDs. A reference-only definition
-requires that registry. Format-based history exchange does not.
-
-Test JSON and MessagePack roundtrips on both core platforms, malformed inputs,
-state transitions and behavior after restoration. Keep current schemas strict;
-do not add migration readers or aliases for old fields and names.
+Only types crossing a [serialization boundary](serialization-boundaries.md) have codecs;
+that guide lists the boundaries and test expectations. History logic operates on typed
+events, never on JSON fields. Element definitions are covered in
+[session data](session-data-serialization.md). Keep current schemas strict; do not add
+migration readers or aliases for old fields and names.

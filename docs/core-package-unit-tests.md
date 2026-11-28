@@ -75,34 +75,20 @@ removal, and do not add artificial assertions just to raise a count.
 
 Keep checks for domain behavior, saved-data compatibility, persistence,
 authentication and execution. Browser checks should exercise integration that
-unit tests cannot prove; the runner uses two isolated processes and reports each
-suite's duration. Use its filename filter for focused runs, for example
-`npm run test:workbooks -- codemirror`.
+unit tests cannot prove. The runner runs two isolated suites at a time, reports each
+suite's duration and uses Playwright's Chromium, or `CHROMIUM_PATH` when set. It serves
+CodeMirror from pinned local npm packages, so editor tests need no live CDN. Use its
+filename filter for focused runs, for example `npm run test:workbooks -- codemirror`;
+single files also run with `node --test`.
 
 Do not freeze chapter counts, lesson wording, button inventories, CSS dimensions
 or source-code spelling in automated tests. Review those when editing content or
 presentation. `WorkbookDefinitionsSpec` checks the current catalogue factories
 for unique element IDs and serialization without fixing their lesson structure.
 
-CI caches incremental Scala output separately from downloaded dependencies.
-Build-definition changes start a new cache family but still restore the newest
-older entry; Zinc recompiles what the change invalidates. Scala still checks the
-current sources and test discovery on every run. A cold cache requires a full
-compile; deleting fast domain assertions does little to reduce that cost. Most
-of `core`'s compile time is uPickle codec derivation, paid once per platform.
-
-The cross-built core compiles on two runners in parallel: `scala-jvm` tests
-core JVM, server and desktop, and `scala-js` tests core JS, client and worker
-and saves the Scala.js output. Each caches only its own `target/<project>`
-directories. `browser-bundles` restores that cache and links the development
-bundles in parallel, so `browser-tests` need not wait for the Scala tests.
-`static-tests` runs the Node checks without a Scala build. When called by the
-Pages workflow, `pages-build` restores the tested Scala.js output and
-release-links in parallel with browser checks. Publication waits for the entire
-reusable workflow. The required `tests` status gates every job, including
-failures or cancellations in upstream jobs.
-
-The MySQL job owns the server assembly/startup check. Browser bundles and Pages
-artifacts use the producing build's attempt-specific name, so retries reuse the
-correct upload. Run MySQL tests only against the disposable localhost database
-specified in the [database test guide](database/interaction-history.md#verification).
+CI ([tests.yml](../.github/workflows/tests.yml)) runs JVM and Scala.js tests on parallel
+runners, links browser bundles from the cached Scala.js output and gates everything behind the
+required `tests` status; the workflow file is the reference for jobs and caches. Most of
+`core`'s compile time is uPickle codec derivation, so deleting fast assertions barely helps.
+Run MySQL tests only against a disposable localhost database: the suite clears its tables and
+refuses any database other than `edusquirrel_account_test` on localhost.

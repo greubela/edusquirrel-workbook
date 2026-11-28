@@ -13,9 +13,7 @@ boundaries; unfinished Java/Python can remain in structured states. Expression s
 use `BlockDisplay`. See [programming conversions](programming-conversions.md) and
 [source parsing](source-parsing.md).
 
-The central Var is authoritative. Restoration, conversion and user changes use the
-same binding; components observe signals rather than editor callbacks or separate
-synchronization stores. All changing client state uses `val`-bound `Var[T]` values.
+The central Var is authoritative ([state rules](state-and-serialization.md)).
 
 CodeMirror and Snap buffer typing locally and publish after a pause, focus loss,
 page hiding or unmount. Eva binds directly to the answer; there is no second buffer.
@@ -24,7 +22,6 @@ External answer changes replace pending local text.
 Conversions run asynchronously. Success commits the target representation; failure
 keeps the draft/editor. Source changes, newer requests and unmount invalidate stale
 conversion completions. `setActiveTab(language)` exposes this awaitable operation.
-Expensive work runs in workers: a Scala.js `Future` alone does not create a CPU thread.
 
 ## Ownership and key locations
 
@@ -40,9 +37,8 @@ Expensive work runs in workers: a Scala.js `Future` alone does not create a CPU 
 | `ProgrammingExecutionPanel` | Console below Eva, observing the committed answer; its action bar holds Run, Stop and `ProjectDownloadButton` |
 
 Panels receive the central answer and task configuration directly. They do not read
-state back from editors or use an activation protocol. Drawings and the shape comparison follow the answer's state signal and use shared
-BeExpression turtle commands; the console runs the Python form in Pyodide.
-See [program analysis and execution](program-analysis-and-execution.md).
+state back from editors or use an activation protocol; drawings and the console follow
+[program analysis and execution](program-analysis-and-execution.md).
 
 CodeMirror derives fallback visibility from its native handle. Startup and mounted
 editors share the library load; failure leaves an editable fallback and permits retry.
@@ -51,34 +47,17 @@ Diagnostics and worker-generated flowcharts arrive through signals. The gutter r
 
 ## Structure editors
 
-`JavaComponentEditor` (`editor/code/JavaEditor`) offers Class, Function and Full modes. `JavaEditorNavigation`
-owns mode/selection; core `JavaMethodEditing` locates, replaces and inserts methods on step-1
-declarations.
+`JavaComponentEditor` and `PythonComponentEditor` offer class, function and full-source views,
+creating only the selected one; `JavaMethodEditing`/`PythonMethodEditing` (core) locate and
+replace members on the parsed declarations. Class and function views are
+`FragmentCodeEditor[S, I]`s (`editor/code/fragment`) that splice a partial draft into a
+`FragmentRange` of the structured answer. A draft that grows beyond its declaration keeps its
+code and switches to the most local view that shows it (`FragmentCodeEditor.Scope`), never while
+brackets are open.
 
-Class and function views of both languages are `FragmentCodeEditor[S, I]`s (`editor/code/fragment`):
-one update logic splices partial drafts into a `FragmentRange` of the structured answer `S`, with
-`FragmentSource[S]` describing its named sources (Java classes; Python classes and module). Subclasses
-only locate and identify their fragment, and may present it differently (Python methods dedented).
-A draft that comes to hold code beyond its declaration keeps it all and reports a `FragmentCodeEditor.Scope`
-(`widened`); the component switches at once to the most local mode that shows it: any code typed around a method
-(another method, an attribute, even an unfinished line) → Class Mode; code outside a class → Full Mode. Nothing
-widens while brackets are open. Each fragment keeps the answer its range was found in, so readers never pair a range
-with another answer; the cursor and focus continue in the opened editor (`printedCursor`, `placeCursor`).
-Attribute and constructor dialogs, deletion and relationship arrows (inheritance, realization,
-association; no usage arrows) use the same shared UML model. All classes share one row, which
-scrolls horizontally when needed.
-
-`PythonComponentEditor` uses the same UML renderer, source stages and fragment editors
-(`PythonFunctionEditor`, `PythonClassEditor`) for module, class and function views, creating only
-the selected one. `PythonMethodEditing` owns its source ranges and edits.
-
-Shared UML data lives in `core.datastructures.uml`; `JavaUmlDiagram` and `PythonUmlDiagram`
-derive it from the parsing stages and `UmlStructureSelector` renders it. Program classes are
-editable. `ExternalUmlClasses` adds read-only boxes from the worker analysis (kept while the
-next analysis is pending): recognized libraries are «library» boxes (Java classes, Python
-modules such as `turtle`); what the program uses but nothing defines is *implied*: an
-implied member of a library box (`turtle.spin`) or an «unknown» box, marked dashed. An edited library definition becomes program code. UML classes use
-square corners and stable hover geometry.
+Both languages share one UML model (`core.datastructures.uml`), derived by `JavaUmlDiagram` and
+`PythonUmlDiagram` and rendered by `UmlStructureSelector`. Program classes are editable;
+`ExternalUmlClasses` adds read-only «library» and dashed «unknown» boxes from the worker analysis.
 
 Labels come from `blockeditor` language maps. Use `LabelSelection` or
 `JavaEditorLabels.select` for reactive text selection. Styles belong in dedicated CSS.

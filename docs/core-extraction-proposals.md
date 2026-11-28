@@ -1,18 +1,10 @@
 # Shared-core boundaries and follow-up work
 
-SQL clause operations and static feedback rules belong to shared core. Turtle assessment and ML inference have additional client boundaries to separate before moving their pure logic. The following sections distinguish current ownership from proposed work.
-
-## SQL clause operations
-
-[`SqlBlocks`](../modules/core/shared/src/main/scala/it/evadid/vm/conversion/sqlblocks/SqlBlocks.scala) lives in shared `vm.conversion.sqlblocks`. Scanning, splitting, joining, clause insertion and block ordering consume strings/lists without browser or editor-state dependencies. Its behavioral tests run on JVM and Scala.js, covering exact text reconstruction, quoted keywords, comments, nested queries and semicolon handling.
-
-[`SqlEditorPalette`](../modules/client/src/main/scala/it/evadid/homepage/webElements/sqlEditor/SqlEditorPalette.scala) retains the editor's templates and comparison-button definitions, reusing `SnapPaletteCatalog`. `SqlEditor` invokes the shared clause functions. Diagram rendering and drag/drop event handling remain in the client.
-
-## Static programming-feedback rules
-
-[`PythonStaticRules`](../modules/core/shared/src/main/scala/it/evadid/vm/analysis/feedback/PythonStaticRules.scala), [`VmStaticRules`](../modules/core/shared/src/main/scala/it/evadid/vm/analysis/feedback/VmStaticRules.scala) and [`RuleResult` / `RuleSeverity`](../modules/core/shared/src/main/scala/it/evadid/vm/analysis/feedback/RuleResult.scala) live in shared `vm.analysis.feedback`.
-
-The dependency boundary closes over these three files: they consume source strings or `BeExpression` and a core `HumanLanguage`, use Scala collections/regexes, and return immutable result records. Tests for source findings, variable use and unreachable code run on JVM and Scala.js. Feedback orchestration, execution/runtime services and presentation remain in the client and import the shared rules directly.
+Already shared: SQL clause operations ([`SqlBlocks`](../modules/core/shared/src/main/scala/it/evadid/vm/conversion/sqlblocks/SqlBlocks.scala),
+`vm.conversion.sqlblocks`) and static programming-feedback rules (`vm.analysis.feedback`:
+`PythonStaticRules`, `VmStaticRules`, `RuleResult`). They take strings or `BeExpression` and return
+immutable results; their tests run on JVM and Scala.js, while editors, diagram rendering, feedback
+orchestration and presentation stay in the client. Two further extractions are proposed:
 
 ## Proposed: turtle assessment and scene data
 
@@ -32,6 +24,6 @@ Keep [`MlRouter`](../modules/client/src/main/scala/it/evadid/homepage/workbook/l
 
 ## Recommended order and exclusions
 
-SQL clause operations and static rules are now shared. Next separate turtle assessment from display data; move ML inference when its JSON contract is covered by a fixture.
+Separate turtle assessment from display data first; move ML inference when its JSON contract is covered by a fixture.
 
 Compression algorithms and experiment models already live in shared `workbook.model.compression`; moving `CompressionActivitiesEditor` would mostly move DOM events and Laminar bindings. `WorkbookUserDataAnalyzer` primarily reads client session/control state and triggers downloads. Those are poor whole-file candidates. Snap's native runtime, Pyodide loading and CodeMirror lifecycle belong outside shared core: their browser adapters should remain in the client or workers.

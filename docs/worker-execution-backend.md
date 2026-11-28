@@ -1,9 +1,8 @@
 # Worker execution backend
 
 `client.js` owns the GUI; `worker.js` runs `WebWorkerBackendServer` and dispatches
-through `WorkerCommandHandler`. CPU work stays on the worker's event loop.
-A main-thread `Future` does not provide parallelism, and simultaneous CPU jobs
-require separate workers.
+through `WorkerCommandHandler`. CPU work stays on the worker's event loop;
+simultaneous CPU jobs require separate workers.
 
 The shared `WorkerExecutionProtocol` correlates typed commands and responses by
 request ID, preserving errors, timestamps and logs. `WebWorkerExecutionClient`

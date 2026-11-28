@@ -31,11 +31,9 @@ instance methods and constructors; receivers and members are explicit nodes. Pri
 supply target syntax such as Python's `self`. The tree contains no checked-Java runtime
 nodes or metadata that selects alternate semantics.
 
-All drawings use the shared interpreter. `JavaTurtleCompiler`/`JavaTurtleInterpreter`
-are a separate checked-Java runtime; Java unit-test instrumentation does not select
-editable conversion routes. Console execution uses Pyodide
-([analysis and execution](program-analysis-and-execution.md)). Snap rejects object
-features without a supported representation. Source frontends own interpretation and
+Drawing and console execution are described in [analysis and execution](program-analysis-and-execution.md);
+`JavaTurtleCompiler`/`JavaTurtleInterpreter` are a separate checked-Java runtime that never
+selects conversion routes. Snap rejects object features without a supported representation. Source frontends own interpretation and
 validation, printers own syntax: unsupported features are rejected or represented explicitly,
 never silently dropped, and UI components do not duplicate conversion dispatch. Extend supported
 subsets with semantic round-trip tests, not alternate interpreters or source replay.
@@ -118,29 +116,13 @@ Detached Snap scripts use the reserved, uncalled `unusedCode` function and expor
 loose blocks. Empty source remains an empty program across all conversions, including
 a green flag in Snap. `StructuredProgrammingStateSpec` tests these contracts.
 
-Snap slots hold a string's text, never its quoted literal (`StringLiteral.content`); Java re-quotes Python's
-`'...'` strings the same way.
-`say` and `say … for … secs` print (the duration is dropped); `join` is a text `+` whose
-non-text items are `str(...)`, and a text `+` or `str(...)` is written back as `join`.
+Language-specific spellings are printer concerns: Snap slots hold a string's text (never its
+quoted literal), `join`/`say`/`pick random` map to text `+`, printing and the shared `random()`
+built-in, and Java uses `Math.*` where Python imports from `math`/`random`.
 `NativeSnapRoundTripSpec` runs a project saved by native Snap through Python and Java.
-
-`sqrt` and `random()` are shared built-ins: Python `from math import sqrt` / `from random import
-random`, Java `Math.sqrt` / `Math.random()`, Snap `sqrt of` and `pick random 0 to 0.9999999999999999`
-(a fractional bound draws fractions). `pow(a, b)` reads as `a ** b`. Python strings print
-double-quoted, and an exact Python `56 / 8` prints as Java `56.0 / 8` (read back as `56 / 8`).
-
-## Running Python
-
-`ProgrammingStatePythonStructured.startExecution` uses `worker.runPython` and returns
-captured stdout/stderr. Its turtle calls are logged; Eva's console ignores turtle calls
-because drawing is separate. Exceptions fail execution with diagnostic output retained.
-See [program analysis and execution](program-analysis-and-execution.md).
 
 ## Project downloads
 
-`ProjectExport` produces BlueJ Java projects, Python `main.py` or Snap XML, adding
-required libraries and exercise data. `ExportedProject.zip` uses the dependency-free
-`ZipArchive`; client `ProjectDownload` saves a single-file project (Snap XML, Python) as that file and
-any other as the ZIP. Eva's `ProjectDownloadButton` exports the answer in its current language. Every
-download (projects, sessions, TurtleStitch files, sketches) is named by `InfoUtil.downloadName`: time, then subject. Cross-language round-trip tests compare
-behavior after formatting normalization; checked-Java runtime tests remain separate.
+`ProjectExport` produces BlueJ Java projects, Python `main.py` or Snap XML with required
+libraries and exercise data; single-file projects download as that file, others as a ZIP
+(`ZipArchive`). `InfoUtil.downloadName` names every download (time, then subject).

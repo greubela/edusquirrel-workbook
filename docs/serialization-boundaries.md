@@ -23,7 +23,9 @@ for every field type. When a type starts crossing a boundary, it fails to compil
 until it and its fields have codecs; add them then, together with a round-trip
 test. Give a sealed hierarchy codecs for all of its members or for none.
 
-Prefer `derives ReadWriter` for boundary models. Keep an explicit companion
+Never add `ReadWriter[Any]` or serialize arbitrary values with `toString`. A genuinely
+dynamic payload may use `ujson.Value`; formats without additional grading/scaffolding
+data use `Unit`. Prefer `derives ReadWriter` for boundary models. Keep an explicit companion
 codec where constructor evidence, an open hierarchy, validation or wire
 compatibility requires it. Library-type codecs belong in `DefaultSerializer`.
 Live callbacks, futures, reactive subscriptions, DOM/worker handles, services,

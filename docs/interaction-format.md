@@ -19,10 +19,7 @@ format association at call sites; its single internal narrowing bridges Scala's
 invariant codecs and singleton-dependent types. Exercise-specific constraints,
 such as table dimensions or graph axes, belong in `validateState` and are checked
 when applying history. They cannot be inferred by a server without that exercise.
-Element definitions use `WorkbookElementFactory`. `SerializedWorkbook` in
-`workbook.jsonFactory` carries a root ID and its complete serialized element graph.
-Constructor-style syntax frames argument groups only; uJSON validates and decodes
-their JSON values.
+Element definitions have their own codecs; see [session data](session-data-serialization.md).
 
 ## Current wire format
 
@@ -51,9 +48,7 @@ format before decoding. `deserialize(json)` validates the inner history immediat
 a plain uPickle `read[InteractionHistoryJson]` reconstructs the envelope, with payload
 validation deferred until `toTyped` or `typedAs`. Merging different formats fails
 immediately. There are no older-schema readers, fallback formats or workbook-dependent
-type resolution.
-Malformed local storage records are logged and excluded individually. Invalid
-backend requests or stored database events fail with a contextual exception.
+type resolution; [storage](database/interaction-history.md) defines how malformed records are handled.
 
 ## Event contract
 
@@ -73,11 +68,10 @@ value equality after decoding. State/feedback history views are derived projecti
 not separate persisted stores. A newer grading start represents a retry in progress;
 completion wins a timestamp tie. Graders are matched by their canonical content key.
 
-Starts default to `TEMPORARY`, completions to `MAJOR`. `cleanedHistory()` drops
-superseded DEFAULT and TEMPORARY answers with their own feedback. `cleanWithStrategy`
-selects transmissions; `SYNC_MAJOR` and `SYNC_LAST` include feedback associated with
-their selected answers. See [state and synchronization](state-and-serialization.md)
-and [database storage](database/interaction-history.md).
+Starts default to `TEMPORARY`, completions to `MAJOR`. `cleanedHistory()` is the one
+history cleanup: it drops DEFAULT answers once another answer exists and TEMPORARY answers
+once a later one exists, with feedback tied only to them; the current answer always stays.
+Transmission strategies are described with [storage](database/interaction-history.md).
 
 ## Verification
 

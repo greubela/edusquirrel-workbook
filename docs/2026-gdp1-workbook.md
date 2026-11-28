@@ -9,10 +9,7 @@ interaction IDs are stable (`2026GdP1-task-1` through `-7`, `-reflection`, and
 The introduction progresses from explicit square commands to loops, nested loops
 and a `quadrat` function, followed by a reflection asking for two distinct benefits
 of structured code. The parameter section uses increasing and alternating sizes;
-the final orientation sequence is down, down, up, down, down. The turtle starts facing
-right (heading 0, as in Snap and Python), so right-turn squares hang below a shared line
-and rows extend horizontally; the mirrored third square uses left turns (`right(-90)`).
-Gaps are always 100 units between neighboring square edges, without connecting strokes.
+the turtle starts facing right (heading 0, as in Snap and Python).
 
 Programming tasks start in an empty Snap project and also offer Python and the structured
 function-based Java editor. The mixed palettes expose only the selected
@@ -39,13 +36,6 @@ Java, incorrect structures despite correct graphics, palettes, catalogue
 registration and history serialization. `ProgramStructureGraderSpec` covers parsed
 structure, comments, malformed code and command restrictions. The catalogue-wide
 workbook tests cover JSON and factory serialization.
-
-Drawing execution, previews and grading use
-`state.toBeExpression.turtleCommandExecutionInfo.completedCommands` for every editor.
-The recreate-shape editor selects the shared interpreter rather than the separate
-checked Java runtime or Python/Snap execution backends. The Java tab uses
-`JavaComponentEditor` bound to the central state; edits publish
-`ProgrammingStateJavaStructured` instead of retaining a second raw-source state.
 
 ## Java algorithms section
 

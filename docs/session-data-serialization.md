@@ -98,10 +98,9 @@ submissions stay out of the account and history tables.
 3. mails the summary to the session's address, only if it is one plain address. The response
    reports the number of summarized interactions and whether this confirmation was sent.
 
-Each attachment is deflated into its own ZIP named after the date and submitter, for example
-`2026_11_28_WorkbookSubmitted_Erika_Musterfrau.eva.zip` and `…-summary.json.zip`. Histories are
-repetitive JSON: a 49 MB session travels as about 4 MB (browser gzip) and mails as about 4 MB.
-Commands may be up to 100 MB once decoded; logging a session larger than the database's
-`max_allowed_packet` only warns, and the mails are still sent.
+Each attachment is deflated into its own ZIP named after the date and submitter (e.g.
+`2026_11_28_WorkbookSubmitted_Erika_Musterfrau.eva.zip`); histories are repetitive JSON and shrink
+roughly tenfold. Commands may be up to 100 MB once decoded; logging a session larger than the
+database's `max_allowed_packet` only warns, and the mails are still sent.
 
 Coverage: `HtmlSubmissionFormSpec`, `SubmitSessionCommandSpec`, `BackendCommandHttpSpec` and `UserAccountMysqlSpec`.
