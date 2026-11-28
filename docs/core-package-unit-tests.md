@@ -46,6 +46,12 @@ SQL_HOST=127.0.0.1 SQL_PORT=3306 SQL_DATABASE=edusquirrel_account_test SQL_USER=
 unit-test harness in a local `python3` via the test-only `CPythonRuntime` client; it
 is skipped when no `python3` is installed.
 
+[Core coverage](../.github/workflows/core-coverage.yml) instruments shared and JVM
+core code and requires branch coverage above 60%. Run locally with
+`sbt 'project coreJVM' coverage test coverageReport`. CI uploads reports and keeps
+instrumented output out of normal build caches. Scoverage does not support Scala 3
+Scala.js instrumentation; JavaScript adapters remain covered by functional tests.
+
 For a narrow shared package:
 
 ```sh

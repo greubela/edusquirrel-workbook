@@ -1,6 +1,5 @@
 package it.evadid.workbook.elements.structure
 
-import cats.data
 import it.evadid.core.datastructures.language.AppLanguage.HumanLanguage
 import it.evadid.core.datastructures.language.LanguageMapContentId
 import it.evadid.core.datastructures.user.User

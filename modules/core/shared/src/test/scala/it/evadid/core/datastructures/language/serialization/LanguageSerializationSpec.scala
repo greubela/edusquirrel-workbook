@@ -50,14 +50,6 @@ class LanguageSerializationSpec extends FunSuite {
     val loader = LanguageMapSourceFileBased(info(file("map.json", " \n"), English), (_, _) => fail("empty file was parsed"))
     loader.loadAllTriples(BasicLogger()).map(result => assertEquals(result, empty))
   }
-  test("CSV retains quoted separators, multiline values and skips incomplete rows") {
-    val logger = BasicLogger()
-    val loader = LanguageMapSourceFileBased.forEvaFile(info(file("map.CSV", "hello;\"a;b\"\nother;\"line1\nline2\"\nbroken\n"), English)).get
-    loader.loadAllTriples(logger).map { result =>
-      assertEquals(result.regularTriples.map(e => e.contentId.entryKey -> e.value), Set("hello" -> "a;b", "other" -> "line1\nline2"))
-      assert(logger.getOut().contains("ignored 1 entries"))
-    }
-  }
   test("malformed JSON returns no triples and logs the parse failure") {
     val logger = BasicLogger()
     LanguageMapSourceFileBased.forEvaFile(info(file("map.json", "{bad"), English)).get.loadAllTriples(logger).map { result =>

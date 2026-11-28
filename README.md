@@ -10,7 +10,6 @@ EduSquirrel builds interactive, multilingual student workbooks with Scala.js and
 | `modules/core/js/`, `modules/core/jvm/` | Platform-specific core implementations |
 | `modules/client/` | Browser startup, Laminar renderers, editors and authored workbooks |
 | `modules/worker/` | Scala.js browser worker and shared command execution |
-| `modules/desktop/` | Optional JavaFX canvas adapters for desktop and evacuation use |
 | `modules/server/` | JVM backend and command handlers |
 | `homepage/` | Entry pages, CSS and catalogue presentation |
 | `resources/` | Language maps, teaching materials and bundled programs/libraries |
@@ -58,7 +57,7 @@ The [database guide](docs/database/README.md) links the authoritative SQL setup 
 
 Reuse these locations and existing subject/package directories. Do not create a new directory at the repository root unless no existing directory can serve the purpose and there is a strong architectural or tooling necessity. Explain that necessity and update this directory guide when such an exception is required. Agent instructions are in [AGENTS.md](AGENTS.md).
 
-The root sbt project aggregates client, server, worker and the optional desktop adapters. Client and worker depend on core JS; server depends on core JVM. Run the core test projects explicitly to verify both platforms.
+The root sbt project aggregates client, server and worker. Client and worker depend on core JS; server depends on core JVM. Run the core test projects explicitly to verify both platforms.
 
 ## Finding the code
 
@@ -135,7 +134,7 @@ Useful artifact tasks:
 | `sbt buildClientDeploy buildWorkerDeploy` | Optimized JS artifacts in newest/stable/history |
 | `sbt buildAllDeploy` | All deployment artifacts |
 
-Task definitions are in [BuildCommands.scala](project/BuildCommands.scala). JavaFX adapters live in `modules/desktop/` and compile with `sbt desktop/compile`; their packages are unchanged. The server depends on core JVM only, so its fat JAR excludes desktop adapters and JavaFX libraries. After `sbt buildServerDev`, run `node tools/dev/check-server-assembly.mjs` to verify standalone startup, health and logging.
+Task definitions are in [BuildCommands.scala](project/BuildCommands.scala). The server depends on core JVM. After `sbt buildServerDev`, run `node tools/dev/check-server-assembly.mjs` to verify standalone startup, health and logging.
 
 ## Tests
 
