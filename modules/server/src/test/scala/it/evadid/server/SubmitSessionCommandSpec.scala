@@ -16,7 +16,10 @@ import upickle.default.*
 import java.net.InetAddress
 import java.nio.charset.StandardCharsets.UTF_8
 import java.time.LocalDateTime
+import java.io.ByteArrayInputStream
 import java.util.Properties
+import java.util.zip.ZipInputStream
+import scala.util.Using
 
 class SubmitSessionCommandSpec extends FunSuite {
   import SubmissionFixtures.*
@@ -24,7 +27,16 @@ class SubmitSessionCommandSpec extends FunSuite {
   private val address = InetAddress.getByName("2001:db8::7")
   private val receivedAt = LocalDateTime.of(2026, 11, 27, 10, 16)
 
-  private def attachmentText(request: SendMailRequest, index: Int): String = String(request.attachments(index).data, UTF_8)
+  /** The single entry of attachment `index`: its name and text. */
+  private def unzipped(request: SendMailRequest, index: Int): (String, String) =
+    Using.resource(ZipInputStream(ByteArrayInputStream(request.attachments(index).data))) { zip =>
+      val entry = zip.getNextEntry
+      val content = String(zip.readAllBytes(), UTF_8)
+      assertEquals(zip.getNextEntry, null, "one file per attachment")
+      entry.getName -> content
+    }
+  private def attachmentText(request: SendMailRequest, index: Int): String = unzipped(request, index)._2
+  private val baseName = "2026_11_27_WorkbookSubmitted_Aenne_Student"
 
   /** Runs a submission against recorded mail delivery; `deliver` decides each mail's outcome. */
   private def submitted(session: SessionData, deliver: SendMailRequest => SendMailResponse = _ => SendMailResponse(None, sent = true))
@@ -63,11 +75,12 @@ class SubmitSessionCommandSpec extends FunSuite {
     assertEquals(response, SubmitSessionResponse(submittedInteractions = 2, confirmationSent = true))
     val Seq(archive, confirmation) = mails
     assertEquals(archive.recipientMail, SubmitSessionCommand.archiveRecipient)
-    assertEquals(archive.attachments.map(_.description.filenameWithExtension), Seq(session().fileName,
-      session().fileName.stripSuffix(".eva") + "-summary.json"))
+    assertEquals(archive.attachments.map(_.description.filenameWithExtension), Seq(s"$baseName.eva.zip", s"$baseName-summary.json.zip"))
+    assertEquals(archive.attachments.indices.map(unzipped(archive, _)._1), Seq(s"$baseName.eva", s"$baseName-summary.json"))
+    assert(archive.attachments.head.data.length * 3 < attachmentText(archive, 0).length, "the session is compressed")
     assertEquals(read[SessionData](attachmentText(archive, 0)), session().withoutCredentials)
     assertEquals(confirmation.recipientMail, student.mail)
-    assertEquals(confirmation.attachments.size, 1)
+    assertEquals(confirmation.attachments.map(_.description.filenameWithExtension), Seq(s"$baseName-summary.json.zip"))
     assertEquals(read[SimpleSubmission](attachmentText(confirmation, 0)), SimpleSubmission.from(session(), address, BasicLogger()))
     assert(confirmation.content.contains(student.name) && confirmation.content.contains(workbook.workbookId))
     mails.foreach { mail =>
@@ -76,14 +89,22 @@ class SubmitSessionCommandSpec extends FunSuite {
     }
   }
 
-  test("both mails compose as UTF-8 MIME messages with JSON attachments") {
+  test("attachment names carry the date and a file-name-safe submitter name") {
+    def named(name: String) = SubmitSessionCommand.attachmentBaseName(
+      SimpleSubmission.from(session().copy(userInfo = student.copy(name = name)), address, BasicLogger()), receivedAt)
+    assertEquals(named("Änne Student"), baseName)
+    assertEquals(named("../../etc/passwd\nX"), "2026_11_27_WorkbookSubmitted_etc_passwd_X")
+    assertEquals(named("  "), "2026_11_27_WorkbookSubmitted_project")
+  }
+
+  test("both mails compose as UTF-8 MIME messages with ZIP attachments") {
     val (_, mails, _) = submitted(session())
     mails.foreach { request =>
       val message = SendMailCommand.mailMessage(Session.getInstance(Properties()), "sender@example.invalid", request)
       message.saveChanges()
       val parts = message.getContent.asInstanceOf[MimeMultipart]
       assertEquals(parts.getCount, request.attachments.size + 1)
-      (1 until parts.getCount).foreach(index => assert(parts.getBodyPart(index).getContentType.startsWith("application/json")))
+      (1 until parts.getCount).foreach(index => assert(parts.getBodyPart(index).getContentType.startsWith("application/zip")))
     }
   }
 

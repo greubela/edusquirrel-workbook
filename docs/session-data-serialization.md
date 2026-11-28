@@ -93,9 +93,15 @@ submissions stay out of the account and history tables.
    the claimed user and request address, plus the latest answer and combined authored-grader
    status of each answered interaction of the session's own workbook, in workbook order;
    unreadable histories are logged and left out;
-2. mails the full credential-free session (`.eva`, importable via session continuation) and
-   the summary to the archive address; failure fails the command;
+2. mails the full credential-free session (`.eva`, importable via session continuation once
+   unzipped) and the summary to the archive address; failure fails the command;
 3. mails the summary to the session's address, only if it is one plain address. The response
    reports the number of summarized interactions and whether this confirmation was sent.
+
+Each attachment is deflated into its own ZIP named after the date and submitter, for example
+`2026_11_28_WorkbookSubmitted_Erika_Musterfrau.eva.zip` and `…-summary.json.zip`. Histories are
+repetitive JSON: a 49 MB session travels as about 4 MB (browser gzip) and mails as about 4 MB.
+Commands may be up to 100 MB once decoded; logging a session larger than the database's
+`max_allowed_packet` only warns, and the mails are still sent.
 
 Coverage: `HtmlSubmissionFormSpec`, `SubmitSessionCommandSpec`, `BackendCommandHttpSpec` and `UserAccountMysqlSpec`.

@@ -86,7 +86,7 @@ def mailAnswersToMe(fullInfo: FullInfo, answersCsv: String, picked: dom.File): F
 ```
 
 Mail requests are delivered only to the requester's own address, and the command
-body is limited to 16 MB. Each attachment travels as file name, declared media type,
+body is limited to 100 MB (decoded). Each attachment travels as file name, declared media type,
 copyright and Base64 bytes, never its source location. Requests fail with an
 explicit message instead of falling back: nameless attachments (name `data:` URL
 content explicitly), names with control characters and invalid declared media

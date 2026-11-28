@@ -67,7 +67,8 @@ object BackendServer {
   ).toString()
 
 
-  private[server] val maxCommandBodyBytes: Long = 16L * 1024 * 1024
+  /** Decoded request limit; whole sessions (workbook definition and every answer history) travel in one command. */
+  private[server] val maxCommandBodyBytes: Long = 100L * 1024 * 1024
 
   /** Exact browser origins (`SERVER_ALLOWED_ORIGINS`, comma-separated) that may call the server directly, for a local
     * client against a local backend. Leave it unset behind the deployment's Caddy proxy, which sets CORS headers itself.
