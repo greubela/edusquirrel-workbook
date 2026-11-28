@@ -22,8 +22,9 @@ captures nothing); a window opened just for the script stays open until Enter is
 & "$env:ProgramFiles\Git\bin\bash.exe" ./deploy.sh
 ```
 
-Requirements on the deploying machine: Bash, OpenSSH 8.4+ (`ssh`, `ssh-agent`), curl,
-Node.js, and sbt/npm for the build. MySQL clients run in Docker on the backend server,
+Requirements on the deploying machine: Bash, OpenSSH 8.4+ (`ssh`, `ssh-agent`), curl (server
+health check), Node.js with npm (website upload; `npm ci` installs the locked FTP client), and sbt
+for the build. MySQL clients run in Docker on the backend server,
 so no local MySQL or Docker is needed (`DATABASE_TOOLS_HOST=local` uses local Docker instead).
 
 ## Secrets
@@ -105,14 +106,20 @@ stages the published part in ignored `tmp/work/deployment/webspace/`: `homepage/
 `favicon.ico`, the client and worker of `artifacts/newest/` and `artifacts/stable/`, and
 `client.env` as `deployment/client/.env`. Hidden files and `node_modules` are left out, and
 `artifacts/history/` is never uploaded, neither here nor to the server, which receives only
-`artifacts/newest/server.jar`. The upload uses FTPS with curl.
+`artifacts/newest/server.jar`.
 
-[sync-plan.mjs](../deployment/client/sync-plan.mjs) compares SHA-256 hashes with
-`.deploy-manifest.sha256`, the manifest of the last deployment stored on the webspace:
-only changed files are uploaded, in batches whose progress is recorded so a rerun resumes.
-Each batch is verified by remote file size, because FTP servers can confirm transfers they stored
-incompletely; mismatches are uploaded again twice before the deployment stops. Only files
-that earlier deployments uploaded are deleted. Other webspace content is untouched.
+[webspace-sync.mjs](../deployment/client/webspace-sync.mjs) uploads over FTPS with the
+[basic-ftp](https://www.npmjs.com/package/basic-ftp) dev dependency, using Node's own TLS:
+curl for Windows (Schannel only) made Lima-City's server abort transfers with `451`, and it
+opened non-ASCII paths in the ANSI code page. The connection comes from the environment
+(`CLIENT_FTP_*` from `local.env`), never from command-line arguments.
+
+It compares SHA-256 hashes with `.deploy-manifest.sha256`, the manifest of the last deployment
+stored on the webspace: only changed files are uploaded, in batches of 500 whose progress is
+recorded so a rerun resumes. Every upload is checked by remote file size, because FTP servers
+can confirm transfers they stored incompletely. Transient failures (`4xx` replies, lost
+connections) are retried with reconnects and growing pauses; permanent ones (`5xx`) stop the
+step. Only files that earlier deployments uploaded are deleted. Other webspace content is untouched.
 
 The first deployment has no manifest and uploads everything (about 300 MB). If large parts are
 already current on the webspace, mark them with `--trust resources/workbookpdfs` (repeatable);
