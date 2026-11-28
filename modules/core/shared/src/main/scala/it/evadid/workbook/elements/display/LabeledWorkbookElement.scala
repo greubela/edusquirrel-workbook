@@ -10,7 +10,7 @@ import it.evadid.workbook.elements.structure.Workbook
 import it.evadid.workbook.serialization.{WorkbookElementFactory, WorkbookElementReference, WorkbookElementSerializable}
 import upickle.default.*
 
-case class LabeledWorkbookElement[T <: WorkbookElement](override val elementId: String, baseElement: T, label: WorkbookLabel) extends WorkbookDisplayElement derives upickle.default.ReadWriter {
+case class LabeledWorkbookElement[T <: WorkbookElement](override val elementId: String, baseElement: T, label: WorkbookLabel) extends WorkbookDisplayElement {
   override lazy val childrenOfThisElement: Seq[WorkbookElement] = List(baseElement)
 
   override val associatedFactory: WorkbookElementFactory[? <: WorkbookElement] = LabeledWorkbookElement.factory

@@ -288,7 +288,6 @@ class TextInputWithScaffoldingAndGradingSpec extends FunSuite {
     assertEquals(OfflineController.of(element).currentValue(element), "")
     assertEquals(element.gradingElements.map(_.gradeData.instructionForLlm), List(criterion, secondCriterion))
     assertEquals(element.scaffoldingElement.get.scaffData.instructionForLlm, hint)
-    assertEquals(read[TextInputWithScaffoldingAndGrading](write(element)), element)
     assertEquals(read[WorkbookElement](write[WorkbookElement](element)), element)
     assertEquals(it.evadid.workbook.serialization.WorkbookElementFactory.parseAll(List(element.toSerialized)).head, element)
     assertEquals(it.evadid.workbook.serialization.WorkbookElementSerializable.fromStringConstructorLike(element.toStringConstructorLike), element.toSerialized)

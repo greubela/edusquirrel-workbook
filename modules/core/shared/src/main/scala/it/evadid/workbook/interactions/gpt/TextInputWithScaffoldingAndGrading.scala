@@ -17,7 +17,7 @@ case class TextInputWithScaffoldingAndGrading(
                                                sampleSolution: Option[LanguageMapContentId] = None,
                                                contentScaffolding: Option[ContentForLlmInteraction] = None,
                                                contentGrading: Seq[ContentForLlmInteraction] = List(),
-                                             ) extends WorkbookInteractionElement[TextInputWithLlmGradingAndScaffoldingFormat.type] derives ReadWriter {
+                                             ) extends WorkbookInteractionElement[TextInputWithLlmGradingAndScaffoldingFormat.type] {
   override val associatedFactory: WorkbookElementFactory.SimpleWorkbookElementFactory[TextInputWithScaffoldingAndGrading] = TextInputWithScaffoldingAndGrading.factory
 
   override lazy val childrenOfThisElement: Seq[WorkbookElement] = List()

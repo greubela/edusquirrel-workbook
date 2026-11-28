@@ -16,6 +16,14 @@ test('every tracked submodule has a path and source URL for checkout cleanup', (
   }
 });
 
+test('workbook elements have only the canonical graph codec, never a derived one', () => {
+  const cwd = path.resolve(import.meta.dirname, '../..');
+  const pattern = 'extends (WorkbookDisplayElement|WorkbookImageElement|WorkbookInteractionElement\\[[^]]*\\]|WorkbookStructureElement\\[[^]]*\\])[^{]*derives';
+  const found = spawnSync('git', ['grep', '-lE', pattern, '--', 'modules/*.scala'], {cwd, encoding: 'utf8'});
+  assert.ok(found.status === 0 || found.status === 1, found.stderr);
+  assert.deepEqual(found.stdout.trim().split('\n').filter(Boolean), []);
+});
+
 test('points in time are Instants, never device-zone local date-times', () => {
   const cwd = path.resolve(import.meta.dirname, '../..');
   // git grep exits with 1 when nothing matches.

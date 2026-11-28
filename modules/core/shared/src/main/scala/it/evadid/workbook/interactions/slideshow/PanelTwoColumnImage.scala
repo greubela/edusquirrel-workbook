@@ -14,7 +14,7 @@ case class PanelTwoColumnImage(
                                 rightLabel: LanguageMapContentId,
                                 leftBody: LanguageMapContentId,
                                 rightBody: LanguageMapContentId
-                              ) extends WorkbookDisplayElement derives upickle.default.ReadWriter {
+                              ) extends WorkbookDisplayElement {
   override val associatedFactory: WorkbookElementFactory[PanelTwoColumnImage] = PanelTwoColumnImage.factory
   override lazy val childrenOfThisElement: Seq[WorkbookElement] = List(image)
 }

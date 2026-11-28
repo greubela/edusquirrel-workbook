@@ -1,5 +1,6 @@
 package it.evadid.workbook.elements.display
 
+import it.evadid.distribution.command.SerializedException
 import it.evadid.core.datastructures.file.CopyrightInfo
 import it.evadid.core.datastructures.language.LanguageMapContentId
 import it.evadid.workbook.abstractions.TypeOfTextDisplay.URL_TYPE
@@ -7,7 +8,7 @@ import it.evadid.workbook.abstractions.{TypeOfTextDisplay, WorkbookDisplayElemen
 import it.evadid.workbook.serialization.WorkbookElementFactory.SimpleWorkbookElementFactory
 import it.evadid.workbook.serialization.{WorkbookElementFactory, WorkbookElementSerializable}
 
-sealed trait WorkbookImageElement extends WorkbookDisplayElement derives upickle.default.ReadWriter
+sealed trait WorkbookImageElement extends WorkbookDisplayElement
 
 object WorkbookImageElement {
 
@@ -20,7 +21,7 @@ object WorkbookImageElement {
       override def finishSerialization(baseElement: WorkbookElementSerializable, infoElement: LanguageMapBasedWorkbookImageElement): WorkbookElementSerializable = {
         baseElement
           .withElementAddedAs("content", infoElement.languageMapContentId)
-          .withElementAddedAs("howToResolveUrl", infoElement.howToResolveUrl.asInstanceOf[TypeOfTextDisplay])
+          .withElementAddedAs[TypeOfTextDisplay]("howToResolveUrl", infoElement.howToResolveUrl)
           .withElementAddedAs("description", infoElement.description)
           .withElementAddedAs("copyright", infoElement.copyright)
 
@@ -29,7 +30,10 @@ object WorkbookImageElement {
       override def finishDeserialization(element: WorkbookElementSerializable): LanguageMapBasedWorkbookImageElement = {
         LanguageMapBasedWorkbookImageElement(element.elementId,
           element.getElementAs[LanguageMapContentId]("content"),
-          element.getElementAs[TypeOfTextDisplay]("howToResolveUrl").asInstanceOf[URL_TYPE],
+          element.getElementAs[TypeOfTextDisplay]("howToResolveUrl") match {
+            case url: URL_TYPE => url
+            case other => throw SerializedException(s"An image cannot be resolved as $other")
+          },
           element.getOptionalElementAs[Option[LanguageMapContentId]]("description", None),
           element.getOptionalElementAs[Option[CopyrightInfo]]("copyright", None)
         )
@@ -43,7 +47,7 @@ object WorkbookImageElement {
                                                    howToResolveUrl: URL_TYPE,
                                                    description: Option[LanguageMapContentId] = None,
                                                    copyright: Option[CopyrightInfo] = None
-                                                 ) extends WorkbookImageElement derives upickle.default.ReadWriter {
+                                                 ) extends WorkbookImageElement {
     override val associatedFactory: WorkbookElementFactory[LanguageMapBasedWorkbookImageElement] = LanguageMapBasedWorkbookImageElement.factory
   }
 

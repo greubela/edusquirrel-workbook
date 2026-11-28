@@ -24,9 +24,13 @@ object AppLanguage {
 
   given rw: ReadWriter[AppLanguage] = ser.uPickleReadWrite
 
-  given rwH: ReadWriter[HumanLanguage] = ser.map(_.asInstanceOf[HumanLanguage], _.asInstanceOf[AppLanguage]).uPickleReadWrite
-  given rwP: ReadWriter[ProgrammingLanguage] = ser.map(_.asInstanceOf[ProgrammingLanguage], _.asInstanceOf[AppLanguage]).uPickleReadWrite
-  given rwS: ReadWriter[SpecialLanguage] = ser.map(_.asInstanceOf[SpecialLanguage], _.asInstanceOf[AppLanguage]).uPickleReadWrite
+  /** A language of kind `L`; a saved language of another kind is rejected. */
+  private def narrowed[L <: AppLanguage](kind: String)(using tag: scala.reflect.ClassTag[L]): ReadWriter[L] =
+    ser.map[L](language => tag.unapply(language).getOrElse(throw SerializedException(s"${language.name} is not a $kind language")), identity).uPickleReadWrite
+
+  given rwH: ReadWriter[HumanLanguage] = narrowed[HumanLanguage]("human")
+  given rwP: ReadWriter[ProgrammingLanguage] = narrowed[ProgrammingLanguage]("programming")
+  given rwS: ReadWriter[SpecialLanguage] = narrowed[SpecialLanguage]("special")
   
   sealed trait HumanLanguage(val name: String, val nameAbbr: String) extends AppLanguage
 

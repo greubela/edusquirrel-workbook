@@ -47,7 +47,7 @@ object ReorderInteraction {
         baseElement
           .withElementAddedAs("hints", infoElement.hints)
           .withElementAddedAs("orderConstraints", infoElement.orderConstraints)
-          .withElementAddedAs[AppLanguage]("programmingLanguage", infoElement.programmingLanguage.asInstanceOf[AppLanguage])
+          .withElementAddedAs[AppLanguage]("programmingLanguage", infoElement.programmingLanguage)
           .withElementAdded("seed", infoElement.seed.toString)
           .withElementsAdded("stringLines", infoElement.lines.toSeq)
 
@@ -57,7 +57,7 @@ object ReorderInteraction {
         ReorderCodeInteraction(
           element.elementId,
           element.getElementsAs("stringLines"),
-          element.getElementAs[AppLanguage]("programmingLanguage").asInstanceOf[ProgrammingLanguage],
+          element.getElementAs[ProgrammingLanguage]("programmingLanguage"),
           element.getOptionalElementAs("seed", "0").toLongOption.getOrElse(0),
           element.getElementsAs[LanguageMapContentId]("hints"),
           element.getOptionalElementAs[Seq[(Int, Int)]]("orderConstraints", Nil)
