@@ -35,7 +35,10 @@ packages can be renamed without touching saved data:
 
 Unknown names are rejected, without dynamic class loading or element-ID lookup;
 [PersistedNamesSpec](../modules/core/shared/src/test/scala/it/evadid/workbook/serialization/PersistedNamesSpec.scala)
-pins them.
+pins them. [PersistedHistorySnapshotSpec](../modules/client/src/test/scala/it/evadid/homepage/workbook/content/PersistedHistorySnapshotSpec.scala)
+compares a saved history of every published format, including nested type tags, field names and
+fingerprints, with reference files in `modules/client/src/test/resources/persisted-histories/`;
+rewrite them only for an intended schema change.
 
 ```scala
 import it.evadid.workbook.abstractions.InteractionFormat.TextInteractionFormat

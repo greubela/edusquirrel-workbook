@@ -1,0 +1,54 @@
+{
+  "format": "MatchingInteractionFormat",
+  "historyJson": {
+    "events": {
+      "values": [
+        {
+          "$type": "AnswerChangedEvent",
+          "newState": {
+            "selectedRightIndicesByLeftIndex": [
+              null,
+              null,
+              null,
+              null,
+              null
+            ]
+          },
+          "timestamp": "2026-11-28T12:00:00.123456789Z",
+          "updateImportance": "MAJOR",
+          "eventId": "00000000-0000-4000-8000-000000000001"
+        },
+        {
+          "$type": "GradingStartedEvent",
+          "state": "StateReference(sha256:1d826e3479fdd3853f784fb87b45856d14e3592831cb227131c0b933951e318f)",
+          "timestamp": "2026-11-28T12:00:00.123456790Z",
+          "grader": "GraderReference(sha256:d45477fa93c2985ac9b37e1ec3e1b9f85d3e7e42a2f0df4d8636dd0ad30892d9)",
+          "eventId": "00000000-0000-4000-8000-000000000002"
+        },
+        {
+          "$type": "GradingCompletedEvent",
+          "record": {
+            "grader": "GraderReference(sha256:d45477fa93c2985ac9b37e1ec3e1b9f85d3e7e42a2f0df4d8636dd0ad30892d9)",
+            "state": "StateReference(sha256:1d826e3479fdd3853f784fb87b45856d14e3592831cb227131c0b933951e318f)",
+            "gradingStatus": "Incorrect",
+            "feedbackInformation": {
+              "$type": "LanguageMapBasedContent",
+              "languageMap": {
+                "$type": "LanguageMapMapBased",
+                "pMap": [
+                  [
+                    "English",
+                    "Feedback"
+                  ]
+                ]
+              }
+            },
+            "additionalData": null,
+            "gradingTime": "2026-11-28T12:00:00.123456791Z"
+          },
+          "eventId": "00000000-0000-4000-8000-000000000003"
+        }
+      ]
+    }
+  }
+}

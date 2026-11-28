@@ -1,0 +1,219 @@
+{
+  "format": "TurtleRecreateShapeInteractionFormat",
+  "historyJson": {
+    "events": {
+      "values": [
+        {
+          "$type": "AnswerChangedEvent",
+          "newState": {
+            "$type": "Expression",
+            "value": {
+              "$type": "ProgrammingStateBeExpression",
+              "expression": {
+                "$type": "BeStartProgram",
+                "startSequence": {
+                  "body": [
+                    {
+                      "$type": "BeFunctionCall",
+                      "target": {
+                        "$type": "StaticMethod",
+                        "definition": {
+                          "inputs": [
+                            {
+                              "name": {
+                                "$type": "BeEntityNamePartsBased",
+                                "languageMapWithPartsString": {
+                                  "$type": "LanguageMapUniversal",
+                                  "returnString": "arg1"
+                                }
+                              },
+                              "variableType": "Singleton(AnyType$)"
+                            }
+                          ],
+                          "outputs": null,
+                          "body": {
+                            "body": [
+                              {
+                                "$type": "BeSequence",
+                                "body": [],
+                                "sequenceInfo": {
+                                  "mustEvaluateTo": null
+                                }
+                              }
+                            ],
+                            "sequenceInfo": {
+                              "mustEvaluateTo": null
+                            }
+                          },
+                          "functionTypeInfo": {
+                            "isMethodInClass": {
+                              "name": {
+                                "$type": "BeEntityNamePartsBased",
+                                "languageMapWithPartsString": {
+                                  "$type": "LanguageMapUniversal",
+                                  "returnString": "turtle"
+                                }
+                              },
+                              "attributes": [],
+                              "methods": []
+                            },
+                            "isNamed": {
+                              "$type": "BeEntityNamePartsBased",
+                              "languageMapWithPartsString": {
+                                "$type": "LanguageMapUniversal",
+                                "returnString": "forward"
+                              }
+                            },
+                            "funcType": "StaticMethod"
+                          },
+                          "intrinsic": "Turtle"
+                        }
+                      },
+                      "parameterValueMap": [
+                        [
+                          {
+                            "name": {
+                              "$type": "BeEntityNamePartsBased",
+                              "languageMapWithPartsString": {
+                                "$type": "LanguageMapUniversal",
+                                "returnString": "arg1"
+                              }
+                            },
+                            "variableType": "Singleton(AnyType$)"
+                          },
+                          {
+                            "$type": "BeUseValue",
+                            "value": {
+                              "$type": "BeDataValueLiteral",
+                              "literalString": "100"
+                            },
+                            "contextIfKnown": null
+                          }
+                        ]
+                      ]
+                    },
+                    {
+                      "$type": "BeFunctionCall",
+                      "target": {
+                        "$type": "StaticMethod",
+                        "definition": {
+                          "inputs": [
+                            {
+                              "name": {
+                                "$type": "BeEntityNamePartsBased",
+                                "languageMapWithPartsString": {
+                                  "$type": "LanguageMapUniversal",
+                                  "returnString": "arg1"
+                                }
+                              },
+                              "variableType": "Singleton(AnyType$)"
+                            }
+                          ],
+                          "outputs": null,
+                          "body": {
+                            "body": [
+                              {
+                                "$type": "BeSequence",
+                                "body": [],
+                                "sequenceInfo": {
+                                  "mustEvaluateTo": null
+                                }
+                              }
+                            ],
+                            "sequenceInfo": {
+                              "mustEvaluateTo": null
+                            }
+                          },
+                          "functionTypeInfo": {
+                            "isMethodInClass": {
+                              "name": {
+                                "$type": "BeEntityNamePartsBased",
+                                "languageMapWithPartsString": {
+                                  "$type": "LanguageMapUniversal",
+                                  "returnString": "turtle"
+                                }
+                              },
+                              "attributes": [],
+                              "methods": []
+                            },
+                            "isNamed": {
+                              "$type": "BeEntityNamePartsBased",
+                              "languageMapWithPartsString": {
+                                "$type": "LanguageMapUniversal",
+                                "returnString": "forward"
+                              }
+                            },
+                            "funcType": "StaticMethod"
+                          },
+                          "intrinsic": "Turtle"
+                        }
+                      },
+                      "parameterValueMap": [
+                        [
+                          {
+                            "name": {
+                              "$type": "BeEntityNamePartsBased",
+                              "languageMapWithPartsString": {
+                                "$type": "LanguageMapUniversal",
+                                "returnString": "arg1"
+                              }
+                            },
+                            "variableType": "Singleton(AnyType$)"
+                          },
+                          {
+                            "$type": "BeUseValue",
+                            "value": {
+                              "$type": "BeDataValueLiteral",
+                              "literalString": "100"
+                            },
+                            "contextIfKnown": null
+                          }
+                        ]
+                      ]
+                    }
+                  ],
+                  "sequenceInfo": {
+                    "mustEvaluateTo": null
+                  }
+                }
+              }
+            }
+          },
+          "timestamp": "2026-11-28T12:00:00.123456789Z",
+          "updateImportance": "MAJOR",
+          "eventId": "00000000-0000-4000-8000-000000000001"
+        },
+        {
+          "$type": "GradingStartedEvent",
+          "state": "StateReference(sha256:e1b1db07252102b68b9c50f3c6ef85fbd115bef48c11483b44a5e457a3531363)",
+          "timestamp": "2026-11-28T12:00:00.123456790Z",
+          "grader": "GraderReference(sha256:9a1916388ddc5bd5796c266ce29951394570cfbee707955c667841f76b4f38c5)",
+          "eventId": "00000000-0000-4000-8000-000000000002"
+        },
+        {
+          "$type": "GradingCompletedEvent",
+          "record": {
+            "grader": "GraderReference(sha256:9a1916388ddc5bd5796c266ce29951394570cfbee707955c667841f76b4f38c5)",
+            "state": "StateReference(sha256:e1b1db07252102b68b9c50f3c6ef85fbd115bef48c11483b44a5e457a3531363)",
+            "gradingStatus": "Incorrect",
+            "feedbackInformation": {
+              "$type": "LanguageMapBasedContent",
+              "languageMap": {
+                "$type": "LanguageMapMapBased",
+                "pMap": [
+                  [
+                    "English",
+                    "Feedback"
+                  ]
+                ]
+              }
+            },
+            "additionalData": null,
+            "gradingTime": "2026-11-28T12:00:00.123456791Z"
+          },
+          "eventId": "00000000-0000-4000-8000-000000000003"
+        }
+      ]
+    }
+  }
+}

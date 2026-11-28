@@ -1,0 +1,561 @@
+{
+  "format": "ProgrammingExerciseFormat",
+  "historyJson": {
+    "events": {
+      "values": [
+        {
+          "$type": "AnswerChangedEvent",
+          "newState": {
+            "$type": "SnapModel",
+            "value": {
+              "model": {
+                "nodes": [
+                  {
+                    "$type": "Project",
+                    "element": {
+                      "tag": "project",
+                      "attributes": [
+                        {
+                          "name": "name",
+                          "rawValue": "fromBeExpression"
+                        },
+                        {
+                          "name": "app",
+                          "rawValue": "TurtleStitch 2.11, http://www.turtlestitch.org"
+                        },
+                        {
+                          "name": "version",
+                          "rawValue": "2"
+                        }
+                      ],
+                      "children": [
+                        {
+                          "$type": "Notes",
+                          "element": {
+                            "tag": "notes",
+                            "closing": "</notes>"
+                          }
+                        },
+                        {
+                          "$type": "Scenes",
+                          "element": {
+                            "tag": "scenes",
+                            "attributes": [
+                              {
+                                "name": "select",
+                                "rawValue": "1"
+                              }
+                            ],
+                            "children": [
+                              {
+                                "$type": "Scene",
+                                "element": {
+                                  "tag": "scene",
+                                  "attributes": [
+                                    {
+                                      "name": "name",
+                                      "rawValue": "fromBeExpression"
+                                    }
+                                  ],
+                                  "children": [
+                                    {
+                                      "$type": "Notes",
+                                      "element": {
+                                        "tag": "notes",
+                                        "closing": "</notes>"
+                                      }
+                                    },
+                                    {
+                                      "$type": "Hidden",
+                                      "element": {
+                                        "tag": "hidden",
+                                        "closing": "</hidden>"
+                                      }
+                                    },
+                                    {
+                                      "$type": "Headers",
+                                      "element": {
+                                        "tag": "headers",
+                                        "closing": "</headers>"
+                                      }
+                                    },
+                                    {
+                                      "$type": "Code",
+                                      "element": {
+                                        "tag": "code",
+                                        "closing": "</code>"
+                                      }
+                                    },
+                                    {
+                                      "$type": "Blocks",
+                                      "element": {
+                                        "tag": "blocks",
+                                        "closing": "</blocks>"
+                                      }
+                                    },
+                                    {
+                                      "$type": "Primitives",
+                                      "element": {
+                                        "tag": "primitives",
+                                        "closing": "</primitives>"
+                                      }
+                                    },
+                                    {
+                                      "$type": "Stage",
+                                      "element": {
+                                        "tag": "stage",
+                                        "attributes": [
+                                          {
+                                            "name": "name",
+                                            "rawValue": "Stage"
+                                          },
+                                          {
+                                            "name": "width",
+                                            "rawValue": "480"
+                                          },
+                                          {
+                                            "name": "height",
+                                            "rawValue": "360"
+                                          },
+                                          {
+                                            "name": "costume",
+                                            "rawValue": "0"
+                                          },
+                                          {
+                                            "name": "color",
+                                            "rawValue": "255,255,255,1"
+                                          },
+                                          {
+                                            "name": "tempo",
+                                            "rawValue": "60"
+                                          },
+                                          {
+                                            "name": "threadsafe",
+                                            "rawValue": "false"
+                                          },
+                                          {
+                                            "name": "penlog",
+                                            "rawValue": "false"
+                                          },
+                                          {
+                                            "name": "volume",
+                                            "rawValue": "100"
+                                          },
+                                          {
+                                            "name": "pan",
+                                            "rawValue": "0"
+                                          },
+                                          {
+                                            "name": "lines",
+                                            "rawValue": "round"
+                                          },
+                                          {
+                                            "name": "ternary",
+                                            "rawValue": "false"
+                                          },
+                                          {
+                                            "name": "hyperops",
+                                            "rawValue": "true"
+                                          },
+                                          {
+                                            "name": "codify",
+                                            "rawValue": "false"
+                                          },
+                                          {
+                                            "name": "inheritance",
+                                            "rawValue": "true"
+                                          },
+                                          {
+                                            "name": "sublistIDs",
+                                            "rawValue": "false"
+                                          },
+                                          {
+                                            "name": "id",
+                                            "rawValue": "6"
+                                          }
+                                        ],
+                                        "children": [
+                                          {
+                                            "$type": "Costumes",
+                                            "element": {
+                                              "tag": "costumes",
+                                              "children": [
+                                                {
+                                                  "$type": "ListValue",
+                                                  "element": {
+                                                    "tag": "list",
+                                                    "attributes": [
+                                                      {
+                                                        "name": "struct",
+                                                        "rawValue": "atomic"
+                                                      },
+                                                      {
+                                                        "name": "id",
+                                                        "rawValue": "7"
+                                                      }
+                                                    ],
+                                                    "closing": "</list>"
+                                                  }
+                                                }
+                                              ],
+                                              "closing": "</costumes>"
+                                            }
+                                          },
+                                          {
+                                            "$type": "Sounds",
+                                            "element": {
+                                              "tag": "sounds",
+                                              "children": [
+                                                {
+                                                  "$type": "ListValue",
+                                                  "element": {
+                                                    "tag": "list",
+                                                    "attributes": [
+                                                      {
+                                                        "name": "struct",
+                                                        "rawValue": "atomic"
+                                                      },
+                                                      {
+                                                        "name": "id",
+                                                        "rawValue": "8"
+                                                      }
+                                                    ],
+                                                    "closing": "</list>"
+                                                  }
+                                                }
+                                              ],
+                                              "closing": "</sounds>"
+                                            }
+                                          },
+                                          {
+                                            "$type": "Variables",
+                                            "element": {
+                                              "tag": "variables",
+                                              "closing": "</variables>"
+                                            }
+                                          },
+                                          {
+                                            "$type": "Blocks",
+                                            "element": {
+                                              "tag": "blocks",
+                                              "closing": "</blocks>"
+                                            }
+                                          },
+                                          {
+                                            "$type": "Scripts",
+                                            "element": {
+                                              "tag": "scripts",
+                                              "closing": "</scripts>"
+                                            }
+                                          },
+                                          {
+                                            "$type": "Sprites",
+                                            "element": {
+                                              "tag": "sprites",
+                                              "attributes": [
+                                                {
+                                                  "name": "select",
+                                                  "rawValue": "1"
+                                                }
+                                              ],
+                                              "children": [
+                                                {
+                                                  "$type": "Sprite",
+                                                  "element": {
+                                                    "tag": "sprite",
+                                                    "attributes": [
+                                                      {
+                                                        "name": "name",
+                                                        "rawValue": "Sprite"
+                                                      },
+                                                      {
+                                                        "name": "idx",
+                                                        "rawValue": "1"
+                                                      },
+                                                      {
+                                                        "name": "x",
+                                                        "rawValue": "0"
+                                                      },
+                                                      {
+                                                        "name": "y",
+                                                        "rawValue": "0"
+                                                      },
+                                                      {
+                                                        "name": "heading",
+                                                        "rawValue": "90"
+                                                      },
+                                                      {
+                                                        "name": "scale",
+                                                        "rawValue": "0.1"
+                                                      },
+                                                      {
+                                                        "name": "volume",
+                                                        "rawValue": "100"
+                                                      },
+                                                      {
+                                                        "name": "pan",
+                                                        "rawValue": "0"
+                                                      },
+                                                      {
+                                                        "name": "rotation",
+                                                        "rawValue": "1"
+                                                      },
+                                                      {
+                                                        "name": "draggable",
+                                                        "rawValue": "true"
+                                                      },
+                                                      {
+                                                        "name": "hidden",
+                                                        "rawValue": "true"
+                                                      },
+                                                      {
+                                                        "name": "costume",
+                                                        "rawValue": "0"
+                                                      },
+                                                      {
+                                                        "name": "color",
+                                                        "rawValue": "0,0,0,1"
+                                                      },
+                                                      {
+                                                        "name": "pen",
+                                                        "rawValue": "tip"
+                                                      },
+                                                      {
+                                                        "name": "id",
+                                                        "rawValue": "13"
+                                                      }
+                                                    ],
+                                                    "children": [
+                                                      {
+                                                        "$type": "Costumes",
+                                                        "element": {
+                                                          "tag": "costumes",
+                                                          "children": [
+                                                            {
+                                                              "$type": "ListValue",
+                                                              "element": {
+                                                                "tag": "list",
+                                                                "attributes": [
+                                                                  {
+                                                                    "name": "struct",
+                                                                    "rawValue": "atomic"
+                                                                  },
+                                                                  {
+                                                                    "name": "id",
+                                                                    "rawValue": "14"
+                                                                  }
+                                                                ],
+                                                                "closing": "</list>"
+                                                              }
+                                                            }
+                                                          ],
+                                                          "closing": "</costumes>"
+                                                        }
+                                                      },
+                                                      {
+                                                        "$type": "Sounds",
+                                                        "element": {
+                                                          "tag": "sounds",
+                                                          "children": [
+                                                            {
+                                                              "$type": "ListValue",
+                                                              "element": {
+                                                                "tag": "list",
+                                                                "attributes": [
+                                                                  {
+                                                                    "name": "struct",
+                                                                    "rawValue": "atomic"
+                                                                  },
+                                                                  {
+                                                                    "name": "id",
+                                                                    "rawValue": "15"
+                                                                  }
+                                                                ],
+                                                                "closing": "</list>"
+                                                              }
+                                                            }
+                                                          ],
+                                                          "closing": "</sounds>"
+                                                        }
+                                                      },
+                                                      {
+                                                        "$type": "Blocks",
+                                                        "element": {
+                                                          "tag": "blocks",
+                                                          "closing": "</blocks>"
+                                                        }
+                                                      },
+                                                      {
+                                                        "$type": "Variables",
+                                                        "element": {
+                                                          "tag": "variables",
+                                                          "closing": "</variables>"
+                                                        }
+                                                      },
+                                                      {
+                                                        "$type": "Scripts",
+                                                        "element": {
+                                                          "tag": "scripts",
+                                                          "children": [
+                                                            {
+                                                              "$type": "Script",
+                                                              "element": {
+                                                                "tag": "script",
+                                                                "attributes": [
+                                                                  {
+                                                                    "name": "x",
+                                                                    "rawValue": "156"
+                                                                  },
+                                                                  {
+                                                                    "name": "y",
+                                                                    "rawValue": "66"
+                                                                  }
+                                                                ],
+                                                                "children": [
+                                                                  {
+                                                                    "$type": "Block",
+                                                                    "element": {
+                                                                      "tag": "block",
+                                                                      "attributes": [
+                                                                        {
+                                                                          "name": "s",
+                                                                          "rawValue": "receiveGo"
+                                                                        }
+                                                                      ],
+                                                                      "closing": "</block>"
+                                                                    }
+                                                                  },
+                                                                  {
+                                                                    "$type": "Block",
+                                                                    "element": {
+                                                                      "tag": "block",
+                                                                      "attributes": [
+                                                                        {
+                                                                          "name": "s",
+                                                                          "rawValue": "forward"
+                                                                        }
+                                                                      ],
+                                                                      "children": [
+                                                                        {
+                                                                          "$type": "Literal",
+                                                                          "element": {
+                                                                            "tag": "l",
+                                                                            "children": [
+                                                                              {
+                                                                                "$type": "Text",
+                                                                                "raw": "100"
+                                                                              }
+                                                                            ],
+                                                                            "closing": "</l>"
+                                                                          }
+                                                                        }
+                                                                      ],
+                                                                      "closing": "</block>"
+                                                                    }
+                                                                  },
+                                                                  {
+                                                                    "$type": "Block",
+                                                                    "element": {
+                                                                      "tag": "block",
+                                                                      "attributes": [
+                                                                        {
+                                                                          "name": "s",
+                                                                          "rawValue": "forward"
+                                                                        }
+                                                                      ],
+                                                                      "children": [
+                                                                        {
+                                                                          "$type": "Literal",
+                                                                          "element": {
+                                                                            "tag": "l",
+                                                                            "children": [
+                                                                              {
+                                                                                "$type": "Text",
+                                                                                "raw": "100"
+                                                                              }
+                                                                            ],
+                                                                            "closing": "</l>"
+                                                                          }
+                                                                        }
+                                                                      ],
+                                                                      "closing": "</block>"
+                                                                    }
+                                                                  }
+                                                                ],
+                                                                "closing": "</script>"
+                                                              }
+                                                            }
+                                                          ],
+                                                          "closing": "</scripts>"
+                                                        }
+                                                      }
+                                                    ],
+                                                    "closing": "</sprite>"
+                                                  }
+                                                }
+                                              ],
+                                              "closing": "</sprites>"
+                                            }
+                                          }
+                                        ],
+                                        "closing": "</stage>"
+                                      }
+                                    },
+                                    {
+                                      "$type": "Variables",
+                                      "element": {
+                                        "tag": "variables",
+                                        "closing": "</variables>"
+                                      }
+                                    }
+                                  ],
+                                  "closing": "</scene>"
+                                }
+                              }
+                            ],
+                            "closing": "</scenes>"
+                          }
+                        },
+                        {
+                          "$type": "Creator",
+                          "element": {
+                            "tag": "creator",
+                            "children": [
+                              {
+                                "$type": "Text",
+                                "raw": "anonymous"
+                              }
+                            ],
+                            "closing": "</creator>"
+                          }
+                        },
+                        {
+                          "$type": "OriginalCreator",
+                          "element": {
+                            "tag": "origCreator",
+                            "closing": "</origCreator>"
+                          }
+                        },
+                        {
+                          "$type": "OriginalName",
+                          "element": {
+                            "tag": "origName",
+                            "closing": "</origName>"
+                          }
+                        }
+                      ],
+                      "closing": "</project>"
+                    }
+                  }
+                ]
+              }
+            }
+          },
+          "timestamp": "2026-11-28T12:00:00.123456789Z",
+          "updateImportance": "MAJOR",
+          "eventId": "00000000-0000-4000-8000-000000000001"
+        }
+      ]
+    }
+  }
+}

@@ -1,0 +1,19 @@
+{
+  "format": "CodeTaskToggleInteractionFormat",
+  "historyJson": {
+    "events": {
+      "values": [
+        {
+          "$type": "AnswerChangedEvent",
+          "newState": {
+            "isBeginnerMode": true,
+            "advancedCode": "// Definiere den Grenzwert einmal außerhalb von loop()\nint feuchtigkeitsGrenze = TODO_WERT;\n\nvoid loop() {\n  // 1) Messen\n  digitalWrite(SENSOR_POWER_PIN, TODO_HIGH_LOW);\n  delay(TODO_STABILISIERUNG_MS);\n  int messwert = analogRead(SENSOR_PIN);\n  digitalWrite(SENSOR_POWER_PIN, TODO_HIGH_LOW);\n\n  // 2) Entscheiden und handeln\n  if (TODO_BEDINGUNG) {\n    digitalWrite(PUMP_PIN, TODO_HIGH_LOW);\n    delay(TODO_GIESS_DAUER_MS);\n    digitalWrite(PUMP_PIN, TODO_HIGH_LOW);\n  } else {\n    Serial.println(TODO_FEUCHT_TEXT);\n  }\n\n  // 3) Wartezeit bis zur nächsten Messung\n  delay(TODO_WARTEZEIT_MS);\n}"
+          },
+          "timestamp": "2026-11-28T12:00:00.123456789Z",
+          "updateImportance": "MAJOR",
+          "eventId": "00000000-0000-4000-8000-000000000001"
+        }
+      ]
+    }
+  }
+}

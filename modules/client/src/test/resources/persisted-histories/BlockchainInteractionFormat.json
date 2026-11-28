@@ -1,0 +1,31 @@
+{
+  "format": "BlockchainInteractionFormat",
+  "historyJson": {
+    "events": {
+      "values": [
+        {
+          "$type": "AnswerChangedEvent",
+          "newState": {
+            "blocks": [
+              {
+                "data": "00: Krümelmonster, Elmo, Oskar und Bert erhalten je 10 HP.\n01: Krümelmonster → Elmo: 4 HP"
+              },
+              {
+                "data": "02: Elmo → Oskar: 6 HP\n03: Oskar → Bert: 2 HP"
+              },
+              {
+                "data": "04: Krümelmonster → Bert: 5 HP\n05: Krümelmonster → Oskar: 1 HP"
+              },
+              {
+                "data": "06: Bert → Elmo: 12 HP"
+              }
+            ]
+          },
+          "timestamp": "2026-11-28T12:00:00.123456789Z",
+          "updateImportance": "MAJOR",
+          "eventId": "00000000-0000-4000-8000-000000000001"
+        }
+      ]
+    }
+  }
+}

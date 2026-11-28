@@ -1,0 +1,68 @@
+{
+  "format": "TextInputWithLlmGradingAndScaffoldingFormat",
+  "historyJson": {
+    "events": {
+      "values": [
+        {
+          "$type": "AnswerChangedEvent",
+          "newState": "",
+          "timestamp": "2026-11-28T12:00:00.123456789Z",
+          "updateImportance": "MAJOR",
+          "eventId": "00000000-0000-4000-8000-000000000001"
+        },
+        {
+          "$type": "GradingStartedEvent",
+          "state": "StateReference(sha256:12ae32cb1ec02d01eda3581b127c1fee3b0dc53572ed6baf239721a03d82e126)",
+          "timestamp": "2026-11-28T12:00:00.123456790Z",
+          "grader": "GraderReference(sha256:195e4b95d5396a552d9c4ab43293a5d618a7ebc2b2e64681c9a4ab650c8b707d)",
+          "eventId": "00000000-0000-4000-8000-000000000002"
+        },
+        {
+          "$type": "GradingCompletedEvent",
+          "record": {
+            "grader": "GraderReference(sha256:195e4b95d5396a552d9c4ab43293a5d618a7ebc2b2e64681c9a4ab650c8b707d)",
+            "state": "StateReference(sha256:12ae32cb1ec02d01eda3581b127c1fee3b0dc53572ed6baf239721a03d82e126)",
+            "gradingStatus": "Incorrect",
+            "feedbackInformation": {
+              "$type": "LanguageMapBasedContent",
+              "languageMap": {
+                "$type": "LanguageMapMapBased",
+                "pMap": [
+                  [
+                    "English",
+                    "Feedback"
+                  ]
+                ]
+              }
+            },
+            "additionalData": null,
+            "gradingTime": "2026-11-28T12:00:00.123456791Z"
+          },
+          "eventId": "00000000-0000-4000-8000-000000000003"
+        },
+        {
+          "$type": "ScaffoldingCompletedEvent",
+          "record": {
+            "state": "StateReference(sha256:12ae32cb1ec02d01eda3581b127c1fee3b0dc53572ed6baf239721a03d82e126)",
+            "scaffoldingStatus": {
+              "$type": "ScaffoldingFeedback",
+              "feedback": {
+                "$type": "LanguageMapMapBased",
+                "pMap": [
+                  [
+                    "English",
+                    "Hint"
+                  ]
+                ]
+              }
+            },
+            "scaffoldingEntity": "LlmEntity",
+            "additionalInformation": null,
+            "scaffoldingTime": "2026-11-28T12:00:00.123456792Z"
+          },
+          "eventId": "00000000-0000-4000-8000-000000000004"
+        }
+      ]
+    }
+  }
+}
