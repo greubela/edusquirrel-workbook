@@ -1,5 +1,7 @@
 package it.evadid.homepage.workbook
 
+import it.evadid.core.util.UtcTime
+
 import it.evadid.core.datastructures.language.WorkbookContent
 
 import it.evadid.core.datastructures.language.AppLanguage.{Java, Python, SnapLanguage}
@@ -125,7 +127,7 @@ class InteractionFeedbackViewsSpec extends EditorDomSuite {
     val test = grader("visible")
     val exercise = ProgrammingExercise("feedback-current-answer", Some(ProgrammingTestSuite(List(test))))
     inOpenWorkbook(exercise) {
-      fullInfo.interactions.updateHistory(exercise)(_.addGrading(GradingResult(test, fullInfo.interactions.currentValue(exercise), GradingStatus.Correct, Some(WorkbookContent(LanguageMap.universalMap[HumanLanguage]("FEEDBACK-FOR-OLD-ANSWER"))), None, java.time.LocalDateTime.now())))
+      fullInfo.interactions.updateHistory(exercise)(_.addGrading(GradingResult(test, fullInfo.interactions.currentValue(exercise), GradingStatus.Correct, Some(WorkbookContent(LanguageMap.universalMap[HumanLanguage]("FEEDBACK-FOR-OLD-ANSWER"))), None, UtcTime.now())))
       val sidebar = InteractionInfoSidebar(fullInfo, exercise,GradingReporter(exercise, fullInfo.interactions)).getDomElement()
       val close = mount(sidebar)
       try {

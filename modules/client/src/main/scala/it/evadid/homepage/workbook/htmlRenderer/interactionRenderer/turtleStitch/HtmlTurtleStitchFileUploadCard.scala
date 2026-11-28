@@ -1,5 +1,7 @@
 package it.evadid.homepage.workbook.htmlRenderer.interactionRenderer.turtleStitch
 
+import it.evadid.core.util.UtcTime
+
 import it.evadid.homepage.control.model.FullInfo
 
 import it.evadid.workbook.abstractions.InteractionFormat.TurtleProjectFormat
@@ -38,7 +40,7 @@ private[turtleStitch] case class HtmlTurtleStitchFileUploadCard(fullInfo: FullIn
   private def onFileReadSuccessfully(bytes: Array[Byte]): Unit = {
     println("file read successfully, content has " + bytes.length + " bytes!")
     TurtleStitchProjectState.parseFromBytes(bytes).match {
-      case Success(newState) => fullInfo.interactions.setStateFromUserInteraction(workbookInteraction, newState, UpdateImportance.MAJOR, LocalDateTime.now())
+      case Success(newState) => fullInfo.interactions.setStateFromUserInteraction(workbookInteraction, newState, UpdateImportance.MAJOR, UtcTime.now())
       case Failure(err) => println("HtmlTurtleStitchFileUploadCardRenderer::onFileReadSuccessfully error: " + err.getMessage)
     }
   }

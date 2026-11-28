@@ -1,5 +1,7 @@
 package it.evadid.server.commandHandler.sql
 
+import it.evadid.core.util.UtcTime
+
 import it.evadid.core.datastructures.user.{AllUserInfo, User, UserConfig, UserCredentials}
 import it.evadid.core.datastructures.user.User.*
 import it.evadid.core.datastructures.user.UserTokenInfo.SignedToken
@@ -77,7 +79,7 @@ object SqlUserCommands {
       case Some(stored) if submitted.token != stored.token =>
         logger.logWarn("Dismissing Token: Token Invalid!")
         false
-      case Some(stored) if stored.expires.isBefore(LocalDateTime.now()) =>
+      case Some(stored) if stored.expires.isBefore(UtcTime.now()) =>
         logger.logWarn(s"Dismissing Token: Token was expired (expired at ${stored.expires})!")
         false
       case Some(_) => true

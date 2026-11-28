@@ -1,5 +1,7 @@
 package it.evadid.workbook.control
 
+import it.evadid.core.util.UtcTime
+
 import it.evadid.workbook.model.{InteractionInfo, InteractionScope}
 
 import it.evadid.core.datastructures.language.LanguageMapContentId
@@ -74,7 +76,7 @@ class InteractionControllerSpec extends FunSuite {
     val observed = State(Vector.empty[String])
     bound.observable.addObserver(value => observed.update(_ :+ value))
     bound.set("typed")
-    answers.setStateFromUserInteraction(essay, "restored", MAJOR, LocalDateTime.now().plusSeconds(5))
+    answers.setStateFromUserInteraction(essay, "restored", MAJOR, UtcTime.now().plusSeconds(5))
     assertEquals(bound.now(), "restored")
     assertEquals(observed.now(), Vector("a", "typed", "restored"))
   }
@@ -149,7 +151,7 @@ class InteractionControllerSpec extends FunSuite {
   private def connected(store: GatedHistoryStore, interactions: WorkbookInteractionElement[? <: InteractionFormat]*) =
     store.controllerFor(interactions*)
   private def seed(store: GatedHistoryStore, interaction: TextInteraction, answer: String): Unit = store.seed(interaction,
-    InteractionVariableHistory.empty[Text].addEvent(AnswerChangedEvent(answer, LocalDateTime.now().plusDays(1), MAJOR)))
+    InteractionVariableHistory.empty[Text].addEvent(AnswerChangedEvent(answer, UtcTime.now().plusDays(1), MAJOR)))
 
   private def confirmed(answers: InteractionController, interaction: TextInteraction): Int =
     answers.report(interaction).destinationsWithSufficientWrites.size
@@ -219,7 +221,7 @@ class InteractionControllerSpec extends FunSuite {
     val store = GatedHistoryStore(context)
     val answers = connected(store, pixels)
     val resized = InteractionVariableHistory[BinaryPixelInteractionFormat.type](InteractionEvents(Set(
-      AnswerChangedEvent[BinaryPixelInteractionFormat.type](BinaryPixelImage.blank(3, 3), LocalDateTime.now(), MAJOR))))
+      AnswerChangedEvent[BinaryPixelInteractionFormat.type](BinaryPixelImage.blank(3, 3), UtcTime.now(), MAJOR))))
     store.values.set(Map(SyncContext.serializer.serialize(context.toSyncContext(pixels.keyForSerialization)) ->
       InteractionHistoryJson.fromHistory(BinaryPixelInteractionFormat, resized).serialized))
     answers.fetch(pixels, forceFlush = true).map(_ => assertEquals(answers.currentValue(pixels), BinaryPixelImage.blank(2, 2)))

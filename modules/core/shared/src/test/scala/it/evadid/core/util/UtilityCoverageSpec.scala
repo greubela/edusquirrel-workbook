@@ -56,7 +56,7 @@ class UtilityCoverageSpec extends FunSuite {
     assertEquals(InfoUtil.datetimeFormattedForDb(fixed), "2024-02-03 04:05:06")
     assertEquals(InfoUtil.datetimeFormattedForFilenames(fixed), "2024-02-03_04-05-06")
     assertEquals(InfoUtil.downloadName("Würfel/Aufgabe 1", fixed), "2024-02-03_04-05-06_Wuerfel_Aufgabe_1")
-    val now = LocalDateTime.now()
+    val now = UtcTime.now()
     assertEquals(InfoUtil.datetimeFormattedForHumans(now), f"${now.getHour}%02d:${now.getMinute}%02d")
     val previousYear = now.minusYears(1).withMonth(2).withDayOfMonth(3).withHour(4).withMinute(5)
     assertEquals(InfoUtil.datetimeFormattedForHumans(previousYear), f"04:05 (03.02.${previousYear.getYear % 100}%02d)")

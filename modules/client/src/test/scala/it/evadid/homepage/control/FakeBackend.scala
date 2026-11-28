@@ -1,5 +1,7 @@
 package it.evadid.homepage.control
 
+import it.evadid.core.util.UtcTime
+
 import com.raquo.laminar.api.L.Var
 import it.evadid.distribution.command.{ExecutionCommand, ExecutionCommandFactory, SerializedException}
 import it.evadid.distribution.formats.ExecutionClientResponse
@@ -25,7 +27,7 @@ final class FakeBackend {
   /** Answers `factory` commands with `answer(request)`; a failed future becomes an error response. */
   def answer[I: ReadWriter, O: ReadWriter](factory: ExecutionCommandFactory[I, O])(answer: I => Future[O]): Unit = {
     def handle(command: ExecutionCommand): Future[ExecutionClientResponse] = {
-      val now = LocalDateTime.now()
+      val now = UtcTime.now()
       val stamps = ExecutionClientResponseTimestamps(now, now, now)
       def respond(outcome: scala.util.Try[O]): ExecutionClientResponse = outcome match {
         case scala.util.Success(value) => ExecutionClientResponse.forValue(stamps, value, command)

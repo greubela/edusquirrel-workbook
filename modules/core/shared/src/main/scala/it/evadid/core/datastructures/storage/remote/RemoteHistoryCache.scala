@@ -1,5 +1,7 @@
 package it.evadid.core.datastructures.storage.remote
 
+import it.evadid.core.util.UtcTime
+
 import it.evadid.core.datastructures.state.State
 import it.evadid.core.datastructures.storage.remote.RemoteHistoryCache.*
 import it.evadid.util.logging.derived.SyncLogger
@@ -59,7 +61,7 @@ final class RemoteHistoryCache[K, F <: InteractionFormat, RW <: RemoteHistoryRea
   def mergeLocal(histories: Map[K, History]): Unit = state.update(_.withLocalHistories(histories))
 
   /** Freshness is measured by successful tail-read completion, independently of event timestamps and write acknowledgements. */
-  def ensureMaxAge(keys: Set[K], maximumAcceptableAge: LocalDateTime = LocalDateTime.now(),
+  def ensureMaxAge(keys: Set[K], maximumAcceptableAge: LocalDateTime = UtcTime.now(),
       forceFlush: Boolean = false): Future[Unit] = attempt {
     if forceFlush then flush(true)
     val current = state.now()
@@ -123,7 +125,7 @@ final class RemoteHistoryCache[K, F <: InteractionFormat, RW <: RemoteHistoryRea
       }
       cache.reader.flush(syncLogger, forceFlush)
       pending.map { response =>
-        val completed = LocalDateTime.now()
+        val completed = UtcTime.now()
         val received = keys.map { key =>
           val bounded = response.getOrElse(key, Nil).filter(event =>
             starting.forall(from => !event.timestamp.isBefore(from)) && !event.timestamp.isAfter(until))

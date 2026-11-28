@@ -1,5 +1,7 @@
 package it.evadid.workbook.control
 
+import it.evadid.core.util.UtcTime
+
 import it.evadid.core.datastructures.state.State
 import it.evadid.distribution.command.SerializedException
 import it.evadid.workbook.abstractions.{InteractionFormat, WorkbookInteractionElement}
@@ -92,7 +94,7 @@ final class InteractionScaffoldingAndGradingControl[F <: InteractionFormat](targ
   }
 
   private def recordGradingStart(selected: Seq[Grader], state: InteractionStateType): Unit = {
-    val timestamp = LocalDateTime.now()
+    val timestamp = UtcTime.now()
     target.publish(history => selected.foldLeft(history)((current, grader) => current.addEvent(GradingStartedEvent[F](state, timestamp, grader))))
   }
 
@@ -119,7 +121,7 @@ final class InteractionScaffoldingAndGradingControl[F <: InteractionFormat](targ
   private def requestHint(forState: InteractionStateType): Future[Hint] = target.interaction.scaffoldingElement match {
     case None => Future.failed(SerializedException("Cannot calculate scaffolding on an interaction without a scaffolder"))
     case Some(scaffolder) =>
-      target.publish(_.addEvent(ScaffoldingStartedEvent[F](forState, LocalDateTime.now(), scaffolder.scaffoldingEntity)))
+      target.publish(_.addEvent(ScaffoldingStartedEvent[F](forState, UtcTime.now(), scaffolder.scaffoldingEntity)))
       scaffolder.generateFeedbackSafe(forState, evidenceFor(forState), target.execution)
   }
 

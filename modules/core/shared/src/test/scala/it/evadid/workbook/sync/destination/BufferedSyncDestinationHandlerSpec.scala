@@ -1,5 +1,7 @@
 package it.evadid.workbook.sync.destination
 
+import it.evadid.core.util.UtcTime
+
 import it.evadid.core.datastructures.state.State
 import it.evadid.util.logging.BasicLogger
 import it.evadid.util.logging.derived.SyncLogger
@@ -55,7 +57,7 @@ class BufferedSyncDestinationHandlerSpec extends FunSuite {
     val reads = State(List.empty[UsageContext])
     val storeResult = State[() => Future[SyncSuccess[EventId]]](() => Future.successful(SyncSuccess.emptyNow()))
     val readResult = State[UsageContext => Future[FetchResponse[SyncContext, String]]](ctx =>
-      Future.successful(FetchResponse.fromMap(LocalDateTime.now(), Map(ctx.toSyncContext("answer") -> ctx.userId))))
+      Future.successful(FetchResponse.fromMap(UtcTime.now(), Map(ctx.toSyncContext("answer") -> ctx.userId))))
     def storeHistoryJson(key: SyncContext, json: String)(implicit ec: ExecutionContext) = storeHistoriesJson(Map(key -> json))
     override def storeHistoriesJson(values: Map[SyncContext, String])(implicit ec: ExecutionContext) = {
       writes.update(_ :+ values)
@@ -120,7 +122,7 @@ class BufferedSyncDestinationHandlerSpec extends FunSuite {
     val buffered = destination.toBuffered
     val failure = IllegalStateException("unreachable")
     destination.readResult.set(ctx => if ctx == context then Future.failed(failure)
-      else Future.successful(FetchResponse.fromMap(LocalDateTime.now(), Map(ctx.toSyncContext("answer") -> "ok"))))
+      else Future.successful(FetchResponse.fromMap(UtcTime.now(), Map(ctx.toSyncContext("answer") -> "ok"))))
     val failed = buffered.readHistoriesJson(context)
     val good = buffered.readHistoriesJson(context.copy(userId = "other"))
     buffered.flush(true)
@@ -171,7 +173,7 @@ class BufferedSyncDestinationHandlerSpec extends FunSuite {
         super.storeHistoriesJson(values).map { success => committed.update(_ ++ values); success }
       override def readHistoriesJson(ctx: UsageContext)(implicit ec: ExecutionContext) = {
         reads.update(_ :+ ctx)
-        Future.successful(FetchResponse.fromMap(LocalDateTime.now(), committed.now()))
+        Future.successful(FetchResponse.fromMap(UtcTime.now(), committed.now()))
       }
     }
     val (started, gate) = gateStores(destination)
@@ -323,7 +325,7 @@ class BufferedSyncDestinationHandlerSpec extends FunSuite {
   test("a range read over raw stored values discards an unreadable record and returns the others") {
     val destination = new Destination
     val broken = context.toSyncContext("broken")
-    destination.readResult.set(ctx => Future.successful(FetchResponse.fromMap(LocalDateTime.now(),
+    destination.readResult.set(ctx => Future.successful(FetchResponse.fromMap(UtcTime.now(),
       Map(key -> saved("kept"), broken -> "{\"not\": \"a history\"}"))))
     val from = LocalDateTime.of(2026, 1, 1, 0, 0)
     destination.readHistoriesInRange(context, Seq(key, broken), from, from.plusDays(1), EventSyncStrategy.SYNC_EVERYTHING).map { read =>

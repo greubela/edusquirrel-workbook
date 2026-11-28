@@ -1,5 +1,7 @@
 package it.evadid.workbook.interactions.slideshow
 
+import it.evadid.core.util.UtcTime
+
 import it.evadid.workbook.support.OfflineController
 
 import it.evadid.core.datastructures.language.LanguageMapContentId
@@ -47,6 +49,6 @@ class SlideshowGraderSpec extends FunSuite {
     intercept[IllegalArgumentException](exercise.validateState(exercise.defaultValue.copy(allPanels = Seq.empty)))
     val other = slide(8).asRef
     intercept[IllegalArgumentException](exercise.validateState(exercise.defaultValue.copy(events = Set(
-      SlideshowState.SlideshowProceededEvent(other, other, java.time.LocalDateTime.now())))))
+      SlideshowState.SlideshowProceededEvent(other, other, UtcTime.now())))))
   }
 }

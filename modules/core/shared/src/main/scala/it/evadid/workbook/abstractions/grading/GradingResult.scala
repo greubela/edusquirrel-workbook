@@ -1,5 +1,7 @@
 package it.evadid.workbook.abstractions.grading
 
+import it.evadid.core.util.UtcTime
+
 import it.evadid.core.datastructures.language.AppLanguage.HumanLanguage
 import it.evadid.core.datastructures.language.{LanguageMap, LanguageMapContentId, WorkbookContent}
 import it.evadid.core.util.io.serializer.DefaultSerializer.given
@@ -48,7 +50,7 @@ object GradingResult {
   def apply[T, GA](grader: WorkbookInteractionGrader[T, GA],
                    gradedState: T,
                    gradingStatus: GradingStatus): GradingResult[T, GA] = {
-    new GradingResult[T, GA](grader, gradedState, gradingStatus, None, None, LocalDateTime.now())
+    new GradingResult[T, GA](grader, gradedState, gradingStatus, None, None, UtcTime.now())
   }
 
   def apply[T, GA](grader: WorkbookInteractionGrader[T, GA],
@@ -57,7 +59,7 @@ object GradingResult {
                    feedbackInformation: LanguageMap[HumanLanguage],
                    additionalData: Option[GA] ,
                   ): GradingResult[T, GA] = {
-    new GradingResult(grader, gradedState, gradingStatus, Some(WorkbookContent(feedbackInformation)), additionalData, LocalDateTime.now())
+    new GradingResult(grader, gradedState, gradingStatus, Some(WorkbookContent(feedbackInformation)), additionalData, UtcTime.now())
   }
 
 
@@ -68,7 +70,7 @@ object GradingResult {
                    feedbackInformation: LanguageMapContentId ,
                    additionalData: Option[GA] ,
                   ): GradingResult[T, GA] = {
-   new GradingResult(grader, gradedState, gradingStatus, Some(WorkbookContent(feedbackInformation)), additionalData, LocalDateTime.now())
+   new GradingResult(grader, gradedState, gradingStatus, Some(WorkbookContent(feedbackInformation)), additionalData, UtcTime.now())
   }
 
 

@@ -1,5 +1,7 @@
 package it.evadid.distribution.commandTypes
 
+import it.evadid.core.util.UtcTime
+
 import it.evadid.sql.BackendDatabase
 import it.evadid.distribution.clients.LocalExecutionClient
 import it.evadid.distribution.command.{ExecutionCommand, ExecutionCommandFactory, SerializedException}
@@ -364,9 +366,9 @@ class CommandPayloadCodecsSpec extends FunSuite {
     import it.evadid.workbook.session.{AllWorkbookInfo, SessionData, WorkbookConfig}
     val learner = User("private name", "private-id", "private@example.invalid")
     val history = InteractionHistoryJson.fromHistory(TextInteractionFormat, InteractionVariableHistory.empty[TextInteractionFormat.type]
-      .addState(InteractionVariableState("private answer", UpdateImportance.MAJOR, java.time.LocalDateTime.now())))
+      .addState(InteractionVariableState("private answer", UpdateImportance.MAJOR, UtcTime.now())))
     val workbook = Workbook("workbook", WorkbookMetadata(Set.empty, Set.empty, LanguageMapContentId("test/title"), List(AppLanguage.English)), Seq.empty)
-    val session = SessionData(java.time.LocalDateTime.now(), Map(UsageContext("p", "workbook", learner.id).toSyncContext("a") -> history),
+    val session = SessionData(UtcTime.now(), Map(UsageContext("p", "workbook", learner.id).toSyncContext("a") -> history),
       learner, None, AllWorkbookInfo(workbook, WorkbookConfig(None), Map.empty))
     val logged = ExecutionCommand(SubmissionCommands.submitSessionCommand.name, writeJs(SubmissionCommands.SubmitSessionEvent(session)))
       .stripPrivacySensitiveInformation()

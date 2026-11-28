@@ -1,5 +1,7 @@
 package it.evadid.workbook.interactions.choice
 
+import it.evadid.core.util.UtcTime
+
 import it.evadid.core.datastructures.language.{LanguageMapContentId, WorkbookContent}
 import it.evadid.workbook.abstractions.InteractionFormat.ChoiceInteractionFormat
 import it.evadid.workbook.abstractions.WorkbookInteractionElement
@@ -28,7 +30,7 @@ case class WorkbookContentChoiceInteraction(elementId: String, config: ChoiceCon
   /** Indices of the selected options that are graded incorrect. */
   override def wrongParts(state: ChoiceState): Set[Int] = ChoiceGrader.wrongSelections(options, state)
 
-  def select(state: ChoiceState, index: Int, selected: Boolean, timestamp: LocalDateTime = LocalDateTime.now()): ChoiceState = {
+  def select(state: ChoiceState, index: Int, selected: Boolean, timestamp: LocalDateTime = UtcTime.now()): ChoiceState = {
     validateState(state)
     require(options.indices.contains(index), "Choice index is outside the exercise")
     val option = options(index)

@@ -1,5 +1,7 @@
 package it.evadid.core.datastructures.chat
 
+import it.evadid.core.util.UtcTime
+
 import it.evadid.core.datastructures.chat.SenderRole.USER
 import it.evadid.core.datastructures.language.AppLanguage.HumanLanguage
 import it.evadid.core.util.io.Serializer
@@ -19,7 +21,7 @@ case class MessengerModel(messages: Seq[Message]) derives ReadWriter{
     MessengerModel(newMessages)
   }
 
-  def addMessage(text: String, author: ChatParticipant, timestamp: LocalDateTime = LocalDateTime.now()): MessengerModel =
+  def addMessage(text: String, author: ChatParticipant, timestamp: LocalDateTime = UtcTime.now()): MessengerModel =
     addMessage(Message(text, author, timestamp))
 
 }
@@ -39,13 +41,13 @@ object MessengerModel {
   val pFallbackStudent = ChatParticipant("Student", "student", USER, Some("ST"))
 
   // may not be vals because of the implicit timestamp!
-  def prefaceExercise = Message("@assistant: the current exercise reads as follows:", pWorkbook, LocalDateTime.now())
+  def prefaceExercise = Message("@assistant: the current exercise reads as follows:", pWorkbook, UtcTime.now())
 
-  def prefaceStudentAnswer = Message("@assistant: the student's answer reads as follows. Note that the student might not have finished typing. In this case, just ask whether there are any questions:", pWorkbook, LocalDateTime.now())
+  def prefaceStudentAnswer = Message("@assistant: the student's answer reads as follows. Note that the student might not have finished typing. In this case, just ask whether there are any questions:", pWorkbook, UtcTime.now())
 
-  def prefaceGuidelines = Message("@assistant: the teacher explained the reasoning behind the exercise as follows to you:", pWorkbook, LocalDateTime.now())
+  def prefaceGuidelines = Message("@assistant: the teacher explained the reasoning behind the exercise as follows to you:", pWorkbook, UtcTime.now())
 
-  def langHint(lang: HumanLanguage) = Message(s"@assistant: Please provide feedback to the student. Do so in ${lang.name} or the language the student used last!", pWorkbook, LocalDateTime.now())
+  def langHint(lang: HumanLanguage) = Message(s"@assistant: Please provide feedback to the student. Do so in ${lang.name} or the language the student used last!", pWorkbook, UtcTime.now())
 
   def getScaffoldingInitMessage(pStudent: ChatParticipant, exerciseText: String, studentAnswer: String, scaffoldingHints: Seq[String], curLanguage: HumanLanguage): MessengerModel = {
     val exerciseMsgs = List(prefaceExercise, Message(exerciseText, pTeacher))

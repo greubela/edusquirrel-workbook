@@ -1,5 +1,7 @@
 package it.evadid.server
 
+import it.evadid.core.util.UtcTime
+
 import it.evadid.core.datastructures.user.UserTokenInfo.SignedToken
 import it.evadid.core.datastructures.user.{User, UserTokenInfo}
 import it.evadid.core.util.io.serializer.DefaultSerializer
@@ -40,7 +42,7 @@ object AuthHandling {
       case Success(jsonClaims) => try {
         val parsedUserInfo = upickle.default.read[UserTokenInfo](jsonClaims.toString)
 
-        if (parsedUserInfo.expiresAt.isBefore(LocalDateTime.now())) {
+        if (parsedUserInfo.expiresAt.isBefore(UtcTime.now())) {
           logger.logWarn(s"Dismissed token because it expired at ${parsedUserInfo.expiresAt}!")
           false
         }
@@ -67,7 +69,7 @@ object AuthHandling {
 
 
   def createToken(user: User): SignedToken = {
-    val now = LocalDateTime.now()
+    val now = UtcTime.now()
     val tokenInfo = UserTokenInfo(user, now, now.plusYears(1))
     val claim = tokenInfo.toJson
     val token = JwtJson.encode(claim, serverSecret, algo)

@@ -14,7 +14,8 @@ object InfoUtil {
 
   def datetimeFormattedForLog(dateTime: Option[LocalDateTime]): String = dateTime.map(datetimeFormattedForLog).getOrElse("[no time]")
 
-  def datetimeFormattedForFilenames(dateTime: LocalDateTime = LocalDateTime.now()): String = dateTime.format(filenameFormat)
+  /** `dateTime` (UTC) in the viewer's local time. */
+  def datetimeFormattedForFilenames(dateTime: LocalDateTime = UtcTime.now()): String = UtcTime.toLocal(dateTime).format(filenameFormat)
 
   private val transliterations = Map('ä' -> "ae", 'ö' -> "oe", 'ü' -> "ue", 'Ä' -> "Ae", 'Ö' -> "Oe", 'Ü' -> "Ue", 'ß' -> "ss",
     'å' -> "aa", 'Å' -> "Aa", 'æ' -> "ae", 'Æ' -> "Ae", 'ø' -> "oe", 'Ø' -> "Oe")
@@ -30,18 +31,21 @@ object InfoUtil {
   /** The name of every download, without its extension: when it was made, then what it holds
     * (for example `2026-11-27_13-05-09_brick-task`).
     */
-  def downloadName(subject: String, dateTime: LocalDateTime = LocalDateTime.now()): String =
+  def downloadName(subject: String, dateTime: LocalDateTime = UtcTime.now()): String =
     s"${datetimeFormattedForFilenames(dateTime)}_${fileNameSafe(subject)}"
 
-  def datetimeFormattedForHumans(dateTime: LocalDateTime = LocalDateTime.now()): String = {
-    val today = LocalDateTime.now()
-    if (dateTime.getYear != today.getYear) dateTime.format(otherYearFormat)
-    else if (dateTime.toLocalDate != today.toLocalDate) dateTime.format(otherDayFormat)
-    else dateTime.format(timeFormat)
+  /** `dateTime` (UTC) in the viewer's local time, shortened relative to today. */
+  def datetimeFormattedForHumans(dateTime: LocalDateTime = UtcTime.now()): String = {
+    val local = UtcTime.toLocal(dateTime)
+    val today = UtcTime.toLocal(UtcTime.now())
+    if (local.getYear != today.getYear) local.format(otherYearFormat)
+    else if (local.toLocalDate != today.toLocalDate) local.format(otherDayFormat)
+    else local.format(timeFormat)
   }
 
-  def datetimeFormattedForLog(dateTime: LocalDateTime = LocalDateTime.now()): String = dateTime.format(logFormat)
+  /** Logs keep UTC. */
+  def datetimeFormattedForLog(dateTime: LocalDateTime = UtcTime.now()): String = dateTime.format(logFormat)
 
-  def datetimeFormattedForDb(dateTime: LocalDateTime = LocalDateTime.now()): String = logFormat.format(dateTime)
+  def datetimeFormattedForDb(dateTime: LocalDateTime = UtcTime.now()): String = logFormat.format(dateTime)
 
 }

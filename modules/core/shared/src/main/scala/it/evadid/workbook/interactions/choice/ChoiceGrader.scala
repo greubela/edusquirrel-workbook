@@ -1,5 +1,7 @@
 package it.evadid.workbook.interactions.choice
 
+import it.evadid.core.util.UtcTime
+
 import it.evadid.core.datastructures.language.WorkbookContent
 import it.evadid.workbook.abstractions.FeedbackEntity
 import it.evadid.workbook.abstractions.grading.*
@@ -26,7 +28,7 @@ case class ChoiceGrader(options: Seq[ChoiceOptionWorkbookContent], allowMultiple
       else if selected.toSet == expected then GradingStatus.Correct
       else GradingStatus.PartiallyCorrect
     val feedback = if !allowMultiple then grades.headOption.map(g => WorkbookContent(g.feedbackIfChosen)) else None
-    GradingResult(this, state, status, feedback, None, LocalDateTime.now())
+    GradingResult(this, state, status, feedback, None, UtcTime.now())
   }(using context.futureExecutionContext)
 }
 

@@ -1,5 +1,7 @@
 package it.evadid.distribution.clients
 
+import it.evadid.core.util.UtcTime
+
 import it.evadid.core.datastructures.user.UserTokenInfo.SignedToken
 import it.evadid.distribution.command.*
 import it.evadid.distribution.formats.ExecutionClientResponse
@@ -80,7 +82,7 @@ private case class JsRemoteExecutionClient(hostname: String, port: Int, token: O
   override protected def sendTo(logger: Logger, ip: String, port: Int, executionCommand: ExecutionCommand): Future[ExecutionClientResponse] =
     if !executionCommand.requiresLogin then send(logger, executionCommand)
     else token match {
-      case Some(signed) if signed.info.expiresAt.isAfter(LocalDateTime.now()) => send(logger, executionCommand)
+      case Some(signed) if signed.info.expiresAt.isAfter(UtcTime.now()) => send(logger, executionCommand)
       case Some(signed) => Future.failed(SerializedException(
         s"Command ${executionCommand.name} requires a signed-in account, but the session expired at ${signed.info.expiresAt}; it was not sent."))
       case None => Future.failed(SerializedException(

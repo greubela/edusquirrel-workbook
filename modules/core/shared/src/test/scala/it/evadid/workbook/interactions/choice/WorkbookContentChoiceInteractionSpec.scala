@@ -1,5 +1,7 @@
 package it.evadid.workbook.interactions.choice
 
+import it.evadid.core.util.UtcTime
+
 import it.evadid.workbook.support.OfflineController
 import it.evadid.workbook.sync.UpdateImportance
 
@@ -64,7 +66,7 @@ class WorkbookContentChoiceInteractionSpec extends FunSuite {
     intercept[IllegalArgumentException](single.select(single.defaultValue, 3, true))
     intercept[IllegalArgumentException](single.validateState(selected(multiple, 0, 1)))
     val foreign = options.head.copy(content = WorkbookContent(id("foreign")))
-    intercept[IllegalArgumentException](single.validateState(ChoiceState(Seq(ChoiceSelectedEvent(java.time.LocalDateTime.now(), foreign)))))
+    intercept[IllegalArgumentException](single.validateState(ChoiceState(Seq(ChoiceSelectedEvent(UtcTime.now(), foreign)))))
   }
   test("definitions, event states and grader results use the current registered codecs") {
     for (exercise <- Seq(single, multiple); serializer <- Seq(WorkbookElementFactory.serializerRefBasedJson, WorkbookElementFactory.serializerConstructorLike))

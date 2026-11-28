@@ -1,5 +1,7 @@
 package it.evadid.workbook.abstractions.grading
 
+import it.evadid.core.util.UtcTime
+
 import it.evadid.workbook.sync.UpdateImportance
 
 import it.evadid.distribution.command.SerializedException
@@ -41,7 +43,7 @@ case class GradedState[T, GA]
   }
 
   def fillMapForUnavailable(gradingElements: Seq[WorkbookInteractionGrader[T, GA]], gradingStatusOfUnavailable: GradingStatus): GradedState[T, GA] = {
-    def ifUnavailable(grader: WorkbookInteractionGrader[T, GA]): GradingResult[T, GA] = GradingResult(grader, state, gradingStatusOfUnavailable, None, None, LocalDateTime.now())
+    def ifUnavailable(grader: WorkbookInteractionGrader[T, GA]): GradingResult[T, GA] = GradingResult(grader, state, gradingStatusOfUnavailable, None, None, UtcTime.now())
 
     val fullMap = gradingElements.map(curGradingElement => {
       curGradingElement -> graderResultMap.getOrElse(curGradingElement, ifUnavailable(curGradingElement))

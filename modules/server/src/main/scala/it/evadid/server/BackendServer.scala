@@ -1,5 +1,7 @@
 package it.evadid.server
 
+import it.evadid.core.util.UtcTime
+
 import it.evadid.distribution.command.*
 import it.evadid.distribution.formats.ExecutionClientResponse
 import it.evadid.distribution.formats.ExecutionClientResponse.{AdditionalLoggingOutput, ExecutionClientResponseTimestamps}
@@ -27,19 +29,19 @@ import scala.util.control.NonFatal
  */
 object BackendServer {
 
-  private val serverStartedAt: LocalDateTime = LocalDateTime.now()
+  private val serverStartedAt: LocalDateTime = UtcTime.now()
 
   def fail(commandReceived: LocalDateTime, msg: String, cause: Option[SerializedException], command: Option[ExecutionCommand], logger: Logger): ExecutionClientResponse = {
     logger.logError(msg)
     ExecutionClientResponse(
-      ExecutionClientResponseTimestamps(commandReceived, commandReceived, LocalDateTime.now()),
+      ExecutionClientResponseTimestamps(commandReceived, commandReceived, UtcTime.now()),
       Left(cause.getOrElse(SerializedException(msg))), command,
       AdditionalLoggingOutput(logger.getOut(), logger.getErr())
     )
   }
 
   private def handleExecuteCommand(bodyOption: Option[String], cookies: Cookies, headers: Headers, remoteAddress: InetAddress): Future[ExecutionClientResponse] = {
-    val commandReceived: LocalDateTime = LocalDateTime.now()
+    val commandReceived: LocalDateTime = UtcTime.now()
     val backendLogger: Logger = Logger.withNameAndPrefixes(Some(s"BackendServerLogger(Request@${commandReceived.toString})"), PrintToStdLogger.printEverything)
 
     Future {
@@ -93,7 +95,7 @@ object BackendServer {
       parsers.tolerantText(maxLength = maxCommandBodyBytes)(request).map {
         case Left(result) if result.header.status == 413 =>
           val logger = Logger.withNameAndPrefixes(Some("CommandBodyParser"), PrintToStdLogger.printEverything)
-          val response = fail(LocalDateTime.now(),
+          val response = fail(UtcTime.now(),
             s"Execution command exceeds the $maxCommandBodyBytes byte request limit. Reduce the saved history or attached data.",
             None, None, logger)
           Left(EntityTooLarge(write(response)).as("application/json").withHeaders(corsHeaders(request, allowedOrigins)*))

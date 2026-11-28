@@ -1,5 +1,7 @@
 package it.evadid.workbook.abstractions.scaffolding
 
+import it.evadid.core.util.UtcTime
+
 import it.evadid.core.util.io.serializer.DefaultSerializer
 import it.evadid.distribution.command.SerializedException
 import it.evadid.workbook.abstractions.{FeedbackEntity, InteractionFormat}
@@ -44,7 +46,7 @@ object ScaffoldingResult {
   def apply[T, SA](forState: T,
                   scaffoldingStatus: ScaffoldingStatus,
                   scaffoldingEntity: FeedbackEntity,
-                  additionalInformation: Option[SA]): ScaffoldingResult[T, SA] = ScaffoldingResult[T, SA](forState, scaffoldingStatus, scaffoldingEntity, additionalInformation, LocalDateTime.now())
+                  additionalInformation: Option[SA]): ScaffoldingResult[T, SA] = ScaffoldingResult[T, SA](forState, scaffoldingStatus, scaffoldingEntity, additionalInformation, UtcTime.now())
 
   def forError[T, SA](state: T, errEither: Either[String, Throwable], entity: FeedbackEntity): ScaffoldingResult[T, SA] = {
     val err = errEither.match {

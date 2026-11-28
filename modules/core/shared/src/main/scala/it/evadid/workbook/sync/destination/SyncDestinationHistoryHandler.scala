@@ -1,5 +1,7 @@
 package it.evadid.workbook.sync.destination
 
+import it.evadid.core.util.UtcTime
+
 import it.evadid.distribution.command.SerializedException
 import it.evadid.util.logging.derived.SyncLogger
 import it.evadid.workbook.abstractions.InteractionFormat
@@ -107,14 +109,14 @@ object SyncDestinationHistoryHandler {
 
       override def readHistoryJson(syncContext: SyncContext)(implicit ec: ExecutionContext): Future[FetchResponse[SyncContext, String]] = {
         typed.readElementTyped(syncContext).map(curHistoryJson => {
-          FetchResponse.fromMap(LocalDateTime.now(), Map(syncContext -> curHistoryJson).filter((_, json) => validHistory(json, syncLogger)))
+          FetchResponse.fromMap(UtcTime.now(), Map(syncContext -> curHistoryJson).filter((_, json) => validHistory(json, syncLogger)))
         })
       }
 
       override def readHistoriesJson(usageContext: UsageContext)(implicit ec: ExecutionContext): Future[FetchResponse[SyncContext, String]] = {
         typed.readFullStore.map(curMap => {
           val data = curMap.filter((context, json) => context.toUsageContext == usageContext && validHistory(json, syncLogger))
-          FetchResponse.fromMap(LocalDateTime.now(), data)
+          FetchResponse.fromMap(UtcTime.now(), data)
         })
       }
     }

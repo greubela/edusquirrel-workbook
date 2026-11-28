@@ -1,5 +1,7 @@
 package it.evadid.workbook.interactions.programming.programmingExerciseRegular
 
+import it.evadid.core.util.UtcTime
+
 import it.evadid.workbook.support.OfflineController
 import it.evadid.core.datastructures.language.AppLanguage.{English, German, HumanLanguage, Java, Python, SnapLanguage}
 import it.evadid.core.datastructures.language.{LanguageMap, LanguageMapContentId}
@@ -64,7 +66,7 @@ class ProgrammingHintScaffolderSpec extends FunSuite {
     Future.traverse(drafts) { (code, flagged) =>
       val fixture = new Fixture(reply("Look at the current statement.", "source-1"))
       val state = ProgrammingStateRaw(Python, code)
-      fixture.answers.setStateFromUserInteraction(fixture.exercise, state, UpdateImportance.MAJOR, java.time.LocalDateTime.now().plusSeconds(1))
+      fixture.answers.setStateFromUserInteraction(fixture.exercise, state, UpdateImportance.MAJOR, UtcTime.now().plusSeconds(1))
       fixture.hint(state).map(_ => assertEquals(fixture.requests.now().head.systemPrompt.contains("could not read this draft"), flagged, code))
     }
   }

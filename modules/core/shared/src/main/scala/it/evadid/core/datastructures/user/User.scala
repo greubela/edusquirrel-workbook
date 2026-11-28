@@ -1,5 +1,7 @@
 package it.evadid.core.datastructures.user
 
+import it.evadid.core.util.UtcTime
+
 import it.evadid.core.datastructures.chat.{ChatParticipant, SenderRole}
 import upickle.default.*
 
@@ -36,11 +38,11 @@ object User {
       val tokenStr = bytes.iterator.flatMap { byte =>
         Iterator(hexDigits.charAt((byte & 0xff) >>> 4), hexDigits.charAt(byte & 0x0f))
       }.mkString
-      val expiresAt = LocalDateTime.now().plusMinutes(30)
+      val expiresAt = UtcTime.now().plusMinutes(30)
       SingleAccessToken(tokenStr, expiresAt)
     }
 
-    def apply(token: String): SingleAccessToken = SingleAccessToken(token, LocalDateTime.now())
+    def apply(token: String): SingleAccessToken = SingleAccessToken(token, UtcTime.now())
   }
 
   case class UserInDatabase(user: User, config: UserConfig) derives ReadWriter {

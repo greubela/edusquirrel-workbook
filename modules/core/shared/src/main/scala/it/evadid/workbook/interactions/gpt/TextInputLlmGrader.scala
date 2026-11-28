@@ -1,5 +1,7 @@
 package it.evadid.workbook.interactions.gpt
 
+import it.evadid.core.util.UtcTime
+
 import it.evadid.core.datastructures.chat
 import it.evadid.core.datastructures.chat.{Message, MessengerModel}
 import it.evadid.core.datastructures.language.control.LanguageMapIdResolver
@@ -52,7 +54,7 @@ case class TextInputLlmGrader(
           if(feedback.nonEmpty){
             GradingResult(this, state, status, LanguageMap.mapBasedLanguageMap(Map(language -> feedback)), Some(transcript))
           }else{
-            GradingResult(this, state, status, None, Some(transcript), LocalDateTime.now())
+            GradingResult(this, state, status, None, Some(transcript), UtcTime.now())
           }
         }
 

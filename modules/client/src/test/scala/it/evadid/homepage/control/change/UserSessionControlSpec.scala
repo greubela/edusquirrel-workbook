@@ -1,5 +1,7 @@
 package it.evadid.homepage.control.change
 
+import it.evadid.core.util.UtcTime
+
 import com.raquo.airstream.state.Var
 import it.evadid.core.datastructures.language.{AppLanguage, LanguageMapContentId}
 import it.evadid.core.datastructures.language.control.LanguageMapStorage
@@ -27,7 +29,7 @@ class UserSessionControlSpec extends EditorDomSuite {
   private def page() = FullInfo(HomepageInfo(AppLanguage.German, None, None, AllDisplayInfo(false, None), LanguageMapStorage.empty))
   private val localConfig = UserConfig(Nil, isOnlineAccount = false)
   private val student = AllUserInfo.createNewUser("Ada Student", "ada@school.example", UserConfig(Nil, isOnlineAccount = true))
-  private def signed(user: User) = SignedToken(UserTokenInfo(user, LocalDateTime.now(), LocalDateTime.now().plusDays(1)), "signature")
+  private def signed(user: User) = SignedToken(UserTokenInfo(user, UtcTime.now(), UtcTime.now().plusDays(1)), "signature")
   private def failure[T](future: Future[T]): Future[String] = future.failed.map {
     case AuthenticationFailure(key) => key
     case other => s"unexpected: $other"

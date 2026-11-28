@@ -1,5 +1,7 @@
 package it.evadid.homepage.control.change
 
+import it.evadid.core.util.UtcTime
+
 import it.evadid.workbook.control.InteractionSignals.*
 
 import it.evadid.workbook.session.{AllWorkbookInfo, WorkbookConfig}
@@ -116,7 +118,7 @@ class HomepageStateSpec extends EditorDomSuite {
 
     private def response(command: ExecutionCommand): ExecutionClientResponse = {
       requests.update(_ :+ command)
-      val now = LocalDateTime.now()
+      val now = UtcTime.now()
       val times = ExecutionClientResponseTimestamps(now, now, now)
       command.name match {
         case name if name == fetchEventsFromDbCommand.name =>
@@ -601,7 +603,7 @@ class HomepageStateSpec extends EditorDomSuite {
     val fixture = new Fixture
     val gate = new ResponseGate
     val original = fixture.info.homepageInfoNow().toContext
-    fixture.seed(original, "late original workbook", LocalDateTime.now().plusDays(1))
+    fixture.seed(original, "late original workbook", UtcTime.now().plusDays(1))
     fixture.beforeResponse.set(command =>
       if command.name == fetchEventsFromDbCommand.name && read[FetchEventsFromDbRequest](command.json).usageContext == original then gate.hold()
       else Future.unit)
@@ -611,11 +613,11 @@ class HomepageStateSpec extends EditorDomSuite {
         val (other, interactions) = fixture.anotherWorkbook("other-workbook")
         assertEquals(interactions.map(_.elementId), fixture.elements.map(_.elementId))
         val context = original.copy(scenarioId = other.loadedWorkbook.workbookId)
-        fixture.seed(context, "current workbook", LocalDateTime.now().plusDays(2))
+        fixture.seed(context, "current workbook", UtcTime.now().plusDays(2))
         fixture.info.state.switchWorkbook(Some(other))
         // An older edit in the new workbook: it must be written there, while the newer saved answer stays current.
         fixture.info.interactions.setStateFromUserInteraction(interactions.head, "older edit", UpdateImportance.MAJOR,
-          LocalDateTime.now())
+          UtcTime.now())
         fixture.info.interactions.ensureSynced().flatMap { _ =>
           val current = interactions.map(fixture.info.interactions.currentHistory(_))
           assertEquals(interactions.map(fixture.info.interactions.currentValue(_)), Seq.fill(2)("current workbook"))
@@ -641,7 +643,7 @@ class HomepageStateSpec extends EditorDomSuite {
       fixture.failBlobReads.set(retiredReadFails)
       val holding = Var(true)
       val context = fixture.info.homepageInfoNow().toContext
-      fixture.seed(context, "first binding only", LocalDateTime.now().plusDays(1))
+      fixture.seed(context, "first binding only", UtcTime.now().plusDays(1))
       fixture.beforeResponse.set(command =>
         if holding.now() && command.name == fetchEventsFromDbCommand.name then gate.hold() else Future.unit)
       fixture.withHttp {
@@ -653,7 +655,7 @@ class HomepageStateSpec extends EditorDomSuite {
           val (other, _) = fixture.anotherWorkbook("intermediate-workbook")
           fixture.info.state.switchWorkbook(Some(other))
           // Another client has reset/replaced the remote history while the first response is in flight.
-          fixture.seed(context, "replacement binding only", LocalDateTime.now().plusDays(2))
+          fixture.seed(context, "replacement binding only", UtcTime.now().plusDays(2))
           fixture.info.state.switchWorkbook(original)
           fixture.info.interactions.ensureSynced().flatMap { _ =>
             val current = fixture.elements.map(fixture.info.interactions.currentHistory(_))
@@ -771,7 +773,7 @@ class HomepageStateSpec extends EditorDomSuite {
       fixture.info.interactions.ensureSynced().flatMap { _ =>
         val (other, interactions) = fixture.anotherWorkbook("selected-workbook")
         val context = fixture.info.homepageInfoNow().toContext.copy(scenarioId = other.loadedWorkbook.workbookId)
-        fixture.seed(context, "selected workbook", LocalDateTime.now().plusDays(1))
+        fixture.seed(context, "selected workbook", UtcTime.now().plusDays(1))
         fixture.beforeResponse.set(command =>
           if command.name == fetchEventsFromDbCommand.name && read[FetchEventsFromDbRequest](command.json).usageContext == context then gate.hold()
           else Future.unit)

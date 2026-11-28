@@ -1,5 +1,7 @@
 package it.evadid.workbook.interactions.programming.programmingExerciseTurtle
 
+import it.evadid.core.util.UtcTime
+
 import it.evadid.vm.conversion.dependencies.ProgrammingEnvironment
 import it.evadid.core.datastructures.language.{AppLanguage, LanguageMap, WorkbookContent}
 import it.evadid.core.datastructures.language.AppLanguage.*
@@ -63,7 +65,7 @@ case class TurtleCommandUsageGrader(
     }
     val status = if count <= maximum then GradingStatus.Correct else GradingStatus.Incorrect
     val res: GradingResult[ProgrammingState, AdditionalProgrammingTestInfo] =
-     GradingResult[ProgrammingState, AdditionalProgrammingTestInfo](this, state, status, Some(WorkbookContent(description(count))), None, LocalDateTime.now())
+     GradingResult[ProgrammingState, AdditionalProgrammingTestInfo](this, state, status, Some(WorkbookContent(description(count))), None, UtcTime.now())
     res
   }(using contextInformation.futureExecutionContext)
 

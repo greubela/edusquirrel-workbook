@@ -1,5 +1,7 @@
 package it.evadid.workbook.sync
 
+import it.evadid.core.util.UtcTime
+
 import java.time.LocalDateTime
 
 import upickle.default.*
@@ -30,7 +32,7 @@ case class SyncSuccess[T](elementsAdded: Set[T], elementsChanged: Set[T], elemen
 }
 
 object SyncSuccess {
-  def emptyNow[T](): SyncSuccess[T] = SyncSuccess(Set.empty, Set.empty, Set.empty, Set.empty, LocalDateTime.now())
+  def emptyNow[T](): SyncSuccess[T] = SyncSuccess(Set.empty, Set.empty, Set.empty, Set.empty, UtcTime.now())
 
   def removed[T](elements: Set[T]): SyncSuccess[T] = emptyNow[T]().copy(elementsRemoved = elements)
 

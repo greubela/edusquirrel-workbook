@@ -1,5 +1,7 @@
 package it.evadid.core.datastructures.storage
 
+import it.evadid.core.util.UtcTime
+
 import it.evadid.core.datastructures.state.State
 import it.evadid.core.datastructures.state.async.AsyncDataState.*
 import it.evadid.core.datastructures.state.async.{AsyncData, AsyncDataState, AsyncState}
@@ -212,7 +214,7 @@ object AsyncDataCache {
 
   }
 
-  private[storage] case class SucceededRequest[I, O](associatedStore: AsyncDataCache[I, O], outputVar: State[AsyncDataState[Nothing, O]], output: O, timestamp: LocalDateTime = LocalDateTime.now()) extends CachedRequest[I, O] {
+  private[storage] case class SucceededRequest[I, O](associatedStore: AsyncDataCache[I, O], outputVar: State[AsyncDataState[Nothing, O]], output: O, timestamp: LocalDateTime = UtcTime.now()) extends CachedRequest[I, O] {
 
     override val outputIfPresent: Option[O] = Some(output)
 
@@ -225,7 +227,7 @@ object AsyncDataCache {
     override def associatedStatus: CacheElementStatus = PRESENT()
   }
 
-  private[storage] case class FailedRequest[I, O](associatedStore: AsyncDataCache[I, O], input: I, outputVar: State[AsyncDataState[Nothing, O]], cause: Throwable, timestamp: LocalDateTime = LocalDateTime.now()) extends CachedRequest[I, O] {
+  private[storage] case class FailedRequest[I, O](associatedStore: AsyncDataCache[I, O], input: I, outputVar: State[AsyncDataState[Nothing, O]], cause: Throwable, timestamp: LocalDateTime = UtcTime.now()) extends CachedRequest[I, O] {
 
     override val outputIfPresent: Option[O] = None
 

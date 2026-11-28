@@ -1,5 +1,7 @@
 package it.evadid.workbook.interactions.programming.programmingExerciseRegular
 
+import it.evadid.core.util.UtcTime
+
 import it.evadid.vm.conversion.dependencies.ProgrammingEnvironment
 import it.evadid.core.datastructures.language.AppLanguage.{English, German, HumanLanguage}
 import it.evadid.core.datastructures.language.{LanguageMap, LanguageMapContentId, WorkbookContent}
@@ -75,9 +77,9 @@ case class ProgramDataTestGrader(
   : Future[GradingResult[ProgrammingState, AdditionalProgrammingTestInfo]] = Future {
     val (status, message) = evaluate(state)
     val res: GradingResult[ProgrammingState, AdditionalProgrammingTestInfo] = if (message.nonEmpty && importance != GradingImportance.HIDDEN_TEST) {
-      GradingResult[ProgrammingState, AdditionalProgrammingTestInfo](this, state, status, message.map(WorkbookContent(_)), None, LocalDateTime.now())
+      GradingResult[ProgrammingState, AdditionalProgrammingTestInfo](this, state, status, message.map(WorkbookContent(_)), None, UtcTime.now())
     } else {
-      GradingResult[ProgrammingState, AdditionalProgrammingTestInfo](this, state, status, None, None, LocalDateTime.now())
+      GradingResult[ProgrammingState, AdditionalProgrammingTestInfo](this, state, status, None, None, UtcTime.now())
     }
 
     res

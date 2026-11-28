@@ -1,5 +1,7 @@
 package it.evadid.homepage.webElements.editor
 
+import it.evadid.core.util.UtcTime
+
 import it.evadid.homepage.control.model.FullInfo
 
 import com.raquo.airstream.state.Var
@@ -87,7 +89,7 @@ case class SimpleChatEditor(fullInfo: FullInfo, answer: Var[MessengerModel], edi
       answer.update(_.addMessage(
         text = trimmed,
         author = ChatParticipant("Student", "it.evadid.student", SenderRole.USER, None),
-        timestamp = LocalDateTime.now()
+        timestamp = UtcTime.now()
       ))
       messageInput.set("")
     }

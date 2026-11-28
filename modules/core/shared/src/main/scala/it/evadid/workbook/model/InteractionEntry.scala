@@ -1,5 +1,7 @@
 package it.evadid.workbook.model
 
+import it.evadid.core.util.UtcTime
+
 import it.evadid.core.datastructures.storage.remote.RemoteHistoryCache.{CacheState, RemoteHistoryValue}
 import it.evadid.workbook.abstractions.{InteractionFormat, WorkbookInteractionElement}
 import it.evadid.workbook.sync.SyncConnection
@@ -51,7 +53,7 @@ object InteractionEntry {
 
   def defaultHistory[F <: InteractionFormat](interaction: WorkbookInteractionElement[F]): InteractionVariableHistory[F] =
     InteractionVariableHistory.empty[F].addState(
-      InteractionVariableState[InteractionFormat.State[F]](interaction.defaultValue, UpdateImportance.DEFAULT, LocalDateTime.now()))
+      InteractionVariableState[InteractionFormat.State[F]](interaction.defaultValue, UpdateImportance.DEFAULT, UtcTime.now()))
 
   /** Exercise-specific constraints of the answers of `events`. */
   def validate[F <: InteractionFormat](interaction: WorkbookInteractionElement[F], events: Iterable[InteractionEvent[F]]): Try[Unit] =

@@ -1,5 +1,7 @@
 package it.evadid.distribution.command
 
+import it.evadid.core.util.UtcTime
+
 import it.evadid.distribution.clients.{ExecutionClient, LocalExecutionClient}
 import it.evadid.distribution.command.ExecutionInfo.*
 import it.evadid.distribution.formats.ExecutionClientResponse.AdditionalLoggingOutput
@@ -56,7 +58,7 @@ case class ExecutionCommandFactory[I: ReadWriter, O: ReadWriter](
 
 
   def waitAndSendCommandTo(client: ExecutionClient, data: Future[I], logger: Option[Logger] = None): Future[ExecutionSuccess[O]] = {
-    val timestampRequested: LocalDateTime = LocalDateTime.now()
+    val timestampRequested: LocalDateTime = UtcTime.now()
     data.flatMap(inputData => {
       sendCommandTo(client, inputData, logger)
     })
@@ -68,7 +70,7 @@ case class ExecutionCommandFactory[I: ReadWriter, O: ReadWriter](
   }
 
   def sendCommandTo(client: ExecutionClient, data: I, loggerOp: Option[Logger] = None, setTimestampRequested: Option[LocalDateTime] = None): Future[ExecutionSuccess[O]] = {
-    val timestampRequestedLocal: LocalDateTime = LocalDateTime.now()
+    val timestampRequestedLocal: LocalDateTime = UtcTime.now()
     val useTimestamp: LocalDateTime = setTimestampRequested.getOrElse(timestampRequestedLocal)
 
     val command: ExecutionCommand = toCommand(data)

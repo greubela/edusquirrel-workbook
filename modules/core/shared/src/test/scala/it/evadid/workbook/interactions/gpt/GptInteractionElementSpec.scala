@@ -1,5 +1,7 @@
 package it.evadid.workbook.interactions.gpt
 
+import it.evadid.core.util.UtcTime
+
 import it.evadid.workbook.model.InteractionInfo
 
 import it.evadid.workbook.model.InteractionScope
@@ -49,7 +51,7 @@ class GptInteractionElementSpec extends FunSuite {
     val input = TextInteraction("gpt-answer")
     val element = GptInteractionElement("gpt", input, task, Seq(hint), Nil)
     val answers = answersOf(element)
-    answers.setStateFromUserInteraction(input, "my answer", UpdateImportance.MAJOR, java.time.LocalDateTime.now().plusSeconds(1))
+    answers.setStateFromUserInteraction(input, "my answer", UpdateImportance.MAJOR, UtcTime.now().plusSeconds(1))
     assertEquals(element.childrenOfThisElement.map(_.elementId), Seq("gpt_scaffoldingMessenger"))
     element.initScaffoldingIfEmpty(answers, MessengerModel.pFallbackStudent, resolver()).flatMap { first =>
       assert(first, "the student's answer is part of the chat")

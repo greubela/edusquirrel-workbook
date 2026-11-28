@@ -1,5 +1,7 @@
 package it.evadid.homepage.workbook
 
+import it.evadid.core.util.UtcTime
+
 import it.evadid.workbook.session.{AllWorkbookInfo, WorkbookConfig}
 import it.evadid.core.datastructures.language.WorkbookContent
 
@@ -35,7 +37,7 @@ class TextInputFeedbackRendererSpec extends EditorDomSuite {
     inOpenWorkbook(exercise) {
       val content = LanguageMap.mapBasedLanguageMap[HumanLanguage](Map(English -> "English hint\nSecond line", German -> "Deutscher Hinweis"))
       fullInfo.interactions.updateHistory(exercise)(_.addScaffolding(ScaffoldingResult[String, MessengerModel]("",
-        ScaffoldingStatus.ScaffoldingFeedback(content), FeedbackEntity.LlmEntity, None, LocalDateTime.now())))
+        ScaffoldingStatus.ScaffoldingFeedback(content), FeedbackEntity.LlmEntity, None, UtcTime.now())))
       val element = TextInputWithScaffoldingAndGradingRenderer.renderAppElement(fullInfo, exercise).getDomElement()
       val close = mount(element)
       try {
@@ -61,7 +63,7 @@ class TextInputFeedbackRendererSpec extends EditorDomSuite {
       val reporter = GradingReporter(exercise, fullInfo.interactions)
       val element = InteractionFeedbackPanel(fullInfo, exercise, reporter).getDomElement()
       val close = mount(element)
-      val time = LocalDateTime.now()
+      val time = UtcTime.now()
       def save(status: ScaffoldingStatus, offset: Long): Unit = fullInfo.interactions.updateHistory(exercise)(_.addScaffolding(
         ScaffoldingResult[String, MessengerModel]("", status, FeedbackEntity.TestEntity, None, time.plusSeconds(offset))))
       try {
@@ -101,7 +103,7 @@ class TextInputFeedbackRendererSpec extends EditorDomSuite {
       contentGrading = List("first", "second").map(id => ContentForLlmInteraction(LanguageMapContentId(s"test/$id"), Map.empty)))
     inOpenWorkbook(exercise) {
       val results = exercise.gradingElements.zipWithIndex.map { (grader, index) =>
-        GradingResult[String, MessengerModel](grader, "", if index == 0 then GradingStatus.Correct else GradingStatus.PartiallyCorrect, Some(WorkbookContent(LanguageMap.universalMap[HumanLanguage](s"Feedback for criterion $index"))), None, java.time.LocalDateTime.now())
+        GradingResult[String, MessengerModel](grader, "", if index == 0 then GradingStatus.Correct else GradingStatus.PartiallyCorrect, Some(WorkbookContent(LanguageMap.universalMap[HumanLanguage](s"Feedback for criterion $index"))), None, UtcTime.now())
       }
       fullInfo.interactions.updateHistory(exercise)(_.addGradings(results))
       val element = TextInputWithScaffoldingAndGradingRenderer.renderAppElement(fullInfo, exercise).getDomElement()
@@ -124,7 +126,7 @@ class TextInputFeedbackRendererSpec extends EditorDomSuite {
     inOpenWorkbook(exercise) {
       val grader = exercise.gradingElements.head
       val otherLanguage = if fullInfo.signals.currentLanguage.now() == English then German else English
-      val wrongAnswer = GradingResult[String, MessengerModel](grader, "another answer", GradingStatus.Correct, Some(WorkbookContent(LanguageMap.universalMap("Wrong answer feedback"))), None, java.time.LocalDateTime.now())
+      val wrongAnswer = GradingResult[String, MessengerModel](grader, "another answer", GradingStatus.Correct, Some(WorkbookContent(LanguageMap.universalMap("Wrong answer feedback"))), None, UtcTime.now())
       val wrongLanguage = wrongAnswer.copy(gradedState = "", feedbackInformation = Some(WorkbookContent(
         LanguageMap.mapBasedLanguageMap[HumanLanguage](Map(otherLanguage -> "Wrong language feedback")))))
       val element = TextInputWithScaffoldingAndGradingRenderer.renderAppElement(fullInfo, exercise).getDomElement()

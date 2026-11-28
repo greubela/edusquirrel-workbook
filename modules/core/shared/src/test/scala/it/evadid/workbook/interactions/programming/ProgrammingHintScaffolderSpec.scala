@@ -1,5 +1,7 @@
 package it.evadid.workbook.interactions.programming
 
+import it.evadid.core.util.UtcTime
+
 import it.evadid.workbook.support.OfflineController
 import it.evadid.core.datastructures.language.AppLanguage.{English, German, HumanLanguage, Java, Python, SnapLanguage}
 import it.evadid.core.datastructures.language.{LanguageMap, LanguageMapContentId}
@@ -165,7 +167,7 @@ class ProgrammingHintScaffolderSpec extends FunSuite {
     val backend = new LlmBackend("""{"hints":[{"text":"Which result does check one report for this method?","evidenceIds":["check-1"]}]}""")
     val answer = ProgrammingStateRaw(Java, source)
     val element = exercise(answer, tests = true)
-    element.addGrading(GradingResult(element.grader, answer, GradingStatus.Incorrect, None, None, LocalDateTime.now()))
+    element.addGrading(GradingResult(element.grader, answer, GradingStatus.Incorrect, None, None, UtcTime.now()))
     element.hint(context(backend, language = English)).map { result =>
       val checks = backend.prompts.head("checks").arr.toList
       assertEquals(checks, List(ujson.Obj("id" -> "check-1", "required" -> true, "status" -> "incorrect")))
@@ -289,7 +291,7 @@ class ProgrammingHintScaffolderSpec extends FunSuite {
     val element = ProgrammingExerciseFullJava("java-changing", hintTask = Some(task))
     val answers = OfflineController.of(element)
     answers.setStateFromUserInteraction(element, ProgrammingStateRaw(Java, source), UpdateImportance.MAJOR,
-      timestamp = LocalDateTime.now().minusSeconds(1))
+      timestamp = UtcTime.now().minusSeconds(1))
     val backend = new LlmBackend(reply) {
       override protected def rawExecution(logger: Logger, request: LLMCommands.FeedbackLlmRequest): Future[String] = {
         answers.setStateFromUserInteraction(element, ProgrammingStateRaw(Java, source + "\n// edited"),

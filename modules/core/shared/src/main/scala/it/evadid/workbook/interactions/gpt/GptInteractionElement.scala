@@ -1,5 +1,7 @@
 package it.evadid.workbook.interactions.gpt
 
+import it.evadid.core.util.UtcTime
+
 import it.evadid.core.datastructures.chat.SenderRole.USER
 import it.evadid.core.datastructures.chat.{ChatParticipant, MessengerModel}
 import it.evadid.core.datastructures.language.AppLanguage.HumanLanguage
@@ -89,7 +91,7 @@ case class GptInteractionElement(
       val msg: MessengerModel = MessengerModel.getScaffoldingInitMessage(curUser, exText, curInput, scaffHints, resolvedLanguage)
       val msgSc: MessengerModelScaffolding = MessengerModelScaffolding(msg)
       // syncControl.syncLogger.logInfo(s"GptInteractionElement: setting scaffolding messenger for $elementId to init state (was empty before, now ${msgSc.messengerModel.messages.size} messages)")
-      answers.setStateFromUserInteraction(scaffoldingInteraction, msgSc, MAJOR, LocalDateTime.now())
+      answers.setStateFromUserInteraction(scaffoldingInteraction, msgSc, MAJOR, UtcTime.now())
       msg.messages.exists(_.author.role == USER)
     }
 

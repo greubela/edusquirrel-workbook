@@ -1,5 +1,7 @@
 package it.evadid.homepage.workbook.htmlRenderer.interactionRenderer.basic
 
+import it.evadid.core.util.UtcTime
+
 import it.evadid.workbook.control.InteractionSignals.*
 
 import it.evadid.homepage.control.model.FullInfo
@@ -34,7 +36,7 @@ object HtmlGptTextfieldInteractionRenderer extends LineBasedRenderingFactory[Gpt
   private def sendError(fullInfo: FullInfo, err: Throwable, mmState: Var[MessengerModel]): Unit = {
     laminarHelper(fullInfo).uiAndDomLogger.logExceptionWarn(s"error while sending message to LLM, a error message will appear in the chat", err)
     val errText: String = s"@student: Unfortunately, I could not generate an answer. The error I got was ${err.getMessage}. I printed additional information on the browser console!"
-    val errMsg = Message(errText, MessengerModel.pWorkbook, LocalDateTime.now())
+    val errMsg = Message(errText, MessengerModel.pWorkbook, UtcTime.now())
     mmState.update(_.addMessage(errMsg))
   }
 

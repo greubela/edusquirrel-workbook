@@ -1,5 +1,7 @@
 package it.evadid.worker
 
+import it.evadid.core.util.UtcTime
+
 import it.evadid.distribution.clients.ExecutionClient
 import it.evadid.distribution.command.{ExecutionCommand, SerializedException}
 import it.evadid.distribution.formats.ExecutionClientResponse
@@ -19,12 +21,12 @@ object WebWorkerBackendServer {
 
   def fail(received: LocalDateTime, err: Throwable, command: Option[ExecutionCommand], logger: Logger): ExecutionClientResponse = {
     logger.logError(Option(err.getMessage).getOrElse(err.getClass.getSimpleName))
-    ExecutionClientResponse(ExecutionClientResponseTimestamps(received, received, LocalDateTime.now()),
+    ExecutionClientResponse(ExecutionClientResponseTimestamps(received, received, UtcTime.now()),
       Left(SerializedException(err)), command, AdditionalLoggingOutput(logger.getOut(), logger.getErr()))
   }
 
   def handleMessage(raw: String, executor: ExecutionClient = WorkerCommandHandler.executor): Future[String] = {
-    val received = LocalDateTime.now()
+    val received = UtcTime.now()
     val logger = Logger.withNameAndPrefixes(Some(s"WorkerBackendServerLogger(Request@$received)"), PrintToStdLogger.printWarnAndError)
     Try(read[Request](raw)) match {
       case Failure(err) =>

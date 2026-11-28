@@ -1,5 +1,7 @@
 package it.evadid.distribution.clients
 
+import it.evadid.core.util.UtcTime
+
 import it.evadid.distribution.command.ExecutionCommand
 import it.evadid.util.logging.BasicLogger
 import munit.FunSuite
@@ -198,7 +200,7 @@ class JsRemoteExecutionClientSpec extends FunSuite {
     import it.evadid.distribution.commandTypes.{SQLCommands, UserCommands}
     import java.time.LocalDateTime
     def signed(expiresAt: LocalDateTime) = Some(SignedToken(UserTokenInfo(User.createNewUser("Ada", "ada@school.example"),
-      LocalDateTime.now().minusDays(1), expiresAt), "signature"))
+      UtcTime.now().minusDays(1), expiresAt), "signature"))
     val requests = scala.collection.mutable.ListBuffer.empty[String]
     def execute(token: Option[SignedToken], name: String) =
       JsRemoteExecutionClient("localhost", 443, token).executeResponse(BasicLogger(), ExecutionCommand(name, ujson.Obj()))
@@ -210,10 +212,10 @@ class JsRemoteExecutionClientSpec extends FunSuite {
     }) {
       for {
         withoutToken <- execute(None, store)
-        expired <- execute(signed(LocalDateTime.now().minusMinutes(1)), SQLCommands.fetchEventsFromDbCommand.name)
+        expired <- execute(signed(UtcTime.now().minusMinutes(1)), SQLCommands.fetchEventsFromDbCommand.name)
         _ = assertEquals(requests.toList, Nil, "nothing is sent that the backend would refuse")
         _ <- execute(None, UserCommands.loginCommand.name)
-        _ <- execute(signed(LocalDateTime.now().plusDays(1)), store)
+        _ <- execute(signed(UtcTime.now().plusDays(1)), store)
       } yield {
         assert(withoutToken.exists(_.contains("requires a signed-in account")), withoutToken)
         assert(expired.exists(_.contains("expired")), expired)

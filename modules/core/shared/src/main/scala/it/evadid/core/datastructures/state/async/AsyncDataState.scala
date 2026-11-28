@@ -1,5 +1,7 @@
 package it.evadid.core.datastructures.state.async
 
+import it.evadid.core.util.UtcTime
+
 import it.evadid.core.util.io.serializer.DefaultSerializer.given
 
 import it.evadid.distribution.command.SerializedException
@@ -29,7 +31,7 @@ sealed trait AsyncDataState[F, S] {
 object AsyncDataState {
 
   @upickle.implicits.serializeDefaults(true)
-  case class AsyncDataLoading[F, S](startedAt: LocalDateTime = LocalDateTime.now()) extends AsyncDataState[F, S] {
+  case class AsyncDataLoading[F, S](startedAt: LocalDateTime = UtcTime.now()) extends AsyncDataState[F, S] {
     override val loadingSince: Option[LocalDateTime] = Some(startedAt)
     val isLoading: Boolean = true
   }

@@ -7,6 +7,7 @@ import it.evadid.homepage.workbook.htmlRenderer.controlElements.interactionInfo.
 import it.evadid.homepage.workbook.htmlRenderer.controlElements.interactionInfo.InteractionInfoPanelIcons.{FeedbackIcon, createFeedbackIcon}
 import it.evadid.workbook.abstractions.InteractionFormat
 import it.evadid.workbook.reports.{GradingSummary, ScaffoldingReport}
+import it.evadid.core.util.UtcTime
 import java.time.format.DateTimeFormatter
 
 /**
@@ -143,8 +144,8 @@ object FeedbackPanels {
           span(cls := "feedback-test-description", child.text <-- view.title(entry)),
           span(cls := "feedback-entry__meta",
             span(cls := "feedback-entry__status", child.text <-- view.label(entry.statusKey)),
-            time.map(at => timeTag(cls := "feedback-date", htmlAttr("datetime", com.raquo.laminar.codecs.StringAsIsCodec) := at.toString,
-              title := at.format(dateFormat), at.format(timeFormat))))),
+            time.map(at => timeTag(cls := "feedback-date", htmlAttr("datetime", com.raquo.laminar.codecs.StringAsIsCodec) := s"${at}Z",
+              title := UtcTime.toLocal(at).format(dateFormat), UtcTime.toLocal(at).format(timeFormat))))),
         view.feedback(entry).map(text => p(cls := "feedback-text", child.text <-- text))))
   }
 

@@ -1,5 +1,7 @@
 package it.evadid.server.database
 
+import it.evadid.core.util.UtcTime
+
 import it.evadid.core.datastructures.user.{AllUserInfo, User, UserConfig, UserCredentials}
 import it.evadid.core.datastructures.user.User.*
 import it.evadid.core.datastructures.user.UserTokenInfo.SignedToken
@@ -88,7 +90,7 @@ final class UserAccountRows(connection: Connection, logger: Logger) {
         logger.logWarn("Cannot ensure token since user is unknown!")
         None
       case (_, None) => createNewToken("missing or invalid")
-      case (_, Some(stored)) if stored.expires.isBefore(LocalDateTime.now()) => createNewToken(s"old expired at ${stored.expires}")
+      case (_, Some(stored)) if stored.expires.isBefore(UtcTime.now()) => createNewToken(s"old expired at ${stored.expires}")
       case _ => token
     }
   }

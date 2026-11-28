@@ -1,5 +1,7 @@
 package it.evadid.distribution.clients
 
+import it.evadid.core.util.UtcTime
+
 import it.evadid.distribution.command.*
 import it.evadid.core.util.io.ParsingContext
 import it.evadid.distribution.formats.ExecutionClientResponse
@@ -14,7 +16,7 @@ case class ExecutionClientPool(clients: Seq[ExecutionClient]) extends ExecutionC
   override def allUnderlyingClients: Seq[ExecutionClient] = clients
 
   override private[clients] def handleCommandExecution(logger: Logger, command: ExecutionCommand): Future[ExecutionClientResponse] = {
-    val received = LocalDateTime.now()
+    val received = UtcTime.now()
 
     def attempt(handlers: Seq[ExecutionClient], failure: Option[SerializedException], tried: Int): Future[ExecutionClientResponse] = handlers match {
       case Seq() =>
@@ -24,12 +26,12 @@ case class ExecutionClientPool(clients: Seq[ExecutionClient]) extends ExecutionC
         logger.logError(message)
         Future.failed(SerializedException(message).copy(cause = failure))
       case handler +: remaining =>
-        logger.logInfo(s"Tried execution with handler $handler at ${LocalDateTime.now()} (prior failures: ${failure.map(_.msg).getOrElse("none")})")
+        logger.logInfo(s"Tried execution with handler $handler at ${UtcTime.now()} (prior failures: ${failure.map(_.msg).getOrElse("none")})")
         // Capture handlers that throw before returning their Future as well as asynchronous failures.
         Future.unit.flatMap(_ => handler.handleCommandExecution(logger, command))
           .map(_.fixReceived(received).throwIfContainsError)
           .recoverWith { case NonFatal(error) =>
-            logger.logError(s"Execution Client $handler failed execution at ${LocalDateTime.now()}, trying next handler!\n${error.getMessage}")
+            logger.logError(s"Execution Client $handler failed execution at ${UtcTime.now()}, trying next handler!\n${error.getMessage}")
             attempt(remaining, Some(SerializedException(error)), tried + 1)
           }
     }

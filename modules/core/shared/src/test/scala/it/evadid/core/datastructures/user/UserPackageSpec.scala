@@ -1,5 +1,7 @@
 package it.evadid.core.datastructures.user
 
+import it.evadid.core.util.UtcTime
+
 import munit.FunSuite
 import java.time.LocalDateTime
 import upickle.default.*
@@ -40,10 +42,10 @@ class UserPackageSpec extends FunSuite {
     assertEquals(read[User.UserInDatabase](write(record)), record)
   }
   test("secure access tokens are distinct, hexadecimal, expire after 30 minutes and round-trip") {
-    val before = LocalDateTime.now()
+    val before = UtcTime.now()
     val first = User.SingleAccessToken.generateSecureToken()
     val second = User.SingleAccessToken.generateSecureToken()
-    val after = LocalDateTime.now()
+    val after = UtcTime.now()
     assert(first.token.matches("[0-9a-f]{40}"))
     assert(first.token != second.token)
     assert(!first.expires.isBefore(before.plusMinutes(30)))

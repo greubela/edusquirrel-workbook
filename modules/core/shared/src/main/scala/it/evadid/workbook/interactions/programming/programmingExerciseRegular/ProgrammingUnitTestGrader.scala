@@ -1,5 +1,7 @@
 package it.evadid.workbook.interactions.programming.programmingExerciseRegular
 
+import it.evadid.core.util.UtcTime
+
 import it.evadid.vm.conversion.dependencies.ProgrammingEnvironment
 import it.evadid.vm.conversion.unittest.ProgramForUnitTestExecution
 import it.evadid.core.datastructures.language.AppLanguage.HumanLanguage
@@ -66,7 +68,7 @@ case class ProgrammingUnitTestGrader(testId: String, pythonTestCode: String,
       val invocation = result.testInvocation.filter(_ => publishInvocationArguments && importance != GradingImportance.HIDDEN_TEST)
       val info = Option.when(result.programObservation.nonEmpty || invocation.nonEmpty)(
         AdditionalProgrammingTestInfo(LanguageMap.empty[HumanLanguage], result.programObservation, invocation))
-      GradingResult[ProgrammingState, AdditionalProgrammingTestInfo](this, state, status, None, info, LocalDateTime.now())
+      GradingResult[ProgrammingState, AdditionalProgrammingTestInfo](this, state, status, None, info, UtcTime.now())
     }
   }
 

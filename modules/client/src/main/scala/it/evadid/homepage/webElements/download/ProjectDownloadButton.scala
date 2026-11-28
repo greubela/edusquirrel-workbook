@@ -1,5 +1,7 @@
 package it.evadid.homepage.webElements.download
 
+import it.evadid.core.util.UtcTime
+
 import com.raquo.laminar.api.L.*
 import it.evadid.homepage.webElements.editor.code.EvaEditor.EvaActionIcons
 import it.evadid.homepage.webElements.editor.code.program.ProgrammingExecutionLabels
@@ -15,7 +17,7 @@ import java.time.LocalDateTime
   */
 object ProjectDownloadButton {
   def apply(source: Signal[ProgrammingState], labels: ProgrammingExecutionLabels, projectName: String,
-      saver: ProjectDownload.Saver = ProjectDownload.BrowserSaver, now: () => LocalDateTime = () => LocalDateTime.now()): Element = {
+      saver: ProjectDownload.Saver = ProjectDownload.BrowserSaver, now: () => LocalDateTime = () => UtcTime.now()): Element = {
     val failure = Var(Option.empty[String])
     span(cls := "eva-editor__download",
       source.changes --> (_ => failure.set(None)),

@@ -72,6 +72,9 @@ with a new ID. Merging unions events, so retries are idempotent and distinct sam
 events survive, while a different event under a known ID is rejected
 (`InteractionEvents` requires unique IDs). IDs are preserved during decoding; missing
 or malformed IDs are rejected rather than generated on read.
+All saved and exchanged timestamps are UTC `LocalDateTime`s from
+[`UtcTime.now()`](../modules/core/shared/src/main/scala/it/evadid/core/util/UtcTime.scala), so event
+order survives other device zones and DST; only display converts with `UtcTime.toLocal`.
 Saved error statuses (`TestError`, `ScaffoldingError`) keep only the messages of an error
 and its causes; stack traces stay in logs. State/feedback history views are derived projections,
 not separate persisted stores. A newer grading start represents a retry in progress;
