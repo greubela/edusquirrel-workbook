@@ -1,6 +1,5 @@
 package it.evadid.workbook.elements.interactionElements.gpt
 
-import cats.mtl.syntax.state
 import it.evadid.core.datastructures.chat
 import it.evadid.core.datastructures.chat.{Message, MessengerModel}
 import it.evadid.core.datastructures.language.{LanguageMap, LanguageMapContentId}

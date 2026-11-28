@@ -76,7 +76,6 @@ jobs:
           path: |
             target/coreJVM
             target/server
-            target/desktop
             target/root
             target/streams
             project/target
@@ -141,7 +140,6 @@ jobs:
           path: |
             target/coreJVM
             target/server
-            target/desktop
             target/root
             target/streams
             project/target
@@ -151,7 +149,7 @@ jobs:
             ${{ runner.os }}-scala-jvm-build-${{ hashFiles('build.sbt', 'project/*.scala', 'project/*.sbt', 'project/build.properties', 'project/repositories') }}-
             ${{ runner.os }}-scala-jvm-build-
       - name: Test the JVM modules
-        run: sbt -batch -J-Xmx4G -Dsbt.supershell=false 'all coreJVM/test server/test desktop/compile'
+        run: sbt -batch -J-Xmx4G -Dsbt.supershell=false 'all coreJVM/test server/test'
 
   scala-js:
     runs-on: ubuntu-latest
@@ -195,7 +193,7 @@ jobs:
         run: npm ci
       # The JVM-only updates complete the dependency cache this job saves.
       - name: Test the Scala.js modules
-        run: sbt -batch -J-Xmx4G -Dsbt.supershell=false 'all coreJS/test client/test worker/test' coreJVM/update server/update desktop/update
+        run: sbt -batch -J-Xmx4G -Dsbt.supershell=false 'all coreJS/test client/test worker/test' coreJVM/update server/update
 
   # Builds the bundles for the browser checks alongside scala-js, so those checks
   # need not wait for every Scala test. scala-js alone saves the Scala.js build cache.

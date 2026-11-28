@@ -1,7 +1,5 @@
 package it.evadid.core.datastructures.language.serialization
 
-import fs2.data.csv.lowlevel
-import fs2.{Fallible, Stream}
 import it.evadid.core.datastructures.file.FileDescription
 import it.evadid.core.datastructures.language.AppLanguage
 import it.evadid.core.datastructures.language.AppLanguage.*
