@@ -54,10 +54,16 @@ private final class JavaAstToParsed(syntax: JavaSyntax) {
         line = span.map(_.startLine), column = span.map(value => lines.column(value.start))))
   }
 
-  private final case class Owner(name: String, fields: Set[String], methods: Map[String, Boolean], isStatic: Boolean)
+  private final case class Owner(name: String, fields: Map[String, JavaVariableDeclaration], methods: Map[String, Boolean], isStatic: Boolean)
+  private lazy val fieldTypes = syntax.structured.programClasses.flatMap(cls => cls.fields.map(field => (cls.name, field.name) -> field.javaType)).toMap
   /** `module` names the entry class, whose qualifier is dropped from calls and field accesses. */
-  private final case class Scope(owner: Option[Owner], locals: Set[String], module: Option[String]) {
-    def withLocal(name: String): Scope = copy(locals = locals + name)
+  private final case class Scope(owner: Option[Owner], locals: Map[String, JavaVariableDeclaration], module: Option[String]) {
+    def withLocal(declaration: JavaVariableDeclaration): Scope = {
+      if owner.isEmpty && module.exists(name => fieldTypes.contains(name -> declaration.name)) then located(declaration) {
+        throw ProgrammingConversionException.unsupported(s"The local variable ${declaration.name} hides a module field with the same name.")
+      }
+      copy(locals = locals.updated(declaration.name, declaration))
+    }
   }
 
   def apply(program: JavaProgram): ParsedProgram = {
@@ -70,7 +76,7 @@ private final class JavaAstToParsed(syntax: JavaSyntax) {
     val nested = classes.flatMap(definition => definition.body.statements.collect { case inner: JavaClassDef => inner })
     val objectClasses = (classes.filterNot(entry.contains) ++ nested).map(classDef)
     val moduleName = entry.map(_.name).orElse(Option.when(!classes.exists(_.name == "Main"))("Main"))
-    val moduleScope = Scope(None, Set.empty, moduleName)
+    val moduleScope = Scope(None, Map.empty, moduleName)
     val loose = statements(topLevel.filterNot(_.isInstanceOf[JavaClassDef]), moduleScope)
     ParsedProgram(objectClasses ++ loose ++ entry.toSeq.flatMap(module(_, moduleScope)))
   }
@@ -108,6 +114,23 @@ private final class JavaAstToParsed(syntax: JavaSyntax) {
     case other => other.getChildren().exists(mentions(_, name))
   }
 
+  private def numericLiteral(e: ParsedExpression): Option[Double] = e match {
+    case E.Literal(raw) => raw.toDoubleOption
+    case E.Unary("-", arg) => numericLiteral(arg).map(-_)
+    case E.Unary("+", arg) => numericLiteral(arg)
+    case _ => None
+  }
+
+  private def remainder(left: JavaExpression, right: JavaExpression, scope: Scope): ParsedExpression = {
+    val divisor = expression(right, scope)
+    val operands = Seq(divisionOperand(left, scope), divisionOperand(right, scope))
+    if operands.contains(DivisionOperand.PossiblyWidened) || operands.contains(DivisionOperand.Unknown) then
+      E.Unsupported("Java remainder with an unverified numeric range")
+    else if operands.contains(DivisionOperand.Floating) && !numericLiteral(divisor).exists(value => value.isFinite && value != 0) then
+      E.Unsupported("Java floating-point remainder whose divisor may be zero")
+    else E.Binary("fmod", expression(left, scope), divisor)
+  }
+
   private def classDef(definition: JavaClassDef): ParsedStatement = located(definition) {
     classDefinition(definition) match {
       case value: S.Unsupported => value.copy(origin = origin(definition))
@@ -126,15 +149,15 @@ private final class JavaAstToParsed(syntax: JavaSyntax) {
         throw ProgrammingConversionException.unsupported("Static object fields are not supported by the shared expression model.")
       if members.size != fields.size + methods.size then S.Unsupported(source, "Class-body statements", unparsable = false)
       else {
-        val owner = Owner(definition.name, fields.map(_.name).toSet,
+        val owner = Owner(definition.name, fields.map(field => field.name -> field).toMap,
           methods.filterNot(_.name == definition.name).map(method => method.name -> method.modifiers.contains("static")).toMap, isStatic = false)
         val parsedMethods = methods.map { method =>
           val kind = if method.returnType.isEmpty && method.name == definition.name then ParsedFunctionKind.Constructor
             else if method.modifiers.contains("static") then ParsedFunctionKind.StaticMethod else ParsedFunctionKind.Method
-          function(method, kind, Scope(Some(owner.copy(isStatic = kind == ParsedFunctionKind.StaticMethod)), Set.empty, None))
+          function(method, kind, Scope(Some(owner.copy(isStatic = kind == ParsedFunctionKind.StaticMethod)), Map.empty, None))
         }
         val parsedFields = fields.map(field => S.Field(field.name, Some(parsedType(field.javaType)),
-          field.value.map(expression(_, Scope(Some(owner), Set.empty, None)))))
+          field.value.map(expression(_, Scope(Some(owner), Map.empty, None)))))
         S.ClassDef(definition.name, parsedFields, parsedMethods, source)
       }
     }
@@ -142,7 +165,7 @@ private final class JavaAstToParsed(syntax: JavaSyntax) {
 
   private def function(method: JavaMethodDef, kind: ParsedFunctionKind, scope: Scope): S.FunctionDef = {
     val parameters = method.parameters.map(parameter => ParsedParameter(parameter.name, Some(parsedType(parameter.javaType))))
-    val inner = parameters.foldLeft(scope)((current, parameter) => current.withLocal(parameter.name))
+    val inner = scope.copy(locals = scope.locals ++ method.parameters.map(parameter => parameter.name -> parameter))
     S.FunctionDef(method.name, parameters, method.returnType.map(parsedType), block(method.body, inner), kind, origin(method))
   }
 
@@ -152,7 +175,7 @@ private final class JavaAstToParsed(syntax: JavaSyntax) {
   private def statements(values: Seq[JavaStatement], scope: Scope): Seq[ParsedStatement] =
     values.foldLeft((Vector.empty[ParsedStatement], scope)) { case ((done, current), value) =>
       val next = value match {
-        case declaration: JavaVariableDeclaration => current.withLocal(declaration.name)
+        case declaration: JavaVariableDeclaration => current.withLocal(declaration)
         case _ => current
       }
       (done ++ statement(value, current), next)
@@ -174,12 +197,12 @@ private final class JavaAstToParsed(syntax: JavaSyntax) {
     case JavaVariableDeclaration(name, javaType, None, _) => Seq(S.Declare(name, parsedType(javaType)))
     case JavaAssignment(target, value) => Seq(assign(target, expression(value, scope), scope))
     case JavaAugAssignment(target, operator, value) =>
-      Seq(assign(target, E.Binary(operator.stripSuffix("="), expression(target, scope), expression(value, scope)), scope))
+      Seq(assign(target, compoundValue(target, operator, value, scope), scope))
     case JavaUpdateExpression(target: JavaTarget, operator, _) =>
       Seq(assign(target, E.Binary(operator.take(1), expression(target, scope), E.Literal("1")), scope))
     case JavaAssignmentExpression(target, "=", value) => Seq(assign(target, expression(value, scope), scope))
     case JavaAssignmentExpression(target, operator, value) =>
-      Seq(assign(target, E.Binary(operator.stripSuffix("="), expression(target, scope), expression(value, scope)), scope))
+      Seq(assign(target, compoundValue(target, operator, value, scope), scope))
     case JavaIfStatement(condition, thenBlock, elseBlock) =>
       Seq(S.If(expression(condition, scope), block(thenBlock, scope), elseBlock.toSeq.flatMap(block(_, scope))))
     case JavaWhileStatement(condition, body) => Seq(S.While(expression(condition, scope), block(body, scope)))
@@ -198,6 +221,19 @@ private final class JavaAstToParsed(syntax: JavaSyntax) {
       case other => S.Unsupported(s"${target.name} = ...", "Unsupported assignment target", unparsable = false)
     }
 
+  private def compoundValue(target: JavaTarget, operator: String, value: JavaExpression, scope: Scope): ParsedExpression =
+    if operator == "%=" && divisionOperand(target, scope) != DivisionOperand.Floating && divisionOperand(value, scope) == DivisionOperand.Floating then
+      E.Unsupported("Java integer compound remainder with a floating-point divisor", origin(value))
+    else if operator == "%=" then remainder(target, value, scope)
+    else if operator == "/=" then
+      if divisionOperand(target, scope) != DivisionOperand.Floating && divisionOperand(value, scope) == DivisionOperand.Floating then
+        E.Unsupported("Java integer compound division with a floating-point or unknown divisor", origin(value))
+      else division(target, value, scope) match {
+        case unsupported: E.Unsupported => unsupported.copy(origin = origin(value))
+        case quotient => quotient
+      }
+    else E.Binary(operator.stripSuffix("="), expression(target, scope), expression(value, scope))
+
   /** A counting `for` declares one counter, compares it with a bound (`<`, `<=`, `>`, `>=`) and
     * changes it by a whole-number literal in the direction of the bound, without the body assigning
     * the counter or a name in the bound. It becomes a fixed repetition, a counting loop or a stepped
@@ -213,7 +249,7 @@ private final class JavaAstToParsed(syntax: JavaSyntax) {
     countingLoop(loop, scope).getOrElse {
       if loop.update.forall(isUpdate) then {
         val inner = loop.init.foldLeft(scope) {
-          case (current, declaration: JavaVariableDeclaration) => current.withLocal(declaration.name)
+          case (current, declaration: JavaVariableDeclaration) => current.withLocal(declaration)
           case (current, _) => current
         }
         S.loopWithUpdate(statements(loop.init, scope), loop.condition.map(expression(_, inner)).getOrElse(E.Literal("True")),
@@ -223,7 +259,7 @@ private final class JavaAstToParsed(syntax: JavaSyntax) {
   }
 
   private def countingLoop(loop: JavaForStatement, scope: Scope): Option[Seq[ParsedStatement]] = loop match {
-    case JavaForStatement(Seq(JavaVariableDeclaration(counter, _, Some(start), _)),
+    case JavaForStatement(Seq(declaration @ JavaVariableDeclaration(counter, _, Some(start), _)),
         Some(JavaOperationBinary(JavaTarget(compared, Seq(), None), comparison @ ("<" | "<=" | ">" | ">="), limit)), Seq(update), body)
         if compared == counter =>
       def literal(value: JavaExpression): Option[Int] = E.wholeNumber(expression(value, scope))
@@ -244,7 +280,7 @@ private final class JavaAstToParsed(syntax: JavaSyntax) {
           case ">=" => E.offset(bound, -1)
           case _ => bound
         }
-        S.countingLoop(counter, expression(start, scope), stop, value, block(body, scope.withLocal(counter)), counterObserved = mentions(body, counter))
+        S.countingLoop(counter, expression(start, scope), stop, value, block(body, scope.copy(locals = scope.locals.updated(counter, declaration))), counterObserved = mentions(body, counter))
       }
     case _ => None
   }
@@ -268,6 +304,97 @@ private final class JavaAstToParsed(syntax: JavaSyntax) {
     }
   }
 
+  private enum DivisionOperand { case Int32, PossiblyWidened, Floating, Unknown }
+  import DivisionOperand.*
+
+  private def width(name: String): DivisionOperand = name match {
+    case "byte" | "short" | "int" => Int32
+    case "long" => PossiblyWidened
+    case "double" | "float" => Floating
+    case _ => Unknown
+  }
+
+  private def declaredWidth(variable: JavaVariableDeclaration): DivisionOperand = variable.javaType match {
+    case JAVA_FLOAT => Floating
+    case JAVA_INTEGER =>
+      // The grammar groups all integer widths. The declaration span still distinguishes long.
+      val header = origin(variable).map(span => syntax.structured.codeMasked.substring(span.start, span.end).takeWhile(_ != '='))
+      if header.exists("\\b(?:byte|short|int)\\b".r.findFirstIn(_).isDefined) then Int32 else PossiblyWidened
+    case _ => Unknown
+  }
+
+  private def promoted(kinds: Seq[DivisionOperand]): DivisionOperand =
+    if kinds.contains(Floating) then Floating
+    else if kinds.isEmpty || kinds.contains(Unknown) then Unknown
+    else PossiblyWidened
+
+  private lazy val programMethods = syntax.structured.programClasses.flatMap(_.functions) ++
+    syntax.structured.looseMembers.collect { case method: it.evadid.vm.parsing.source.JavaFunctionStructured => method }
+
+  private def returnWidth(path: Seq[String], values: Seq[JavaExpression], scope: Scope): DivisionOperand = {
+    val currentClass = scope.owner.map(_.name).orElse(scope.module)
+    val receiverClass = path.dropRight(1) match {
+      case Seq() | Seq("this") => currentClass
+      case Seq(receiver) => Some(scope.locals.get(receiver).fold(receiver)(_.javaType.typenameInCode))
+      case _ => None
+    }
+    val returns = programMethods.filter(method => method.name == path.last && method.parameters.size == values.size &&
+      (receiverClass.contains(method.className) || (path.size == 1 && method.className.isEmpty))).flatMap(_.returnType).map(width).distinct
+    if returns.nonEmpty then returns match {
+      case Seq(only) => only
+      case _ => Unknown
+    } else path.mkString(".").stripPrefix("java.lang.") match {
+      case "Math.sqrt" | "Math.pow" | "Math.floor" | "Math.random" | "Double.parseDouble" => Floating
+      case "Integer.parseInt" => Int32
+      case "Math.abs" | "Math.max" | "Math.min" => promoted(values.map(divisionOperand(_, scope)))
+      case _ => Unknown
+    }
+  }
+
+  private def divisionOperand(value: JavaExpression, scope: Scope): DivisionOperand = value match {
+    case JavaLiteral(raw, JAVA_INTEGER) => if raw.toIntOption.isDefined then Int32 else PossiblyWidened
+    case JavaLiteral(_, JAVA_FLOAT) | JavaCastExpression(JAVA_FLOAT, _) => Floating
+    case JavaCastExpression(JAVA_INTEGER, _) => PossiblyWidened
+    case JavaParenthesizedExpression(inner) => divisionOperand(inner, scope)
+    case JavaOperationUnary(op @ ("+" | "-"), inner) =>
+      val kind = divisionOperand(inner, scope)
+      if kind == Int32 && op == "-" && !inner.isInstanceOf[JavaLiteral[?]] then PossiblyWidened else kind
+    case field: JavaAttributeAccess => names(field).map(path => divisionOperand(JavaTarget(path.last, path.dropRight(1)), scope)).getOrElse(Unknown)
+    case JavaTarget(name, path, None) =>
+      val owner = scope.owner.map(_.name).orElse(scope.module)
+      val receiver = path match {
+        case Seq() | Seq("this") => owner
+        case Seq(value) => Some(scope.locals.get(value).fold(value)(_.javaType.typenameInCode))
+        case _ => None
+      }
+      val local = if path.isEmpty then scope.locals.get(name).map(declaredWidth) else None
+      local.orElse(receiver.flatMap(cls => fieldTypes.get(cls -> name)).map(width)).getOrElse(Unknown)
+    case JavaFunctionCall(target, values) => returnWidth(target.locationString :+ target.name, values, scope)
+    case JavaCallExpression(callee, values) => names(callee).map(returnWidth(_, values, scope)).getOrElse(Unknown)
+    case JavaOperationBinary(left, "+" | "-" | "*" | "/" | "%", right) => promoted(Seq(divisionOperand(left, scope), divisionOperand(right, scope)))
+    case _ => Unknown
+  }
+
+  private def division(left: JavaExpression, right: JavaExpression, scope: Scope): ParsedExpression = {
+    def operand(value: JavaExpression): ParsedExpression = value match {
+      case JavaLiteral(raw, _) if raw.matches("[0-9]+\\.0") => E.Literal(raw.stripSuffix(".0"))
+      case JavaCastExpression(tpe, inner) if tpe.typenameInCode == "double" => expression(inner, scope)
+      case other => expression(other, scope)
+    }
+    val dividend = operand(left)
+    val divisor = operand(right)
+    val quotient = E.Binary("/", dividend, divisor)
+    (divisionOperand(left, scope), divisionOperand(right, scope)) match {
+      case (Floating, _) | (_, Floating) =>
+        if numericLiteral(divisor).exists(value => value.isFinite && value != 0) then quotient
+        else E.Binary("quotient", dividend, divisor)
+      case (Int32, Int32) if E.wholeNumber(divisor).exists { denominator =>
+        denominator != 0 && (denominator != -1 || E.wholeNumber(dividend).exists(_ != Int.MinValue))
+      } => E.Call(Seq("int"), Seq(quotient))
+      case _ => E.Unsupported("Java division with an unverified divisor or numeric range")
+    }
+  }
+
   private def expressionValue(value: JavaExpression, scope: Scope): ParsedExpression = value match {
     case JavaLiteral("null", _) => E.NoneValue
     case JavaLiteral(raw, JAVA_BOOL) => E.Literal(raw.capitalize)
@@ -283,12 +410,10 @@ private final class JavaAstToParsed(syntax: JavaSyntax) {
     case JavaOperationUnary("!", JavaCallExpression(JavaAttributeAccess(receiver, "isEmpty"), Seq())) =>
       E.Binary("!=", expression(receiver, scope), E.Literal("\"\""))
     case JavaOperationUnary(operator, operand) => E.Unary(JavaSpelling.operators.getOrElse(operator, operator), expression(operand, scope))
+    case JavaOperationBinary(left, "/", right) => division(left, right, scope)
+    case JavaOperationBinary(left, "%", right) => remainder(left, right, scope)
     case JavaOperationBinary(left, operator, right) =>
-      (JavaSpelling.operators.getOrElse(operator, operator), expression(left, scope)) match {
-        // The printer writes Python's exact `56 / 8` as `56.0 / 8`; the dividend is the whole number again.
-        case ("/", E.Literal(dividend)) if dividend.matches("[0-9]+\\.0") => E.Binary("/", E.Literal(dividend.stripSuffix(".0")), expression(right, scope))
-        case (symbol, dividend) => E.Binary(symbol, dividend, expression(right, scope))
-      }
+      E.Binary(JavaSpelling.operators.getOrElse(operator, operator), expression(left, scope), expression(right, scope))
     case JavaFunctionCall(target, arguments) => call(target.locationString :+ target.name, arguments.map(expression(_, scope)), scope)
     // The Java printer spells text equality and emptiness with String methods (JavaSpelling).
     case JavaCallExpression(JavaAttributeAccess(receiver, "equals"), Seq(other)) => E.Binary("==", expression(receiver, scope), expression(other, scope))
@@ -299,8 +424,8 @@ private final class JavaAstToParsed(syntax: JavaSyntax) {
         case None => E.MethodCall(expression(receiver, scope), name, arguments.map(expression(_, scope)))
       }
     // `Main.count` reads a module variable of the entry class.
-    case JavaAttributeAccess(JavaTarget(owner, Seq(), None), name) if scope.module.contains(owner) && !scope.locals(owner) =>
-      qualified(JavaTarget(name), scope)
+    case JavaAttributeAccess(JavaTarget(owner, Seq(), None), name) if scope.module.contains(owner) && !scope.locals.contains(owner) =>
+      qualified(JavaTarget(name, Seq(owner)), scope)
     case JavaAttributeAccess(receiver, name) => E.Member(expression(receiver, scope), name)
     case JavaNewExpression(javaType, arguments) => E.Construct(javaType.typenameInCode, arguments.map(expression(_, scope)))
     case other => E.Unsupported(other.getClass.getSimpleName.stripPrefix("Java"))
@@ -314,10 +439,12 @@ private final class JavaAstToParsed(syntax: JavaSyntax) {
 
   /** Resolves implicit `this`, the module qualifier and `this.` prefixes. */
   private def qualified(target: JavaTarget, scope: Scope): ParsedExpression = {
+    if target.locationString.headOption == scope.module && target.locationString.nonEmpty && scope.locals.contains(target.name) then
+      throw ProgrammingConversionException.unsupported(s"The local variable ${target.name} hides a module field with the same name.")
     val path = (target.locationString :+ target.name).dropWhile(name => scope.module.contains(name) && target.locationString.nonEmpty)
     path match {
       case Seq("this") => E.Self
-      case Seq(name) if !scope.locals(name) && scope.owner.exists(owner => owner.fields(name) && !owner.isStatic) => E.Member(E.Self, name)
+      case Seq(name) if !scope.locals.contains(name) && scope.owner.exists(owner => owner.fields.contains(name) && !owner.isStatic) => E.Member(E.Self, name)
       case Seq(name) => E.Name(name)
       case head +: rest => rest.foldLeft[ParsedExpression](if head == "this" then E.Self else E.Name(head))(E.Member(_, _))
     }
@@ -327,8 +454,12 @@ private final class JavaAstToParsed(syntax: JavaSyntax) {
     val path = (if rawPath.size > 1 && scope.module.contains(rawPath.head) then rawPath.tail else rawPath)
       .mkString(".").stripPrefix("java.lang.").split('.').toSeq
     (path, arguments) match {
+      case (Seq("WorkbookMath", method), Seq(left, right)) if KnownDependencies.arithmeticMethods.contains(method) &&
+          syntax.structured.classes.exists(cls => cls.library && cls.name == "WorkbookMath") =>
+        E.Binary(KnownDependencies.arithmeticMethods(method), left, right)
       // The Java printer spells Python's floor division and power with java.lang.Math.
       case (Seq("Math", "floor"), Seq(E.Binary("/", left, right))) => E.Binary("//", left, right)
+      case (Seq("Math", "floor"), Seq(truncated @ E.Call(Seq("int"), Seq(_)))) => truncated
       case (Seq("Math", "pow"), Seq(base, exponent)) => E.Binary("**", base, exponent)
       // Library helpers are printed as static methods of their dependency class.
       case (qualified, _) if KnownDependencies.functionForJavaCall(qualified).nonEmpty =>
@@ -336,7 +467,7 @@ private final class JavaAstToParsed(syntax: JavaSyntax) {
       case (qualified, _) if JavaSpelling.calls.contains(qualified) => E.Call(Seq(JavaSpelling.calls(qualified)), arguments)
       // Other java.lang.Math methods have no shared built-in; a plain call would print as an unimported `math.…`.
       case (Seq("Math", name), _) => E.Unsupported(s"Math.$name(...)")
-      case (Seq(name), _) if !scope.locals(name) && scope.owner.exists(_.methods.contains(name)) =>
+      case (Seq(name), _) if !scope.locals.contains(name) && scope.owner.exists(_.methods.contains(name)) =>
         val owner = scope.owner.get
         if owner.methods(name) then E.Call(Seq(owner.name, name), arguments)
         else if owner.isStatic then throw IllegalArgumentException(s"Instance method '$name' needs an object.")

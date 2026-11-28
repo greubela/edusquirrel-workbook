@@ -36,7 +36,7 @@ object TurtleStitchToBeExpressionParser {
 
   private final class Reader {
   private val OperatorSymbols = Set(
-    "+", "-", "*", "/", "//", "%", "**",
+    "+", "-", "*", "/", "//", "%", "fmod", "quotient", "**",
     "==", "!=", "<", "<=", ">", ">=",
     "and", "or", "not", "is", "is not", "&", "|", "^", "<<", ">>", "~"
   )
@@ -157,7 +157,7 @@ object TurtleStitchToBeExpressionParser {
   private def snapValueType(value: BeExpression): BeDataType = value match {
     case call: BeFunctionCall if call.isOperator =>
       val symbol = call.funcDef.functionTypeInfo.displayName.universalInterpretation()
-      if Set("+", "-", "*", "/", "//", "%", "**").contains(symbol) then BeDataType.Numeric
+      if Set("+", "-", "*", "/", "//", "%", "fmod", "quotient", "**").contains(symbol) then BeDataType.Numeric
       else if Set("<", "<=", ">", ">=", "==", "!=", "and", "or", "not").contains(symbol) then BeDataType.Boolean
       else BeDataType.AnyType
     case other => other.staticInformationExpression.staticType match {
@@ -237,8 +237,33 @@ object TurtleStitchToBeExpressionParser {
       )
     }
 
+  private object SignedRemainder {
+    def unapply(block: BlockLike): Option[(InputValue, InputValue)] = {
+      def monadic(input: InputValue, name: String) = input match {
+        case NestedBlock(PrimitiveBlock(Some("reportMonadic"), _, Vector(Literal(`name`), operand), _)) => Some(operand)
+        case _ => None
+      }
+      block match {
+        case PrimitiveBlock(Some("reportVariadicProduct"), _, Vector(ListLiteral(Vector(sign,
+              NestedBlock(PrimitiveBlock(Some("reportModulus"), _, Vector(left, right), _))))), _) =>
+          for {
+            dividend <- monadic(sign, "sign")
+            same <- monadic(left, "abs") if same == dividend
+            divisor <- monadic(right, "abs")
+          } yield dividend -> divisor
+        case _ => None
+      }
+    }
+  }
+
   private def parseBlock(block: BlockLike, phaseOne: PhaseOneResult): Option[BeExpression] =
     block match
+      case SignedRemainder(left, right) =>
+        val operands = List(left, right).map(parseInputValue(_, None, phaseOne))
+        val call = SnapControlFlow.operatorCall("fmod", operands)
+        if !SnapControlFlow.passiveOperand(operands.head) then
+          throw it.evadid.vm.code.errors.ProgrammingConversionException.unsupported("A signed remainder needs a repeatable dividend.")
+        Some(call)
       case PrimitiveBlock(None, Some(name), _, _) =>
         Some(SnapControlFlow.useVariable(currentVars.intern(name)))
       case PrimitiveBlock(Some("reportGetVar"), variable, inputs, _) =>

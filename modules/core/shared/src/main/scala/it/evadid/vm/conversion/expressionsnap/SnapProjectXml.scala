@@ -389,9 +389,29 @@ object SnapProjectXml {
       case item => renderConditionValue(item)
     }.mkString}</list></block>"""
 
+  private def checkLiteralRemainder(symbol: String, args: List[BeExpression]): Unit = {
+    def number(value: BeExpression): Option[Double] = value match {
+      case BeUseValue(BeDataValueLiteral(raw), _) => raw.toDoubleOption
+      case call: BeFunctionCall if call.isOperator && SnapControlFlow.operatorSymbol(call) == "-" && call.arguments.size == 1 =>
+        number(call.arguments.head).map(-_)
+      case _ => None
+    }
+    for left <- args.headOption.flatMap(number); right <- args.lift(1).flatMap(number) do {
+      val rest = left % right
+      val signed = symbol == "fmod"
+      val expected = if signed then rest else if rest == 0 then math.copySign(0.0, right)
+        else if (rest < 0) == (right < 0) then rest else rest + right
+      def snapModulo(a: Double, b: Double) = ((a % b) + b) % b
+      val actual = if signed then math.signum(left) * snapModulo(left.abs, right.abs) else snapModulo(left, right)
+      if right == 0 || java.lang.Double.compare(expected, actual) != 0 then
+        throw it.evadid.vm.code.errors.ProgrammingConversionException.unsupported(s"Snap cannot represent the remainder of $left and $right exactly.")
+    }
+  }
+
   private def renderOperator(call: BeFunctionCall)(using RenderContext): String = {
     val op = SnapControlFlow.operatorSymbol(call)
     val args = call.arguments
+    if op == "%" || op == "fmod" then checkLiteralRemainder(op, args)
     op match {
       case "+" if SnapControlFlow.isTextJoin(call) => renderJoin(args)
       case "-" if args.size == 1 =>
@@ -400,6 +420,14 @@ object SnapProjectXml {
       case "not" =>
         val inner = args.headOption.map(renderCondition).getOrElse("""<block s="reportTrue"></block>""")
         s"""<block s="reportNot">$inner</block>"""
+      case "quotient" =>
+        s"""<block s="reportQuotient">${args.map(renderConditionValue).mkString}</block>"""
+      case "fmod" =>
+        val List(left, right) = args: @unchecked
+        def monadic(name: String, arg: BeExpression) =
+          s"""<block s="reportMonadic"><l><option>$name</option></l>${renderConditionValue(arg)}</block>"""
+        val magnitude = s"""<block s="reportModulus">${monadic("abs", left)}${monadic("abs", right)}</block>"""
+        s"""<block s="reportVariadicProduct"><list>${monadic("sign", left)}$magnitude</list></block>"""
       case sym if SnapControlFlow.OperatorToSnapReporter.contains(sym) =>
         val reporter = SnapControlFlow.OperatorToSnapReporter(sym)
         val items = args.map(renderConditionValue).mkString

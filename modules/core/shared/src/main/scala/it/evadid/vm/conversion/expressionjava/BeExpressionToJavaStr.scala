@@ -66,6 +66,11 @@ case class BeExpressionToJavaStr(language: HumanLanguage, skipUnparsable: Boolea
       } then throw ProgrammingConversionException.unsupported(
         "A user class named Turtle conflicts with the Java turtle library. Rename the class before conversion.")
     usedNames = nodes.collect { case variable: BeDefineVariable => javaName(variable) }.toSet
+    if targetLanguage == Java && statements.exists {
+      case definition: BeDefineClass => className(definition.name) == "WorkbookMath"
+      case _ => false
+    } && KnownDependencies.requiredBy(expression).contains(KnownDependencies.modulo) then
+      throw ProgrammingConversionException.unsupported("The class WorkbookMath conflicts with the Java arithmetic helper.")
     moduleFunctions = statements.collect { case definition: BeDefineFunction if definition.functionTypeInfo.isMethodInClass.isEmpty =>
       definition.functionTypeInfo.displayName.universalInterpretation()
     }.toSet
@@ -221,12 +226,14 @@ case class BeExpressionToJavaStr(language: HumanLanguage, skipUnparsable: Boolea
       }
       val arguments = if Set("and", "or", "not")(symbol) then values.map(truth) else values.map(forOperand)
       (symbol, values) match {
-        // Python's floor division and power have no Java operator; the Java parser reads these calls back.
-        case ("//", Seq(_, _)) => s"Math.floor(${arguments.head} / ${arguments(1)})"
+        case (_, Seq(_, _)) if KnownDependencies.javaArithmeticMethod(call).nonEmpty =>
+          s"WorkbookMath.${KnownDependencies.javaArithmeticMethod(call).get}(${arguments.mkString(", ")})"
+        case ("quotient", Seq(_, _)) => s"(double) ${arguments.head} / ${arguments(1)}"
+        case ("/", Seq(_, _)) =>
+          val divisor = arguments(1)
+          if arguments.head.matches("[0-9]+") then s"${arguments.head}.0 / $divisor"
+          else if divisor.matches("[0-9]+") then s"${arguments.head} / $divisor.0" else s"${arguments.head} / $divisor"
         case ("**", Seq(_, _)) => s"Math.pow(${arguments.head}, ${arguments(1)})"
-        // Python's `/` always divides exactly; a whole-number dividend would make Java divide integers.
-        case ("/", Seq(BeUseValue(BeDataValueLiteral(dividend), _), _)) if dividend.trim.matches("[0-9]+") =>
-          s"${dividend.trim}.0 / ${arguments(1)}"
         case ("==" | "!=", Seq(left, right)) if JavaSpelling.isText(left) || JavaSpelling.isText(right) =>
           val (receiver, other) = if JavaSpelling.isText(left) then (arguments.head, arguments(1)) else (arguments(1), arguments.head)
           (if symbol == "!=" then "!" else "") + s"$receiver.equals($other)"

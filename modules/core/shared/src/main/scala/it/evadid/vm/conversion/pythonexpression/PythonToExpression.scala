@@ -322,7 +322,7 @@ private final class PythonAstToParsed(syntax: PythonSyntax) {
       names(callee).fold(E.Unsupported("(...)(...)"))(call(_, arguments))
     case PyCallExpression(callee, arguments) =>
       names(callee) match {
-        case Some(qualified) => E.Call(qualified, arguments.map(expression))
+        case Some(qualified) => call(qualified, arguments)
         case None => callee match {
           case PyAttributeAccess(receiver, name) => E.MethodCall(expression(receiver), name, arguments.map(expression))
           case _ => E.Unsupported("(...)(...)")
@@ -345,6 +345,12 @@ private final class PythonAstToParsed(syntax: PythonSyntax) {
     }
     keywords match {
       // `pow(a, b)` is `a ** b`; `math.sqrt` and `random.random` are the shared `sqrt` and `random`.
+      case Seq() if path == Seq("ieee_divide") && positional.size == 2 && !definedFunctions("ieee_divide") &&
+          syntax.structured.functions.exists(function => function.name == "ieee_divide" && function.owner.isEmpty &&
+            syntax.structured.masked.substring(function.span.start, function.span.start + function.header.length).isBlank) =>
+        E.Binary("quotient", expression(positional.head), expression(positional(1)))
+      case Seq() if path == Seq("math", "fmod") && positional.size == 2 =>
+        E.Binary("fmod", expression(positional.head), expression(positional(1)))
       case Seq() if (path == Seq("pow") && !definedFunctions("pow") || path == Seq("math", "pow")) && positional.size == 2 =>
         E.Binary("**", expression(positional.head), expression(positional(1)))
       case Seq() if path == Seq("math", "sqrt") || path == Seq("random", "random") => E.Call(path.tail, positional.map(expression))

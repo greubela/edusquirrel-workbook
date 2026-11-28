@@ -97,26 +97,18 @@ final class ProgrammingStateDerivations private[evadid](source: ProgrammingState
       val integerDeclaration = "(for\\s*\\(\\s*)?\\b(?:byte|short|int|long)\\s+[A-Za-z_$\\u00C0-\\uFFFF]".r
       val numericWarnings = Option.when(source.associatedLanguage == Java && language != Java &&
           integerDeclaration.findAllMatchIn(javaSource.structured.codeMasked).exists(_.group(1) == null)) {
-        ConversionInfo("Java integer types were widened to shared numeric values; integer overflow and truncating division are not preserved.",
+        ConversionInfo("Java integer types were widened to shared numeric values; fixed-width overflow is not preserved.",
           it.evadid.util.logging.LoggingLevel.WARN, true)
       }.toSeq ++ Option.when(source.associatedLanguage == Python && language != Python &&
           "(?::|->)\\s*int\\b".r.findFirstIn(pythonSource.structured.codeMasked).nonEmpty) {
         ConversionInfo("Python int hints were widened to shared numeric values; whole numbers may become decimal numbers.",
           it.evadid.util.logging.LoggingLevel.WARN, true)
       }.toSeq
-      val remainderWarnings = Option.when((source.associatedLanguage == Java) != (language == Java) &&
-          expression.expression.subtree.exists {
-            case call: it.evadid.vm.code.usage.BeFunctionCall => call.isOperator && call.funcDef.functionTypeInfo.displayName.universalInterpretation() == "%"
-            case _ => false
-          }) {
-        ConversionInfo("Java's % keeps the sign of the dividend, while Python's and Snap's keep the sign of the divisor; results differ for negative numbers.",
-          it.evadid.util.logging.LoggingLevel.WARN, false)
-      }.toSeq
       val droppedComments = Option.when(language == SnapLanguage && source.associatedLanguage != SnapLanguage &&
           expression.expression.subtree.exists(_.isInstanceOf[it.evadid.vm.code.errors.BeSingleLineComment])) {
         ConversionInfo("Snap scripts have no comment statements; comments were not converted.", it.evadid.util.logging.LoggingLevel.INFO, false)
       }.toSeq
-      ConversionResult(source, Some(target), preparedSource.diagnostics ++ numericWarnings ++ remainderWarnings ++ droppedComments)
+      ConversionResult(source, Some(target), preparedSource.diagnostics ++ numericWarnings ++ droppedComments)
     }
     catch { case scala.util.control.NonFatal(error) => ConversionResult.failed(source, error) }
   }

@@ -91,7 +91,16 @@ object SnapControlFlow {
     "**" -> SnapReporter("reportPower", SnapReporterKind.Binary)
   )
 
-  private val SupportedOperators: Set[String] = OperatorToSnapReporter.keySet
+  def passiveOperand(value: BeExpression): Boolean = value match {
+    case BeUseValue(_: BeDataValueLiteral | _: BeUseValueReference, _) => true
+    case call: BeFunctionCall if call.isOperator && OperatorToSnapReporter.contains(operatorSymbol(call)) =>
+      call.arguments.forall(passiveOperand)
+    case _ => false
+  }
+
+  private def supportedOperator(call: BeFunctionCall): Boolean =
+    OperatorToSnapReporter.contains(operatorSymbol(call)) || operatorSymbol(call) == "quotient" ||
+      (operatorSymbol(call) == "fmod" && call.arguments.size == 2 && passiveOperand(call.arguments.head))
 
   private val SnapReporterToOperator: Map[String, String] =
     OperatorToSnapReporter.map { case (op, snap) => snap.selector -> op } ++ Map(
@@ -253,8 +262,7 @@ object SnapControlFlow {
       case call: BeFunctionCall =>
         call.funcDef.functionTypeInfo.funcType match
           case BeDefineFunction.Operator(_) =>
-            val op = operatorSymbol(call)
-            SupportedOperators.contains(op) &&
+            supportedOperator(call) &&
               call.arguments.forall(arg => isSupportedCondition(arg, userFunctions) || isSupportedValue(arg, userFunctions))
           case _ =>
             isUserReporterCall(call, userFunctions)
@@ -268,8 +276,7 @@ object SnapControlFlow {
       case call: BeFunctionCall =>
         call.funcDef.functionTypeInfo.funcType match
           case BeDefineFunction.Operator(_) =>
-            val op = operatorSymbol(call)
-            SupportedOperators.contains(op) &&
+            supportedOperator(call) &&
               call.arguments.forall(isSupportedValue(_, userFunctions))
           // Library reporters such as `url` produce a value in Snap as well.
           case _ if isToText(call) || isMathReporter(call) => call.arguments.forall(isSupportedValue(_, userFunctions))

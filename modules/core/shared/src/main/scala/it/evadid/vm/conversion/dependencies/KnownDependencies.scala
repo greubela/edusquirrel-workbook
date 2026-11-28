@@ -3,7 +3,8 @@ package it.evadid.vm.conversion.dependencies
 import it.evadid.core.datastructures.language.AppLanguage.{Java, ProgrammingLanguage, Python}
 import it.evadid.vm.code.abstractions.BeExpression
 import it.evadid.vm.code.defining.{BeDependency, BeIntrinsic}
-import it.evadid.vm.code.usage.BeFunctionCall
+import it.evadid.vm.code.usage.{BeFunctionCall, BeUseValue}
+import it.evadid.vm.types.BeDataValueLiteral
 import it.evadid.vm.conversion.printing.ModuleLayout
 import it.evadid.vm.naming.BeEntityName
 
@@ -49,6 +50,52 @@ object KnownDependencies {
   val squareRoot: BeDependency = BeDependency(BeEntityName.fromUniversalNameInParts("sqrt"), Map(Python -> "from math import sqrt"))
   val random: BeDependency = BeDependency(BeEntityName.fromUniversalNameInParts("random"), Map(Python -> "from random import random"))
 
+  val arithmeticMethods: Map[String, String] = Map("modulo" -> "%", "signedRemainder" -> "fmod", "divide" -> "/", "floorDivide" -> "//")
+  def javaArithmeticMethod(call: BeFunctionCall): Option[String] = {
+    val symbol = call.funcDef.functionTypeInfo.displayName.universalInterpretation()
+    val hasNonzeroLiteral = call.arguments.lift(1).exists {
+      case BeUseValue(BeDataValueLiteral(raw), _) => raw.toDoubleOption.exists(value => value.isFinite && value != 0)
+      case _ => false
+    }
+    Option.unless(symbol == "/" && hasNonzeroLiteral)(arithmeticMethods.collectFirst { case (method, `symbol`) => method }).flatten
+  }
+  val ieeeDivide: BeDependency = BeDependency(BeEntityName.fromCodeString("ieeeDivide"), Map(Python ->
+    """def ieee_divide(value, divisor):
+      |    import math
+      |    if divisor != 0:
+      |        return value / divisor
+      |    if value == 0 or math.isnan(value):
+      |        return math.nan
+      |    return math.copysign(math.inf, math.copysign(1.0, value) * math.copysign(1.0, divisor))""".stripMargin))
+
+  val signedRemainderImport: BeDependency = BeDependency(BeEntityName.fromCodeString("math"), Map(Python -> "import math"))
+
+  val modulo: BeDependency = BeDependency(BeEntityName.fromCodeString("WorkbookMath"), Map(Java ->
+    """class WorkbookMath {
+      |    static double divide(double value, double divisor) {
+      |        if (divisor == 0) throw new ArithmeticException("Division by zero.");
+      |        return value / divisor;
+      |    }
+      |    static double floorDivide(double value, double divisor) {
+      |        double rest = signedRemainder(value, divisor);
+      |        double quotient = (value - rest) / divisor;
+      |        if (rest != 0 && (rest < 0) != (divisor < 0)) quotient--;
+      |        if (quotient == 0) return Math.copySign(0.0, value / divisor);
+      |        double floor = Math.floor(quotient);
+      |        return quotient - floor > 0.5 ? floor + 1 : floor;
+      |    }
+      |    static double signedRemainder(double value, double divisor) {
+      |        if (divisor == 0) throw new ArithmeticException("Remainder by zero.");
+      |        return value % divisor;
+      |    }
+      |    static double modulo(double value, double divisor) {
+      |        if (divisor == 0) throw new ArithmeticException("Modulo by zero.");
+      |        double rest = value % divisor;
+      |        if (rest == 0) return Math.copySign(0.0, divisor);
+      |        return (rest < 0) == (divisor < 0) ? rest : rest + divisor;
+      |    }
+      |}""".stripMargin))
+
   private val byIntrinsic: Seq[(BeIntrinsic, BeDependency)] = Seq(BeIntrinsic.Turtle -> turtle, BeIntrinsic.FetchText -> fetchText,
     BeIntrinsic.Print -> system, BeIntrinsic.PrintErr -> systemErrors, BeIntrinsic.SquareRoot -> squareRoot, BeIntrinsic.Random -> random)
 
@@ -69,12 +116,16 @@ object KnownDependencies {
     case (intrinsic, `path`) => byIntrinsic.collectFirst { case (`intrinsic`, dependency) => dependency.structureName.universalInterpretation() }.get
   }
 
-  val all: Seq[BeDependency] = byIntrinsic.map(_._2).distinct
+  val all: Seq[BeDependency] = byIntrinsic.map(_._2).distinct ++ Seq(modulo, ieeeDivide)
 
   /** The dependencies a program calls into, in registry order. */
   def requiredBy(expression: BeExpression): Seq[BeDependency] = {
-    val used = expression.subtree.collect { case call: BeFunctionCall => call.funcDef.intrinsic }.flatten.toSet
-    byIntrinsic.collect { case (intrinsic, dependency) if used(intrinsic) => dependency }.distinct
+    val calls = expression.subtree.collect { case call: BeFunctionCall => call }
+    val used = calls.flatMap(_.funcDef.intrinsic).toSet
+    val operators = calls.filter(_.isOperator).map(_.funcDef.functionTypeInfo.displayName.universalInterpretation()).toSet
+    byIntrinsic.collect { case (intrinsic, dependency) if used(intrinsic) => dependency }.distinct ++
+      Option.when(calls.exists(call => call.isOperator && javaArithmeticMethod(call).isDefined))(modulo) ++ Option.when(operators("fmod"))(signedRemainderImport) ++
+      Option.when(operators("quotient"))(ieeeDivide)
   }
 
   def definitionsFor(expression: BeExpression, language: ProgrammingLanguage): Seq[String] =

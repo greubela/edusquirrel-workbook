@@ -155,21 +155,18 @@ class BeProgramInterpreterSpec extends FunSuite {
     assert(program.execute(entry = ProgramEntry.Call("fehlt")).status.toString.contains("does not define fehlt"))
   }
 
-  private val arithmetic = withEmptyMain(
-    """    static int rechne(int a, int b) {
-      |        return a % b + Math.floor(a / b) * 10 - (-b);
-      |    }
-      |    static int zaehle(int n) {
-      |        int k = 0;
-      |        while (k < n) {
-      |            k = k + 1;
-      |            NumberList.set(0, k);
-      |        }
-      |        return k;
-      |    }
-      |    static void teile(int a) {
-      |        NumberList.set(0, 10 / a);
-      |    }""".stripMargin)
+  private val arithmetic = ProgrammingStateRaw(Python,
+    """def rechne(a, b):
+      |    return a % b + (a // b) * 10 - (-b)
+      |def zaehle(n):
+      |    k = 0
+      |    while k < n:
+      |        k += 1
+      |        NumberList.set(0, k)
+      |    return k
+      |def teile(a):
+      |    NumberList.set(0, 10 / a)
+      |""".stripMargin).toBeExpression
 
   test("operators follow Python semantics for remainder and floor division; while loops repeat until false") {
     assertEquals(arithmetic.execute(entry = ProgramEntry.Call("rechne", Seq(7, 2))).returnValue, Some(1.0 + 30.0 + 2.0))
