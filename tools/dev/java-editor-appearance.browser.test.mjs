@@ -26,7 +26,7 @@ test('Java hints retain in-flight feedback across editor close and display-langu
     page.on('pageerror', error => errors.push(error.message));
     async function answer(pending, question = 'Wo beginnt dein Programm?', ids = ['source-1']) {
       const now = '2026-10-22T12:00:00';
-      const value = JSON.stringify({hints: [{question, evidenceIds: ids}]});
+      const value = JSON.stringify({hints: [{text: question, evidenceIds: ids}]});
       await pending.route.fulfill({headers, contentType: 'application/json', body: JSON.stringify({
         timestamps: {timestampReceived: now, timestampStarted: now, timestampFinished: now},
         result: [1, {json: JSON.stringify(value), classSimpleName: 'String'}],

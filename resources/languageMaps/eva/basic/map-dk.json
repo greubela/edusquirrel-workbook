@@ -1,6 +1,7 @@
 {
   "imageLoadingMap": "[billedet indlæses]",
   "missingContent": "[Intet indhold]",
+  "programmingHintNoChange": "Jeg har ikke flere tip til denne version.",
   "noSectionSelected": "[intet afsnit valgt]",
   "downloadEverything": "Download",
   "settings": "Indstillinger",

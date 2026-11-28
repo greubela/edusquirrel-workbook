@@ -1,6 +1,7 @@
 {
   "imageLoadingMap": "[Bild wird geladen]",
   "missingContent": "[Kein Inhalt vorhanden]",
+  "programmingHintNoChange": "Zu diesem Stand habe ich keinen weiteren Hinweis.",
   "noSectionSelected": "[Kein Abschnitt ausgewählt]",
   "downloadEverything": "Herunterladen",
   "settings": "Einstellungen",

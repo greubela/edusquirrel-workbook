@@ -102,8 +102,13 @@ class ProgrammingUnitTestGraderWorkerSpec extends FunSuite {
   }
 
   test("hints include the latest public check results of the current answer") {
-    val grader = ProgrammingUnitTestGrader("area", "assert area(2, 3) == 6", publicDescription = Some(description))
+    val grader = ProgrammingUnitTestGrader("area", """assert run_java("area", [2, 3])["commands"] == [["forward", 6]]""", publicDescription = Some(description),
+      publishInvocationArguments = true)
     val exercise = ProgrammingExerciseFullJava("graded-hint", Some(ProgrammingTestSuite(List(grader))),
+      startingProgram = """public class Main {
+                          |  public static void main(String[] args) {}
+                          |  static void area(int width, int height) { Turtle.forward(width + height); }
+                          |}""".stripMargin,
       hintTask = Some(LanguageMapContentId("test/task")))
     final class Llm extends LocalExecutionClient[it.evadid.distribution.commandTypes.LLMCommands.FeedbackLlmRequest, String] {
       val prompts = State(Vector.empty[String])
@@ -111,13 +116,18 @@ class ProgrammingUnitTestGraderWorkerSpec extends FunSuite {
         command.name == it.evadid.distribution.commandTypes.LLMCommands.feedbackLlmCommandFactory.name
       override protected def rawExecution(logger: Logger, input: it.evadid.distribution.commandTypes.LLMCommands.FeedbackLlmRequest): Future[String] = {
         prompts.update(_ :+ input.prompt)
-        Future.successful("""{"hints":[{"question":"Which line computes the result?","evidenceIds":["check-1"]}]}""")
+        Future.successful("""{"hints":[{"text":"Which line computes the result?","evidenceIds":["check-1"]}]}""")
       }
     }
     val llm = new Llm
-    val context = TestExecutionContext(List(new Worker(report("failed", "assertion")), llm), languageMapIdResolver = Some(resolver))
+    val call = ujson.Obj("target" -> "area", "arguments" -> ujson.Arr(
+      ujson.Obj("kind" -> "int", "value" -> "2"), ujson.Obj("kind" -> "int", "value" -> "3")))
+    val context = TestExecutionContext(List(new Worker(report("failed", "assertion", "testInvocation" -> call)), llm),
+      languageMapIdResolver = Some(resolver))
     val state = exercise.defaultValue
     grader.gradeStateSafe(state, forceGrading = true, UpdateImportance.MAJOR, context).flatMap { result =>
+      assertEquals(result.gradingStatus, GradingStatus.Incorrect)
+      assert(result.additionalData.flatMap(_.testInvocation).exists(_.target.contains("area")))
       exercise.interactionVariable.updateHistory(_.addGrading(result), context)
       exercise.scaffoldingElement.get.handleFeedbackGeneration(state, context).map { _ =>
         val check = ujson.read(llm.prompts.now().head)("checks")(0)
@@ -125,6 +135,9 @@ class ProgrammingUnitTestGraderWorkerSpec extends FunSuite {
         assertEquals(check("status").str, "incorrect")
         assertEquals(check("required").bool, true)
         assertEquals(check("description").str, "Checks the area.")
+        assertEquals(check("testCall")("method").str, "area")
+        assertEquals(check("testCall")("arguments").arr.map(_("value").str).toList, List("2", "3"))
+        assert(!check("testCall").obj.contains("firstDifference"))
       }
     }
   }
