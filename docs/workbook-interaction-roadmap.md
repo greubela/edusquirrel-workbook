@@ -1,6 +1,6 @@
 # Workbook interaction roadmap
 
-Use the [migration inventory](docs/digital-workbook-migration.md) for current
+Use the [migration inventory](digital-workbook-migration.md) for current
 edition status, source references and remaining content gaps. This roadmap
 summarizes directions for reusable interactions; it is not an API inventory or a
 commitment to implement every idea.
@@ -10,7 +10,7 @@ commitment to implement every idea.
 Text, choices, answer tables, sorting and ordering already cover many knowledge
 checks and reflections. Small interactions should render inline. Add a dedicated
 editor when the task needs a sustained workspace, such as mail triage, programming
-or simulation. Follow the [interaction architecture](docs/workbook-interaction-architecture.md)
+or simulation. Follow the [interaction architecture](workbook-interaction-architecture.md)
 for shared models, state binding, grading and optional fullscreen placement.
 
 ## Remaining reusable capabilities
