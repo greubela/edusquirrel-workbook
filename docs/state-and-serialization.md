@@ -119,9 +119,10 @@ session identity. An interaction belongs to it by serialization key and instance
 instance under the same key reads its default answer and its writes are ignored.
 
 The core [`InteractionController`](../modules/core/shared/src/main/scala/it/evadid/workbook/control/InteractionController.scala)
-makes every change as a pure transition of its core `State`, and owns the feedback
-computations of the current session, the sync phases (store, read, reset with a per-user
-pause) and the pending stores. Effects follow the observed change: a changed history is
+makes every change as a pure transition of its core `State` and owns the feedback
+computations of the current session. Its [`sync`](../modules/core/shared/src/main/scala/it/evadid/workbook/control/InteractionSync.scala)
+owns the sync phases (store, read, reset with a per-user pause) and the pending stores.
+Effects follow the observed change: a changed history is
 stored through the injected scheduler (the client defers to the next task, so an answer and
 its grading starts share one store), and a changed answer runs the graders that run
 automatically for its importance. The client adds only Airstream views
@@ -178,7 +179,7 @@ all configured destinations from client code:
 import scala.concurrent.Future
 
 def syncWorkbook(fullInfo: FullInfo): Future[Unit] =
-  fullInfo.interactions.ensureSynced()
+  fullInfo.interactions.sync.ensureSynced()
 ```
 
 `ensureSynced` fetches and stores with forced buffer flushes, after the current

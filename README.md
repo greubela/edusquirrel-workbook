@@ -71,7 +71,7 @@ Shared workbook code lives under `modules/core/shared/src/main/scala/it/evadid/w
 | `elements.structure`, `elements.display` | General elements: workbooks, sections, groups and display content |
 | `interactions.<kind>` | Specific interactions with their graders, scaffolders and domain models |
 | `model` | Central answer state: `InteractionInfo` with an entry per interaction |
-| `control` | `InteractionController` and feedback control, which change that state |
+| `control` | `InteractionController`, its `InteractionSync` and feedback control, which change and synchronize that state |
 | `history`, `sync`, `serialization` | Immutable histories and events, sync destinations and strategies, definition codecs |
 | `reports`, `session` | Status reports, saved sessions |
 

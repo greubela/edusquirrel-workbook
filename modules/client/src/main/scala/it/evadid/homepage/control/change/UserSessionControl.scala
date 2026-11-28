@@ -179,14 +179,14 @@ final class UserSessionControl(val fullInfo: FullInfo) {
     if (newUserInfo == oldUser) Future.successful(()) else {
       val waitFor: Future[?] = if (oldUser.isEmpty) Future.successful(()) else {
         WorkbookUserDataAnalyzer().downloadAllData(fullInfo)
-        fullInfo.interactions.ensureSynced()
+        fullInfo.interactions.sync.ensureSynced()
       }
       val finishing = waitFor.recover { case scala.util.control.NonFatal(error) =>
         logger.logExceptionWarn("Could not finish synchronizing the previous user", error)
       }
       // Normal session changes replace the binding immediately; its captured IO finishes independently.
       // A full reset also clears shared local answer stores, so finish that deletion before switching users.
-      val ready = fullInfo.interactions.resetState match {
+      val ready = fullInfo.interactions.sync.resetState match {
         case _: SyncResetState.Running => finishing
         case _ => Future.unit
       }

@@ -155,18 +155,16 @@ class InteractionControllerSpec extends FunSuite {
   private def confirmed(answers: InteractionController, interaction: TextInteraction): Int =
     answers.report(interaction).destinationsWithSufficientWrites.size
 
-  test("an observed change requests a store of the changed history only; a new session's binding requests none") {
+  test("an observed change schedules one store; repeated requests join it and a new session's binding requests none") {
     val essay = TextInteraction("essay")
     val note = TextInteraction("note")
-    val requested = State(Vector.empty[String])
-    val answers = new InteractionController(State(InteractionInfo.empty(context))) {
-      override protected def requestStore(key: String): Unit = requested.update(_ :+ key)
-    }
+    val scheduled = State(Vector.empty[() => Unit])
+    val answers = new InteractionController(State(InteractionInfo.empty(context)), run => scheduled.update(_ :+ run))
     answers.bind(InteractionScope(context, Seq(essay, note), SyncConnection.offline))
     answers.setStateFromUserInteraction(essay, "answer", MAJOR)
-    answers.setStateFromUserInteraction(essay, "answer", MAJOR)
+    answers.setStateFromUserInteraction(essay, "second answer", MAJOR)
     answers.bind(InteractionScope(context.copy(userId = "next"), Seq(essay, note), SyncConnection.offline))
-    assertEquals(requested.now(), Vector(essay.keyForSerialization))
+    assertEquals(scheduled.now().size, 1)
   }
 
   test("a stored and read answer is confirmed; a new connection keeps the answers but not the confirmation") {
@@ -174,7 +172,7 @@ class InteractionControllerSpec extends FunSuite {
     val store = GatedHistoryStore(context)
     val answers = connected(store, essay)
     answers.setStateFromUserInteraction(essay, "answer", MAJOR)
-    answers.store(essay, forceFlush = true).flatMap(_ => answers.fetch(essay, forceFlush = true)).map { _ =>
+    answers.sync.store(essay, forceFlush = true).flatMap(_ => answers.sync.fetch(essay, forceFlush = true)).map { _ =>
       assertEquals(confirmed(answers, essay), 1)
       val session = answers.info.session
       answers.connect(connection(GatedHistoryStore(context)))
@@ -192,8 +190,8 @@ class InteractionControllerSpec extends FunSuite {
     val held = Promise[Unit]()
     retired.gate.set(Some(held))
     seed(retired, essay, "retired remote answer")
-    val write = answers.store(essay, forceFlush = true)
-    val read = answers.fetch(essay, forceFlush = true)
+    val write = answers.sync.store(essay, forceFlush = true)
+    val read = answers.sync.fetch(essay, forceFlush = true)
     answers.connect(connection(GatedHistoryStore(context)))
     held.success(())
     write.flatMap(_ => read).map { _ =>
@@ -209,7 +207,7 @@ class InteractionControllerSpec extends FunSuite {
     val held = Promise[Unit]()
     store.gate.set(Some(held))
     seed(store, essay, "first user's answer")
-    val read = answers.fetch(essay, forceFlush = true)
+    val read = answers.sync.fetch(essay, forceFlush = true)
     answers.bind(InteractionScope(context.copy(userId = "next"), Seq(essay), SyncConnection.offline))
     held.success(())
     read.map(_ => assertEquals(answers.currentValue(essay), ""))
@@ -223,6 +221,6 @@ class InteractionControllerSpec extends FunSuite {
       AnswerChangedEvent[BinaryPixelInteractionFormat.type](BinaryPixelImage.blank(3, 3), Instant.now(), MAJOR))))
     store.values.set(Map(SyncContext.serializer.serialize(context.toSyncContext(pixels.keyForSerialization)) ->
       InteractionHistoryJson.fromHistory(BinaryPixelInteractionFormat, resized).serialized))
-    answers.fetch(pixels, forceFlush = true).map(_ => assertEquals(answers.currentValue(pixels), BinaryPixelImage.blank(2, 2)))
+    answers.sync.fetch(pixels, forceFlush = true).map(_ => assertEquals(answers.currentValue(pixels), BinaryPixelImage.blank(2, 2)))
   }
 }

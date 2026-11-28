@@ -31,9 +31,9 @@ final class HomepageState(homepage: HomepageControl, interactions: InteractionCo
   }
 
   private def change(transition: HomepageInfo => HomepageInfo, reconnect: Boolean): Future[Unit] = {
-    interactions.sendPending()
+    interactions.sync.sendPending()
     homepage.change(transition, next => interactions.follow(scopeFor(next), reconnect))
     // A change made inside an Airstream transaction applies when it ends; the read starts after it.
-    Future.unit.flatMap(_ => interactions.ensureSynced())
+    Future.unit.flatMap(_ => interactions.sync.ensureSynced())
   }
 }

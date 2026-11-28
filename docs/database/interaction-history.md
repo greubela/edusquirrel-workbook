@@ -10,7 +10,8 @@ registries. See [formats and event semantics](../interaction-format.md).
 | Class | Responsibility |
 | --- | --- |
 | [HomepageState](../../modules/client/src/main/scala/it/evadid/homepage/control/change/HomepageState.scala) | Orders user, credential and workbook changes across the page and answer controls |
-| [InteractionController](../../modules/core/shared/src/main/scala/it/evadid/workbook/control/InteractionController.scala) | Transitions of the answers (`InteractionInfo`), deferred stores, batched store/read phases, user-scoped reset progress, session-scoped results |
+| [InteractionController](../../modules/core/shared/src/main/scala/it/evadid/workbook/control/InteractionController.scala) | Transitions of the answers (`InteractionInfo`), session-scoped results |
+| [InteractionSync](../../modules/core/shared/src/main/scala/it/evadid/workbook/control/InteractionSync.scala) (`controller.sync`) | Deferred stores, batched store/read phases, user-scoped reset progress |
 | [RemoteHistoryCache](../../modules/core/shared/src/main/scala/it/evadid/core/datastructures/storage/remote/RemoteHistoryCache.scala) | Store and read logic over an immutable `CacheState`: local histories and per-location known event IDs, read freshness and cursors |
 | [FormattedSyncDestination](../../modules/core/shared/src/main/scala/it/evadid/workbook/sync/FormattedSyncDestination.scala) | Converts typed histories to/from envelopes at a destination boundary |
 | [BufferedSyncDestinationHandler](../../modules/core/shared/src/main/scala/it/evadid/workbook/sync/destination/BufferedSyncDestinationHandler.scala) | Merges queued deltas per context, serializes batches and gives each caller the confirmations of its own events |
@@ -161,7 +162,7 @@ credentials from client-visible cause chains.
 
 ## Full reset
 
-`resetAllData()` drains registered operations, deletes the current user's histories
+`sync.resetAllData()` drains registered operations, deletes the current user's histories
 across all workbooks from every configured backend destination, and clears each
 configured local answer store without decoding records. Authentication and
 unrelated caches survive. Reset also works from the catalogue.

@@ -46,7 +46,7 @@ case class DropdownMenuControl(fullInfo: FullInfo, curWorkbook: Option[AllWorkbo
       .getOrElse("Clear all configured local answer stores and delete your saved answers and feedback across all workbooks? This cannot be undone.")
     if !resetState.now().isInstanceOf[SyncResetState.Running] && dom.window.confirm(message) then {
       val owner = resetOwner
-      fullInfo.interactions.resetAllData().onComplete {
+      fullInfo.interactions.sync.resetAllData().onComplete {
         case Success(_) if resetOwner == owner => dom.window.location.reload()
         case Success(_) => ()
         case Failure(error) => logger.logExceptionWarn("Reset was not confirmed by every destination", error)

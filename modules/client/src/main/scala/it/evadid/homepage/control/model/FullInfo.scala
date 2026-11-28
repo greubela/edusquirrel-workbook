@@ -82,8 +82,8 @@ final class FullInfo(private[control] val defaultInfo: HomepageInfo) {
    * follow the editors, which write their typed text at the document.
    */
   windowEvents(_ => FullInfo.onVisibilityChange).filter(_ => org.scalajs.dom.document.hidden)
-    .foreach(_ => interactions.sendPending())(using owner)
-  windowEvents(_.onPageHide).foreach(_ => interactions.sendPending())(using owner)
+    .foreach(_ => interactions.sync.sendPending())(using owner)
+  windowEvents(_.onPageHide).foreach(_ => interactions.sync.sendPending())(using owner)
 
   /** Changes of user, credentials and workbook, which concern both the page and its answers. */
   val state: HomepageState = HomepageState(homepage, interactions, scopeFor)

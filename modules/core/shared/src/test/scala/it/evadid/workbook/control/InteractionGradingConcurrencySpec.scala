@@ -155,7 +155,7 @@ class InteractionGradingConcurrencySpec extends FunSuite {
       GradingStartedEvent[Choice](ref(wrong), now.minusSeconds(5), grader.reference)))
     val answers = store.controllerFor(choice)
     answers.setStateFromUserInteraction(choice, right, MAJOR)
-    answers.fetch(choice, forceFlush = true).flatMap { _ =>
+    answers.sync.fetch(choice, forceFlush = true).flatMap { _ =>
       assertEquals(answers.currentValue(choice), right, "the newer local answer stays current")
       assertEquals(status(answers, choice, wrong), GradingStatus.NotFinished, "the server's start belongs to the previous answer")
       assertEquals(status(answers, choice, right), GradingStatus.NotRequested)
@@ -173,14 +173,14 @@ class InteractionGradingConcurrencySpec extends FunSuite {
     store.seed(choice, remote(AnswerChangedEvent[Choice](wrong, now.minusSeconds(10), MAJOR),
       GradingStartedEvent[Choice](ref(wrong), now.minusSeconds(5), grader.reference)))
     val answers = store.controllerFor(choice)
-    answers.fetch(choice, forceFlush = true).flatMap { _ =>
+    answers.sync.fetch(choice, forceFlush = true).flatMap { _ =>
       assertEquals(answers.currentValue(choice), wrong)
       assertEquals(answers.feedback(choice).getCurrentStateOfGrading(wrong).testsWithResults.head.gradingStatus, GradingStatus.NotFinished)
       answers.feedback(choice).getOrCalculateGrading(forceGrading = true)
     }.flatMap { graded =>
       assertEquals(graded.testsWithResults.head.gradingStatus, GradingStatus.Incorrect)
       assertEquals(status(answers, choice, wrong), GradingStatus.Incorrect, "the local completion is newer than the remote start")
-      answers.store(choice, forceFlush = true)
+      answers.sync.store(choice, forceFlush = true)
     }.map { _ =>
       val stored = it.evadid.workbook.sync.model.InteractionHistoryJson.deserialize(store.values.now().values.head).typedAs(choice.interactionFormat)
       assertEquals(stored.gradingForState(choice.gradingElements, wrong).testsWithResults.head.gradingStatus, GradingStatus.Incorrect,
@@ -194,7 +194,7 @@ class InteractionGradingConcurrencySpec extends FunSuite {
     val completed = GradingResult(grader, right, GradingStatus.Correct, None, None, now.minusSeconds(5))
     store.seed(choice, remote(AnswerChangedEvent[Choice](right, now.minusSeconds(10), MAJOR), GradingCompletedEvent[Choice](completed.record(ref(right)))))
     val answers = store.controllerFor(choice)
-    answers.fetch(choice, forceFlush = true).flatMap(_ => answers.feedback(choice).getOrCalculateGrading(forceGrading = true)).map { graded =>
+    answers.sync.fetch(choice, forceFlush = true).flatMap(_ => answers.feedback(choice).getOrCalculateGrading(forceGrading = true)).map { graded =>
       assertEquals(graded.testsWithResults.head.gradingStatus, GradingStatus.Correct)
       assertEquals(answers.currentHistory(choice).gradingEvents.count(_.isInstanceOf[GradingStartedEvent[?]]), 0, "no local grading started")
     }

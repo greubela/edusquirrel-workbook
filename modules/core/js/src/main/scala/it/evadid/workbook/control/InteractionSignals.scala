@@ -47,7 +47,7 @@ object InteractionSignals {
       boundVar(interaction, _ => importance)
 
     /** The reset progress of the current user. */
-    def resetStateSignal: StrictSignal[SyncResetState] = Projection(controller.resetStates, () => controller.resetState, identity)
+    def resetStateSignal: StrictSignal[SyncResetState] = Projection(controller.sync.resetStates, () => controller.sync.resetState, identity)
 
     /** The sync report of `interaction`; no destination counts as confirmed during a reset. */
     def reportSignal(interaction: WorkbookInteractionElement[? <: InteractionFormat]): Signal[InteractionSyncReport[SyncInformationWithContext]] =

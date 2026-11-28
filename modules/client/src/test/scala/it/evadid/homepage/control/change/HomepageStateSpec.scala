@@ -175,30 +175,30 @@ class HomepageStateSpec extends EditorDomSuite {
   private def settled(fixture: Fixture): Future[Unit] = {
     val due = Promise[Unit]()
     js.timers.setTimeout(0)(due.success(()))
-    due.future.flatMap(_ => fixture.info.interactions.storeAll(true))
+    due.future.flatMap(_ => fixture.info.interactions.sync.storeAll(true))
   }
 
   /** Writes are confirmed only by reading them back: the periodic synchronization's next read. */
   private def synchronizedAndRead(fixture: Fixture): Future[Unit] =
-    fixture.info.interactions.ensureSynced().flatMap(_ => fixture.info.interactions.fetchAll(true))
+    fixture.info.interactions.sync.ensureSynced().flatMap(_ => fixture.info.interactions.sync.fetchAll(true))
 
   test("one phase batches all interaction keys, and subsequent polls use inclusive incremental windows") {
     val fixture = new Fixture
     fixture.withHttp {
-      fixture.info.interactions.ensureSynced().flatMap { _ =>
+      fixture.info.interactions.sync.ensureSynced().flatMap { _ =>
         val firstReads = fixture.fetchRequests
         assertEquals(firstReads.size, 2)
         assert(firstReads.forall(request => request.keys.size == 2 && request.starting == Instant.MIN))
         assertEquals(fixture.elements.map(fixture.info.interactions.currentValue(_)), Seq("saved-0", "saved-1"))
         fixture.requests.set(Vector.empty)
-        fixture.info.interactions.ensureSynced()
+        fixture.info.interactions.sync.ensureSynced()
       }.flatMap { _ =>
         val reads = fixture.fetchRequests
         assertEquals(reads.size, 2)
         assert(reads.forall(_.starting == at))
         fixture.requests.set(Vector.empty)
         fixture.elements.zipWithIndex.foreach((element, index) => fixture.info.interactions.setStateFromUserInteraction(element, s"edited-$index", UpdateImportance.MAJOR))
-        fixture.info.interactions.storeAll(true)
+        fixture.info.interactions.sync.storeAll(true)
       }.map { _ =>
         val writes = fixture.storeRequests
         assertEquals(writes.size, 2)
@@ -212,7 +212,7 @@ class HomepageStateSpec extends EditorDomSuite {
     fixture.failBlobReads.set(true)
     fixture.info.interactions.setStateFromUserInteraction(fixture.elements.head, "offline edit", UpdateImportance.MAJOR)
     fixture.withHttp {
-      fixture.info.interactions.ensureSynced().failed.map { _ =>
+      fixture.info.interactions.sync.ensureSynced().failed.map { _ =>
         val writes = fixture.storeRequests
         assert(writes.exists(request => request.databaseFormat == defaultDatabase.format &&
           request.histories.exists(_.typedAs(TextInteractionFormat).answerEvents.exists(_.newState == "offline edit"))))
@@ -224,7 +224,7 @@ class HomepageStateSpec extends EditorDomSuite {
   test("reopening a reused workbook for another user clears its answers and feedback ownership") {
     val fixture = new Fixture
     fixture.withHttp {
-      fixture.info.interactions.ensureSynced().flatMap(_ => settled(fixture)).flatMap { _ =>
+      fixture.info.interactions.sync.ensureSynced().flatMap(_ => settled(fixture)).flatMap { _ =>
         val previousFeedback = fixture.elements.map(fixture.info.interactions.feedback(_))
         val workbook = fixture.info.homepageInfoNow().workbookInfo
         fixture.info.state.switchWorkbook(None)
@@ -236,7 +236,7 @@ class HomepageStateSpec extends EditorDomSuite {
         assertEquals(fixture.info.interactions.info.usageContext.userId, other.user.personId)
         assertEquals(fixture.elements.map(fixture.info.interactions.currentValue(_)), Seq("", ""))
         fixture.requests.set(Vector.empty)
-        fixture.info.interactions.storeAll(true).map { _ =>
+        fixture.info.interactions.sync.storeAll(true).map { _ =>
           val writes = fixture.storeRequests
           assert(writes.nonEmpty)
           assert(writes.flatMap(_.syncContexts).forall(_.userId == other.user.personId))
@@ -250,12 +250,12 @@ class HomepageStateSpec extends EditorDomSuite {
     val fixture = new Fixture
     fixture.info.state.switchWorkbook(None)
     fixture.withHttp {
-      fixture.info.interactions.resetAllData().map { _ =>
+      fixture.info.interactions.sync.resetAllData().map { _ =>
         val resets = fixture.requests.now().filter(_.name == resetUserHistoriesDbCommand.name)
           .map(command => read[DeleteInDbRequest](command.json))
         assertEquals(resets.size, 2)
         assert(resets.forall(request => request.allWorkbooks && request.usageContext.userId == fixture.user.user.personId))
-        assertEquals(fixture.info.interactions.resetState, SyncResetState.Completed)
+        assertEquals(fixture.info.interactions.sync.resetState, SyncResetState.Completed)
       }
     }
   }
@@ -263,7 +263,7 @@ class HomepageStateSpec extends EditorDomSuite {
   test("leaving a workbook flushes its queued writes instead of abandoning the old handlers") {
     val fixture = new Fixture
     fixture.withHttp {
-      fixture.info.interactions.ensureSynced().flatMap { _ =>
+      fixture.info.interactions.sync.ensureSynced().flatMap { _ =>
         fixture.requests.set(Vector.empty)
         val remaining = Var(2)
         val finished = Promise[Unit]()
@@ -288,7 +288,7 @@ class HomepageStateSpec extends EditorDomSuite {
     test(s"$kind sends edits at once whose stores are only scheduled and buffered") {
       val fixture = new Fixture
       fixture.withHttp {
-        fixture.info.interactions.ensureSynced().flatMap(_ => settled(fixture)).flatMap { _ =>
+        fixture.info.interactions.sync.ensureSynced().flatMap(_ => settled(fixture)).flatMap { _ =>
           val written = Promise[Unit]()
           fixture.afterStore.set(() => written.trySuccess(()))
           fixture.elements.foreach(element => fixture.info.interactions.setStateFromUserInteraction(element, s"typed before $kind", UpdateImportance.MAJOR))
@@ -308,11 +308,11 @@ class HomepageStateSpec extends EditorDomSuite {
     fixture.info.state.switchWorkbook(None)
     fixture.failBlobReset.set(true)
     fixture.withHttp {
-      fixture.info.interactions.resetAllData().failed.map { _ =>
-        assert(fixture.info.interactions.resetState.isInstanceOf[SyncResetState.Failed])
+      fixture.info.interactions.sync.resetAllData().failed.map { _ =>
+        assert(fixture.info.interactions.sync.resetState.isInstanceOf[SyncResetState.Failed])
         val other = signedIn(AllUserInfo.createNewUser("Next user", "next@example.invalid", fixture.user.config))
         fixture.info.state.switchUser(Some(other))
-        assertEquals(fixture.info.interactions.resetState, SyncResetState.Idle)
+        assertEquals(fixture.info.interactions.sync.resetState, SyncResetState.Idle)
       }
     }
   }
@@ -327,7 +327,7 @@ class HomepageStateSpec extends EditorDomSuite {
         assertEquals(report.now().destinationsWithSufficientWrites.size, 2)
         assertEquals(summary.now().confirmed, 2)
         fixture.failBlobReset.set(true)
-        fixture.info.interactions.resetAllData().failed.map { _ =>
+        fixture.info.interactions.sync.resetAllData().failed.map { _ =>
           assertEquals(report.now().destinationsWithSufficientWrites.size, 0)
           assertEquals(summary.now().confirmed, 0)
         }
@@ -347,11 +347,11 @@ class HomepageStateSpec extends EditorDomSuite {
       synchronizedAndRead(fixture).flatMap(_ => settled(fixture)).flatMap { _ =>
         val summary = fixture.info.reporters.reportersFor(fixture.elements.head).sync.report.observe(using owner)
         fixture.info.interactions.setStateFromUserInteraction(fixture.elements.head, "half-typed", UpdateImportance.TEMPORARY)
-        settled(fixture).flatMap(_ => fixture.info.interactions.fetchAll(true)).flatMap { _ =>
+        settled(fixture).flatMap(_ => fixture.info.interactions.sync.fetchAll(true)).flatMap { _ =>
           assert(!written("half-typed"), "a temporary answer is not sent to SYNC_MAJOR destinations")
           assertEquals(summary.now().confirmed, 0, "the latest answer is not synchronized")
           fixture.info.interactions.commitCurrentState(fixture.elements.head)
-          fixture.info.interactions.synchronize(fixture.elements.head)
+          fixture.info.interactions.sync.synchronize(fixture.elements.head)
         }.map { _ =>
           assert(written("half-typed"))
           assertEquals(fixture.info.interactions.currentHistory(fixture.elements.head).latestAnswer.map(_.updateImportance), Some(UpdateImportance.MAJOR))
@@ -364,13 +364,13 @@ class HomepageStateSpec extends EditorDomSuite {
   test("an edit inside an Airstream transaction stores its new history at both destinations") {
     val fixture = new Fixture
     fixture.withHttp {
-      fixture.info.interactions.ensureSynced().flatMap(_ => settled(fixture)).flatMap { _ =>
+      fixture.info.interactions.sync.ensureSynced().flatMap(_ => settled(fixture)).flatMap { _ =>
         val owner = new ManualOwner
         val editing = Var(0)
         val finished = Promise[Unit]()
         editing.signal.changes.foreach { _ =>
           fixture.elements.foreach(fixture.info.interactions.setStateFromUserInteraction(_, "transaction edit", UpdateImportance.MAJOR))
-          fixture.info.interactions.storeAll(true).onComplete(finished.tryComplete)
+          fixture.info.interactions.sync.storeAll(true).onComplete(finished.tryComplete)
         }(using owner)
         fixture.requests.set(Vector.empty)
         editing.set(1)
@@ -418,14 +418,14 @@ class HomepageStateSpec extends EditorDomSuite {
     val fixture = new Fixture
     fixture.withHttp {
       val heldBefore = heldEventIds(fixture)
-      fixture.info.interactions.ensureSynced().flatMap { _ =>
+      fixture.info.interactions.sync.ensureSynced().flatMap { _ =>
         val context = fixture.info.workbookContextInformation
         for
           (element, index) <- fixture.elements.zipWithIndex
           (value, importance) <- List("draft" -> UpdateImportance.MINOR, "typing" -> UpdateImportance.TEMPORARY,
             "submitted" -> UpdateImportance.MAJOR, "revised" -> UpdateImportance.MINOR)
         do fixture.info.interactions.setStateFromUserInteraction(element, s"$value-$index", importance)
-        fixture.info.interactions.storeAll(true)
+        fixture.info.interactions.sync.storeAll(true)
       }.map { _ =>
         assertEveryLocalEventSent(fixture, heldBefore)
         assert(fixture.elements.forall(fixture.info.interactions.currentHistory(_).answerEvents.exists(_.newState.startsWith("revised"))))
@@ -438,16 +438,16 @@ class HomepageStateSpec extends EditorDomSuite {
     val gate = Promise[Unit]()
     fixture.withHttp {
       val heldBefore = heldEventIds(fixture)
-      fixture.info.interactions.ensureSynced().flatMap { _ =>
+      fixture.info.interactions.sync.ensureSynced().flatMap { _ =>
         val context = fixture.info.workbookContextInformation
         fixture.elements.foreach(fixture.info.interactions.setStateFromUserInteraction(_, "before", UpdateImportance.MAJOR))
         fixture.beforeResponse.set(command => if command.name == bulkStoreToDbCommand.name then gate.future else Future.unit)
-        val first = fixture.info.interactions.storeAll(true)
+        val first = fixture.info.interactions.sync.storeAll(true)
         fixture.elements.foreach(fixture.info.interactions.setStateFromUserInteraction(_, "during", UpdateImportance.MAJOR))
         gate.success(())
         first.flatMap { _ =>
           fixture.beforeResponse.set(_ => Future.unit)
-          fixture.info.interactions.storeAll(true)
+          fixture.info.interactions.sync.storeAll(true)
         }
       }.map(_ => assertEveryLocalEventSent(fixture, heldBefore))
     }
@@ -457,7 +457,7 @@ class HomepageStateSpec extends EditorDomSuite {
     val fixture = new Fixture
     fixture.withHttp {
       val heldBefore = heldEventIds(fixture)
-      fixture.info.interactions.ensureSynced().flatMap { _ =>
+      fixture.info.interactions.sync.ensureSynced().flatMap { _ =>
         // The same workbook in the session's own page (without destinations), answered there.
         val (studied, answered) = fixture.anotherWorkbook(fixture.workbook.elementId)
         val sessionPage = FullInfo(fixture.info.homepageInfoNow().copy(workbookInfo = Some(studied),
@@ -466,7 +466,7 @@ class HomepageStateSpec extends EditorDomSuite {
         val session = sessionPage.homepageInfoNow().toSessionData(sessionPage.interactions.info).get
         val sessionEvents = answered.map(sessionPage.interactions.currentHistory(_).events.values.map(_.eventId)).reduce(_ ++ _)
         sessionPage.release()
-        fixture.info.userSessionControl.continueWithSession(session).flatMap(_ => fixture.info.interactions.storeAll(true)).map { _ =>
+        fixture.info.userSessionControl.continueWithSession(session).flatMap(_ => fixture.info.interactions.sync.storeAll(true)).map { _ =>
           assertEquals(fixture.elements.map(fixture.info.interactions.currentValue(_)), Seq("from the session 0", "from the session 1"))
           assertEveryLocalEventSent(fixture, heldBefore)
           val sent = sentEventIds(fixture)
@@ -482,21 +482,21 @@ class HomepageStateSpec extends EditorDomSuite {
   test("partial reset remains paused across navigation and credential replacement, then retries") {
     val fixture = new Fixture
     fixture.withHttp {
-      fixture.info.interactions.ensureSynced().flatMap { _ =>
+      fixture.info.interactions.sync.ensureSynced().flatMap { _ =>
         fixture.failBlobReset.set(true)
-        fixture.info.interactions.resetAllData().failed.flatMap { _ =>
+        fixture.info.interactions.sync.resetAllData().failed.flatMap { _ =>
           val workbook = fixture.info.homepageInfoNow().workbookInfo
           fixture.info.state.switchWorkbook(None)
-          assert(fixture.info.interactions.resetState.isInstanceOf[SyncResetState.Failed])
+          assert(fixture.info.interactions.sync.resetState.isInstanceOf[SyncResetState.Failed])
           fixture.info.state.switchWorkbook(workbook)
           fixture.info.state.switchUser(Some(fixture.user.copy(credentials = fixture.user.credentials.copy(singleAccessToken = Some(SingleAccessToken("replacement"))))))
           fixture.requests.set(Vector.empty)
-          fixture.info.interactions.ensureSynced().flatMap { _ =>
-            assert(fixture.info.interactions.resetState.isInstanceOf[SyncResetState.Failed])
+          fixture.info.interactions.sync.ensureSynced().flatMap { _ =>
+            assert(fixture.info.interactions.sync.resetState.isInstanceOf[SyncResetState.Failed])
             assertEquals(fixture.requests.now(), Vector.empty)
             fixture.failBlobReset.set(false)
-            fixture.info.interactions.resetAllData().map { _ =>
-              assertEquals(fixture.info.interactions.resetState, SyncResetState.Completed)
+            fixture.info.interactions.sync.resetAllData().map { _ =>
+              assertEquals(fixture.info.interactions.sync.resetState, SyncResetState.Completed)
               assertEquals(fixture.requests.now().count(_.name == resetUserHistoriesDbCommand.name), 2)
             }
           }
@@ -515,18 +515,18 @@ class HomepageStateSpec extends EditorDomSuite {
         release.future
       } else Future.unit)
     fixture.withHttp {
-      val reset = fixture.info.interactions.resetAllData()
+      val reset = fixture.info.interactions.sync.resetAllData()
       deleting.future.flatMap { _ =>
         val workbook = fixture.info.homepageInfoNow().workbookInfo
         fixture.info.state.switchWorkbook(None)
         fixture.info.state.switchWorkbook(workbook)
-        assert(fixture.info.interactions.resetState.isInstanceOf[SyncResetState.Running])
-        assert(fixture.info.interactions.resetAllData() eq reset)
+        assert(fixture.info.interactions.sync.resetState.isInstanceOf[SyncResetState.Running])
+        assert(fixture.info.interactions.sync.resetAllData() eq reset)
         fixture.requests.set(Vector.empty)
-        fixture.info.interactions.storeAll(true).flatMap { _ =>
+        fixture.info.interactions.sync.storeAll(true).flatMap { _ =>
           assertEquals(fixture.requests.now(), Vector.empty)
           release.success(())
-          reset.map(_ => assertEquals(fixture.info.interactions.resetState, SyncResetState.Completed))
+          reset.map(_ => assertEquals(fixture.info.interactions.sync.resetState, SyncResetState.Completed))
         }
       }.andThen { case _ => release.trySuccess(()) }
     }
@@ -545,13 +545,13 @@ class HomepageStateSpec extends EditorDomSuite {
       } else Future.unit
     })
     fixture.withHttp {
-      val departing = fixture.info.interactions.ensureSynced().transform(result => scala.util.Success(result))
+      val departing = fixture.info.interactions.sync.ensureSynced().transform(result => scala.util.Success(result))
       oldRead.future.flatMap { _ =>
         val other = AllUserInfo.createNewUser("Next user", "replacement@example.invalid", fixture.user.config)
         val newToken = signed(other, "new-session")
         fixture.info.userSessionControl.changeUser(Some(other.copy(credentials = UserCredentials(signedBackendToken = Some(newToken))))).flatMap { _ =>
           fixture.elements.foreach(fixture.info.interactions.setStateFromUserInteraction(_, "new user's answer", UpdateImportance.MAJOR))
-          fixture.info.interactions.ensureSynced()
+          fixture.info.interactions.sync.ensureSynced()
         }.flatMap { _ =>
           assert(departing.value.forall(_.get.isFailure))
           assertEquals(fixture.elements.map(fixture.info.interactions.currentValue(_)), Seq("new user's answer", "new user's answer"))
@@ -587,13 +587,13 @@ class HomepageStateSpec extends EditorDomSuite {
         release.future
       } else Future.unit)
     fixture.withHttp {
-      val reset = fixture.info.interactions.resetAllData()
+      val reset = fixture.info.interactions.sync.resetAllData()
       deleting.future.flatMap { _ =>
         val other = signedIn(AllUserInfo.createNewUser("Next user", "next@example.invalid", fixture.user.config))
         fixture.info.state.switchUser(Some(other))
-        assertEquals(fixture.info.interactions.resetState, SyncResetState.Idle)
+        assertEquals(fixture.info.interactions.sync.resetState, SyncResetState.Idle)
         release.success(())
-        reset.failed.map(_ => assertEquals(fixture.info.interactions.resetState, SyncResetState.Idle))
+        reset.failed.map(_ => assertEquals(fixture.info.interactions.sync.resetState, SyncResetState.Idle))
       }.andThen { case _ => release.trySuccess(()) }
     }
   }
@@ -607,7 +607,7 @@ class HomepageStateSpec extends EditorDomSuite {
       if command.name == fetchEventsFromDbCommand.name && read[FetchEventsFromDbRequest](command.json).usageContext == original then gate.hold()
       else Future.unit)
     fixture.withHttp {
-      val detached = fixture.info.interactions.fetchAll(true).transform(result => scala.util.Success(result))
+      val detached = fixture.info.interactions.sync.fetchAll(true).transform(result => scala.util.Success(result))
       gate.arrived.flatMap { _ =>
         val (other, interactions) = fixture.anotherWorkbook("other-workbook")
         assertEquals(interactions.map(_.elementId), fixture.elements.map(_.elementId))
@@ -617,7 +617,7 @@ class HomepageStateSpec extends EditorDomSuite {
         // An older edit in the new workbook: it must be written there, while the newer saved answer stays current.
         fixture.info.interactions.setStateFromUserInteraction(interactions.head, "older edit", UpdateImportance.MAJOR,
           Instant.now())
-        fixture.info.interactions.ensureSynced().flatMap { _ =>
+        fixture.info.interactions.sync.ensureSynced().flatMap { _ =>
           val current = interactions.map(fixture.info.interactions.currentHistory(_))
           assertEquals(interactions.map(fixture.info.interactions.currentValue(_)), Seq.fill(2)("current workbook"))
           gate.release()
@@ -646,7 +646,7 @@ class HomepageStateSpec extends EditorDomSuite {
       fixture.beforeResponse.set(command =>
         if holding.now() && command.name == fetchEventsFromDbCommand.name then gate.hold() else Future.unit)
       fixture.withHttp {
-        val firstRead = fixture.info.interactions.fetchAll(true).transform(result => scala.util.Success(result))
+        val firstRead = fixture.info.interactions.sync.fetchAll(true).transform(result => scala.util.Success(result))
         gate.arrived.flatMap { _ =>
           holding.set(false)
           fixture.failBlobReads.set(false)
@@ -656,7 +656,7 @@ class HomepageStateSpec extends EditorDomSuite {
           // Another client has reset/replaced the remote history while the first response is in flight.
           fixture.seed(context, "replacement binding only", Instant.now().plus(java.time.Duration.ofDays(2)))
           fixture.info.state.switchWorkbook(original)
-          fixture.info.interactions.ensureSynced().flatMap { _ =>
+          fixture.info.interactions.sync.ensureSynced().flatMap { _ =>
             val current = fixture.elements.map(fixture.info.interactions.currentHistory(_))
             assert(current.forall(_.answerEvents.forall(_.newState != "first binding only")))
             gate.release()
@@ -683,7 +683,7 @@ class HomepageStateSpec extends EditorDomSuite {
         UserCredentials(signedBackendToken = Some(oldToken), databaseConfig = Some(oldDatabase)))))
       val owner = new ManualOwner
       fixture.withHttp {
-        fixture.info.interactions.ensureSynced().flatMap { _ =>
+        fixture.info.interactions.sync.ensureSynced().flatMap { _ =>
           fixture.authorization.set(Vector.empty)
           fixture.beforeResponse.set(command =>
             if command.name == bulkStoreToDbCommand.name then {
@@ -692,7 +692,7 @@ class HomepageStateSpec extends EditorDomSuite {
             } else Future.unit)
           fixture.failStores.set(retiredFails)
           fixture.elements.foreach(fixture.info.interactions.setStateFromUserInteraction(_, "retiring edit", UpdateImportance.MAJOR))
-          val retired = fixture.info.interactions.storeAll(true).transform(result => scala.util.Success(result))
+          val retired = fixture.info.interactions.sync.storeAll(true).transform(result => scala.util.Success(result))
           oldGate.arrived.flatMap { _ =>
             fixture.failStores.set(false)
             fixture.info.state.switchUser(Some(fixture.user.copy(credentials =
@@ -704,7 +704,7 @@ class HomepageStateSpec extends EditorDomSuite {
             val report = fixture.info.interactions.reportSignal(fixture.elements.head).observe(using owner)
             val sharedReporter = fixture.info.reporters.reportersFor(fixture.elements.head).sync
             val summary = sharedReporter.report.observe(using owner)
-            val replacement = fixture.info.interactions.storeAll(true)
+            val replacement = fixture.info.interactions.sync.storeAll(true)
             newGate.arrived.flatMap { _ =>
               assert(!replacement.isCompleted)
               assertEquals(report.now().destinationsWithSufficientWrites.size, 0)
@@ -718,7 +718,7 @@ class HomepageStateSpec extends EditorDomSuite {
                 newGate.release()
                 replacement.flatMap { _ =>
                   assertEquals(report.now().destinationsWithSufficientWrites.size, 2, "the replacement's own acknowledgments confirm")
-                  fixture.info.interactions.fetchAll(true)
+                  fixture.info.interactions.sync.fetchAll(true)
                 }.map { _ =>
                   assertEquals(report.now().destinationsWithSufficientWrites.size, 2)
                   assertEquals(summary.now().confirmed, 2)
@@ -758,7 +758,7 @@ class HomepageStateSpec extends EditorDomSuite {
       assertEquals(answers.usageContext, fixture.info.homepageInfoNow().toContext)
       assertEquals((answers.usageContext.userId, answers.usageContext.scenarioId), (next.user.personId, other.loadedWorkbook.workbookId))
       assert(interactions.forall(answers.contains) && fixture.elements.forall(!answers.contains(_)))
-      fixture.info.interactions.ensureSynced().map { _ =>
+      fixture.info.interactions.sync.ensureSynced().map { _ =>
         assert(fixture.fetchRequests.forall(_.usageContext.userId == next.user.personId) || fixture.fetchRequests.isEmpty)
       }.andThen { case _ => owner.killSubscriptions() }
     }
@@ -769,7 +769,7 @@ class HomepageStateSpec extends EditorDomSuite {
     val gate = new ResponseGate
     val owner = new ManualOwner
     fixture.withHttp {
-      fixture.info.interactions.ensureSynced().flatMap { _ =>
+      fixture.info.interactions.sync.ensureSynced().flatMap { _ =>
         val (other, interactions) = fixture.anotherWorkbook("selected-workbook")
         val context = fixture.info.homepageInfoNow().toContext.copy(scenarioId = other.loadedWorkbook.workbookId)
         fixture.seed(context, "selected workbook", Instant.now().plus(java.time.Duration.ofDays(1)))
@@ -786,7 +786,7 @@ class HomepageStateSpec extends EditorDomSuite {
           assertEquals(reads.size, 2)
           assert(reads.forall(_.usageContext == context))
           gate.release()
-          fixture.info.interactions.ensureSynced().map { _ =>
+          fixture.info.interactions.sync.ensureSynced().map { _ =>
             assertEquals(interactions.map(fixture.info.interactions.currentValue(_)), Seq.fill(2)("selected workbook"))
           }
         }
@@ -798,7 +798,7 @@ class HomepageStateSpec extends EditorDomSuite {
     val fixture = new Fixture
     val owner = new ManualOwner
     fixture.withHttp {
-      fixture.info.interactions.ensureSynced().flatMap(_ => settled(fixture)).flatMap { _ =>
+      fixture.info.interactions.sync.ensureSynced().flatMap(_ => settled(fixture)).flatMap { _ =>
         val onlyRelational = fixture.user.config.copy(syncDestinations = Seq(
           SyncInformation(defaultDatabase, EventSyncStrategy.SYNC_EVERYTHING)))
         fixture.requests.set(Vector.empty)
@@ -818,7 +818,7 @@ class HomepageStateSpec extends EditorDomSuite {
           assertEquals(writes.head.databaseFormat, defaultDatabase.format)
           assertEquals(report.now().allSyncDestinations.size, 1)
           assertEquals(summary.now().total, 1)
-          fixture.info.interactions.fetchAll(true)
+          fixture.info.interactions.sync.fetchAll(true)
         }.map { _ =>
           assertEquals(report.now().destinationsWithSufficientWrites.size, 1)
           assertEquals(summary.now().confirmed, 1)
@@ -842,7 +842,7 @@ class HomepageStateSpec extends EditorDomSuite {
         fixture.info.homepage.updateDisplay(_.copy(collapsedNavigation = true))
         assertEquals(report.now().destinationsWithSufficientWrites.size, 2)
         assertEquals(summary.now().confirmed, 2)
-        fixture.info.interactions.ensureSynced().map { _ =>
+        fixture.info.interactions.sync.ensureSynced().map { _ =>
           val reads = fixture.fetchRequests
           assertEquals(reads.size, 2)
           assert(reads.forall(_.starting == at))
@@ -862,7 +862,7 @@ class HomepageStateSpec extends EditorDomSuite {
       fixture.user.credentials.copy(llmApiConfig = Some(llm)))))
     assertEquals(answers.session, session, "the sync context is unchanged")
     assertEquals(answers.connection.execution.llmConfiguration, Some(llm))
-    fixture.info.interactions.resetAllData()
+    fixture.info.interactions.sync.resetAllData()
     assertNotEquals(answers.session, session, "a full reset binds anew")
   }
 }
