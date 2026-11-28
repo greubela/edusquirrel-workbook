@@ -103,8 +103,8 @@ time columns use the same text.
 The binary text index serves range queries, so a duplicate `timestamp_millies`
 column is unnecessary. No epoch-day or nanosecond-of-day encoding is stored.
 Four-digit years sort chronologically; signed/expanded ISO years use safe SQL
-candidate bounds followed by typed filtering. Events range over UTC date-times from
-`LocalDateTime.MIN` to `MAX`; `Instant.MIN` and `MAX` are open read bounds. Reads verify the canonical text against the serialized event.
+candidate bounds followed by typed filtering. Events may carry any `Instant`; `Instant.MIN`
+and `MAX` are open read bounds. Reads verify the canonical text against the serialized event.
 
 Both layouts decode through the declared format; JDBC bindings accept only
 `String | Long`. `DatabaseHistoryFormat.tables` exposes typed `DatabaseTable`,
