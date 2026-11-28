@@ -1,18 +1,13 @@
 package it.evadid.sql
 
-/** Where the backend records one row per received command; the case fixes the written columns. */
-sealed trait CommandLog {
-  def table: DatabaseTable
-}
-
-object CommandLog {
-  /** Columns `timestamp, origin, type, payload, userid, ipAddress`; `payload` is the privacy-filtered command. */
-  final case class Audit(table: DatabaseTable) extends CommandLog
-
-  /** Columns `timestamp, ipAddress, userid, sessionDataSerialized`: the submitted session, without credentials. */
-  final case class SessionSubmission(table: DatabaseTable) extends CommandLog
-
-  val commandLog: CommandLog = Audit(DatabaseTable("commandLog"))
-  val syncedLog: CommandLog = Audit(DatabaseTable("syncedLog"))
-  val submissionLog: CommandLog = SessionSubmission(DatabaseTable("submissionLog"))
+/** Where the backend records one row per received command. Each case is a fixed table of the setup script with fixed
+  * columns, so the backend writes it with a constant prepared statement.
+  */
+enum CommandLog {
+  /** `commandLog`: `timestamp, origin, type, payload, userid, ipAddress`; `payload` is the privacy-filtered command. */
+  case CommandAudit
+  /** `syncedLog`: the columns of [[CommandAudit]], for history synchronization commands. */
+  case SyncAudit
+  /** `submissionLog`: `timestamp, ipAddress, userid, sessionDataSerialized`, the submitted session without credentials. */
+  case SessionSubmission
 }

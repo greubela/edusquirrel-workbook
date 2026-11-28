@@ -28,4 +28,6 @@ object DatabaseHistoryFormat {
     val tables: Seq[DatabaseTable] = Seq(DatabaseTable("blob_history", columns =
       (id +: identity) :+ DatabaseColumn("history_json", Json)))
   }
+
+  val all: Seq[DatabaseHistoryFormat] = Seq(RelationalFormat, BlobFormat)
 }

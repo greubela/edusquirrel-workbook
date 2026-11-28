@@ -43,6 +43,8 @@ try {
   assert.equal(health?.status, 'ok', output || 'Server did not become healthy');
   assert.equal(health.service, 'edusquirrel-server');
   assert(!/No SLF4J providers|NOP logger|Failed to load class.*StaticLoggerBinder/.test(output), output);
+  // With a configured database, startup validates its schema before serving.
+  if (process.env.SQL_HOST) assert(output.includes('has the expected schema'), output);
   console.log('Server fat JAR: standalone startup, health, logging and desktop isolation passed.');
 } finally {
   if (child.pid && child.exitCode === null) {

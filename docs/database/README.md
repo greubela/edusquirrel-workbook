@@ -50,18 +50,19 @@ and stop-on-error behavior; schema changes require a separately reviewed operati
 
 | Class | Responsibility |
 | --- | --- |
-| [DatabaseSqlScripts](../../modules/server/src/main/scala/it/evadid/server/database/DatabaseSqlScripts.scala) | Parses the packaged schema and exposes application table definitions |
-| [DatabaseSchemaInspector](../../modules/server/src/main/scala/it/evadid/server/database/DatabaseSchemaInspector.scala) | Reads metadata and compares it with the SQL script through pure schema comparison |
-| [DatabaseSchemaMetadata](../../modules/server/src/main/scala/it/evadid/server/database/DatabaseSchemaMetadata.scala) | Reads JDBC/MySQL metadata into named column, key and table values |
-| [DatabaseSchemaComparison](../../modules/server/src/main/scala/it/evadid/server/database/DatabaseSchemaComparison.scala) | Pure comparison and diagnostics, independently testable without a database |
-| [DatabaseSchemaSetup](../../modules/server/src/main/scala/it/evadid/server/database/DatabaseSchemaSetup.scala) | Explicit initialization, guarded against any existing tables, views or routines |
-| [DatabaseRequestConnection](../../modules/server/src/main/scala/it/evadid/server/database/DatabaseRequestConnection.scala) | Resolves connection configuration and verifies the selected layout's required schema |
+| [DatabaseSqlScripts](../../modules/server/src/main/scala/it/evadid/server/database/schema/DatabaseSqlScripts.scala) | Parses the packaged schema and exposes application table definitions |
+| [DatabaseSchemaInspector](../../modules/server/src/main/scala/it/evadid/server/database/schema/DatabaseSchemaInspector.scala) | Reads metadata and compares it with the SQL script through pure schema comparison |
+| [DatabaseSchemaMetadata](../../modules/server/src/main/scala/it/evadid/server/database/schema/DatabaseSchemaMetadata.scala) | Reads JDBC/MySQL metadata into named column, key and table values; columns are grouped by exact table name, never matched by LIKE patterns |
+| [DatabaseSchemaComparison](../../modules/server/src/main/scala/it/evadid/server/database/schema/DatabaseSchemaComparison.scala) | Pure comparison and diagnostics, independently testable without a database |
+| [DatabaseSchemaSetup](../../modules/server/src/main/scala/it/evadid/server/database/schema/DatabaseSchemaSetup.scala) | Explicit initialization, guarded against any existing tables, views or routines |
+| [SchemaValidation](../../modules/server/src/main/scala/it/evadid/server/database/schema/SchemaValidation.scala) | Caches successful schema checks per database and table set; failed checks are repeated |
+| [HistoryDatabase](../../modules/server/src/main/scala/it/evadid/server/database/history/HistoryDatabase.scala) | Resolves a request's database and requires the selected layout's schema |
 
 Inspection reads metadata, not application rows. `setupIfEmpty` requires a dedicated
 auto-commit connection, parses all definitions before creation and rechecks emptiness
 under an advisory lock. It reads the application section of the same script without
-creating or selecting another database. Startup/deployment does not automatically
-initialize or repair databases. Existing tables/views prevent initialization.
+creating or selecting another database. Startup and deployment never initialize or repair databases: the server refuses to start on an
+incompatible backend schema and warns when the database is unreachable. Existing tables/views prevent initialization.
 
 `DatabaseHistoryFormat` selects `BlobFormat` or `RelationalFormat` and exposes
 `DatabaseTable`/`DatabaseColumn`/`MySqlType` metadata. Configuring another layout

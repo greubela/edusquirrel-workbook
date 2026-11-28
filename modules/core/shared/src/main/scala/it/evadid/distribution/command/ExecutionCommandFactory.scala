@@ -31,7 +31,7 @@ object ExecutionCommandFactory {
 case class ExecutionCommandFactory[I: ReadWriter, O: ReadWriter](
                                                                   name: String,
                                                                   private val privacyFilter: Option[ujson.Value => ujson.Value] = None,
-                                                                  storeLogIntoTable: Option[CommandLog] = Some(CommandLog.commandLog),
+                                                                  storeLogIntoTable: Option[CommandLog] = Some(CommandLog.CommandAudit),
                                                                   requiresLogin: Boolean = false
                                                                 ) {
 

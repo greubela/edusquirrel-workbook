@@ -30,36 +30,54 @@ class ConfigurationCodecSpec extends FunSuite {
   }
 
   test("backend database references resolve the receiving server's environment without exposing its address") {
-    import it.evadid.server.database.DatabaseRequestConnection
+    import it.evadid.server.database.history.HistoryDatabase
     val configured = DatabaseConfigWithCredentials("mysql", "127.0.0.1", "3306", "edusquirrel", "local-user", "private-password")
-    assertEquals(DatabaseRequestConnection.resolve(BackendDatabase, configured), configured)
+    assertEquals(HistoryDatabase.resolve(BackendDatabase, configured), configured)
     assertEquals(read[DatabaseConfiguration](write[DatabaseConfiguration](BackendDatabase)), BackendDatabase)
     assertEquals(BackendDatabase.withoutCredentials, BackendDatabase)
     assert(!write[DatabaseConfiguration](BackendDatabase).contains("private-password"))
   }
 
   test("public targets resolve server credentials; supplied credentials bypass server defaults") {
-    import it.evadid.server.database.DatabaseRequestConnection
+    import it.evadid.server.database.history.HistoryDatabase
     val defaults = DatabaseConfigWithCredentials("mysql", "backend", "3306", "main", "server", "server-secret")
     val custom = DatabaseConfigWithCredentials("mysql", "custom", "3306", "history", "owner", "session-secret")
-    assertEquals(DatabaseRequestConnection.resolve(defaults.withoutCredentials, defaults), defaults)
-    intercept[IllegalArgumentException](DatabaseRequestConnection.resolve(custom.withoutCredentials, defaults))
-    assertEquals(DatabaseRequestConnection.resolve(custom, throw AssertionError("Must not read default credentials")), custom)
+    assertEquals(HistoryDatabase.resolve(defaults.withoutCredentials, defaults), defaults)
+    intercept[IllegalArgumentException](HistoryDatabase.resolve(custom.withoutCredentials, defaults))
+    assertEquals(HistoryDatabase.resolve(custom, throw AssertionError("Must not read default credentials")), custom)
     List[DatabaseConfiguration](defaults.withoutCredentials, custom).foreach { config =>
       assertEquals(read[DatabaseConfiguration](write(config)), config)
     }
   }
 
-  test("missing SMTP credentials report configuration names without exposing secrets") {
-    val configured = Map("MAIL_EMAIL" -> "fixture@example.invalid", "MAIL_PW" -> "private-mail-password")
+  test("partial settings name the missing variable without exposing secrets; complete groups are optional") {
+    val mail = Map("MAIL_EMAIL" -> "fixture@example.invalid", "MAIL_PW" -> "private-mail-password")
     List("MAIL_EMAIL", "MAIL_PW").foreach { missing =>
-      val error = intercept[IllegalStateException](SendMailCommand.readMailConfig((configured - missing).get))
+      val error = intercept[IllegalStateException](TestServerConfig((mail - missing).toSeq*))
       assert(error.getMessage.contains(missing))
       assert(!error.getMessage.contains("private-mail-password"))
     }
-    val settings = SendMailCommand.readMailConfig(configured.get)
-    assertEquals(settings.host, "mail.lima-city.de")
-    assertEquals(settings.port, "587")
+    val settings = TestServerConfig(mail.toSeq*).mail.get
+    assertEquals((settings.host, settings.port), ("mail.lima-city.de", "587"))
+    assert(!settings.toString.contains("private-mail-password"))
+    assertEquals(TestServerConfig().mail, None)
+    assertEquals(TestServerConfig().database, None)
+    val database = intercept[IllegalStateException](TestServerConfig("SQL_HOST" -> "localhost"))
+    assert(database.getMessage.contains("SQL_PORT"))
+    intercept[IllegalStateException](TestServerConfig("OPENAI_MAX_TOKENS" -> "many"))
   }
 
+  test("the server refuses to start without a token signing secret") {
+    val error = intercept[IllegalStateException](ServerConfig.from(Map.empty[String, String].get))
+    assert(error.getMessage.contains("SERVER_SECRET"))
+    intercept[IllegalArgumentException](it.evadid.server.account.SignedTokens("  "))
+  }
+
+  test("the backend database is assembled from all SQL settings and never printed with its password") {
+    val config = TestServerConfig("SQL_HOST" -> "localhost", "SQL_PORT" -> "3306", "SQL_DATABASE" -> "main",
+      "SQL_USER" -> "server", "SQL_PW" -> "private-db-password")
+    assertEquals(config.backendDatabase, DatabaseConfigWithCredentials("mysql", "localhost", "3306", "main", "server", "private-db-password"))
+    assert(!config.toString.contains("private-db-password"))
+    assert(intercept[IllegalStateException](TestServerConfig().backendDatabase).getMessage.contains("SQL_HOST"))
+  }
 }

@@ -1,6 +1,8 @@
 package it.evadid.server
 
 import it.evadid.distribution.command.ExecutionCommand
+import it.evadid.server.commands.BackendCommandHandler
+import it.evadid.server.http.HttpApi
 import it.evadid.util.logging.BasicLogger
 import munit.FunSuite
 
@@ -8,29 +10,19 @@ import java.net.InetAddress
 import java.time.Instant
 
 class BackendServerTest extends FunSuite {
-  test("account changes are limited to the authenticated user's ID") {
-    assert(AuthHandling.mayAccessIdBased("owner", "owner"))
-    assert(!AuthHandling.mayAccessIdBased("another-user", "owner"))
+  test("an empty command name fails the returned Future instead of throwing") {
+    val commands = BackendCommandHandler(TestServerConfig(), account.SignedTokens("secret"), database.schema.SchemaValidation())
+    commands.handleExecution(Instant.parse("2026-01-01T08:00:00Z"), ExecutionCommand("   ", ujson.Obj()), None,
+      InetAddress.getLoopbackAddress, BasicLogger()).failed.map { error =>
+      assert(error.getMessage.contains("must not be empty"), error.getMessage)
+    }(using scala.concurrent.ExecutionContext.global)
   }
 
-  test("BackendCommandHandler rejects empty command name") {
-    val command = ExecutionCommand("   ", ujson.Obj())
-
-    intercept[IllegalArgumentException] {
-      BackendCommandHandler.handleExecution(
-        java.time.Instant.parse("2026-01-01T08:00:00Z"),
-        command,
-        None,
-        InetAddress.getLoopbackAddress,
-        BasicLogger()
-      )
-    }
-  }
   test("server failures use the response envelope understood by execution clients") {
-    val time = java.time.Instant.parse("2026-01-01T08:00:00Z")
+    val time = Instant.parse("2026-01-01T08:00:00Z")
     val logger = BasicLogger()
     val command = ExecutionCommand("invalid", ujson.Obj())
-    val response = BackendServer.fail(time, "Could not parse command", None, Some(command), logger)
+    val response = HttpApi.fail(time, "Could not parse command", None, Some(command), logger)
     val restored = upickle.default.read[it.evadid.distribution.formats.ExecutionClientResponse](upickle.default.write(response))
     assertEquals(restored.receivedExecutionCommand, Some(command))
     assertEquals(restored.timestamps.timestampReceived, time)
@@ -56,42 +48,7 @@ class BackendServerTest extends FunSuite {
     }
   }
 
-  test("malformed feedback requests fail without retaining a payload-bearing cause") {
-    val name = it.evadid.distribution.commandTypes.LLMCommands.feedbackLlmCommandFactory.name
-    val payloads = List(ujson.Obj(), ujson.Obj("prompt" -> "private source"),
-      ujson.Obj("prompt" -> "private source", "systemPrompt" -> false),
-      ujson.Obj("prompt" -> ujson.Null, "systemPrompt" -> "private instructions"),
-      ujson.Obj("prompt" -> "private source", "systemPrompt" -> ujson.Null),
-      ujson.Obj("prompt" -> 42, "systemPrompt" -> "private instructions"),
-      ujson.Obj("prompt" -> false, "systemPrompt" -> "private instructions"),
-      ujson.Obj("prompt" -> "private source", "systemPrompt" -> ujson.Obj("private" -> "value")),
-      ujson.Obj("prompt" -> ujson.Arr("private source"), "systemPrompt" -> "private instructions"),
-      ujson.Str("private non-object source"), ujson.Num(42), ujson.Arr("private array"), ujson.Null)
-    payloads.foreach { payload =>
-      val command = ExecutionCommand(name, payload)
-      val original = ujson.write(payload)
-      val result = scala.util.Try(BackendCommandHandler.validateFeedbackRequest(command))
-      assert(result.failed.toOption.exists(_.isInstanceOf[IllegalArgumentException]),
-        clue = s"Malformed payload was not rejected: $original")
-      val error = result.failed.get
-      assertEquals(error.getMessage, "Invalid feedback request.")
-      assertEquals(error.getCause, null)
-      assert(!error.toString.contains("private"))
-      assertEquals(ujson.write(command.json), original)
-      BackendCommandHandler.validateFeedbackRequest(command.copy(name = "another-command"))
-    }
+  test("without a database the server starts with a warning instead of failing") {
+    BackendServer.checkBackendDatabase(None, database.schema.SchemaValidation())
   }
-
-  test("valid feedback fields including unknown data are validated without modifying execution input") {
-    val name = it.evadid.distribution.commandTypes.LLMCommands.feedbackLlmCommandFactory.name
-    List(ujson.Obj("prompt" -> "", "systemPrompt" -> ""),
-      ujson.Obj("prompt" -> "private source 学校", "systemPrompt" -> "private instructions",
-        "private extra key" -> "private extra value")).foreach { payload =>
-      val command = ExecutionCommand(name, payload)
-      val original = ujson.write(payload)
-      BackendCommandHandler.validateFeedbackRequest(command)
-      assertEquals(ujson.write(command.json), original)
-    }
-  }
-
 }

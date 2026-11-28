@@ -24,6 +24,9 @@ object SQLCommands {
     def databaseConfig: DatabaseConfiguration
 
     def databaseFormat: DatabaseHistoryFormat
+
+    /** The users whose histories the request reads or writes; the backend allows only the signed-in user's own. */
+    def ownerUserIds: Seq[String]
   }
 
   case class StoreToDbRequest(
@@ -35,6 +38,7 @@ object SQLCommands {
 
     lazy val usageContext: UsageContext = syncContext.toUsageContext
 
+    def ownerUserIds: Seq[String] = Seq(syncContext.userId)
   }
 
   /** Parallel contexts and envelopes preserve each key while sending one request per flush. */
@@ -46,6 +50,8 @@ object SQLCommands {
     require(syncContexts.distinct.size == syncContexts.size, "Bulk histories must have distinct sync contexts")
     def entries: Seq[StoreToDbRequest] = syncContexts.zip(histories).map((context, history) =>
       StoreToDbRequest(context, history, databaseConfig, databaseFormat))
+
+    def ownerUserIds: Seq[String] = syncContexts.map(_.userId)
   }
 
   /** Range-read: return only events whose timestamp falls in [starting, until]. */
@@ -59,6 +65,8 @@ object SQLCommands {
                                        strategy: EventSyncStrategy
                                      ) extends DbRequest derives ReadWriter {
     require(!until.isBefore(starting), "History range end must not precede its start")
+
+    def ownerUserIds: Seq[String] = Seq(usageContext.userId)
   }
 
 
@@ -70,34 +78,36 @@ object SQLCommands {
                                 allWorkbooks: Boolean = false
                               ) extends DbRequest derives ReadWriter {
     require(!allWorkbooks || limitToKey.isEmpty, "An all-workbook reset cannot be restricted to one variable.")
+
+    def ownerUserIds: Seq[String] = Seq(usageContext.userId)
   }
 
   case class DbFetchResponse(fetchedElements: Map[SyncContext, InteractionHistoryJson]) derives ReadWriter
 
 
   lazy val StoreToDbCommand: ExecutionCommandFactory[StoreToDbRequest, SyncSuccess[EventId]] = ExecutionCommandFactory[StoreToDbRequest, SyncSuccess[EventId]](
-    "sync-to-db-request", storeLogIntoTable = Some(CommandLog.syncedLog), privacyFilter = Some(redactCredentials),
+    "sync-to-db-request", storeLogIntoTable = Some(CommandLog.SyncAudit), privacyFilter = Some(redactCredentials),
     requiresLogin = true
   )
 
   lazy val bulkStoreToDbCommand: ExecutionCommandFactory[BulkStoreToDbRequest, SyncSuccess[EventId]] =
     ExecutionCommandFactory[BulkStoreToDbRequest, SyncSuccess[EventId]]("sync-histories-to-db-request",
-      storeLogIntoTable = Some(CommandLog.syncedLog), privacyFilter = Some(redactCredentials), requiresLogin = true)
+      storeLogIntoTable = Some(CommandLog.SyncAudit), privacyFilter = Some(redactCredentials), requiresLogin = true)
 
   lazy val fetchEventsFromDbCommand: ExecutionCommandFactory[FetchEventsFromDbRequest, DbFetchResponse] = ExecutionCommandFactory[FetchEventsFromDbRequest, DbFetchResponse](
-    "fetch-events-from-db-request", storeLogIntoTable = Some(CommandLog.syncedLog), privacyFilter = Some(redactCredentials),
+    "fetch-events-from-db-request", storeLogIntoTable = Some(CommandLog.SyncAudit), privacyFilter = Some(redactCredentials),
     requiresLogin = true
   )
 
   // A distinct command prevents an older server from acknowledging a reset
   // while ignoring its all-workbook scope and deleting only the current workbook.
   lazy val resetUserHistoriesDbCommand: ExecutionCommandFactory[DeleteInDbRequest, SyncSuccess[SyncContext]] = ExecutionCommandFactory[DeleteInDbRequest, SyncSuccess[SyncContext]](
-    "reset-user-histories-in-db-request", storeLogIntoTable = Some(CommandLog.syncedLog), privacyFilter = Some(redactCredentials),
+    "reset-user-histories-in-db-request", storeLogIntoTable = Some(CommandLog.SyncAudit), privacyFilter = Some(redactCredentials),
     requiresLogin = true
   )
 
   lazy val clearValuesDbCommand: ExecutionCommandFactory[DeleteInDbRequest, SyncSuccess[SyncContext]] = ExecutionCommandFactory[DeleteInDbRequest, SyncSuccess[SyncContext]](
-    "clear-values-in-db-request", storeLogIntoTable = Some(CommandLog.syncedLog), privacyFilter = Some(redactCredentials),
+    "clear-values-in-db-request", storeLogIntoTable = Some(CommandLog.SyncAudit), privacyFilter = Some(redactCredentials),
     requiresLogin = true
   )
 
