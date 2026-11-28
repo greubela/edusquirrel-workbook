@@ -54,6 +54,10 @@ escape() { local value=${1//\\/\\\\}; printf '%s' "${value//\"/\\\"}"; }
   if [[ "${CLIENT_FTP_TLS:-true}" == true ]]; then printf 'ssl-reqd\n'; fi
 } > "$curl_auth"
 chmod 600 "$curl_auth"
+# curl for Windows (Git) has two TLS engines; Schannel ends FTPS data connections in a way some
+# servers reject with 451. Prefer OpenSSL; curl builds with a single engine ignore the setting.
+export CURL_SSL_BACKEND="${CLIENT_FTP_SSL_BACKEND:-openssl}"
+log "curl TLS: $(curl -V | head -n 1 | grep -oE '(OpenSSL|Schannel|LibreSSL|GnuTLS|mbedTLS|wolfSSL|BoringSSL|SecureTransport)[^ ]*' | tr '\n' ' ')"
 ftp() { curl --config "$curl_auth" "$@"; }
 # Upload configs name local files relative to the staged mirror (see sync-plan.mjs), so curl runs there.
 ftp_upload() { (cd "$SITE" && ftp "$@"); }
@@ -97,7 +101,14 @@ batches=("$plan_dir"/upload-*.curl)
 for batch in ${batches[@]+"${batches[@]}"}; do
   number="${batch##*/upload-}" number="${number%.curl}"
   log "uploading batch $((10#$number)) of ${#batches[@]}"
-  ftp_upload --fail-early --config "$batch" || die "upload failed; rerun to continue (finished batches are recorded)"
+  if ! ftp_upload --fail-early --config "$batch"; then
+    # Show the server's own reply: upload the batch's first file once more, verbosely, password masked.
+    IFS=$'\t' read -r first_url _ first_file < "$plan_dir/batch-$number.tsv"
+    warn "FTP dialogue for $first_file (one more attempt):"
+    ftp_upload --verbose --upload-file "$first_file" "$first_url" 2>&1 | tr -d '\r' \
+      | grep -E '^[<>] ' | sed -E 's/^> PASS .*/> PASS ****/' | tail -n 30 >&2 || true
+    die "upload failed; rerun to continue (finished batches are recorded)"
+  fi
   # A server may confirm a transfer it stored incompletely, so compare the remote sizes.
   for attempt in 1 2 3; do
     ftp --config "$plan_dir/verify-$number.curl" > "$plan_dir/sizes.txt" 2>/dev/null || true
