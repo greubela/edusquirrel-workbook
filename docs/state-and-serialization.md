@@ -1,6 +1,6 @@
 # State, bindings and serialization
 
-The interaction's saved value is the source of truth. Put its type, transitions,
+The saved answer is the source of truth. Put its type, transitions,
 validation and codecs in `modules/core/shared`, so browser, worker and JVM code
 can use the same contract. Client-only `Var`s are appropriate for focus, selection,
 invalid drafts and other transient UI state; they are not a second answer store.
@@ -112,30 +112,32 @@ finished state while the observable continues to update.
 Interactions are exercise definitions without state. The answers of one sync context
 (program, workbook, user) form one immutable
 [`InteractionInfo`](../modules/core/shared/src/main/scala/it/evadid/workbook/interaction/state/InteractionInfo.scala):
-per interaction its `InteractionVariableHistory[F]`, what each destination is known to
-hold, and the feedback computations of this session, plus the `SyncConnection`
-(destinations with credentials, execution context). An interaction belongs to it by
-serialization key and instance; another instance under the same key reads its default
-answer and its writes are ignored.
+per interaction its `InteractionVariableHistory[F]` and what each destination is known to
+hold, plus the `SyncConnection` (destinations with credentials, execution context) and a
+session identity. An interaction belongs to it by serialization key and instance; another
+instance under the same key reads its default answer and its writes are ignored.
 
 The core [`InteractionController`](../modules/core/shared/src/main/scala/it/evadid/workbook/interaction/state/InteractionController.scala)
-makes every change as a pure transition of that state, so updates compose even inside an
-Airstream transaction. Effects follow the observed change: a changed answer runs the
-automatic graders, a changed history is stored (the client defers this to the next task,
-so an answer and its grading starts share one store). The client `InteractionControl`
-is this controller over a `Var`; other front ends can supply any core `State`.
+makes every change as a pure transition of that state, so updates compose inside an
+Airstream transaction, and owns the feedback computations of the current session. Effects
+follow the observed change: a changed history is stored (the client defers this to the next
+task, so an answer and its grading starts share one store), and a changed answer runs the
+graders that run automatically for its importance. The client `InteractionControl` is this
+controller over a `Var`; another front end can supply any core `State`.
 
-`HomepageState` performs page changes as an ordered sequence of the two controls'
-transitions:
+`HomepageState` forwards page changes in a fixed order: send the pending stores, select the
+user, credentials or workbook, let the answers follow the page, read everything. Following
+reads the page's `InteractionScope` when the change applies, so several switches in one
+transaction bind the final page:
 
-| Change | Order |
+| Scope after the change | Answers |
 | --- | --- |
-| Another user or workbook instance | send pending stores, set user/workbook, bind default answers for the new context, read everything |
-| Same user with new credentials or destinations | send pending stores, set user/credentials, reconnect (answers stay, destination knowledge of removed destinations is forgotten), read everything |
-| Full reset | bind fresh default answers for the same context, then delete remote histories |
+| Same context and interaction instances | kept; a user or credential change reconnects them, forgetting what removed destinations held |
+| Anything else | a new session with default answers |
 
-A replaced session keeps its own connection: its pending writes finish there, its feedback
-is dropped, and its reads never reach the new state. Each history view is a projection of
+A full reset binds a new session for the same scope before deleting the remote histories. A
+replaced session keeps its own connection: its pending writes finish there, its feedback is
+dropped, and its reads never reach the new state. Each history view is a projection of
 answer/start/completion events; the format singleton provides all codecs ([interaction
 formats](interaction-format.md)).
 
@@ -153,13 +155,15 @@ Importance is not a debounce interval or a guarantee of immediate persistence:
 Which events are cleaned up is part of the [event contract](interaction-format.md#event-contract);
 which are transmitted is chosen by the [sync strategies](database/interaction-history.md#binding-and-event-flow).
 
-Grading and scaffolding run through `interactions.feedback(element)`. Pending requests
-are shared; explicit retries rerun execution errors and unexecuted tests while
-reusing completed assessments. Feedback stays associated with its captured answer.
-Feedback belongs to its session: a new session (another user, a full reset) starts with
-empty computation caches and drops the completions of the replaced one, while
-`resetLocalHistory` and reconnecting keep completed computations reusable. A running request
-keeps the execution context it started with, including the backend token and LLM settings.
+Grading and scaffolding run through `interactions.feedback(element)`. The history is the
+record of feedback: statuses are read from it, and starts and results are published into it
+while it holds their answer. A request joins a pending request for the same answer.
+Otherwise it runs the graders without a completed result that run for the request and, when
+forced, those whose result asks for a retry; other results are kept. A start read from
+another device marks that answer pending but does not stop a request from grading here.
+Results computed in the session are reused after `resetLocalHistory` and recorded again. A
+new session (another user, a full reset) starts without them, and a running request keeps
+the execution context it started with, including the backend token and LLM settings.
 
 ## Synchronization boundary
 

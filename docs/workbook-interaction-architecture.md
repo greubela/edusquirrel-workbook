@@ -65,8 +65,9 @@ whereas answer tables save entered strings.
 ## Grading and scaffolding
 
 An interaction attaches independent `WorkbookInteractionGrader[T, GA]` checks and
-at most one `WorkbookInteractionScaffolder[T, SA]`. Results belong to the exact
-answer assessed, with localized feedback and optional typed additional data. Add automated
+at most one `WorkbookInteractionScaffolder[T, GA, SA]`, which reads the recorded latest
+answer and gradings as `ScaffoldingEvidence`. Results belong to the exact answer assessed,
+with localized feedback and optional typed additional data. Add automated
 feedback only where the task has a defensible grading contract.
 
 `WorkbookInteractionGrader.shouldRunGrader(forceGrading, importance)` runs a grader when
@@ -79,8 +80,9 @@ one criterion. Programming exercises share `ProgrammingHintScaffolder`.
 Choice options and feedback carry `WorkbookContent` (a language-map ID, a translated map
 or literal content), resolved by `LaminarRenderHelper.workbookContentSignal` without
 flattening the saved model to strings. Grader codecs are registered in the interaction's
-`InteractionFormat`. Computations are cached by answer, independently of display language;
-a language change reuses them and merges feedback translations.
+`InteractionFormat`. Feedback is recorded per answer, independently of display language;
+a language change reuses it and merges feedback translations. Request rules are in
+[state and serialization](state-and-serialization.md#answer-state-and-sessions).
 
 Feedback views derive everything from the history; nothing is stored separately:
 

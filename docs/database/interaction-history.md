@@ -176,14 +176,15 @@ caches are new, so stale completions cannot publish into it.
 `HomepageStateSpec` covers production buffers and HTTP adaptation
 with controlled responses: workbook/user/credential/destination switches,
 A → B → A, delayed successes/failures, confirmation isolation and reset ownership.
-`RemoteHistoryCacheSpec` and `BufferedSyncDestinationHandlerSpec` cover cache and
-batch contracts. MySQL tests cover both layouts, mixed-format HTTP batches,
+`InteractionGradingConcurrencySpec` covers grading while answers change and other devices
+record feedback; `RemoteHistoryCacheSpec` and `BufferedSyncDestinationHandlerSpec` cover cache
+and batch contracts. MySQL tests cover both layouts, mixed-format HTTP batches,
 format rejection, exact ISO timestamp storage, signed/expanded years, nanosecond
 range boundaries, corruption rejection, rollback and authorization.
 
 ```sh
 sbt 'client/testOnly *HomepageStateSpec'
-sbt 'coreJVM/testOnly *InteractionControllerSpec *RemoteHistoryCacheSpec *BufferedSyncDestinationHandlerSpec'
+sbt 'coreJVM/testOnly *InteractionControllerSpec *InteractionGradingConcurrencySpec *RemoteHistoryCacheSpec *BufferedSyncDestinationHandlerSpec'
 # Only against the disposable localhost edusquirrel_account_test database:
 sbt 'server / MysqlIntegration / test'
 ```
