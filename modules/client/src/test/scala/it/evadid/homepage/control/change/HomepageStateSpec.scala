@@ -1,5 +1,7 @@
 package it.evadid.homepage.control.change
 
+import it.evadid.workbook.interaction.state.InteractionSignals.*
+
 import it.evadid.workbook.session.{AllWorkbookInfo, WorkbookConfig}
 import com.raquo.laminar.api.L.*
 import com.raquo.airstream.ownership.ManualOwner
@@ -252,7 +254,7 @@ class HomepageStateSpec extends EditorDomSuite {
           .map(command => read[DeleteInDbRequest](command.json))
         assertEquals(resets.size, 2)
         assert(resets.forall(request => request.allWorkbooks && request.usageContext.userId == fixture.user.user.personId))
-        assertEquals(fixture.info.interactions.resetState.now(), SyncResetState.Completed)
+        assertEquals(fixture.info.interactions.resetState, SyncResetState.Completed)
       }
     }
   }
@@ -306,10 +308,10 @@ class HomepageStateSpec extends EditorDomSuite {
     fixture.failBlobReset.set(true)
     fixture.withHttp {
       fixture.info.interactions.resetAllData().failed.map { _ =>
-        assert(fixture.info.interactions.resetState.now().isInstanceOf[SyncResetState.Failed])
+        assert(fixture.info.interactions.resetState.isInstanceOf[SyncResetState.Failed])
         val other = signedIn(AllUserInfo.createNewUser("Next user", "next@example.invalid", fixture.user.config))
         fixture.info.state.switchUser(Some(other))
-        assertEquals(fixture.info.interactions.resetState.now(), SyncResetState.Idle)
+        assertEquals(fixture.info.interactions.resetState, SyncResetState.Idle)
       }
     }
   }
@@ -484,16 +486,16 @@ class HomepageStateSpec extends EditorDomSuite {
         fixture.info.interactions.resetAllData().failed.flatMap { _ =>
           val workbook = fixture.info.homepageInfoNow().workbookInfo
           fixture.info.state.switchWorkbook(None)
-          assert(fixture.info.interactions.resetState.now().isInstanceOf[SyncResetState.Failed])
+          assert(fixture.info.interactions.resetState.isInstanceOf[SyncResetState.Failed])
           fixture.info.state.switchWorkbook(workbook)
           fixture.info.state.switchUser(Some(fixture.user.copy(credentials = fixture.user.credentials.copy(singleAccessToken = Some(SingleAccessToken("replacement"))))))
           fixture.requests.set(Vector.empty)
           fixture.info.interactions.ensureSynced().flatMap { _ =>
-            assert(fixture.info.interactions.resetState.now().isInstanceOf[SyncResetState.Failed])
+            assert(fixture.info.interactions.resetState.isInstanceOf[SyncResetState.Failed])
             assertEquals(fixture.requests.now(), Vector.empty)
             fixture.failBlobReset.set(false)
             fixture.info.interactions.resetAllData().map { _ =>
-              assertEquals(fixture.info.interactions.resetState.now(), SyncResetState.Completed)
+              assertEquals(fixture.info.interactions.resetState, SyncResetState.Completed)
               assertEquals(fixture.requests.now().count(_.name == resetUserHistoriesDbCommand.name), 2)
             }
           }
@@ -517,13 +519,13 @@ class HomepageStateSpec extends EditorDomSuite {
         val workbook = fixture.info.homepageInfoNow().workbookInfo
         fixture.info.state.switchWorkbook(None)
         fixture.info.state.switchWorkbook(workbook)
-        assert(fixture.info.interactions.resetState.now().isInstanceOf[SyncResetState.Running])
+        assert(fixture.info.interactions.resetState.isInstanceOf[SyncResetState.Running])
         assert(fixture.info.interactions.resetAllData() eq reset)
         fixture.requests.set(Vector.empty)
         fixture.info.interactions.storeAll(true).flatMap { _ =>
           assertEquals(fixture.requests.now(), Vector.empty)
           release.success(())
-          reset.map(_ => assertEquals(fixture.info.interactions.resetState.now(), SyncResetState.Completed))
+          reset.map(_ => assertEquals(fixture.info.interactions.resetState, SyncResetState.Completed))
         }
       }.andThen { case _ => release.trySuccess(()) }
     }
@@ -588,9 +590,9 @@ class HomepageStateSpec extends EditorDomSuite {
       deleting.future.flatMap { _ =>
         val other = signedIn(AllUserInfo.createNewUser("Next user", "next@example.invalid", fixture.user.config))
         fixture.info.state.switchUser(Some(other))
-        assertEquals(fixture.info.interactions.resetState.now(), SyncResetState.Idle)
+        assertEquals(fixture.info.interactions.resetState, SyncResetState.Idle)
         release.success(())
-        reset.failed.map(_ => assertEquals(fixture.info.interactions.resetState.now(), SyncResetState.Idle))
+        reset.failed.map(_ => assertEquals(fixture.info.interactions.resetState, SyncResetState.Idle))
       }.andThen { case _ => release.trySuccess(()) }
     }
   }

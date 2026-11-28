@@ -1,5 +1,7 @@
 package it.evadid.homepage.workbook.htmlRenderer.interactionRenderer.sortingExercise
 
+import it.evadid.workbook.interaction.state.InteractionSignals.*
+
 import com.raquo.laminar.api.L.*
 
 import it.evadid.homepage.control.model.FullInfo

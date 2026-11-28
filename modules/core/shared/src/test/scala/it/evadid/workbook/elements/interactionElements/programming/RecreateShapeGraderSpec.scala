@@ -1,6 +1,6 @@
 package it.evadid.workbook.elements.interactionElements.programming
 
-import it.evadid.workbook.support.StandaloneAnswers
+import it.evadid.workbook.support.OfflineController
 
 import it.evadid.core.datastructures.language.AppLanguage.{Java, Python, SnapLanguage}
 
@@ -37,7 +37,7 @@ class RecreateShapeGraderSpec extends FunSuite {
         val interaction = TurtleRecreateShapeInteraction(s"policy-$policy", ProgrammingStateRaw(Python, program),
           TurtleGraphic.TurtleGraphicSvgString(path), comparisonPolicy = policy)
         // The unedited default answer has no event, so its grading must be requested.
-        StandaloneAnswers.of(interaction).control.getOrCalculateGrading(forceGrading = true).map { result =>
+        OfflineController.of(interaction).feedback(interaction).getOrCalculateGrading(forceGrading = true).map { result =>
           assertEquals(result.testsWithResults.head.gradingStatus, expected, clues(policy, program))
         }
       }
@@ -49,18 +49,18 @@ class RecreateShapeGraderSpec extends FunSuite {
     val first = ProgrammingStateRaw(Python, "forward(100)\nforward(100)")
     val corrected = ProgrammingStateRaw(Python, "forward(100)\nturn_right(90)\nforward(100)\nturn_right(270)\nforward(100)")
     val interaction = TurtleRecreateShapeInteraction("edited-staircase", first, target)
-    val variable = StandaloneAnswers.of(interaction)
+    val answers = OfflineController.of(interaction)
     // Each edit's automatic grading skips the shape grader; the requested one after it runs it.
-    def requested() = variable.control.getOrCalculateGrading()
-      .flatMap(_ => variable.control.getOrCalculateGrading(forceGrading = true))
-    variable.setStateFromUserInteraction(first, MAJOR)
+    def requested() = answers.feedback(interaction).getOrCalculateGrading()
+      .flatMap(_ => answers.feedback(interaction).getOrCalculateGrading(forceGrading = true))
+    answers.setStateFromUserInteraction(interaction, first, MAJOR)
     requested().flatMap { old =>
       assertEquals(old.testsWithResults.head.gradingStatus, GradingStatus.PartiallyCorrect)
-      variable.setStateFromUserInteraction(corrected, MAJOR)
+      answers.setStateFromUserInteraction(interaction, corrected, MAJOR)
       requested().map { current =>
         assertEquals(current.state, corrected)
         assertEquals(current.testsWithResults.head.gradingStatus, GradingStatus.Correct)
-        assertEquals(variable.currentHistory.historyGrading.gradingsMap(first), old)
+        assertEquals(answers.currentHistory(interaction).historyGrading.gradingsMap(first), old)
       }
     }
   }
@@ -68,12 +68,12 @@ class RecreateShapeGraderSpec extends FunSuite {
   test("edits do not run the shape comparison; only a requested grading does and records it") {
     val target = TurtleGraphic.TurtleGraphicSvgString("M0 0 L10 0")
     val interaction = TurtleRecreateShapeInteraction("manual-shape", ProgrammingStateRaw(Python, "forward(5)"), target)
-    val variable = StandaloneAnswers.of(interaction)
-    variable.setStateFromUserInteraction(ProgrammingStateRaw(Python, "forward(10)"), MAJOR)
-    variable.control.getOrCalculateGrading().flatMap { automatic =>
+    val answers = OfflineController.of(interaction)
+    answers.setStateFromUserInteraction(interaction, ProgrammingStateRaw(Python, "forward(10)"), MAJOR)
+    answers.feedback(interaction).getOrCalculateGrading().flatMap { automatic =>
       assertEquals(automatic.testsWithResults.head.gradingStatus, GradingStatus.NotRequested)
-      assert(variable.currentHistory.gradingEvents.isEmpty, "an edit records no grading events")
-      variable.control.getOrCalculateGrading(forceGrading = true).map { requested =>
+      assert(answers.currentHistory(interaction).gradingEvents.isEmpty, "an edit records no grading events")
+      answers.feedback(interaction).getOrCalculateGrading(forceGrading = true).map { requested =>
         assertEquals(requested.testsWithResults.head.gradingStatus, GradingStatus.Correct)
       }
     }

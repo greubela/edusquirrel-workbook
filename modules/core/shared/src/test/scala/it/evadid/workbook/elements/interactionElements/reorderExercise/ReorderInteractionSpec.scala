@@ -1,6 +1,6 @@
 package it.evadid.workbook.elements.interactionElements.reorderExercise
 
-import it.evadid.workbook.support.StandaloneAnswers
+import it.evadid.workbook.support.OfflineController
 import it.evadid.workbook.interaction.sync.UpdateImportance
 
 import it.evadid.core.datastructures.language.AppLanguage.Python
@@ -73,12 +73,13 @@ class ReorderInteractionSpec extends FunSuite {
 
   test("manual grading records a serializable result rather than renderer-only feedback") {
     val answer = state(0, 1, 2)
-    StandaloneAnswers.of(exercise).setStateFromUserInteraction(answer, it.evadid.workbook.interaction.sync.UpdateImportance.MAJOR)
-    StandaloneAnswers.of(exercise).control.getOrCalculateGrading().flatMap { _ =>
-      StandaloneAnswers.of(exercise).control.getOrCalculateGrading(true)
+    val answers = OfflineController.of(exercise)
+    answers.setStateFromUserInteraction(exercise, answer, it.evadid.workbook.interaction.sync.UpdateImportance.MAJOR)
+    answers.feedback(exercise).getOrCalculateGrading().flatMap { _ =>
+      answers.feedback(exercise).getOrCalculateGrading(true)
     }.map { result =>
       assert(result.testsWithResults.forall(_.gradingStatus.isCorrect))
-      val history = StandaloneAnswers.of(exercise).currentHistory
+      val history = answers.currentHistory(exercise)
       val serializer = exercise.interactionFormat.historySerializer
       assertEquals(serializer.deserialize(serializer.serialize(history)), history)
     }

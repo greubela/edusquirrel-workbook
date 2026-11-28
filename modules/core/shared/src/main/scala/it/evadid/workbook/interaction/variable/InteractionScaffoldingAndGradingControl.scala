@@ -119,10 +119,15 @@ final class InteractionScaffoldingAndGradingControl[F <: InteractionFormat](targ
     case None => Future.failed(SerializedException("Cannot calculate scaffolding on an interaction without a scaffolder"))
     case Some(scaffolder) =>
       target.publish(_.addEvent(ScaffoldingStartedEvent[F](forState, LocalDateTime.now(), scaffolder.scaffoldingEntity)))
-      val evidence: ScaffoldingEvidence.Reader[InteractionStateType, GradingInfoType] = () => ScaffoldingEvidence(
-        history.historyStates.lastStateOption, history.historyGrading.gradingsMap.get(forState).toList.flatMap(_.graderResultMap.values))
-      scaffolder.generateFeedbackSafe(forState, evidence, target.execution)
+      scaffolder.generateFeedbackSafe(forState, evidenceFor(forState), target.execution)
   }
+
+  /** What a hint about `forState` reads from the history when the scaffolder asks for it: the latest answer and the
+    * grader results recorded for `forState`.
+    */
+  def evidenceFor(forState: InteractionStateType): ScaffoldingEvidence.Reader[InteractionStateType, GradingInfoType] = () =>
+    ScaffoldingEvidence(history.historyStates.lastStateOption,
+      history.historyGrading.gradingsMap.get(forState).toList.flatMap(_.graderResultMap.values))
 
   // SHARED REQUESTS
 

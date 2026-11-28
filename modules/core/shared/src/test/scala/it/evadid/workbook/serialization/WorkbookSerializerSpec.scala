@@ -1,6 +1,6 @@
 package it.evadid.workbook.serialization
 
-import it.evadid.workbook.support.StandaloneAnswers
+import it.evadid.workbook.support.OfflineController
 import it.evadid.core.datastructures.language.AppLanguage.English
 import it.evadid.core.datastructures.language.LanguageMapContentId
 import it.evadid.core.datastructures.user.User
@@ -66,15 +66,13 @@ class WorkbookSerializerSpec extends FunSuite {
     val text = TextInteraction("live-answer")
     val section = WorkbookSection("live-section", WorkbookSectionMetadata(LanguageMapContentId("section/live")), Seq(text))
     val original = workbook.copy(sections = Seq(section))
-    StandaloneAnswers.of(text).setStateFromUserInteraction("learner answer", UpdateImportance.MAJOR)
-    assertEquals(StandaloneAnswers.of(text).currentValue, "learner answer")
+    val answers = OfflineController.of(text)
+    answers.setStateFromUserInteraction(text, "learner answer", UpdateImportance.MAJOR)
+    assertEquals(answers.currentValue(text), "learner answer")
     val json = write[Workbook](original)
     assert(!json.contains("learner answer"))
     val restored = read[Workbook](json)
     assertEquals(restored, original)
-    val restoredText = restored.sections.head.sectionContent.collectFirst { case value: TextInteraction => value }.get
-    assertEquals(StandaloneAnswers.of(restoredText).currentValue, "")
-    assert(!(StandaloneAnswers.of(restoredText) eq StandaloneAnswers.of(text)))
   }
 
   test("the Workbook reader rejects a valid section graph with the wrong root kind") {

@@ -1,6 +1,6 @@
 package it.evadid.workbook.elements.interactionElements.programming.programmingExerciseRegular
 
-import it.evadid.workbook.support.StandaloneAnswers
+import it.evadid.workbook.support.OfflineController
 import it.evadid.workbook.interaction.sync.UpdateImportance
 
 import it.evadid.core.datastructures.language.AppLanguage.{English, German, HumanLanguage, Lisp, Python}
@@ -129,8 +129,9 @@ class ProgrammingUnitTestGraderWorkerSpec extends FunSuite {
     grader.gradeStateSafe(state, forceGrading = true, UpdateImportance.MAJOR, context).flatMap { result =>
       assertEquals(result.gradingStatus, GradingStatus.Incorrect)
       assert(result.additionalData.flatMap(_.testInvocation).exists(_.target.contains("area")))
-      StandaloneAnswers.of(exercise).updateHistory(_.addGrading(result))
-      exercise.scaffoldingElement.get.handleFeedbackGeneration(state, StandaloneAnswers.of(exercise).evidence(state), context).map { _ =>
+      val answers = OfflineController.of(exercise)
+      answers.updateHistory(exercise)(_.addGrading(result))
+      exercise.scaffoldingElement.get.handleFeedbackGeneration(state, answers.feedback(exercise).evidenceFor(state), context).map { _ =>
         val check = ujson.read(llm.prompts.now().head)("checks")(0)
         assertEquals(check("id").str, "check-1")
         assertEquals(check("status").str, "incorrect")

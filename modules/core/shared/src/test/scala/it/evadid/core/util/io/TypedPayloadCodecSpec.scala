@@ -1,6 +1,6 @@
 package it.evadid.core.util.io
 
-import it.evadid.workbook.support.StandaloneAnswers
+import it.evadid.workbook.support.OfflineController
 
 import it.evadid.vm.parsing.java.clean.model.JavaType.{JAVA_ANY, JAVA_UNPARSABLE_TYPE}
 import it.evadid.vm.parsing.python.clean.model.PythonType.{PYTHON_ANY, PYTHON_UNPARSABLE_TYPE}
@@ -33,7 +33,8 @@ class TypedPayloadCodecSpec extends FunSuite {
   }
 
   test("interactions without grading or scaffolding information use Unit payloads") {
-    val history = StandaloneAnswers.of(TextInteraction("typed-answer")).currentHistory
+    val text = TextInteraction("typed-answer")
+    val history = OfflineController.of(text).currentHistory(text)
     assertEquals(read[InteractionVariableHistory[TextInteractionFormat.type]](write(history)), history)
     assertEquals(readBinary[InteractionVariableHistory[TextInteractionFormat.type]](writeBinary(history)), history)
   }

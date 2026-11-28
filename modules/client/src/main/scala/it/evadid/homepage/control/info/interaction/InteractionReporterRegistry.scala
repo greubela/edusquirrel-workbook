@@ -1,14 +1,14 @@
 package it.evadid.homepage.control.info.interaction
 
 import com.raquo.laminar.api.L.*
-import it.evadid.homepage.control.change.InteractionControl
+import it.evadid.workbook.interaction.state.InteractionController
 import it.evadid.workbook.abstractions.{InteractionFormat, WorkbookInteractionElement}
 import it.evadid.workbook.session.AllWorkbookInfo
 
 /** One set of shared reporters per interaction of the loaded workbook; only replacing that workbook instance
   * replaces them. Icons, sidebars, inline panels and editors read the same reporter instances.
   */
-final class InteractionReporterRegistry(workbook: Signal[Option[AllWorkbookInfo]], interactions: InteractionControl, owner: Owner) {
+final class InteractionReporterRegistry(workbook: Signal[Option[AllWorkbookInfo]], interactions: InteractionController, owner: Owner) {
 
   val all: StrictSignal[Map[WorkbookInteractionElement[? <: InteractionFormat], InteractionReporters[? <: InteractionFormat]]] =
     workbook.map(_.map(_.loadedWorkbook))

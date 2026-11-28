@@ -186,7 +186,7 @@ final class UserSessionControl(val fullInfo: FullInfo) {
       }
       // Normal session changes replace the binding immediately; its captured IO finishes independently.
       // A full reset also clears shared local answer stores, so finish that deletion before switching users.
-      val ready = fullInfo.interactions.resetState.now() match {
+      val ready = fullInfo.interactions.resetState match {
         case _: SyncResetState.Running => finishing
         case _ => Future.unit
       }

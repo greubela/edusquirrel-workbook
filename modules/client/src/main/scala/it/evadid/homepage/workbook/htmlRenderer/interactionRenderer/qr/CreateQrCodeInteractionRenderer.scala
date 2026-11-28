@@ -1,5 +1,7 @@
 package it.evadid.homepage.workbook.htmlRenderer.interactionRenderer.qr
 
+import it.evadid.workbook.interaction.state.InteractionSignals.*
+
 import it.evadid.homepage.control.model.FullInfo
 
 import it.evadid.core.datastructures.language.LanguageMapContentId

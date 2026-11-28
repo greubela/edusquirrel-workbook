@@ -1,6 +1,12 @@
 package it.evadid.homepage.webElements.editor.code
 
 import com.raquo.laminar.api.L.*
+import it.evadid.core.datastructures.language.{AppLanguage, LanguageMapContentId}
+import it.evadid.workbook.abstractions.WorkbookElement
+import it.evadid.workbook.elements.structureElements.{Workbook, WorkbookSection}
+import it.evadid.workbook.elements.structureElements.Workbook.WorkbookMetadata
+import it.evadid.workbook.elements.structureElements.WorkbookSection.WorkbookSectionMetadata
+import it.evadid.workbook.session.{AllWorkbookInfo, WorkbookConfig}
 import munit.FunSuite
 import org.scalajs.dom
 import scala.scalajs.js
@@ -9,6 +15,16 @@ import scala.scalajs.js
 trait EditorDomSuite extends FunSuite {
   /** UI elements under test belong to the page's state, as on a page. */
   protected def pageInfo: it.evadid.homepage.control.model.FullInfo = it.evadid.homepage.control.singletons.HtmlFullWorkbookApp.fullInfo
+
+  /** Opens a one-section workbook holding `interactions` in the page's own state while `body` runs. */
+  protected def inOpenWorkbook[T](interactions: WorkbookElement*)(body: => T): T = {
+    val section = WorkbookSection("ui-section", WorkbookSectionMetadata(LanguageMapContentId("ui/section")), interactions)
+    val workbook = Workbook("ui/workbook", WorkbookMetadata(Set.empty, Set.empty, LanguageMapContentId("ui/title"),
+      Seq(AppLanguage.English)), Seq(section))
+    val control = pageInfo.workbookNavigationControl
+    control.changeWorkbook(Some(AllWorkbookInfo(workbook, WorkbookConfig(Some(section)), Map.empty)))
+    try body finally control.changeWorkbook(None)
+  }
 
   private val globals = js.Dynamic.global.globalThis
   /** jsdom window properties installed as globals for the suite; a suite may add the ones its components use. */

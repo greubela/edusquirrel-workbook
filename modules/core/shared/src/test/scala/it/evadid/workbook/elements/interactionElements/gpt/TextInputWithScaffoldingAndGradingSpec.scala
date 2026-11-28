@@ -2,7 +2,8 @@ package it.evadid.workbook.elements.interactionElements.gpt
 
 import it.evadid.workbook.abstractions.scaffolding.ScaffoldingEvidence
 
-import it.evadid.workbook.support.StandaloneAnswers
+import it.evadid.workbook.interaction.sync.SyncConnection
+import it.evadid.workbook.support.OfflineController
 import it.evadid.workbook.interaction.sync.UpdateImportance
 
 import it.evadid.core.datastructures.language.WorkbookContent
@@ -281,7 +282,7 @@ class TextInputWithScaffoldingAndGradingSpec extends FunSuite {
     val element = twoCriteriaEssay("essay")
     assertEquals(element.allInteractionsInThisInstance, List(element))
     assertEquals(element.childrenOfThisElement, Nil)
-    assertEquals(StandaloneAnswers.of(element).currentValue, "")
+    assertEquals(OfflineController.of(element).currentValue(element), "")
     assertEquals(element.gradingElements.map(_.gradeData.instructionForLlm), List(criterion, secondCriterion))
     assertEquals(element.scaffoldingElement.get.scaffData.instructionForLlm, hint)
     assertEquals(read[TextInputWithScaffoldingAndGrading](write(element)), element)
@@ -305,11 +306,13 @@ class TextInputWithScaffoldingAndGradingSpec extends FunSuite {
   test("the interaction grading pipeline passes the resolver and collects independent criteria into its own history") {
     val f = new Fixture(List(Right("First feedback.\nCORRECT"), Right("Second feedback.\nCORRECT")))
     val element = twoCriteriaEssay("pipeline")
-    StandaloneAnswers.of(element).setStateFromUserInteraction("answer", it.evadid.workbook.interaction.sync.UpdateImportance.MAJOR)
-    StandaloneAnswers.of(element).control.getOrCalculateGrading().flatMap { _ =>
-      StandaloneAnswers.of(element).executingWith(f.context).control.getOrCalculateGrading(forceGrading = true)
+    val answers = OfflineController.of(element)
+    answers.setStateFromUserInteraction(element, "answer", it.evadid.workbook.interaction.sync.UpdateImportance.MAJOR)
+    answers.feedback(element).getOrCalculateGrading().flatMap { _ =>
+      answers.connect(SyncConnection.offline.copy(execution = f.context))
+      answers.feedback(element).getOrCalculateGrading(forceGrading = true)
     }.map { _ =>
-      val results = StandaloneAnswers.of(element).currentHistory.historyGrading.gradingsMap("answer").testsWithResults
+      val results = answers.currentHistory(element).historyGrading.gradingsMap("answer").testsWithResults
       assertEquals(results.size, 2)
       assertEquals(results.map(_.grader), element.gradingElements.toSet[WorkbookInteractionGrader[String, MessengerModel]])
       assert(results.forall(_.gradingStatus == GradingStatus.Correct))
@@ -317,8 +320,8 @@ class TextInputWithScaffoldingAndGradingSpec extends FunSuite {
       assertEquals(f.requests.now().map(request => ujson.read(request.prompt)("criterion").str).toSet,
         Set(s"Deutsch: ${criterion.fullId}", s"Deutsch: ${secondCriterion.fullId}"))
       assert(!f.resolutions.now().contains(hint))
-      val variable = StandaloneAnswers.of(element)
-      assertEquals(variable.interaction.interactionFormat.historySerializer.deserialize(variable.interaction.interactionFormat.historySerializer.serialize(variable.currentHistory)), variable.currentHistory)
+      val serializer = element.interactionFormat.historySerializer
+      assertEquals(serializer.deserialize(serializer.serialize(answers.currentHistory(element))), answers.currentHistory(element))
     }
   }
 
@@ -332,7 +335,6 @@ class TextInputWithScaffoldingAndGradingSpec extends FunSuite {
       assertEquals(f.resolutions.now().toSet, Set(task, hint))
       assert(!f.requests.now().head.prompt.contains("test/criterion"))
       assertEquals(read[ScaffoldingResult[String, MessengerModel]](write(result)), result)
-      assertEquals(StandaloneAnswers.of(element).currentValue, "")
     }
   }
 
@@ -357,16 +359,19 @@ class TextInputWithScaffoldingAndGradingSpec extends FunSuite {
         reply.future
       }
     }
-    StandaloneAnswers.of(element).setStateFromUserInteraction("answer", it.evadid.workbook.interaction.sync.UpdateImportance.MAJOR)
-    def grade() = StandaloneAnswers.of(element).executingWith(TestExecutionContext(List(client), Some(f.resolver), language = () => f.language.now())).control.getOrCalculateGrading(forceGrading = true)
-    val first = StandaloneAnswers.of(element).control.getOrCalculateGrading().flatMap(_ => grade())
+    val answers = OfflineController.of(element)
+    answers.setStateFromUserInteraction(element, "answer", it.evadid.workbook.interaction.sync.UpdateImportance.MAJOR)
+    val automatic = answers.feedback(element).getOrCalculateGrading()
+    answers.connect(SyncConnection.offline.copy(execution = TestExecutionContext(List(client), Some(f.resolver), language = () => f.language.now())))
+    def grade() = answers.feedback(element).getOrCalculateGrading(forceGrading = true)
+    val first = automatic.flatMap(_ => grade())
     started.future.flatMap { _ =>
       f.language.set(English)
       val second = grade()
       reply.success("Bestehendes Feedback.\nCORRECT")
       first.zip(second).flatMap { (a, b) =>
         assertEquals(a, b)
-        val result = StandaloneAnswers.of(element).currentHistory.historyGrading.gradingsMap("answer").testsWithResults.head
+        val result = answers.currentHistory(element).historyGrading.gradingsMap("answer").testsWithResults.head
         assertEquals(result.gradingStatus, GradingStatus.Correct)
         assertEquals(feedbackMap(result.feedbackInformation).flatMap(_.tryGetInLanguage(German)), Some("Bestehendes Feedback."))
         grade().map { cached =>

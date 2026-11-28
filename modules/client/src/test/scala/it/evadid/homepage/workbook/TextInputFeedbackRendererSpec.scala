@@ -1,7 +1,5 @@
 package it.evadid.homepage.workbook
 
-import it.evadid.homepage.control.TestAnswers
-
 import it.evadid.workbook.session.{AllWorkbookInfo, WorkbookConfig}
 import it.evadid.core.datastructures.language.WorkbookContent
 
@@ -26,15 +24,6 @@ import it.evadid.workbook.elements.interactionElements.gpt.TextInputWithScaffold
 class TextInputFeedbackRendererSpec extends EditorDomSuite {
   import com.raquo.laminar.api.L.*
   import it.evadid.homepage.control.model.*
-  import it.evadid.workbook.elements.structureElements.{Workbook, WorkbookSection}
-  private val previousWorkbook = Var(Option.empty[AllWorkbookInfo])
-  override def beforeEach(context: BeforeEach): Unit = previousWorkbook.set(fullInfo.homepageInfoNow().workbookInfo)
-  override def afterEach(context: AfterEach): Unit = fullInfo.workbookNavigationControl.changeWorkbook(previousWorkbook.now())
-  private def loadExercise(exercise: TextInputWithScaffoldingAndGrading): Unit = {
-    val section = WorkbookSection("feedback-tests", WorkbookSection.WorkbookSectionMetadata(LanguageMapContentId("test/section")), Seq(exercise))
-    val workbook = Workbook("feedback-tests", Workbook.WorkbookMetadata(Set.empty, Set.empty, LanguageMapContentId("test/title"), Seq(English)), Seq(section))
-    fullInfo.workbookNavigationControl.changeWorkbook(Some(AllWorkbookInfo(workbook, WorkbookConfig(Some(section)), Map.empty)))
-  }
 
   private def hintExercise(id: String) = TextInputWithScaffoldingAndGrading(id, LanguageMapContentId("test/task"),
     contentGrading = Nil, contentScaffolding = Some(ContentForLlmInteraction(LanguageMapContentId("test/hint"), Map.empty)))
@@ -43,108 +32,112 @@ class TextInputFeedbackRendererSpec extends EditorDomSuite {
     val previous = fullInfo.signals.currentLanguage.now()
     fullInfo.displayControl.changeLanguage(English)
     val exercise = hintExercise("renderer-saved-hint")
-    loadExercise(exercise)
-    val content = LanguageMap.mapBasedLanguageMap[HumanLanguage](Map(English -> "English hint\nSecond line", German -> "Deutscher Hinweis"))
-    fullInfo.interactions.updateHistory(exercise)(_.addScaffolding(ScaffoldingResult[String, MessengerModel]("",
-      ScaffoldingStatus.ScaffoldingFeedback(content), FeedbackEntity.LlmEntity, None, LocalDateTime.now())))
-    val element = TextInputWithScaffoldingAndGradingRenderer.renderAppElement(fullInfo, exercise).getDomElement()
-    val close = mount(element)
-    try {
-      val panel = element.ref.querySelector(".feedback-panel .interaction-hint-panel")
-      assert(!panel.hasAttribute("hidden"))
-      assert(panel.querySelector(".ai-badge") != null)
-      assertEquals(panel.querySelector(".feedback-hint-text").textContent, "English hint\nSecond line")
-      val details = panel
-      assert(details.hasAttribute("open"))
-      details.removeAttribute("open")
-      fullInfo.displayControl.changeLanguage(German)
-      assertEquals(panel.querySelector(".feedback-hint-text").textContent, "Deutscher Hinweis")
-      assert(!details.hasAttribute("open"))
-      assertEquals(element.ref.querySelectorAll(".feedback-entry").length, 0)
-    } finally { close(); fullInfo.displayControl.changeLanguage(previous) }
+    inOpenWorkbook(exercise) {
+      val content = LanguageMap.mapBasedLanguageMap[HumanLanguage](Map(English -> "English hint\nSecond line", German -> "Deutscher Hinweis"))
+      fullInfo.interactions.updateHistory(exercise)(_.addScaffolding(ScaffoldingResult[String, MessengerModel]("",
+        ScaffoldingStatus.ScaffoldingFeedback(content), FeedbackEntity.LlmEntity, None, LocalDateTime.now())))
+      val element = TextInputWithScaffoldingAndGradingRenderer.renderAppElement(fullInfo, exercise).getDomElement()
+      val close = mount(element)
+      try {
+        val panel = element.ref.querySelector(".feedback-panel .interaction-hint-panel")
+        assert(!panel.hasAttribute("hidden"))
+        assert(panel.querySelector(".ai-badge") != null)
+        assertEquals(panel.querySelector(".feedback-hint-text").textContent, "English hint\nSecond line")
+        val details = panel
+        assert(details.hasAttribute("open"))
+        details.removeAttribute("open")
+        fullInfo.displayControl.changeLanguage(German)
+        assertEquals(panel.querySelector(".feedback-hint-text").textContent, "Deutscher Hinweis")
+        assert(!details.hasAttribute("open"))
+        assertEquals(element.ref.querySelectorAll(".feedback-entry").length, 0)
+      } finally { close(); fullInfo.displayControl.changeLanguage(previous) }
+    }
   }
 
   test("the shared bottom panel shows only completed hints for the current answer") {
     val exercise = hintExercise("renderer-current-hint")
-    TestAnswers.bind(fullInfo, exercise)
-    val context = fullInfo.workbookContextInformation
-    val reporter = GradingReporter(exercise, fullInfo.interactions)
-    val element = InteractionFeedbackPanel(fullInfo, exercise, reporter).getDomElement()
-    val close = mount(element)
-    val time = LocalDateTime.now()
-    def save(status: ScaffoldingStatus, offset: Long): Unit = fullInfo.interactions.updateHistory(exercise)(_.addScaffolding(
-      ScaffoldingResult[String, MessengerModel]("", status, FeedbackEntity.TestEntity, None, time.plusSeconds(offset))))
-    try {
-      val panel = element.ref.querySelector(".interaction-hint-panel")
-      val button = element.ref.querySelector("button.scaffolding-info").asInstanceOf[org.scalajs.dom.HTMLButtonElement]
-      assert(panel.hasAttribute("hidden"))
-      save(ScaffoldingStatus.ScaffoldingRequestedButNotFinished(), 1)
-      assert(button.disabled)
-      assertEquals(button.getAttribute("aria-busy"), "true")
-      assert(button.querySelector(".feedback-icon-spin") != null)
-      assert(panel.hasAttribute("hidden"))
-      save(ScaffoldingStatus.ScaffoldingError(it.evadid.distribution.command.SerializedException("PRIVATE ERROR")), 2)
-      assert(!button.disabled)
-      assert(button.classList.contains("feedback-status--error"))
-      assert(button.querySelector(".feedback-icon-spin") == null)
-      assert(panel.hasAttribute("hidden"))
-      assert(!element.ref.textContent.contains("PRIVATE ERROR"))
-      save(ScaffoldingStatus.ScaffoldingFeedback(LanguageMap.universalMap[HumanLanguage]("CURRENT HINT")), 3)
-      assert(!panel.hasAttribute("hidden"))
-      assertEquals(panel.querySelector(".feedback-hint-text").textContent, "CURRENT HINT")
-      assert(panel.classList.contains("feedback-status--correct"))
-      assert(panel.querySelector(".ai-badge") == null)
-      fullInfo.interactions.updateHistory(exercise)(_.addState(InteractionVariableState("changed answer", UpdateImportance.MAJOR, time.plusSeconds(4))))
-      assert(panel.hasAttribute("hidden"))
-      assertEquals(panel.querySelector(".feedback-hint-text").textContent, "")
-      save(ScaffoldingStatus.ScaffoldingFeedback(LanguageMap.universalMap[HumanLanguage]("LATE OLD HINT")), 5)
-      assert(panel.hasAttribute("hidden"))
-      fullInfo.interactions.updateHistory(exercise)(_.addState(InteractionVariableState("", UpdateImportance.MAJOR, time.plusSeconds(6))))
-      assert(!panel.hasAttribute("hidden"))
-      assertEquals(panel.querySelector(".feedback-hint-text").textContent, "LATE OLD HINT")
-    } finally close()
+    inOpenWorkbook(exercise) {
+      val context = fullInfo.workbookContextInformation
+      val reporter = GradingReporter(exercise, fullInfo.interactions)
+      val element = InteractionFeedbackPanel(fullInfo, exercise, reporter).getDomElement()
+      val close = mount(element)
+      val time = LocalDateTime.now()
+      def save(status: ScaffoldingStatus, offset: Long): Unit = fullInfo.interactions.updateHistory(exercise)(_.addScaffolding(
+        ScaffoldingResult[String, MessengerModel]("", status, FeedbackEntity.TestEntity, None, time.plusSeconds(offset))))
+      try {
+        val panel = element.ref.querySelector(".interaction-hint-panel")
+        val button = element.ref.querySelector("button.scaffolding-info").asInstanceOf[org.scalajs.dom.HTMLButtonElement]
+        assert(panel.hasAttribute("hidden"))
+        save(ScaffoldingStatus.ScaffoldingRequestedButNotFinished(), 1)
+        assert(button.disabled)
+        assertEquals(button.getAttribute("aria-busy"), "true")
+        assert(button.querySelector(".feedback-icon-spin") != null)
+        assert(panel.hasAttribute("hidden"))
+        save(ScaffoldingStatus.ScaffoldingError(it.evadid.distribution.command.SerializedException("PRIVATE ERROR")), 2)
+        assert(!button.disabled)
+        assert(button.classList.contains("feedback-status--error"))
+        assert(button.querySelector(".feedback-icon-spin") == null)
+        assert(panel.hasAttribute("hidden"))
+        assert(!element.ref.textContent.contains("PRIVATE ERROR"))
+        save(ScaffoldingStatus.ScaffoldingFeedback(LanguageMap.universalMap[HumanLanguage]("CURRENT HINT")), 3)
+        assert(!panel.hasAttribute("hidden"))
+        assertEquals(panel.querySelector(".feedback-hint-text").textContent, "CURRENT HINT")
+        assert(panel.classList.contains("feedback-status--correct"))
+        assert(panel.querySelector(".ai-badge") == null)
+        fullInfo.interactions.updateHistory(exercise)(_.addState(InteractionVariableState("changed answer", UpdateImportance.MAJOR, time.plusSeconds(4))))
+        assert(panel.hasAttribute("hidden"))
+        assertEquals(panel.querySelector(".feedback-hint-text").textContent, "")
+        save(ScaffoldingStatus.ScaffoldingFeedback(LanguageMap.universalMap[HumanLanguage]("LATE OLD HINT")), 5)
+        assert(panel.hasAttribute("hidden"))
+        fullInfo.interactions.updateHistory(exercise)(_.addState(InteractionVariableState("", UpdateImportance.MAJOR, time.plusSeconds(6))))
+        assert(!panel.hasAttribute("hidden"))
+        assertEquals(panel.querySelector(".feedback-hint-text").textContent, "LATE OLD HINT")
+      } finally close()
+    }
   }
 
   test("each criterion renders its own saved feedback instead of repeating the first result") {
     val exercise = TextInputWithScaffoldingAndGrading("renderer-criteria", LanguageMapContentId("test/task"),
       contentGrading = List("first", "second").map(id => ContentForLlmInteraction(LanguageMapContentId(s"test/$id"), Map.empty)))
-    loadExercise(exercise)
-    val results = exercise.gradingElements.zipWithIndex.map { (grader, index) =>
-      GradingResult[String, MessengerModel](grader, "", if index == 0 then GradingStatus.Correct else GradingStatus.PartiallyCorrect, Some(WorkbookContent(LanguageMap.universalMap[HumanLanguage](s"Feedback for criterion $index"))), None, java.time.LocalDateTime.now())
+    inOpenWorkbook(exercise) {
+      val results = exercise.gradingElements.zipWithIndex.map { (grader, index) =>
+        GradingResult[String, MessengerModel](grader, "", if index == 0 then GradingStatus.Correct else GradingStatus.PartiallyCorrect, Some(WorkbookContent(LanguageMap.universalMap[HumanLanguage](s"Feedback for criterion $index"))), None, java.time.LocalDateTime.now())
+      }
+      fullInfo.interactions.updateHistory(exercise)(_.addGradings(results))
+      val element = TextInputWithScaffoldingAndGradingRenderer.renderAppElement(fullInfo, exercise).getDomElement()
+      val close = mount(element)
+      try {
+        val displayed = element.ref.querySelectorAll(".feedback-entry")
+        assertEquals(displayed.length, 2)
+        assertEquals(displayed(0).querySelector(".feedback-text").textContent, "Feedback for criterion 0")
+        assertEquals(displayed(1).querySelector(".feedback-text").textContent, "Feedback for criterion 1")
+        assert(displayed(1).classList.contains("feedback-status--partial"))
+        assert(!element.ref.textContent.contains("Correct"))
+        assert(!element.ref.textContent.contains("PartiallyCorrect"))
+      } finally close()
     }
-    fullInfo.interactions.updateHistory(exercise)(_.addGradings(results))
-    val element = TextInputWithScaffoldingAndGradingRenderer.renderAppElement(fullInfo, exercise).getDomElement()
-    val close = mount(element)
-    try {
-      val displayed = element.ref.querySelectorAll(".feedback-entry")
-      assertEquals(displayed.length, 2)
-      assertEquals(displayed(0).querySelector(".feedback-text").textContent, "Feedback for criterion 0")
-      assertEquals(displayed(1).querySelector(".feedback-text").textContent, "Feedback for criterion 1")
-      assert(displayed(1).classList.contains("feedback-status--partial"))
-      assert(!element.ref.textContent.contains("Correct"))
-      assert(!element.ref.textContent.contains("PartiallyCorrect"))
-    } finally close()
   }
 
   test("feedback for another answer is hidden and localization uses the shared fallback") {
     val exercise = TextInputWithScaffoldingAndGrading("renderer-stale", LanguageMapContentId("test/task"),
       contentGrading = List(ContentForLlmInteraction(LanguageMapContentId("test/check"), Map.empty)))
-    loadExercise(exercise)
-    val grader = exercise.gradingElements.head
-    val otherLanguage = if fullInfo.signals.currentLanguage.now() == English then German else English
-    val wrongAnswer = GradingResult[String, MessengerModel](grader, "another answer", GradingStatus.Correct, Some(WorkbookContent(LanguageMap.universalMap("Wrong answer feedback"))), None, java.time.LocalDateTime.now())
-    val wrongLanguage = wrongAnswer.copy(gradedState = "", feedbackInformation = Some(WorkbookContent(
-      LanguageMap.mapBasedLanguageMap[HumanLanguage](Map(otherLanguage -> "Wrong language feedback")))))
-    val element = TextInputWithScaffoldingAndGradingRenderer.renderAppElement(fullInfo, exercise).getDomElement()
-    val close = mount(element)
-    try {
-      // Use the correct event-based API - addGrading creates a GradingCompletedEvent
-      fullInfo.interactions.updateHistory(exercise)(_.addGrading(wrongAnswer))
-      assertEquals(element.ref.querySelectorAll(".feedback-entry").length, 1)
-      assert(!element.ref.textContent.contains("Wrong answer feedback"))
-      fullInfo.interactions.updateHistory(exercise)(_.addGrading(wrongLanguage))
-      assertEquals(element.ref.querySelectorAll(".feedback-entry").length, 1)
-      assert(element.ref.textContent.contains("Wrong language feedback"))
-    } finally close()
+    inOpenWorkbook(exercise) {
+      val grader = exercise.gradingElements.head
+      val otherLanguage = if fullInfo.signals.currentLanguage.now() == English then German else English
+      val wrongAnswer = GradingResult[String, MessengerModel](grader, "another answer", GradingStatus.Correct, Some(WorkbookContent(LanguageMap.universalMap("Wrong answer feedback"))), None, java.time.LocalDateTime.now())
+      val wrongLanguage = wrongAnswer.copy(gradedState = "", feedbackInformation = Some(WorkbookContent(
+        LanguageMap.mapBasedLanguageMap[HumanLanguage](Map(otherLanguage -> "Wrong language feedback")))))
+      val element = TextInputWithScaffoldingAndGradingRenderer.renderAppElement(fullInfo, exercise).getDomElement()
+      val close = mount(element)
+      try {
+        // Use the correct event-based API - addGrading creates a GradingCompletedEvent
+        fullInfo.interactions.updateHistory(exercise)(_.addGrading(wrongAnswer))
+        assertEquals(element.ref.querySelectorAll(".feedback-entry").length, 1)
+        assert(!element.ref.textContent.contains("Wrong answer feedback"))
+        fullInfo.interactions.updateHistory(exercise)(_.addGrading(wrongLanguage))
+        assertEquals(element.ref.querySelectorAll(".feedback-entry").length, 1)
+        assert(element.ref.textContent.contains("Wrong language feedback"))
+      } finally close()
+    }
   }
 }

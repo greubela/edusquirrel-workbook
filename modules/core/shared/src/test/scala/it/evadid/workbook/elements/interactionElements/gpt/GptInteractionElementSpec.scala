@@ -8,7 +8,6 @@ import it.evadid.workbook.interaction.sync.{SyncConnection, UsageContext}
 
 import it.evadid.workbook.interaction.state.InteractionController
 
-import it.evadid.workbook.support.StandaloneAnswers
 import it.evadid.core.datastructures.chat.MessengerModel
 import it.evadid.core.datastructures.language.AppLanguage.{English, HumanLanguage}
 import it.evadid.core.datastructures.language.{LanguageMap, LanguageMapContentId}

@@ -1,6 +1,6 @@
 package it.evadid.workbook.elements.interactionElements.programming.programmingExerciseRegular
 
-import it.evadid.workbook.support.StandaloneAnswers
+import it.evadid.workbook.support.OfflineController
 import it.evadid.core.datastructures.language.AppLanguage.{English, German, HumanLanguage, Java, Python, SnapLanguage}
 import it.evadid.core.datastructures.language.{LanguageMap, LanguageMapContentId}
 import it.evadid.core.datastructures.language.control.LanguageMapIdResolver
@@ -37,10 +37,12 @@ class ProgrammingHintScaffolderSpec extends FunSuite {
     }
     val exercise = ProgrammingExerciseFullJava("hint-exercise", startingProgram = startingProgram, hintTask = Some(task))
     val scaffolder = exercise.scaffoldingElement.get
+    val answers = OfflineController.of(exercise)
+    def evidence(state: ProgrammingState) = answers.feedback(exercise).evidenceFor(state)
     def context(clients: List[LocalExecutionClient[?, ?]] = List(client)) =
       TestExecutionContext(clients, languageMapIdResolver = Some(resolver))
     def hint(state: ProgrammingState = exercise.defaultValue) =
-      scaffolder.handleFeedbackGeneration(state, StandaloneAnswers.of(exercise).evidence(state), context())
+      scaffolder.handleFeedbackGeneration(state, evidence(state), context())
   }
 
   private def reply(question: String, ids: String*): String =
@@ -62,7 +64,7 @@ class ProgrammingHintScaffolderSpec extends FunSuite {
     Future.traverse(drafts) { (code, flagged) =>
       val fixture = new Fixture(reply("Look at the current statement.", "source-1"))
       val state = ProgrammingStateRaw(Python, code)
-      StandaloneAnswers.of(fixture.exercise).setStateFromUserInteraction(state, UpdateImportance.MAJOR, java.time.LocalDateTime.now().plusSeconds(1))
+      fixture.answers.setStateFromUserInteraction(fixture.exercise, state, UpdateImportance.MAJOR, java.time.LocalDateTime.now().plusSeconds(1))
       fixture.hint(state).map(_ => assertEquals(fixture.requests.now().head.systemPrompt.contains("could not read this draft"), flagged, code))
     }
   }
@@ -97,8 +99,8 @@ class ProgrammingHintScaffolderSpec extends FunSuite {
   test("hints need a resolver, an LLM client, the current answer and a usable task") {
     val f = new Fixture(reply("Why?", "task"))
     for {
-      noResolver <- f.scaffolder.handleFeedbackGeneration(f.exercise.defaultValue, StandaloneAnswers.of(f.exercise).evidence(f.exercise.defaultValue), TestExecutionContext(List(f.client))).failed
-      noClient <- f.scaffolder.handleFeedbackGeneration(f.exercise.defaultValue, StandaloneAnswers.of(f.exercise).evidence(f.exercise.defaultValue), f.context(Nil)).failed
+      noResolver <- f.scaffolder.handleFeedbackGeneration(f.exercise.defaultValue, f.evidence(f.exercise.defaultValue), TestExecutionContext(List(f.client))).failed
+      noClient <- f.scaffolder.handleFeedbackGeneration(f.exercise.defaultValue, f.evidence(f.exercise.defaultValue), f.context(Nil)).failed
       changed <- f.hint(ProgrammingStateRaw(Java, "Turtle.forward(99);")).failed
       noTask <- new Fixture(reply("Why?", "task"), taskText = None).hint().failed
       tooLong <- new Fixture(reply("Why?", "task"), startingProgram = Seq.fill(401)("x();").mkString("\n")).hint().failed

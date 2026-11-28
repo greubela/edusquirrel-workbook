@@ -1,5 +1,7 @@
 package it.evadid.homepage.workbook.htmlRenderer.interactionRenderer.turtleStitch
 
+import it.evadid.workbook.interaction.state.InteractionSignals.*
+
 import it.evadid.homepage.control.model.FullInfo
 
 import it.evadid.core.datastructures.language.AppLanguage.{Java, Python, SnapLanguage}

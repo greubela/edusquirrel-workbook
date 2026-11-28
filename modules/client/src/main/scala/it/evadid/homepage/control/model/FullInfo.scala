@@ -17,6 +17,7 @@ import it.evadid.distribution.clients.ExecutionClient
 import it.evadid.homepage.control.change.*
 import it.evadid.homepage.control.info.*
 import it.evadid.homepage.control.singletons.HomepageDefaults
+import it.evadid.core.datastructures.state.State
 import it.evadid.workbook.interaction.state.InteractionController
 import it.evadid.workbook.interaction.sync.SyncConnection
 import it.evadid.workbook.meta.ExecutionContextInformation
@@ -39,7 +40,7 @@ final class FullInfo(private[control] val defaultInfo: HomepageInfo) {
   val loggerSystemInfo: HomepageLoggerInfo = HomepageLoggerInfo.singleton
 
   /** Every change of the page state goes through this control. */
-  val homepage: HomepageControl = HomepageControl(Var(defaultInfo))
+  val homepage: HomepageControl = HomepageControl(Var(defaultInfo), loggerSystemInfo.contentControlLogger)
 
   def homepageInfoNow(): HomepageInfo = homepage.now()
 
@@ -67,11 +68,22 @@ final class FullInfo(private[control] val defaultInfo: HomepageInfo) {
   val userSessionControl: UserSessionControl = new UserSessionControl(this)
 
   /** Every change of the answers goes through this control; it starts with the default answers of `defaultInfo`. */
-  val interactions: InteractionControl = {
-    val control = InteractionControl(Var(InteractionInfo.empty(defaultInfo.toContext)), owner)
-    control.bind(scopeFor(defaultInfo))
-    control
+  val interactions: InteractionController = {
+    // Stores run after the current task, so changes made together share one write.
+    val controller = new InteractionController(State(InteractionInfo.empty(defaultInfo.toContext)),
+      run => { scala.scalajs.js.timers.setTimeout(0)(run()); () })
+    controller.bind(scopeFor(defaultInfo))
+    controller
   }
+
+  /* A hidden page may be closed without running another task: pending stores would never start and buffered
+   * destinations never send. So when the page is hidden or left, both happen at once. The listeners sit on the
+   * window: `visibilitychange` is fired at the document and bubbles to the window, so in the same dispatch they
+   * follow the editors, which write their typed text at the document.
+   */
+  windowEvents(_ => FullInfo.onVisibilityChange).filter(_ => org.scalajs.dom.document.hidden)
+    .foreach(_ => interactions.sendPending())(using owner)
+  windowEvents(_.onPageHide).foreach(_ => interactions.sendPending())(using owner)
 
   /** Changes of user, credentials and workbook, which concern both the page and its answers. */
   val state: HomepageState = HomepageState(homepage, interactions, scopeFor)
@@ -107,4 +119,9 @@ final class FullInfo(private[control] val defaultInfo: HomepageInfo) {
       override def futureExecutionContext: ExecutionContext = ExecutionContext.global
     }
   }
+}
+
+object FullInfo {
+  /** `visibilitychange` on the window, where it arrives after the document's listeners. */
+  private val onVisibilityChange = new com.raquo.laminar.keys.EventProp[org.scalajs.dom.Event]("visibilitychange")
 }

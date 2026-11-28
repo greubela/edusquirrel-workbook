@@ -1,5 +1,7 @@
 package it.evadid.homepage.workbook.htmlRenderer.controlElements
 
+import it.evadid.workbook.interaction.state.InteractionSignals.*
+
 import it.evadid.homepage.control.model.FullInfo
 
 import it.evadid.workbook.session.AllWorkbookInfo
@@ -27,7 +29,7 @@ case class DropdownMenuControl(fullInfo: FullInfo, curWorkbook: Option[AllWorkbo
   private val credentialsOpen = Var(false)
 
 
-  private val resetState = fullInfo.interactions.resetState
+  private val resetState = fullInfo.interactions.resetStateSignal
   private val resetLabel: Signal[String] = LabelSelection(resetState,
     Seq("basic/resetAllData", "basic/resetAllDataRunning", "basic/resetAllDataRetry"), laminarHelper(fullInfo).plaintextStringSignal) {
       case SyncResetState.Idle | SyncResetState.Completed => Some("basic/resetAllData")

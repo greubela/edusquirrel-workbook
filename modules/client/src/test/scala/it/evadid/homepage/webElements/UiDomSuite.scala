@@ -1,15 +1,8 @@
 package it.evadid.homepage.webElements
 
-import it.evadid.workbook.session.{AllWorkbookInfo, WorkbookConfig}
 import com.raquo.laminar.api.L.*
-import it.evadid.core.datastructures.language.{AppLanguage, LanguageMapContentId}
 
-import it.evadid.homepage.control.singletons.HtmlFullWorkbookApp
 import it.evadid.homepage.webElements.editor.code.EditorDomSuite
-import it.evadid.workbook.abstractions.WorkbookElement
-import it.evadid.workbook.elements.structureElements.{Workbook, WorkbookSection}
-import it.evadid.workbook.elements.structureElements.Workbook.WorkbookMetadata
-import it.evadid.workbook.elements.structureElements.WorkbookSection.WorkbookSectionMetadata
 import org.scalajs.dom
 import scala.concurrent.{Future, Promise}
 import scala.scalajs.js
@@ -74,14 +67,5 @@ trait UiDomSuite extends EditorDomSuite {
   /** Text of a language-map label that has not been loaded in the test page: its (normalized) id is shown. */
   protected def loadingText(id: String): String = s"${id.toLowerCase}]"
 
-  /** Opens a one-section workbook holding `interactions` in the page's own state while `body` runs. */
-  protected def inOpenWorkbook[T](interactions: WorkbookElement*)(body: => T): T = {
-    val section = WorkbookSection("ui-section", WorkbookSectionMetadata(LanguageMapContentId("ui/section")), interactions)
-    val workbook = Workbook("ui/workbook", WorkbookMetadata(Set.empty, Set.empty, LanguageMapContentId("ui/title"),
-      Seq(AppLanguage.English)), Seq(section))
-    val control = HtmlFullWorkbookApp.fullInfo.workbookNavigationControl
-    control.changeWorkbook(Some(AllWorkbookInfo(workbook, WorkbookConfig(Some(section)), Map.empty)))
-    try body finally control.changeWorkbook(None)
-  }
 
 }

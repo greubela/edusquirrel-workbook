@@ -1,5 +1,7 @@
 package it.evadid.homepage.webElements.sqlEditor
 
+import it.evadid.workbook.interaction.state.InteractionSignals.*
+
 import it.evadid.homepage.control.model.FullInfo
 
 import com.raquo.laminar.api.L.*
