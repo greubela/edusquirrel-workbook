@@ -19,6 +19,8 @@ lazy val core = crossProject(JSPlatform, JVMPlatform)
   .settings(Settings.globalSettings)
   .settings(
     name := "core",
+    coverageMinimumBranchTotal := 60.01,
+    coverageFailOnMinimum := true,
     libraryDependencies ++= coreDependencies.value
   )
   .jsSettings(

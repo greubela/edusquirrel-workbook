@@ -29,6 +29,9 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  core-coverage:
+    uses: ./.github/workflows/core-coverage.yml
+
   mysql-integration:
     runs-on: ubuntu-latest
     timeout-minutes: 15
@@ -354,7 +357,7 @@ jobs:
   # Preserve the required "tests" status as the gate for the whole test suite.
   tests:
     if: ${{ always() }}
-    needs: [static-tests, scala-jvm, scala-js, browser-bundles, browser-tests, mysql-integration]
+    needs: [static-tests, scala-jvm, scala-js, browser-bundles, browser-tests, mysql-integration, core-coverage]
     runs-on: ubuntu-latest
     steps:
       - name: Require every test job to pass
@@ -365,6 +368,7 @@ jobs:
           BUNDLES_RESULT: ${{ needs.browser-bundles.result }}
           BROWSER_RESULT: ${{ needs.browser-tests.result }}
           MYSQL_RESULT: ${{ needs.mysql-integration.result }}
+          COVERAGE_RESULT: ${{ needs.core-coverage.result }}
         run: |
           test "$STATIC_RESULT" = success
           test "$SCALA_JVM_RESULT" = success
@@ -372,3 +376,4 @@ jobs:
           test "$BUNDLES_RESULT" = success
           test "$BROWSER_RESULT" = success
           test "$MYSQL_RESULT" = success
+          test "$COVERAGE_RESULT" = success

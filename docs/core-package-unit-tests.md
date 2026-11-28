@@ -46,6 +46,11 @@ SQL_HOST=127.0.0.1 SQL_PORT=3306 SQL_DATABASE=edusquirrel_account_test SQL_USER=
 unit-test harness in a local `python3` via the test-only `CPythonRuntime` client; it
 is skipped when no `python3` is installed.
 
+Core coverage runs on both platforms through [core-coverage.yml](../.github/workflows/core-coverage.yml).
+Each report must exceed 60% branch coverage; CI uploads the reports and does not
+reuse instrumented classes in normal build caches. Run locally with
+`sbt 'project coreJVM' coverage test coverageReport` (or `coreJS`).
+
 For a narrow shared package:
 
 ```sh
