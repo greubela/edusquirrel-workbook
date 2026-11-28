@@ -32,6 +32,7 @@ private[reorderExercise] object ReorderGrading {
 
 case class ReorderCodeGrader(lines: Seq[String], orderConstraints: Seq[(Int, Int)])
     extends WorkbookInteractionGrader[ReorderInteractionState[String], Unit] derives ReadWriter {
+  def persistedType: String = ReorderCodeGrader.codec.persistedType
   override val importance = GradingImportance.REQUIRED_TEST
   override val runningBehavior = GraderRunningBehavior.RUN_ONLY_MANUALLY
   override val gradingEntity = FeedbackEntity.TestEntity
@@ -41,8 +42,13 @@ case class ReorderCodeGrader(lines: Seq[String], orderConstraints: Seq[(Int, Int
   }(using context.futureExecutionContext)
 }
 
+object ReorderCodeGrader {
+  lazy val codec: WorkbookInteractionGrader.Codec[ReorderCodeGrader] = WorkbookInteractionGrader.codec("ReorderCodeGrader")
+}
+
 case class ReorderMapIdGrader(ids: Seq[LanguageMapContentId])
     extends WorkbookInteractionGrader[ReorderInteractionState[LanguageMapContentId], Unit] derives ReadWriter {
+  def persistedType: String = ReorderMapIdGrader.codec.persistedType
   override val importance = GradingImportance.REQUIRED_TEST
   override val runningBehavior = GraderRunningBehavior.RUN_ONLY_MANUALLY
   override val gradingEntity = FeedbackEntity.TestEntity
@@ -50,4 +56,8 @@ case class ReorderMapIdGrader(ids: Seq[LanguageMapContentId])
     require(state.elements == ids && state.correctOrder == ids.indices, "Stored reorder content does not match the exercise")
     GradingResult(this, state, ReorderGrading.status(state.sanitizedCurrentOrder, Seq.empty))
   }(using context.futureExecutionContext)
+}
+
+object ReorderMapIdGrader {
+  lazy val codec: WorkbookInteractionGrader.Codec[ReorderMapIdGrader] = WorkbookInteractionGrader.codec("ReorderMapIdGrader")
 }

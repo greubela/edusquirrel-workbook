@@ -15,6 +15,7 @@ import scala.concurrent.Future
 
 class ResultMergeSpec extends FunSuite {
   private object Grader extends WorkbookInteractionGrader[String, String] {
+    override val persistedType = "MergeTestGrader"
     override val key = "merge-grader"
     override val importance = GradingImportance.REQUIRED_TEST
     override val runningBehavior = GraderRunningBehavior.RUN_ALWAYS

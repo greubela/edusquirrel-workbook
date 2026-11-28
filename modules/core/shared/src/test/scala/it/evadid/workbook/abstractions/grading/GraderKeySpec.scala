@@ -30,6 +30,20 @@ class GraderKeySpec extends munit.FunSuite {
   }
 
   test("content identity uses the same SHA-256 vector on JVM and JavaScript") {
-    assertEquals(SlideshowGrader(false).key, "sha256:f6ea9ef550fa7b89d0e25ce8146e0e88119cdca8957fb0cdde22deed1257d657")
+    assertEquals(SlideshowGrader(false).key, "sha256:e78ed6251c5fcce94479c1afd6f96fed4d265c8ebdbdd7b2dc999778cf7c3527")
+  }
+
+  test("a key is the grader's persisted type and parameters, not its class name") {
+    assertEquals(SlideshowGrader(false).key, it.evadid.core.util.crypto.ContentIdentity.key(
+      ujson.Obj("type" -> "SlideshowGrader", "parameters" -> ujson.Obj("isRequired" -> false))))
+  }
+
+  test("graders of one type differ by their parameters, so two unit tests get two keys") {
+    import it.evadid.workbook.interactions.programming.programmingExerciseRegular.ProgrammingUnitTestGrader
+    val first = ProgrammingUnitTestGrader("first", "assert f() == 1")
+    val second = ProgrammingUnitTestGrader("second", "assert f() == 1")
+    val otherCode = first.copy(pythonTestCode = "assert f() == 2")
+    assertEquals(List(first, second, otherCode).map(_.key).distinct.size, 3)
+    assertEquals(first.copy().key, first.key)
   }
 }

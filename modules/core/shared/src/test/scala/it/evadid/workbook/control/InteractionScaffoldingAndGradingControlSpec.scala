@@ -34,6 +34,7 @@ class InteractionScaffoldingAndGradingControlSpec extends FunSuite {
       synchronous: Boolean = false, gate: Option[Promise[Unit]] = None, retryGate: Option[Promise[Unit]] = None,
       behavior: GraderRunningBehavior = GraderRunningBehavior.RUN_ALWAYS) extends WorkbookInteractionGrader[String, MessengerModel] {
     override val key = java.util.UUID.randomUUID().toString
+    override val persistedType = "CountingTestGrader"
     val calls = State(0)
     override val importance = GradingImportance.REQUIRED_TEST
     override val runningBehavior = behavior

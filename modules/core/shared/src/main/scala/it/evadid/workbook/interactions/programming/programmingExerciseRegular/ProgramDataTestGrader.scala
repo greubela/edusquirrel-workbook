@@ -64,6 +64,7 @@ case class ProgramDataTestGrader(
     /** The libraries the exercise provides; its exercise sets it ([[ProgrammingTestGrader.inEnvironment]]). */
     environment: ProgrammingEnvironment = ProgrammingEnvironment.all
                                 ) extends ProgrammingTestGrader derives ReadWriter {
+  def persistedType: String = ProgramDataTestGrader.codec.persistedType
   override def inEnvironment(environment: ProgrammingEnvironment): ProgramDataTestGrader = copy(environment = environment)
   require(testId.nonEmpty && testId == testId.trim, "A data test needs a nonempty ID.")
   require(expectations.nonEmpty, "A data test needs at least one expectation.")
@@ -149,6 +150,7 @@ case class ProgramDataTestGrader(
 }
 
 object ProgramDataTestGrader {
+  lazy val codec: WorkbookInteractionGrader.Codec[ProgramDataTestGrader] = WorkbookInteractionGrader.codec("ProgramDataTestGrader")
   /** Room for a naive backtracking solver on the workbook's puzzles. */
   val defaultLimits: TurtleExecutionLimits = TurtleExecutionLimits(maxSteps = 2000000, maxCallDepth = 128, maxDataCommands = 2000000)
 

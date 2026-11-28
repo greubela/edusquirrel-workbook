@@ -34,6 +34,7 @@ case class TurtleCommandUsageGrader(
     /** The libraries the exercise provides; its exercise sets it ([[ProgrammingTestGrader.inEnvironment]]). */
     environment: ProgrammingEnvironment = ProgrammingEnvironment.all
 ) extends ProgrammingTestGrader derives ReadWriter {
+  def persistedType: String = TurtleCommandUsageGrader.codec.persistedType
   require(maximum >= 0, "A command usage maximum must not be negative.")
   override def inEnvironment(environment: ProgrammingEnvironment): TurtleCommandUsageGrader = copy(environment = environment)
   require(testId != null && testId.nonEmpty && testId == testId.trim, "A programming test needs a nonempty ID.")
@@ -85,6 +86,7 @@ case class TurtleCommandUsageGrader(
 }
 
 object TurtleCommandUsageGrader {
+  lazy val codec: WorkbookInteractionGrader.Codec[TurtleCommandUsageGrader] = WorkbookInteractionGrader.codec("TurtleCommandUsageGrader")
   def forLimits(elementId: String, limits: MaxCommandUsage): Seq[TurtleCommandUsageGrader] =
     List(CommandUsageMeasure.OccurrencesInCode -> limits.occurrencesInCode,
       CommandUsageMeasure.CallsDuringExecution -> limits.callsDuringExecution).flatMap { (measure, entries) =>

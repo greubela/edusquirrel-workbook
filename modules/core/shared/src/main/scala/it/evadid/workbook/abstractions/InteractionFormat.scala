@@ -51,7 +51,8 @@ sealed trait InteractionFormat {
   final def gradingInfoSerializer: Serializer[InteractionFormat.Grading[this.type]] = codecs.gradingInfoSerializer
   final def scaffoldingInfoSerializer: Serializer[InteractionFormat.Scaffolding[this.type]] = codecs.scaffoldingInfoSerializer
   final def historySerializer: Serializer[InteractionVariableHistory[this.type]] = codecs.historySerializer
-  final def name: String = getClass.getSimpleName.stripSuffix("$")
+  /** The stable name histories are tagged with; independent of the object's name. */
+  def name: String
 }
 
 object InteractionFormat {
@@ -60,8 +61,8 @@ object InteractionFormat {
   type Scaffolding[F <: InteractionFormat] = F match { case Typed[s, g, a] => a }
 
   /** Only format definitions use three parameters; consumers carry the format singleton. */
-  sealed abstract class Typed[S: ReadWriter, G: ReadWriter, A: ReadWriter](
-      graderCodec: ReadWriter[WorkbookInteractionGrader[S, G]] = gradersFor[S, G]()) extends InteractionFormat {
+  sealed abstract class Typed[S: ReadWriter, G: ReadWriter, A: ReadWriter](val name: String,
+      graderCodec: ReadWriter[WorkbookInteractionGrader[S, G]] = WorkbookInteractionGrader.readWriter[S, G]()) extends InteractionFormat {
     final type InteractionStateType = S
     final type GradingInfoType = G
     final type ScaffoldingInfoType = A
@@ -107,58 +108,55 @@ object InteractionFormat {
     val historySerializer: Serializer[InteractionVariableHistory[F]] = Serializer.fromImplicitRW
   }
 
-  private def gradersFor[T, G](entries: (String, Serializer[WorkbookInteractionGrader[T, G]])*): ReadWriter[WorkbookInteractionGrader[T, G]] =
-    Serializer.universalTraitSerializer(entries.toMap).uPickleReadWrite
+  private lazy val programmingGraders = WorkbookInteractionGrader.readWriter[ProgrammingState, AdditionalProgrammingTestInfo](
+    RecreateShapeGrader.codec,
+    ProgramStructureGrader.codec,
+    TurtleCommandUsageGrader.codec,
+    ProgrammingUnitTestGrader.codec)
+  private lazy val textGraders = WorkbookInteractionGrader.readWriter[String, MessengerModel](
+    TextInputLlmGrader.codec)
+  private lazy val slideshowGraders = WorkbookInteractionGrader.readWriter[SlideshowState, Unit](
+    SlideshowGrader.codec)
 
-  private lazy val programmingGraders = gradersFor[ProgrammingState, AdditionalProgrammingTestInfo](
-    Serializer.serializerForSubclass[RecreateShapeGrader, WorkbookInteractionGrader[ProgrammingState, AdditionalProgrammingTestInfo]](classOf[RecreateShapeGrader]),
-    Serializer.serializerForSubclass[ProgramStructureGrader, WorkbookInteractionGrader[ProgrammingState, AdditionalProgrammingTestInfo]](classOf[ProgramStructureGrader]),
-    Serializer.serializerForSubclass[TurtleCommandUsageGrader, WorkbookInteractionGrader[ProgrammingState, AdditionalProgrammingTestInfo]](classOf[TurtleCommandUsageGrader]),
-    Serializer.serializerForSubclass[ProgrammingUnitTestGrader, WorkbookInteractionGrader[ProgrammingState, AdditionalProgrammingTestInfo]](classOf[ProgrammingUnitTestGrader]))
-  private lazy val textGraders = gradersFor[String, MessengerModel](
-    Serializer.serializerForSubclass[TextInputLlmGrader, WorkbookInteractionGrader[String, MessengerModel]](classOf[TextInputLlmGrader]))
-  private lazy val slideshowGraders = gradersFor[SlideshowState, Unit](
-    Serializer.serializerForSubclass[SlideshowGrader, WorkbookInteractionGrader[SlideshowState, Unit]](classOf[SlideshowGrader]))
-
-  case object TextInteractionFormat extends Typed[String, Unit, Unit]
-  case object LabeledCheckboxInteractionFormat extends Typed[Boolean, Unit, Unit]
-  case object MessagingInteractionFormat extends Typed[MessengerModelScaffolding, Unit, Unit]
-  case object TextInputWithLlmGradingAndScaffoldingFormat extends Typed[String, MessengerModel, MessengerModel](textGraders)
-  case object ChoiceInteractionFormat extends Typed[ChoiceState, Unit, Unit](gradersFor(
-    Serializer.serializerForSubclass[ChoiceGrader, WorkbookInteractionGrader[ChoiceState, Unit]](classOf[ChoiceGrader])))
-  case object ProgrammingExerciseWithLlmScaffoldingAndGrading extends Typed[ProgrammingState, AdditionalProgrammingTestInfo, AdditionalInfoLlmScaffolding](programmingGraders)
-  case object SqlCommandExerciseFormat extends Typed[String, Unit, Unit]
-  case object QrCodeInteractionFormat extends Typed[QrCode, Unit, Unit]
-  case object BinaryPixelInteractionFormat extends Typed[BinaryPixelImage, Unit, Unit]
-  case object TurtleProjectFormat extends Typed[TurtleStitchProjectState, Unit, Unit]
-  case object CoordinatePlotInteractionFormat extends Typed[PlotAnswer, Unit, Unit]
-  case object CodeTaskToggleInteractionFormat extends Typed[CodeTaskToggleState, Unit, Unit]
-  case object SketchDownloadInteractionFormat extends Typed[String, Unit, Unit]
-  case object MailInteractionFormat extends Typed[InboxStateScaffolding, Unit, Unit]
-  case object MailEditorFormat extends Typed[InboxStateScaffolding, Unit, Unit]
-  case object AnswerTableInteractionFormat extends Typed[TableAnswer, Unit, Unit](gradersFor(
-    Serializer.serializerForSubclass[TableCellGrader, WorkbookInteractionGrader[TableAnswer, Unit]](classOf[TableCellGrader])))
-  case object UnicodeComparisonInteractionFormat extends Typed[UnicodeComparisonAnswer, Unit, Unit] { val maxTextLength = 256 }
-  case object BlockchainInteractionFormat extends Typed[TeachingChain, Unit, Unit]
-  case object Sha256InteractionFormat extends Typed[Sha256Answer, Unit, Unit]
-  case object SquareMiddleHashInteractionFormat extends Typed[SquareMiddleHashAnswer, Unit, Unit]
-  case object ReorderCodeInteractionFormat extends Typed[ReorderInteractionState[String], Unit, Unit](gradersFor(
-    Serializer.serializerForSubclass[ReorderCodeGrader, WorkbookInteractionGrader[ReorderInteractionState[String], Unit]](classOf[ReorderCodeGrader])))
-  case object ReorderMapIdInteractionFormat extends Typed[ReorderInteractionState[LanguageMapContentId], Unit, Unit](gradersFor(
-    Serializer.serializerForSubclass[ReorderMapIdGrader, WorkbookInteractionGrader[ReorderInteractionState[LanguageMapContentId], Unit]](classOf[ReorderMapIdGrader])))
-  case object MatchingInteractionFormat extends Typed[MatchingInteractionState, Int, Unit](gradersFor(
-    Serializer.serializerForSubclass[MatchingGrader, WorkbookInteractionGrader[MatchingInteractionState, Int]](classOf[MatchingGrader])))
-  case object LikertScaleInteractionFormat extends Typed[MatchingInteractionState, Unit, Unit]
-  case object SortingInteractionFormat extends Typed[SortingInteractionState, Unit, Unit]
-  case object SortingReasonInteractionFormat extends Typed[SortingReasonInteractionState, Unit, Unit]
-  case object SlideshowFormat extends Typed[SlideshowState, Unit, Unit](slideshowGraders)
-  case object EvacuationConstructFloorInteractionFormat extends Typed[EvacuationFloorPlan, Unit, Unit]
-  case object ThresholdNeuronInteractionFormat extends Typed[NeuronParameters, Unit, Unit]
-  case object CompressionExperimentInteractionFormat extends Typed[CompressionExperiment, Unit, Unit]
-  case object TurtleRecreateShapeInteractionFormat extends Typed[ProgrammingState, AdditionalProgrammingTestInfo, AdditionalInfoLlmScaffolding](programmingGraders)
-  case object ProgrammingExerciseFormat extends Typed[ProgrammingState, AdditionalProgrammingTestInfo, Unit](programmingGraders)
-  case object SortListExerciseFormat extends Typed[ProgrammingState, AdditionalProgrammingTestInfo, Unit](programmingGraders)
-  case object EvacuationExperimentFormat extends Typed[EvacuationExperiment, Unit, Unit]
+  case object TextInteractionFormat extends Typed[String, Unit, Unit]("TextInteractionFormat")
+  case object LabeledCheckboxInteractionFormat extends Typed[Boolean, Unit, Unit]("LabeledCheckboxInteractionFormat")
+  case object MessagingInteractionFormat extends Typed[MessengerModelScaffolding, Unit, Unit]("MessagingInteractionFormat")
+  case object TextInputWithLlmGradingAndScaffoldingFormat extends Typed[String, MessengerModel, MessengerModel]("TextInputWithLlmGradingAndScaffoldingFormat", textGraders)
+  case object ChoiceInteractionFormat extends Typed[ChoiceState, Unit, Unit]("ChoiceInteractionFormat", WorkbookInteractionGrader.readWriter(
+    ChoiceGrader.codec))
+  case object ProgrammingExerciseWithLlmScaffoldingAndGrading extends Typed[ProgrammingState, AdditionalProgrammingTestInfo, AdditionalInfoLlmScaffolding]("ProgrammingExerciseWithLlmScaffoldingAndGrading", programmingGraders)
+  case object SqlCommandExerciseFormat extends Typed[String, Unit, Unit]("SqlCommandExerciseFormat")
+  case object QrCodeInteractionFormat extends Typed[QrCode, Unit, Unit]("QrCodeInteractionFormat")
+  case object BinaryPixelInteractionFormat extends Typed[BinaryPixelImage, Unit, Unit]("BinaryPixelInteractionFormat")
+  case object TurtleProjectFormat extends Typed[TurtleStitchProjectState, Unit, Unit]("TurtleProjectFormat")
+  case object CoordinatePlotInteractionFormat extends Typed[PlotAnswer, Unit, Unit]("CoordinatePlotInteractionFormat")
+  case object CodeTaskToggleInteractionFormat extends Typed[CodeTaskToggleState, Unit, Unit]("CodeTaskToggleInteractionFormat")
+  case object SketchDownloadInteractionFormat extends Typed[String, Unit, Unit]("SketchDownloadInteractionFormat")
+  case object MailInteractionFormat extends Typed[InboxStateScaffolding, Unit, Unit]("MailInteractionFormat")
+  case object MailEditorFormat extends Typed[InboxStateScaffolding, Unit, Unit]("MailEditorFormat")
+  case object AnswerTableInteractionFormat extends Typed[TableAnswer, Unit, Unit]("AnswerTableInteractionFormat", WorkbookInteractionGrader.readWriter(
+    TableCellGrader.codec))
+  case object UnicodeComparisonInteractionFormat extends Typed[UnicodeComparisonAnswer, Unit, Unit]("UnicodeComparisonInteractionFormat") { val maxTextLength = 256 }
+  case object BlockchainInteractionFormat extends Typed[TeachingChain, Unit, Unit]("BlockchainInteractionFormat")
+  case object Sha256InteractionFormat extends Typed[Sha256Answer, Unit, Unit]("Sha256InteractionFormat")
+  case object SquareMiddleHashInteractionFormat extends Typed[SquareMiddleHashAnswer, Unit, Unit]("SquareMiddleHashInteractionFormat")
+  case object ReorderCodeInteractionFormat extends Typed[ReorderInteractionState[String], Unit, Unit]("ReorderCodeInteractionFormat", WorkbookInteractionGrader.readWriter(
+    ReorderCodeGrader.codec))
+  case object ReorderMapIdInteractionFormat extends Typed[ReorderInteractionState[LanguageMapContentId], Unit, Unit]("ReorderMapIdInteractionFormat", WorkbookInteractionGrader.readWriter(
+    ReorderMapIdGrader.codec))
+  case object MatchingInteractionFormat extends Typed[MatchingInteractionState, Int, Unit]("MatchingInteractionFormat", WorkbookInteractionGrader.readWriter(
+    MatchingGrader.codec))
+  case object LikertScaleInteractionFormat extends Typed[MatchingInteractionState, Unit, Unit]("LikertScaleInteractionFormat")
+  case object SortingInteractionFormat extends Typed[SortingInteractionState, Unit, Unit]("SortingInteractionFormat")
+  case object SortingReasonInteractionFormat extends Typed[SortingReasonInteractionState, Unit, Unit]("SortingReasonInteractionFormat")
+  case object SlideshowFormat extends Typed[SlideshowState, Unit, Unit]("SlideshowFormat", slideshowGraders)
+  case object EvacuationConstructFloorInteractionFormat extends Typed[EvacuationFloorPlan, Unit, Unit]("EvacuationConstructFloorInteractionFormat")
+  case object ThresholdNeuronInteractionFormat extends Typed[NeuronParameters, Unit, Unit]("ThresholdNeuronInteractionFormat")
+  case object CompressionExperimentInteractionFormat extends Typed[CompressionExperiment, Unit, Unit]("CompressionExperimentInteractionFormat")
+  case object TurtleRecreateShapeInteractionFormat extends Typed[ProgrammingState, AdditionalProgrammingTestInfo, AdditionalInfoLlmScaffolding]("TurtleRecreateShapeInteractionFormat", programmingGraders)
+  case object ProgrammingExerciseFormat extends Typed[ProgrammingState, AdditionalProgrammingTestInfo, Unit]("ProgrammingExerciseFormat", programmingGraders)
+  case object SortListExerciseFormat extends Typed[ProgrammingState, AdditionalProgrammingTestInfo, Unit]("SortListExerciseFormat", programmingGraders)
+  case object EvacuationExperimentFormat extends Typed[EvacuationExperiment, Unit, Unit]("EvacuationExperimentFormat")
 
   lazy val knownFormats: Seq[InteractionFormat] = List(
     TextInteractionFormat,

@@ -1,7 +1,7 @@
 package it.evadid.core.util.crypto
 
-/** Canonical parameter encoding: maps/sets are unordered; sequences retain their order. Products are identified by
-  * their constructor name and parameters, not their package, so moving a class keeps the keys derived from it.
+/** Canonical parameter encoding: maps/sets are unordered; sequences retain their order. Nested products are
+  * identified by their constructor name and parameters, not their package.
   */
 object ContentIdentity {
   private def canonical(value: ujson.Value): ujson.Value = value match {
@@ -27,11 +27,15 @@ object ContentIdentity {
       ujson.Obj("map" -> ujson.Arr.from(pairs))
     case value: collection.Set[?] => ujson.Obj("set" -> ujson.Arr.from(value.iterator.map(json).toList.sortBy(ujson.write(_))))
     case value: Seq[?] => ujson.Obj("sequence" -> ujson.Arr.from(value.map(json)))
-    case value: Product =>
-      ujson.Obj("constructor" -> value.productPrefix,
-        "parameters" -> ujson.Obj.from(value.productElementNames.zip(value.productIterator).map((name, item) => name -> json(item))))
+    case value: Product => ujson.Obj("constructor" -> value.productPrefix, "parameters" -> parameters(value))
     case value => throw IllegalArgumentException(s"No canonical identity encoding for ${value.getClass.getName}; provide identityContent explicitly")
   }
+
+  /** A product identified by an explicit stable `name` instead of its constructor. */
+  def typed(name: String, value: Product): ujson.Value = ujson.Obj("type" -> name, "parameters" -> parameters(value))
+
+  private def parameters(value: Product): ujson.Value =
+    ujson.Obj.from(value.productElementNames.zip(value.productIterator).map((name, item) => name -> json(item)))
 
   def key(value: ujson.Value): String = "sha256:" + Sha256.text(ujson.write(canonical(value)))
 }

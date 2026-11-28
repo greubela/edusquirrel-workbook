@@ -23,9 +23,18 @@ Element definitions have their own codecs; see [session data](session-data-seria
 
 ## Current wire format
 
-Formats serialize by their case-object name. The finite `knownFormats` registry
-resolves those names and rejects unknown values, without dynamic class loading
-or element-ID lookup.
+Persisted names are fixed literals, never derived from class names, so classes and
+packages can be renamed without touching saved data:
+
+| Saved value | Name source |
+| --- | --- |
+| Format | `Typed(name, …)`, resolved by the finite `knownFormats` registry |
+| Event | `@key` on each event case class (`$type`) |
+| Grader | its companion's `codec` (`serializedType`); a format lists the grader codecs it accepts |
+
+Unknown names are rejected, without dynamic class loading or element-ID lookup;
+[PersistedNamesSpec](../modules/core/shared/src/test/scala/it/evadid/workbook/serialization/PersistedNamesSpec.scala)
+pins them.
 
 ```scala
 import it.evadid.workbook.abstractions.InteractionFormat.TextInteractionFormat
@@ -66,7 +75,8 @@ or malformed IDs are rejected rather than generated on read.
 Serialized exceptions use immutable stack-trace sequences so error events also retain
 value equality after decoding. State/feedback history views are derived projections,
 not separate persisted stores. A newer grading start represents a retry in progress;
-completion wins a timestamp tie. Graders are matched by their canonical content key.
+completion wins a timestamp tie. Graders are matched by their content key: a hash of the persisted grader type and its
+parameters, so graders of one type (for example two unit tests) differ by their parameters.
 
 Starts default to `TEMPORARY`, completions to `MAJOR`. `cleanedHistory()` is the one
 history cleanup: it drops DEFAULT answers once another answer exists and TEMPORARY answers

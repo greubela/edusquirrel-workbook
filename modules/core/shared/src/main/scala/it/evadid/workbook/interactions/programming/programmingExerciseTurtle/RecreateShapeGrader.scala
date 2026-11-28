@@ -1,5 +1,7 @@
 package it.evadid.workbook.interactions.programming.programmingExerciseTurtle
 
+import it.evadid.workbook.abstractions.grading.WorkbookInteractionGrader
+
 
 import it.evadid.vm.conversion.dependencies.ProgrammingEnvironment
 import it.evadid.workbook.abstractions.FeedbackEntity
@@ -22,6 +24,7 @@ case class RecreateShapeGrader(desiredResult: TurtleGraphic, override val import
     /** The libraries the exercise provides; its exercise sets it ([[ProgrammingTestGrader.inEnvironment]]). */
     environment: ProgrammingEnvironment = ProgrammingEnvironment.all)
   extends ProgrammingTestGrader derives ReadWriter {
+  def persistedType: String = RecreateShapeGrader.codec.persistedType
   override def inEnvironment(environment: ProgrammingEnvironment): RecreateShapeGrader = copy(environment = environment)
 
   require(testId != null && testId.nonEmpty && testId == testId.trim, "A programming test needs a nonempty ID.")
@@ -40,4 +43,8 @@ case class RecreateShapeGrader(desiredResult: TurtleGraphic, override val import
 
   override def gradingEntity: FeedbackEntity = TestEntity
 
+}
+
+object RecreateShapeGrader {
+  lazy val codec: WorkbookInteractionGrader.Codec[RecreateShapeGrader] = WorkbookInteractionGrader.codec("RecreateShapeGrader")
 }

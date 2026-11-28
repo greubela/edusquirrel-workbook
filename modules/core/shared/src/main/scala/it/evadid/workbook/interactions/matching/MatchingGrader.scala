@@ -12,6 +12,7 @@ import upickle.default.ReadWriter
  */
 case class MatchingGrader(expected: Seq[Int], rightCount: Int)
   extends WorkbookInteractionGrader[MatchingInteractionState, Int] derives ReadWriter {
+  def persistedType: String = MatchingGrader.codec.persistedType
   override val importance = GradingImportance.REQUIRED_TEST
   override val runningBehavior = GraderRunningBehavior.RUN_ONLY_MANUALLY
   override val gradingEntity = FeedbackEntity.TestEntity
@@ -23,6 +24,7 @@ case class MatchingGrader(expected: Seq[Int], rightCount: Int)
 }
 
 object MatchingGrader {
+  lazy val codec: WorkbookInteractionGrader.Codec[MatchingGrader] = WorkbookInteractionGrader.codec("MatchingGrader")
   /** Per left item: `None` while unconnected, else whether its connection is the expected one. The grade and the
     * marks of wrong connections ([[MatchingInteraction.wrongParts]]) are both derived from it. */
   def verdicts(expected: Seq[Int], rightCount: Int, state: MatchingInteractionState): Seq[Option[Boolean]] =

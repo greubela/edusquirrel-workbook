@@ -8,6 +8,7 @@ import upickle.default.ReadWriter
 
 /** Checks one editable cell on request; `expected` lists the accepted spellings. */
 case class TableCellGrader(index: Int, expected: Seq[String]) extends WorkbookInteractionGrader[TableAnswer, Unit] derives ReadWriter {
+  def persistedType: String = TableCellGrader.codec.persistedType
   require(index >= 0 && expected.nonEmpty, "A table grader needs a cell and accepted answers")
   override val importance = GradingImportance.REQUIRED_TEST
   override val runningBehavior = GraderRunningBehavior.RUN_ONLY_MANUALLY
@@ -19,6 +20,7 @@ case class TableCellGrader(index: Int, expected: Seq[String]) extends WorkbookIn
 }
 
 object TableCellGrader {
+  lazy val codec: WorkbookInteractionGrader.Codec[TableCellGrader] = WorkbookInteractionGrader.codec("TableCellGrader")
   /** Whether `value` is one of the `expected` spellings; the grade and the marked cells
     * ([[AnswerTableInteraction.wrongParts]]) both follow it. */
   def accepts(expected: Seq[String], value: String): Boolean = expected.exists(_.trim == value.trim)

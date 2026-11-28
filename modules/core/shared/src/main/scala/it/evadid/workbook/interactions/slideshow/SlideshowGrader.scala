@@ -16,6 +16,7 @@ import java.time.LocalDateTime
 import scala.concurrent.Future
 
 case class SlideshowGrader(isRequired: Boolean) extends WorkbookInteractionGrader[SlideshowState, Unit] derives ReadWriter {
+  def persistedType: String = SlideshowGrader.codec.persistedType
 
   override def runningBehavior: GraderRunningBehavior = RUN_ON_AT_LEAST_MINOR
 
@@ -36,4 +37,8 @@ case class SlideshowGrader(isRequired: Boolean) extends WorkbookInteractionGrade
     val res: GradingResult[SlideshowState, Unit] = GradingResult[SlideshowState, Unit](this, state, gradingStatus, Some(WorkbookContent(feedbackInformation)), None, LocalDateTime.now())
     res
   }
+}
+
+object SlideshowGrader {
+  lazy val codec: WorkbookInteractionGrader.Codec[SlideshowGrader] = WorkbookInteractionGrader.codec("SlideshowGrader")
 }

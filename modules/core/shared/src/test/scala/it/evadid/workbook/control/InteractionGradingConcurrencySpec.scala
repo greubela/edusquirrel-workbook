@@ -30,6 +30,7 @@ class InteractionGradingConcurrencySpec extends FunSuite {
   // A text exercise whose grader waits for the gate of each answer: "right" is correct, anything else incorrect.
   private type Text = TextInputWithLlmGradingAndScaffoldingFormat.type
   private final class GatedGrader(behavior: GraderRunningBehavior) extends WorkbookInteractionGrader[String, MessengerModel] {
+    override val persistedType = "GatedTestGrader"
     val gates = State(Map.empty[String, Promise[Unit]])
     val graded = State(Vector.empty[String])
     def gate(answer: String): Promise[Unit] = gates.now().getOrElse(answer, { val created = Promise[Unit](); gates.update(_.updated(answer, created)); created })

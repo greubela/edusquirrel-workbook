@@ -352,6 +352,7 @@ class RemoteHistoryCacheSpec extends FunSuite {
     import it.evadid.workbook.abstractions.scaffolding.{ScaffoldingResult, ScaffoldingStatus}
     import it.evadid.core.datastructures.language.LanguageMap
     val grader = new WorkbookInteractionGrader[String, Unit] {
+      override val persistedType = "RemoteCacheTestGrader"
       override val key = "cache-test-grader"
       override val importance = GradingImportance.REQUIRED_TEST
       override val runningBehavior = GraderRunningBehavior.RUN_ALWAYS

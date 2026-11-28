@@ -35,6 +35,7 @@ case class ProgramStructureGrader(
     /** The libraries the exercise provides; its exercise sets it ([[ProgrammingTestGrader.inEnvironment]]). */
     environment: ProgrammingEnvironment = ProgrammingEnvironment.all
 ) extends ProgrammingTestGrader derives ReadWriter {
+  def persistedType: String = ProgramStructureGrader.codec.persistedType
   require(testId.nonEmpty && testId == testId.trim, "A structure test needs a nonempty ID.")
   override def inEnvironment(environment: ProgrammingEnvironment): ProgramStructureGrader = copy(environment = environment)
   override val runningBehavior = GraderRunningBehavior.RUN_ON_AT_LEAST_MINOR
@@ -81,4 +82,8 @@ case class ProgramStructureGrader(
         functionSignatures(nodes).exists((actual, inputs) => actual == name && parameters.forall(inputs.contains))
     }
   }
+}
+
+object ProgramStructureGrader {
+  lazy val codec: WorkbookInteractionGrader.Codec[ProgramStructureGrader] = WorkbookInteractionGrader.codec("ProgramStructureGrader")
 }

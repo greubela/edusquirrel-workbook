@@ -11,6 +11,7 @@ import upickle.default.ReadWriter
 
 case class ChoiceGrader(options: Seq[ChoiceOptionWorkbookContent], allowMultiple: Boolean,
     runningBehavior: GraderRunningBehavior) extends WorkbookInteractionGrader[ChoiceState, Unit] derives ReadWriter {
+  def persistedType: String = ChoiceGrader.codec.persistedType
   override val importance = GradingImportance.REQUIRED_TEST
   override val gradingEntity = FeedbackEntity.TestEntity
   override protected def handleGrading(state: ChoiceState, context: ExecutionContextInformation): Future[GradingResult[ChoiceState, Unit]] = Future {
@@ -30,6 +31,7 @@ case class ChoiceGrader(options: Seq[ChoiceOptionWorkbookContent], allowMultiple
 }
 
 object ChoiceGrader {
+  lazy val codec: WorkbookInteractionGrader.Codec[ChoiceGrader] = WorkbookInteractionGrader.codec("ChoiceGrader")
   /** Indices of the selected options graded incorrect. A multiple choice with one of them is incorrect, and they are
     * the options marked after a failed check ([[WorkbookContentChoiceInteraction.wrongParts]]). */
   def wrongSelections(options: Seq[ChoiceOptionWorkbookContent], state: ChoiceState): Set[Int] =

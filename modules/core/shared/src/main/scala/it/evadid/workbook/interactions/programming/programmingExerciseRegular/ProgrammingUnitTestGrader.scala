@@ -28,6 +28,7 @@ case class ProgrammingUnitTestGrader(testId: String, pythonTestCode: String,
                                      publishInvocationArguments: Boolean = false,
                                      publishCommandComparison: Boolean = false)
   extends ProgrammingTestGrader {
+  def persistedType: String = ProgrammingUnitTestGrader.codec.persistedType
 
   require(testId != null && testId.nonEmpty && testId == testId.trim, "A programming test needs a nonempty ID.")
   require(!publishCommandComparison || publishInvocationArguments, "A public command comparison requires its invocation arguments.")
@@ -89,6 +90,7 @@ case class ProgrammingUnitTestGrader(testId: String, pythonTestCode: String,
 }
 
 object ProgrammingUnitTestGrader {
+  lazy val codec: WorkbookInteractionGrader.Codec[ProgrammingUnitTestGrader] = WorkbookInteractionGrader.codec("ProgrammingUnitTestGrader")
   private[evadid] val SampleTestId = "python-assertions"
 
   private case class Payload(testId: String, pythonTestCode: String,
@@ -103,7 +105,7 @@ object ProgrammingUnitTestGrader {
       grader.publishProgramObservation, grader.publishInvocationArguments, grader.publishCommandComparison)),
     value => {
       val fields = value.obj.toMap
-      require(fields.get("serializedType").forall(_ == ujson.Str("ProgrammingUnitTestGrader")),
+      require(fields.get("serializedType").forall(_ == ujson.Str(codec.persistedType)),
         "Unexpected programming grader type.")
       val payload = {
         require(fields.keySet.subsetOf(Set("testId", "pythonTestCode", "importance", "publicDescription",

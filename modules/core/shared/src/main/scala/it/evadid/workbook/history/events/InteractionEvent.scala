@@ -8,8 +8,11 @@ import it.evadid.workbook.sync.UpdateImportance
 
 import java.time.LocalDateTime
 import upickle.default.*
+import upickle.implicits.key
 
-/** Events are immutable: an [[EventId]] names exactly one content, and a revision is a new event. */
+/** Events are immutable: an [[EventId]] names exactly one content, and a revision is a new event. Saved events
+  * are tagged with their fixed `@key` names, so the classes can be renamed.
+  */
 sealed trait InteractionEvent[F <: InteractionFormat] {
   def eventId: EventId
   def associatedState: InteractionFormat.State[F]
@@ -17,6 +20,7 @@ sealed trait InteractionEvent[F <: InteractionFormat] {
   def updateImportance: UpdateImportance
 }
 
+@key("AnswerChangedEvent")
 case class AnswerChangedEvent[F <: InteractionFormat](
     newState: InteractionFormat.State[F],
     timestamp: LocalDateTime,
@@ -30,6 +34,7 @@ sealed trait GradingEvent[F <: InteractionFormat] extends InteractionEvent[F] {
   def grader: WorkbookInteractionGrader[InteractionFormat.State[F], InteractionFormat.Grading[F]]
 }
 
+@key("GradingStartedEvent")
 case class GradingStartedEvent[F <: InteractionFormat](
     associatedState: InteractionFormat.State[F],
     timestamp: LocalDateTime,
@@ -39,6 +44,7 @@ case class GradingStartedEvent[F <: InteractionFormat](
 ) extends GradingEvent[F]
 
 /** The result is the single source of truth for the answer, grader and completion time. */
+@key("GradingCompletedEvent")
 case class GradingCompletedEvent[F <: InteractionFormat](
     result: GradingResult[InteractionFormat.State[F], InteractionFormat.Grading[F]],
     updateImportance: UpdateImportance = UpdateImportance.MAJOR,
@@ -55,6 +61,7 @@ sealed trait ScaffoldingEvent[F <: InteractionFormat] extends InteractionEvent[F
   def scaffoldingEntity: FeedbackEntity
 }
 
+@key("ScaffoldingStartedEvent")
 case class ScaffoldingStartedEvent[F <: InteractionFormat](
     associatedState: InteractionFormat.State[F],
     timestamp: LocalDateTime,
@@ -63,6 +70,7 @@ case class ScaffoldingStartedEvent[F <: InteractionFormat](
     eventId: EventId = EventId.random()
 ) extends ScaffoldingEvent[F]
 
+@key("ScaffoldingCompletedEvent")
 case class ScaffoldingCompletedEvent[F <: InteractionFormat](
     result: ScaffoldingResult[InteractionFormat.State[F], InteractionFormat.Scaffolding[F]],
     updateImportance: UpdateImportance = UpdateImportance.MAJOR,

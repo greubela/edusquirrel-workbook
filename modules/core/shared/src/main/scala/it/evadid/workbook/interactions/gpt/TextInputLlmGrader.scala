@@ -22,6 +22,7 @@ case class TextInputLlmGrader(
                                solution: Option[LanguageMapContentId],
                                gradeData: ContentForLlmInteraction)
   extends WorkbookInteractionGrader[String, MessengerModel] derives ReadWriter {
+  def persistedType: String = TextInputLlmGrader.codec.persistedType
 
   override val importance: GradingImportance = GradingImportance.REQUIRED_TEST
   override val runningBehavior: GraderRunningBehavior = GraderRunningBehavior.RUN_ONLY_MANUALLY
@@ -79,6 +80,7 @@ case class TextInputLlmGrader(
 }
 
 object TextInputLlmGrader {
+  lazy val codec: WorkbookInteractionGrader.Codec[TextInputLlmGrader] = WorkbookInteractionGrader.codec("TextInputLlmGrader")
   private[gpt] def status(marker: String): Option[GradingStatus] = marker match {
     case "CORRECT" => Some(GradingStatus.Correct)
     case "INCORRECT" => Some(GradingStatus.Incorrect)
