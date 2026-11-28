@@ -185,7 +185,7 @@ class InteractionHistoryMysqlSpec extends FunSuite {
       assertEquals(fetch(storage), Map.empty)
     }
 
-    test(s"$storage rejects changing InteractionFormat even when both formats have the same state schema") {
+    test(s"$storage replaces the record when the InteractionFormat changes, even with the same state schema") {
       val text = InteractionVariableHistory.empty[TextInteractionFormat.type].addEvent(
         AnswerChangedEvent[TextInteractionFormat.type]("same JSON schema", time, UpdateImportance.MAJOR))
       val original = StoreToDbRequest(sync, InteractionHistoryJson.fromHistory(TextInteractionFormat, text), config, storage)
@@ -193,10 +193,10 @@ class InteractionHistoryMysqlSpec extends FunSuite {
       // Both formats encode String/Unit/Unit; their identity must still remain distinct.
       val changed = original.copy(history = original.history.copy(format = SqlCommandExerciseFormat))
       changed.history.toTyped // The replacement payload is valid for its declared format.
-      intercept[IllegalArgumentException](storeVia(changed, logger))
+      storeVia(changed, logger)
       val fetched = fetchVia(fetchRequest(storage), logger).fetchedElements(sync)
-      assertEquals(fetched.format, TextInteractionFormat)
-      assertEquals(fetched.typedAs(TextInteractionFormat), text)
+      assertEquals(fetched.format, SqlCommandExerciseFormat)
+      assertEquals(fetched.typedAs(SqlCommandExerciseFormat).allStates.map(_.newState), Set("same JSON schema"))
     }
   }
 
@@ -509,13 +509,12 @@ class InteractionHistoryMysqlSpec extends FunSuite {
       assertEquals(range(time.minusNanos(1), time.minusNanos(1)).size, 0)
     }
 
-    test(s"$storage rejects format changes without modifying the saved context") {
+    test(s"$storage replaces the earlier answers when an exercise changes its format") {
       store(history(), storage)
       val other = LabeledCheckboxInteractionFormat
       val booleanHistory = InteractionVariableHistory.empty[other.type].addEvent(AnswerChangedEvent[other.type](true, time, UpdateImportance.MAJOR))
-      val changed = StoreToDbRequest(sync, InteractionHistoryJson.fromHistory(other, booleanHistory), config, storage)
-      intercept[IllegalArgumentException](storeVia(changed, logger))
-      assertEquals(read[History](fetch(storage)(sync)), history())
+      storeVia(StoreToDbRequest(sync, InteractionHistoryJson.fromHistory(other, booleanHistory), config, storage), logger)
+      assertEquals(fetchVia(fetchRequest(storage), logger).fetchedElements(sync).typedAs(other), booleanHistory)
     }
 
     test(s"$storage supports the complete LocalDateTime range") {

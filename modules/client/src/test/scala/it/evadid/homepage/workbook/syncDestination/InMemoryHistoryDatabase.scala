@@ -41,12 +41,10 @@ final class InMemoryHistoryDatabase {
     entries.map { (key, incoming) =>
       val current = rows.now()
       val saved = current.get(format -> key)
-      val merged = saved.fold(incoming) { saved =>
-        require(saved.format == incoming.format, s"History format cannot change for ${key.keyForSerialisation}")
-        saved.merge(incoming)
-      }
+      // A changed format replaces the record, as on the server.
+      val merged = saved.filter(_.format == incoming.format).fold(incoming)(_.merge(incoming))
       rows.set(current.updated(format -> key, merged))
-      SyncSuccess.immutable(incoming.eventIds, saved.fold(Set.empty)(_.eventIds), merged.eventIds)
+      SyncSuccess.immutable(incoming.eventIds, saved.filter(_.format == incoming.format).fold(Set.empty)(_.eventIds), merged.eventIds)
     }.foldLeft(SyncSuccess.emptyNow[EventId]())(_.combine(_))
 
   /** The server's read rule: unreadable records are discarded, the others filtered by strategy and range. */

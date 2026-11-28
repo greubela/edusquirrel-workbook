@@ -94,10 +94,12 @@ object SyncDestinationHistoryHandler {
       override def storeHistoryJson(context: SyncContext, json: String)(using ec: ExecutionContext): Future[SyncSuccess[EventId]] = {
         scala.util.Try(InteractionHistoryJson.deserialize(json)).fold(Future.failed, incoming =>
           basic.updateElement(SyncContext.serializer.serialize(context), previous => {
-            val saved = previous.flatMap(value => scala.util.Try(InteractionHistoryJson.deserialize(value)).fold(error => {
+            val readable = previous.flatMap(value => scala.util.Try(InteractionHistoryJson.deserialize(value)).fold(error => {
               syncLogger.logExceptionWarn("Discarding malformed stored interaction history", error)
               None
             }, Some(_)))
+            // The exercise changed its type: its earlier answers belong to another exercise and are replaced.
+            val saved = readable.filter(_.format == incoming.format)
             val merged = saved.fold(incoming)(_.merge(incoming))
             merged.serialized -> SyncSuccess.immutable(incoming.eventIds, saved.fold(Set.empty)(_.eventIds), merged.eventIds)
           }))

@@ -114,6 +114,18 @@ class SyncDestinationHistoryHandlerSpec extends FunSuite {
     }
   }
 
+  test("a local store under a changed format replaces the earlier history") {
+    import it.evadid.workbook.history.events.*
+    val handler = new Destination(Map.empty).forHistory()
+    val checkbox = InteractionFormat.LabeledCheckboxInteractionFormat
+    val changed = InteractionVariableHistory.empty[checkbox.type].addEvent(AnswerChangedEvent[checkbox.type](true, at, UpdateImportance.MAJOR))
+    handler.storeHistoryJson(key, history).flatMap { _ =>
+      handler.storeHistoryJson(key, InteractionHistoryJson.fromHistory(checkbox, changed).serialized)
+    }.flatMap(_ => handler.readHistoryJson(key)).map { read =>
+      assertEquals(InteractionHistoryJson.deserialize(read.fetchedValues.head.dataValue).typedAs(checkbox), changed)
+    }
+  }
+
   test("local removal reports the removed history contexts") {
     val other = context.toSyncContext("other")
     val handler = new Destination(Map(SyncContext.serializer.serialize(key) -> history, SyncContext.serializer.serialize(other) -> history)).forHistory()

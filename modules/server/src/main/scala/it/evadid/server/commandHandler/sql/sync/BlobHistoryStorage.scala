@@ -23,13 +23,16 @@ class BlobHistoryStorage(connection: Connection, logger: Logger) extends History
     val keys = rowKeys(request.usageContext, request.syncContext.keyForSerialisation)
     statements.update("INSERT INTO blob_history (program_id,scenario_id,user_id,variable_id,format,history_json) VALUES (?,?,?,?,?,?) ON DUPLICATE KEY UPDATE id=id",
       (keys ++ List(format.name, emptyJson))*)
-    val existing = statements.query("SELECT format,history_json FROM blob_history WHERE program_id=? AND scenario_id=? AND user_id=? AND variable_id=? FOR UPDATE", keys*) { row =>
-      InteractionHistoryJson(InteractionFormat.fromName(row.getString(1)), row.getString(2))
+    val (savedFormat, savedJson) = statements.query("SELECT format,history_json FROM blob_history WHERE program_id=? AND scenario_id=? AND user_id=? AND variable_id=? FOR UPDATE", keys*) { row =>
+      row.getString(1) -> row.getString(2)
     }.head
-    val previous = existing.typedAs[format.type](format)
+    // The exercise changed its type: its earlier history belongs to another exercise and is replaced.
+    val previous =
+      if savedFormat == format.name then InteractionHistoryJson(format, savedJson).typedAs[format.type](format)
+      else InteractionVariableHistory.empty[format.type]
     val merged = previous.mergeWith(newHistory)
-    statements.update("UPDATE blob_history SET history_json=? WHERE program_id=? AND scenario_id=? AND user_id=? AND variable_id=?",
-      (List(codec.serialize(merged)) ++ keys)*)
+    statements.update("UPDATE blob_history SET format=?, history_json=? WHERE program_id=? AND scenario_id=? AND user_id=? AND variable_id=?",
+      (List(format.name, codec.serialize(merged)) ++ keys)*)
     SyncSuccess.immutable(newHistory.events.ids, previous.events.ids, merged.events.ids)
   }
 

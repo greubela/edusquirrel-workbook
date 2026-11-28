@@ -184,14 +184,13 @@ class DatabaseHistoryRoundTripSpec extends FunSuite {
     }
   }
 
-  test("a context keeps its format: storing another format for it fails and leaves the saved history") {
+  test("storing another format for a context replaces its earlier history") {
     val database = InMemoryHistoryDatabase()
     val history = handler(database, defaultDatabase)
     val key = usage.toSyncContext("answer")
     history.storeHistoryJson(key, InteractionHistoryJson.fromHistory(text, textHistory("a" -> 1)).serialized).flatMap { _ =>
-      history.storeHistoryJson(key, InteractionHistoryJson.fromHistory(programming, programmingHistory).serialized).transform(scala.util.Success(_)).map { outcome =>
-        assert(outcome.isFailure, outcome.toString)
-        assertEquals(database.rows.now()(DatabaseHistoryFormat.RelationalFormat -> key).typedAs(text).events.values.map(_.associatedState), Set("a"))
+      history.storeHistoryJson(key, InteractionHistoryJson.fromHistory(programming, programmingHistory).serialized).map { _ =>
+        assertEquals(database.rows.now()(DatabaseHistoryFormat.RelationalFormat -> key).typedAs(programming), programmingHistory)
       }
     }
   }

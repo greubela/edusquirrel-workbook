@@ -39,6 +39,9 @@ class WorkbookDefinitionsSpec extends EditorDomSuite {
       val ids = workbook.allChildrenFullSubtree.map(_.elementId)
       assert(ids.nonEmpty, workbook.workbookId)
       assertEquals(ids.distinct.size, ids.size, workbook.workbookId)
+      // Answers are stored under these keys within the workbook; a duplicate would merge two exercises' answers.
+      val storageKeys = workbook.allInteractionsInThisInstance.map(_.keyForSerialization)
+      assertEquals(storageKeys.diff(storageKeys.distinct), Nil, workbook.workbookId)
       assertEquals(read[Workbook](write[Workbook](workbook)), workbook, workbook.workbookId)
       for serializer <- List(WorkbookElementFactory.serializerRefBasedJson, WorkbookElementFactory.serializerConstructorLike) do
         assertEquals(serializer.deserialize(serializer.serialize(workbook)), workbook, workbook.workbookId)

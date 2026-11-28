@@ -83,8 +83,10 @@ until it is committed.
 | `RelationalHistoryStorage` / `RelationalFormat` | Format metadata on `sync_context_id`; independent answer, grading and scaffolding event rows | More tables and writes; indexed ranges can fetch feedback without fetching its answer event |
 
 Identity is `(programId, scenarioId, userId, keyForSerialisation)`. The format is
-metadata, not part of the unique key. Changing it is rejected even if the two
-formats share a JSON schema. Case and trailing spaces are significant; numeric
+metadata, not part of the unique key. A store under another format (the exercise
+changed its type) replaces the record, even if the two formats share a JSON schema;
+the earlier answers belonged to a different exercise. Exercise IDs are the storage
+keys: a new ID is a new exercise. Case and trailing spaces are significant; numeric
 row IDs stay on the server. Each event receives a client-generated `EventId` once;
 serialization, copies and retries preserve it, and the event is immutable. Both
 layouts confirm a replayed equal event as unchanged and reject a request that sends
@@ -178,7 +180,7 @@ A → B → A, delayed successes/failures, confirmation isolation and reset owne
 `InteractionGradingConcurrencySpec` covers grading while answers change and other devices
 record feedback; `RemoteHistoryCacheSpec` and `BufferedSyncDestinationHandlerSpec` cover cache
 and batch contracts. MySQL tests cover both layouts, mixed-format HTTP batches,
-format rejection, exact ISO timestamp storage, signed/expanded years, nanosecond
+format replacement, exact ISO timestamp storage, signed/expanded years, nanosecond
 range boundaries, corruption rejection, rollback and authorization.
 
 ```sh

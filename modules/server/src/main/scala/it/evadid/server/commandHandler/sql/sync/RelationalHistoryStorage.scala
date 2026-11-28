@@ -39,7 +39,11 @@ class RelationalHistoryStorage(connection: Connection, logger: Logger) extends H
     statements.update("INSERT INTO sync_context_id (program_id,scenario_id,user_id,variable_id,format) VALUES (?,?,?,?,?) ON DUPLICATE KEY UPDATE id=id",
       (identity :+ format.name)*)
     val (sync, savedFormat) = statements.query("SELECT id,format FROM sync_context_id WHERE program_id=? AND scenario_id=? AND user_id=? AND variable_id=? FOR UPDATE", identity*)(row => row.getLong(1) -> row.getString(2)).head
-    require(InteractionFormat.fromName(savedFormat) == format, s"History format cannot change for ${context.keyForSerialisation}")
+    // The exercise changed its type: its earlier events belong to another exercise and are replaced.
+    if savedFormat != format.name then {
+      tables.foreach(table => statements.update(s"DELETE FROM $table WHERE sync_id=?", sync))
+      statements.update("UPDATE sync_context_id SET format=? WHERE id=?", format.name, sync)
+    }
     history.events.values.toList.map(event => storeEvent[format.type](sync, format)(event))
       .foldLeft(SyncSuccess.emptyNow[EventId]())(_.combine(_))
   }
