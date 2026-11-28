@@ -75,7 +75,5 @@ object ProgrammingExerciseFullJava {
         val withInstruction = element.instructionText.fold(withHint)(_ => withHint.withElementAddedAs("instructionText", element.instructionText))
         val withView = element.dataView.fold(withInstruction)(_ => withInstruction.withElementAddedAs("dataView", element.dataView))
         if element.environment == ProgrammingEnvironment.all then withView else withView.withElementAddedAs("environment", element.environment)
-
-      lazy override val writerJsonRegularRefBased: Writer[ProgrammingExerciseFullJava] = macroRW
     }
 }

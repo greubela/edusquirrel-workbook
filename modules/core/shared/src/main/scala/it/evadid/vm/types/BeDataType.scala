@@ -31,13 +31,13 @@ object BeDataType {
   // macroRW, which requires case-class readers for every sealed-trait member.
   given rw: ReadWriter[BeDataType] = readwriter[ujson.Value].bimap[BeDataType](
     {
-      case AnyType => ujson.Str("Singleton(AnyType$)")
+      case AnyType => ujson.Str("AnyType")
       case atomic: BeDataTypeAtomic => writeJs(atomic)(using rwAtom)
       case named: ClassType => writeJs(named)
       case union: BeUnionAllowedTypes => writeJs(union)
     },
     {
-      case ujson.Str("Singleton(AnyType$)") => AnyType
+      case ujson.Str("AnyType") => AnyType
       case json: ujson.Str => read[BeDataTypeAtomic](json)(using rwAtom)
       case json: ujson.Obj if json.obj.contains("className") => read[ClassType](json)
       case json: ujson.Obj => read[BeUnionAllowedTypes](json)

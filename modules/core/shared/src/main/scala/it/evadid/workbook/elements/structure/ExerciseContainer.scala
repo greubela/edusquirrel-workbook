@@ -1,5 +1,7 @@
 package it.evadid.workbook.elements.structure
 
+import it.evadid.workbook.serialization.WorkbookElementFactory.constructorLayout
+
 import it.evadid.core.datastructures.language.LanguageMapContentId
 import it.evadid.workbook.abstractions.WorkbookStructuringType.EXERCISE_CONTAINER
 import it.evadid.workbook.abstractions.{WorkbookElement, WorkbookStructureElement, WorkbookStructuringType}
@@ -7,7 +9,7 @@ import it.evadid.workbook.serialization.{WorkbookElementFactory, WorkbookElement
 
 object ExerciseContainer {
   val factory: WorkbookElementFactory[ExerciseContainer] = new WorkbookElementFactory[ExerciseContainer] {
-    override lazy val elementMapAndOrderForConstructorLike = Map(0 -> List(it.evadid.core.util.io.serializer.ConstructorLikeSerializer.VariableDisplayConfig("elementId", true)), 1 -> List(it.evadid.core.util.io.serializer.ConstructorLikeSerializer.VariableDisplayConfig("title", false)), 2 -> List(it.evadid.core.util.io.serializer.ConstructorLikeSerializer.VariableDisplayConfig("content", false)))
+    override lazy val elementMapAndOrderForConstructorLike = constructorLayout("elementId", "title", "content")
 
     override def idsRequiredForDeserialization(element: WorkbookElementSerializable): Set[String] =
       element.getElementsAs[WorkbookElementReference]("content").map(_.referencedId).toSet
@@ -18,7 +20,7 @@ object ExerciseContainer {
   }
 }
 
-case class ExerciseContainer(override val elementId: String, containerTitle: LanguageMapContentId, containerContent: Seq[WorkbookElement]) extends WorkbookStructureElement[WorkbookElement] derives upickle.default.ReadWriter {
+case class ExerciseContainer(override val elementId: String, containerTitle: LanguageMapContentId, containerContent: Seq[WorkbookElement]) extends WorkbookStructureElement[WorkbookElement] {
   override val associatedFactory = ExerciseContainer.factory
 
   override val groupElements: Seq[WorkbookElement] = containerContent

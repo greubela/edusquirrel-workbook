@@ -7,7 +7,7 @@ import it.evadid.workbook.serialization.WorkbookElementFactory.NoRefsElementFact
 import it.evadid.workbook.serialization.{WorkbookElementFactory, WorkbookElementSerializable}
 import upickle.default.*
 
-case class DisplayLangMapContent(override val elementId: String, content: LanguageMapContentId, contentType: LangMapContentIdType) extends WorkbookDisplayElement derives ReadWriter {
+case class DisplayLangMapContent(override val elementId: String, content: LanguageMapContentId, contentType: LangMapContentIdType) extends WorkbookDisplayElement {
   override val associatedFactory: WorkbookElementFactory[DisplayLangMapContent] = DisplayLangMapContent.factory
 }
 
@@ -24,16 +24,14 @@ object DisplayLangMapContent {
           VariableDisplayConfig("content", false)
         )
       )
-    override lazy val writerJsonRegularRefBased: Writer[DisplayLangMapContent] = {
-      DisplayLangMapContent.derived$ReadWriter
-    }
+    override def toSerializableElement(element: DisplayLangMapContent): WorkbookElementSerializable = 
+      toFactoryBase(element).withElementAddedAs("content", element.content).withElementAddedAs("contentType", element.contentType)
 
     override def fromSerializedElement(f: WorkbookElementSerializable, parsedElements: Map[String, WorkbookElement]): DisplayLangMapContent = {
       DisplayLangMapContent(
         f.elementId,
         f.getElementAs[LanguageMapContentId]("content"),
-        f.getElementAs[LangMapContentIdType]("contentType")(using summon[ReadWriter[LangMapContentIdType]]))
-
+        f.getElementAs[LangMapContentIdType]("contentType"))
     }
   }
 }

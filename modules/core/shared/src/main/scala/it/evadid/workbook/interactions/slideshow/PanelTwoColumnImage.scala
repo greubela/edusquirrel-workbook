@@ -1,5 +1,7 @@
 package it.evadid.workbook.interactions.slideshow
 
+import it.evadid.workbook.serialization.WorkbookElementFactory.constructorLayout
+
 import it.evadid.core.datastructures.language.LanguageMapContentId
 import it.evadid.workbook.abstractions.{WorkbookDisplayElement, WorkbookElement}
 import it.evadid.workbook.elements.display.WorkbookImageElement
@@ -19,7 +21,7 @@ case class PanelTwoColumnImage(
 
 object PanelTwoColumnImage {
   val factory: WorkbookElementFactory[PanelTwoColumnImage] = new WorkbookElementFactory[PanelTwoColumnImage] {
-    override lazy val elementMapAndOrderForConstructorLike = Map(0 -> List(it.evadid.core.util.io.serializer.ConstructorLikeSerializer.VariableDisplayConfig("elementId", true)), 1 -> List(it.evadid.core.util.io.serializer.ConstructorLikeSerializer.VariableDisplayConfig("image", false)), 2 -> List(it.evadid.core.util.io.serializer.ConstructorLikeSerializer.VariableDisplayConfig("leftLabel", false)), 3 -> List(it.evadid.core.util.io.serializer.ConstructorLikeSerializer.VariableDisplayConfig("rightLabel", false)), 4 -> List(it.evadid.core.util.io.serializer.ConstructorLikeSerializer.VariableDisplayConfig("leftBody", false)), 5 -> List(it.evadid.core.util.io.serializer.ConstructorLikeSerializer.VariableDisplayConfig("rightBody", false)))
+    override lazy val elementMapAndOrderForConstructorLike = constructorLayout("elementId", "image", "leftLabel", "rightLabel", "leftBody", "rightBody")
 
     override def idsRequiredForDeserialization(element: WorkbookElementSerializable): Set[String] = Set(element.getElementAs[WorkbookElementReference]("image").referencedId)
 

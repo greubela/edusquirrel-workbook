@@ -58,8 +58,6 @@ object ProgrammingExercise {
         .withElementAddedAs("editorPalette", element.editorPalette)
         .withElementAddedAs("referencePython", element.referencePython)
       if element.environment == ProgrammingEnvironment.all then serialized else serialized.withElementAddedAs("environment", element.environment)
-
-    lazy override val writerJsonRegularRefBased: Writer[ProgrammingExercise] = macroRW
   }
 
 }

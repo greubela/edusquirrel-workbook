@@ -3,12 +3,7 @@ package it.evadid.workbook.abstractions
 import upickle.ReadWriter.*
 import upickle.default.*
 
-sealed trait TypeOfTextDisplay derives ReadWriter {
-
-  def serializerName: String = this.getClass.getSimpleName
-
-  override val toString: String = serializerName
-}
+sealed trait TypeOfTextDisplay derives ReadWriter
 
 object TypeOfTextDisplay {
   val allElements: Seq[TypeOfTextDisplay] = List(PLAINTEXT_UNDERSCORE_REPLACABLE, PLAINTEXT, HTML, MARKDOWN, URL_RELATIVE_TO_TECHNICAL_RESOURCES, URL_RELATIVE_TO_WORKBOOK_RESOURCES, URL_ABSOLUTE)

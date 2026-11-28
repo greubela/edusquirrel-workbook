@@ -139,8 +139,8 @@ class WorkbookElementSerializableRoundTripSpec extends FunSuite {
         val original = element.associatedFactory.toSelfContainedElementUnsafe(element)
         val restored = decode(encode(element))
         assertEquals(restored.elementId, element.elementId)
-        // Constructor output also includes elementId as a field for factories whose JSON omits it.
-        assertEquals(restored.allConstructorFields - "elementId", original.allConstructorFields - "elementId")
+        assertEquals(restored.allConstructorFields, original.allConstructorFields)
+        assert(!original.allConstructorFields.contains("elementId"), "the ID is not repeated among the fields")
         val references = element match {
           case gpt: GptInteractionElement => List(gpt.underlyingTextInteraction)
           case _ => Nil

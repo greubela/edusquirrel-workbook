@@ -1,5 +1,7 @@
 package it.evadid.workbook.interactions.codeTaskToggle
 
+import it.evadid.workbook.serialization.WorkbookElementFactory.constructorLayout
+
 import it.evadid.core.datastructures.language.LanguageMapContentId
 import it.evadid.core.util.io.Serializer
 import it.evadid.core.util.io.serializer.{DefaultSerializer}
@@ -40,15 +42,12 @@ object CodeTaskToggleInteraction {
 
   private[workbook] val requirementsSerializer = Serializer.fromUpickleJson(summon[ReadWriter[Seq[AdvancedCodeRequirement]]])
   val factory: WorkbookElementFactory[CodeTaskToggleInteraction] = new WorkbookElementFactory[CodeTaskToggleInteraction] {
-    override lazy val elementMapAndOrderForConstructorLike = Map(0 -> List(it.evadid.core.util.io.serializer.ConstructorLikeSerializer.VariableDisplayConfig("elementId", true)), 1 -> List(it.evadid.core.util.io.serializer.ConstructorLikeSerializer.VariableDisplayConfig("reorder", false)), 2 -> List(it.evadid.core.util.io.serializer.ConstructorLikeSerializer.VariableDisplayConfig("codeEditorTitle", false)), 3 -> List(it.evadid.core.util.io.serializer.ConstructorLikeSerializer.VariableDisplayConfig("advancedCodeTemplate", false)), 4 -> List(it.evadid.core.util.io.serializer.ConstructorLikeSerializer.VariableDisplayConfig("advancedRequirements", false)), 5 -> List(it.evadid.core.util.io.serializer.ConstructorLikeSerializer.VariableDisplayConfig("advancedSuccessMessage", false)))
+    override lazy val elementMapAndOrderForConstructorLike = constructorLayout("elementId", "reorder", "codeEditorTitle", "advancedCodeTemplate", "advancedRequirements", "advancedSuccessMessage")
 
     override def idsRequiredForDeserialization(element: WorkbookElementSerializable): Set[String] = Set(element.getElementAs[WorkbookElementReference]("reorder").referencedId)
 
     override def toSerializableElement(e: CodeTaskToggleInteraction) = {
-      WorkbookElementSerializable(
-        e.elementId,
-        WorkbookElementFactory.persistedTypeOf(e),
-        Map())
+      toFactoryBase(e)
         .withElementAddedAs("reorder", e.reorder.asRef)
         .withElementAddedAs[LanguageMapContentId]("codeEditorTitle", e.codeEditorTitle)
         .withElementAdded("advancedCodeTemplate", e.advancedCodeTemplate)

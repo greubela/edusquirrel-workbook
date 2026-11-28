@@ -41,20 +41,17 @@ import it.evadid.workbook.interactions.text.UnicodeComparisonInteraction
 
 object WorkbookElementFactory {
 
-  /** Compatibility base for leaf elements while keeping all serialization metadata in the factory. */
+  /** The constructor-like layout naming the element ID first, then one field per position. */
+  def constructorLayout(fields: String*): Map[Int, Seq[VariableDisplayConfig]] =
+    fields.zipWithIndex.map((field, index) => index -> List(VariableDisplayConfig(field, index == 0))).toMap
+
+  /** A leaf element whose fields are written and read in `constructorFieldOrder`. */
   trait SimpleWorkbookElementFactory[T <: WorkbookElement] extends NoRefsElementFactory[T] {
     protected def constructorFieldOrder: Seq[String]
 
-    override lazy val elementMapAndOrderForConstructorLike: Map[Int, Seq[VariableDisplayConfig]] =
-      constructorFieldOrder.zipWithIndex.map { case (field, index) =>
-        index -> List(VariableDisplayConfig(field, index == 0))
-      }.toMap
+    override lazy val elementMapAndOrderForConstructorLike: Map[Int, Seq[VariableDisplayConfig]] = constructorLayout(constructorFieldOrder*)
 
-    override lazy val writerJsonRegularRefBased: Writer[T] =
-      writer[ujson.Value].comap { element =>
-        val base = WorkbookElementSerializable(element.elementId, WorkbookElementFactory.persistedTypeOf(element), Map.empty)
-        ujson.Obj.from(Map("elementId" -> writeJs(element.elementId)) ++ finishSerialization(base, element).allConstructorFields)
-      }
+    override def toSerializableElement(element: T): WorkbookElementSerializable = finishSerialization(toFactoryBase(element), element)
 
     override def fromSerializedElement(element: WorkbookElementSerializable, parsedElements: Map[String, WorkbookElement]): T =
       finishDeserialization(element)
@@ -252,18 +249,14 @@ trait WorkbookElementFactory[T <: WorkbookElement] {
   lazy val elementMapAndOrderForConstructorLike: Map[Int, Seq[VariableDisplayConfig]] =
     Map(0 -> List(VariableDisplayConfig("elementId", true)))
 
-  lazy val writerJsonRegularRefBased: Writer[T] = writer[ujson.Value].comap { element =>
-    ujson.Obj.from(Map("elementId" -> writeJs(element.elementId)) ++ toSerializableElement(element).allConstructorFields)
-  }
-
   def addElementsToSerialization(element: T): Map[String, ujson.Value] = Map.empty
 
+  /** `element`'s ID and persisted type, without fields; the ID is never repeated among the fields. */
   protected def toFactoryBase(element: T): WorkbookElementSerializable =
     WorkbookElementSerializable(element.elementId, WorkbookElementFactory.persistedTypeOf(element), Map.empty)
 
   /** This element alone; the elements it references are serialized beside it, once each (see [[SerializedWorkbook]]). */
-  def toSerializableElement(element: T): WorkbookElementSerializable =
-    WorkbookElementSerializable.getSerializedVersion(element)(using writerJsonRegularRefBased)
+  def toSerializableElement(element: T): WorkbookElementSerializable
 
   /** This element with the elements it references embedded, for the single-element text formats. */
   def toSelfContainedElement(element: T): WorkbookElementSerializable = {

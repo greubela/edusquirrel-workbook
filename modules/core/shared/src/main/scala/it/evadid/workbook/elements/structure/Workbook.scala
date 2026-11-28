@@ -78,15 +78,9 @@ object Workbook {
         3 -> List(VariableDisplayConfig("serializedElements", false))
       )
     }
-    override lazy val writerJsonRegularRefBased: default.Writer[Workbook] = writer[ujson.Value].comap { workbook =>
-      ujson.Obj.from(
-        Map(
-          "elementId" -> writeJs(workbook.elementId),
-          "metadata" -> writeJs(workbook.metadata),
-          "sections" -> writeJs(workbook.sections.map(_.asRef))
-        )
-      )
-    }
+    override def toSerializableElement(workbook: Workbook): WorkbookElementSerializable =
+      toFactoryBase(workbook).withElementAddedAs("metadata", workbook.metadata)
+        .withElementsAddedAs[WorkbookElementReference]("sections", workbook.sections.map(_.asRef))
 
     override def addElementsToSerialization(element: Workbook): Map[String, Value] = {
       val allRequiredIds = element.sections.map(_.elementId).toSet ++ element.allChildrenFullSubtree.flatMap { child =>

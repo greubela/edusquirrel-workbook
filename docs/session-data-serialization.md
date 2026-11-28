@@ -7,12 +7,12 @@ This allows servers to exchange histories for workbooks they do not know.
 | Class | Responsibility |
 | --- | --- |
 | `SerializedWorkbook` (`workbook.serialization`) | Root ID and serialized element definitions; collects children and section prerequisites, rejecting conflicting IDs |
-| `WorkbookElementFactory` | Encodes element definitions and resolves graph references when reconstructing elements |
+| `WorkbookElementFactory` | Encodes element definitions (`toSerializableElement`: fields beside the ID and persisted type) and resolves graph references when reconstructing elements |
 | `SessionData` (`workbook.session`, shared) | Save timestamp, user identity, public user configuration, workbook definition (`AllWorkbookInfo`) and `Map[SyncContext, InteractionHistoryJson]` |
 | `WorkbookUserDataAnalyzer` / `UserSessionControl` | Export/download and login/import orchestration |
 
-`Workbook` and `WorkbookSection` supply explicit companion `given ReadWriter`
-instances; they do not need `derives ReadWriter`. These delegate to the
+Element classes never derive their own codec. `Workbook`, `WorkbookSection` and
+`TwoColumnPanel` supply companion `given ReadWriter` instances that delegate to the
 `WorkbookElement` graph codec backed by `SerializedWorkbook`, so nested elements
 and section prerequisites travel with the root. The concrete reader checks the
 root kind.

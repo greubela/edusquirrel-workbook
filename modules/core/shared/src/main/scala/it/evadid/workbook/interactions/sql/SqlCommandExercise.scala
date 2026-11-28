@@ -41,7 +41,5 @@ object SqlCommandExercise  {
     override def toSerializableElement(element: SqlCommandExercise): WorkbookElementSerializable =
       toFactoryBase(element).withElementAddedAs("databaseConfig", element.databaseConfig)
         .withElementAddedAs("initialSql", element.initialSql)
-
-    override lazy val writerJsonRegularRefBased: Writer[SqlCommandExercise] = macroRW
   }
 }

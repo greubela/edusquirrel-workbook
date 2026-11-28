@@ -24,7 +24,7 @@ class SystematicDerivedCodecSpec extends FunSuite {
   test("protocol request records expose their own derived codec") {
     roundTrip(SendMailRequest("a@example.com", "学校", "body\nline two", Nil))
   }
-  test("derived workbook containers resolve nested registered element interfaces") {
+  test("workbook containers round-trip through the canonical element codec") {
     val panel = TwoColumnPanel("panel", TextInteraction("left"), TextInteraction("right"))
     roundTrip(panel)
     copies[WorkbookElement](panel).foreach(decoded => assertEquals(decoded, panel))

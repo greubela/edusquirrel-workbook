@@ -12,17 +12,12 @@ import upickle.default.*
 
 object WorkbookElementSerializable {
 
-  def getSerializedVersion[T <: WorkbookElement](obj: T)(implicit rw: Writer[T]): WorkbookElementSerializable = {
-    val map = ConstructorLikeSerializer.getAutoFieldsMap(obj)(using rw)
-    WorkbookElementSerializable(obj.elementId, WorkbookElementFactory.persistedTypeOf(obj), map)
-  }
-
   def fromStringConstructorLike(str: String): WorkbookElementSerializable = {
     val read = ConstructorLikeSerializer.deserialize(str)
     val factory = WorkbookElementFactory.factoryFor(read.elementType)
     val fields = read.valuesWithOrder(factory.elementMapAndOrderForConstructorLike)
     val elementId = fields.getOrElse("elementId", throw new IllegalArgumentException("Missing elementId")).str
-    WorkbookElementSerializable(elementId, read.elementType, fields)
+    WorkbookElementSerializable(elementId, read.elementType, fields - "elementId")
   }
 
   given regularSerializer: ReadWriter[WorkbookElementSerializable] = macroRW

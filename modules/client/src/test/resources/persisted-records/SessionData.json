@@ -71,7 +71,6 @@
           "elementId": "snapshot-workbook",
           "elementType": "Workbook",
           "allConstructorFields": {
-            "elementId": "snapshot-workbook",
             "metadata": {
               "author": [
                 {
@@ -110,9 +109,7 @@
         {
           "elementId": "answer",
           "elementType": "TextInteraction",
-          "allConstructorFields": {
-            "elementId": "answer"
-          }
+          "allConstructorFields": {}
         }
       ]
     },
@@ -139,9 +136,7 @@
           {
             "elementId": "answer",
             "elementType": "TextInteraction",
-            "allConstructorFields": {
-              "elementId": "answer"
-            }
+            "allConstructorFields": {}
           }
         ]
       }
