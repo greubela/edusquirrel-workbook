@@ -76,9 +76,10 @@ class InteractionGradingConcurrencySpec extends FunSuite {
     answers.setStateFromUserInteraction(exercise, "right", MAJOR, LocalDateTime.now().plusSeconds(1))
     assertEquals(grader.graded.now(), Vector("wrong", "right"), "each answer starts its own automatic grading")
     assertEquals(status(answers, exercise, "right"), GradingStatus.NotFinished)
+    val earlier = answers.feedback(exercise).getOrCalculateGrading(false, "wrong")
     grader.gate("right").success(())
     grader.gate("wrong").success(())
-    answers.feedback(exercise).getOrCalculateGrading().map { current =>
+    answers.feedback(exercise).getOrCalculateGrading().zip(earlier).map { (current, _) =>
       assertEquals(current.state, "right")
       assertEquals(status(answers, exercise, "right"), GradingStatus.Correct)
       assertEquals(status(answers, exercise, "wrong"), GradingStatus.Incorrect, "the late result belongs to the earlier answer")
