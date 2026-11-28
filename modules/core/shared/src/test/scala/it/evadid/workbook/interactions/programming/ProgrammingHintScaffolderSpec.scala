@@ -62,7 +62,7 @@ class ProgrammingHintScaffolderSpec extends FunSuite {
   /** The control records a failed hint as an error result for the answer, with the reason. */
   private def rejected(result: it.evadid.workbook.abstractions.scaffolding.ScaffoldingResult[ProgrammingState, ?]): Boolean =
     result.scaffoldingStatus match {
-      case ScaffoldingStatus.ScaffoldingError(error) => error.getMessage.contains("does not match the expected format")
+      case ScaffoldingStatus.ScaffoldingError(message) => message.contains("does not match the expected format")
       case _ => false
     }
 

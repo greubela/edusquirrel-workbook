@@ -22,10 +22,11 @@ object GradingStatus {
   case object Incorrect extends GradingStatus
 
   object TestError {
-    def apply(str: String): TestError = TestError(SerializedException(str))
+    /** Saved errors keep only the message (with its causes'), never a stack trace. */
+    def apply(error: Throwable): TestError = TestError(SerializedException.messageOf(error))
   }
 
-  case class TestError(err: SerializedException) extends GradingStatus derives upickle.default.ReadWriter {
+  case class TestError(message: String) extends GradingStatus derives upickle.default.ReadWriter {
     override def isError: Boolean = true
     override def shouldRetryExecution: Boolean = true
   }

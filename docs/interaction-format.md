@@ -72,8 +72,8 @@ with a new ID. Merging unions events, so retries are idempotent and distinct sam
 events survive, while a different event under a known ID is rejected
 (`InteractionEvents` requires unique IDs). IDs are preserved during decoding; missing
 or malformed IDs are rejected rather than generated on read.
-Serialized exceptions use immutable stack-trace sequences so error events also retain
-value equality after decoding. State/feedback history views are derived projections,
+Saved error statuses (`TestError`, `ScaffoldingError`) keep only the messages of an error
+and its causes; stack traces stay in logs. State/feedback history views are derived projections,
 not separate persisted stores. A newer grading start represents a retry in progress;
 completion wins a timestamp tie. Graders are matched by their content key: a hash of the persisted grader type and its
 parameters, so graders of one type (for example two unit tests) differ by their parameters.

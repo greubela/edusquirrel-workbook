@@ -54,11 +54,11 @@ class ProgrammingUnitTestGraderWorkerSpec extends FunSuite {
       assertEquals(passed.additionalData, None)
       assertEquals(failed.gradingStatus, GradingStatus.Incorrect)
       error.gradingStatus match {
-        case GradingStatus.TestError(cause) => assert(cause.getMessage.contains("definition is invalid"), cause.getMessage)
+        case GradingStatus.TestError(message) => assert(message.contains("definition is invalid"), message)
         case other => fail(s"Unexpected $other")
       }
       unsupported.gradingStatus match {
-        case GradingStatus.TestError(cause) => assert(cause.getMessage.contains("does not support"), cause.getMessage)
+        case GradingStatus.TestError(message) => assert(message.contains("does not support"), message)
         case other => fail(s"Unexpected $other")
       }
     }

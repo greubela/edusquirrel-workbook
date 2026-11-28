@@ -39,6 +39,16 @@ object SerializedException {
     case other => SerializedException(other.getMessage, serializedStackTrace(other), Option(other.getCause).map(apply))
   }
 
+  /** The message of `error` followed by the distinct messages of its causes, for saved error statuses. */
+  def messageOf(error: Throwable): String =
+    Iterator.iterate(Option(error))(_.flatMap(causeOf)).takeWhile(_.isDefined).flatten.take(8)
+      .map(e => Option(e.getMessage).filter(_.nonEmpty).getOrElse(e.getClass.getSimpleName)).toList.distinct.mkString(": ")
+
+  private def causeOf(error: Throwable): Option[Throwable] = error match {
+    case serialized: SerializedException => serialized.cause
+    case other => Option(other.getCause).filterNot(_ eq other)
+  }
+
   def apply(msg: String): SerializedException = apply(Exception(msg))
 
   def apply(msg: String, cause: Throwable): SerializedException = apply(msg, Option(cause))

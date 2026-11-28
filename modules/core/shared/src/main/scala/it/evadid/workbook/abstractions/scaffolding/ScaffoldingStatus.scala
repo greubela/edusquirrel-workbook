@@ -17,10 +17,15 @@ object ScaffoldingStatus {
     def getInfoString: Either[LanguageMap[HumanLanguage], LanguageMapContentId] = Left(feedback)
   }
 
-  case class ScaffoldingError(err: SerializedException) extends ScaffoldingStatus derives ReadWriter {
+  /** Saved errors keep only the message (with its causes'), never a stack trace. */
+  case class ScaffoldingError(message: String) extends ScaffoldingStatus derives ReadWriter {
     override def isError: Boolean = true
 
-    def getInfoString: Either[LanguageMap[HumanLanguage], LanguageMapContentId] = Left(LanguageMap.universalMap("Error: " + err.msg))
+    def getInfoString: Either[LanguageMap[HumanLanguage], LanguageMapContentId] = Left(LanguageMap.universalMap("Error: " + message))
+  }
+
+  object ScaffoldingError {
+    def apply(error: Throwable): ScaffoldingError = ScaffoldingError(SerializedException.messageOf(error))
   }
 
   case class ScaffoldingRequestedButNotFinished() extends ScaffoldingStatus derives ReadWriter {

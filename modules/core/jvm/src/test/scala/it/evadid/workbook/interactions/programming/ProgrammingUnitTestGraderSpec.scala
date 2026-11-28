@@ -32,7 +32,7 @@ class ProgrammingUnitTestGraderSpec extends FunSuite {
   private def every(state: ProgrammingStateRaw): List[ProgrammingState] =
     List(state, ProgrammingStatePythonStructured(state.code), state.toJava, ProgrammingStateJavaStructured(state.toJava.asInstanceOf[ProgrammingStateRaw].code))
   private def errorMessage(result: GradingStatus): String = result match {
-    case GradingStatus.TestError(error) => error.msg
+    case GradingStatus.TestError(message) => message
     case other => fail(s"expected a test error, not $other")
   }
 

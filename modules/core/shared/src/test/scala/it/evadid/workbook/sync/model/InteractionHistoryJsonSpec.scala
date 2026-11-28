@@ -95,7 +95,7 @@ class InteractionHistoryJsonSpec extends FunSuite {
     assertRoundTrips(TextInputWithLlmGradingAndScaffoldingFormat, delta)
   }
 
-  test("feedback error envelopes preserve exception causes and immutable stack traces") {
+  test("saved feedback errors keep the messages of an error and its causes, never a stack trace") {
     val cause = SerializedException("root cause", Seq.empty, None)
     val error = SerializedException("execution failed", Seq(SimpleStackTraceElement("Grader", "run", "Grader.scala", 42)), Some(cause))
     val history = InteractionVariableHistory[FeedbackFormat](InteractionEvents(Set(
@@ -105,6 +105,10 @@ class InteractionHistoryJsonSpec extends FunSuite {
         FeedbackEntity.LlmEntity, Some(transcript), time.plusNanos(1)))
     )))
     assertRoundTrips(TextInputWithLlmGradingAndScaffoldingFormat, history)
+    assertEquals(GradingStatus.TestError(error), GradingStatus.TestError("execution failed: root cause"))
+    assertEquals(ScaffoldingStatus.ScaffoldingError(error), ScaffoldingStatus.ScaffoldingError("execution failed: root cause"))
+    val saved = InteractionHistoryJson.fromHistory(TextInputWithLlmGradingAndScaffoldingFormat, history).serialized
+    assert(!saved.contains("Grader.scala") && !saved.contains("stackTrace"), saved)
   }
 
   test("heterogeneous envelope sequences round-trip without a shared interaction type") {
