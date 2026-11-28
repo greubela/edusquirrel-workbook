@@ -39,7 +39,7 @@ class ProjectDownloadSpec extends EditorDomSuite {
     val recorder = Recorder()
     val state = Var[ProgrammingState](ProgrammingStateRaw(Python, "print(1)\n"))
     val labels = ProgrammingExecutionLabels(Val("console"), Val("run"), Val("stop"), Val("running"), Val("stopped"), Val("unavailable"), Val("Download"))
-    val close = mount(ProjectDownloadButton(state.signal, labels, "brick-task", recorder, () => java.time.LocalDateTime.of(2026, 11, 27, 13, 5, 9).toInstant(java.time.ZoneOffset.UTC)))
+    val close = mount(ProjectDownloadButton(state.signal, labels, "brick-task", recorder, () => java.time.LocalDateTime.of(2026, 11, 27, 13, 5, 9).atZone(java.time.ZoneId.systemDefault()).toInstant))
     val button = dom.document.querySelector(".programming-execution__download").asInstanceOf[dom.html.Button]
     try {
       button.click()

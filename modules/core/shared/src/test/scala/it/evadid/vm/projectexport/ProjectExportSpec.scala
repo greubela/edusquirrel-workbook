@@ -47,7 +47,7 @@ class ProjectExportSpec extends FunSuite {
 
   test("archives store the modification time and are reproducible") {
     val entries = Seq(ZipArchive.Entry("a.txt", "a".getBytes(UTF_8)))
-    val time = java.time.LocalDateTime.of(2026, 11, 20, 13, 45, 30).toInstant(java.time.ZoneOffset.UTC)
+    val time = java.time.LocalDateTime.of(2026, 11, 20, 13, 45, 30).atZone(java.time.ZoneId.systemDefault()).toInstant
     val bytes = ZipArchive.write(entries, time)
     def u16(at: Int) = (bytes(at) & 0xFF) | ((bytes(at + 1) & 0xFF) << 8)
     assertEquals(u16(10), (13 << 11) | (45 << 5) | 15)
