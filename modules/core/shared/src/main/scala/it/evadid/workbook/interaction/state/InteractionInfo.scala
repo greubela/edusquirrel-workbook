@@ -4,7 +4,7 @@ import it.evadid.workbook.abstractions.{InteractionFormat, WorkbookInteractionEl
 import it.evadid.workbook.interaction.sync.SyncConnection
 import it.evadid.workbook.interaction.sync.{SyncInformationWithContext, UpdateImportance, UsageContext}
 import it.evadid.workbook.interaction.variable.InteractionVariableState.{DesignatedInteractionState, InteractionVariableStateChanged}
-import it.evadid.workbook.interaction.variable.{InteractionScaffoldingAndGradingControl, InteractionVariableHistory, InteractionVariableState}
+import it.evadid.workbook.interaction.variable.{InteractionVariableHistory, InteractionVariableState}
 import it.evadid.workbook.meta.InteractionVariableSyncReport
 
 import java.time.LocalDateTime
@@ -33,8 +33,19 @@ final case class InteractionInfo(session: InteractionInfo.Session, usageContext:
   def historyOf[F <: InteractionFormat](interaction: WorkbookInteractionElement[F]): InteractionVariableHistory[F] =
     entryOption(interaction).fold(InteractionEntry.defaultHistory(interaction))(_.history)
 
+  /** The current answer of `interaction`, with its importance and time. */
+  def currentStateOf[F <: InteractionFormat](interaction: WorkbookInteractionElement[F]): InteractionVariableState[InteractionFormat.State[F]] =
+    historyOf(interaction).historyStates.lastStateOption.get
+
+  def currentValueOf[F <: InteractionFormat](interaction: WorkbookInteractionElement[F]): InteractionFormat.State[F] =
+    currentStateOf(interaction).value
+
+  /** Whether `scope` names this state's context and the same interaction instances. */
+  def holdsAnswersOf(scope: InteractionScope): Boolean = scope.usageContext == usageContext &&
+    scope.interactions.size == entries.size && scope.interactions.forall(contains)
+
   /** Changes the history of `interaction`; the result fails if it is not part of this state or the exercise rejects
-    * an answer of the new history.
+    * an answer the transition adds.
     */
   def withHistory[F <: InteractionFormat](interaction: WorkbookInteractionElement[F])(
       transition: InteractionVariableHistory[F] => InteractionVariableHistory[F]): Try[InteractionInfo] =
@@ -46,19 +57,19 @@ final case class InteractionInfo(session: InteractionInfo.Session, usageContext:
   def withUserChange[F <: InteractionFormat](interaction: WorkbookInteractionElement[F], value: InteractionFormat.State[F],
       relevance: InteractionVariableStateChanged[InteractionFormat.State[F]] => UpdateImportance,
       timestamp: LocalDateTime = LocalDateTime.now()): Try[InteractionInfo] =
-    Try(interaction.validateState(value)).flatMap(_ => withHistory(interaction)(history => {
+    withHistory(interaction)(history => {
       val last = history.historyStates.lastStateOption.get
       if last.value == value then history
       else history.addState(InteractionVariableState[InteractionFormat.State[F]](value,
         relevance(InteractionVariableStateChanged(last, DesignatedInteractionState(value, timestamp))), timestamp))
-    }))
+    })
 
   /** Records `value` with `importance`; repeating the current answer and importance changes nothing. */
   def withAnswer[F <: InteractionFormat](interaction: WorkbookInteractionElement[F], value: InteractionFormat.State[F],
       importance: UpdateImportance, timestamp: LocalDateTime = LocalDateTime.now()): Try[InteractionInfo] =
-    Try(interaction.validateState(value)).flatMap(_ => withHistory(interaction)(history =>
+    withHistory(interaction)(history =>
       if history.historyStates.lastStateOption.exists(last => last.value == value && last.updateImportance == importance) then history
-      else history.addState(InteractionVariableState[InteractionFormat.State[F]](value, importance, timestamp))))
+      else history.addState(InteractionVariableState[InteractionFormat.State[F]](value, importance, timestamp)))
 
   /** All destinations and those known to hold the latest answer of `interaction` with all its feedback events. */
   def reportOf(interaction: WorkbookInteractionElement[? <: InteractionFormat]): InteractionVariableSyncReport[SyncInformationWithContext] =
@@ -77,19 +88,16 @@ object InteractionInfo {
   /** Distinguishes two states of the same context, e.g. before and after a full reset. */
   final case class Session(id: String)
 
-  /** Creates the feedback computations of each interaction for a new session. */
-  trait FeedbackFactory {
-    def feedbackFor[F <: InteractionFormat](interaction: WorkbookInteractionElement[F], session: Session): InteractionScaffoldingAndGradingControl[F]
+  /** A new session with default answers for the interactions of `scope`; interactions sharing a serialization key
+    * keep the first.
+    */
+  def create(scope: InteractionScope): InteractionInfo = {
+    def entryFor[F <: InteractionFormat](interaction: WorkbookInteractionElement[F]): InteractionEntry[F] =
+      InteractionEntry.create(interaction, scope.usageContext.toSyncContext(interaction.keyForSerialization), scope.connection)
+    InteractionInfo(Session(UUID.randomUUID().toString), scope.usageContext, scope.connection,
+      scope.interactions.reverse.map(interaction => interaction.keyForSerialization -> entryFor(interaction)).toMap)
   }
 
-  /** Default answers for `interactions`; interactions sharing a serialization key keep the first. */
-  def create(usageContext: UsageContext, interactions: Seq[WorkbookInteractionElement[? <: InteractionFormat]], connection: SyncConnection,
-      feedback: FeedbackFactory): InteractionInfo = {
-    val session = Session(UUID.randomUUID().toString)
-    def entryFor[F <: InteractionFormat](interaction: WorkbookInteractionElement[F]): InteractionEntry[F] =
-      InteractionEntry.create(interaction, usageContext.toSyncContext(interaction.keyForSerialization), connection,
-        feedback.feedbackFor(interaction, session))
-    InteractionInfo(session, usageContext, connection,
-      interactions.reverse.map(interaction => interaction.keyForSerialization -> entryFor(interaction)).toMap)
-  }
+  /** No answers yet, before a page or test binds its interactions. */
+  def empty(usageContext: UsageContext): InteractionInfo = create(InteractionScope(usageContext, Nil, SyncConnection.offline))
 }

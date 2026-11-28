@@ -739,6 +739,28 @@ class HomepageStateSpec extends EditorDomSuite {
     }
   }
 
+  test("a user and a workbook switch made in one Airstream transaction bind the answers of the final page") {
+    val fixture = new Fixture
+    val (other, interactions) = fixture.anotherWorkbook("transaction-workbook")
+    val next = signedIn(AllUserInfo.createNewUser("Next user", "transaction@example.invalid", fixture.user.config))
+    val trigger = Var(0)
+    val owner = new ManualOwner
+    trigger.signal.changes.foreach { _ =>
+      fixture.info.state.switchUser(Some(next))
+      fixture.info.state.switchWorkbook(Some(other))
+    }(using owner)
+    fixture.withHttp {
+      trigger.set(1)
+      val answers = fixture.info.interactions.info
+      assertEquals(answers.usageContext, fixture.info.homepageInfoNow().toContext)
+      assertEquals((answers.usageContext.userId, answers.usageContext.scenarioId), (next.user.personId, other.loadedWorkbook.workbookId))
+      assert(interactions.forall(answers.contains) && fixture.elements.forall(!answers.contains(_)))
+      fixture.info.interactions.ensureSynced().map { _ =>
+        assert(fixture.fetchRequests.forall(_.usageContext.userId == next.user.personId) || fixture.fetchRequests.isEmpty)
+      }.andThen { case _ => owner.killSubscriptions() }
+    }
+  }
+
   test("workbook selection from an Airstream observer starts reads for the replacement binding") {
     val fixture = new Fixture
     val gate = new ResponseGate

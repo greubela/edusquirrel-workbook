@@ -2,10 +2,11 @@ package it.evadid.workbook.interaction.state
 
 import it.evadid.core.datastructures.state.State
 import it.evadid.core.datastructures.storage.remote.RemoteHistoryCache
-import it.evadid.core.datastructures.storage.remote.RemoteHistoryCache.CacheState
+import it.evadid.core.datastructures.storage.remote.RemoteHistoryCache.{CacheState, CacheStore}
 import it.evadid.util.logging.Logger
+import it.evadid.util.logging.derived.SyncLogger
 import it.evadid.workbook.abstractions.{InteractionFormat, WorkbookInteractionElement}
-import it.evadid.workbook.interaction.sync.{FormattedSyncDestination, SyncConnection, SyncContext, SyncInformationWithContext, SyncPhases, UpdateImportance, UsageContext}
+import it.evadid.workbook.interaction.sync.{FormattedSyncDestination, SyncConnection, SyncContext, SyncInformationWithContext, SyncPhases, UpdateImportance}
 import it.evadid.workbook.interaction.sync.model.InteractionHistoryJson
 import it.evadid.workbook.interaction.variable.InteractionVariableState.InteractionVariableStateChanged
 import it.evadid.workbook.interaction.variable.{FeedbackTarget, InteractionScaffoldingAndGradingControl, InteractionVariableHistory, InteractionVariableState}
@@ -17,15 +18,16 @@ import scala.util.Try
 
 /** Every change of the [[InteractionInfo]] held by `store`. Writes are pure transitions of the whole state, so
   * they compose even where the store applies them later (an Airstream transaction). Reactions run once a change is
-  * observed: a changed answer is graded by the graders that run automatically, and a changed history is stored
-  * through [[requestStore]], which a front end may defer so that changes made together share one write.
+  * observed: a changed answer is graded by the graders that run automatically for it, and a changed history is
+  * stored through [[requestStore]], which a front end may defer so that changes made together share one write.
   */
-class InteractionController(store: State[InteractionInfo]) extends InteractionInfo.FeedbackFactory {
+class InteractionController(store: State[InteractionInfo]) {
   private given ExecutionContext = ExecutionContext.global
   private type AnyInteraction = WorkbookInteractionElement[? <: InteractionFormat]
+  private type Control = InteractionScaffoldingAndGradingControl[? <: InteractionFormat]
 
   def info: InteractionInfo = store.now()
-  def logger: it.evadid.util.logging.derived.SyncLogger = info.connection.logger
+  def logger: SyncLogger = info.connection.logger
 
   // OBSERVED CHANGES
 
@@ -36,12 +38,14 @@ class InteractionController(store: State[InteractionInfo]) extends InteractionIn
     afterChange(previous, next)
   }
 
-  /** Reactions to a change within one session; a replaced session starts without them. */
+  /** Reactions to a change within one session; a new session starts without them. */
   private def afterChange(previous: InteractionInfo, next: InteractionInfo): Unit =
     if previous.session == next.session then next.entries.foreach { (key, entry) =>
       previous.entries.get(key).filter(_ ne entry).foreach { before =>
         if before.history != entry.history then requestStore(key)
-        if before.currentValue != entry.currentValue then entry.feedback.getOrCalculateGrading()
+        val current = entry.currentState
+        if before.currentValue != current.value && entry.interaction.gradingElements.exists(_.shouldRunGrader(false, current.updateImportance)) then
+          feedback(entry.interaction).getOrCalculateGrading()
       }
     }
 
@@ -52,26 +56,32 @@ class InteractionController(store: State[InteractionInfo]) extends InteractionIn
 
   def currentHistory[F <: InteractionFormat](interaction: WorkbookInteractionElement[F]): InteractionVariableHistory[F] = info.historyOf(interaction)
   def currentState[F <: InteractionFormat](interaction: WorkbookInteractionElement[F]): InteractionVariableState[InteractionFormat.State[F]] =
-    currentHistory(interaction).historyStates.lastStateOption.get
-  def currentValue[F <: InteractionFormat](interaction: WorkbookInteractionElement[F]): InteractionFormat.State[F] = currentState(interaction).value
-
-  /** The feedback of `interaction` in the current session; an interaction outside it gets a control that never publishes. */
-  def feedback[F <: InteractionFormat](interaction: WorkbookInteractionElement[F]): InteractionScaffoldingAndGradingControl[F] =
-    info.entryOption(interaction).fold(feedbackFor(interaction, InteractionInfo.Session("[not bound]")))(_.feedback)
-
+    info.currentStateOf(interaction)
+  def currentValue[F <: InteractionFormat](interaction: WorkbookInteractionElement[F]): InteractionFormat.State[F] = info.currentValueOf(interaction)
   def report(interaction: AnyInteraction): InteractionVariableSyncReport[SyncInformationWithContext] = info.reportOf(interaction)
 
   // TRANSITIONS
 
-  /** Replaces the state with default answers for `interactions` in `usageContext`; the previous state is returned. */
-  def bind(usageContext: UsageContext, interactions: Seq[AnyInteraction], connection: SyncConnection): InteractionInfo = {
+  /** Starts a new session with the default answers of `scope`; the previous state is returned. */
+  def bind(scope: InteractionScope): InteractionInfo = {
     val previous = info
-    store.set(InteractionInfo.create(usageContext, interactions, connection, this))
+    store.set(InteractionInfo.create(scope))
     previous
   }
 
   /** The same answers with another connection. */
   def connect(connection: SyncConnection): Unit = store.update(_.connectedTo(connection))
+
+  /** Follows the page to `scope`, which is read when the store applies the change, after earlier changes of the
+    * same transaction. The same context with the same interaction instances keeps its answers and, if `reconnect`,
+    * takes the scope's connection; anything else starts a new session with default answers.
+    */
+  def follow(scope: () => InteractionScope, reconnect: Boolean): Unit = store.update { current =>
+    val next = scope()
+    if !current.holdsAnswersOf(next) then InteractionInfo.create(next)
+    else if reconnect then current.connectedTo(next.connection)
+    else current
+  }
 
   /** Changes the history of `interaction`; a history with an answer the exercise rejects is reported and not applied. */
   def updateHistory[F <: InteractionFormat](interaction: WorkbookInteractionElement[F])(
@@ -102,8 +112,9 @@ class InteractionController(store: State[InteractionInfo]) extends InteractionIn
   /** A view of the answer for editors that do not use Airstream; writes are user changes of `importance`. */
   def answerState[F <: InteractionFormat](interaction: WorkbookInteractionElement[F], importance: UpdateImportance): State[InteractionFormat.State[F]] =
     State.fromStorage(() => currentValue(interaction), applyUserChange(interaction, _, _ => importance),
-      transform => applyUserChange(interaction, transform(currentValue(interaction)), _ => importance),
-      store.observable.deriveValue(_.historyOf(interaction).historyStates.lastStateOption.get.value))
+      transform => store.update(current => orUnchanged(current, interaction,
+        current.withUserChange(interaction, transform(current.currentValueOf(interaction)), _ => importance))),
+      store.observable.deriveValue(_.currentValueOf(interaction)))
 
   /** Commits a TEMPORARY current answer as MAJOR, so strategies that skip TEMPORARY answers send it. */
   def commitCurrentState[F <: InteractionFormat](interaction: WorkbookInteractionElement[F]): Unit =
@@ -118,18 +129,23 @@ class InteractionController(store: State[InteractionInfo]) extends InteractionIn
     * holds an answer the exercise rejects. Such a record is reported and discarded; the current history stays.
     */
   def restoreHistory[F <: InteractionFormat](logger: Logger, interaction: WorkbookInteractionElement[F], received: InteractionHistoryJson): Unit =
-    Try(received.typedAs(interaction.interactionFormat)).flatMap(history => InteractionEntry.validate(interaction, history).map(_ => history))
-      .fold(error => logger.logExceptionWarn(s"Discarded the stored history of ${interaction.keyForSerialization}", error),
-        history => updateHistory(interaction)(_.mergeWith(history)))
+    store.update(restored(logger, _, interaction, received))
 
   /** Restores the saved histories of this state's workbook, whoever saved them; other workbooks' histories are
     * ignored, even where their interactions use the same keys.
     */
-  def restoreHistories(logger: Logger, data: Map[SyncContext, InteractionHistoryJson]): Unit = {
-    val current = info
+  def restoreHistories(logger: Logger, data: Map[SyncContext, InteractionHistoryJson]): Unit = store.update { current =>
     val own = data.collect { case (key, history) if key.scenarioId == current.usageContext.scenarioId => key.keyForSerialisation -> history }
-    current.interactions.foreach(interaction => own.get(interaction.keyForSerialization).foreach(restoreHistory(logger, interaction, _)))
+    current.interactions.foldLeft(current)((state, interaction) =>
+      own.get(interaction.keyForSerialization).fold(state)(restored(logger, state, interaction, _)))
   }
+
+  private def restored[F <: InteractionFormat](logger: Logger, state: InteractionInfo, interaction: WorkbookInteractionElement[F],
+      received: InteractionHistoryJson): InteractionInfo =
+    Try(received.typedAs(interaction.interactionFormat)).flatMap(history => state.withHistory(interaction)(_.mergeWith(history))).fold(error => {
+      logger.logExceptionWarn(s"Discarded the stored history of ${interaction.keyForSerialization}", error)
+      state
+    }, identity)
 
   // SYNCHRONIZATION
 
@@ -144,69 +160,69 @@ class InteractionController(store: State[InteractionInfo]) extends InteractionIn
   /** Stores the entry under `key` of `state` (by default the current one); a retired state's entry is sent with
     * its own connection, and its results reach only that state.
     */
-  def storeEntry(key: String, forceFlush: Boolean = false, state: InteractionInfo = info): Future[Unit] = withEntry(key, state)(new EntryOperation {
-    def apply[F <: InteractionFormat](cache: RemoteHistoryCache[SyncContext, F, FormattedSyncDestination[F]], entry: InteractionEntry[F]) =
-      cache.storeAll(forceFlush)
-  })
+  def storeEntry(key: String, forceFlush: Boolean = false, state: InteractionInfo = info): Future[Unit] =
+    onEntry(key, state)([F <: InteractionFormat] => (cache: EntryCache[F], _: InteractionEntry[F]) => cache.storeAll(forceFlush))
 
-  def fetchEntry(key: String, forceFlush: Boolean = false, state: InteractionInfo = info): Future[Unit] = withEntry(key, state)(new EntryOperation {
-    def apply[F <: InteractionFormat](cache: RemoteHistoryCache[SyncContext, F, FormattedSyncDestination[F]], entry: InteractionEntry[F]) =
+  def fetchEntry(key: String, forceFlush: Boolean = false, state: InteractionInfo = info): Future[Unit] =
+    onEntry(key, state)([F <: InteractionFormat] => (cache: EntryCache[F], entry: InteractionEntry[F]) =>
       SyncPhases.settled(entry.destinations(state.connection).toSeq.map(destination => SyncPhases.attempt(
-        cache.refreshFrom(destination, Set(entry.syncContext), LocalDateTime.now().minusMinutes(5), forceFlush)).map(_ => ())))
-  })
+        cache.refreshFrom(destination, Set(entry.syncContext), LocalDateTime.now().minusMinutes(5), forceFlush)).map(_ => ()))))
 
   /** Sends the buffered requests of every destination of the current connection. */
   def flush(): Unit = info.connection.flush()
 
-  private trait EntryOperation {
-    def apply[F <: InteractionFormat](cache: RemoteHistoryCache[SyncContext, F, FormattedSyncDestination[F]], entry: InteractionEntry[F]): Future[Unit]
-  }
+  private type EntryCache[F <: InteractionFormat] = RemoteHistoryCache[SyncContext, F, FormattedSyncDestination[F]]
 
-  /** Runs `operation` on the cache of the entry under `key` in `state`; its results reach only that session, and
-    * knowledge of destinations the session no longer uses is ignored.
+  /** Runs `operation` on the cache of the entry under `key` in `state`. The cache reads the entry as the store holds
+    * it while `state`'s session is current, and as `state` held it otherwise; its updates reach only that session,
+    * and updates for destinations the session no longer uses are ignored.
     */
-  private def withEntry(key: String, state: InteractionInfo)(operation: EntryOperation): Future[Unit] = SyncPhases.attempt {
-    state.entries.get(key).fold(Future.unit)(entry => run(state, entry, operation))
-  }
+  private def onEntry(key: String, state: InteractionInfo)(
+      operation: [F <: InteractionFormat] => (EntryCache[F], InteractionEntry[F]) => Future[Unit]): Future[Unit] =
+    SyncPhases.attempt(state.entries.get(key).fold(Future.unit)(entry => operation(cacheOf(state, entry), entry)))
 
-  private def run[F <: InteractionFormat](started: InteractionInfo, entry: InteractionEntry[F], operation: EntryOperation): Future[Unit] = {
-    val interaction = entry.interaction
+  private def cacheOf[F <: InteractionFormat](started: InteractionInfo, entry: InteractionEntry[F]): EntryCache[F] = {
     def inSession(current: InteractionInfo): Option[InteractionEntry[F]] =
-      Option.when(current.session == started.session)(current.entryOption(interaction)).flatten
-    val cacheState = new RemoteHistoryCache.CacheStore[SyncContext, F, FormattedSyncDestination[F]] {
-      def now() = inSession(info).getOrElse(entry).cache
+      Option.when(current.session == started.session)(current.entryOption(entry.interaction)).flatten
+    val cacheStore = new CacheStore[SyncContext, F, FormattedSyncDestination[F]] {
+      def now(): CacheState[SyncContext, F, FormattedSyncDestination[F]] = inSession(info).getOrElse(entry).cache
       def update(transition: CacheState[SyncContext, F, FormattedSyncDestination[F]] => CacheState[SyncContext, F, FormattedSyncDestination[F]]): Unit =
         store.update(current => inSession(current).fold(current)(found => current.withEntry(found.copy(cache = transition(found.cache)))))
     }
     val strategies = entry.destinations(started.connection).map(destination => destination -> destination.information.syncInformation.syncStrategy).toMap
-    operation(new RemoteHistoryCache(started.connection.logger, strategies, cacheState, InteractionEntry.validate(interaction, _)), entry)
+    new RemoteHistoryCache(started.connection.logger, strategies, cacheStore, history => InteractionEntry.validate(entry.interaction, history.events.values))
   }
 
   // FEEDBACK
 
-  def feedbackFor[F <: InteractionFormat](element: WorkbookInteractionElement[F], session: InteractionInfo.Session): InteractionScaffoldingAndGradingControl[F] =
-    new InteractionScaffoldingAndGradingControl(new FeedbackTarget[F] {
+  /** Feedback computations of the current session, created on first use; a new session starts without them. */
+  private val feedbacks = State(Map.empty[(InteractionInfo.Session, String), Control])
+
+  /** The feedback of `interaction` in the current session. Requests for an interaction outside it fail. */
+  def feedback[F <: InteractionFormat](interaction: WorkbookInteractionElement[F]): InteractionScaffoldingAndGradingControl[F] = feedbacks.synchronized {
+    val session = info.session
+    val key = (session, interaction.keyForSerialization)
+    // Instance identity guarantees that the control has the interaction's format.
+    feedbacks.now().get(key).filter(_.interaction eq interaction).map(_.asInstanceOf[InteractionScaffoldingAndGradingControl[F]]).getOrElse {
+      val created = new InteractionScaffoldingAndGradingControl(feedbackTarget(interaction, session))
+      feedbacks.update(all => all.filter((known, _) => known._1 == session).updated(key, created))
+      created
+    }
+  }
+
+  private def feedbackTarget[F <: InteractionFormat](element: WorkbookInteractionElement[F], session: InteractionInfo.Session): FeedbackTarget[F] =
+    new FeedbackTarget[F] {
       val interaction: WorkbookInteractionElement[F] = element
       def isCurrent: Boolean = info.session == session && info.contains(interaction)
       def currentHistory: InteractionVariableHistory[F] =
         if isCurrent then info.historyOf(interaction) else InteractionEntry.defaultHistory(interaction)
       def execution: ExecutionContextInformation = info.connection.execution
       def publish(transition: InteractionVariableHistory[F] => InteractionVariableHistory[F]): Unit =
-        store.update(current => if current.session != session then current else current.withHistory(interaction)(transition).getOrElse(current))
-    })
+        store.update(current => if current.session != session then current else orUnchanged(current, interaction, current.withHistory(interaction)(transition)))
+    }
 }
 
 object InteractionController {
   /** A controller that applies every change to `store` at once. */
   def apply(store: State[InteractionInfo]): InteractionController = new InteractionController(store)
-
-  /** For an empty initial state, before a controller exists to create feedback. */
-  val noFeedback: InteractionInfo.FeedbackFactory = new InteractionInfo.FeedbackFactory {
-    def feedbackFor[F <: InteractionFormat](interaction: WorkbookInteractionElement[F], session: InteractionInfo.Session) =
-      throw new IllegalStateException("An initial state of a controller has no interactions")
-  }
-
-  /** An empty offline state of `usageContext`, to be bound by a controller. */
-  def emptyState(usageContext: UsageContext): InteractionInfo =
-    InteractionInfo.create(usageContext, Seq.empty, SyncConnection.offline, noFeedback)
 }

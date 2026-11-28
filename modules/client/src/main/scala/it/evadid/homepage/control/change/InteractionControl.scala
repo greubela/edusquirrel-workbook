@@ -5,7 +5,7 @@ import com.raquo.laminar.api.L.*
 import com.raquo.laminar.keys.EventProp
 import it.evadid.core.datastructures.state.StateHelper.fromAirstreamVarToState
 import it.evadid.workbook.abstractions.{InteractionFormat, WorkbookInteractionElement}
-import it.evadid.workbook.interaction.state.{InteractionController, InteractionInfo}
+import it.evadid.workbook.interaction.state.{InteractionController, InteractionInfo, InteractionScope}
 import it.evadid.workbook.interaction.sync.SyncPhases.{attempt, inOrder, settled}
 import it.evadid.workbook.interaction.sync.{SyncInformationWithContext, SyncResetState, UpdateImportance}
 import it.evadid.workbook.interaction.variable.InteractionVariableHistory
@@ -39,14 +39,14 @@ final class InteractionControl(interactionInfoVar: Var[InteractionInfo], owner: 
   def historySignal[F <: InteractionFormat](interaction: WorkbookInteractionElement[F]): Signal[InteractionVariableHistory[F]] =
     Projection(_.historyOf(interaction))
 
-  def answerSignal[F <: InteractionFormat](interaction: WorkbookInteractionElement[F]): Signal[InteractionFormat.State[F]] =
-    Projection(_.historyOf(interaction).historyStates.lastStateOption.get.value)
+  def answerSignal[F <: InteractionFormat](interaction: WorkbookInteractionElement[F]): Signal[InteractionFormat.State[F]] = answerProjection(interaction)
+
+  private def answerProjection[F <: InteractionFormat](interaction: WorkbookInteractionElement[F]) = Projection(_.currentValueOf(interaction))
 
   /** The answer for an editor: each write is a user change whose importance `relevance` decides. */
   def boundVar[F <: InteractionFormat](interaction: WorkbookInteractionElement[F],
       relevance: InteractionVariableStateChanged[InteractionFormat.State[F]] => UpdateImportance): Var[InteractionFormat.State[F]] =
-    new LazyDerivedVar[InteractionInfo, InteractionFormat.State[F]](interactionInfoVar,
-      Projection(_.historyOf(interaction).historyStates.lastStateOption.get.value),
+    new LazyDerivedVar[InteractionInfo, InteractionFormat.State[F]](interactionInfoVar, answerProjection(interaction),
       (current, value) => orUnchanged(current, interaction, current.withUserChange(interaction, value, relevance)), ".answer")
 
   def boundVar[F <: InteractionFormat](interaction: WorkbookInteractionElement[F], importance: UpdateImportance): Var[InteractionFormat.State[F]] =
@@ -167,7 +167,7 @@ final class InteractionControl(interactionInfoVar: Var[InteractionInfo], owner: 
       case _ =>
         val completion = Promise[Unit]()
         updateUser(user)(_.copy(reset = SyncResetState.Running(completion.future)))
-        bind(state.usageContext, state.interactions, state.connection)
+        bind(InteractionScope(state.usageContext, state.interactions, state.connection))
         val draining = stateOf(user).pending.toSeq.map(_.recover { case scala.util.control.NonFatal(_) => () })
         val reset = attempt {
           state.connection.flush()

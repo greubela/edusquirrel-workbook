@@ -36,8 +36,8 @@ class InteractionControllerSpec extends FunSuite {
       AnswerChangedEvent[Text](value, at.plusSeconds(second), MINOR): InteractionEvent[Text]).toSet))
 
   private def controllerFor(interactions: WorkbookInteractionElement[? <: InteractionFormat]*): InteractionController = {
-    val controller = InteractionController(State(InteractionController.emptyState(context)))
-    controller.bind(context, interactions, SyncConnection.offline)
+    val controller = InteractionController(State(InteractionInfo.empty(context)))
+    controller.bind(InteractionScope(context, interactions, SyncConnection.offline))
     controller
   }
 
@@ -115,7 +115,7 @@ class InteractionControllerSpec extends FunSuite {
     answers.resetLocalHistory(essay)
     assertEquals(answers.currentValue(essay), "")
     answers.setStateFromUserInteraction(essay, "mine", MAJOR, at)
-    val retired = answers.bind(context.copy(userId = "next"), Seq(essay), SyncConnection.offline)
+    val retired = answers.bind(InteractionScope(context.copy(userId = "next"), Seq(essay), SyncConnection.offline))
     assertEquals(answers.currentValue(essay), "")
     assertNotEquals(answers.info.session, retired.session)
     assertEquals(retired.historyOf(essay).historyStates.lastStateOption.map(_.value), Some("mine"))
@@ -156,13 +156,13 @@ class InteractionControllerSpec extends FunSuite {
     val essay = TextInteraction("essay")
     val note = TextInteraction("note")
     val requested = State(Vector.empty[String])
-    val answers = new InteractionController(State(InteractionController.emptyState(context))) {
+    val answers = new InteractionController(State(InteractionInfo.empty(context))) {
       override protected def requestStore(key: String): Unit = requested.update(_ :+ key)
     }
-    answers.bind(context, Seq(essay, note), SyncConnection.offline)
+    answers.bind(InteractionScope(context, Seq(essay, note), SyncConnection.offline))
     answers.setStateFromUserInteraction(essay, "answer", MAJOR)
     answers.setStateFromUserInteraction(essay, "answer", MAJOR)
-    answers.bind(context.copy(userId = "next"), Seq(essay, note), SyncConnection.offline)
+    answers.bind(InteractionScope(context.copy(userId = "next"), Seq(essay, note), SyncConnection.offline))
     assertEquals(requested.now(), Vector(essay.keyForSerialization))
   }
 
@@ -207,7 +207,7 @@ class InteractionControllerSpec extends FunSuite {
     store.gate.set(Some(held))
     seed(store, essay, "first user's answer")
     val read = answers.fetch(essay, forceFlush = true)
-    answers.bind(context.copy(userId = "next"), Seq(essay), SyncConnection.offline)
+    answers.bind(InteractionScope(context.copy(userId = "next"), Seq(essay), SyncConnection.offline))
     held.success(())
     read.map(_ => assertEquals(answers.currentValue(essay), ""))
   }

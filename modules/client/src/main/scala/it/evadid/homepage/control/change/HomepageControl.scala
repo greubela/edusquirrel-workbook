@@ -7,35 +7,30 @@ import it.evadid.core.datastructures.user.{AllUserInfo, UserCredentials}
 import it.evadid.homepage.control.model.{AllDisplayInfo, HomepageInfo}
 import it.evadid.workbook.session.{AllWorkbookInfo, WorkbookConfig}
 
-/** Every change of the page state: user, workbook, display, language and language maps. Each method returns the
-  * state it sets, computed from the current one.
+/** Every change of the page state: user, workbook, display, language and language maps. Each change is a
+  * transition of the current state, so changes made in one Airstream transaction compose.
   */
 final class HomepageControl(homepageInfoVar: Var[HomepageInfo]) {
   def now(): HomepageInfo = homepageInfoVar.now()
   def signal: StrictSignal[HomepageInfo] = homepageInfoVar.signal
 
-  /** Updates the state with `transition`, which composes with other updates of the same Airstream transaction. */
-  private def change(transition: HomepageInfo => HomepageInfo): HomepageInfo = {
-    val expected = transition(now())
-    homepageInfoVar.update(transition)
-    expected
-  }
+  private def change(transition: HomepageInfo => HomepageInfo): Unit = homepageInfoVar.update(transition)
 
-  def setUser(user: Option[AllUserInfo]): HomepageInfo = change(_.copy(userInfo = user))
+  def setUser(user: Option[AllUserInfo]): Unit = change(_.copy(userInfo = user))
 
-  def setCredentials(credentials: UserCredentials): HomepageInfo =
+  def setCredentials(credentials: UserCredentials): Unit =
     change(info => info.copy(userInfo = info.userInfo.map(_.copy(credentials = credentials))))
 
-  def setWorkbook(workbook: Option[AllWorkbookInfo]): HomepageInfo = change(_.copy(workbookInfo = workbook))
+  def setWorkbook(workbook: Option[AllWorkbookInfo]): Unit = change(_.copy(workbookInfo = workbook))
 
-  def updateWorkbookConfig(transition: WorkbookConfig => WorkbookConfig): HomepageInfo =
+  def updateWorkbookConfig(transition: WorkbookConfig => WorkbookConfig): Unit =
     change(info => info.copy(workbookInfo = info.workbookInfo.map(workbook => workbook.copy(config = transition(workbook.config)))))
 
-  def updateDisplay(transition: AllDisplayInfo => AllDisplayInfo): HomepageInfo =
+  def updateDisplay(transition: AllDisplayInfo => AllDisplayInfo): Unit =
     change(info => info.copy(displayInfo = transition(info.displayInfo)))
 
-  def setLanguage(language: HumanLanguage): HomepageInfo = change(_.copy(currentLanguage = language))
+  def setLanguage(language: HumanLanguage): Unit = change(_.copy(currentLanguage = language))
 
-  def updateLanguageMaps(transition: LanguageMapStorage => LanguageMapStorage): HomepageInfo =
+  def updateLanguageMaps(transition: LanguageMapStorage => LanguageMapStorage): Unit =
     change(info => info.copy(languageMapStore = transition(info.languageMapStore)))
 }

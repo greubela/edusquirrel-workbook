@@ -1,5 +1,7 @@
 package it.evadid.workbook.interaction.variable
 
+import it.evadid.workbook.interaction.state.InteractionScope
+
 import it.evadid.workbook.support.StandaloneAnswers
 import it.evadid.workbook.interaction.sync.SyncConnection
 import it.evadid.workbook.interaction.sync.UsageContext
@@ -146,6 +148,21 @@ class InteractionScaffoldingAndGradingControlSpec extends FunSuite {
       assertEquals(failed.calls.now(), 1)
       assertEquals(missing.calls.now(), 1)
       assertEquals(incorrect.calls.now(), 0)
+    }
+  }
+
+  test("a forced request retries an error and grades a missing grader in one attempt") {
+    val failed = new CountingGrader(failFirst = true)
+    val manual = new CountingGrader(behavior = GraderRunningBehavior.RUN_ONLY_MANUALLY)
+    val value = variable(List(failed, manual))
+    value.executingWith(context).control.getOrCalculateGrading().flatMap { automatic =>
+      assert(automatic.graderResultMap(failed).gradingStatus.isError)
+      assertEquals(automatic.graderResultMap(manual).gradingStatus, GradingStatus.NotRequested)
+      value.executingWith(context).control.getOrCalculateGrading(forceGrading = true)
+    }.map { requested =>
+      assertEquals(requested.graderResultMap(failed).gradingStatus, GradingStatus.Correct)
+      assertEquals(requested.graderResultMap(manual).gradingStatus, GradingStatus.Correct)
+      assertEquals((failed.calls.now(), manual.calls.now()), (2, 1))
     }
   }
 
@@ -309,7 +326,7 @@ class InteractionScaffoldingAndGradingControlSpec extends FunSuite {
     }
   }
 
-  test("completed AsyncDataCache entries remain reusable after local history is reset") {
+  test("results computed in the session are reused and recorded again after the local history is reset") {
     val grader = new CountingGrader()
     val value = variable(List(grader))
     val scaffolder = CountingScaffolder(state => Future.successful(ScaffoldingResult[String, MessengerModel](state,
@@ -318,8 +335,9 @@ class InteractionScaffoldingAndGradingControlSpec extends FunSuite {
     value.executingWith(context).control.getOrCalculateGrading(forceGrading = true).zip(hinted.executingWith(context).control.getOrCalculateScaffolding()).flatMap { expected =>
       value.resetLocalHistory()
       hinted.resetLocalHistory()
-      assertEquals(value.control.getCurrentStateOfGrading("answer"), expected._1)
-      assertEquals(hinted.control.getCurrentStateOfScaffolding("answer").get, expected._2)
+      assert(value.control.getCurrentStateOfGrading("answer").testsWithResults.forall(_.gradingStatus == GradingStatus.NotRequested),
+        "the status is the recorded one")
+      assertEquals(hinted.control.getCurrentStateOfScaffolding("answer"), None)
       value.executingWith(context).control.getOrCalculateGrading(forceGrading = true).zip(hinted.executingWith(context).control.getOrCalculateScaffolding()).map { reused =>
         assertEquals(reused, expected)
         assertEquals(grader.calls.now(), 1)
@@ -352,7 +370,7 @@ class InteractionScaffoldingAndGradingControlSpec extends FunSuite {
 
   /** A new session of the same interactions, as after a user change. */
   private def rebind(value: StandaloneAnswers[?]): Unit =
-    value.controller.bind(nextUser, value.controller.info.interactions, SyncConnection.offline)
+    value.controller.bind(InteractionScope(nextUser, value.controller.info.interactions, SyncConnection.offline))
 
   test("grading started before the session is replaced cannot publish into the next user's history") {
     val gate = Promise[Unit]()
@@ -371,7 +389,7 @@ class InteractionScaffoldingAndGradingControlSpec extends FunSuite {
       ScaffoldingStatus.ScaffoldingFeedback(LanguageMap.universalMap("private hint")), FeedbackEntity.TestEntity, None)))
     val value = hintVariable(scaffolder)
     val pending = value.executingWith(context).control.getOrCalculateScaffolding()
-    val retired = value.controller.bind(nextUser, value.controller.info.interactions, SyncConnection.offline)
+    val retired = value.controller.bind(InteractionScope(nextUser, value.controller.info.interactions, SyncConnection.offline))
     value.setStateFromUserInteraction("answer", UpdateImportance.MAJOR)
     gate.success(())
     pending.flatMap { _ =>

@@ -1,5 +1,9 @@
 package it.evadid.homepage.control.model
 
+import it.evadid.workbook.interaction.state.InteractionInfo
+
+import it.evadid.workbook.interaction.state.InteractionScope
+
 
 import it.evadid.llm.LlmConfiguration
 import com.raquo.laminar.api.L.*
@@ -23,7 +27,7 @@ import scala.concurrent.{ExecutionContext, Future}
 /** Page state and the controls derived from it. Each member only uses those declared above it, so the controls are
   * built in one order without lazy cycles. Long-lived observers belong to `owner`; `release()` ends them.
   */
-case class FullInfo(private[control] val defaultInfo: HomepageInfo) {
+final class FullInfo(private[control] val defaultInfo: HomepageInfo) {
 
   private[homepage] val owner: ManualOwner = new ManualOwner
 
@@ -64,19 +68,22 @@ case class FullInfo(private[control] val defaultInfo: HomepageInfo) {
 
   /** Every change of the answers goes through this control; it starts with the default answers of `defaultInfo`. */
   val interactions: InteractionControl = {
-    val control = InteractionControl(Var(InteractionController.emptyState(defaultInfo.toContext)), owner)
-    control.bind(defaultInfo.toContext, HomepageState.interactionsOf(defaultInfo), connectionFor(defaultInfo))
+    val control = InteractionControl(Var(InteractionInfo.empty(defaultInfo.toContext)), owner)
+    control.bind(scopeFor(defaultInfo))
     control
   }
 
   /** Changes of user, credentials and workbook, which concern both the page and its answers. */
-  val state: HomepageState = HomepageState(homepage, interactions, connectionFor)
+  val state: HomepageState = HomepageState(homepage, interactions, scopeFor)
 
   val reporters: InteractionReporterRegistry = InteractionReporterRegistry(signals.workbook, interactions, owner)
 
-  /** The destinations of `info`'s user with their credentials, and feedback execution for that user. */
-  def connectionFor(info: HomepageInfo): SyncConnection =
-    SyncConnection(info.syncDestinations(this).toSet, executionContextFor(info), loggerSystemInfo.syncControlLogger)
+  /** What `info` binds: its sync context, the interactions of its workbook, and its user's destinations with their
+    * credentials and feedback execution.
+    */
+  def scopeFor(info: HomepageInfo): InteractionScope = InteractionScope(info.toContext,
+    info.workbookInfo.toSeq.flatMap(_.loadedWorkbook.allContainedInteractionsById.values),
+    SyncConnection(info.syncDestinations(this).toSet, executionContextFor(info), loggerSystemInfo.syncControlLogger))
 
   /** Feedback execution for the current user. */
   def workbookContextInformation: ExecutionContextInformation = executionContextFor(homepageInfoNow())

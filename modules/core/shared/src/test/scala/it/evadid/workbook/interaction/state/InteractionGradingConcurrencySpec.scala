@@ -48,8 +48,8 @@ class InteractionGradingConcurrencySpec extends FunSuite {
     override val gradingElements = List(grader)
   }
   private def offline(interaction: WorkbookInteractionElement[?]): InteractionController = {
-    val controller = InteractionController(State(InteractionController.emptyState(context)))
-    controller.bind(context, Seq(interaction), SyncConnection.offline)
+    val controller = InteractionController(State(InteractionInfo.empty(context)))
+    controller.bind(InteractionScope(context, Seq(interaction), SyncConnection.offline))
     controller
   }
   private def status[F <: it.evadid.workbook.abstractions.InteractionFormat](answers: InteractionController,
@@ -83,6 +83,38 @@ class InteractionGradingConcurrencySpec extends FunSuite {
       assertEquals(status(answers, exercise, "right"), GradingStatus.Correct)
       assertEquals(status(answers, exercise, "wrong"), GradingStatus.Incorrect, "the late result belongs to the earlier answer")
       assertEquals(answers.currentValue(exercise), "right")
+    }
+  }
+
+  test("automatic grading follows answer changes the graders run for, not feedback events") {
+    val grader = GatedGrader(GraderRunningBehavior.RUN_ON_AT_LEAST_MINOR)
+    val exercise = textExercise(grader)
+    val answers = offline(exercise)
+    answers.setStateFromUserInteraction(exercise, "typing", UpdateImportance.TEMPORARY)
+    assertEquals(grader.graded.now(), Vector.empty, "a temporary answer is not graded automatically")
+    answers.setStateFromUserInteraction(exercise, "wrong", UpdateImportance.MINOR)
+    grader.gate("wrong").success(())
+    answers.feedback(exercise).getOrCalculateGrading().map { _ =>
+      answers.updateHistory(exercise)(identity)
+      answers.setStateFromUserInteraction(exercise, "wrong", UpdateImportance.MAJOR)
+      assertEquals(grader.graded.now(), Vector("wrong"), "grading events and a new importance of the same answer start nothing")
+      assert(answers.currentHistory(exercise).allStates.forall(_.newState != "typing"), "the superseded temporary answer is gone")
+      assert(answers.currentHistory(exercise).gradingEvents.forall(_.associatedState == "wrong"))
+    }
+  }
+
+  test("a superseded temporary answer takes its pending feedback events with it") {
+    val grader = GatedGrader(GraderRunningBehavior.RUN_ONLY_MANUALLY)
+    val exercise = textExercise(grader)
+    val answers = offline(exercise)
+    answers.setStateFromUserInteraction(exercise, "draft", UpdateImportance.TEMPORARY)
+    val pending = answers.feedback(exercise).getOrCalculateGrading(forceGrading = true)
+    assert(answers.currentHistory(exercise).gradingEvents.exists(_.associatedState == "draft"))
+    answers.setStateFromUserInteraction(exercise, "right", MAJOR, LocalDateTime.now().plusSeconds(1))
+    grader.gate("draft").success(())
+    pending.map { _ =>
+      assert(answers.currentHistory(exercise).events.values.forall(_.associatedState != "draft"),
+        "neither the start nor the late completion of the superseded draft is kept")
     }
   }
 
@@ -161,7 +193,7 @@ class InteractionGradingConcurrencySpec extends FunSuite {
     val answers = offline(exercise)
     answers.setStateFromUserInteraction(exercise, "right", MAJOR)
     val pending = answers.feedback(exercise).getOrCalculateGrading(forceGrading = true)
-    answers.bind(context.copy(userId = "next"), Seq(exercise), SyncConnection.offline)
+    answers.bind(InteractionScope(context.copy(userId = "next"), Seq(exercise), SyncConnection.offline))
     answers.setStateFromUserInteraction(exercise, "right", MAJOR)
     grader.gate("right").success(())
     pending.map { _ =>

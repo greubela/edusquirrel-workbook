@@ -1,5 +1,9 @@
 package it.evadid.workbook.support
 
+import it.evadid.workbook.interaction.state.InteractionInfo
+
+import it.evadid.workbook.interaction.state.InteractionScope
+
 import it.evadid.core.datastructures.state.State
 import it.evadid.util.logging.BasicLogger
 import it.evadid.util.logging.derived.SyncLogger
@@ -56,8 +60,8 @@ final class GatedHistoryStore(val context: UsageContext) extends SyncDestination
 
   /** A controller with `interactions` bound to this store. */
   def controllerFor(interactions: WorkbookInteractionElement[? <: InteractionFormat]*): InteractionController = {
-    val controller = InteractionController(State(InteractionController.emptyState(context)))
-    controller.bind(context, interactions, connection())
+    val controller = InteractionController(State(InteractionInfo.empty(context)))
+    controller.bind(InteractionScope(context, interactions, connection()))
     controller
   }
 }

@@ -1,5 +1,9 @@
 package it.evadid.workbook.support
 
+import it.evadid.workbook.interaction.state.InteractionInfo
+
+import it.evadid.workbook.interaction.state.InteractionScope
+
 import it.evadid.core.datastructures.state.State
 import it.evadid.util.logging.Logger
 import it.evadid.workbook.abstractions.{InteractionFormat, WorkbookInteractionElement}
@@ -57,8 +61,8 @@ object StandaloneAnswers {
   /** The answers of `interaction`; the first lookup binds it, and the interactions it contains, to a new controller. */
   def of[F <: InteractionFormat](interaction: WorkbookInteractionElement[F]): StandaloneAnswers[F] = synchronized {
     val controller = controllers.now().getOrElse(Identity(interaction), {
-      val created = InteractionController(State(InteractionController.emptyState(context)))
-      created.bind(context, interaction.allInteractionsInThisInstance, SyncConnection.offline)
+      val created = InteractionController(State(InteractionInfo.empty(context)))
+      created.bind(InteractionScope(context, interaction.allInteractionsInThisInstance, SyncConnection.offline))
       controllers.update(_ ++ interaction.allInteractionsInThisInstance.map(Identity(_) -> created))
       created
     })

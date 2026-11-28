@@ -6,7 +6,7 @@ import it.evadid.workbook.abstractions.{InteractionFormat, WorkbookInteractionEl
 /** Binds exercises that are not part of the page's workbook, as a workbook containing them would. */
 object TestAnswers {
   def bind(fullInfo: FullInfo, interactions: WorkbookInteractionElement[? <: InteractionFormat]*): Unit = {
-    val page = fullInfo.homepageInfoNow()
-    fullInfo.interactions.bind(page.toContext, fullInfo.interactions.info.interactions ++ interactions, fullInfo.connectionFor(page))
+    val scope = fullInfo.scopeFor(fullInfo.homepageInfoNow())
+    fullInfo.interactions.bind(scope.copy(interactions = fullInfo.interactions.info.interactions ++ interactions))
   }
 }

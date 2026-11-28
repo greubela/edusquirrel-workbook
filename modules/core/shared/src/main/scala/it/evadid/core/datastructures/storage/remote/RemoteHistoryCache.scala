@@ -157,9 +157,26 @@ final class RemoteHistoryCache[K, F <: InteractionFormat, RW <: RemoteHistoryRea
     current.copy(histories = histories, destinations = current.destinations.updated(cache, remote))
   }
 
+  /** Merges `histories` into the local ones and writes what `cache` is missing of them. */
   def requestStore(cache: RW, histories: Map[K, History], forceFlush: Boolean = false): Future[Unit] = attempt {
-    require(cacheStrategies.contains(cache), "Cannot store to an unconfigured history destination")
     mergeLocal(histories)
+    send(cache, histories, forceFlush)
+  }
+
+  def requestStoreToAll(histories: Map[K, History], forceFlush: Boolean = false): Future[Unit] = attempt {
+    mergeLocal(histories)
+    Future.traverse(cacheStrategies.keys)(send(_, histories, forceFlush)).map(_ => ())
+  }
+
+  /** Writes what every destination is missing of the local histories. */
+  def storeAll(forceFlush: Boolean = false): Future[Unit] = attempt {
+    val local = state.now().histories
+    Future.traverse(cacheStrategies.keys)(send(_, local, forceFlush)).map(_ => ())
+  }
+
+  /** Writes the strategy's selection of `histories` minus what `cache` is known to hold. */
+  private def send(cache: RW, histories: Map[K, History], forceFlush: Boolean): Future[Unit] = attempt {
+    require(cacheStrategies.contains(cache), "Cannot store to an unconfigured history destination")
     if forceFlush then flush(true)
     // Inputs belong to this request, even when the backing store defers its notification/update.
     val current = state.now().withLocalHistories(histories)
@@ -171,16 +188,9 @@ final class RemoteHistoryCache[K, F <: InteractionFormat, RW <: RemoteHistoryRea
     if deltas.isEmpty then Future.unit else {
       val written = cache.writer.writeAll(syncLogger, deltas)
       cache.writer.flush(syncLogger, forceFlush)
-      written.map(success => { state.update(_.withStored(cache, deltas.map((key, delta) => key -> delta.events.ids), success.elementsStored)); () })
+      written.map(success => state.update(_.withStored(cache, deltas.map((key, delta) => key -> delta.events.ids), success.elementsStored)))
     }
   }.andThen { case Failure(error) => syncLogger.logExceptionWarn(s"Could not store event histories for ${histories.size} keys", error) }
-
-  def requestStoreToAll(histories: Map[K, History], forceFlush: Boolean = false): Future[Unit] = {
-    mergeLocal(histories)
-    Future.traverse(cacheStrategies.keys)(cache => requestStore(cache, histories, forceFlush)).map(_ => ())
-  }
-
-  def storeAll(forceFlush: Boolean = false): Future[Unit] = requestStoreToAll(state.now().histories, forceFlush)
 
   def flush(forceFlush: Boolean = true): Unit = cacheStrategies.keys.foreach { cache =>
     cache.writer.flush(syncLogger, forceFlush)

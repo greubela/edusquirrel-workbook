@@ -1,5 +1,9 @@
 package it.evadid.workbook.elements.interactionElements.gpt
 
+import it.evadid.workbook.interaction.state.InteractionInfo
+
+import it.evadid.workbook.interaction.state.InteractionScope
+
 import it.evadid.workbook.interaction.sync.{SyncConnection, UsageContext}
 
 import it.evadid.workbook.interaction.state.InteractionController
@@ -34,8 +38,8 @@ class GptInteractionElementSpec extends FunSuite {
 
   /** Answers of the chat element and its input, as in a workbook that contains both. */
   private def answersOf(element: GptInteractionElement): InteractionController = {
-    val answers = InteractionController(State(InteractionController.emptyState(usage)))
-    answers.bind(usage, element.allInteractionsInThisInstance :+ element.underlyingTextInteraction, SyncConnection.offline)
+    val answers = InteractionController(State(InteractionInfo.empty(usage)))
+    answers.bind(InteractionScope(usage, element.allInteractionsInThisInstance :+ element.underlyingTextInteraction, SyncConnection.offline))
     answers
   }
 

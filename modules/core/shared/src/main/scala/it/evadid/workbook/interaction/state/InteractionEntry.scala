@@ -4,17 +4,16 @@ import it.evadid.core.datastructures.storage.remote.RemoteHistoryCache.{CacheSta
 import it.evadid.workbook.abstractions.{InteractionFormat, WorkbookInteractionElement}
 import it.evadid.workbook.interaction.sync.SyncConnection
 import it.evadid.workbook.interaction.sync.{FormattedSyncDestination, SyncContext, SyncInformationWithContext, UpdateImportance}
-import it.evadid.workbook.interaction.variable.{InteractionScaffoldingAndGradingControl, InteractionVariableHistory, InteractionVariableState}
+import it.evadid.workbook.interaction.variable.{InteractionVariableHistory, InteractionVariableState}
+import it.evadid.workbook.interaction.variable.events.InteractionEvent
 import it.evadid.workbook.meta.InteractionVariableSyncReport
 
 import java.time.LocalDateTime
 import scala.util.Try
 
-/** The history of one interaction in an [[InteractionInfo]], what each destination is known to hold of it, and the
-  * feedback computations of that session.
-  */
+/** The history of one interaction in an [[InteractionInfo]] and what each destination is known to hold of it. */
 final case class InteractionEntry[F <: InteractionFormat](interaction: WorkbookInteractionElement[F], syncContext: SyncContext,
-    cache: CacheState[SyncContext, F, FormattedSyncDestination[F]], feedback: InteractionScaffoldingAndGradingControl[F]) {
+    cache: CacheState[SyncContext, F, FormattedSyncDestination[F]]) {
 
   def history: InteractionVariableHistory[F] = cache.histories(syncContext)
 
@@ -23,10 +22,10 @@ final case class InteractionEntry[F <: InteractionFormat](interaction: WorkbookI
 
   def currentValue: InteractionFormat.State[F] = currentState.value
 
-  /** Applies `transition` unless it records an answer the exercise rejects; that failure is returned instead. */
+  /** Applies `transition` unless it adds an answer the exercise rejects; that failure is returned instead. */
   def withHistory(transition: InteractionVariableHistory[F] => InteractionVariableHistory[F]): Try[InteractionEntry[F]] = Try {
     val next = transition(history)
-    InteractionEntry.validate(interaction, next).get
+    InteractionEntry.validate(interaction, next.events.values -- history.events.values).get
     val withAnswer = if next.historyStates.lastStateOption.isEmpty then next.mergeWith(InteractionEntry.defaultHistory(interaction)) else next
     copy(cache = cache.copy(histories = cache.histories.updated(syncContext, withAnswer.cleanedHistory())))
   }
@@ -44,17 +43,17 @@ final case class InteractionEntry[F <: InteractionFormat](interaction: WorkbookI
 }
 
 object InteractionEntry {
-  def create[F <: InteractionFormat](interaction: WorkbookInteractionElement[F], syncContext: SyncContext, connection: SyncConnection,
-      feedback: InteractionScaffoldingAndGradingControl[F]): InteractionEntry[F] =
+  def create[F <: InteractionFormat](interaction: WorkbookInteractionElement[F], syncContext: SyncContext,
+      connection: SyncConnection): InteractionEntry[F] =
     InteractionEntry(interaction, syncContext,
-      CacheState(Map(syncContext -> defaultHistory(interaction)), Map.empty[FormattedSyncDestination[F], Map[SyncContext, RemoteHistoryValue]]),
-      feedback).connectedTo(connection)
+      CacheState(Map(syncContext -> defaultHistory(interaction)), Map.empty[FormattedSyncDestination[F], Map[SyncContext, RemoteHistoryValue]]))
+      .connectedTo(connection)
 
   def defaultHistory[F <: InteractionFormat](interaction: WorkbookInteractionElement[F]): InteractionVariableHistory[F] =
     InteractionVariableHistory.empty[F].addState(
       InteractionVariableState[InteractionFormat.State[F]](interaction.defaultValue, UpdateImportance.DEFAULT, LocalDateTime.now()))
 
-  /** Exercise-specific constraints of every recorded answer. */
-  def validate[F <: InteractionFormat](interaction: WorkbookInteractionElement[F], history: InteractionVariableHistory[F]): Try[Unit] =
-    Try(history.events.values.foreach(event => interaction.validateState(event.associatedState)))
+  /** Exercise-specific constraints of the answers of `events`. */
+  def validate[F <: InteractionFormat](interaction: WorkbookInteractionElement[F], events: Iterable[InteractionEvent[F]]): Try[Unit] =
+    Try(events.foreach(event => interaction.validateState(event.associatedState)))
 }
