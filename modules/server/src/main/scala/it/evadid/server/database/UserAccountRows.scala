@@ -7,7 +7,7 @@ import it.evadid.core.datastructures.user.UserTokenInfo.SignedToken
 import it.evadid.core.util.io.ParsingContext
 import it.evadid.sql.DatabaseConfigWithCredentials
 import it.evadid.util.logging.Logger
-import java.sql.{Connection, ResultSet, Timestamp}
+import java.sql.{Connection, ResultSet}
 import java.time.Instant
 import scala.util.Try
 import scala.util.control.NonFatal
@@ -114,7 +114,7 @@ final class UserAccountRows(connection: Connection, logger: Logger) {
 }
 
 object UserAccountRows {
-  /** Reads a JDBC timestamp text such as `2026-10-13 01:40:00.123456`; other formats are rejected. */
+  /** Reads a stored time such as `2026-10-13T01:40:00.123456789Z`; other forms are rejected. */
   private[server] def parseDatabaseTimestamp(databaseTimestampString: String): Instant =
-    SqlStatements.instant(Timestamp.valueOf(databaseTimestampString))
+    SqlStatements.instant(databaseTimestampString)
 }

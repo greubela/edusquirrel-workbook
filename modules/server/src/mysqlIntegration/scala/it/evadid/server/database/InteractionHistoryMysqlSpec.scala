@@ -560,7 +560,7 @@ class InteractionHistoryMysqlSpec extends FunSuite {
     assertEquals(scalar("SELECT COUNT(*) FROM answer_event"), 1L)
   }
 
-  for stored <- Seq("not-an-ISO-timestamp", "2026-11-09T12:13:14.123456790", "2026-11-09T12:13:14.1234567890") do
+  for stored <- Seq("not-an-ISO-timestamp", "2026-11-09T12:13:14.123456790Z", "2026-11-09T12:13:14.1234567890Z", "2026-11-09T12:13:14.123456789") do
     test(s"invalid timestamp_nano discards only its event and reports the reason: $stored") {
       val original = history()
       val healthy = history("healthy", time.plusSeconds(10))
@@ -595,9 +595,9 @@ class InteractionHistoryMysqlSpec extends FunSuite {
       Using.resource(connection.createStatement()) { statement =>
         Using.resource(statement.executeQuery("SELECT timestamp_nano FROM answer_event ORDER BY timestamp_nano")) { rows =>
           assert(rows.next())
-          assertEquals(rows.getString(1), "2026-11-09T12:13:14.000000000")
+          assertEquals(rows.getString(1), "2026-11-09T12:13:14.000000000Z")
           assert(rows.next())
-          assertEquals(rows.getString(1), "2026-11-09T12:13:14.000000001")
+          assertEquals(rows.getString(1), "2026-11-09T12:13:14.000000001Z")
           assert(!rows.next())
         }
       }

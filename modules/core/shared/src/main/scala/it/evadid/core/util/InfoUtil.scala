@@ -15,6 +15,7 @@ object InfoUtil {
   private val otherDayFormat = DateTimeFormatter.ofPattern("HH:mm (dd.MM)")
   private val timeFormat = DateTimeFormatter.ofPattern("HH:mm")
   private val logFormat = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")
+  private val mailFormat = DateTimeFormatter.ofPattern("dd.MM.yy HH:mm")
 
   def datetimeFormattedForLog(dateTime: Option[Instant]): String = dateTime.map(datetimeFormattedForLog).getOrElse("[no time]")
 
@@ -50,6 +51,7 @@ object InfoUtil {
   /** Logs keep UTC. */
   def datetimeFormattedForLog(dateTime: Instant = Instant.now()): String = localDateTime(dateTime, java.time.ZoneOffset.UTC).format(logFormat)
 
-  def datetimeFormattedForDb(dateTime: Instant = Instant.now()): String = datetimeFormattedForLog(dateTime)
+  /** The date line of a simulated mail, in the viewer's local time, like the scenario's own mails. */
+  def datetimeFormattedForMail(dateTime: Instant = Instant.now()): String = localDateTime(dateTime).format(mailFormat)
 
 }

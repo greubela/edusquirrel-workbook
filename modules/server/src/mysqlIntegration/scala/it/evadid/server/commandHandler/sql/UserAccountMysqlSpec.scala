@@ -299,7 +299,7 @@ class UserAccountMysqlSpec extends FunSuite {
         Using.resource(statement.executeQuery(
           "SELECT `timestamp`, `ipAddress`, `userid`, `sessionDataSerialized` FROM `submissionLog`")) { result =>
           Iterator.continually(result.next()).takeWhile(identity).map(_ =>
-            (it.evadid.server.database.SqlStatements.instant(result.getTimestamp(1)), result.getString(2), result.getString(3), result.getString(4))).toList
+            (it.evadid.server.database.SqlStatements.instant(result.getString(1)), result.getString(2), result.getString(3), result.getString(4))).toList
         }
       }
     }

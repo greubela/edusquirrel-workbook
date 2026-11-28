@@ -97,8 +97,9 @@ an ID are unsupported. History storage grows as new events are recorded; transmi
 
 ### Timestamp representation
 
-`timestamp_nano` stores the event's instant as ISO 8601 UTC date/time text (no zone suffix) with exactly nine fractional
-digits, e.g. `2026-11-18T12:00:00.123456789`. MySQL `DATETIME` supports only six.
+`timestamp_nano` stores the event's instant as `DefaultSerializer.instantText`, ISO 8601 UTC text with exactly nine
+fractional digits, e.g. `2026-11-18T12:00:00.123456789Z`; MySQL `DATETIME` supports only six. The log and token
+time columns use the same text.
 The binary text index serves range queries, so a duplicate `timestamp_millies`
 column is unnecessary. No epoch-day or nanosecond-of-day encoding is stored.
 Four-digit years sort chronologically; signed/expanded ISO years use safe SQL

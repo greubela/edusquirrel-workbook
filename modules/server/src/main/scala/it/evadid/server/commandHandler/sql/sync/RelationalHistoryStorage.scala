@@ -1,6 +1,7 @@
 package it.evadid.server.commandHandler.sql.sync
 
 import it.evadid.distribution.commandTypes.SQLCommands.*
+import it.evadid.core.util.io.serializer.DefaultSerializer
 import it.evadid.util.logging.Logger
 import it.evadid.workbook.abstractions.InteractionFormat
 import it.evadid.workbook.sync.{EventSyncStrategy, SyncContext, SyncSuccess, UsageContext}
@@ -9,18 +10,11 @@ import it.evadid.workbook.history.InteractionHistory
 import it.evadid.workbook.history.events.*
 import java.sql.Connection
 import java.time.Instant
-import java.time.ZoneOffset
-import java.time.format.{DateTimeFormatter, DateTimeFormatterBuilder}
-import java.time.temporal.ChronoField
-import java.util.Locale
 
 /** Each event is independent: feedback ranges do not require the answer to fall in the same range. */
 class RelationalHistoryStorage(connection: Connection, logger: Logger) extends HistorySql(connection, logger) {
-  // ISO 8601 with a fixed nine-digit fraction keeps ordinary dates lexicographically sortable.
-  private val timestampFormat = new DateTimeFormatterBuilder()
-    .append(DateTimeFormatter.ISO_LOCAL_DATE).appendLiteral('T').appendPattern("HH:mm:ss")
-    .appendFraction(ChronoField.NANO_OF_SECOND, 9, 9, true).toFormatter(Locale.ROOT)
-  private def timestampText(value: Instant): String = timestampFormat.format(value.atOffset(ZoneOffset.UTC))
+  // The canonical nine-digit text keeps ordinary dates lexicographically sortable.
+  private def timestampText(value: Instant): String = DefaultSerializer.instantText(value)
   private val yearZero = Instant.parse("0000-01-01T00:00:00Z")
   private val yearTenThousand = Instant.parse("+10000-01-01T00:00:00Z")
   /** Range bounds outside years 0 to 9999, such as `Instant.MIN` and `MAX`, leave that side of the range open. */
@@ -91,7 +85,7 @@ class RelationalHistoryStorage(connection: Connection, logger: Logger) extends H
           val event = InteractionFormat.codecsFor(format).eventSerializer.deserialize(row.getString("serialized_data"))
           require(eventId == event.eventId.value, "Stored event_id must match the serialized client eventId")
           require(row.getString("timestamp_nano") == timestampText(event.timestamp),
-            "timestamp_nano must match the serialized event as canonical ISO 8601 with nanosecond precision")
+            "timestamp_nano must match the serialized event as canonical nine-digit ISO 8601 UTC text")
           require(table == tableFor(event), "Event stored in the wrong table")
           event
         }.fold(error => { logger.logExceptionWarn(s"Discarded the unreadable $table row $eventId", error); None }, Some(_))

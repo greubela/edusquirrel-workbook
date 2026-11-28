@@ -38,9 +38,9 @@ class SqlStatementsSpec extends FunSuite {
     val (db, calls) = connection(_ => Int.box(2))
     val instant = java.time.Instant.parse("2026-10-13T01:40:00Z")
     assertEquals(SqlStatements(db, BasicLogger()).update("UPDATE t SET a=?, b=?, c=?", "text", 7L, instant), 2)
-    // Instants are bound as UTC wall times, whatever the server's zone.
-    assertEquals(calls.now(), Vector("setString 1 text", "setLong 2 7", "setTimestamp 3 2026-10-13 01:40:00.0", "executeUpdate", "close"))
-    assertEquals(SqlStatements.instant(SqlStatements.timestamp(instant)), instant)
+    // Instants are bound as nine-digit UTC text, whatever the server's zone.
+    assertEquals(calls.now(), Vector("setString 1 text", "setLong 2 7", "setString 3 2026-10-13T01:40:00.000000000Z", "executeUpdate", "close"))
+    assertEquals(SqlStatements.instant("2026-10-13T01:40:00.000000000Z"), instant)
   }
 
   test("queries read every row from the first and close the result set and statement") {

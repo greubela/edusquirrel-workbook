@@ -1,0 +1,32 @@
+{
+  "syncDestinations": [
+    {
+      "syncDestination": {
+        "$type": "LocalIndexedDbSyncDefinition",
+        "dbName": "EvaDidInteractionDB",
+        "storeName": "variableHistoryStore",
+        "dbVersion": 1
+      },
+      "syncStrategy": "SYNC_LAST"
+    },
+    {
+      "syncDestination": {
+        "$type": "SyncDestinationBasedOnHistoryDatabase",
+        "databaseConfig": "BackendDatabase",
+        "format": "RelationalFormat",
+        "buffered": true
+      },
+      "syncStrategy": "SYNC_MAJOR"
+    },
+    {
+      "syncDestination": {
+        "$type": "SyncDestinationBasedOnHistoryDatabase",
+        "databaseConfig": "BackendDatabase",
+        "format": "BlobFormat",
+        "buffered": true
+      },
+      "syncStrategy": "SYNC_MAJOR"
+    }
+  ],
+  "isOnlineAccount": true
+}

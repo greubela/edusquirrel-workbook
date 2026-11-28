@@ -31,7 +31,6 @@ class SqlEditorResultSpec extends munit.FunSuite {
     val writes = State(Vector.empty[Map[Int, String]])
     val statement = fake(classOf[PreparedStatement]) { (method, args) => method match {
       case "setString" => parameters.update(_ + (args(0).asInstanceOf[Integer].intValue -> args(1).asInstanceOf[String])); null
-      case "setTimestamp" => null
       case "executeUpdate" => writes.update(_ :+ parameters.now()); Int.box(rows)
       case "clearParameters" => parameters.set(Map.empty); null
       case "close" => null

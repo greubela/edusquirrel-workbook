@@ -25,14 +25,23 @@ import upickle.default.*
 
 import java.net.InetAddress
 import java.time.Instant
+import java.time.format.DateTimeFormatterBuilder
+import java.util.Locale
 import scala.util.*
 
 object DefaultSerializer {
 
 
-  /** The one codec of points in time: ISO 8601 in UTC. */
+  private val instantFormat = new DateTimeFormatterBuilder().appendInstant(9).toFormatter(Locale.ROOT)
+
+  /** The one text form of a point in time: ISO 8601 in UTC with exactly nine fractional digits,
+    * e.g. `2026-11-28T12:00:00.000000000Z`. Four-digit years sort chronologically as text.
+    */
+  def instantText(instant: Instant): String = instantFormat.format(instant)
+
+  /** The one codec of points in time, written as [[instantText]]. */
   given instantReadWriter: ReadWriter[Instant] =
-    upickle.default.readwriter[String].bimap[Instant](_.toString, Instant.parse)
+    upickle.default.readwriter[String].bimap[Instant](instantText, Instant.parse)
 
   private[serializer] given [T: ReadWriter]: ReadWriter[Try[T]] =
     upickle.default.readwriter[ujson.Value].bimap[Try[T]](

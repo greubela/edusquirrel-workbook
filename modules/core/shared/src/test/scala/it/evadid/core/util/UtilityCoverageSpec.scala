@@ -55,7 +55,6 @@ class UtilityCoverageSpec extends FunSuite {
     assertEquals(InfoUtil.datetimeFormattedForLog(fixed), "2024-02-03 04:05:06")
     assertEquals(InfoUtil.datetimeFormattedForLog(Some(fixed)), "2024-02-03 04:05:06")
     assertEquals(InfoUtil.datetimeFormattedForLog(None), "[no time]")
-    assertEquals(InfoUtil.datetimeFormattedForDb(fixed), "2024-02-03 04:05:06")
     val localFixed = localInstant(java.time.LocalDateTime.of(2024, 2, 3, 4, 5, 6))
     assertEquals(InfoUtil.datetimeFormattedForFilenames(localFixed), "2024-02-03_04-05-06")
     assertEquals(InfoUtil.downloadName("Würfel/Aufgabe 1", localFixed), "2024-02-03_04-05-06_Wuerfel_Aufgabe_1")

@@ -40,7 +40,9 @@ Unknown names are rejected, without dynamic class loading or element-ID lookup;
 pins them. [PersistedHistorySnapshotSpec](../modules/client/src/test/scala/it/evadid/homepage/workbook/content/PersistedHistorySnapshotSpec.scala)
 compares a saved history of every published format, including nested type tags, field names and
 fingerprints, with reference files in `modules/client/src/test/resources/persisted-histories/`;
-rewrite them only for an intended schema change.
+[PersistedRecordSnapshotSpec](../modules/client/src/test/scala/it/evadid/homepage/workbook/content/PersistedRecordSnapshotSpec.scala)
+does the same for a user configuration and a session file (`persisted-records/`).
+Rewrite them only for an intended schema change.
 
 ```scala
 import it.evadid.workbook.abstractions.InteractionFormat.TextInteractionFormat
@@ -78,9 +80,10 @@ with a new ID. Merging unions events, so retries are idempotent and distinct sam
 events survive, while a different event under a known ID is rejected
 (`InteractionEvents` requires unique IDs). IDs are preserved during decoding; missing
 or malformed IDs are rejected rather than generated on read.
-All saved and exchanged points in time are `Instant`s with one codec (ISO 8601 in UTC, in
-`DefaultSerializer`), so event order survives device zones and DST. Display converts with
-`InfoUtil.localDateTime`; JDBC binds them as UTC wall times.
+All saved and exchanged points in time are `Instant`s written in one text form,
+`DefaultSerializer.instantText`: ISO 8601 UTC with exactly nine fractional digits
+(`2026-11-28T12:00:00.123456789Z`). The JSON codec and every database time column use it,
+so event order survives device zones and DST. Display converts with `InfoUtil.localDateTime`.
 Saved error statuses (`TestError`, `ScaffoldingError`) keep only the messages of an error
 and its causes; stack traces stay in logs. State/feedback history views are derived projections,
 not separate persisted stores. A newer grading start represents a retry in progress;
