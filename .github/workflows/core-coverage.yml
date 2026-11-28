@@ -1,0 +1,45 @@
+name: Core coverage
+
+on:
+  workflow_call:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  coverage:
+    name: Core JVM branch coverage
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      TZ: Europe/Berlin
+      COURSIER_REPOSITORIES: https://maven-central.storage-download.googleapis.com/maven2|https://repo.maven.apache.org/maven2
+      SBT_OPTS: >-
+        -Dsbt.override.build.repos=true
+        -Dsbt.repository.config=${{ github.workspace }}/project/repositories
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: '21'
+          cache: sbt
+          cache-read-only: true
+          cache-dependency-path: |
+            build.sbt
+            project/*.scala
+            project/*.sbt
+            project/build.properties
+            project/repositories
+      - uses: sbt/setup-sbt@v1
+      # Instrumented classes must not enter the ordinary incremental build caches.
+      - name: Test and enforce core branch coverage
+        run: sbt -batch -J-Xmx4G -Dsbt.supershell=false 'project coreJVM' coverage test coverageReport
+      - name: Upload coverage reports
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: core-coverage
+          path: target/coreJVM/**/scoverage-report/
+          if-no-files-found: warn

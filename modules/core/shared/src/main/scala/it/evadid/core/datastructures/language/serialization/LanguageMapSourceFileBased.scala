@@ -1,7 +1,5 @@
 package it.evadid.core.datastructures.language.serialization
 
-import fs2.data.csv.lowlevel
-import fs2.{Fallible, Stream}
 import it.evadid.core.datastructures.file.{FileDescription, LoadedFile}
 import it.evadid.core.datastructures.language.AppLanguage.*
 import it.evadid.core.datastructures.language.serialization.LanguageMapInputSource.LanguageMapFileBasedSourceInfo
@@ -85,10 +83,9 @@ object LanguageMapSourceFileBased {
   def forEvaFile[T <: AppLanguage](info: LanguageMapFileBasedSourceInfo[T]): Option[LanguageMapSourceFileBased[T]] = {
     val extension = info.fileDescription.structure.extensionOrEmpty.toLowerCase
     extension match {
-      case "csv" => Some(apply(info, parseCsv))
       case "json" => Some(apply(info, parseJson))
       case _ =>
-        println(s"Unsupported language-map extension '$extension'; expected JSON or CSV")
+        println(s"Unsupported language-map extension '$extension'; expected JSON")
         None
     }
   }
@@ -105,26 +102,6 @@ object LanguageMapSourceFileBased {
   } catch case (e: Exception) => {
     logger.logExceptionWarn("error while parsing snap js file", e)
     Map[String, String]()
-  }
-
-  private def parseCsvFs2(content: String): List[List[String]] = {
-    val res: Either[Throwable, List[List[String]]] = Stream
-      .emit(content)
-      .covary[Fallible]
-      .through(lowlevel.rows[Fallible, String](separator = ';'))
-      .map(_.values.toList)
-      .compile
-      .toList
-
-    res.getOrElse(List.empty[List[String]])
-  }
-
-  private def parseCsv(logger: Logger, loadedFile: LoadedFile): Map[String, String] = {
-    val lists = parseCsvFs2(loadedFile.fileDataAsUtf8String)
-    val (valid, invalid) = lists.partition(_.size >= 2)
-    if invalid.nonEmpty then
-      logger.logWarn(s"LanguageMapSourceFileBased ignored ${invalid.size} entries from file ${loadedFile.description.filenameWithExtension} as they could not be parsed!")
-    valid.map(row => row(0) -> row(1)).toMap
   }
 
   private def parseJson(logger: Logger, content: String): Map[String, String] = {

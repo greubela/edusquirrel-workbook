@@ -1,6 +1,5 @@
 package it.evadid.workbook.abstractions.scaffolding
 
-import cats.mtl.syntax.state
 import it.evadid.workbook.abstractions.{FeedbackEntity, InteractionFormat}
 import it.evadid.workbook.meta.ExecutionContextInformation
 

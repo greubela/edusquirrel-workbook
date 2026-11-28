@@ -29,6 +29,9 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  core-coverage:
+    uses: ./.github/workflows/core-coverage.yml
+
   mysql-integration:
     runs-on: ubuntu-latest
     timeout-minutes: 15
@@ -76,7 +79,6 @@ jobs:
           path: |
             target/coreJVM
             target/server
-            target/desktop
             target/root
             target/streams
             project/target
@@ -141,7 +143,6 @@ jobs:
           path: |
             target/coreJVM
             target/server
-            target/desktop
             target/root
             target/streams
             project/target
@@ -151,9 +152,11 @@ jobs:
             ${{ runner.os }}-scala-jvm-build-${{ hashFiles('build.sbt', 'project/*.scala', 'project/*.sbt', 'project/build.properties', 'project/repositories') }}-
             ${{ runner.os }}-scala-jvm-build-
       - name: Test the JVM modules
-        run: sbt -batch -J-Xmx4G -Dsbt.supershell=false 'all coreJVM/test server/test desktop/compile'
+        run: sbt -batch -J-Xmx4G -Dsbt.supershell=false 'all coreJVM/test server/test'
 
   scala-js:
+    env:
+      TZ: Europe/Berlin
     runs-on: ubuntu-latest
     # Allow a clean dependency/build cache.
     timeout-minutes: 30
@@ -195,7 +198,7 @@ jobs:
         run: npm ci
       # The JVM-only updates complete the dependency cache this job saves.
       - name: Test the Scala.js modules
-        run: sbt -batch -J-Xmx4G -Dsbt.supershell=false 'all coreJS/test client/test worker/test' coreJVM/update server/update desktop/update
+        run: sbt -batch -J-Xmx4G -Dsbt.supershell=false 'all coreJS/test client/test worker/test' coreJVM/update server/update
 
   # Builds the bundles for the browser checks alongside scala-js, so those checks
   # need not wait for every Scala test. scala-js alone saves the Scala.js build cache.
@@ -356,7 +359,7 @@ jobs:
   # Preserve the required "tests" status as the gate for the whole test suite.
   tests:
     if: ${{ always() }}
-    needs: [static-tests, scala-jvm, scala-js, browser-bundles, browser-tests, mysql-integration]
+    needs: [static-tests, scala-jvm, scala-js, browser-bundles, browser-tests, mysql-integration, core-coverage]
     runs-on: ubuntu-latest
     steps:
       - name: Require every test job to pass
@@ -367,6 +370,7 @@ jobs:
           BUNDLES_RESULT: ${{ needs.browser-bundles.result }}
           BROWSER_RESULT: ${{ needs.browser-tests.result }}
           MYSQL_RESULT: ${{ needs.mysql-integration.result }}
+          COVERAGE_RESULT: ${{ needs.core-coverage.result }}
         run: |
           test "$STATIC_RESULT" = success
           test "$SCALA_JVM_RESULT" = success
@@ -374,3 +378,4 @@ jobs:
           test "$BUNDLES_RESULT" = success
           test "$BROWSER_RESULT" = success
           test "$MYSQL_RESULT" = success
+          test "$COVERAGE_RESULT" = success

@@ -6,7 +6,7 @@ import BuildCommands.*
 
 lazy val root = (project in file("."))
   .settings(Settings.globalSettings)
-  .aggregate(server, client, worker, desktop)
+  .aggregate(server, client, worker)
   .settings(
     name := "edusquirrel-workbook",
     publish / skip := true
@@ -21,18 +21,12 @@ lazy val core = crossProject(JSPlatform, JVMPlatform)
     name := "core",
     libraryDependencies ++= coreDependencies.value
   )
+  .jvmSettings(
+    coverageMinimumBranchTotal := 60.01,
+    coverageFailOnMinimum := true
+  )
   .jsSettings(
     libraryDependencies ++= jsDependencies.value
-  )
-
-// Desktop adapters depend on core, while the server depends only on core.
-lazy val desktop = (project in file("./modules/desktop"))
-  .settings(Settings.globalSettings)
-  .dependsOn(core.jvm)
-  .settings(
-    name := "desktop",
-    publish / skip := true,
-    libraryDependencies ++= desktopDependencies
   )
 
 lazy val MysqlIntegration = config("mysqlIntegration") extend Test
