@@ -1,6 +1,6 @@
 # Deployment
 
-[deploy.sh](../deploy.sh) first fetches and fast-forwards the current branch (`--no-pull` skips
+[deploy.sh](../deployment/deploy.sh) first fetches and fast-forwards the current branch (`--no-pull` skips
 this; a failed pull stops the run), then builds what the selected steps need and runs the three
 deployment scripts in order: database check, backend, website. The pull runs from a temporary copy
 of the script, because Git for Windows cannot replace a script that a running shell holds open. Each script also runs on its own. The
@@ -8,18 +8,18 @@ backend needs `buildServerDeploy`, the website `buildClientDeploy buildWorkerDep
 is not built for the deployment; its `dist/` is uploaded with `resources/` only if it was built separately.
 
 ```sh
-./deploy.sh                       # pull + build + database check + server + client
-./deploy.sh --skip-build          # deploy already built artifacts
-./deploy.sh --only=client -- --dry-run
-./deploy.sh --database=setup      # create the schema (asks before re-creating tables)
+deployment/deploy.sh                       # pull + build + database check + server + client
+deployment/deploy.sh --skip-build          # deploy already built artifacts
+deployment/deploy.sh --only=client -- --dry-run
+deployment/deploy.sh --database=setup      # create the schema (asks before re-creating tables)
 ```
 
 Every run is also logged to ignored `tmp/work/deployment/logs/`. On Windows, run it in Git Bash,
-or from PowerShell through Git's bash (a plain `.\deploy.sh` opens a separate window, so `>`
+or from PowerShell through Git's bash (a plain `.\deployment\deploy.sh` opens a separate window, so `>`
 captures nothing); a window opened just for the script stays open until Enter is pressed:
 
 ```powershell
-& "$env:ProgramFiles\Git\bin\bash.exe" ./deploy.sh
+& "$env:ProgramFiles\Git\bin\bash.exe" deployment/deploy.sh
 ```
 
 Requirements on the deploying machine: Bash, OpenSSH 8.4+ (`ssh`, `ssh-agent`), curl (server
