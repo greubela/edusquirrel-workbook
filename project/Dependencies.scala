@@ -18,6 +18,8 @@ object Dependencies {
     "org.scala-js" %%% "scalajs-dom" % "2.8.1",
     "com.raquo" %%% "laminar" % "17.2.1",
     "io.github.cquiroz" %%% "scala-java-time" % "2.8.0",
+    // LocalDateTime.now resolves the browser/system zone, including Europe/Berlin.
+    "io.github.cquiroz" %%% "scala-java-time-tzdb" % "2.8.0",
     ("org.scala-js" %%% "scalajs-java-securerandom" % "1.0.0").cross(CrossVersion.for3Use2_13)
   ))
 }
