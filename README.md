@@ -140,8 +140,8 @@ The [test workflow](.github/workflows/tests.yml) runs every check on pull reques
 publication from main.
 
 Standard sbt launchers read [.sbtopts](.sbtopts), so local builds and CI resolve
-sbt, plugins and Scala dependencies through Google's Maven Central mirror,
-falling back to Maven Central, as listed in [project/repositories](project/repositories);
+sbt, plugins and Scala dependencies through Maven Central first, with Google's
+mirror as a fallback, as listed in [project/repositories](project/repositories);
 Maven Central rate-limits bursts from shared runners. Dependency and compiler cache keys
 include that configuration. Only `scala-js`, which also resolves the JVM-only modules,
 saves the dependency cache, so a JVM-only job cannot publish an incomplete one.
