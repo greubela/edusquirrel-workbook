@@ -65,7 +65,7 @@ private[interactionInfo] object FeedbackPresentation {
   extension (status: ScaffoldingReport.Status) {
     def labelKey: String = status match {
       case ScaffoldingReport.Status.NotRequested => "gradingGroupNotRequested"
-      case ScaffoldingReport.Status.Pending => "gradingGroupPending"
+      case ScaffoldingReport.Status.Pending => "scaffoldingLoading"
       case ScaffoldingReport.Status.Error => "gradingGroupError"
       case ScaffoldingReport.Status.Ready => "scaffoldingReady"
     }

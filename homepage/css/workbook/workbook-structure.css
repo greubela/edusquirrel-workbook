@@ -260,7 +260,7 @@ dialog {
     overflow-wrap: anywhere;
 }
 
-/* FULLSCREEN EDITOR WITH PANEL: preserve the left/right split at every width. */
+/* Fullscreen editor with workbook side panel. */
 .editor-with-panel {
     display: grid;
     grid-template-columns: minmax(0, 3fr) minmax(0, 1fr);

@@ -65,13 +65,26 @@ object FeedbackPanels {
         createFeedbackIcon(FeedbackIcon.Check), span(cls := "feedback-button-label", child.text <-- view.label("gradingRequest")),
         disabled <-- view.grading.combineWith(view.disabled).map((grading, disabled) => disabled || grading.pending),
         onClick --> (_ => view.requestGrading()))),
-      Option.when(canHint)(button(typ := "button", cls := "feedback-action scaffolding-info",
-        title <-- view.label("scaffoldingRequest"),
-        createFeedbackIcon(FeedbackIcon.Hint), span(cls := "feedback-button-label", child.text <-- view.label("scaffoldingRequest")),
-        disabled <-- view.scaffolding.combineWith(view.disabled).map((result, disabled) =>
-          disabled || result.status == ScaffoldingReport.Status.Pending),
-        dataAttr("tooltip") <-- view.scaffoldingText,
-        onClick --> (_ => view.requestScaffolding()))),
+      Option.when(canHint) {
+        val status = view.scaffolding.map(_.status).distinct
+        val pending = status.map(_ == ScaffoldingReport.Status.Pending)
+        val actionText = LabelSelection(status, Seq("scaffoldingLoading", "scaffoldingRetry", "scaffoldingRequest"), view.label) {
+          case ScaffoldingReport.Status.Pending => Some("scaffoldingLoading")
+          case ScaffoldingReport.Status.Error => Some("scaffoldingRetry")
+          case _ => Some("scaffoldingRequest")
+        }
+        button(typ := "button", tone(status.map(_.tone), "feedback-action scaffolding-info"),
+          title <-- view.scaffoldingText, aria.busy <-- pending,
+          child <-- status.map {
+            case ScaffoldingReport.Status.Pending => createFeedbackIcon(FeedbackIcon.Pending)
+            case ScaffoldingReport.Status.Error => createFeedbackIcon(FeedbackIcon.Error)
+            case _ => createFeedbackIcon(FeedbackIcon.Hint)
+          },
+          span(cls := "feedback-button-label", aria.live := "polite", child.text <-- actionText),
+          disabled <-- pending.combineWith(view.disabled).map(_ || _),
+          dataAttr("tooltip") <-- view.scaffoldingText,
+          onClick --> (_ => view.requestScaffolding()))
+      },
       toggle)
   }
 
@@ -159,12 +172,14 @@ object FeedbackPanels {
     Option.when(view.interaction.scaffoldingElement.nonEmpty) {
       val ready = view.scaffolding.map(_.status == ScaffoldingReport.Status.Ready).distinct
       val requested = view.scaffolding.map(_.status != ScaffoldingReport.Status.NotRequested).distinct
-      detailsTag(cls := s"feedback-section interaction-hint-panel feedback-section--${placement.css}",
+      detailsTag(tone(view.scaffolding.map(_.status.tone), s"feedback-section interaction-hint-panel feedback-section--${placement.css}"),
         if placement == Placement.Overview then hidden <-- ready.map(!_) else emptyMod,
         openProp <-- (if placement == Placement.Overview then ready else requested),
         summaryTag(cls := "feedback-summary",
           span(cls := "feedback-summary__icon", createFeedbackIcon(FeedbackIcon.Hint)),
           h3(cls := "feedback-summary__title", child.text <-- view.label("SidepanelScaffoldingTitle")),
+          child.maybe <-- view.scaffolding.map(_.isAiHint).distinct.map(show =>
+            Option.when(show)(span(cls := "ai-badge", child.text <-- view.label("aiBadge")))),
           span(tone(view.scaffolding.map(_.status.tone), "feedback-chip feedback-chip--compact"),
             toneIcon(view.scaffolding.map(_.status.tone)),
             span(cls := "feedback-chip__text", child.text <-- hintStatusText(view)))),

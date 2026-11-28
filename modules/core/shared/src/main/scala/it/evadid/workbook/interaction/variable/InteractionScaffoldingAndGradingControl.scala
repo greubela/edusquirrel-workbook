@@ -131,19 +131,22 @@ final class InteractionScaffoldingAndGradingControl[F <: InteractionFormat](val 
 
   // SCAFFOLDING CALCULATION
 
-  def getOrCalculateScaffolding(contextInformation: ExecutionContextInformation): Future[ScaffoldingResult[InteractionStateType, ScaffoldingInfoType]] = interactionVariable.synchronized {
+  def getOrCalculateScaffolding(contextInformation: ExecutionContextInformation, retryErrors: Boolean = false): Future[ScaffoldingResult[InteractionStateType, ScaffoldingInfoType]] = interactionVariable.synchronized {
     interactionVariable.currentHistory.historyStates.lastStateOption match {
-      case Some(current) => getOrCalculateScaffolding(contextInformation, current.value)
+      case Some(current) => calculateScaffolding(contextInformation, current.value, retryErrors)
       case None => Future.failed(SerializedException("Cannot start scaffolding on an InteractionVariable with no current state"))
     }
   }
 
-  def getOrCalculateScaffolding(contextInformation: ExecutionContextInformation, forState: InteractionStateType): Future[ScaffoldingResult[InteractionStateType, ScaffoldingInfoType]] = interactionVariable.synchronized {
+  private def calculateScaffolding(contextInformation: ExecutionContextInformation, forState: InteractionStateType, retryErrors: Boolean): Future[ScaffoldingResult[InteractionStateType, ScaffoldingInfoType]] = interactionVariable.synchronized {
     val ec = contextInformation.futureExecutionContext
+    val cached = scaffoldingCache.getCurrentElementStatus(forState)
     if feedbackSessionEnded(contextInformation) then sessionEndedFailure
+    else if cached == STARTED() then scaffoldingCache.loadAsFuture(forState)(using ec)
+    else if retryErrors && getCurrentStateOfScaffolding(forState).exists(_.scaffoldingStatus.isError) then startScaffolding(contextInformation, forState)
     else if (interactionVariable.currentHistory.historyScaffolding.scaffoldingMap.contains(forState)) {
       Future.successful(interactionVariable.currentHistory.historyScaffolding.scaffoldingMap(forState))
-    } else if (scaffoldingCache.getCurrentElementStatus(forState) != UNKNOWN()) {
+    } else if (cached != UNKNOWN()) {
       scaffoldingCache.loadAsFuture(forState)(using ec)
     } else {
       startScaffolding(contextInformation, forState)
@@ -160,7 +163,7 @@ final class InteractionScaffoldingAndGradingControl[F <: InteractionFormat](val 
           interactionVariable.publishFeedback(this, contextInformation)(_.addScaffolding(scaffResult))
           scaffResult
         }(using ec)
-        scaffoldingCache.informAboutExistingFuture(forState, published)
+        scaffoldingCache.informAboutExistingFuture(forState, published, replaceIfExist = true)
         scaffoldingCache.loadAsFuture(forState)(using ec)
     }
   }
@@ -182,7 +185,7 @@ final class InteractionScaffoldingAndGradingControl[F <: InteractionFormat](val 
 
   private val scaffoldingCache: AsyncDataCache[InteractionStateType, ScaffoldingResult[InteractionStateType, ScaffoldingInfoType]] = new AsyncDataCache[InteractionStateType, ScaffoldingResult[InteractionStateType, ScaffoldingInfoType]](logger) {
     override protected def executeLoading(in: InteractionStateType)(ec: ExecutionContext): Future[ScaffoldingResult[InteractionStateType, ScaffoldingInfoType]] = {
-      getOrCalculateScaffolding(ExecutionContextInformation.default, in)
+      calculateScaffolding(ExecutionContextInformation.default, in, retryErrors = false)
     }
     override protected def formatInputForLogging(in: InteractionStateType): String = in.toString
     override protected def formatOutputForLogging(out: ScaffoldingResult[InteractionStateType, ScaffoldingInfoType]): String = out.toString

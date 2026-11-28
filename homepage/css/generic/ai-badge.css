@@ -1,0 +1,31 @@
+.ai-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 2px 8px;
+    border-radius: 999px;
+    background: linear-gradient(135deg, #643ab4, #185ea7, #006570);
+    color: white;
+    font-size: 10px;
+    line-height: 1.4;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+}
+
+.ai-badge::before,
+.ai-badge::after {
+    content: "✦" / "";
+    font-size: 7px;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+    .ai-badge {
+        background-size: 200% 200%;
+        animation: ai-shimmer 3s ease infinite;
+    }
+
+    @keyframes ai-shimmer {
+        0%, 100% { background-position: 0% 50%; }
+        50% { background-position: 100% 50%; }
+    }
+}

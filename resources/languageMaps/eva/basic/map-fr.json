@@ -31,6 +31,8 @@
   "resetAllDataConfirm": "Vider tous les stockages locaux de réponses configurés et supprimer les réponses et commentaires de cet utilisateur dans tous les cahiers et toutes les destinations serveur configurées ? Cette action est irréversible.",
   "resetAllDataError": "Certaines destinations n’ont pas confirmé la suppression. La synchronisation est suspendue pour éviter de réenregistrer les réponses supprimées. Réessayez la réinitialisation.",
   "gradingHiddenTest": "Test masqué",
+  "aiBadge": "IA",
+  "scaffoldingRetry": "Redemander un indice",
   "gradingAiAssessment": "Évaluation de l'IA",
   "gradingAiCriterion": "Évaluation de l'IA {number}"
 }

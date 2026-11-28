@@ -33,7 +33,7 @@ case class IconGradingAndScaffolding[F <: InteractionFormat](
         case None => laminarHelper.plaintextStringSignal(report.status match {
           case Status.NotRequested => "basic/requestScaffoldingHint"
           case Status.Pending => "basic/scaffoldingLoading"
-          case Status.Error => "basic/gradingError"
+          case Status.Error => "basic/scaffoldingError"
           case Status.Ready => "basic/scaffoldingReady"
         })
       }
@@ -69,7 +69,7 @@ case class IconGradingAndScaffolding[F <: InteractionFormat](
   }
 
   def onScaffoldingRequested(): Unit = {
-    workbookInteractionElement.interactionVariable.control.getOrCalculateScaffolding(fullInfo.workbookContextInformation)
+    workbookInteractionElement.interactionVariable.control.getOrCalculateScaffolding(fullInfo.workbookContextInformation, retryErrors = true)
   }
 
   def onGradingRequested(): Unit = {

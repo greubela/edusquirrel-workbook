@@ -32,3 +32,17 @@
   outline-offset: var(--space-xs);
 }
 
+.fullscreen-overlay-dialog .editor-with-panel:has(.eva-editor) > .fullscreen-sidepanel:has(.interaction-hint-panel) {
+  margin-block-start: calc(var(--space-md) + var(--space-2xl) + var(--space-sm));
+}
+
+@media (max-width: 600px) {
+  .fullscreen-overlay-dialog .editor-with-panel:has(.eva-editor):has(.interaction-hint-panel) {
+    grid-template: minmax(0, 1fr) fit-content(38%) / minmax(0, 1fr);
+  }
+  .fullscreen-overlay-dialog .editor-with-panel:has(.eva-editor) > .fullscreen-sidepanel:has(.interaction-hint-panel) {
+    grid-area: 2 / 1;
+    margin-block-start: 0;
+  }
+}
+
