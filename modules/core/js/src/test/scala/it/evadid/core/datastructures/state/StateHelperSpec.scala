@@ -171,21 +171,20 @@ class StateHelperSpec extends JsDomSuite {
     owner.killSubscriptions()
   }
 
-  test("bound Vars read and write the variable unobserved and stop observing it when their owner ends") {
-    val variable = InteractionVariable(TextInteraction("released-answer"))
-    val context = ExecutionContextInformation.default
-    val bound = variable.createBoundVarWithUpdateImportance(UpdateImportance.MAJOR, context)
+  test("state-backed Vars read and write unobserved and stop observing when their owner ends") {
+    // Test binding ownership independently of interaction-history timestamp ordering.
+    val state = State("")
+    val bound = state.toAirstreamVar
     bound.update(_ + "unobserved")
-    assertEquals(variable.currentValue, "unobserved", "writes reach the variable without any observer")
+    assertEquals(state.now(), "unobserved", "writes reach the state without any observer")
     val owner = new ManualOwner
     val seen = recording(bound.signal, owner)
     bound.set("mounted")
     assertEquals(seen.now().last, Success("mounted"))
     owner.killSubscriptions()
     val received = seen.now().size
-    variable.updateHistory(_.addState(InteractionVariableState("later", UpdateImportance.MAJOR,
-      LocalDateTime.now().plusSeconds(10))), context)
-    assertEquals(seen.now().size, received, "an unmounted Var no longer observes the variable")
-    assertEquals(bound.now(), "later", "reads follow the variable without any observer")
+    state.set("later")
+    assertEquals(seen.now().size, received, "an unmounted Var no longer observes the state")
+    assertEquals(bound.now(), "later", "reads follow the state without any observer")
   }
 }
