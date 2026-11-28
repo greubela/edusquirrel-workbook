@@ -38,21 +38,21 @@ case class DatabaseSyncViaBackendServerHandler(pSyncLogger: SyncLogger, definiti
   override def clearValues(context: UsageContext)(implicit ec: ExecutionContext): Future[SyncSuccess[SyncContext]] = clearValues(context, None)
 
 
-  override def storeHistoryJson(context: SyncContext, json: String)(using ExecutionContext): Future[SyncSuccess[EventId]] =
-    storeHistoriesJson(Map(context -> json))
+  override def storeHistory(context: SyncContext, history: InteractionHistoryJson)(using ExecutionContext): Future[SyncSuccess[EventId]] =
+    storeHistories(Map(context -> history))
 
-  override def storeHistoriesJson(values: Map[SyncContext, String])(using ExecutionContext): Future[SyncSuccess[EventId]] = {
+  override def storeHistories(values: Map[SyncContext, InteractionHistoryJson])(using ExecutionContext): Future[SyncSuccess[EventId]] = {
     if values.isEmpty then Future.successful(SyncSuccess.emptyNow()) else {
-      val entries = values.toSeq.map((context, json) => context -> InteractionHistoryJson.deserialize(json))
+      val entries = values.toSeq
       val request = SQLCommands.BulkStoreToDbRequest(entries.map(_._1), entries.map(_._2), databaseConfig, definition.format)
       SQLCommands.bulkStoreToDbCommand.sendCommandTo(backend, request).map(_.result)
     }
   }
 
-  private def toFetchResponse(result: ExecutionSuccess[DbFetchResponse]): FetchResponse[SyncContext, String] =
-    FetchResponse.fromMap(result.history.timestampExecutionFinished, result.result.fetchedElements.map((key, value) => key -> value.serialized))
+  private def toFetchResponse(result: ExecutionSuccess[DbFetchResponse]): FetchResponse[SyncContext, InteractionHistoryJson] =
+    FetchResponse.fromMap(result.history.timestampExecutionFinished, result.result.fetchedElements)
 
-  override def readHistoriesJson(usageContext: UsageContext)(using ec: ExecutionContext): Future[FetchResponse[SyncContext, String]] = {
+  override def readHistories(usageContext: UsageContext)(using ec: ExecutionContext): Future[FetchResponse[SyncContext, InteractionHistoryJson]] = {
     val request = SQLCommands.FetchEventsFromDbRequest(usageContext, Seq.empty, java.time.Instant.MIN,
       java.time.Instant.MAX, databaseConfig, definition.format, EventSyncStrategy.SYNC_EVERYTHING)
     SQLCommands.fetchEventsFromDbCommand.sendCommandTo(backend, request).map(toFetchResponse)

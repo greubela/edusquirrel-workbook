@@ -32,7 +32,7 @@ case class FormattedSyncDestination[F <: InteractionFormat](information: SyncInf
   val writer: RemoteHistoryDataWriter[SyncContext, F] = new RemoteHistoryDataWriter[SyncContext, F] {
     def writeForKey(logger: SyncLogger, key: SyncContext, value: InteractionHistory[F]): Future[SyncSuccess[EventId]] = writeAll(logger, Map(key -> value))
     def writeAll(logger: SyncLogger, values: Map[SyncContext, InteractionHistory[F]]): Future[SyncSuccess[EventId]] =
-      handler.storeHistoriesJson(values.map((key, history) => key -> InteractionHistoryJson.fromHistory(format, history).serialized))
+      handler.storeHistories(values.map((key, history) => key -> InteractionHistoryJson.fromHistory(format, history)))
     override def flush(logger: SyncLogger, forceFlush: Boolean): Unit = handler.flush(forceFlush)
   }
 }

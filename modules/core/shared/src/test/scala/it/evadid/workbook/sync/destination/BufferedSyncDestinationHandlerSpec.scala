@@ -17,14 +17,14 @@ class BufferedSyncDestinationHandlerSpec extends FunSuite {
   private given ExecutionContext = ExecutionContext.global
   private val context = UsageContext("program", "workbook", "user")
   private val key = context.toSyncContext("answer")
-  private def saved(value: String): String = {
+  private def saved(value: String): InteractionHistoryJson = {
     val format = InteractionFormat.TextInteractionFormat
     val history = InteractionHistory.empty(format)
       .addEvent(AnswerChangedEvent[format.type](value, java.time.LocalDateTime.of(2026, 1, 1, 12, 0).toInstant(java.time.ZoneOffset.UTC), UpdateImportance.MAJOR, eventId(value)))
-    InteractionHistoryJson.fromHistory(format, history).serialized
+    InteractionHistoryJson.fromHistory(format, history)
   }
   private def eventId(value: String): EventId = EventId(new java.util.UUID(0L, value.hashCode.toLong).toString)
-  private def merged(values: String*): String = InteractionHistoryJson.mergeSerialized(values.map(saved))
+  private def merged(values: String*): InteractionHistoryJson = values.map(saved).reduce(_.merge(_))
   /** Makes the destination's stores wait on the returned gate; the first promise completes once a store has started. */
   private def gateStores(destination: Destination): (Promise[Unit], Promise[SyncSuccess[EventId]]) = {
     val started = Promise[Unit]()
@@ -35,8 +35,8 @@ class BufferedSyncDestinationHandlerSpec extends FunSuite {
   /** One write and one read fail with `error`; after `recover`, a retried write reaches the destination. */
   private def assertBatchFailsThenRetries(destination: Destination, error: Throwable)(recover: => Unit): Future[Unit] = {
     val buffered = destination.toBuffered
-    val writing = buffered.storeHistoryJson(key, saved("first"))
-    val reading = buffered.readHistoryJson(key)
+    val writing = buffered.storeHistory(key, saved("first"))
+    val reading = buffered.readHistory(key)
     buffered.flush(true)
     for {
       writeError <- writing.failed
@@ -44,7 +44,7 @@ class BufferedSyncDestinationHandlerSpec extends FunSuite {
       _ = assert(writeError eq error)
       _ = assert(readError eq error)
       _ = recover
-      retried = buffered.storeHistoryJson(key, saved("retry"))
+      retried = buffered.storeHistory(key, saved("retry"))
       _ = buffered.flush(true)
       _ <- retried
     } yield assertEquals(destination.writes.now().last, Map(key -> saved("retry")))
@@ -52,17 +52,17 @@ class BufferedSyncDestinationHandlerSpec extends FunSuite {
   private class Destination extends SyncDestinationHistoryHandler {
     val syncLogger = SyncLogger(BasicLogger())
     val definition = SyncDestinationDefinition.defaultBrowserHistory
-    val writes = State(List.empty[Map[SyncContext, String]])
+    val writes = State(List.empty[Map[SyncContext, InteractionHistoryJson]])
     val reads = State(List.empty[UsageContext])
     val storeResult = State[() => Future[SyncSuccess[EventId]]](() => Future.successful(SyncSuccess.emptyNow()))
-    val readResult = State[UsageContext => Future[FetchResponse[SyncContext, String]]](ctx =>
-      Future.successful(FetchResponse.fromMap(Instant.now(), Map(ctx.toSyncContext("answer") -> ctx.userId))))
-    def storeHistoryJson(key: SyncContext, json: String)(implicit ec: ExecutionContext) = storeHistoriesJson(Map(key -> json))
-    override def storeHistoriesJson(values: Map[SyncContext, String])(implicit ec: ExecutionContext) = {
+    val readResult = State[UsageContext => Future[FetchResponse[SyncContext, InteractionHistoryJson]]](ctx =>
+      Future.successful(FetchResponse.fromMap(Instant.now(), Map(ctx.toSyncContext("answer") -> saved(ctx.userId)))))
+    def storeHistory(key: SyncContext, history: InteractionHistoryJson)(using ExecutionContext) = storeHistories(Map(key -> history))
+    override def storeHistories(values: Map[SyncContext, InteractionHistoryJson])(implicit ec: ExecutionContext) = {
       writes.update(_ :+ values)
       storeResult.now()()
     }
-    def readHistoriesJson(ctx: UsageContext)(implicit ec: ExecutionContext) = { reads.update(_ :+ ctx); readResult.now()(ctx) }
+    def readHistories(ctx: UsageContext)(implicit ec: ExecutionContext) = { reads.update(_ :+ ctx); readResult.now()(ctx) }
     def clearAllHistories(ctx: UsageContext)(using ExecutionContext) = clearValues(ctx)
     def clearValue(key: SyncContext)(implicit ec: ExecutionContext) = Future.successful(SyncSuccess.emptyNow[SyncContext]())
     def clearValues(ctx: UsageContext)(implicit ec: ExecutionContext) = Future.successful(SyncSuccess.emptyNow[SyncContext]())
@@ -71,8 +71,8 @@ class BufferedSyncDestinationHandlerSpec extends FunSuite {
   test("one flush batches all keys, merges queued event histories and completes every caller") {
     val destination = new Destination
     val buffered = destination.toBuffered
-    val first = buffered.storeHistoryJson(key, saved("old"))
-    val second = buffered.storeHistoriesJson(Map(key -> saved("new"), context.toSyncContext("other") -> saved("other")))
+    val first = buffered.storeHistory(key, saved("old"))
+    val second = buffered.storeHistories(Map(key -> saved("new"), context.toSyncContext("other") -> saved("other")))
     assertEquals(destination.writes.now(), Nil)
     buffered.flush(true)
     first.flatMap(_ => second).map { _ =>
@@ -85,9 +85,9 @@ class BufferedSyncDestinationHandlerSpec extends FunSuite {
     destination.storeResult.set(() => Future.successful(SyncSuccess.emptyNow[EventId]().copy(
       elementsAdded = Set(eventId("old"), eventId("other")), elementsUnchanged = Set(eventId("new")))))
     val buffered = destination.toBuffered
-    val first = buffered.storeHistoryJson(key, saved("old"))
-    val second = buffered.storeHistoriesJson(Map(key -> saved("new"), other -> saved("other")))
-    val third = buffered.storeHistoryJson(other, saved("unconfirmed"))
+    val first = buffered.storeHistory(key, saved("old"))
+    val second = buffered.storeHistories(Map(key -> saved("new"), other -> saved("other")))
+    val third = buffered.storeHistory(other, saved("unconfirmed"))
     buffered.flush(true)
     for { a <- first; b <- second; c <- third } yield {
       assertEquals(destination.writes.now().size, 1)
@@ -99,10 +99,10 @@ class BufferedSyncDestinationHandlerSpec extends FunSuite {
   test("reads share one fetch per usage context and do not mix users") {
     val destination = new Destination
     val buffered = destination.toBuffered
-    val first = buffered.readHistoryJson(key)
-    val repeated = buffered.readHistoriesJson(context)
+    val first = buffered.readHistory(key)
+    val repeated = buffered.readHistories(context)
     val otherContext = context.copy(userId = "other")
-    val other = buffered.readHistoriesJson(otherContext)
+    val other = buffered.readHistories(otherContext)
     buffered.flush(true)
     for {
       a <- first
@@ -121,24 +121,24 @@ class BufferedSyncDestinationHandlerSpec extends FunSuite {
     val buffered = destination.toBuffered
     val failure = IllegalStateException("unreachable")
     destination.readResult.set(ctx => if ctx == context then Future.failed(failure)
-      else Future.successful(FetchResponse.fromMap(Instant.now(), Map(ctx.toSyncContext("answer") -> "ok"))))
-    val failed = buffered.readHistoriesJson(context)
-    val good = buffered.readHistoriesJson(context.copy(userId = "other"))
+      else Future.successful(FetchResponse.fromMap(Instant.now(), Map(ctx.toSyncContext("answer") -> saved("ok")))))
+    val failed = buffered.readHistories(context)
+    val good = buffered.readHistories(context.copy(userId = "other"))
     buffered.flush(true)
     failed.failed.flatMap { error =>
       assert(error eq failure)
-      good.map(result => assertEquals(result.fetchedValues.head.dataValue, "ok"))
+      good.map(result => assertEquals(result.fetchedValues.head.dataValue, saved("ok")))
     }
   }
   test("flushed write batches stay ordered and a failed batch does not block retries") {
     val destination = new Destination
     val buffered = destination.toBuffered
     val (started, gate) = gateStores(destination)
-    val first = buffered.storeHistoryJson(key, saved("first"))
+    val first = buffered.storeHistory(key, saved("first"))
     buffered.flush(true)
     started.future.flatMap { _ =>
       destination.storeResult.set(() => Future.successful(SyncSuccess.emptyNow()))
-      val second = buffered.storeHistoryJson(key, saved("second"))
+      val second = buffered.storeHistory(key, saved("second"))
       buffered.flush(true)
       assertEquals(destination.writes.now(), List(Map(key -> saved("first"))))
       gate.failure(IllegalStateException("first failed"))
@@ -150,7 +150,7 @@ class BufferedSyncDestinationHandlerSpec extends FunSuite {
     val bound = SyncInformation(destination.definition, EventSyncStrategy.SYNC_EVERYTHING).forContext(context, _ => destination.toBuffered)
     val format = InteractionFormat.TextInteractionFormat
     val typed = FormattedSyncDestination(bound, format)
-    def history(value: String) = InteractionHistoryJson.deserialize(saved(value)).typedAs(format)
+    def history(value: String) = saved(value).typedAs(format)
     val writing = typed.writer.writeAll(bound.handler.syncLogger, Map(key -> history("one"), context.toSyncContext("other") -> history("two")))
     typed.writer.flush(bound.handler.syncLogger, true)
     writing.map(_ => assertEquals(destination.writes.now().head.size, 2))
@@ -158,27 +158,27 @@ class BufferedSyncDestinationHandlerSpec extends FunSuite {
   test("the request count threshold flushes automatically without an explicit flush") {
     val destination = new Destination
     val buffered = destination.toBuffered
-    val pending = (1 to 30).map(index => buffered.storeHistoryJson(key, saved(index.toString)))
+    val pending = (1 to 30).map(index => buffered.storeHistory(key, saved(index.toString)))
     Future.sequence(pending).map { _ =>
-      assertEquals(destination.writes.now(), List(Map(key -> InteractionHistoryJson.mergeSerialized((1 to 30).map(index => saved(index.toString))))))
+      assertEquals(destination.writes.now(), List(Map(key -> (1 to 30).map(index => saved(index.toString)).reduce(_.merge(_)))))
       assertEquals(buffered.timestamps, Set.empty)
     }
   }
 
   test("reads in a batch wait for its writes and observe the committed values") {
-    val committed = State(Map.empty[SyncContext, String])
+    val committed = State(Map.empty[SyncContext, InteractionHistoryJson])
     val destination = new Destination {
-      override def storeHistoriesJson(values: Map[SyncContext, String])(implicit ec: ExecutionContext) =
-        super.storeHistoriesJson(values).map { success => committed.update(_ ++ values); success }
-      override def readHistoriesJson(ctx: UsageContext)(implicit ec: ExecutionContext) = {
+      override def storeHistories(values: Map[SyncContext, InteractionHistoryJson])(implicit ec: ExecutionContext) =
+        super.storeHistories(values).map { success => committed.update(_ ++ values); success }
+      override def readHistories(ctx: UsageContext)(implicit ec: ExecutionContext) = {
         reads.update(_ :+ ctx)
         Future.successful(FetchResponse.fromMap(Instant.now(), committed.now()))
       }
     }
     val (started, gate) = gateStores(destination)
     val buffered = destination.toBuffered
-    val writing = buffered.storeHistoryJson(key, saved("saved"))
-    val reading = buffered.readHistoryJson(key)
+    val writing = buffered.storeHistory(key, saved("saved"))
+    val reading = buffered.readHistory(key)
     buffered.flush(true)
     started.future.flatMap { _ =>
       assertEquals(destination.reads.now(), Nil)
@@ -198,11 +198,11 @@ class BufferedSyncDestinationHandlerSpec extends FunSuite {
 
   test("a clear runs after pending writes and before writes submitted afterwards") {
     val operations = State(List.empty[String])
-    val persisted = State(Map.empty[SyncContext, String])
+    val persisted = State(Map.empty[SyncContext, InteractionHistoryJson])
     val destination = new Destination {
-      override def storeHistoriesJson(values: Map[SyncContext, String])(implicit ec: ExecutionContext) = {
+      override def storeHistories(values: Map[SyncContext, InteractionHistoryJson])(implicit ec: ExecutionContext) = {
         operations.update(_ :+ s"write:${values(key)}")
-        super.storeHistoriesJson(values).map { success => persisted.update(_ ++ values); success }
+        super.storeHistories(values).map { success => persisted.update(_ ++ values); success }
       }
       override def clearValues(ctx: UsageContext)(implicit ec: ExecutionContext) = {
         operations.update(_ :+ "clear")
@@ -212,12 +212,12 @@ class BufferedSyncDestinationHandlerSpec extends FunSuite {
     }
     val (started, gate) = gateStores(destination)
     val buffered = destination.toBuffered
-    val old = buffered.storeHistoryJson(key, saved("old"))
+    val old = buffered.storeHistory(key, saved("old"))
     buffered.flush(true)
     started.future.flatMap { _ =>
       val clearing = buffered.clearValues(context)
       destination.storeResult.set(() => Future.successful(SyncSuccess.emptyNow()))
-      val fresh = buffered.storeHistoryJson(key, saved("new"))
+      val fresh = buffered.storeHistory(key, saved("new"))
       buffered.flush(true)
       assertEquals(operations.now(), List(s"write:${saved("old")}"))
       gate.success(SyncSuccess.emptyNow())
@@ -232,8 +232,8 @@ class BufferedSyncDestinationHandlerSpec extends FunSuite {
     val destination = new Destination
     val inner = destination.toBuffered
     val buffered = BufferedSyncDestinationHandler(inner)
-    val writing = buffered.storeHistoryJson(key, saved("saved"))
-    val reading = buffered.readHistoryJson(key)
+    val writing = buffered.storeHistory(key, saved("saved"))
+    val reading = buffered.readHistory(key)
     buffered.flush(true)
     writing.flatMap(_ => reading).map { response =>
       assertEquals(destination.writes.now(), List(Map(key -> saved("saved"))))
@@ -259,7 +259,7 @@ class BufferedSyncDestinationHandlerSpec extends FunSuite {
       override def readHistoriesInRange(ctx: UsageContext, keys: Seq[SyncContext], start: Instant,
           end: Instant, strategy: EventSyncStrategy)(using ExecutionContext) = {
         calls.update(_ :+ (keys, start, end, strategy))
-        Future.successful(keys.map(key => key -> InteractionHistoryJson.deserialize(saved(key.keyForSerialisation))).toMap)
+        Future.successful(keys.map(key => key -> saved(key.keyForSerialisation)).toMap)
       }
     }
     val buffered = destination.toBuffered
@@ -281,8 +281,8 @@ class BufferedSyncDestinationHandlerSpec extends FunSuite {
   test("a malformed history is rejected on submission without failing the other queued writes") {
     val destination = new Destination
     val buffered = destination.toBuffered
-    val valid = buffered.storeHistoryJson(key, saved("valid"))
-    val invalid = buffered.storeHistoryJson(context.toSyncContext("invalid"), "malformed")
+    val valid = buffered.storeHistory(key, saved("valid"))
+    val invalid = buffered.storeHistory(context.toSyncContext("invalid"), InteractionHistoryJson(InteractionFormat.TextInteractionFormat, "{\"not\": \"a history\"}"))
     assert(invalid.isCompleted, "the request never joins the batch")
     buffered.flush(true)
     for {
@@ -325,7 +325,7 @@ class BufferedSyncDestinationHandlerSpec extends FunSuite {
     val destination = new Destination
     val broken = context.toSyncContext("broken")
     destination.readResult.set(ctx => Future.successful(FetchResponse.fromMap(Instant.now(),
-      Map(key -> saved("kept"), broken -> "{\"not\": \"a history\"}"))))
+      Map(key -> saved("kept"), broken -> InteractionHistoryJson(InteractionFormat.TextInteractionFormat, "{\"not\": \"a history\"}")))))
     val from = java.time.LocalDateTime.of(2026, 1, 1, 0, 0).toInstant(java.time.ZoneOffset.UTC)
     destination.readHistoriesInRange(context, Seq(key, broken), from, from.plus(java.time.Duration.ofDays(1)), EventSyncStrategy.SYNC_EVERYTHING).map { read =>
       assertEquals(read.keySet, Set(key))
@@ -338,7 +338,7 @@ class BufferedSyncDestinationHandlerSpec extends FunSuite {
     val destination = new Destination {
       override def readHistoriesInRange(ctx: UsageContext, keys: Seq[SyncContext], from: Instant,
           until: Instant, strategy: EventSyncStrategy)(using ExecutionContext) =
-        Future.successful(Map(key -> InteractionHistoryJson.deserialize(saved("kept")),
+        Future.successful(Map(key -> saved("kept"),
           other -> InteractionHistoryJson(InteractionFormat.TextInteractionFormat, "{\"not\": \"a history\"}")))
     }
     val buffer = destination.toBuffered

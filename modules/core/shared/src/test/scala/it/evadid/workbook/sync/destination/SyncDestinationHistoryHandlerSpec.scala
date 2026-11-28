@@ -59,17 +59,17 @@ class SyncDestinationHistoryHandlerSpec extends FunSuite {
       SyncContext.serializer.serialize(context.toSyncContext("invalid_history")) -> write("not JSON"),
       SyncContext.serializer.serialize(key.copy(userId = "other")) -> history)
     val handler = new Destination(values).forHistory()
-    handler.readHistoriesJson(context).flatMap { fetched =>
+    handler.readHistories(context).flatMap { fetched =>
       assertEquals(fetched.fetchedValues.size, 1)
       val historyJson = fetched.fetchedValues.head.dataValue
-      val typedHistory = InteractionHistoryJson.deserialize(historyJson).toTyped
+      val typedHistory = historyJson.toTyped
       assertEquals(typedHistory.timestampLastChanged, Some(at))
       assert(fetched.timestampFetchResponse.isAfter(at))
-      handler.readHistoryJson(key).map { single =>
+      handler.readHistory(key).map { single =>
         val singleHistoryJson = single.fetchedValues.head.dataValue
-        val singleTyped = InteractionHistoryJson.deserialize(singleHistoryJson).toTyped
+        val singleTyped = singleHistoryJson.toTyped
         assertEquals(singleTyped.timestampLastChanged, Some(at))
-        assertEquals(singleHistoryJson, history)
+        assertEquals(singleHistoryJson, InteractionHistoryJson.deserialize(history))
       }
     }
   }
@@ -79,11 +79,11 @@ class SyncDestinationHistoryHandlerSpec extends FunSuite {
     import it.evadid.workbook.history.events.*
     val destination = new Destination(Map.empty)
     val handler = destination.forHistory()
-    def delta(value: String, offset: Long): String = InteractionHistoryJson.fromHistory(textFormat,
-      InteractionHistory.empty(textFormat).addEvent(AnswerChangedEvent[textFormat.type](value, at.plusNanos(offset), UpdateImportance.MAJOR))).serialized
+    def delta(value: String, offset: Long): InteractionHistoryJson = InteractionHistoryJson.fromHistory(textFormat,
+      InteractionHistory.empty(textFormat).addEvent(AnswerChangedEvent[textFormat.type](value, at.plusNanos(offset), UpdateImportance.MAJOR)))
     val deltas = (1 to 8).map(index => delta(index.toString, index))
-    Future.traverse(deltas)(json => handler.storeHistoryJson(key, json)).flatMap { _ =>
-      handler.readHistory[textFormat.type](key).map(restored => assertEquals(restored.size, deltas.size))
+    Future.traverse(deltas)(json => handler.storeHistory(key, json)).flatMap { _ =>
+      handler.readTypedHistory[textFormat.type](key).map(restored => assertEquals(restored.size, deltas.size))
     }
   }
   test("full local reset clears corrupt records without decoding histories or keys") {
@@ -99,14 +99,14 @@ class SyncDestinationHistoryHandlerSpec extends FunSuite {
     val handler = new Destination(Map.empty).forHistory()
     def answer(value: String, importance: UpdateImportance, offset: Long): InteractionEvent[textFormat.type] =
       AnswerChangedEvent[textFormat.type](value, at.plusSeconds(offset), importance)
-    def json(events: InteractionEvent[textFormat.type]*): String =
-      InteractionHistoryJson.fromHistory(textFormat, InteractionHistory(textFormat, InteractionEvents(events.toSet))).serialized
+    def json(events: InteractionEvent[textFormat.type]*): InteractionHistoryJson =
+      InteractionHistoryJson.fromHistory(textFormat, InteractionHistory(textFormat, InteractionEvents(events.toSet)))
     val first = answer("first", UpdateImportance.MAJOR, 1)
     val superseded = answer("draft", UpdateImportance.TEMPORARY, 2)
     val latest = answer("latest", UpdateImportance.MAJOR, 3)
-    handler.storeHistoryJson(key, json(first)).flatMap { stored =>
+    handler.storeHistory(key, json(first)).flatMap { stored =>
       assertEquals((stored.elementsAdded, stored.elementsUnchanged), (Set(first.eventId), Set.empty[EventId]))
-      handler.storeHistoryJson(key, json(first, superseded, latest))
+      handler.storeHistory(key, json(first, superseded, latest))
     }.map { stored =>
       assertEquals(stored.elementsAdded, Set(latest.eventId))
       assertEquals(stored.elementsUnchanged, Set(first.eventId))
@@ -119,10 +119,10 @@ class SyncDestinationHistoryHandlerSpec extends FunSuite {
     val handler = new Destination(Map.empty).forHistory()
     val checkbox = InteractionFormat.LabeledCheckboxInteractionFormat
     val changed = InteractionHistory.empty(checkbox).addEvent(AnswerChangedEvent[checkbox.type](true, at, UpdateImportance.MAJOR))
-    handler.storeHistoryJson(key, history).flatMap { _ =>
-      handler.storeHistoryJson(key, InteractionHistoryJson.fromHistory(checkbox, changed).serialized)
-    }.flatMap(_ => handler.readHistoryJson(key)).map { read =>
-      assertEquals(InteractionHistoryJson.deserialize(read.fetchedValues.head.dataValue).typedAs(checkbox), changed)
+    handler.storeHistory(key, InteractionHistoryJson.deserialize(history)).flatMap { _ =>
+      handler.storeHistory(key, InteractionHistoryJson.fromHistory(checkbox, changed))
+    }.flatMap(_ => handler.readHistory(key)).map { read =>
+      assertEquals(read.fetchedValues.head.dataValue.typedAs(checkbox), changed)
     }
   }
 

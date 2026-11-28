@@ -27,34 +27,31 @@ trait SyncDestinationHistoryHandler {
   def clearAllHistories(context: UsageContext)(using ExecutionContext): Future[SyncSuccess[SyncContext]]
 
   /** The result names the sent events that are stored once the write has committed. */
-  def storeHistoryJson(syncContext: SyncContext, historyJson: String)(implicit ec: ExecutionContext): Future[SyncSuccess[EventId]]
+  def storeHistory(syncContext: SyncContext, history: InteractionHistoryJson)(using ExecutionContext): Future[SyncSuccess[EventId]]
 
-  def storeHistoriesJson(contextJsonMap: Map[SyncContext, String])(implicit ec: ExecutionContext): Future[SyncSuccess[EventId]] =
-    Future.traverse(contextJsonMap.toList)(storeHistoryJson).map(_.foldLeft(SyncSuccess.emptyNow[EventId]())(_.combine(_)))
+  def storeHistories(histories: Map[SyncContext, InteractionHistoryJson])(using ExecutionContext): Future[SyncSuccess[EventId]] =
+    Future.traverse(histories.toList)(storeHistory).map(_.foldLeft(SyncSuccess.emptyNow[EventId]())(_.combine(_)))
 
   def flush(forceFlush: Boolean): Unit = {}
 
-  def readHistoryJson(syncContext: SyncContext)(implicit ec: ExecutionContext): Future[FetchResponse[SyncContext, String]] = {
-    readHistoriesJson(syncContext.toUsageContext).map(resp => {
-      val newSet = resp.fetchedValues.filter(_.dataKey.doesMatch(syncContext.toUsageContext)).filter(_.dataKey.keyForSerialisation == syncContext.keyForSerialisation)
-      resp.copy(fetchedValues = newSet)
-    })
-  }
+  def readHistory(syncContext: SyncContext)(using ExecutionContext): Future[FetchResponse[SyncContext, InteractionHistoryJson]] =
+    readHistories(syncContext.toUsageContext).map(response => response.copy(fetchedValues = response.fetchedValues.filter(_.dataKey == syncContext)))
 
-  def readHistoriesJson(usageContext: UsageContext)(implicit ec: ExecutionContext): Future[FetchResponse[SyncContext, String]]
+  /** The readable histories of `usageContext`; unreadable records are discarded where they are decoded. */
+  def readHistories(usageContext: UsageContext)(using ExecutionContext): Future[FetchResponse[SyncContext, InteractionHistoryJson]]
 
   def readHistoriesInRange(usageContext: UsageContext, keys: Seq[SyncContext], starting: Instant,
       until: Instant, strategy: EventSyncStrategy)(using ec: ExecutionContext): Future[Map[SyncContext, InteractionHistoryJson]] = {
     require(!until.isBefore(starting), "History range end must not precede its start")
     val selected = keys.toSet
-    readHistoriesJson(usageContext).map(response => InteractionHistoryJson.readable(
+    readHistories(usageContext).map(response => InteractionHistoryJson.readable(
       response.fetchedValues.filter(entry => selected(entry.dataKey)).map(entry => entry.dataKey -> entry.dataValue))(
-      InteractionHistoryJson.deserialize, strategy, starting, until,
+      identity, strategy, starting, until,
       (key, error) => syncLogger.logExceptionWarn(s"Discarded the unreadable history of ${key.keyForSerialisation}", error)))
   }
 
-  def readHistory[F <: InteractionFormat](syncContext: SyncContext)(using ec: ExecutionContext, format: ValueOf[F]): Future[InteractionHistory[F]] =
-    readHistoryJson(syncContext).flatMap(response => SyncDestinationHistoryHandler.readHistoryFrom[F](syncContext, response).fold(Future.failed, Future.successful))
+  def readTypedHistory[F <: InteractionFormat](syncContext: SyncContext)(using ec: ExecutionContext, format: ValueOf[F]): Future[InteractionHistory[F]] =
+    readHistory(syncContext).flatMap(response => SyncDestinationHistoryHandler.readHistoryFrom[F](syncContext, response).fold(Future.failed, Future.successful))
 
   lazy val toBuffered: BufferedSyncDestinationHandler = {
     BufferedSyncDestinationHandler(this)
@@ -66,15 +63,16 @@ trait SyncDestinationHistoryHandler {
 object SyncDestinationHistoryHandler {
 
   private[sync] def readHistoryFrom[F <: InteractionFormat](syncContext: SyncContext,
-      response: FetchResponse[SyncContext, String])(using format: ValueOf[F]): Either[SerializedException, InteractionHistory[F]] =
+      response: FetchResponse[SyncContext, InteractionHistoryJson])(using format: ValueOf[F]): Either[SerializedException, InteractionHistory[F]] =
     response.fetchedValues.find(_.dataKey == syncContext).toRight(SerializedException(s"No history for $syncContext"))
-      .flatMap(entry => scala.util.Try(InteractionHistoryJson.deserialize(entry.dataValue).typedAs(format.value)).toEither.left.map(SerializedException(_)))
+      .flatMap(entry => scala.util.Try(entry.dataValue.typedAs(format.value)).toEither.left.map(SerializedException(_)))
 
-  private def validHistory(json: String, logger: SyncLogger): Boolean =
+  /** A stored record, or None (logged) when it cannot be read. */
+  private def decoded(json: String, logger: SyncLogger): Option[InteractionHistoryJson] =
     scala.util.Try(InteractionHistoryJson.deserialize(json)).fold(error => {
       logger.logExceptionWarn("Discarding malformed interaction history", error)
-      false
-    }, _ => true)
+      None
+    }, Some(_))
 
   def fromBasic(basic: SyncDestinationHandlerBasic): SyncDestinationHistoryHandler = {
     val typed = SyncDestinationHandlerForType.fromBasic(basic, SyncContext.serializer, it.evadid.core.util.io.Serializer.rawStringIO)
@@ -89,35 +87,21 @@ object SyncDestinationHistoryHandler {
 
       override def clearValue(context: SyncContext)(implicit ec: ExecutionContext): Future[SyncSuccess[SyncContext]] = typed.clearValue(context)
 
-      override def clearValues(context: UsageContext)(implicit ec: ExecutionContext): Future[SyncSuccess[SyncContext]] = readHistoriesJson(context).flatMap(response =>
+      override def clearValues(context: UsageContext)(implicit ec: ExecutionContext): Future[SyncSuccess[SyncContext]] = readHistories(context).flatMap(response =>
         Future.traverse(response.fetchedValues.map(_.dataKey))(clearValue).map(_.foldLeft(SyncSuccess.emptyNow[SyncContext]())(_.combine(_))))
 
-      override def storeHistoryJson(context: SyncContext, json: String)(using ec: ExecutionContext): Future[SyncSuccess[EventId]] = {
-        scala.util.Try(InteractionHistoryJson.deserialize(json)).fold(Future.failed, incoming =>
-          basic.updateElement(SyncContext.serializer.serialize(context), previous => {
-            val readable = previous.flatMap(value => scala.util.Try(InteractionHistoryJson.deserialize(value)).fold(error => {
-              syncLogger.logExceptionWarn("Discarding malformed stored interaction history", error)
-              None
-            }, Some(_)))
-            // The exercise changed its type: its earlier answers belong to another exercise and are replaced.
-            val saved = readable.filter(_.format == incoming.format)
-            val merged = saved.fold(incoming)(_.merge(incoming))
-            merged.serialized -> SyncSuccess.immutable(incoming.eventIds, saved.fold(Set.empty)(_.eventIds), merged.eventIds)
-          }))
-      }
-
-      override def readHistoryJson(syncContext: SyncContext)(implicit ec: ExecutionContext): Future[FetchResponse[SyncContext, String]] = {
-        typed.readElementTyped(syncContext).map(curHistoryJson => {
-          FetchResponse.fromMap(Instant.now(), Map(syncContext -> curHistoryJson).filter((_, json) => validHistory(json, syncLogger)))
+      override def storeHistory(context: SyncContext, incoming: InteractionHistoryJson)(using ExecutionContext): Future[SyncSuccess[EventId]] =
+        basic.updateElement(SyncContext.serializer.serialize(context), previous => {
+          // The exercise changed its type: its earlier answers belong to another exercise and are replaced.
+          val saved = previous.flatMap(decoded(_, syncLogger)).filter(_.format == incoming.format)
+          val merged = saved.fold(incoming)(_.merge(incoming))
+          merged.serialized -> SyncSuccess.immutable(incoming.eventIds, saved.fold(Set.empty)(_.eventIds), merged.eventIds)
         })
-      }
 
-      override def readHistoriesJson(usageContext: UsageContext)(implicit ec: ExecutionContext): Future[FetchResponse[SyncContext, String]] = {
-        typed.readFullStore.map(curMap => {
-          val data = curMap.filter((context, json) => context.toUsageContext == usageContext && validHistory(json, syncLogger))
-          FetchResponse.fromMap(Instant.now(), data)
-        })
-      }
+      override def readHistories(usageContext: UsageContext)(using ExecutionContext): Future[FetchResponse[SyncContext, InteractionHistoryJson]] =
+        typed.readFullStore.map(stored => FetchResponse.fromMap(Instant.now(), stored.collect {
+          case (context, json) if context.toUsageContext == usageContext => decoded(json, syncLogger).map(context -> _)
+        }.flatten.toMap))
     }
   }
 

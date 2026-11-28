@@ -63,12 +63,12 @@ class DatabaseHistoryRoundTripSpec extends FunSuite {
       val answerKey = usage.toSyncContext("answer")
       val programKey = usage.toSyncContext("program")
       val answers = textHistory("first" -> 1, "second" -> 2)
-      history.storeHistoriesJson(Map(
-        answerKey -> InteractionHistoryJson.fromHistory(text, answers).serialized,
-        programKey -> InteractionHistoryJson.fromHistory(programming, programmingHistory).serialized)).flatMap { _ =>
+      history.storeHistories(Map(
+        answerKey -> InteractionHistoryJson.fromHistory(text, answers),
+        programKey -> InteractionHistoryJson.fromHistory(programming, programmingHistory))).flatMap { _ =>
         assertEquals(database.commands.now(), Vector("bulkStore"), "one request per batch")
-        history.readHistoriesJson(usage).map { fetched =>
-          val restored = fetched.fetchedValues.map(value => value.dataKey -> InteractionHistoryJson.deserialize(value.dataValue)).toMap
+        history.readHistories(usage).map { fetched =>
+          val restored = fetched.fetchedValues.map(value => value.dataKey -> value.dataValue).toMap
           assertEquals(restored(answerKey).typedAs(text), answers)
           assertEquals(restored(programKey).typedAs(programming), programmingHistory)
           assertEquals(restored(programKey).typedAs(programming).latestAnswerEvents.collect { case answer: AnswerChangedEvent[programming.type] => answer.newState }, Set(ProgrammingStateRaw(Python, "forward(1)"): ProgrammingState))
@@ -131,10 +131,10 @@ class DatabaseHistoryRoundTripSpec extends FunSuite {
       val other = usage.copy(userId = "other")
       val nextWorkbook = usage.copy(scenarioId = "next")
       val history = handler(database, definition)
-      def json(value: String) = InteractionHistoryJson.fromHistory(text, textHistory(value -> 1)).serialized
-      def keys(context: UsageContext) = history.readHistoriesJson(context).map(_.fetchedValues.map(_.dataKey.keyForSerialisation).toSet)
+      def json(value: String) = InteractionHistoryJson.fromHistory(text, textHistory(value -> 1))
+      def keys(context: UsageContext) = history.readHistories(context).map(_.fetchedValues.map(_.dataKey.keyForSerialisation).toSet)
       for {
-        _ <- history.storeHistoriesJson(Map(usage.toSyncContext("a") -> json("a"), usage.toSyncContext("b") -> json("b"),
+        _ <- history.storeHistories(Map(usage.toSyncContext("a") -> json("a"), usage.toSyncContext("b") -> json("b"),
           nextWorkbook.toSyncContext("a") -> json("next"), other.toSyncContext("a") -> json("other")))
         _ <- history.clearValue(usage.toSyncContext("a"))
         afterClear <- keys(usage)
@@ -188,8 +188,8 @@ class DatabaseHistoryRoundTripSpec extends FunSuite {
     val database = InMemoryHistoryDatabase()
     val history = handler(database, defaultDatabase)
     val key = usage.toSyncContext("answer")
-    history.storeHistoryJson(key, InteractionHistoryJson.fromHistory(text, textHistory("a" -> 1)).serialized).flatMap { _ =>
-      history.storeHistoryJson(key, InteractionHistoryJson.fromHistory(programming, programmingHistory).serialized).map { _ =>
+    history.storeHistory(key, InteractionHistoryJson.fromHistory(text, textHistory("a" -> 1))).flatMap { _ =>
+      history.storeHistory(key, InteractionHistoryJson.fromHistory(programming, programmingHistory)).map { _ =>
         assertEquals(database.rows.now()(DatabaseHistoryFormat.RelationalFormat -> key).typedAs(programming), programmingHistory)
       }
     }

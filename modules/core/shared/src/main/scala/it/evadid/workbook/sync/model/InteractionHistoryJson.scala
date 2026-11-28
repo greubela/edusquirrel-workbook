@@ -63,7 +63,4 @@ object InteractionHistoryJson {
       scala.util.Try(decode(value).cleanWithStrategy(strategy).between(starting, until)).fold(
         error => { discarded(key, error); None }, history => Some(key -> history))
     }.toMap
-
-  def mergeSerialized(histories: Iterable[String]): String =
-    histories.iterator.map(deserialize).reduce(_.merge(_)).serialized
 }

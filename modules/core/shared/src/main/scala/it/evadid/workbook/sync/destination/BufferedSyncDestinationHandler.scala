@@ -31,29 +31,28 @@ case class BufferedSyncDestinationHandler(underlying: SyncDestinationHistoryHand
     flush(false)
     promise.future
   }
-  override def readHistoriesJson(context: UsageContext)(implicit ec: ExecutionContext): Future[FetchResponse[SyncContext, String]] = {
-    val promise = Promise[FetchResponse[SyncContext, String]]()
+  override def readHistories(context: UsageContext)(using ExecutionContext): Future[FetchResponse[SyncContext, InteractionHistoryJson]] = {
+    val promise = Promise[FetchResponse[SyncContext, InteractionHistoryJson]]()
     enqueue(CachedReadRequestMultipleRaw(Instant.now(), context, promise), promise)
   }
-  override def readHistoryJson(context: SyncContext)(implicit ec: ExecutionContext): Future[FetchResponse[SyncContext, String]] =
-    readHistoriesJson(context.toUsageContext).map(response => response.copy(fetchedValues = response.fetchedValues.filter(_.dataKey == context)))
 
   override def readHistoriesInRange(context: UsageContext, keys: Seq[SyncContext], starting: Instant,
       until: Instant, strategy: EventSyncStrategy)(using ec: ExecutionContext): Future[Map[SyncContext, InteractionHistoryJson]] = {
     require(!until.isBefore(starting), "History range end must not precede its start")
     require(keys.forall(_.toUsageContext == context), "Range keys must belong to the requested usage context")
     if keys.isEmpty then Future.successful(Map.empty) else {
-      val promise = Promise[FetchResponse[SyncContext, String]]()
+      val promise = Promise[FetchResponse[SyncContext, InteractionHistoryJson]]()
       enqueue(CachedRangeRead(Instant.now(), context, keys.toSet, Range(starting, until, strategy), promise), promise)
-        .map(_.asMap.filter((key, _) => keys.contains(key)).map((key, json) => key -> InteractionHistoryJson.deserialize(json)))
+        .map(_.asMap.filter((key, _) => keys.contains(key)))
     }
   }
 
-  override def storeHistoryJson(context: SyncContext, json: String)(implicit ec: ExecutionContext): Future[SyncSuccess[EventId]] = storeHistoriesJson(Map(context -> json))
+  override def storeHistory(context: SyncContext, history: InteractionHistoryJson)(using ExecutionContext): Future[SyncSuccess[EventId]] =
+    storeHistories(Map(context -> history))
   /** Each caller receives the confirmations of its own events from the merged batch write. */
-  override def storeHistoriesJson(values: Map[SyncContext, String])(implicit ec: ExecutionContext): Future[SyncSuccess[EventId]] = synchronized {
+  override def storeHistories(values: Map[SyncContext, InteractionHistoryJson])(using ExecutionContext): Future[SyncSuccess[EventId]] = synchronized {
     if values.isEmpty then Future.successful(SyncSuccess.emptyNow()) else
-      Try(values.values.flatMap(InteractionHistoryJson.deserialize(_).eventIds).toSet).fold(Future.failed, sent => {
+      Try(values.values.flatMap(_.eventIds).toSet).fold(Future.failed, sent => {
         val promise = Promise[SyncSuccess[EventId]]()
         cachedStores.update(_ :+ CachedStoreRequest(Instant.now(), values, sent, promise))
         flush(false)
@@ -108,7 +107,7 @@ object BufferedSyncDestinationHandler {
   private def handleReads(reads: Seq[CachedReadRequest], underlying: SyncDestinationHistoryHandler): Future[Unit] =
     Future.traverse(reads.groupBy(request => request.usageContext -> request.range.map(_.strategy)).toSeq) { case ((context, strategy), requests) =>
       val reading = strategy match {
-        case None => execute(underlying)(underlying.readHistoriesJson(context))
+        case None => execute(underlying)(underlying.readHistories(context))
         case Some(selection) =>
           val ranges = requests.collect { case request: CachedRangeRead => request }
           val keys = ranges.flatMap(_.keys).distinct
@@ -116,7 +115,7 @@ object BufferedSyncDestinationHandler {
           val starting = ranges.map(_.window.starting).min
           val until = ranges.map(_.window.until).max
           execute(underlying)(underlying.readHistoriesInRange(context, keys, starting, until, selection))
-            .map(values => FetchResponse.fromMap(Instant.now(), values.map((key, value) => key -> value.serialized)))
+            .map(values => FetchResponse.fromMap(Instant.now(), values))
       }
       reading.transform { outcome =>
         requests.foreach(_.fulfillWith(outcome, (key, error) =>
@@ -130,14 +129,10 @@ object BufferedSyncDestinationHandler {
       // Merge queued deltas per key so that idempotent events are not lost when multiple
       // stores for the same key arrive before the buffer flushes.
       val storing = attempt {
-        val merged = stores.foldLeft(Map.empty[SyncContext, Vector[String]]) { (acc, request) =>
-          acc ++ request.toStore.map { (key, json) =>
-            key -> (acc.getOrElse(key, Vector.empty) :+ json)
-          }
-        }.view.map { (key, versions) =>
-          key -> InteractionHistoryJson.mergeSerialized(versions)
-        }.toMap
-        execute(underlying)(underlying.storeHistoriesJson(merged))
+        val merged = stores.foldLeft(Map.empty[SyncContext, Vector[InteractionHistoryJson]]) { (acc, request) =>
+          acc ++ request.toStore.map((key, history) => key -> (acc.getOrElse(key, Vector.empty) :+ history))
+        }.view.mapValues(_.reduce(_.merge(_))).toMap
+        execute(underlying)(underlying.storeHistories(merged))
       }
       storing.transform { outcome =>
         stores.foreach(request => request.promise.tryComplete(outcome.map(_.restrictedTo(request.sentEvents))))
@@ -148,29 +143,29 @@ object BufferedSyncDestinationHandler {
 
   private case class Range(starting: Instant, until: Instant, strategy: EventSyncStrategy)
   private sealed trait CachedRequest { def requestTimestamp: Instant }
-  private case class CachedStoreRequest(requestTimestamp: Instant, toStore: Map[SyncContext, String], sentEvents: Set[EventId],
+  private case class CachedStoreRequest(requestTimestamp: Instant, toStore: Map[SyncContext, InteractionHistoryJson], sentEvents: Set[EventId],
       promise: Promise[SyncSuccess[EventId]])
   private sealed trait CachedReadRequest extends CachedRequest {
-    def fulfillWith(data: Try[FetchResponse[SyncContext, String]], discarded: (SyncContext, Throwable) => Unit): Unit
+    def fulfillWith(data: Try[FetchResponse[SyncContext, InteractionHistoryJson]], discarded: (SyncContext, Throwable) => Unit): Unit
     def usageContext: UsageContext
     def range: Option[Range]
   }
-  private case class CachedReadRequestMultipleRaw(requestTimestamp: Instant, usageContext: UsageContext, promise: Promise[FetchResponse[SyncContext, String]]) extends CachedReadRequest {
+  private case class CachedReadRequestMultipleRaw(requestTimestamp: Instant, usageContext: UsageContext, promise: Promise[FetchResponse[SyncContext, InteractionHistoryJson]]) extends CachedReadRequest {
     val range: Option[Range] = None
-    override def fulfillWith(data: Try[FetchResponse[SyncContext, String]], discarded: (SyncContext, Throwable) => Unit): Unit =
+    override def fulfillWith(data: Try[FetchResponse[SyncContext, InteractionHistoryJson]], discarded: (SyncContext, Throwable) => Unit): Unit =
       promise.tryComplete(data)
   }
   private case class CachedRangeRead(requestTimestamp: Instant, usageContext: UsageContext,
-      keys: Set[SyncContext], window: Range, promise: Promise[FetchResponse[SyncContext, String]]) extends CachedReadRequest {
+      keys: Set[SyncContext], window: Range, promise: Promise[FetchResponse[SyncContext, InteractionHistoryJson]]) extends CachedReadRequest {
     val range: Option[Range] = Some(window)
     /** The shared answer covers the union of all windows; each caller receives its own keys and window. */
-    def fulfillWith(data: Try[FetchResponse[SyncContext, String]], discarded: (SyncContext, Throwable) => Unit): Unit =
+    def fulfillWith(data: Try[FetchResponse[SyncContext, InteractionHistoryJson]], discarded: (SyncContext, Throwable) => Unit): Unit =
       promise.tryComplete(data.map { response =>
         val readable = InteractionHistoryJson.readable(response.fetchedValues.filter(entry => keys(entry.dataKey))
-          .map(entry => entry.dataKey -> entry.dataValue))(InteractionHistoryJson.deserialize,
+          .map(entry => entry.dataKey -> entry.dataValue))(identity,
           EventSyncStrategy.SYNC_EVERYTHING, window.starting, window.until, discarded)
         response.copy(fetchedValues = response.fetchedValues.flatMap(entry =>
-          readable.get(entry.dataKey).map(history => entry.copy(dataValue = history.serialized))))
+          readable.get(entry.dataKey).map(history => entry.copy(dataValue = history))))
       })
   }
 
