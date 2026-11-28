@@ -585,7 +585,7 @@ class InteractionHistoryMysqlSpec extends FunSuite {
     }
 
   test("relational timestamps use indexed ISO 8601 text with nine fractional digits") {
-    val exactSecond = time.withNano(0)
+    val exactSecond = time.truncatedTo(java.time.temporal.ChronoUnit.SECONDS)
     val oneNano = exactSecond.plusNanos(1)
     val sample = InteractionVariableHistory.empty(format)
       .addEvent(AnswerChangedEvent[format.type]("second", exactSecond, UpdateImportance.MAJOR))
@@ -664,7 +664,7 @@ class InteractionHistoryMysqlSpec extends FunSuite {
   }
 
   test("relational inclusive ranges preserve adjacent nanoseconds across midnight") {
-    val endOfDay = time.toLocalDate.atTime(23, 59, 59, 999999999)
+    val endOfDay = time.atOffset(java.time.ZoneOffset.UTC).toLocalDate.atTime(23, 59, 59, 999999999).toInstant(java.time.ZoneOffset.UTC)
     val nextDay = endOfDay.plusNanos(1)
     val before = history("before midnight", endOfDay)
     val after = history("at midnight", nextDay)

@@ -176,7 +176,7 @@ class UserAccountMysqlSpec extends FunSuite {
       assert(math.abs(java.time.Duration.between(first.expires, stored.expires).toNanos) <= 1000)
       assertEquals(control.ensureAndGetUserTokenFromDb(alice.id, logger), Some(stored))
 
-      val expired = SingleAccessToken("expired-fixture", Instant.now().minus(java.time.Duration.ofDays(1)).withNano(123456000))
+      val expired = SingleAccessToken("expired-fixture", Instant.now().minus(java.time.Duration.ofDays(1)).truncatedTo(java.time.temporal.ChronoUnit.SECONDS).plusNanos(123456000))
       control.upsertToken(alice.id, expired)
       assertEquals(control.findAccessTokens(alice.id), Some(expired))
       val renewed = control.ensureAndGetUserTokenFromDb(alice.id, logger).get
@@ -189,14 +189,14 @@ class UserAccountMysqlSpec extends FunSuite {
   test("login validates the stored code, account and database expiry rather than the submitted expiry") {
     assert(register().accountCreated)
     assert(register(bob).accountCreated)
-    val token = SingleAccessToken("alice-fixture", Instant.now().plus(java.time.Duration.ofHours(1)).withNano(123456000))
+    val token = SingleAccessToken("alice-fixture", Instant.now().plus(java.time.Duration.ofHours(1)).truncatedTo(java.time.temporal.ChronoUnit.SECONDS).plusNanos(123456000))
     queries(_.upsertToken(alice.id, token))
     assert(!login(alice.mail, token.copy(token = "wrong")).loginSucceeded)
     assert(!login(bob.mail, token).loginSucceeded)
     val unknown = login("missing@example.invalid", token)
     assert(!unknown.userKnown)
     assert(!unknown.loginSucceeded)
-    val response = login("ALICE@EXAMPLE.INVALID", token.copy(expires = Instant.now().minusYears(1)))
+    val response = login("ALICE@EXAMPLE.INVALID", token.copy(expires = Instant.now().minus(java.time.Duration.ofDays(366))))
     assert(response.loginSucceeded)
     assertEquals(response.allUserInfo.map(_.user), Some(normalized(alice)))
     assertEquals(response.allUserInfo.map(_.config), Some(config))
@@ -299,7 +299,7 @@ class UserAccountMysqlSpec extends FunSuite {
         Using.resource(statement.executeQuery(
           "SELECT `timestamp`, `ipAddress`, `userid`, `sessionDataSerialized` FROM `submissionLog`")) { result =>
           Iterator.continually(result.next()).takeWhile(identity).map(_ =>
-            (result.getTimestamp(1).toLocalDateTime, result.getString(2), result.getString(3), result.getString(4))).toList
+            (it.evadid.server.database.SqlStatements.instant(result.getTimestamp(1)), result.getString(2), result.getString(3), result.getString(4))).toList
         }
       }
     }

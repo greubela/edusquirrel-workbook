@@ -37,7 +37,7 @@ function mergeHistory(previous,incoming) {
   return {...incoming,historyJson:{events:{values:[...byId.values()]}}};
 }
 function envelope(command,value) {
-  const now = new Date().toISOString().slice(0,-1);
+  const now = new Date().toISOString();
   return JSON.stringify({timestamps:{timestampReceived:now,timestampStarted:now,timestampFinished:now},
     result:[1,{json:JSON.stringify(value),classSimpleName:'FixtureResponse'}],receivedExecutionCommand:command,
     additionalOutput:{loggerOut:'',loggerError:''}});
