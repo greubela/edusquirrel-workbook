@@ -66,7 +66,7 @@ class BackendCommandHttpSpec extends FunSuite {
 
   test("the decoded size limit also applies to highly compressible requests") {
     val compressed = gzip("x" * (BackendServer.maxCommandBodyBytes.toInt + 1))
-    assert(compressed.length < 100000)
+    assert(compressed.length < BackendServer.maxCommandBodyBytes / 100, "the compressed body is far below the limit")
     val response = postEncoded(compressed, "gzip")
     assertEquals(response.statusCode(), 413)
     assert(failureMessage(response).contains("byte request limit"))

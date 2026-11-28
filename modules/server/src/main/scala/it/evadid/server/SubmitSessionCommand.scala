@@ -1,6 +1,7 @@
 package it.evadid.server
 
 import it.evadid.core.datastructures.file.{CopyrightInfo, LoadedFile, NamedDataFileDescription}
+import it.evadid.core.util.InfoUtil
 import it.evadid.distribution.commandTypes.MailCommands.{SendMailRequest, SendMailResponse}
 import it.evadid.distribution.commandTypes.SubmissionCommands.{SubmitSessionEvent, SubmitSessionResponse}
 import it.evadid.util.JvmUtils
@@ -9,12 +10,14 @@ import it.evadid.workbook.session.SessionData
 import jakarta.mail.internet.InternetAddress
 import upickle.default.write
 
+import java.io.ByteArrayOutputStream
 import java.net.InetAddress
 import java.nio.charset.StandardCharsets
 import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
+import java.util.zip.{Deflater, ZipEntry, ZipOutputStream}
 import scala.concurrent.{ExecutionContext, Future}
-import scala.util.Try
+import scala.util.{Try, Using}
 
 /** Handles a submitted session: the full copy goes to the archive address, the summary to the learner's own address. */
 object SubmitSessionCommand {
@@ -27,15 +30,29 @@ object SubmitSessionCommand {
   private[server] def singleRecipient(mail: String): Option[String] =
     Try(InternetAddress(mail.trim, true)).toOption.filter(_.getAddress == mail.trim).map(_.getAddress)
 
-  private def jsonAttachment(fileName: String, json: String): LoadedFile = {
-    val bytes = json.getBytes(StandardCharsets.UTF_8)
-    LoadedFile(NamedDataFileDescription(fileName, bytes, CopyrightInfo.unknownCopyrightInfo, Some("application/json")), bytes)
+  private val fileDateFormat = DateTimeFormatter.ofPattern("yyyy_MM_dd")
+
+  /** Name shared by a submission's files, e.g. `2026_11_28_WorkbookSubmitted_Erika_Musterfrau`. */
+  private[server] def attachmentBaseName(summary: SimpleSubmission, receivedAt: LocalDateTime): String =
+    s"${receivedAt.format(fileDateFormat)}_WorkbookSubmitted_${InfoUtil.fileNameSafe(summary.submittingUser.userName)}"
+
+  /** `fileName` deflated into `<fileName>.zip`: sessions are mostly JSON and shrink to a fraction, keeping mails small. */
+  private[server] def zipped(fileName: String, content: String): LoadedFile = {
+    val buffer = ByteArrayOutputStream()
+    Using.resource(ZipOutputStream(buffer)) { zip =>
+      zip.setLevel(Deflater.BEST_COMPRESSION)
+      zip.putNextEntry(ZipEntry(fileName))
+      zip.write(content.getBytes(StandardCharsets.UTF_8))
+      zip.closeEntry()
+    }
+    val bytes = buffer.toByteArray
+    LoadedFile(NamedDataFileDescription(fileName + ".zip", bytes, CopyrightInfo.unknownCopyrightInfo, Some("application/zip")), bytes)
   }
 
-  private def summaryAttachment(session: SessionData, summary: SimpleSubmission): LoadedFile =
-    jsonAttachment(session.fileName.stripSuffix(".eva") + "-summary.json", write(summary, indent = 2))
+  private def summaryAttachment(baseName: String, summary: SimpleSubmission): LoadedFile =
+    zipped(baseName + "-summary.json", write(summary, indent = 2))
 
-  private[server] def confirmationMail(recipient: String, session: SessionData, summary: SimpleSubmission): SendMailRequest = {
+  private[server] def confirmationMail(recipient: String, summary: SimpleSubmission, receivedAt: LocalDateTime): SendMailRequest = {
     val workbook = summary.workbook.referencedId
     val received = summary.submittedAt.format(mailTimeFormat)
     val count = summary.submittedInteractions.size
@@ -43,23 +60,24 @@ object SubmitSessionCommand {
       s"""Guten Tag ${summary.submittingUser.userName},
          |
          |Ihre Abgabe zum Arbeitsheft „$workbook“ (gespeichert $received) ist eingegangen.
-         |Im Anhang finden Sie eine Zusammenfassung Ihrer $count bearbeiteten Aufgaben.
+         |Im Anhang (ZIP) finden Sie eine Zusammenfassung Ihrer $count bearbeiteten Aufgaben.
          |
          |Your submission for the workbook "$workbook" (saved $received) has been received.
-         |The attachment summarizes your $count answered tasks.
-         |""".stripMargin, List(summaryAttachment(session, summary)))
+         |The attached ZIP file summarizes your $count answered tasks.
+         |""".stripMargin, List(summaryAttachment(attachmentBaseName(summary, receivedAt), summary)))
   }
 
   private[server] def archiveMail(session: SessionData, summary: SimpleSubmission, receivedAt: LocalDateTime): SendMailRequest = {
     val user = summary.submittingUser
+    val baseName = attachmentBaseName(summary, receivedAt)
     SendMailRequest(archiveRecipient, s"EduSquirrel-Abgabe: ${summary.workbook.referencedId} – ${user.userName}",
       s"""Abgabe zum Arbeitsheft „${summary.workbook.referencedId}“, eingegangen ${receivedAt.format(mailTimeFormat)}.
          |Angegeben: ${user.userName} <${user.userMail}> (Konto ${session.userInfo.id}), IP ${user.userIp.getHostAddress}.
          |Bearbeitete Aufgaben: ${summary.submittedInteractions.size}.
          |
-         |Anhänge: vollständige Sitzungsdaten (${session.fileName}, über „Sitzung fortsetzen“ ladbar) und die Zusammenfassung.
+         |Anhänge (ZIP): vollständige Sitzungsdaten ($baseName.eva, entpackt über „Sitzung fortsetzen“ ladbar) und die Zusammenfassung.
          |""".stripMargin,
-      List(jsonAttachment(session.fileName, write(session)), summaryAttachment(session, summary)))
+      List(zipped(baseName + ".eva", write(session)), summaryAttachment(baseName, summary)))
   }
 
   /** The archive copy must be delivered; a failed confirmation is reported in the response and logged. */
@@ -72,7 +90,7 @@ object SubmitSessionCommand {
       case None =>
         logger.logWarn("The submission names no valid single email address; no confirmation was sent.")
         false
-      case Some(recipient) => Try(send(confirmationMail(recipient, session, summary)).sent).fold(error => {
+      case Some(recipient) => Try(send(confirmationMail(recipient, summary, receivedAt)).sent).fold(error => {
         logger.logExceptionWarn("The submission confirmation could not be sent", error)
         false
       }, identity)
