@@ -1,6 +1,5 @@
 package it.evadid.workbook.interactions.slideshow
 
-import it.evadid.core.util.UtcTime
 
 import it.evadid.core.util.io.Serializer
 import it.evadid.core.util.io.serializer.DefaultSerializer
@@ -10,7 +9,7 @@ import it.evadid.workbook.serialization.WorkbookElementReference
 import upickle.default.*
 
 import it.evadid.core.util.io.serializer.DefaultSerializer.given
-import java.time.LocalDateTime
+import java.time.Instant
 
 /**
  * Stores the interaction history for a slideshow without owning any UI rendering details.
@@ -31,18 +30,18 @@ case class SlideshowState(
    * Records that the user moved from one panel index to another and returns the updated slideshow state.
    * Both indices are resolved against `allPanels`, keeping event creation tied to the model's panel list rather than to a specific renderer.
    */
-  def recordTransitionByIndex(oldPanelIndex: Int, newPanelIndex: Int, proceededAt: LocalDateTime = UtcTime.now()): SlideshowState = {
+  def recordTransitionByIndex(oldPanelIndex: Int, newPanelIndex: Int, proceededAt: Instant = Instant.now()): SlideshowState = {
     val event = SlideshowProceededEvent(allPanels(oldPanelIndex), allPanels(newPanelIndex), proceededAt)
     copy(events = events + event)
   }
 
-  def timestampsWhereUserSwitchedFromOrToPanel(panel: WorkbookDisplayElement): Set[LocalDateTime] =
+  def timestampsWhereUserSwitchedFromOrToPanel(panel: WorkbookDisplayElement): Set[Instant] =
     timestampsWhereUserSwitchedFromPanel(panel) ++ timestampsWhereUserSwitchedToPanel(panel)
 
-  private def timestampsWhereUserSwitchedFromPanel(panel: WorkbookDisplayElement): Set[LocalDateTime] =
+  private def timestampsWhereUserSwitchedFromPanel(panel: WorkbookDisplayElement): Set[Instant] =
     eventsSorted.filter(_.oldPanel == panel.asRef).map(_.proceededAt).toSet
 
-  private def timestampsWhereUserSwitchedToPanel(panel: WorkbookDisplayElement): Set[LocalDateTime] =
+  private def timestampsWhereUserSwitchedToPanel(panel: WorkbookDisplayElement): Set[Instant] =
     eventsSorted.filter(_.newPanel == panel.asRef).map(_.proceededAt).toSet
 
   def serializer(): Serializer[SlideshowState] = new Serializer[SlideshowState] {
@@ -56,7 +55,7 @@ case class SlideshowState(
 object SlideshowState {
 
 
-  case class SlideshowProceededEvent(oldPanel: WorkbookElementReference, newPanel: WorkbookElementReference, proceededAt: LocalDateTime) derives ReadWriter {
+  case class SlideshowProceededEvent(oldPanel: WorkbookElementReference, newPanel: WorkbookElementReference, proceededAt: Instant) derives ReadWriter {
 
   }
 

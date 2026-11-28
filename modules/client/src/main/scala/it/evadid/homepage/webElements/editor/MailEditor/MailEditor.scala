@@ -1,6 +1,7 @@
 package it.evadid.homepage.webElements.editor.MailEditor
 
-import it.evadid.core.util.UtcTime
+import java.time.Instant
+
 
 import it.evadid.homepage.control.model.FullInfo
 
@@ -19,7 +20,7 @@ case class MailEditor(fullInfo: FullInfo, underlyingVar: Var[InboxStateScaffoldi
   private val hasSelection = selected.map(_.isDefined)
   private def editDraft(d: MailDraft): Element = form(
     cls := "mail-compose",
-    onSubmit.preventDefault --> (_ => send(java.util.UUID.randomUUID().toString, account, UtcTime.now().toString)),
+    onSubmit.preventDefault --> (_ => send(java.util.UUID.randomUUID().toString, account, Instant.now().toString)),
     h2(text <-- labelText("compose")),
     label(span(text <-- labelText("to")), input(value := d.to,
       onInput.mapToValue --> (v => draft.update(_.map(_.copy(to = v)))))),

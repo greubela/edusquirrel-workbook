@@ -4,7 +4,7 @@ import it.evadid.core.util.io.serializer.DefaultSerializer.given
 import it.evadid.workbook.abstractions.{InteractionFormat, StateReference}
 import it.evadid.workbook.history.events.{AnswerChangedEvent, InteractionEvent, InteractionEvents}
 
-import java.time.LocalDateTime
+import java.time.Instant
 import upickle.default.*
 
 /** Applies uniformly to answers, grading and scaffolding, without removing related events implicitly. */
@@ -47,7 +47,7 @@ object EventSyncStrategy {
   }
 
   /** Inclusive by default so events sharing a synchronization boundary are not lost. */
-  case class Since(timestamp: LocalDateTime, includeBoundary: Boolean = true) extends EventSyncStrategy derives ReadWriter {
+  case class Since(timestamp: Instant, includeBoundary: Boolean = true) extends EventSyncStrategy derives ReadWriter {
     override def selectEvents[F <: InteractionFormat](events: Set[InteractionEvent[F]], stateOf: InteractionEvent[F] => StateReference) =
       events.filter(event => event.timestamp.isAfter(timestamp) || (includeBoundary && event.timestamp == timestamp))
   }

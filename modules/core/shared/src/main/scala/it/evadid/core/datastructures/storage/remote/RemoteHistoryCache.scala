@@ -1,6 +1,5 @@
 package it.evadid.core.datastructures.storage.remote
 
-import it.evadid.core.util.UtcTime
 
 import it.evadid.core.datastructures.state.State
 import it.evadid.core.datastructures.storage.remote.RemoteHistoryCache.*
@@ -9,7 +8,7 @@ import it.evadid.workbook.abstractions.InteractionFormat
 import it.evadid.workbook.sync.{EventSyncStrategy, SyncSuccess}
 import it.evadid.workbook.history.InteractionVariableHistory
 import it.evadid.workbook.history.events.{EventId, InteractionEvent, InteractionEvents}
-import java.time.LocalDateTime
+import java.time.Instant
 import scala.concurrent.{ExecutionContext, Future}
 import scala.util.{Failure, Success, Try}
 
@@ -44,7 +43,7 @@ final class RemoteHistoryCache[K, F <: InteractionFormat, RW <: RemoteHistoryRea
 
   private def attempt[A](operation: => Future[A]): Future[A] = Try(operation).fold(Future.failed, identity)
   private def empty: History = InteractionVariableHistory(format, InteractionEvents.empty)
-  private def later(a: Option[LocalDateTime], b: Option[LocalDateTime]): Option[LocalDateTime] = (a.toList ++ b).maxOption
+  private def later(a: Option[Instant], b: Option[Instant]): Option[Instant] = (a.toList ++ b).maxOption
   private def missing(local: History, known: Set[EventId], strategy: EventSyncStrategy): History =
     InteractionVariableHistory(format, InteractionEvents(local.cleanWithStrategy(strategy).events.values.filterNot(event => known(event.eventId))))
 
@@ -61,7 +60,7 @@ final class RemoteHistoryCache[K, F <: InteractionFormat, RW <: RemoteHistoryRea
   def mergeLocal(histories: Map[K, History]): Unit = state.update(_.withLocalHistories(histories))
 
   /** Freshness is measured by successful tail-read completion, independently of event timestamps and write acknowledgements. */
-  def ensureMaxAge(keys: Set[K], maximumAcceptableAge: LocalDateTime = UtcTime.now(),
+  def ensureMaxAge(keys: Set[K], maximumAcceptableAge: Instant = Instant.now(),
       forceFlush: Boolean = false): Future[Unit] = attempt {
     if forceFlush then flush(true)
     val current = state.now()
@@ -72,11 +71,11 @@ final class RemoteHistoryCache[K, F <: InteractionFormat, RW <: RemoteHistoryRea
         .toList.map((cursor, selected) => (cache, selected, cursor))
     }
     Future.traverse(requests)((cache, selected, cursor) =>
-      fetch(cache, selected, cursor, LocalDateTime.MAX, forceFlush, trackProgress = true)).map(_ => ())
+      fetch(cache, selected, cursor, Instant.MAX, forceFlush, trackProgress = true)).map(_ => ())
   }
 
   /** Query explicit windows without claiming the unread portions of a history have been refreshed. */
-  def fetchEventsBetween(keys: Seq[K], starting: LocalDateTime, until: LocalDateTime,
+  def fetchEventsBetween(keys: Seq[K], starting: Instant, until: Instant,
       forceFlush: Boolean = false): Future[Map[K, Seq[InteractionEvent[F]]]] = attempt {
     require(!until.isBefore(starting), "History range end must not precede its start")
     if forceFlush then flush(true)
@@ -87,12 +86,12 @@ final class RemoteHistoryCache[K, F <: InteractionFormat, RW <: RemoteHistoryRea
   /** A successful destination can restore its events independently of unavailable peers. */
   def fetchAllFrom(destination: RW, keys: Set[K], forceFlush: Boolean = false): Future[Map[K, Seq[InteractionEvent[F]]]] = attempt {
     require(cacheStrategies.contains(destination), "Cannot read an unconfigured history destination")
-    fetch(destination, keys, None, LocalDateTime.MAX, forceFlush, trackProgress = true)
+    fetch(destination, keys, None, Instant.MAX, forceFlush, trackProgress = true)
       .map(response => combine(List(response)))
   }
 
   /** Normal polls replay the last event; periodic full reads also recover late uploads with older timestamps. */
-  def refreshFrom(destination: RW, keys: Set[K], fullRefreshBefore: LocalDateTime,
+  def refreshFrom(destination: RW, keys: Set[K], fullRefreshBefore: Instant,
       forceFlush: Boolean = false): Future[Map[K, Seq[InteractionEvent[F]]]] = attempt {
     require(cacheStrategies.contains(destination), "Cannot read an unconfigured history destination")
     val current = state.now()
@@ -101,21 +100,21 @@ final class RemoteHistoryCache[K, F <: InteractionFormat, RW <: RemoteHistoryRea
         .flatMap(value => value.fetchedThrough.orElse(value.fetchCompleted))
     }
     Future.traverse(windows.toSeq) { (cursor, selected) =>
-      fetch(destination, selected, cursor, LocalDateTime.MAX, forceFlush, trackProgress = true)
+      fetch(destination, selected, cursor, Instant.MAX, forceFlush, trackProgress = true)
     }.map(combine)
   }
 
   def fetchAll(keys: Set[K], forceFlush: Boolean = false): Future[Map[K, Seq[InteractionEvent[F]]]] = attempt {
     if forceFlush then flush(true)
     Future.traverse(cacheStrategies.keys)(cache =>
-      fetch(cache, keys, None, LocalDateTime.MAX, forceFlush, trackProgress = true)).map(combine)
+      fetch(cache, keys, None, Instant.MAX, forceFlush, trackProgress = true)).map(combine)
   }
 
   private def combine(responses: Iterable[Map[K, History]]): Map[K, Seq[InteractionEvent[F]]] =
     responses.flatMap(_.toList).groupMapReduce(_._1)(_._2)(_.mergeWith(_))
       .map((key, history) => key -> history.events.values.toList.sortBy(_.timestamp))
 
-  private def fetch(cache: RW, keys: Set[K], starting: Option[LocalDateTime], until: LocalDateTime,
+  private def fetch(cache: RW, keys: Set[K], starting: Option[Instant], until: Instant,
       forceFlush: Boolean, trackProgress: Boolean): Future[Map[K, History]] = attempt {
     if keys.isEmpty then Future.successful(Map.empty) else {
       val strategy = cacheStrategies(cache)
@@ -125,7 +124,7 @@ final class RemoteHistoryCache[K, F <: InteractionFormat, RW <: RemoteHistoryRea
       }
       cache.reader.flush(syncLogger, forceFlush)
       pending.map { response =>
-        val completed = UtcTime.now()
+        val completed = Instant.now()
         val received = keys.map { key =>
           val bounded = response.getOrElse(key, Nil).filter(event =>
             starting.forall(from => !event.timestamp.isBefore(from)) && !event.timestamp.isAfter(until))
@@ -143,7 +142,7 @@ final class RemoteHistoryCache[K, F <: InteractionFormat, RW <: RemoteHistoryRea
   /** Merges a read into the local and destination histories; only tracked reads advance the destination's progress.
     * A read from a destination the state no longer tracks changes nothing.
     */
-  private def withFetched(current: CacheState[K, F, RW], cache: RW, received: Map[K, History], completed: LocalDateTime,
+  private def withFetched(current: CacheState[K, F, RW], cache: RW, received: Map[K, History], completed: Instant,
       trackProgress: Boolean, fullRead: Boolean): CacheState[K, F, RW] = current.destinations.get(cache).fold(current) { tracked =>
     val remote = received.foldLeft(tracked) { case (values, (key, history)) =>
       val previous = values.getOrElse(key, RemoteHistoryValue.empty)
@@ -221,9 +220,9 @@ object RemoteHistoryCache {
   /** What one destination is known to hold for a key; the progress fields advance only with tracked reads. */
   case class RemoteHistoryValue(
       knownEventIds: Set[EventId],
-      fetchCompleted: Option[LocalDateTime],
-      fetchedThrough: Option[LocalDateTime],
-      fullFetchCompleted: Option[LocalDateTime])
+      fetchCompleted: Option[Instant],
+      fetchedThrough: Option[Instant],
+      fullFetchCompleted: Option[Instant])
 
   object RemoteHistoryValue {
     val empty: RemoteHistoryValue = RemoteHistoryValue(Set.empty, None, None, None)

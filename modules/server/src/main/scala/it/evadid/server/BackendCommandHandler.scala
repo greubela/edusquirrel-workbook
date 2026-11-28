@@ -15,7 +15,7 @@ import it.evadid.server.commandHandler.sql.{SqlEditorExecution, SqlLogCommands, 
 import it.evadid.util.logging.Logger
 
 import java.net.InetAddress
-import java.time.LocalDateTime
+import java.time.Instant
 import scala.concurrent.{ExecutionContext, Future}
 
 object BackendCommandHandler {
@@ -47,7 +47,7 @@ object BackendCommandHandler {
 
 
   /** Commands accepted without an account; a submission also records the request's time and address. */
-  private[server] def handlersWithoutLogin(commandReceived: LocalDateTime, remoteAddress: InetAddress): ExecutionClient = ExecutionClientPool(List(
+  private[server] def handlersWithoutLogin(commandReceived: Instant, remoteAddress: InetAddress): ExecutionClient = ExecutionClientPool(List(
     localHandlerNoLoginRequired,
     SubmissionCommands.submitSessionCommand.toLocalExecutionClient(
       (event: SubmitSessionEvent, logger: Logger) => SubmitSessionCommand.handle(event, remoteAddress, commandReceived, logger)
@@ -118,7 +118,7 @@ object BackendCommandHandler {
         .forall(field => fields.get(field).flatMap(_.strOpt).exists(_ != null))) then
       throw IllegalArgumentException("Invalid feedback request.")
 
-  def handleExecution(commandReceived: LocalDateTime, executionCommand: ExecutionCommand, verifiedToken: Option[SignedToken], remoteAddress: InetAddress, logger: Logger): Future[ExecutionClientResponse] = {
+  def handleExecution(commandReceived: Instant, executionCommand: ExecutionCommand, verifiedToken: Option[SignedToken], remoteAddress: InetAddress, logger: Logger): Future[ExecutionClientResponse] = {
     if (executionCommand.name.trim.isEmpty) {
       val message = "ExecutionCommand.name must not be empty"
       logger.logError(message)

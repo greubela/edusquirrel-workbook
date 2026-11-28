@@ -10,12 +10,12 @@ import it.evadid.workbook.sync.UpdateImportance
 import it.evadid.workbook.sync.model.InteractionHistoryJson
 import it.evadid.workbook.history.InteractionVariableHistory
 import it.evadid.workbook.history.events.*
-import java.time.LocalDateTime
+import java.time.Instant
 import munit.FunSuite
 import upickle.default.*
 
 class InteractionFormatSpec extends FunSuite {
-  private val time = LocalDateTime.of(2026, 11, 17, 12, 1, 2, 123456789)
+  private val time = java.time.LocalDateTime.of(2026, 11, 17, 12, 1, 2, 123456789).toInstant(java.time.ZoneOffset.UTC)
 
   test("every known format has a unique stable name and roundtrips without a workbook") {
     assertEquals(knownFormats.map(_.name).distinct.size, knownFormats.size)

@@ -1,6 +1,5 @@
 package it.evadid.homepage.workbook.htmlRenderer.interactionRenderer.turtleStitch
 
-import it.evadid.core.util.UtcTime
 
 import it.evadid.homepage.control.model.FullInfo
 
@@ -17,7 +16,7 @@ import it.evadid.workbook.sync.UpdateImportance
 import org.scalajs.dom
 import org.scalajs.dom.{File, HTMLInputElement}
 
-import java.time.LocalDateTime
+import java.time.Instant
 import scala.concurrent.{ExecutionContext, Future}
 import scala.util.{Failure, Success}
 
@@ -40,7 +39,7 @@ private[turtleStitch] case class HtmlTurtleStitchFileUploadCard(fullInfo: FullIn
   private def onFileReadSuccessfully(bytes: Array[Byte]): Unit = {
     println("file read successfully, content has " + bytes.length + " bytes!")
     TurtleStitchProjectState.parseFromBytes(bytes).match {
-      case Success(newState) => fullInfo.interactions.setStateFromUserInteraction(workbookInteraction, newState, UpdateImportance.MAJOR, UtcTime.now())
+      case Success(newState) => fullInfo.interactions.setStateFromUserInteraction(workbookInteraction, newState, UpdateImportance.MAJOR, Instant.now())
       case Failure(err) => println("HtmlTurtleStitchFileUploadCardRenderer::onFileReadSuccessfully error: " + err.getMessage)
     }
   }

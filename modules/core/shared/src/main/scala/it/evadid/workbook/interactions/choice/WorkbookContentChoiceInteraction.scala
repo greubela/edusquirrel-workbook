@@ -1,6 +1,5 @@
 package it.evadid.workbook.interactions.choice
 
-import it.evadid.core.util.UtcTime
 
 import it.evadid.core.datastructures.language.{LanguageMapContentId, WorkbookContent}
 import it.evadid.workbook.abstractions.InteractionFormat.ChoiceInteractionFormat
@@ -9,7 +8,7 @@ import it.evadid.workbook.abstractions.grading.*
 import it.evadid.workbook.interactions.choice.WorkbookContentChoiceInteraction.*
 import it.evadid.workbook.serialization.{WorkbookElementFactory, WorkbookElementSerializable}
 import it.evadid.core.util.io.serializer.DefaultSerializer.given
-import java.time.LocalDateTime
+import java.time.Instant
 import upickle.default.*
 
 case class WorkbookContentChoiceInteraction(elementId: String, config: ChoiceConfig, options: Seq[ChoiceOptionWorkbookContent])
@@ -30,7 +29,7 @@ case class WorkbookContentChoiceInteraction(elementId: String, config: ChoiceCon
   /** Indices of the selected options that are graded incorrect. */
   override def wrongParts(state: ChoiceState): Set[Int] = ChoiceGrader.wrongSelections(options, state)
 
-  def select(state: ChoiceState, index: Int, selected: Boolean, timestamp: LocalDateTime = UtcTime.now()): ChoiceState = {
+  def select(state: ChoiceState, index: Int, selected: Boolean, timestamp: Instant = Instant.now()): ChoiceState = {
     validateState(state)
     require(options.indices.contains(index), "Choice index is outside the exercise")
     val option = options(index)
@@ -47,7 +46,7 @@ object WorkbookContentChoiceInteraction {
   case class ChoiceConfig(instruction: LanguageMapContentId, allowMultipleSelected: Option[Boolean], gradingBehavior: GraderRunningBehavior) derives ReadWriter
   case class GradingForChoice(answerCorrectness: GradingStatus, feedbackIfChosen: LanguageMapContentId) derives ReadWriter
   case class ChoiceOptionWorkbookContent(content: WorkbookContent, gradingForChoice: Option[GradingForChoice]) derives ReadWriter
-  case class ChoiceSelectedEvent(timestamp: LocalDateTime, selected: ChoiceOptionWorkbookContent, isSelected: Boolean = true) derives ReadWriter
+  case class ChoiceSelectedEvent(timestamp: Instant, selected: ChoiceOptionWorkbookContent, isSelected: Boolean = true) derives ReadWriter
   case class ChoiceState(selectionEvents: Seq[ChoiceSelectedEvent]) derives ReadWriter {
     private lazy val ordered = selectionEvents.zipWithIndex.sortBy((event, index) => (event.timestamp, index)).map(_._1)
     lazy val lastEvent: Option[ChoiceSelectedEvent] = ordered.lastOption

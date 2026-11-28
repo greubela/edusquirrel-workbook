@@ -1,11 +1,10 @@
 package it.evadid.workbook.interactions.matching
 
-import it.evadid.core.util.UtcTime
 
 import it.evadid.workbook.abstractions.FeedbackEntity
 import it.evadid.workbook.abstractions.grading.*
 import it.evadid.workbook.abstractions.ExecutionContextInformation
-import java.time.LocalDateTime
+import java.time.Instant
 import scala.concurrent.Future
 import upickle.default.ReadWriter
 
@@ -21,7 +20,7 @@ case class MatchingGrader(expected: Seq[Int], rightCount: Int)
 
   override protected def handleGrading(state: MatchingInteractionState, context: ExecutionContextInformation): Future[GradingResult[MatchingInteractionState, Int]] = Future {
     val correct = MatchingGrader.correctCount(expected, rightCount, state)
-    GradingResult(this, state, MatchingGrader.status(correct, expected.size), None, Some(correct), UtcTime.now())
+    GradingResult(this, state, MatchingGrader.status(correct, expected.size), None, Some(correct), Instant.now())
   }(using context.futureExecutionContext)
 }
 

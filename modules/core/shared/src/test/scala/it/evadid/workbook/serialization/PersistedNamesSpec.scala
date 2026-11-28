@@ -9,7 +9,7 @@ import it.evadid.workbook.sync.UpdateImportance
 import munit.FunSuite
 import upickle.default.*
 
-import java.time.LocalDateTime
+import java.time.Instant
 
 /** Saved histories carry these names; they are fixed literals, so renaming a class or object keeps saved data
   * readable. Changing one of them changes the persisted schema.
@@ -37,7 +37,7 @@ class PersistedNamesSpec extends FunSuite {
 
   test("events are saved under their declared tags") {
     val format = TextInputWithLlmGradingAndScaffoldingFormat
-    val event: InteractionEvent[format.type] = AnswerChangedEvent[format.type]("answer", LocalDateTime.of(2026, 11, 28, 12, 0),
+    val event: InteractionEvent[format.type] = AnswerChangedEvent[format.type]("answer", java.time.LocalDateTime.of(2026, 11, 28, 12, 0).toInstant(java.time.ZoneOffset.UTC),
       UpdateImportance.MAJOR, EventId("00000000-0000-4000-8000-000000000001"))
     val json = ujson.read(format.codecs.eventSerializer.serialize(event))
     assertEquals(json("$type").str, "AnswerChangedEvent")

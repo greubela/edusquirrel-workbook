@@ -1,6 +1,5 @@
 package it.evadid.workbook.control
 
-import it.evadid.core.util.UtcTime
 
 import it.evadid.core.datastructures.state.State
 import it.evadid.distribution.command.SerializedException
@@ -12,7 +11,7 @@ import it.evadid.workbook.history.InteractionVariableHistory
 
 import it.evadid.workbook.abstractions.ExecutionContextInformation
 
-import java.time.LocalDateTime
+import java.time.Instant
 import scala.concurrent.{ExecutionContext, Future, Promise}
 
 /** How feedback reads and records the history of its interaction in one session. */
@@ -94,7 +93,7 @@ final class InteractionScaffoldingAndGradingControl[F <: InteractionFormat](targ
   }
 
   private def recordGradingStart(selected: Seq[Grader], state: InteractionStateType): Unit = {
-    val timestamp = UtcTime.now()
+    val timestamp = Instant.now()
     target.publish(history => selected.foldLeft(history)(_.addGradingStart(state, _, timestamp)))
   }
 

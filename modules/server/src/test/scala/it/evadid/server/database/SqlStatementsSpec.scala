@@ -4,7 +4,7 @@ import it.evadid.core.datastructures.state.State
 import it.evadid.util.logging.BasicLogger
 import java.lang.reflect.{InvocationHandler, Method, Proxy}
 import java.sql.{Connection, PreparedStatement, ResultSet, SQLException, Timestamp}
-import java.time.LocalDateTime
+import java.time.Instant
 import munit.FunSuite
 
 class SqlStatementsSpec extends FunSuite {
@@ -36,9 +36,11 @@ class SqlStatementsSpec extends FunSuite {
 
   test("updates bind typed values in order and close the statement") {
     val (db, calls) = connection(_ => Int.box(2))
-    val timestamp = Timestamp.valueOf(LocalDateTime.of(2026, 10, 13, 1, 40))
-    assertEquals(SqlStatements(db, BasicLogger()).update("UPDATE t SET a=?, b=?, c=?", "text", 7L, timestamp), 2)
-    assertEquals(calls.now(), Vector("setString 1 text", "setLong 2 7", s"setTimestamp 3 $timestamp", "executeUpdate", "close"))
+    val instant = java.time.Instant.parse("2026-10-13T01:40:00Z")
+    assertEquals(SqlStatements(db, BasicLogger()).update("UPDATE t SET a=?, b=?, c=?", "text", 7L, instant), 2)
+    // Instants are bound as UTC wall times, whatever the server's zone.
+    assertEquals(calls.now(), Vector("setString 1 text", "setLong 2 7", "setTimestamp 3 2026-10-13 01:40:00.0", "executeUpdate", "close"))
+    assertEquals(SqlStatements.instant(SqlStatements.timestamp(instant)), instant)
   }
 
   test("queries read every row from the first and close the result set and statement") {

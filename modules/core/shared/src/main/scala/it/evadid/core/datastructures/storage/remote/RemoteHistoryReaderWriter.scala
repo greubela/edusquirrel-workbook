@@ -5,7 +5,7 @@ import it.evadid.workbook.abstractions.InteractionFormat
 import it.evadid.workbook.history.InteractionVariableHistory
 import it.evadid.workbook.sync.SyncSuccess
 import it.evadid.workbook.history.events.{EventId, InteractionEvent}
-import java.time.LocalDateTime
+import java.time.Instant
 import scala.concurrent.Future
 
 /** Data reader for event-based history. */
@@ -13,11 +13,11 @@ trait RemoteHistoryDataReader[K, F <: InteractionFormat] {
   /** Both bounds are inclusive. Return the complete range, without pagination/truncation; missing keys mean empty ranges.
     * Apply the strategy to the stored history before applying the timestamp bounds.
     */
-  def fetchEventsBetween(logger: SyncLogger, keys: Seq[K], starting: LocalDateTime, until: LocalDateTime,
+  def fetchEventsBetween(logger: SyncLogger, keys: Seq[K], starting: Instant, until: Instant,
       strategy: it.evadid.workbook.sync.EventSyncStrategy): Future[Map[K, Seq[InteractionEvent[F]]]]
 
   def fetchAll(logger: SyncLogger, keys: Set[K], strategy: it.evadid.workbook.sync.EventSyncStrategy): Future[Map[K, Seq[InteractionEvent[F]]]] =
-    fetchEventsBetween(logger, keys.toSeq, LocalDateTime.MIN, LocalDateTime.MAX, strategy)
+    fetchEventsBetween(logger, keys.toSeq, Instant.MIN, Instant.MAX, strategy)
 
   def flush(logger: SyncLogger, forceFlush: Boolean): Unit = ()
 }

@@ -6,13 +6,13 @@ import it.evadid.distribution.formats.ExecutionClientResponse.{AdditionalLogging
 import it.evadid.util.logging.Logger
 import upickle.default.*
 import it.evadid.core.util.io.serializer.DefaultSerializer.given
-import java.time.LocalDateTime
+import java.time.Instant
 import scala.util.Try
 
 object ExecutionClientResponse {
 
-  case class ExecutionClientResponseTimestamps(timestampReceived: LocalDateTime, timestampStarted: LocalDateTime, timestampFinished: LocalDateTime) derives ReadWriter {
-    def toHistory(timestampRequested: LocalDateTime): ExecutionHistory = {
+  case class ExecutionClientResponseTimestamps(timestampReceived: Instant, timestampStarted: Instant, timestampFinished: Instant) derives ReadWriter {
+    def toHistory(timestampRequested: Instant): ExecutionHistory = {
       ExecutionHistory(timestampRequested, timestampReceived, timestampStarted, timestampFinished)
     }
   }
@@ -51,16 +51,16 @@ case class ExecutionClientResponse(
                                     additionalOutput: AdditionalLoggingOutput
                                   ) derives ReadWriter {
 
-  def fixReceived(newReceived: LocalDateTime): ExecutionClientResponse = this.copy(timestamps = timestamps.copy(timestampReceived = newReceived))
+  def fixReceived(newReceived: Instant): ExecutionClientResponse = this.copy(timestamps = timestamps.copy(timestampReceived = newReceived))
 
   def throwIfContainsError: ExecutionClientResponse = result.fold(throw _, _ => this)
 
-  def successOrThrow[T: ReadWriter](logger: Logger, commandSent: ExecutionCommand, timestampRequested: LocalDateTime): ExecutionSuccess[T] = parse(logger, commandSent, timestampRequested).match {
+  def successOrThrow[T: ReadWriter](logger: Logger, commandSent: ExecutionCommand, timestampRequested: Instant): ExecutionSuccess[T] = parse(logger, commandSent, timestampRequested).match {
     case s: ExecutionSuccess[T] => s
     case f: ExecutionFailure[?] => throw f.error
   }
 
-  def parse[T: ReadWriter](logger: Logger, commandSent: ExecutionCommand, timestampRequested: LocalDateTime): ExecutionInfo[T] = {
+  def parse[T: ReadWriter](logger: Logger, commandSent: ExecutionCommand, timestampRequested: Instant): ExecutionInfo[T] = {
     val history = timestamps.toHistory(timestampRequested)
     result.match {
       case Right(value) => Try(value.getAs[T]).fold(

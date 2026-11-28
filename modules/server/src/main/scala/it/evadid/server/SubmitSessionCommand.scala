@@ -13,7 +13,7 @@ import upickle.default.write
 import java.io.ByteArrayOutputStream
 import java.net.InetAddress
 import java.nio.charset.StandardCharsets
-import java.time.LocalDateTime
+import java.time.Instant
 import java.time.format.DateTimeFormatter
 import java.util.zip.{Deflater, ZipEntry, ZipOutputStream}
 import scala.concurrent.{ExecutionContext, Future}
@@ -33,8 +33,8 @@ object SubmitSessionCommand {
   private val fileDateFormat = DateTimeFormatter.ofPattern("yyyy_MM_dd")
 
   /** Name shared by a submission's files, e.g. `2026_11_28_WorkbookSubmitted_Erika_Musterfrau`. */
-  private[server] def attachmentBaseName(summary: SimpleSubmission, receivedAt: LocalDateTime): String =
-    s"${receivedAt.format(fileDateFormat)}_WorkbookSubmitted_${InfoUtil.fileNameSafe(summary.submittingUser.userName)}"
+  private[server] def attachmentBaseName(summary: SimpleSubmission, receivedAt: Instant): String =
+    s"${InfoUtil.localDateTime(receivedAt).format(fileDateFormat)}_WorkbookSubmitted_${InfoUtil.fileNameSafe(summary.submittingUser.userName)}"
 
   /** `fileName` deflated into `<fileName>.zip`: sessions are mostly JSON and shrink to a fraction, keeping mails small. */
   private[server] def zipped(fileName: String, content: String): LoadedFile = {
@@ -52,9 +52,9 @@ object SubmitSessionCommand {
   private def summaryAttachment(baseName: String, summary: SimpleSubmission): LoadedFile =
     zipped(baseName + "-summary.json", write(summary, indent = 2))
 
-  private[server] def confirmationMail(recipient: String, summary: SimpleSubmission, receivedAt: LocalDateTime): SendMailRequest = {
+  private[server] def confirmationMail(recipient: String, summary: SimpleSubmission, receivedAt: Instant): SendMailRequest = {
     val workbook = summary.workbook.referencedId
-    val received = summary.submittedAt.format(mailTimeFormat)
+    val received = InfoUtil.localDateTime(summary.submittedAt).format(mailTimeFormat)
     val count = summary.submittedInteractions.size
     SendMailRequest(recipient, s"EduSquirrel: Abgabe „$workbook“ eingegangen / submission received",
       s"""Guten Tag ${summary.submittingUser.userName},
@@ -67,11 +67,11 @@ object SubmitSessionCommand {
          |""".stripMargin, List(summaryAttachment(attachmentBaseName(summary, receivedAt), summary)))
   }
 
-  private[server] def archiveMail(session: SessionData, summary: SimpleSubmission, receivedAt: LocalDateTime): SendMailRequest = {
+  private[server] def archiveMail(session: SessionData, summary: SimpleSubmission, receivedAt: Instant): SendMailRequest = {
     val user = summary.submittingUser
     val baseName = attachmentBaseName(summary, receivedAt)
     SendMailRequest(archiveRecipient, s"EduSquirrel-Abgabe: ${summary.workbook.referencedId} – ${user.userName}",
-      s"""Abgabe zum Arbeitsheft „${summary.workbook.referencedId}“, eingegangen ${receivedAt.format(mailTimeFormat)}.
+      s"""Abgabe zum Arbeitsheft „${summary.workbook.referencedId}“, eingegangen ${InfoUtil.localDateTime(receivedAt).format(mailTimeFormat)}.
          |Angegeben: ${user.userName} <${user.userMail}> (Konto ${session.userInfo.id}), IP ${user.userIp.getHostAddress}.
          |Bearbeitete Aufgaben: ${summary.submittedInteractions.size}.
          |
@@ -81,7 +81,7 @@ object SubmitSessionCommand {
   }
 
   /** The archive copy must be delivered; a failed confirmation is reported in the response and logged. */
-  private[server] def submit(event: SubmitSessionEvent, userIp: InetAddress, receivedAt: LocalDateTime, logger: Logger,
+  private[server] def submit(event: SubmitSessionEvent, userIp: InetAddress, receivedAt: Instant, logger: Logger,
                              send: SendMailRequest => SendMailResponse): SubmitSessionResponse = {
     val session = event.sessionData.withoutCredentials
     val summary = SimpleSubmission.from(session, userIp, logger)
@@ -98,6 +98,6 @@ object SubmitSessionCommand {
     SubmitSessionResponse(summary.submittedInteractions.size, confirmed)
   }
 
-  def handle(event: SubmitSessionEvent, userIp: InetAddress, receivedAt: LocalDateTime, logger: Logger): Future[SubmitSessionResponse] =
+  def handle(event: SubmitSessionEvent, userIp: InetAddress, receivedAt: Instant, logger: Logger): Future[SubmitSessionResponse] =
     Future(submit(event, userIp, receivedAt, logger, SendMailCommand.sendMail(_, logger, JvmUtils.env)))(using ExecutionContext.global)
 }

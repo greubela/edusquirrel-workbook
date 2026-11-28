@@ -5,7 +5,7 @@ import it.evadid.workbook.abstractions.InteractionFormat
 import it.evadid.workbook.sync.EventSyncStrategy
 import it.evadid.workbook.history.InteractionVariableHistory
 import it.evadid.workbook.history.events.EventId
-import java.time.LocalDateTime
+import java.time.Instant
 import upickle.default.*
 
 /** Self-describing transport and storage boundary; decoding never needs a workbook registry. The history is nested
@@ -30,7 +30,7 @@ case class InteractionHistoryJson(format: InteractionFormat, historyJson: ujson.
   def cleanWithStrategy(strategy: EventSyncStrategy): InteractionHistoryJson =
     InteractionHistoryJson.fromHistory(format, toTyped.cleanWithStrategy(strategy))
 
-  def between(starting: LocalDateTime, until: LocalDateTime): InteractionHistoryJson = {
+  def between(starting: Instant, until: Instant): InteractionHistoryJson = {
     require(!until.isBefore(starting), "History range end must not precede its start")
     val history = toTyped
     InteractionHistoryJson.fromHistory(format, history.copy(events = history.events.copy(values =
@@ -58,7 +58,7 @@ object InteractionHistoryJson {
     * inclusive window. A record that cannot be read is reported and left out, so that it cannot hide the others.
     */
   def readable[K, S](stored: Iterable[(K, S)])(decode: S => InteractionHistoryJson, strategy: EventSyncStrategy,
-      starting: LocalDateTime, until: LocalDateTime, discarded: (K, Throwable) => Unit): Map[K, InteractionHistoryJson] =
+      starting: Instant, until: Instant, discarded: (K, Throwable) => Unit): Map[K, InteractionHistoryJson] =
     stored.flatMap { (key, value) =>
       scala.util.Try(decode(value).cleanWithStrategy(strategy).between(starting, until)).fold(
         error => { discarded(key, error); None }, history => Some(key -> history))

@@ -10,7 +10,7 @@ import it.evadid.workbook.interactions.basic.TextInteraction
 import it.evadid.workbook.history.InteractionVariableHistory
 import it.evadid.workbook.abstractions.StateReference
 import it.evadid.workbook.abstractions.scaffolding.ScaffoldingRecord
-import java.time.LocalDateTime
+import java.time.Instant
 import munit.FunSuite
 import upickle.default.*
 
@@ -28,7 +28,7 @@ class TypedPayloadCodecSpec extends FunSuite {
     val payload: ujson.Value = ujson.Obj("number" -> 42, "bool" -> true, "nothing" -> ujson.Null,
       "nested" -> ujson.Arr("学校", 1.25, false, ujson.Obj("value" -> "text")))
     val result = ScaffoldingResult[String, ujson.Value]("draft", ScaffoldingStatus.ScaffoldingRequestedButNotFinished(),
-      FeedbackEntity.SystemEntity, Some(payload), LocalDateTime.of(2026, 11, 10, 12, 0))
+      FeedbackEntity.SystemEntity, Some(payload), java.time.LocalDateTime.of(2026, 11, 10, 12, 0).toInstant(java.time.ZoneOffset.UTC))
     val record = result.record(StateReference("draft"))
     assertEquals(read[ScaffoldingRecord[ujson.Value]](write(record)), record)
     assertEquals(readBinary[ScaffoldingRecord[ujson.Value]](writeBinary(record)), record)

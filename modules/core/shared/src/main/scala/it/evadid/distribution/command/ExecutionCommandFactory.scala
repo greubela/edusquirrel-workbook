@@ -1,6 +1,5 @@
 package it.evadid.distribution.command
 
-import it.evadid.core.util.UtcTime
 
 import it.evadid.distribution.clients.{ExecutionClient, LocalExecutionClient}
 import it.evadid.distribution.command.ExecutionInfo.*
@@ -12,7 +11,7 @@ import it.evadid.util.logging.derived.PrintToStdLogger
 import upickle.default
 import upickle.default.*
 
-import java.time.LocalDateTime
+import java.time.Instant
 import scala.concurrent.{ExecutionContext, Future}
 
 object ExecutionCommandFactory {
@@ -58,7 +57,7 @@ case class ExecutionCommandFactory[I: ReadWriter, O: ReadWriter](
 
 
   def waitAndSendCommandTo(client: ExecutionClient, data: Future[I], logger: Option[Logger] = None): Future[ExecutionSuccess[O]] = {
-    val timestampRequested: LocalDateTime = UtcTime.now()
+    val timestampRequested: Instant = Instant.now()
     data.flatMap(inputData => {
       sendCommandTo(client, inputData, logger)
     })
@@ -69,9 +68,9 @@ case class ExecutionCommandFactory[I: ReadWriter, O: ReadWriter](
     Logger.withNameAndPrefixes(Some(name), PrintToStdLogger.printWarnAndError)
   }
 
-  def sendCommandTo(client: ExecutionClient, data: I, loggerOp: Option[Logger] = None, setTimestampRequested: Option[LocalDateTime] = None): Future[ExecutionSuccess[O]] = {
-    val timestampRequestedLocal: LocalDateTime = UtcTime.now()
-    val useTimestamp: LocalDateTime = setTimestampRequested.getOrElse(timestampRequestedLocal)
+  def sendCommandTo(client: ExecutionClient, data: I, loggerOp: Option[Logger] = None, setTimestampRequested: Option[Instant] = None): Future[ExecutionSuccess[O]] = {
+    val timestampRequestedLocal: Instant = Instant.now()
+    val useTimestamp: Instant = setTimestampRequested.getOrElse(timestampRequestedLocal)
 
     val command: ExecutionCommand = toCommand(data)
     val logger: Logger = loggerOp.getOrElse(createNewLogger(data, command))

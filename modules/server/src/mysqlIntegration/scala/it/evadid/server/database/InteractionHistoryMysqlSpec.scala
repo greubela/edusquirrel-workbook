@@ -35,25 +35,29 @@ import it.evadid.workbook.interactions.gpt.{TextInputLlmGrader, TextInputWithSca
 import it.evadid.workbook.sync.{EventSyncStrategy, SyncContext, SyncSuccess, UpdateImportance, UsageContext}
 import it.evadid.workbook.history.*
 import it.evadid.util.logging.{BasicLogger, Logger}
-import java.time.LocalDateTime
+import java.time.Instant
 import scala.util.Using
 import it.evadid.workbook.abstractions.InteractionFormat
+import java.time.LocalDateTime
 import munit.FunSuite
 import upickle.default.*
 
 class InteractionHistoryMysqlSpec extends FunSuite {
   private val format = TextInputWithLlmGradingAndScaffoldingFormat
+  // The extreme event times the sortable timestamp text supports; Instant.MIN and MAX are open range bounds.
+  private val earliestEvent = LocalDateTime.MIN.toInstant(java.time.ZoneOffset.UTC)
+  private val latestEvent = LocalDateTime.MAX.toInstant(java.time.ZoneOffset.UTC)
   private type History = InteractionVariableHistory[TextInputWithLlmGradingAndScaffoldingFormat.type]
   private val logger = BasicLogger()
   private val context = UsageContext("program", "scenario", "student")
   private val key = "answer_history"
   private val sync = context.toSyncContext(key)
-  private val time = LocalDateTime.of(2026, 11, 9, 12, 13, 14, 123456789)
+  private val time = java.time.LocalDateTime.of(2026, 11, 9, 12, 13, 14, 123456789).toInstant(java.time.ZoneOffset.UTC)
   private val transcript = MessengerModel(List(Message("entity-specific transcript", MessengerModel.pAgent)))
   private def config = DatabaseConfigWithCredentials.readFromEnv().withoutCredentials
   private def grader(index: Int) = TextInputLlmGrader(LanguageMapContentId("test/task"), None,
     TextInputWithScaffoldingAndGrading.ContentForLlmInteraction(LanguageMapContentId(s"test/criterion-$index"), Map.empty))
-  private def history(value: String = "first", at: LocalDateTime = time): History = {
+  private def history(value: String = "first", at: Instant = time): History = {
     val grades = (0 to 1).map { index =>
       GradingResult(grader(index), value, GradingStatus.Correct, Some(WorkbookContent(LanguageMap.universalMap("regular grading feedback"))),
         Some(transcript), at.plusSeconds(1))
@@ -79,7 +83,7 @@ class InteractionHistoryMysqlSpec extends FunSuite {
   private def store(history: History, storage: DatabaseHistoryFormat = RelationalFormat): Unit =
     storeVia(StoreToDbRequest(sync, encoded(history), config, storage), logger)
   private def fetchRequest(storage: DatabaseHistoryFormat, keys: Seq[String] = Seq(key),
-                           starting: LocalDateTime = LocalDateTime.MIN, until: LocalDateTime = LocalDateTime.MAX,
+                           starting: Instant = Instant.MIN, until: Instant = Instant.MAX,
                            strategy: EventSyncStrategy = EventSyncStrategy.SYNC_EVERYTHING,
                            usage: UsageContext = context): FetchEventsFromDbRequest =
     FetchEventsFromDbRequest(usage, keys, starting, until, config, storage, strategy)
@@ -161,8 +165,8 @@ class InteractionHistoryMysqlSpec extends FunSuite {
       withHttpCommands() { send =>
         val request = BulkStoreToDbRequest(contexts, histories, BackendDatabase, storage)
         assert(send(command(bulkStoreToDbCommand.name, request)).result.isRight)
-        val range = FetchEventsFromDbRequest(context, Seq.empty, LocalDateTime.MIN,
-          LocalDateTime.MAX, BackendDatabase, storage, EventSyncStrategy.SYNC_EVERYTHING)
+        val range = FetchEventsFromDbRequest(context, Seq.empty, Instant.MIN,
+          Instant.MAX, BackendDatabase, storage, EventSyncStrategy.SYNC_EVERYTHING)
         val response = send(command(fetchEventsFromDbCommand.name, range))
         assert(response.result.isRight)
         val fetched = response.result.toOption.get.getAs[DbFetchResponse].fetchedElements
@@ -500,7 +504,7 @@ class InteractionHistoryMysqlSpec extends FunSuite {
       val first = history()
       store(first, storage)
       store(history("second", time.plusNanos(1)), storage)
-      def range(from: LocalDateTime, until: LocalDateTime) = fetchedHistory(fetchRequest(storage, starting = from, until = until))
+      def range(from: Instant, until: Instant) = fetchedHistory(fetchRequest(storage, starting = from, until = until))
       assertEquals(range(time, time).events.values, first.allStates.map(event => event: InteractionEvent[format.type]))
       val feedbackTime = time.plusSeconds(1)
       val feedback = range(feedbackTime, feedbackTime)
@@ -518,10 +522,10 @@ class InteractionHistoryMysqlSpec extends FunSuite {
       assertEquals(fetchVia(fetchRequest(storage), logger).fetchedElements(sync).typedAs(other), booleanHistory)
     }
 
-    test(s"$storage supports the complete LocalDateTime range") {
+    test(s"$storage supports the complete Instant range") {
       val extremes = InteractionVariableHistory.empty(format)
-        .addEvent(AnswerChangedEvent[format.type]("minimum", LocalDateTime.MIN, UpdateImportance.MAJOR))
-        .addEvent(AnswerChangedEvent[format.type]("maximum", LocalDateTime.MAX, UpdateImportance.MAJOR))
+        .addEvent(AnswerChangedEvent[format.type]("minimum", earliestEvent, UpdateImportance.MAJOR))
+        .addEvent(AnswerChangedEvent[format.type]("maximum", latestEvent, UpdateImportance.MAJOR))
       store(extremes, storage)
       assertEquals(fetchedHistory(fetchRequest(storage)), extremes)
     }
@@ -550,7 +554,7 @@ class InteractionHistoryMysqlSpec extends FunSuite {
       Using.resource(connection.createStatement())(_.executeUpdate(
         "ALTER TABLE grading_event ADD CONSTRAINT reject_fixture CHECK (LOCATE('reject-fixture', CAST(serialized_data AS CHAR)) = 0)"))
     }
-    intercept[java.sql.SQLException](store(history("reject-fixture", time.plusDays(1))))
+    intercept[java.sql.SQLException](store(history("reject-fixture", time.plus(java.time.Duration.ofDays(1)))))
     assertEquals(read[History](fetch()(sync)), history())
     assertEquals(scalar("SELECT COUNT(*) FROM answer_event"), 1L)
   }
@@ -601,16 +605,16 @@ class InteractionHistoryMysqlSpec extends FunSuite {
   }
 
   test("ISO signed and expanded years preserve chronological range semantics") {
-    val timestamps = Seq(LocalDateTime.MIN, LocalDateTime.of(-1, 1, 1, 0, 0), LocalDateTime.of(0, 1, 1, 0, 0),
-      time, LocalDateTime.of(9999, 12, 31, 23, 59, 59, 999999999), LocalDateTime.of(10000, 1, 1, 0, 0), LocalDateTime.MAX)
+    val timestamps = Seq(earliestEvent, java.time.LocalDateTime.of(-1, 1, 1, 0, 0).toInstant(java.time.ZoneOffset.UTC), java.time.LocalDateTime.of(0, 1, 1, 0, 0).toInstant(java.time.ZoneOffset.UTC),
+      time, java.time.LocalDateTime.of(9999, 12, 31, 23, 59, 59, 999999999).toInstant(java.time.ZoneOffset.UTC), java.time.LocalDateTime.of(10000, 1, 1, 0, 0).toInstant(java.time.ZoneOffset.UTC), latestEvent)
     val sample = timestamps.foldLeft(InteractionVariableHistory.empty(format)) { (history, timestamp) =>
       history.addEvent(AnswerChangedEvent[format.type](timestamp.toString, timestamp, UpdateImportance.MAJOR))
     }
     store(sample)
-    val ranges = Seq(time -> LocalDateTime.MAX, LocalDateTime.MIN -> time,
-      LocalDateTime.of(0, 1, 1, 0, 0) -> LocalDateTime.of(9999, 12, 31, 23, 59, 59, 999999999),
-      LocalDateTime.of(10000, 1, 1, 0, 0) -> LocalDateTime.MAX,
-      LocalDateTime.MIN -> LocalDateTime.of(-1, 12, 31, 23, 59), LocalDateTime.MIN -> LocalDateTime.MAX)
+    val ranges = Seq(time -> Instant.MAX, Instant.MIN -> time,
+      java.time.LocalDateTime.of(0, 1, 1, 0, 0).toInstant(java.time.ZoneOffset.UTC) -> java.time.LocalDateTime.of(9999, 12, 31, 23, 59, 59, 999999999).toInstant(java.time.ZoneOffset.UTC),
+      java.time.LocalDateTime.of(10000, 1, 1, 0, 0).toInstant(java.time.ZoneOffset.UTC) -> Instant.MAX,
+      Instant.MIN -> java.time.LocalDateTime.of(-1, 12, 31, 23, 59).toInstant(java.time.ZoneOffset.UTC), Instant.MIN -> Instant.MAX)
     ranges.foreach { (starting, until) =>
       assertEquals(fetchedHistory(fetchRequest(RelationalFormat, starting = starting, until = until)).allStates.map(_.timestamp),
         timestamps.filter(value => !value.isBefore(starting) && !value.isAfter(until)).toSet)
@@ -652,7 +656,7 @@ class InteractionHistoryMysqlSpec extends FunSuite {
       assertEquals(fetched.keySet, Set(other), storage.toString)
       assertEquals(read[History](fetched(other)).allStates, history("other").allStates)
       // Writing to it is refused rather than overwriting data this version cannot read.
-      intercept[IllegalArgumentException](store(history("later", time.plusDays(1)), storage))
+      intercept[IllegalArgumentException](store(history("later", time.plus(java.time.Duration.ofDays(1))), storage))
     }
   }
 
@@ -677,10 +681,10 @@ class InteractionHistoryMysqlSpec extends FunSuite {
   for storage <- List(BlobFormat, RelationalFormat) do
     test(s"$storage applies latest-event strategies before timestamp ranges") {
       store(history(), storage)
-      store(history("newest", time.plusDays(1)), storage)
+      store(history("newest", time.plus(java.time.Duration.ofDays(1))), storage)
       val request = fetchRequest(storage, starting = time, until = time.plusSeconds(2), strategy = EventSyncStrategy.KEEP_LAST)
       assertEquals(fetchedHistory(request).size, 0)
-      val complete = request.copy(starting = LocalDateTime.MIN, until = LocalDateTime.MAX)
+      val complete = request.copy(starting = Instant.MIN, until = Instant.MAX)
       val selected = fetchedHistory(complete)
       assertEquals(selected.size, 1)
       assertEquals(selected.allStates.map(_.newState), Set("newest"))
@@ -688,7 +692,7 @@ class InteractionHistoryMysqlSpec extends FunSuite {
   Seq(BlobFormat, RelationalFormat).foreach { storage =>
     test(s"$storage SYNC_MAJOR preserves pending feedback outside the answer window and ignores newer defaults") {
       val pending = ScaffoldingStartedEvent[format.type](InteractionFormat.referenceOf(format, "first"), time.plusSeconds(3), LlmEntity)
-      val saved = history().addEvent(pending).addEvent(AnswerChangedEvent[format.type]("", time.plusDays(1), UpdateImportance.DEFAULT))
+      val saved = history().addEvent(pending).addEvent(AnswerChangedEvent[format.type]("", time.plus(java.time.Duration.ofDays(1)), UpdateImportance.DEFAULT))
       store(saved, storage)
       val request = fetchRequest(storage, starting = pending.timestamp, until = pending.timestamp, strategy = EventSyncStrategy.SYNC_MAJOR)
       val received = fetchedHistory(request)

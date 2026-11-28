@@ -2,14 +2,14 @@ package it.evadid.workbook.history
 
 import it.evadid.workbook.sync.{EventSyncStrategy, UpdateImportance}
 import it.evadid.workbook.history.events.*
-import java.time.LocalDateTime
+import java.time.Instant
 import munit.FunSuite
 import upickle.default.*
 
 import it.evadid.workbook.abstractions.InteractionFormat.*
 
 class InteractionHistoryPackageSpec extends FunSuite {
-  private val time = LocalDateTime.of(2025, 1, 1, 12, 0)
+  private val time = java.time.LocalDateTime.of(2025, 1, 1, 12, 0).toInstant(java.time.ZoneOffset.UTC)
   
   private def majorAnswer(value: Int): AnswerChangedEvent[TextInteractionFormat.type] =
     AnswerChangedEvent[TextInteractionFormat.type](value.toString, time.plusSeconds(10), UpdateImportance.MAJOR)

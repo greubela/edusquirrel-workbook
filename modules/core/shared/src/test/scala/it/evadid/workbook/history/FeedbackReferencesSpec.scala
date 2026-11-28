@@ -12,12 +12,12 @@ import it.evadid.workbook.sync.UpdateImportance
 import it.evadid.workbook.sync.model.InteractionHistoryJson
 import munit.FunSuite
 
-import java.time.LocalDateTime
+import java.time.Instant
 
 /** Saved feedback refers to its grader and answer instead of copying them. */
 class FeedbackReferencesSpec extends FunSuite {
   private val format = TextInputWithLlmGradingAndScaffoldingFormat
-  private val time = LocalDateTime.of(2026, 11, 28, 12, 0)
+  private val time = java.time.LocalDateTime.of(2026, 11, 28, 12, 0).toInstant(java.time.ZoneOffset.UTC)
   private val criterion = "a long confidential criterion"
   private val grader = TextInputLlmGrader(LanguageMapContentId("spec/task"), None,
     ContentForLlmInteraction(LanguageMapContentId("spec/criterion"), Map.empty))

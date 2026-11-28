@@ -6,15 +6,15 @@ import it.evadid.util.logging.{BasicLogger, Logger}
 import upickle.default.*
 import munit.FunSuite
 
-import java.time.LocalDateTime
+import java.time.Instant
 import scala.concurrent.{Future, Promise}
 import scala.concurrent.ExecutionContext.Implicits.global
 
 class ExecutionInfoIntegrationTest extends FunSuite {
 
   test("fixTime adds explicit timeline when no meta exists") {
-    val requested = LocalDateTime.parse("2026-01-01T08:00:00")
-    val received = LocalDateTime.parse("2026-01-01T08:00:01")
+    val requested = java.time.Instant.parse("2026-01-01T08:00:00Z")
+    val received = java.time.Instant.parse("2026-01-01T08:00:01Z")
     val history = ExecutionHistory(requested.plusSeconds(10), received.plusSeconds(10), requested.plusSeconds(11), received.plusSeconds(11))
     val info = ExecutionInfo.ExecutionSuccess(ExecutionCommand("noop", ujson.Obj()), history, Map.empty[String, String])
 

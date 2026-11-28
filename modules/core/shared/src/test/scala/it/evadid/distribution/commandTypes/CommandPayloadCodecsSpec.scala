@@ -1,6 +1,7 @@
 package it.evadid.distribution.commandTypes
 
-import it.evadid.core.util.UtcTime
+import java.time.Instant
+
 
 import it.evadid.sql.BackendDatabase
 import it.evadid.distribution.clients.LocalExecutionClient
@@ -96,7 +97,7 @@ class CommandPayloadCodecsSpec extends FunSuite {
   test("default sync requests use the current explicit database wire fields on JVM and JavaScript") {
     import it.evadid.sql.{DatabaseConfig, DatabaseHistoryFormat}
     import it.evadid.workbook.sync.UsageContext
-    val request = SQLCommands.FetchEventsFromDbRequest(UsageContext("edusquirrel", "workbookTest", "student"), Seq.empty, java.time.LocalDateTime.MIN, java.time.LocalDateTime.MAX, BackendDatabase, DatabaseHistoryFormat.RelationalFormat, it.evadid.workbook.sync.EventSyncStrategy.SYNC_EVERYTHING)
+    val request = SQLCommands.FetchEventsFromDbRequest(UsageContext("edusquirrel", "workbookTest", "student"), Seq.empty, java.time.Instant.MIN, java.time.Instant.MAX, BackendDatabase, DatabaseHistoryFormat.RelationalFormat, it.evadid.workbook.sync.EventSyncStrategy.SYNC_EVERYTHING)
     val encoded = writeJs(request)
     assertEquals(encoded("databaseConfig"), ujson.Str("BackendDatabase"))
     assert(!write(request).contains("herrgreubel"))
@@ -111,7 +112,7 @@ class CommandPayloadCodecsSpec extends FunSuite {
     List[DatabaseConfiguration](supplied.withoutCredentials, supplied).foreach { config =>
       val destination = SyncDestinationBasedOnHistoryDatabase(config, DatabaseHistoryFormat.RelationalFormat, buffered = false)
       assertEquals(read[SyncDestinationBasedOnHistoryDatabase](write(destination)), destination)
-      val request = SQLCommands.FetchEventsFromDbRequest(context, Seq.empty, java.time.LocalDateTime.MIN, java.time.LocalDateTime.MAX, config, DatabaseHistoryFormat.RelationalFormat, it.evadid.workbook.sync.EventSyncStrategy.SYNC_EVERYTHING)
+      val request = SQLCommands.FetchEventsFromDbRequest(context, Seq.empty, java.time.Instant.MIN, java.time.Instant.MAX, config, DatabaseHistoryFormat.RelationalFormat, it.evadid.workbook.sync.EventSyncStrategy.SYNC_EVERYTHING)
       assertEquals(read[SQLCommands.FetchEventsFromDbRequest](write(request)), request)
       val command = ExecutionCommand(SQLCommands.fetchEventsFromDbCommand.name, writeJs(request))
       val safe = command.stripPrivacySensitiveInformation()
@@ -366,9 +367,9 @@ class CommandPayloadCodecsSpec extends FunSuite {
     import it.evadid.workbook.session.{AllWorkbookInfo, SessionData, WorkbookConfig}
     val learner = User("private name", "private-id", "private@example.invalid")
     val history = InteractionHistoryJson.fromHistory(TextInteractionFormat, InteractionVariableHistory.empty(TextInteractionFormat)
-      .addState(InteractionVariableState("private answer", UpdateImportance.MAJOR, UtcTime.now())))
+      .addState(InteractionVariableState("private answer", UpdateImportance.MAJOR, Instant.now())))
     val workbook = Workbook("workbook", WorkbookMetadata(Set.empty, Set.empty, LanguageMapContentId("test/title"), List(AppLanguage.English)), Seq.empty)
-    val session = SessionData(UtcTime.now(), Map(UsageContext("p", "workbook", learner.id).toSyncContext("a") -> history),
+    val session = SessionData(Instant.now(), Map(UsageContext("p", "workbook", learner.id).toSyncContext("a") -> history),
       learner, None, AllWorkbookInfo(workbook, WorkbookConfig(None), Map.empty))
     val logged = ExecutionCommand(SubmissionCommands.submitSessionCommand.name, writeJs(SubmissionCommands.SubmitSessionEvent(session)))
       .stripPrivacySensitiveInformation()

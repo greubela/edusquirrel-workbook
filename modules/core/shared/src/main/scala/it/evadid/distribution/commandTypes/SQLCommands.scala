@@ -1,7 +1,7 @@
 package it.evadid.distribution.commandTypes
 
 import it.evadid.core.util.io.serializer.DefaultSerializer.given
-import java.time.LocalDateTime
+import java.time.Instant
 import it.evadid.distribution.command.ExecutionCommandFactory
 import it.evadid.sql.DatabaseConfiguration
 import it.evadid.sql.DatabaseHistoryFormat
@@ -52,8 +52,8 @@ object SQLCommands {
   case class FetchEventsFromDbRequest(
                                        usageContext: UsageContext,
                                        keys: Seq[String],
-                                       starting: LocalDateTime,
-                                       until: LocalDateTime,
+                                       starting: Instant,
+                                       until: Instant,
                                        databaseConfig: DatabaseConfiguration,
                                        databaseFormat: DatabaseHistoryFormat,
                                        strategy: EventSyncStrategy

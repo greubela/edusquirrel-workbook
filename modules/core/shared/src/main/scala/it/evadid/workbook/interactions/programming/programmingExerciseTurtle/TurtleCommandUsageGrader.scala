@@ -1,6 +1,5 @@
 package it.evadid.workbook.interactions.programming.programmingExerciseTurtle
 
-import it.evadid.core.util.UtcTime
 
 import it.evadid.vm.conversion.dependencies.ProgrammingEnvironment
 import it.evadid.core.datastructures.language.{AppLanguage, LanguageMap, WorkbookContent}
@@ -20,7 +19,7 @@ import it.evadid.workbook.abstractions.ExecutionContextInformation
 import scala.concurrent.Future
 import upickle.default.ReadWriter
 
-import java.time.LocalDateTime
+import java.time.Instant
 
 enum CommandUsageMeasure derives ReadWriter {
   case OccurrencesInCode, CallsDuringExecution
@@ -65,7 +64,7 @@ case class TurtleCommandUsageGrader(
     }
     val status = if count <= maximum then GradingStatus.Correct else GradingStatus.Incorrect
     val res: GradingResult[ProgrammingState, AdditionalProgrammingTestInfo] =
-     GradingResult[ProgrammingState, AdditionalProgrammingTestInfo](this, state, status, Some(WorkbookContent(description(count))), None, UtcTime.now())
+     GradingResult[ProgrammingState, AdditionalProgrammingTestInfo](this, state, status, Some(WorkbookContent(description(count))), None, Instant.now())
     res
   }(using contextInformation.futureExecutionContext)
 

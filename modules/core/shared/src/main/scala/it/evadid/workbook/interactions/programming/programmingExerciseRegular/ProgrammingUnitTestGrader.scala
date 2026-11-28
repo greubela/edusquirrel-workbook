@@ -1,6 +1,5 @@
 package it.evadid.workbook.interactions.programming.programmingExerciseRegular
 
-import it.evadid.core.util.UtcTime
 
 import it.evadid.vm.conversion.dependencies.ProgrammingEnvironment
 import it.evadid.vm.conversion.unittest.ProgramForUnitTestExecution
@@ -18,7 +17,7 @@ import it.evadid.workbook.interactions.programming.{AdditionalProgrammingTestInf
 import it.evadid.workbook.abstractions.ExecutionContextInformation
 import upickle.default.*
 
-import java.time.LocalDateTime
+import java.time.Instant
 import scala.concurrent.Future
 import scala.util.Try
 import scala.util.control.NonFatal
@@ -68,7 +67,7 @@ case class ProgrammingUnitTestGrader(testId: String, pythonTestCode: String,
       val invocation = result.testInvocation.filter(_ => publishInvocationArguments && importance != GradingImportance.HIDDEN_TEST)
       val info = Option.when(result.programObservation.nonEmpty || invocation.nonEmpty)(
         AdditionalProgrammingTestInfo(LanguageMap.empty[HumanLanguage], result.programObservation, invocation))
-      GradingResult[ProgrammingState, AdditionalProgrammingTestInfo](this, state, status, None, info, UtcTime.now())
+      GradingResult[ProgrammingState, AdditionalProgrammingTestInfo](this, state, status, None, info, Instant.now())
     }
   }
 

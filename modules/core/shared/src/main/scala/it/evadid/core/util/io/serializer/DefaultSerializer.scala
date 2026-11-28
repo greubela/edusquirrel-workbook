@@ -24,14 +24,15 @@ import upickle.ReadWriter
 import upickle.default.*
 
 import java.net.InetAddress
-import java.time.LocalDateTime
+import java.time.Instant
 import scala.util.*
 
 object DefaultSerializer {
 
 
-  given ldt: ReadWriter[LocalDateTime] =
-    upickle.default.readwriter[String].bimap[LocalDateTime](_.toString, LocalDateTime.parse)
+  /** The one codec of points in time: ISO 8601 in UTC. */
+  given instantReadWriter: ReadWriter[Instant] =
+    upickle.default.readwriter[String].bimap[Instant](_.toString, Instant.parse)
 
   private[serializer] given [T: ReadWriter]: ReadWriter[Try[T]] =
     upickle.default.readwriter[ujson.Value].bimap[Try[T]](

@@ -1,6 +1,5 @@
 package it.evadid.workbook.model
 
-import it.evadid.core.util.UtcTime
 
 import it.evadid.core.datastructures.storage.remote.RemoteHistoryCache.{CacheState, RemoteHistoryValue}
 import it.evadid.workbook.abstractions.{InteractionFormat, WorkbookInteractionElement}
@@ -10,7 +9,7 @@ import it.evadid.workbook.history.{InteractionVariableHistory, InteractionVariab
 import it.evadid.workbook.history.events.{AnswerChangedEvent, InteractionEvent}
 import it.evadid.workbook.reports.InteractionVariableSyncReport
 
-import java.time.LocalDateTime
+import java.time.Instant
 import scala.util.Try
 
 /** The history of one interaction in an [[InteractionInfo]] and what each destination is known to hold of it. */
@@ -53,7 +52,7 @@ object InteractionEntry {
 
   def defaultHistory[F <: InteractionFormat](interaction: WorkbookInteractionElement[F]): InteractionVariableHistory[F] =
     InteractionVariableHistory.empty(interaction.interactionFormat).addState(
-      InteractionVariableState[InteractionFormat.State[F]](interaction.defaultValue, UpdateImportance.DEFAULT, UtcTime.now()))
+      InteractionVariableState[InteractionFormat.State[F]](interaction.defaultValue, UpdateImportance.DEFAULT, Instant.now()))
 
   /** Exercise-specific constraints of the answers among `events`; feedback events only refer to answers. */
   def validate[F <: InteractionFormat](interaction: WorkbookInteractionElement[F], events: Iterable[InteractionEvent[F]]): Try[Unit] =

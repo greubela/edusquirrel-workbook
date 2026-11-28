@@ -1,6 +1,5 @@
 package it.evadid.workbook.interactions.gpt
 
-import it.evadid.core.util.UtcTime
 
 import it.evadid.core.datastructures.chat
 import it.evadid.core.datastructures.chat.{Message, MessengerModel}
@@ -16,7 +15,7 @@ import it.evadid.workbook.history.InteractionVariableHistory
 import it.evadid.workbook.abstractions.ExecutionContextInformation
 import upickle.default.*
 
-import java.time.LocalDateTime
+import java.time.Instant
 import scala.concurrent.Future
 
 case class TextInputLlmGrader(
@@ -54,7 +53,7 @@ case class TextInputLlmGrader(
           if(feedback.nonEmpty){
             GradingResult(this, state, status, LanguageMap.mapBasedLanguageMap(Map(language -> feedback)), Some(transcript))
           }else{
-            GradingResult(this, state, status, None, Some(transcript), UtcTime.now())
+            GradingResult(this, state, status, None, Some(transcript), Instant.now())
           }
         }
 

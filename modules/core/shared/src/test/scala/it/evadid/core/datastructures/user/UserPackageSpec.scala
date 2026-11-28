@@ -1,9 +1,8 @@
 package it.evadid.core.datastructures.user
 
-import it.evadid.core.util.UtcTime
 
 import munit.FunSuite
-import java.time.LocalDateTime
+import java.time.Instant
 import upickle.default.*
 
 class UserPackageSpec extends FunSuite {
@@ -42,21 +41,21 @@ class UserPackageSpec extends FunSuite {
     assertEquals(read[User.UserInDatabase](write(record)), record)
   }
   test("secure access tokens are distinct, hexadecimal, expire after 30 minutes and round-trip") {
-    val before = UtcTime.now()
+    val before = Instant.now()
     val first = User.SingleAccessToken.generateSecureToken()
     val second = User.SingleAccessToken.generateSecureToken()
-    val after = UtcTime.now()
+    val after = Instant.now()
     assert(first.token.matches("[0-9a-f]{40}"))
     assert(first.token != second.token)
-    assert(!first.expires.isBefore(before.plusMinutes(30)))
-    assert(!first.expires.isAfter(after.plusMinutes(30)))
+    assert(!first.expires.isBefore(before.plus(java.time.Duration.ofMinutes(30))))
+    assert(!first.expires.isAfter(after.plus(java.time.Duration.ofMinutes(30))))
     assertEquals(read[User.SingleAccessToken](write(first)), first)
     assertEquals(User.SingleAccessToken("existing").token, "existing")
   }
   test("token information and signed tokens preserve users and timestamps") {
     val user = User("Ada", "id", "ada@example.org")
-    val created = LocalDateTime.of(2025, 1, 1, 12, 0)
-    val info = UserTokenInfo(user, created, created.plusHours(1))
+    val created = java.time.LocalDateTime.of(2025, 1, 1, 12, 0).toInstant(java.time.ZoneOffset.UTC)
+    val info = UserTokenInfo(user, created, created.plus(java.time.Duration.ofHours(1)))
     assertEquals(read[UserTokenInfo](info.toJson), info)
     val signed = UserTokenInfo.SignedToken(info, "signed-value")
     assertEquals(read[UserTokenInfo.SignedToken](signed.toJson), signed)

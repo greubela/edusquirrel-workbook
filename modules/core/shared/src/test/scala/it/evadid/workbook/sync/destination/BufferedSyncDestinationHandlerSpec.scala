@@ -1,6 +1,5 @@
 package it.evadid.workbook.sync.destination
 
-import it.evadid.core.util.UtcTime
 
 import it.evadid.core.datastructures.state.State
 import it.evadid.util.logging.BasicLogger
@@ -11,7 +10,7 @@ import it.evadid.workbook.sync.model.{FetchResponse, InteractionHistoryJson}
 import it.evadid.workbook.history.InteractionVariableHistory
 import it.evadid.workbook.history.events.{AnswerChangedEvent, EventId, InteractionEvent, InteractionEvents}
 import munit.FunSuite
-import java.time.LocalDateTime
+import java.time.Instant
 import scala.concurrent.{ExecutionContext, Future, Promise}
 
 class BufferedSyncDestinationHandlerSpec extends FunSuite {
@@ -21,7 +20,7 @@ class BufferedSyncDestinationHandlerSpec extends FunSuite {
   private def saved(value: String): String = {
     val format = InteractionFormat.TextInteractionFormat
     val history = InteractionVariableHistory.empty(format)
-      .addEvent(AnswerChangedEvent[format.type](value, LocalDateTime.of(2026, 1, 1, 12, 0), UpdateImportance.MAJOR, eventId(value)))
+      .addEvent(AnswerChangedEvent[format.type](value, java.time.LocalDateTime.of(2026, 1, 1, 12, 0).toInstant(java.time.ZoneOffset.UTC), UpdateImportance.MAJOR, eventId(value)))
     InteractionHistoryJson.fromHistory(format, history).serialized
   }
   private def eventId(value: String): EventId = EventId(new java.util.UUID(0L, value.hashCode.toLong).toString)
@@ -57,7 +56,7 @@ class BufferedSyncDestinationHandlerSpec extends FunSuite {
     val reads = State(List.empty[UsageContext])
     val storeResult = State[() => Future[SyncSuccess[EventId]]](() => Future.successful(SyncSuccess.emptyNow()))
     val readResult = State[UsageContext => Future[FetchResponse[SyncContext, String]]](ctx =>
-      Future.successful(FetchResponse.fromMap(UtcTime.now(), Map(ctx.toSyncContext("answer") -> ctx.userId))))
+      Future.successful(FetchResponse.fromMap(Instant.now(), Map(ctx.toSyncContext("answer") -> ctx.userId))))
     def storeHistoryJson(key: SyncContext, json: String)(implicit ec: ExecutionContext) = storeHistoriesJson(Map(key -> json))
     override def storeHistoriesJson(values: Map[SyncContext, String])(implicit ec: ExecutionContext) = {
       writes.update(_ :+ values)
@@ -122,7 +121,7 @@ class BufferedSyncDestinationHandlerSpec extends FunSuite {
     val buffered = destination.toBuffered
     val failure = IllegalStateException("unreachable")
     destination.readResult.set(ctx => if ctx == context then Future.failed(failure)
-      else Future.successful(FetchResponse.fromMap(UtcTime.now(), Map(ctx.toSyncContext("answer") -> "ok"))))
+      else Future.successful(FetchResponse.fromMap(Instant.now(), Map(ctx.toSyncContext("answer") -> "ok"))))
     val failed = buffered.readHistoriesJson(context)
     val good = buffered.readHistoriesJson(context.copy(userId = "other"))
     buffered.flush(true)
@@ -173,7 +172,7 @@ class BufferedSyncDestinationHandlerSpec extends FunSuite {
         super.storeHistoriesJson(values).map { success => committed.update(_ ++ values); success }
       override def readHistoriesJson(ctx: UsageContext)(implicit ec: ExecutionContext) = {
         reads.update(_ :+ ctx)
-        Future.successful(FetchResponse.fromMap(UtcTime.now(), committed.now()))
+        Future.successful(FetchResponse.fromMap(Instant.now(), committed.now()))
       }
     }
     val (started, gate) = gateStores(destination)
@@ -252,13 +251,13 @@ class BufferedSyncDestinationHandlerSpec extends FunSuite {
     assertBatchFailsThenRetries(destination, error)(failing.set(false))
   }
   test("range requests batch matching windows and preserve keys, strategy and nanosecond bounds") {
-    val calls = State(Vector.empty[(Seq[SyncContext], LocalDateTime, LocalDateTime, EventSyncStrategy)])
-    val from = LocalDateTime.of(2026, 1, 1, 12, 0).plusNanos(1)
+    val calls = State(Vector.empty[(Seq[SyncContext], Instant, Instant, EventSyncStrategy)])
+    val from = java.time.LocalDateTime.of(2026, 1, 1, 12, 0).toInstant(java.time.ZoneOffset.UTC).plusNanos(1)
     val until = from.plusNanos(2)
     val other = context.toSyncContext("other")
     val destination = new Destination {
-      override def readHistoriesInRange(ctx: UsageContext, keys: Seq[SyncContext], start: LocalDateTime,
-          end: LocalDateTime, strategy: EventSyncStrategy)(using ExecutionContext) = {
+      override def readHistoriesInRange(ctx: UsageContext, keys: Seq[SyncContext], start: Instant,
+          end: Instant, strategy: EventSyncStrategy)(using ExecutionContext) = {
         calls.update(_ :+ (keys, start, end, strategy))
         Future.successful(keys.map(key => key -> InteractionHistoryJson.deserialize(saved(key.keyForSerialisation))).toMap)
       }
@@ -293,8 +292,8 @@ class BufferedSyncDestinationHandlerSpec extends FunSuite {
   }
 
   test("different cursor windows share one query and each caller receives only its own events") {
-    val calls = State(Vector.empty[(LocalDateTime, LocalDateTime)])
-    val base = LocalDateTime.of(2026, 1, 1, 12, 0)
+    val calls = State(Vector.empty[(Instant, Instant)])
+    val base = java.time.LocalDateTime.of(2026, 1, 1, 12, 0).toInstant(java.time.ZoneOffset.UTC)
     val other = context.toSyncContext("other")
     val format = InteractionFormat.TextInteractionFormat
     val events = (0 to 3).map(index => AnswerChangedEvent[format.type](
@@ -302,8 +301,8 @@ class BufferedSyncDestinationHandlerSpec extends FunSuite {
     val full = InteractionHistoryJson.fromHistory(format,
       InteractionVariableHistory(format, InteractionEvents(events.map(event => event: InteractionEvent[format.type]))))
     val destination = new Destination {
-      override def readHistoriesInRange(ctx: UsageContext, keys: Seq[SyncContext], from: LocalDateTime,
-          until: LocalDateTime, strategy: EventSyncStrategy)(using ExecutionContext) = {
+      override def readHistoriesInRange(ctx: UsageContext, keys: Seq[SyncContext], from: Instant,
+          until: Instant, strategy: EventSyncStrategy)(using ExecutionContext) = {
         calls.update(_ :+ (from -> until))
         Future.successful(keys.map(_ -> full).toMap)
       }
@@ -325,10 +324,10 @@ class BufferedSyncDestinationHandlerSpec extends FunSuite {
   test("a range read over raw stored values discards an unreadable record and returns the others") {
     val destination = new Destination
     val broken = context.toSyncContext("broken")
-    destination.readResult.set(ctx => Future.successful(FetchResponse.fromMap(UtcTime.now(),
+    destination.readResult.set(ctx => Future.successful(FetchResponse.fromMap(Instant.now(),
       Map(key -> saved("kept"), broken -> "{\"not\": \"a history\"}"))))
-    val from = LocalDateTime.of(2026, 1, 1, 0, 0)
-    destination.readHistoriesInRange(context, Seq(key, broken), from, from.plusDays(1), EventSyncStrategy.SYNC_EVERYTHING).map { read =>
+    val from = java.time.LocalDateTime.of(2026, 1, 1, 0, 0).toInstant(java.time.ZoneOffset.UTC)
+    destination.readHistoriesInRange(context, Seq(key, broken), from, from.plus(java.time.Duration.ofDays(1)), EventSyncStrategy.SYNC_EVERYTHING).map { read =>
       assertEquals(read.keySet, Set(key))
       assertEquals(read(key).typedAs(InteractionFormat.TextInteractionFormat).allStates.map(_.newState), Set("kept"))
     }
@@ -337,15 +336,15 @@ class BufferedSyncDestinationHandlerSpec extends FunSuite {
   test("an unreadable record in a shared range answer is left out for every waiting caller instead of stalling them") {
     val other = context.toSyncContext("other")
     val destination = new Destination {
-      override def readHistoriesInRange(ctx: UsageContext, keys: Seq[SyncContext], from: LocalDateTime,
-          until: LocalDateTime, strategy: EventSyncStrategy)(using ExecutionContext) =
+      override def readHistoriesInRange(ctx: UsageContext, keys: Seq[SyncContext], from: Instant,
+          until: Instant, strategy: EventSyncStrategy)(using ExecutionContext) =
         Future.successful(Map(key -> InteractionHistoryJson.deserialize(saved("kept")),
           other -> InteractionHistoryJson(InteractionFormat.TextInteractionFormat, "{\"not\": \"a history\"}")))
     }
     val buffer = destination.toBuffered
-    val from = LocalDateTime.of(2026, 1, 1, 0, 0)
-    val broken = buffer.readHistoriesInRange(context, Seq(other), from, from.plusDays(1), EventSyncStrategy.SYNC_EVERYTHING)
-    val kept = buffer.readHistoriesInRange(context, Seq(key), from, from.plusDays(1), EventSyncStrategy.SYNC_EVERYTHING)
+    val from = java.time.LocalDateTime.of(2026, 1, 1, 0, 0).toInstant(java.time.ZoneOffset.UTC)
+    val broken = buffer.readHistoriesInRange(context, Seq(other), from, from.plus(java.time.Duration.ofDays(1)), EventSyncStrategy.SYNC_EVERYTHING)
+    val kept = buffer.readHistoriesInRange(context, Seq(key), from, from.plus(java.time.Duration.ofDays(1)), EventSyncStrategy.SYNC_EVERYTHING)
     buffer.flush(true)
     for { a <- broken; b <- kept } yield {
       assertEquals(a, Map.empty)

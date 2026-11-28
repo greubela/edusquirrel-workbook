@@ -1,12 +1,12 @@
 package it.evadid.core.datastructures.chat
 
 import it.evadid.core.datastructures.language.AppLanguage.German
-import java.time.LocalDateTime
+import java.time.Instant
 import munit.FunSuite
 import upickle.default.*
 
 class ChatPackageSpec extends FunSuite {
-  private val time = LocalDateTime.of(2025, 1, 1, 12, 0)
+  private val time = java.time.LocalDateTime.of(2025, 1, 1, 12, 0).toInstant(java.time.ZoneOffset.UTC)
   private val author = ChatParticipant("Ada", "id", SenderRole.USER, Some(" AD "))
 
   test("person conversions preserve identity, roles and normalized abbreviations") {

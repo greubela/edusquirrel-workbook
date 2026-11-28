@@ -11,7 +11,7 @@ import it.evadid.workbook.session.SessionData
 import upickle.default.*
 
 import java.net.InetAddress
-import java.time.LocalDateTime
+import java.time.Instant
 import scala.util.Try
 
 /** The learner's latest answer of one interaction; `gradingStatus` is empty for interactions without graders. */
@@ -28,7 +28,7 @@ object SubmittingUser {
 }
 
 /** Abbreviated submission sent to the learner: one entry per answered interaction, in workbook order. */
-case class SimpleSubmission(submittedAt: LocalDateTime, workbook: WorkbookElementReference, submittingUser: SubmittingUser,
+case class SimpleSubmission(submittedAt: Instant, workbook: WorkbookElementReference, submittingUser: SubmittingUser,
                             submittedInteractions: Seq[SubmittedInteractionState]) derives ReadWriter
 
 object SimpleSubmission {

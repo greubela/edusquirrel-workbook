@@ -1,6 +1,5 @@
 package it.evadid.workbook.sync.destination
 
-import it.evadid.core.util.UtcTime
 
 import it.evadid.distribution.command.SerializedException
 import it.evadid.util.logging.derived.SyncLogger
@@ -11,7 +10,7 @@ import it.evadid.workbook.history.InteractionVariableHistory
 import it.evadid.workbook.history.events.EventId
 import upickle.default.*
 
-import java.time.LocalDateTime
+import java.time.Instant
 import scala.concurrent.{ExecutionContext, Future}
 
 trait SyncDestinationHistoryHandler {
@@ -44,8 +43,8 @@ trait SyncDestinationHistoryHandler {
 
   def readHistoriesJson(usageContext: UsageContext)(implicit ec: ExecutionContext): Future[FetchResponse[SyncContext, String]]
 
-  def readHistoriesInRange(usageContext: UsageContext, keys: Seq[SyncContext], starting: LocalDateTime,
-      until: LocalDateTime, strategy: EventSyncStrategy)(using ec: ExecutionContext): Future[Map[SyncContext, InteractionHistoryJson]] = {
+  def readHistoriesInRange(usageContext: UsageContext, keys: Seq[SyncContext], starting: Instant,
+      until: Instant, strategy: EventSyncStrategy)(using ec: ExecutionContext): Future[Map[SyncContext, InteractionHistoryJson]] = {
     require(!until.isBefore(starting), "History range end must not precede its start")
     val selected = keys.toSet
     readHistoriesJson(usageContext).map(response => InteractionHistoryJson.readable(
@@ -109,14 +108,14 @@ object SyncDestinationHistoryHandler {
 
       override def readHistoryJson(syncContext: SyncContext)(implicit ec: ExecutionContext): Future[FetchResponse[SyncContext, String]] = {
         typed.readElementTyped(syncContext).map(curHistoryJson => {
-          FetchResponse.fromMap(UtcTime.now(), Map(syncContext -> curHistoryJson).filter((_, json) => validHistory(json, syncLogger)))
+          FetchResponse.fromMap(Instant.now(), Map(syncContext -> curHistoryJson).filter((_, json) => validHistory(json, syncLogger)))
         })
       }
 
       override def readHistoriesJson(usageContext: UsageContext)(implicit ec: ExecutionContext): Future[FetchResponse[SyncContext, String]] = {
         typed.readFullStore.map(curMap => {
           val data = curMap.filter((context, json) => context.toUsageContext == usageContext && validHistory(json, syncLogger))
-          FetchResponse.fromMap(UtcTime.now(), data)
+          FetchResponse.fromMap(Instant.now(), data)
         })
       }
     }

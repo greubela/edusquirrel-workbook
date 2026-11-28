@@ -22,7 +22,7 @@ State rule: keep changing application, editor and lifecycle state either in `val
 
 Editor architecture: create only the selected editor, bind it to the central answer state (through an `InteractionSignals` Var view), and release it on Laminar unmount. Observe Var signals instead of adding editor-listener callbacks; treat all changes alike, without edit/restoration channels or synchronization-baseline stores. Panels are downstream GUI components receiving the central answer state and task configuration, not contexts bound or activated by Eva. Run long computations in Futures and use workers where supported. Do not introduce fullscreen lifecycle interfaces or retained hidden editors. Derive UI flags from authoritative state (for example, a native handle determines fallback visibility) instead of storing copies.
 
-Persisted-data policy: there is no legacy data. When a saved schema changes, existing records are removed and only the current format is written and read; do not add migration readers, adapters for earlier formats, old field/tag aliases, or backward-compatible payloads. Persisted names (formats, event tags, grader types) are explicit literals, not class names. Timestamps are UTC: use `UtcTime.now()`, never `LocalDateTime.now()`, and convert only for display. Catch malformed/unsupported data at storage boundaries and discard the affected record without crashing or clearing unrelated data.
+Persisted-data policy: there is no legacy data. When a saved schema changes, existing records are removed and only the current format is written and read; do not add migration readers, adapters for earlier formats, old field/tag aliases, or backward-compatible payloads. Persisted names (formats, event tags, grader types) are explicit literals, not class names. Points in time are `Instant`s, serialized only by the codec in `DefaultSerializer`; convert to `LocalDateTime` only for display (`InfoUtil.localDateTime`) or zone-less boundaries such as JDBC (UTC) and ZIP entries. Catch malformed/unsupported data at storage boundaries and discard the affected record without crashing or clearing unrelated data.
 
 ## Serialization architecture
 
@@ -34,7 +34,7 @@ The format owns state, feedback, event and history codecs. Exercise-specific
 constraints belong in `WorkbookInteractionElement.validateState`, not its codec.
 
 History reads use only `fetch-events-from-db-request`; complete reads use
-`LocalDateTime.MIN` and `MAX` bounds. Do not reintroduce a separate full-fetch
+`Instant.MIN` and `MAX` bounds. Do not reintroduce a separate full-fetch
 command or dual-operation fallback. Database setup has one source,
 `deployment/database/setup.sql`, and rejects nonempty databases.
 

@@ -2,7 +2,7 @@ package it.evadid.workbook.history.events
 
 import it.evadid.workbook.abstractions.InteractionFormat
 
-import java.time.LocalDateTime
+import java.time.Instant
 import upickle.default.*
 
 /** Client identities survive serialization and retries; timestamps never determine identity.
@@ -15,7 +15,7 @@ case class InteractionEvents[F <: InteractionFormat](values: Set[InteractionEven
 
   def updated(event: InteractionEvent[F]): InteractionEvents[F] = copy(values = values + event)
 
-  lazy val timestampLastChanged: Option[LocalDateTime] = values.map(_.timestamp).maxOption
+  lazy val timestampLastChanged: Option[Instant] = values.map(_.timestamp).maxOption
 
   def merge(other: InteractionEvents[F]): InteractionEvents[F] = copy(values = values ++ other.values)
 }

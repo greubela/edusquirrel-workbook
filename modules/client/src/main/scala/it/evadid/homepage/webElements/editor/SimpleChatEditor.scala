@@ -1,6 +1,5 @@
 package it.evadid.homepage.webElements.editor
 
-import it.evadid.core.util.UtcTime
 
 import it.evadid.homepage.control.model.FullInfo
 
@@ -17,7 +16,7 @@ import it.evadid.homepage.webElements.editor.abstractions.SimpleWebEditor
 import it.evadid.homepage.webElements.editor.abstractions.WebEditorConfig
 import it.evadid.homepage.webElements.editor.config.TextEditorConfig
 
-import java.time.LocalDateTime
+import java.time.Instant
 
 
 object SimpleChatEditor {
@@ -89,7 +88,7 @@ case class SimpleChatEditor(fullInfo: FullInfo, answer: Var[MessengerModel], edi
       answer.update(_.addMessage(
         text = trimmed,
         author = ChatParticipant("Student", "it.evadid.student", SenderRole.USER, None),
-        timestamp = UtcTime.now()
+        timestamp = Instant.now()
       ))
       messageInput.set("")
     }

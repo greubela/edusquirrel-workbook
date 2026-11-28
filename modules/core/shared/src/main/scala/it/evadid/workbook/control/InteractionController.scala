@@ -1,6 +1,5 @@
 package it.evadid.workbook.control
 
-import it.evadid.core.util.UtcTime
 
 import it.evadid.core.datastructures.state.State
 import it.evadid.core.datastructures.state.observable.ObservableValue
@@ -17,7 +16,7 @@ import it.evadid.workbook.history.{InteractionVariableHistory, InteractionVariab
 import it.evadid.workbook.abstractions.ExecutionContextInformation
 import it.evadid.workbook.reports.InteractionVariableSyncReport
 
-import java.time.LocalDateTime
+import java.time.Instant
 import scala.concurrent.{ExecutionContext, Future, Promise}
 import scala.util.Try
 
@@ -129,7 +128,7 @@ class InteractionController(store: State[InteractionInfo], schedule: (() => Unit
 
   /** Records a user's answer; an answer the exercise rejects fails at once and changes nothing. */
   def setStateFromUserInteraction[F <: InteractionFormat](interaction: WorkbookInteractionElement[F], value: InteractionFormat.State[F],
-      importance: UpdateImportance, timestamp: LocalDateTime = UtcTime.now()): Unit = {
+      importance: UpdateImportance, timestamp: Instant = Instant.now()): Unit = {
     interaction.validateState(value)
     store.update(current => orUnchanged(current, interaction, current.withAnswer(interaction, value, importance, timestamp)))
   }
@@ -151,7 +150,7 @@ class InteractionController(store: State[InteractionInfo], schedule: (() => Unit
   /** Commits a TEMPORARY current answer as MAJOR, so strategies that skip TEMPORARY answers send it. */
   def commitCurrentState[F <: InteractionFormat](interaction: WorkbookInteractionElement[F]): Unit =
     updateHistory(interaction)(history => history.historyStates.lastStateOption.filter(_.updateImportance == UpdateImportance.TEMPORARY)
-      .fold(history)(last => history.addState(InteractionVariableState(last.value, UpdateImportance.MAJOR, UtcTime.now()))))
+      .fold(history)(last => history.addState(InteractionVariableState(last.value, UpdateImportance.MAJOR, Instant.now()))))
 
   /** Back to the default answer; the session and its completed feedback computations stay. */
   def resetLocalHistory[F <: InteractionFormat](interaction: WorkbookInteractionElement[F]): Unit =
@@ -198,7 +197,7 @@ class InteractionController(store: State[InteractionInfo], schedule: (() => Unit
   def fetchEntry(key: String, forceFlush: Boolean = false, state: InteractionInfo = info): Future[Unit] =
     onEntry(key, state)([F <: InteractionFormat] => (cache: EntryCache[F], entry: InteractionEntry[F]) =>
       SyncPhases.settled(entry.destinations(state.connection).toSeq.map(destination => SyncPhases.attempt(
-        cache.refreshFrom(destination, Set(entry.syncContext), UtcTime.now().minusMinutes(5), forceFlush)).map(_ => ()))))
+        cache.refreshFrom(destination, Set(entry.syncContext), Instant.now().minus(java.time.Duration.ofMinutes(5)), forceFlush)).map(_ => ()))))
 
   /** Sends the buffered requests of every destination of the current connection. */
   def flush(): Unit = info.connection.flush()

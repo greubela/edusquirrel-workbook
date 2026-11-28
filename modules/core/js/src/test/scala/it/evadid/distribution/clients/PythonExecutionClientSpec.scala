@@ -11,14 +11,14 @@ import it.evadid.util.logging.Logger
 import it.evadid.util.logging.derived.PrintToStdLogger
 import munit.FunSuite
 import upickle.default.*
-import java.time.LocalDateTime
+import java.time.Instant
 import scala.concurrent.Future
 import scala.scalajs.concurrent.JSExecutionContext.Implicits.queue
 
 /** Browser-worker clients over the DOM worker transport, with the worker modelled at its message boundary. */
 class PythonExecutionClientSpec extends FunSuite {
   private val logger = Logger.withNameAndPrefixes(Some("python-test"), PrintToStdLogger.printNothing)
-  private val now = LocalDateTime.parse("2026-11-20T10:00:00")
+  private val now = java.time.Instant.parse("2026-11-20T10:00:00Z")
   private val times = ExecutionClientResponseTimestamps(now, now, now)
 
   private def request(worker: FakeWorker, index: Int = 0): WorkerExecutionProtocol.Request =

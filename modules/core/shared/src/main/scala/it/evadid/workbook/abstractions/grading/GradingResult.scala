@@ -1,6 +1,5 @@
 package it.evadid.workbook.abstractions.grading
 
-import it.evadid.core.util.UtcTime
 
 import it.evadid.core.datastructures.language.AppLanguage.HumanLanguage
 import it.evadid.core.datastructures.language.{LanguageMap, LanguageMapContentId, WorkbookContent}
@@ -9,7 +8,7 @@ import it.evadid.workbook.abstractions.grading.GradingStatus.*
 import it.evadid.workbook.abstractions.{GraderReference, StateReference}
 import upickle.default.*
 
-import java.time.LocalDateTime
+import java.time.Instant
 
 import it.evadid.core.util.io.serializer.DefaultSerializer.given
 case class GradingResult[T, GA]
@@ -19,7 +18,7 @@ case class GradingResult[T, GA]
   gradingStatus: GradingStatus,
   feedbackInformation: Option[WorkbookContent],
   additionalData: Option[GA],
-  gradingTime: LocalDateTime
+  gradingTime: Instant
   ) {
 
 
@@ -42,7 +41,7 @@ case class GradingRecord[GA](
   gradingStatus: GradingStatus,
   feedbackInformation: Option[WorkbookContent],
   additionalData: Option[GA],
-  gradingTime: LocalDateTime
+  gradingTime: Instant
 ) derives ReadWriter {
   def resolve[T](grader: WorkbookInteractionGrader[T, GA], gradedState: T): GradingResult[T, GA] =
     GradingResult(grader, gradedState, gradingStatus, feedbackInformation, additionalData, gradingTime)
@@ -59,7 +58,7 @@ object GradingResult {
   def apply[T, GA](grader: WorkbookInteractionGrader[T, GA],
                    gradedState: T,
                    gradingStatus: GradingStatus): GradingResult[T, GA] = {
-    new GradingResult[T, GA](grader, gradedState, gradingStatus, None, None, UtcTime.now())
+    new GradingResult[T, GA](grader, gradedState, gradingStatus, None, None, Instant.now())
   }
 
   def apply[T, GA](grader: WorkbookInteractionGrader[T, GA],
@@ -68,7 +67,7 @@ object GradingResult {
                    feedbackInformation: LanguageMap[HumanLanguage],
                    additionalData: Option[GA] ,
                   ): GradingResult[T, GA] = {
-    new GradingResult(grader, gradedState, gradingStatus, Some(WorkbookContent(feedbackInformation)), additionalData, UtcTime.now())
+    new GradingResult(grader, gradedState, gradingStatus, Some(WorkbookContent(feedbackInformation)), additionalData, Instant.now())
   }
 
 
@@ -79,14 +78,14 @@ object GradingResult {
                    feedbackInformation: LanguageMapContentId ,
                    additionalData: Option[GA] ,
                   ): GradingResult[T, GA] = {
-   new GradingResult(grader, gradedState, gradingStatus, Some(WorkbookContent(feedbackInformation)), additionalData, UtcTime.now())
+   new GradingResult(grader, gradedState, gradingStatus, Some(WorkbookContent(feedbackInformation)), additionalData, Instant.now())
   }
 
 
   /** Two results of one grader for one answer: an assessment beats an error or pending state, then the later one
     * wins; the winner keeps the other's feedback in languages it lacks.
     */
-  private[grading] def merged[R](first: R, second: R)(status: R => GradingStatus, time: R => LocalDateTime,
+  private[grading] def merged[R](first: R, second: R)(status: R => GradingStatus, time: R => Instant,
       feedback: R => Option[WorkbookContent], withFeedback: (R, Option[WorkbookContent]) => R): R = {
     val preferred =
       if statusPriority(status(second)) < 2 && statusPriority(status(first)) >= 2 then first

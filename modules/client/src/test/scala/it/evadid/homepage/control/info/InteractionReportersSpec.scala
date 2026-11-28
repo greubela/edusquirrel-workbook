@@ -22,10 +22,10 @@ import it.evadid.workbook.sync.UpdateImportance
 import it.evadid.workbook.abstractions.ExecutionContextInformation
 import it.evadid.workbook.reports.{InteractionVariableSyncReport, ScaffoldingReport}
 import it.evadid.core.datastructures.chat.MessengerModel
-import java.time.LocalDateTime
+import java.time.Instant
 
 class InteractionReportersSpec extends EditorDomSuite {
-  private val at = LocalDateTime.of(2026, 11, 19, 12, 0)
+  private val at = java.time.LocalDateTime.of(2026, 11, 19, 12, 0).toInstant(java.time.ZoneOffset.UTC)
   private def exercise(id: String) = TextInputWithScaffoldingAndGrading(id, LanguageMapContentId("test/task"),
     contentGrading = Seq(ContentForLlmInteraction(LanguageMapContentId("test/check"), Map.empty)),
     contentScaffolding = Some(ContentForLlmInteraction(LanguageMapContentId("test/hint"), Map.empty)))

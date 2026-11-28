@@ -14,7 +14,7 @@ import it.evadid.workbook.sync.destination.SyncDestinationHistoryHandler
 import it.evadid.workbook.sync.model.InteractionHistoryJson
 import it.evadid.workbook.history.InteractionVariableHistory
 import it.evadid.workbook.history.events.{AnswerChangedEvent, InteractionEvent, InteractionEvents}
-import java.time.LocalDateTime
+import java.time.Instant
 import munit.FunSuite
 import scala.concurrent.{ExecutionContext, Future}
 
@@ -24,7 +24,7 @@ import scala.concurrent.{ExecutionContext, Future}
 class DatabaseHistoryRoundTripSpec extends FunSuite {
   private given ExecutionContext = ExecutionContext.global
   private val logger = SyncLogger(BasicLogger())
-  private val at = LocalDateTime.of(2026, 3, 1, 9, 0)
+  private val at = java.time.LocalDateTime.of(2026, 3, 1, 9, 0).toInstant(java.time.ZoneOffset.UTC)
   private val usage = UsageContext("program", "workbook", "student")
   private val text = TextInteractionFormat
   private val programming = ProgrammingExerciseWithLlmScaffoldingAndGrading

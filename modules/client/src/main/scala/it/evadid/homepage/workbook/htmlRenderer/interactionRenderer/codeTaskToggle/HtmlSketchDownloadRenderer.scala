@@ -1,6 +1,5 @@
 package it.evadid.homepage.workbook.htmlRenderer.interactionRenderer.codeTaskToggle
 
-import it.evadid.core.util.UtcTime
 
 import it.evadid.homepage.control.model.FullInfo
 
@@ -12,7 +11,7 @@ import it.evadid.homepage.workbook.htmlRenderer.atomarLineRenderings.AtomarLineR
 import it.evadid.workbook.interactions.codeTaskToggle.SketchDownloadInteraction
 import it.evadid.workbook.interactions.reorderExercise.ReorderInteraction
 
-import java.time.LocalDateTime
+import java.time.Instant
 
 object HtmlSketchDownloadRenderer extends LineBasedRenderingFactory[SketchDownloadInteraction] {
 
@@ -43,7 +42,7 @@ object HtmlSketchDownloadRenderer extends LineBasedRenderingFactory[SketchDownlo
   }
 
   /** The sketch's own name, dated like every download (`2026-11-27_13-05-09_sensor-auslesen.ino`). */
-  def fileName(download: SketchDownloadInteraction, now: LocalDateTime = UtcTime.now()): String = {
+  def fileName(download: SketchDownloadInteraction, now: Instant = Instant.now()): String = {
     val name = download.filenameRelativeToWorkbookResources.split('/').last
     val dot = name.lastIndexOf('.')
     if dot > 0 then InfoUtil.downloadName(name.take(dot), now) + name.drop(dot) else InfoUtil.downloadName(name, now)

@@ -1,6 +1,5 @@
 package it.evadid.workbook.model
 
-import it.evadid.core.util.UtcTime
 
 import it.evadid.workbook.abstractions.{InteractionFormat, WorkbookInteractionElement}
 import it.evadid.workbook.sync.SyncConnection
@@ -9,7 +8,7 @@ import it.evadid.workbook.history.InteractionVariableState.{DesignatedInteractio
 import it.evadid.workbook.history.{InteractionVariableHistory, InteractionVariableState}
 import it.evadid.workbook.reports.InteractionVariableSyncReport
 
-import java.time.LocalDateTime
+import java.time.Instant
 import java.util.UUID
 import scala.util.Try
 
@@ -58,7 +57,7 @@ final case class InteractionInfo(session: InteractionInfo.Session, usageContext:
   /** Records a user's answer whose importance `relevance` decides from the change; an unchanged answer is kept. */
   def withUserChange[F <: InteractionFormat](interaction: WorkbookInteractionElement[F], value: InteractionFormat.State[F],
       relevance: InteractionVariableStateChanged[InteractionFormat.State[F]] => UpdateImportance,
-      timestamp: LocalDateTime = UtcTime.now()): Try[InteractionInfo] =
+      timestamp: Instant = Instant.now()): Try[InteractionInfo] =
     withHistory(interaction)(history => {
       val last = history.historyStates.lastStateOption.get
       if last.value == value then history
@@ -68,7 +67,7 @@ final case class InteractionInfo(session: InteractionInfo.Session, usageContext:
 
   /** Records `value` with `importance`; repeating the current answer and importance changes nothing. */
   def withAnswer[F <: InteractionFormat](interaction: WorkbookInteractionElement[F], value: InteractionFormat.State[F],
-      importance: UpdateImportance, timestamp: LocalDateTime = UtcTime.now()): Try[InteractionInfo] =
+      importance: UpdateImportance, timestamp: Instant = Instant.now()): Try[InteractionInfo] =
     withHistory(interaction)(history =>
       if history.historyStates.lastStateOption.exists(last => last.value == value && last.updateImportance == importance) then history
       else history.addState(InteractionVariableState[InteractionFormat.State[F]](value, importance, timestamp)))

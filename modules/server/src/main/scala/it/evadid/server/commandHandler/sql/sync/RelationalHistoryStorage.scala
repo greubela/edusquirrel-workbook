@@ -8,7 +8,8 @@ import it.evadid.workbook.sync.model.InteractionHistoryJson
 import it.evadid.workbook.history.InteractionVariableHistory
 import it.evadid.workbook.history.events.*
 import java.sql.Connection
-import java.time.LocalDateTime
+import java.time.Instant
+import java.time.ZoneOffset
 import java.time.format.{DateTimeFormatter, DateTimeFormatterBuilder}
 import java.time.temporal.ChronoField
 import java.util.Locale
@@ -19,8 +20,11 @@ class RelationalHistoryStorage(connection: Connection, logger: Logger) extends H
   private val timestampFormat = new DateTimeFormatterBuilder()
     .append(DateTimeFormatter.ISO_LOCAL_DATE).appendLiteral('T').appendPattern("HH:mm:ss")
     .appendFraction(ChronoField.NANO_OF_SECOND, 9, 9, true).toFormatter(Locale.ROOT)
-  private def timestampText(value: LocalDateTime): String = timestampFormat.format(value)
-  private def fourDigitYear(value: LocalDateTime): Boolean = value.getYear >= 0 && value.getYear <= 9999
+  private def timestampText(value: Instant): String = timestampFormat.format(value.atOffset(ZoneOffset.UTC))
+  private val yearZero = Instant.parse("0000-01-01T00:00:00Z")
+  private val yearTenThousand = Instant.parse("+10000-01-01T00:00:00Z")
+  /** Range bounds outside years 0 to 9999, such as `Instant.MIN` and `MAX`, leave that side of the range open. */
+  private def fourDigitYear(value: Instant): Boolean = !value.isBefore(yearZero) && value.isBefore(yearTenThousand)
 
   private val tables = List("answer_event", "grading_event", "scaffolding_event")
 
@@ -67,7 +71,7 @@ class RelationalHistoryStorage(connection: Connection, logger: Logger) extends H
       (List(context.programId, context.scenarioId, context.userId) ++ keys)*)(row => context.toSyncContext(row.getString(2)) -> (row.getLong(1), row.getString(3)))
   }
 
-  private def readHistory[F <: InteractionFormat](sync: Long, format: F, range: Option[(LocalDateTime, LocalDateTime)]): InteractionHistoryJson = {
+  private def readHistory[F <: InteractionFormat](sync: Long, format: F, range: Option[(Instant, Instant)]): InteractionHistoryJson = {
     // ISO expanded positive years begin with '+', which sorts before four-digit years.
     // Include them in lower-bound candidates; precise typed filtering below handles all years.
     // Bounds outside 0000..9999 are left to that filter rather than using an incorrect text order.

@@ -1,7 +1,7 @@
 package it.evadid.vm.projectexport
 
 import java.nio.charset.StandardCharsets.UTF_8
-import java.time.LocalDateTime
+import java.time.Instant
 
 /** A text file of an exported project, relative to the project folder. */
 final case class ProjectFile(path: String, content: String) {
@@ -18,7 +18,7 @@ final case class ExportedProject(folder: String, files: Seq[ProjectFile]) {
 
   def fileName: String = s"$folder.zip"
 
-  def zip(modified: LocalDateTime = LocalDateTime.of(2026, 1, 1, 0, 0)): Array[Byte] = {
+  def zip(modified: Instant = Instant.parse("2026-01-01T00:00:00Z")): Array[Byte] = {
     val folders = files.flatMap(file => file.path.split('/').init.inits.toSeq.filter(_.nonEmpty).map(_.mkString("", "/", "/"))).distinct.sorted
     ZipArchive.write(
       ZipArchive.Entry(s"$folder/", Array.emptyByteArray) +:

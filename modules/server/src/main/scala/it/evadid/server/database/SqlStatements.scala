@@ -3,6 +3,7 @@ package it.evadid.server.database
 import it.evadid.core.util.io.ParsingContext
 import it.evadid.util.logging.Logger
 import java.sql.{Connection, PreparedStatement, ResultSet, Timestamp}
+import java.time.{Instant, LocalDateTime, ZoneOffset}
 import scala.util.Using
 
 /** Prepared statements with typed bindings on a caller-owned connection.
@@ -28,7 +29,11 @@ final class SqlStatements(connection: Connection, logger: Logger) {
 }
 
 object SqlStatements {
-  type Value = String | Long | Timestamp
+  type Value = String | Long | Instant
+
+  /** Database times are UTC wall times, independent of the server's zone. */
+  def timestamp(instant: Instant): Timestamp = Timestamp.valueOf(LocalDateTime.ofInstant(instant, ZoneOffset.UTC))
+  def instant(timestamp: Timestamp): Instant = timestamp.toLocalDateTime.toInstant(ZoneOffset.UTC)
 
   /** Reads every row of `resultSet`, starting at the first, and closes it. */
   def rows[A](resultSet: ResultSet)(read: ResultSet => A): Seq[A] =
@@ -37,6 +42,6 @@ object SqlStatements {
   private def bind(statement: PreparedStatement, position: Int, value: Value): Unit = value match {
     case number: Long => statement.setLong(position, number)
     case text: String => statement.setString(position, text)
-    case timestamp: Timestamp => statement.setTimestamp(position, timestamp)
+    case instant: Instant => statement.setTimestamp(position, timestamp(instant))
   }
 }

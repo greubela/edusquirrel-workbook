@@ -1,6 +1,5 @@
 package it.evadid.workbook.control
 
-import it.evadid.core.util.UtcTime
 
 import it.evadid.workbook.model.{InteractionInfo, InteractionScope}
 
@@ -24,7 +23,7 @@ import it.evadid.workbook.interactions.pixel.BinaryPixelImage
 import it.evadid.workbook.support.GatedHistoryStore
 import munit.FunSuite
 
-import java.time.LocalDateTime
+import java.time.Instant
 import scala.concurrent.{ExecutionContext, Future, Promise}
 
 /** The answers of one sync context: edits, restored records, sessions and connections. */
@@ -33,7 +32,7 @@ class InteractionControllerSpec extends FunSuite {
   private val logger = Logger.withNameAndPrefixes(Some("InteractionControllerSpec"), PrintToStdLogger.printNothing)
   private val syncLogger = SyncLogger(BasicLogger())
   private val context = UsageContext("program", "workbook", "student")
-  private val at = LocalDateTime.of(2026, 6, 1, 8, 0)
+  private val at = java.time.LocalDateTime.of(2026, 6, 1, 8, 0).toInstant(java.time.ZoneOffset.UTC)
   private type Text = TextInteractionFormat.type
   private def text(values: (String, Int)*): InteractionVariableHistory[Text] =
     InteractionVariableHistory(TextInteractionFormat, InteractionEvents(values.map((value, second) =>
@@ -76,7 +75,7 @@ class InteractionControllerSpec extends FunSuite {
     val observed = State(Vector.empty[String])
     bound.observable.addObserver(value => observed.update(_ :+ value))
     bound.set("typed")
-    answers.setStateFromUserInteraction(essay, "restored", MAJOR, UtcTime.now().plusSeconds(5))
+    answers.setStateFromUserInteraction(essay, "restored", MAJOR, Instant.now().plusSeconds(5))
     assertEquals(bound.now(), "restored")
     assertEquals(observed.now(), Vector("a", "typed", "restored"))
   }
@@ -151,7 +150,7 @@ class InteractionControllerSpec extends FunSuite {
   private def connected(store: GatedHistoryStore, interactions: WorkbookInteractionElement[? <: InteractionFormat]*) =
     store.controllerFor(interactions*)
   private def seed(store: GatedHistoryStore, interaction: TextInteraction, answer: String): Unit = store.seed(interaction,
-    InteractionVariableHistory.empty(TextInteractionFormat).addEvent(AnswerChangedEvent(answer, UtcTime.now().plusDays(1), MAJOR)))
+    InteractionVariableHistory.empty(TextInteractionFormat).addEvent(AnswerChangedEvent(answer, Instant.now().plus(java.time.Duration.ofDays(1)), MAJOR)))
 
   private def confirmed(answers: InteractionController, interaction: TextInteraction): Int =
     answers.report(interaction).destinationsWithSufficientWrites.size
@@ -221,7 +220,7 @@ class InteractionControllerSpec extends FunSuite {
     val store = GatedHistoryStore(context)
     val answers = connected(store, pixels)
     val resized = InteractionVariableHistory[BinaryPixelInteractionFormat.type](BinaryPixelInteractionFormat, InteractionEvents(Set(
-      AnswerChangedEvent[BinaryPixelInteractionFormat.type](BinaryPixelImage.blank(3, 3), UtcTime.now(), MAJOR))))
+      AnswerChangedEvent[BinaryPixelInteractionFormat.type](BinaryPixelImage.blank(3, 3), Instant.now(), MAJOR))))
     store.values.set(Map(SyncContext.serializer.serialize(context.toSyncContext(pixels.keyForSerialization)) ->
       InteractionHistoryJson.fromHistory(BinaryPixelInteractionFormat, resized).serialized))
     answers.fetch(pixels, forceFlush = true).map(_ => assertEquals(answers.currentValue(pixels), BinaryPixelImage.blank(2, 2)))

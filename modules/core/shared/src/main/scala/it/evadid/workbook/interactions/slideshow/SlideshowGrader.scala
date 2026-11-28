@@ -1,6 +1,5 @@
 package it.evadid.workbook.interactions.slideshow
 
-import it.evadid.core.util.UtcTime
 
 import it.evadid.core.datastructures.language.AppLanguage.HumanLanguage
 import it.evadid.core.datastructures.language.{AppLanguage, LanguageMap, WorkbookContent}
@@ -14,7 +13,7 @@ import it.evadid.workbook.abstractions.grading.GradingStatus.Correct
 import it.evadid.workbook.abstractions.ExecutionContextInformation
 import upickle.default.*
 
-import java.time.LocalDateTime
+import java.time.Instant
 import scala.concurrent.Future
 
 case class SlideshowGrader(isRequired: Boolean) extends WorkbookInteractionGrader[SlideshowState, Unit] derives ReadWriter {
@@ -36,7 +35,7 @@ case class SlideshowGrader(isRequired: Boolean) extends WorkbookInteractionGrade
       case _ => LanguageMap.mapBasedLanguageMap(Map(AppLanguage.English -> s"${state.unseenPanels.size} slides remain.",
         AppLanguage.German -> s"${state.unseenPanels.size} Folien fehlen noch."))
     }
-    val res: GradingResult[SlideshowState, Unit] = GradingResult[SlideshowState, Unit](this, state, gradingStatus, Some(WorkbookContent(feedbackInformation)), None, UtcTime.now())
+    val res: GradingResult[SlideshowState, Unit] = GradingResult[SlideshowState, Unit](this, state, gradingStatus, Some(WorkbookContent(feedbackInformation)), None, Instant.now())
     res
   }
 }

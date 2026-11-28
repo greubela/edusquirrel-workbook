@@ -1,6 +1,5 @@
 package it.evadid.homepage.control.change
 
-import it.evadid.core.util.UtcTime
 
 import it.evadid.workbook.control.InteractionSignals.*
 
@@ -38,17 +37,17 @@ import scala.concurrent.{ExecutionContext, Future, Promise}
 import scala.scalajs.js
 import scala.scalajs.js.JSConverters.*
 import upickle.default.*
-import java.time.LocalDateTime
+import java.time.Instant
 import org.scalajs.dom
 
 /** Page transitions with the real interaction control, shared buffers and HTTP adapter together. */
 class HomepageStateSpec extends EditorDomSuite {
   private given ExecutionContext = ExecutionContext.global
-  private val at = LocalDateTime.of(2026, 1, 1, 12, 0)
+  private val at = java.time.LocalDateTime.of(2026, 1, 1, 12, 0).toInstant(java.time.ZoneOffset.UTC)
   private val global = js.Dynamic.global.globalThis
 
   private def signed(user: AllUserInfo, value: String): SignedToken =
-    SignedToken(UserTokenInfo(user.user, at, at.plusYears(2)), value)
+    SignedToken(UserTokenInfo(user.user, at, at.plus(java.time.Duration.ofDays(2 * 366))), value)
   /** Backend synchronization requires a signed-in account. */
   private def signedIn(user: AllUserInfo): AllUserInfo =
     user.copy(credentials = user.credentials.copy(signedBackendToken = Some(signed(user, s"${user.user.id}-token"))))
@@ -96,7 +95,7 @@ class HomepageStateSpec extends EditorDomSuite {
       }
     }
 
-    def seed(context: UsageContext, text: String, timestamp: LocalDateTime): Unit = {
+    def seed(context: UsageContext, text: String, timestamp: Instant): Unit = {
       val value = InteractionHistoryJson.fromHistory(TextInteractionFormat,
         InteractionVariableHistory.empty(TextInteractionFormat).addEvent(
           AnswerChangedEvent[TextInteractionFormat.type](text, timestamp, UpdateImportance.MAJOR)))
@@ -118,7 +117,7 @@ class HomepageStateSpec extends EditorDomSuite {
 
     private def response(command: ExecutionCommand): ExecutionClientResponse = {
       requests.update(_ :+ command)
-      val now = UtcTime.now()
+      val now = Instant.now()
       val times = ExecutionClientResponseTimestamps(now, now, now)
       command.name match {
         case name if name == fetchEventsFromDbCommand.name =>
@@ -189,7 +188,7 @@ class HomepageStateSpec extends EditorDomSuite {
       fixture.info.interactions.ensureSynced().flatMap { _ =>
         val firstReads = fixture.fetchRequests
         assertEquals(firstReads.size, 2)
-        assert(firstReads.forall(request => request.keys.size == 2 && request.starting == LocalDateTime.MIN))
+        assert(firstReads.forall(request => request.keys.size == 2 && request.starting == Instant.MIN))
         assertEquals(fixture.elements.map(fixture.info.interactions.currentValue(_)), Seq("saved-0", "saved-1"))
         fixture.requests.set(Vector.empty)
         fixture.info.interactions.ensureSynced()
@@ -603,7 +602,7 @@ class HomepageStateSpec extends EditorDomSuite {
     val fixture = new Fixture
     val gate = new ResponseGate
     val original = fixture.info.homepageInfoNow().toContext
-    fixture.seed(original, "late original workbook", UtcTime.now().plusDays(1))
+    fixture.seed(original, "late original workbook", Instant.now().plus(java.time.Duration.ofDays(1)))
     fixture.beforeResponse.set(command =>
       if command.name == fetchEventsFromDbCommand.name && read[FetchEventsFromDbRequest](command.json).usageContext == original then gate.hold()
       else Future.unit)
@@ -613,11 +612,11 @@ class HomepageStateSpec extends EditorDomSuite {
         val (other, interactions) = fixture.anotherWorkbook("other-workbook")
         assertEquals(interactions.map(_.elementId), fixture.elements.map(_.elementId))
         val context = original.copy(scenarioId = other.loadedWorkbook.workbookId)
-        fixture.seed(context, "current workbook", UtcTime.now().plusDays(2))
+        fixture.seed(context, "current workbook", Instant.now().plus(java.time.Duration.ofDays(2)))
         fixture.info.state.switchWorkbook(Some(other))
         // An older edit in the new workbook: it must be written there, while the newer saved answer stays current.
         fixture.info.interactions.setStateFromUserInteraction(interactions.head, "older edit", UpdateImportance.MAJOR,
-          UtcTime.now())
+          Instant.now())
         fixture.info.interactions.ensureSynced().flatMap { _ =>
           val current = interactions.map(fixture.info.interactions.currentHistory(_))
           assertEquals(interactions.map(fixture.info.interactions.currentValue(_)), Seq.fill(2)("current workbook"))
@@ -643,7 +642,7 @@ class HomepageStateSpec extends EditorDomSuite {
       fixture.failBlobReads.set(retiredReadFails)
       val holding = Var(true)
       val context = fixture.info.homepageInfoNow().toContext
-      fixture.seed(context, "first binding only", UtcTime.now().plusDays(1))
+      fixture.seed(context, "first binding only", Instant.now().plus(java.time.Duration.ofDays(1)))
       fixture.beforeResponse.set(command =>
         if holding.now() && command.name == fetchEventsFromDbCommand.name then gate.hold() else Future.unit)
       fixture.withHttp {
@@ -655,7 +654,7 @@ class HomepageStateSpec extends EditorDomSuite {
           val (other, _) = fixture.anotherWorkbook("intermediate-workbook")
           fixture.info.state.switchWorkbook(Some(other))
           // Another client has reset/replaced the remote history while the first response is in flight.
-          fixture.seed(context, "replacement binding only", UtcTime.now().plusDays(2))
+          fixture.seed(context, "replacement binding only", Instant.now().plus(java.time.Duration.ofDays(2)))
           fixture.info.state.switchWorkbook(original)
           fixture.info.interactions.ensureSynced().flatMap { _ =>
             val current = fixture.elements.map(fixture.info.interactions.currentHistory(_))
@@ -773,7 +772,7 @@ class HomepageStateSpec extends EditorDomSuite {
       fixture.info.interactions.ensureSynced().flatMap { _ =>
         val (other, interactions) = fixture.anotherWorkbook("selected-workbook")
         val context = fixture.info.homepageInfoNow().toContext.copy(scenarioId = other.loadedWorkbook.workbookId)
-        fixture.seed(context, "selected workbook", UtcTime.now().plusDays(1))
+        fixture.seed(context, "selected workbook", Instant.now().plus(java.time.Duration.ofDays(1)))
         fixture.beforeResponse.set(command =>
           if command.name == fetchEventsFromDbCommand.name && read[FetchEventsFromDbRequest](command.json).usageContext == context then gate.hold()
           else Future.unit)
@@ -814,7 +813,7 @@ class HomepageStateSpec extends EditorDomSuite {
           val writes = fixture.storeRequests
           assertEquals(reads.size, 1)
           assertEquals(reads.head.databaseFormat, defaultDatabase.format)
-          assertEquals(reads.head.starting, LocalDateTime.MIN)
+          assertEquals(reads.head.starting, Instant.MIN)
           assertEquals(writes.size, 1)
           assertEquals(writes.head.databaseFormat, defaultDatabase.format)
           assertEquals(report.now().allSyncDestinations.size, 1)

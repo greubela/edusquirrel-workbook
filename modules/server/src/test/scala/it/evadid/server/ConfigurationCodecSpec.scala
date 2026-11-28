@@ -22,7 +22,7 @@ class ConfigurationCodecSpec extends FunSuite {
     import it.evadid.sql.DatabaseConfig
     val json = ujson.read("""{"usageContext":{"programId":"edusquirrel","scenarioId":"workbookTest","userId":"student"},
       "databaseConfig":"BackendDatabase",
-      "keys":[],"starting":"2026-01-01T00:00","until":"2026-12-31T00:00","databaseFormat":"RelationalFormat","strategy":"SYNC_EVERYTHING"}""")
+      "keys":[],"starting":"2026-01-01T00:00:00Z","until":"2026-12-31T00:00:00Z","databaseFormat":"RelationalFormat","strategy":"SYNC_EVERYTHING"}""")
     assertEquals(read[FetchEventsFromDbRequest](json).databaseConfig, BackendDatabase)
     val unsupported = ujson.read("""{"databaseOp":"db_332371_12","dbFormatOp":"mysql","hostOp":"herrgreubel.lima-db.de","portOp":"3306"}""")
     json("databaseConfig") = unsupported

@@ -43,10 +43,10 @@ import it.evadid.workbook.history.InteractionVariableHistory
 import it.evadid.workbook.sync.model.InteractionHistoryJson
 import it.evadid.workbook.sync.UpdateImportance
 import it.evadid.workbook.history.events.AnswerChangedEvent
-import java.time.LocalDateTime
+import java.time.Instant
 
 val history = InteractionVariableHistory.empty[TextInteractionFormat.type].addEvent(
-  AnswerChangedEvent[TextInteractionFormat.type]("My answer", LocalDateTime.now(), UpdateImportance.MAJOR))
+  AnswerChangedEvent[TextInteractionFormat.type]("My answer", Instant.now(), UpdateImportance.MAJOR))
 val transport = InteractionHistoryJson.fromHistory(TextInteractionFormat, history)
 val decoded = InteractionHistoryJson.deserialize(transport.serialized)
 val restored = decoded.typedAs(TextInteractionFormat)
@@ -65,17 +65,17 @@ type resolution; [storage](database/interaction-history.md) defines how malforme
 `InteractionVariableHistory[F]` stores one `InteractionEvents[F]` set. Its events
 are answer changes, grading starts/completions and scaffolding starts/completions.
 Every event has a client-generated [`EventId`](../modules/core/shared/src/main/scala/it/evadid/workbook/history/events/EventId.scala)
-(a canonical UUID), its associated answer, `LocalDateTime` and importance. Completed
-feedback derives its answer and timestamp from the typed result.
+(a canonical UUID), an `Instant` and an importance; answer events hold the answer, feedback
+events a reference to it. Completed feedback takes its timestamp from its record.
 
 Events are immutable: an ID names exactly one content, and a revision is a new event
 with a new ID. Merging unions events, so retries are idempotent and distinct same-time
 events survive, while a different event under a known ID is rejected
 (`InteractionEvents` requires unique IDs). IDs are preserved during decoding; missing
 or malformed IDs are rejected rather than generated on read.
-All saved and exchanged timestamps are UTC `LocalDateTime`s from
-[`UtcTime.now()`](../modules/core/shared/src/main/scala/it/evadid/core/util/UtcTime.scala), so event
-order survives other device zones and DST; only display converts with `UtcTime.toLocal`.
+All saved and exchanged points in time are `Instant`s with one codec (ISO 8601 in UTC, in
+`DefaultSerializer`), so event order survives device zones and DST. Display converts with
+`InfoUtil.localDateTime`; JDBC binds them as UTC wall times.
 Saved error statuses (`TestError`, `ScaffoldingError`) keep only the messages of an error
 and its causes; stack traces stay in logs. State/feedback history views are derived projections,
 not separate persisted stores. A newer grading start represents a retry in progress;

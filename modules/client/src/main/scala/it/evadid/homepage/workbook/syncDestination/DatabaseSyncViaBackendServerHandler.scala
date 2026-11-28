@@ -53,13 +53,13 @@ case class DatabaseSyncViaBackendServerHandler(pSyncLogger: SyncLogger, definiti
     FetchResponse.fromMap(result.history.timestampExecutionFinished, result.result.fetchedElements.map((key, value) => key -> value.serialized))
 
   override def readHistoriesJson(usageContext: UsageContext)(using ec: ExecutionContext): Future[FetchResponse[SyncContext, String]] = {
-    val request = SQLCommands.FetchEventsFromDbRequest(usageContext, Seq.empty, java.time.LocalDateTime.MIN,
-      java.time.LocalDateTime.MAX, databaseConfig, definition.format, EventSyncStrategy.SYNC_EVERYTHING)
+    val request = SQLCommands.FetchEventsFromDbRequest(usageContext, Seq.empty, java.time.Instant.MIN,
+      java.time.Instant.MAX, databaseConfig, definition.format, EventSyncStrategy.SYNC_EVERYTHING)
     SQLCommands.fetchEventsFromDbCommand.sendCommandTo(backend, request).map(toFetchResponse)
   }
 
-  override def readHistoriesInRange(usageContext: UsageContext, keys: Seq[SyncContext], starting: java.time.LocalDateTime,
-      until: java.time.LocalDateTime, strategy: EventSyncStrategy)(using ec: ExecutionContext): Future[Map[SyncContext, InteractionHistoryJson]] = {
+  override def readHistoriesInRange(usageContext: UsageContext, keys: Seq[SyncContext], starting: java.time.Instant,
+      until: java.time.Instant, strategy: EventSyncStrategy)(using ec: ExecutionContext): Future[Map[SyncContext, InteractionHistoryJson]] = {
     require(keys.forall(_.toUsageContext == usageContext), "Range keys must belong to the requested usage context")
     require(!until.isBefore(starting), "History range end must not precede its start")
     if keys.isEmpty then Future.successful(Map.empty) else {

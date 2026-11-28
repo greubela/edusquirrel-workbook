@@ -11,7 +11,7 @@ import it.evadid.workbook.interactions.gpt.TextInputWithScaffoldingAndGrading.Co
 import it.evadid.workbook.sync.{EventSyncStrategy, UpdateImportance}
 import it.evadid.workbook.sync.UpdateImportance.*
 import it.evadid.workbook.history.events.*
-import java.time.LocalDateTime
+import java.time.Instant
 import munit.FunSuite
 
 /** The projections every editor, renderer and cache reads from an event history. */
@@ -21,7 +21,7 @@ class InteractionVariableHistorySpec extends FunSuite {
   private def ref(value: String) = InteractionFormat.referenceOf(format, value)
   private def refs(values: String*) = values.map(ref).toSet
   private type Event = InteractionEvent[F]
-  private val at = LocalDateTime.of(2026, 5, 4, 10, 0)
+  private val at = java.time.LocalDateTime.of(2026, 5, 4, 10, 0).toInstant(java.time.ZoneOffset.UTC)
   private def t(second: Int) = at.plusSeconds(second)
   private def grader(task: String): WorkbookInteractionGrader[String, MessengerModel] =
     TextInputLlmGrader(LanguageMapContentId(s"spec/$task"), None, ContentForLlmInteraction(LanguageMapContentId("spec/criterion"), Map.empty))

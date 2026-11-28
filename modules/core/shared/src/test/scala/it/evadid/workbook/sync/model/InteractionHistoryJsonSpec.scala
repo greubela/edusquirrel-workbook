@@ -16,7 +16,7 @@ import it.evadid.workbook.interactions.gpt.{TextInputLlmGrader, TextInputWithSca
 import it.evadid.workbook.sync.UpdateImportance
 import it.evadid.workbook.history.InteractionVariableHistory
 import it.evadid.workbook.history.events.*
-import java.time.LocalDateTime
+import java.time.Instant
 import it.evadid.workbook.abstractions.InteractionFormat
 import munit.FunSuite
 import upickle.default.*
@@ -25,7 +25,7 @@ import upickle.default.*
 class InteractionHistoryJsonSpec extends FunSuite {
   private type FeedbackFormat = TextInputWithLlmGradingAndScaffoldingFormat.type
   private val feedbackFormat: FeedbackFormat = TextInputWithLlmGradingAndScaffoldingFormat
-  private val time = LocalDateTime.of(2026, 11, 18, 12, 13, 14, 123456789)
+  private val time = java.time.LocalDateTime.of(2026, 11, 18, 12, 13, 14, 123456789).toInstant(java.time.ZoneOffset.UTC)
   private val answer = "quoted \"answer\"\\path\n学校 🧪"
   private val grader = TextInputLlmGrader(LanguageMapContentId("custom/task"), None,
     TextInputWithScaffoldingAndGrading.ContentForLlmInteraction(LanguageMapContentId("custom/criterion"), Map.empty))
@@ -67,11 +67,11 @@ class InteractionHistoryJsonSpec extends FunSuite {
 
   test("answer envelopes preserve escaping, importance, timestamp ties and the full nanosecond range") {
     val events = Set[InteractionEvent[TextInteractionFormat.type]](
-      AnswerChangedEvent[TextInteractionFormat.type]("minimum", LocalDateTime.MIN, UpdateImportance.DEFAULT),
+      AnswerChangedEvent[TextInteractionFormat.type]("minimum", Instant.MIN, UpdateImportance.DEFAULT),
       AnswerChangedEvent[TextInteractionFormat.type](answer, time, UpdateImportance.TEMPORARY),
       AnswerChangedEvent[TextInteractionFormat.type]("same timestamp", time, UpdateImportance.MINOR),
       AnswerChangedEvent[TextInteractionFormat.type]("adjacent nanosecond", time.plusNanos(1), UpdateImportance.MAJOR),
-      AnswerChangedEvent[TextInteractionFormat.type]("maximum", LocalDateTime.MAX, UpdateImportance.MAJOR))
+      AnswerChangedEvent[TextInteractionFormat.type]("maximum", Instant.MAX, UpdateImportance.MAJOR))
     assertRoundTrips(TextInteractionFormat, InteractionVariableHistory(TextInteractionFormat, InteractionEvents(events)))
   }
 

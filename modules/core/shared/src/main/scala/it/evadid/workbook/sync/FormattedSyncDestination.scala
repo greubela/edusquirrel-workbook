@@ -6,7 +6,7 @@ import it.evadid.workbook.abstractions.InteractionFormat
 import it.evadid.workbook.sync.model.InteractionHistoryJson
 import it.evadid.workbook.history.InteractionVariableHistory
 import it.evadid.workbook.history.events.{EventId, InteractionEvent}
-import java.time.LocalDateTime
+import java.time.Instant
 import scala.concurrent.{ExecutionContext, Future}
 
 /** Codec boundary between a typed event cache and a self-describing destination. */
@@ -17,7 +17,7 @@ case class FormattedSyncDestination[F <: InteractionFormat](information: SyncInf
   private val strategy = information.syncInformation.syncStrategy
 
   val reader: RemoteHistoryDataReader[SyncContext, F] = new RemoteHistoryDataReader[SyncContext, F] {
-    def fetchEventsBetween(logger: SyncLogger, keys: Seq[SyncContext], starting: LocalDateTime, until: LocalDateTime,
+    def fetchEventsBetween(logger: SyncLogger, keys: Seq[SyncContext], starting: Instant, until: Instant,
         selection: EventSyncStrategy): Future[Map[SyncContext, Seq[InteractionEvent[F]]]] =
       // Each history is typed separately: one unreadable record is discarded without hiding the others.
       handler.readHistoriesInRange(information.usageContext, keys, starting, until, selection).map(_.flatMap { (key, history) =>

@@ -1,6 +1,5 @@
 package it.evadid.workbook.interactions.programming.programmingExerciseRegular
 
-import it.evadid.core.util.UtcTime
 
 import it.evadid.vm.conversion.dependencies.ProgrammingEnvironment
 import it.evadid.core.datastructures.language.AppLanguage.{English, German, HumanLanguage}
@@ -16,7 +15,7 @@ import it.evadid.workbook.interactions.programming.{AdditionalProgrammingTestInf
 import it.evadid.workbook.abstractions.ExecutionContextInformation
 import upickle.default.ReadWriter
 
-import java.time.LocalDateTime
+import java.time.Instant
 import scala.concurrent.Future
 import scala.util.control.NonFatal
 
@@ -77,9 +76,9 @@ case class ProgramDataTestGrader(
   : Future[GradingResult[ProgrammingState, AdditionalProgrammingTestInfo]] = Future {
     val (status, message) = evaluate(state)
     val res: GradingResult[ProgrammingState, AdditionalProgrammingTestInfo] = if (message.nonEmpty && importance != GradingImportance.HIDDEN_TEST) {
-      GradingResult[ProgrammingState, AdditionalProgrammingTestInfo](this, state, status, message.map(WorkbookContent(_)), None, UtcTime.now())
+      GradingResult[ProgrammingState, AdditionalProgrammingTestInfo](this, state, status, message.map(WorkbookContent(_)), None, Instant.now())
     } else {
-      GradingResult[ProgrammingState, AdditionalProgrammingTestInfo](this, state, status, None, None, UtcTime.now())
+      GradingResult[ProgrammingState, AdditionalProgrammingTestInfo](this, state, status, None, None, Instant.now())
     }
 
     res

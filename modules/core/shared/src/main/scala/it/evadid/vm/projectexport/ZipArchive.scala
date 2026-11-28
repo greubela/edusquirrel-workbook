@@ -1,7 +1,8 @@
 package it.evadid.vm.projectexport
 
 import java.nio.charset.StandardCharsets.UTF_8
-import java.time.LocalDateTime
+import it.evadid.core.util.InfoUtil
+import java.time.{Instant, LocalDateTime}
 
 /**
  * A minimal ZIP writer without dependencies, so the browser and the JVM produce identical archives.
@@ -31,10 +32,11 @@ object ZipArchive {
   private def le16(value: Int): Array[Byte] = Array(value.toByte, (value >>> 8).toByte)
   private def le32(value: Int): Array[Byte] = le16(value & 0xFFFF) ++ le16(value >>> 16)
 
-  def write(entries: Seq[Entry], modified: LocalDateTime = LocalDateTime.of(2026, 1, 1, 0, 0)): Array[Byte] = {
+  /** `modified` is stored as the viewer's local time, as ZIP (DOS) times have no zone. */
+  def write(entries: Seq[Entry], modified: Instant = Instant.parse("2026-01-01T00:00:00Z")): Array[Byte] = {
     require(entries.size < 0xFFFF, "Too many entries for a ZIP archive without ZIP64.")
     require(entries.map(_.path).distinct.size == entries.size, "Archive paths must be unique.")
-    val (date, time) = dosDateTime(modified)
+    val (date, time) = dosDateTime(InfoUtil.localDateTime(modified))
     val prepared = entries.map { entry =>
       val name = entry.path.getBytes(UTF_8)
       val data = if entry.isDirectory then Array.emptyByteArray else entry.content

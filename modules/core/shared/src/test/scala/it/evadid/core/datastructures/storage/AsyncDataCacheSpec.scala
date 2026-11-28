@@ -1,6 +1,5 @@
 package it.evadid.core.datastructures.storage
 
-import it.evadid.core.util.UtcTime
 
 import it.evadid.core.datastructures.state.State
 import it.evadid.core.datastructures.state.async.AsyncDataState.*
@@ -10,7 +9,7 @@ import it.evadid.util.logging.Logger
 import it.evadid.util.logging.derived.PrintToStdLogger
 import munit.FunSuite
 
-import java.time.LocalDateTime
+import java.time.Instant
 import scala.collection.mutable.ListBuffer
 import scala.concurrent.{ExecutionContext, Future, Promise}
 
@@ -275,14 +274,14 @@ class AsyncDataCacheSpec extends FunSuite {
 
   test("age-based loads reuse a result at its timestamp and reload older results") {
     val cache = new Cache()
-    val before = UtcTime.now().minusSeconds(1)
+    val before = Instant.now().minusSeconds(1)
     val first = cache.loadAsFuture("a")
     cache.requests.head._2.success("old")
     first.flatMap { _ =>
       cache.loadAsFuture("a", before).flatMap { reused =>
         assertEquals(reused, "old")
         assertEquals(cache.requests.size, 1)
-        val next = cache.loadAsFuture("a", UtcTime.now().plusDays(1))
+        val next = cache.loadAsFuture("a", Instant.now().plus(java.time.Duration.ofDays(1)))
         assertEquals(cache.requests.size, 2)
         cache.requests.last._2.success("new")
         next.map(value => assertEquals(value, "new"))
@@ -292,7 +291,7 @@ class AsyncDataCacheSpec extends FunSuite {
 
   test("empty batch loads do not invoke the loader") {
     val cache = new Cache()
-    cache.loadAllAsFuture(List.empty[String], UtcTime.now()).map { result =>
+    cache.loadAllAsFuture(List.empty[String], Instant.now()).map { result =>
       assertEquals(result, Map.empty[String, Either[Throwable, String]])
       assertEquals(cache.requests.size, 0)
     }

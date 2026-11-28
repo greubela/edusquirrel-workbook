@@ -1,6 +1,5 @@
 package it.evadid.distribution.clients
 
-import it.evadid.core.util.UtcTime
 
 import it.evadid.distribution.command.{ExecutionCommand, SerializedException}
 import it.evadid.distribution.commandTypes.WorkerCommands.*
@@ -10,7 +9,7 @@ import it.evadid.util.logging.Logger
 import it.evadid.util.logging.derived.PrintToStdLogger
 import munit.FunSuite
 import upickle.default.*
-import java.time.LocalDateTime
+import java.time.Instant
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.collection.mutable.ListBuffer
 
@@ -26,7 +25,7 @@ class WorkerExecutionTest extends FunSuite {
     override def terminate(): Unit = terminated = true
     def reply(index: Int, value: String): Unit = {
       val request = read[WorkerExecutionProtocol.Request](sent(index))
-      val now = UtcTime.now()
+      val now = Instant.now()
       receive(write(WorkerExecutionProtocol.Response(request.requestId,
         ExecutionClientResponse.forValue(ExecutionClientResponseTimestamps(now,now,now),value,request.command))))
     }
@@ -87,7 +86,7 @@ class WorkerExecutionTest extends FunSuite {
   test("a mismatched response command fails all outstanding requests") {
     val fake = new Fake; val worker = client(fake)
     val reply = worker.executeResponse(logger,command)
-    val now = UtcTime.now()
+    val now = Instant.now()
     fake.receive(write(WorkerExecutionProtocol.Response("1",ExecutionClientResponse.forValue(
       ExecutionClientResponseTimestamps(now,now,now),"wrong",ExecutionCommand("other",ujson.Obj())))))
     reply.failed.map { error => assert(error.getMessage.contains("does not match")); assert(fake.terminated) }

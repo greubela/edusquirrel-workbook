@@ -29,7 +29,7 @@ import scala.concurrent.{ExecutionContext, Future, Promise}
 class InteractionScaffoldingAndGradingControlSpec extends FunSuite {
   private given ExecutionContext = ExecutionContext.global
   private val context = TestExecutionContext()
-  private val time = java.time.LocalDateTime.of(2026, 11, 7, 0, 0)
+  private val time = java.time.LocalDateTime.of(2026, 11, 7, 0, 0).toInstant(java.time.ZoneOffset.UTC)
 
   private class CountingGrader(status: GradingStatus = GradingStatus.Correct, failFirst: Boolean = false,
       synchronous: Boolean = false, gate: Option[Promise[Unit]] = None, retryGate: Option[Promise[Unit]] = None,
@@ -368,9 +368,9 @@ class InteractionScaffoldingAndGradingControlSpec extends FunSuite {
     import it.evadid.workbook.history.events.*
     type F = TextInputWithLlmGradingAndScaffoldingFormat.type
     val value = variable(Nil)
-    val timestamp = java.time.LocalDateTime.of(2026, 11, 17, 12, 0)
+    val timestamp = java.time.LocalDateTime.of(2026, 11, 17, 12, 0).toInstant(java.time.ZoneOffset.UTC)
     val entity = FeedbackEntity.LlmEntity
-    def started(at: java.time.LocalDateTime) = ScaffoldingResult[String, MessengerModel]("answer", ScaffoldingStatus.ScaffoldingRequestedButNotFinished(), entity, None, at)
+    def started(at: java.time.Instant) = ScaffoldingResult[String, MessengerModel]("answer", ScaffoldingStatus.ScaffoldingRequestedButNotFinished(), entity, None, at)
     value.controller.updateHistory(value.interaction)(_.addScaffolding(started(timestamp)))
     assertEquals(value.control.getCurrentStateOfScaffolding("answer").map(_.scaffoldingStatus), Some(ScaffoldingStatus.ScaffoldingRequestedButNotFinished()))
     val completed = ScaffoldingResult[String, MessengerModel]("answer", ScaffoldingStatus.ScaffoldingFeedback(LanguageMap.universalMap("Hint")), entity, None, timestamp)

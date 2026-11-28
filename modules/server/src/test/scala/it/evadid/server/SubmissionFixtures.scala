@@ -18,13 +18,13 @@ import it.evadid.workbook.sync.{EventSyncStrategy, SyncContext, SyncInformation,
 import it.evadid.workbook.history.{InteractionVariableHistory, InteractionVariableState}
 import it.evadid.workbook.session.{AllWorkbookInfo, SessionData, WorkbookConfig}
 
-import java.time.LocalDateTime
+import java.time.Instant
 
 /** A submitted session with a revised text answer, a graded choice, an unanswered task, a foreign-workbook history and
   * destination credentials that must never leave the backend. */
 object SubmissionFixtures {
   private def id(key: String) = LanguageMapContentId(s"submission/$key")
-  private val savedAt = LocalDateTime.of(2026, 11, 27, 10, 15, 30)
+  private val savedAt = java.time.LocalDateTime.of(2026, 11, 27, 10, 15, 30).toInstant(java.time.ZoneOffset.UTC)
 
   val essay: TextInteraction = TextInteraction("essay")
   val quiz: WorkbookContentChoiceInteraction = WorkbookContentChoiceInteraction("quiz",
@@ -39,17 +39,17 @@ object SubmissionFixtures {
 
   val student: User = User("Änne Student", "student-1", "student@example.org")
 
-  val quizAnswer: ChoiceState = quiz.select(quiz.defaultValue, 0, selected = true, savedAt.minusMinutes(5))
+  val quizAnswer: ChoiceState = quiz.select(quiz.defaultValue, 0, selected = true, savedAt.minus(java.time.Duration.ofMinutes(5)))
 
   private def context(scenario: String, key: String): SyncContext = UsageContext("edusquirrel", scenario, student.id).toSyncContext(key)
 
   private val essayHistory = InteractionHistoryJson.fromHistory(TextInteractionFormat, InteractionVariableHistory.empty(TextInteractionFormat)
-    .addState(InteractionVariableState("first draft", UpdateImportance.MAJOR, savedAt.minusMinutes(20)))
-    .addState(InteractionVariableState("final answer", UpdateImportance.MAJOR, savedAt.minusMinutes(10))))
+    .addState(InteractionVariableState("first draft", UpdateImportance.MAJOR, savedAt.minus(java.time.Duration.ofMinutes(20))))
+    .addState(InteractionVariableState("final answer", UpdateImportance.MAJOR, savedAt.minus(java.time.Duration.ofMinutes(10)))))
 
   private val quizHistory = InteractionHistoryJson.fromHistory(ChoiceInteractionFormat, InteractionVariableHistory.empty(ChoiceInteractionFormat)
-    .addState(InteractionVariableState(quizAnswer, UpdateImportance.MAJOR, savedAt.minusMinutes(5)))
-    .addGrading(GradingResult(quiz.gradingElements.head, quizAnswer, GradingStatus.Correct, None, None, savedAt.minusMinutes(4))))
+    .addState(InteractionVariableState(quizAnswer, UpdateImportance.MAJOR, savedAt.minus(java.time.Duration.ofMinutes(5))))
+    .addGrading(GradingResult(quiz.gradingElements.head, quizAnswer, GradingStatus.Correct, None, None, savedAt.minus(java.time.Duration.ofMinutes(4)))))
 
   /** Destination credentials are stripped before logging and mailing. */
   val credentials: DatabaseConfigWithCredentials =

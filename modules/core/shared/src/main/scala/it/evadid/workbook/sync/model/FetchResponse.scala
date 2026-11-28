@@ -4,11 +4,11 @@ import it.evadid.core.util.io.serializer.DefaultSerializer
 import it.evadid.core.util.io.serializer.DefaultSerializer.given
 import it.evadid.workbook.sync.model.SyncDirection.SERVER_TO_CLIENT
 
-import java.time.LocalDateTime
+import java.time.Instant
 
 case class FetchResponse[K, D]
 (
-  timestampFetchResponse: LocalDateTime,
+  timestampFetchResponse: Instant,
   fetchedValues: Set[DataEntryToSync[K, D]]
 ) {
 
@@ -32,7 +32,7 @@ case class FetchResponse[K, D]
 object FetchResponse {
 
 
-  def fromMap[K, D](timestamp: LocalDateTime, map: Map[K, D]): FetchResponse[K, D] = {
+  def fromMap[K, D](timestamp: Instant, map: Map[K, D]): FetchResponse[K, D] = {
     FetchResponse[K, D](timestamp, map.toSet.map( (curKey, curVal) => DataEntryToSync[K, D](curKey, curVal, SERVER_TO_CLIENT)))
   }
 }

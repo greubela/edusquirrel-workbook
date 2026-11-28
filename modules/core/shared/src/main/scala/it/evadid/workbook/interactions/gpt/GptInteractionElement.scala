@@ -1,6 +1,5 @@
 package it.evadid.workbook.interactions.gpt
 
-import it.evadid.core.util.UtcTime
 
 import it.evadid.core.datastructures.chat.SenderRole.USER
 import it.evadid.core.datastructures.chat.{ChatParticipant, MessengerModel}
@@ -15,7 +14,7 @@ import it.evadid.workbook.sync.UpdateImportance.MAJOR
 import it.evadid.workbook.serialization.{WorkbookElementFactory, WorkbookElementReference, WorkbookElementSerializable}
 
 import it.evadid.workbook.control.InteractionController
-import java.time.LocalDateTime
+import java.time.Instant
 import scala.concurrent.*
 import scala.util.{Failure, Success}
 
@@ -91,7 +90,7 @@ case class GptInteractionElement(
       val msg: MessengerModel = MessengerModel.getScaffoldingInitMessage(curUser, exText, curInput, scaffHints, resolvedLanguage)
       val msgSc: MessengerModelScaffolding = MessengerModelScaffolding(msg)
       // syncControl.syncLogger.logInfo(s"GptInteractionElement: setting scaffolding messenger for $elementId to init state (was empty before, now ${msgSc.messengerModel.messages.size} messages)")
-      answers.setStateFromUserInteraction(scaffoldingInteraction, msgSc, MAJOR, UtcTime.now())
+      answers.setStateFromUserInteraction(scaffoldingInteraction, msgSc, MAJOR, Instant.now())
       msg.messages.exists(_.author.role == USER)
     }
 

@@ -5,7 +5,7 @@ import it.evadid.workbook.abstractions.{InteractionFormat, WorkbookInteractionEl
 import it.evadid.workbook.abstractions.grading.{GraderRunningBehavior, GradingStatus}
 import it.evadid.workbook.history.InteractionVariableHistory
 
-import java.time.LocalDateTime
+import java.time.Instant
 
 /** Checks requested by the learner, derived from the grading history of an interaction.
  *
@@ -23,7 +23,7 @@ final case class CheckReport(tracked: Boolean, failedChecks: Int, wrongParts: Se
 object CheckReport {
   val untracked: CheckReport = CheckReport(tracked = false, 0, Set.empty)
 
-  private case class Check(answer: StateReference, time: LocalDateTime, passed: Boolean)
+  private case class Check(answer: StateReference, time: Instant, passed: Boolean)
 
   private def isAssessment(status: GradingStatus): Boolean = status match {
     case GradingStatus.Correct | GradingStatus.Incorrect | GradingStatus.PartiallyCorrect => true

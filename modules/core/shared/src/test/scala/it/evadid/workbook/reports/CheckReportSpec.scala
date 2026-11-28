@@ -13,14 +13,14 @@ import it.evadid.workbook.sync.UpdateImportance
 import it.evadid.workbook.history.{InteractionVariableHistory, InteractionVariableState}
 import munit.FunSuite
 
-import java.time.LocalDateTime
+import java.time.Instant
 
 class CheckReportSpec extends FunSuite {
   private def id(s: String) = LanguageMapContentId(s"test/$s")
   private val matching = MatchingInteraction("check-matching", None, Seq(id("a"), id("b"), id("c")), Seq(id("x"), id("y")), Some(Seq(0, 1, 0)))
   private val grader = matching.gradingElements.head.asInstanceOf[MatchingGrader]
   private def answer(rights: Option[Int]*) = MatchingInteractionState(rights)
-  private def at(minute: Int) = LocalDateTime.of(2026, 1, 1, 10, minute)
+  private def at(minute: Int) = java.time.LocalDateTime.of(2026, 1, 1, 10, minute).toInstant(java.time.ZoneOffset.UTC)
 
   private def history(checks: (MatchingInteractionState, GradingStatus, Int)*): InteractionVariableHistory[MatchingInteractionFormat.type] =
     checks.foldLeft(InteractionVariableHistory.empty(MatchingInteractionFormat)) { case (current, (state, status, minute)) =>

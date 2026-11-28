@@ -1,6 +1,5 @@
 package it.evadid.homepage.control.model
 
-import it.evadid.core.util.UtcTime
 
 import it.evadid.workbook.session.{AllWorkbookInfo, SessionData}
 import it.evadid.core.datastructures.language.AppLanguage.*
@@ -13,7 +12,7 @@ import it.evadid.workbook.sync.{SyncInformationWithContext, UsageContext}
 import it.evadid.workbook.model.InteractionInfo
 import it.evadid.workbook.sync.model.InteractionHistoryJson
 
-import java.time.LocalDateTime
+import java.time.Instant
 
 
 case class HomepageInfo(
@@ -48,7 +47,7 @@ case class HomepageInfo(
       toContext.toSyncContext(interaction.keyForSerialization) ->
         InteractionHistoryJson.fromHistory(interaction.interactionFormat, answers.historyOf(interaction))
     }.toMap
-    SessionData(UtcTime.now(), histories, user, Some(config), workbook)
+    SessionData(Instant.now(), histories, user, Some(config), workbook)
   }
 
   def syncDestinations(fullInfo: FullInfo): Seq[SyncInformationWithContext] = {

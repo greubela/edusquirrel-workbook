@@ -2,16 +2,16 @@ package it.evadid.distribution.command
 
 import it.evadid.core.util.io.serializer.DefaultSerializer.given
 
-import java.time.LocalDateTime
+import java.time.Instant
 
 case class ExecutionHistory(
-                             timestampCommandRequested: LocalDateTime,
-                             timestampCommandReceived: LocalDateTime,
-                             timestampExecutionStarted: LocalDateTime,
-                             timestampExecutionFinished: LocalDateTime,
+                             timestampCommandRequested: Instant,
+                             timestampCommandReceived: Instant,
+                             timestampExecutionStarted: Instant,
+                             timestampExecutionFinished: Instant,
                            ) {
 
-  def withFixedTime(timeRequested: LocalDateTime, timeReceived: LocalDateTime): ExecutionHistory = this.copy(
+  def withFixedTime(timeRequested: Instant, timeReceived: Instant): ExecutionHistory = this.copy(
     timestampCommandRequested = timeRequested,
     timestampCommandReceived = timeReceived
   )

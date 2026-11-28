@@ -97,13 +97,13 @@ an ID are unsupported. History storage grows as new events are recorded; transmi
 
 ### Timestamp representation
 
-`timestamp_nano` stores ISO 8601 local date/time text with exactly nine fractional
+`timestamp_nano` stores the event's instant as ISO 8601 UTC date/time text (no zone suffix) with exactly nine fractional
 digits, e.g. `2026-11-18T12:00:00.123456789`. MySQL `DATETIME` supports only six.
 The binary text index serves range queries, so a duplicate `timestamp_millies`
 column is unnecessary. No epoch-day or nanosecond-of-day encoding is stored.
 Four-digit years sort chronologically; signed/expanded ISO years use safe SQL
-candidate bounds followed by typed filtering to preserve the full `LocalDateTime`
-range. Reads verify the canonical text against the serialized event.
+candidate bounds followed by typed filtering. Events range over UTC date-times from
+`LocalDateTime.MIN` to `MAX`; `Instant.MIN` and `MAX` are open read bounds. Reads verify the canonical text against the serialized event.
 
 Both layouts decode through the declared format; JDBC bindings accept only
 `String | Long`. `DatabaseHistoryFormat.tables` exposes typed `DatabaseTable`,
@@ -149,7 +149,7 @@ atomically; one invalid entry rolls it all back. Retrying exact events is safe a
 confirms them as `elementsUnchanged`. Deletes report the removed contexts.
 
 The sole read command is `fetch-events-from-db-request`, with inclusive bounds;
-complete reads use `LocalDateTime.MIN` and `MAX`. Selection precedes the timestamp
+complete reads use `Instant.MIN` and `MAX`. Selection precedes the timestamp
 window. Buffered reads sharing a usage context and strategy query the union of
 keys/windows once, then clip each caller's result to its own bounds.
 

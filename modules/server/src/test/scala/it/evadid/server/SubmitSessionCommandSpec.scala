@@ -15,7 +15,7 @@ import upickle.default.*
 
 import java.net.InetAddress
 import java.nio.charset.StandardCharsets.UTF_8
-import java.time.LocalDateTime
+import java.time.Instant
 import java.io.ByteArrayInputStream
 import java.util.Properties
 import java.util.zip.ZipInputStream
@@ -25,7 +25,7 @@ class SubmitSessionCommandSpec extends FunSuite {
   import SubmissionFixtures.*
 
   private val address = InetAddress.getByName("2001:db8::7")
-  private val receivedAt = LocalDateTime.of(2026, 11, 27, 10, 16)
+  private val receivedAt = java.time.LocalDateTime.of(2026, 11, 27, 10, 16).toInstant(java.time.ZoneOffset.UTC)
 
   /** The single entry of attachment `index`: its name and text. */
   private def unzipped(request: SendMailRequest, index: Int): (String, String) =

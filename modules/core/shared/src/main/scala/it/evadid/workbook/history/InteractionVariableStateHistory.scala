@@ -4,7 +4,7 @@ import it.evadid.core.util.InfoUtil
 import it.evadid.workbook.sync.EventSyncStrategy
 import upickle.default.*
 import it.evadid.workbook.sync.UpdateImportance.*
-import java.time.LocalDateTime
+import java.time.Instant
 
 
 case class InteractionVariableStateHistory[T]
@@ -14,7 +14,7 @@ case class InteractionVariableStateHistory[T]
 
   def lastStateOption: Option[InteractionVariableState[T]] = events.maxByOption(_.timestamp)
 
-  def latestChangeTimestamp: Option[LocalDateTime] = events.iterator.map(_.timestamp).maxOption
+  def latestChangeTimestamp: Option[Instant] = events.iterator.map(_.timestamp).maxOption
 
   /** Drops DEFAULT answers once another answer exists and TEMPORARY answers once a later answer exists.
     * The latest answer always remains.

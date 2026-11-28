@@ -18,7 +18,7 @@ class SqlEditorResultSpec extends munit.FunSuite {
   import java.lang.reflect.{InvocationHandler, Method, Proxy}
   import java.net.InetAddress
   import java.sql.{Connection, PreparedStatement, ResultSet, ResultSetMetaData, Statement}
-  import java.time.LocalDateTime
+  import java.time.Instant
 
   private def fake[T](kind: Class[T])(handle: (String, Array[AnyRef]) => AnyRef): T =
     Proxy.newProxyInstance(kind.getClassLoader, Array(kind), new InvocationHandler {
@@ -49,7 +49,7 @@ class SqlEditorResultSpec extends munit.FunSuite {
   private def logged(command: ExecutionCommand, rows: Int): (Vector[Map[Int, String]], BasicLogger) = {
     val (connection, writes) = logConnection(rows)
     val logger = BasicLogger()
-    SqlLogCommands.handleLog(LocalDateTime.of(2026, 10, 17, 10, 0), command, None,
+    SqlLogCommands.handleLog(java.time.LocalDateTime.of(2026, 10, 17, 10, 0).toInstant(java.time.ZoneOffset.UTC), command, None,
       InetAddress.getLoopbackAddress, logger, connection)
     writes.now() -> logger
   }

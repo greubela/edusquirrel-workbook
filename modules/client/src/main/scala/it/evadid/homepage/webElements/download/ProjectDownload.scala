@@ -1,6 +1,5 @@
 package it.evadid.homepage.webElements.download
 
-import it.evadid.core.util.UtcTime
 
 import it.evadid.core.datastructures.language.AppLanguage.{Java, ProgrammingLanguage, Python, SnapLanguage}
 import it.evadid.vm.projectexport.{ExportedProject, ProjectExport}
@@ -8,7 +7,7 @@ import it.evadid.vm.simulation.data.DataWorld
 import it.evadid.workbook.interactions.programming.state.ProgrammingState
 import org.scalajs.dom
 
-import java.time.LocalDateTime
+import java.time.Instant
 import scala.scalajs.js
 import scala.scalajs.js.typedarray.*
 
@@ -48,7 +47,7 @@ object ProjectDownload {
 
   /** Exports `state` in the format of `language` and saves it; Left explains why nothing was saved. */
   def download(state: ProgrammingState, language: ProgrammingLanguage, title: String, world: DataWorld = DataWorld(),
-      saver: Saver = BrowserSaver, now: () => LocalDateTime = () => UtcTime.now()): Either[String, ExportedProject] =
+      saver: Saver = BrowserSaver, now: () => Instant = () => Instant.now()): Either[String, ExportedProject] =
     ProjectExport.forLanguage(state, language, title, world).map { project =>
       project.files match {
         case Seq(file) =>

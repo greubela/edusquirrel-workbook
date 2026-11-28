@@ -1,6 +1,5 @@
 package it.evadid.workbook.abstractions.grading
 
-import it.evadid.core.util.UtcTime
 
 import it.evadid.workbook.sync.UpdateImportance
 
@@ -12,7 +11,7 @@ import it.evadid.workbook.abstractions.grading.GradingStatus.*
 import it.evadid.workbook.abstractions.ExecutionContextInformation
 import upickle.default.*
 
-import java.time.LocalDateTime
+import java.time.Instant
 import scala.concurrent.{ExecutionContext, Future}
 
 case class GradedState[T, GA]
@@ -22,7 +21,7 @@ case class GradedState[T, GA]
 ) {
 
   lazy val testsWithResults: Set[GradingResult[T, GA]] = graderResultMap.values.toSet
-  val timestampLatestTest: LocalDateTime = testsWithResults.map(_.gradingTime).maxOption.getOrElse(LocalDateTime.MIN)
+  val timestampLatestTest: Instant = testsWithResults.map(_.gradingTime).maxOption.getOrElse(Instant.MIN)
 
   lazy val shouldRetry: Seq[WorkbookInteractionGrader[T, GA]] = graderResultMap.toList.filter(_._2.gradingStatus.shouldRetryExecution).map(_._1)
 
@@ -43,7 +42,7 @@ case class GradedState[T, GA]
   }
 
   def fillMapForUnavailable(gradingElements: Seq[WorkbookInteractionGrader[T, GA]], gradingStatusOfUnavailable: GradingStatus): GradedState[T, GA] = {
-    def ifUnavailable(grader: WorkbookInteractionGrader[T, GA]): GradingResult[T, GA] = GradingResult(grader, state, gradingStatusOfUnavailable, None, None, UtcTime.now())
+    def ifUnavailable(grader: WorkbookInteractionGrader[T, GA]): GradingResult[T, GA] = GradingResult(grader, state, gradingStatusOfUnavailable, None, None, Instant.now())
 
     val fullMap = gradingElements.map(curGradingElement => {
       curGradingElement -> graderResultMap.getOrElse(curGradingElement, ifUnavailable(curGradingElement))

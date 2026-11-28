@@ -1,20 +1,19 @@
 package it.evadid.core.datastructures.state.async
 
-import it.evadid.core.util.UtcTime
 
 import it.evadid.core.util.io.serializer.DefaultSerializer.given
 
 import it.evadid.distribution.command.SerializedException
 import it.evadid.core.datastructures.state.async.AsyncDataState.*
 
-import java.time.LocalDateTime
+import java.time.Instant
 import scala.util.Try
 
 
 sealed trait AsyncDataState[F, S] {
 
 
-  val loadingSince: Option[LocalDateTime] = None
+  val loadingSince: Option[Instant] = None
   val value: Option[S] = None
   val failure: Option[FailureInfo[F]] = None
 
@@ -31,8 +30,8 @@ sealed trait AsyncDataState[F, S] {
 object AsyncDataState {
 
   @upickle.implicits.serializeDefaults(true)
-  case class AsyncDataLoading[F, S](startedAt: LocalDateTime = UtcTime.now()) extends AsyncDataState[F, S] {
-    override val loadingSince: Option[LocalDateTime] = Some(startedAt)
+  case class AsyncDataLoading[F, S](startedAt: Instant = Instant.now()) extends AsyncDataState[F, S] {
+    override val loadingSince: Option[Instant] = Some(startedAt)
     val isLoading: Boolean = true
   }
 

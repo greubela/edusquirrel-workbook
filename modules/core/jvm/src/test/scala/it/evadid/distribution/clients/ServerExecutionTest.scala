@@ -34,10 +34,10 @@ class ServerExecutionTest extends FunSuite {
       val command = ExecutionCommand.fromJson(requestBody)
 
       val history = it.evadid.distribution.command.ExecutionHistory(
-        java.time.LocalDateTime.parse("2026-01-01T08:00:00"),
-        java.time.LocalDateTime.parse("2026-01-01T08:00:01"),
-        java.time.LocalDateTime.parse("2026-01-01T08:00:02"),
-        java.time.LocalDateTime.parse("2026-01-01T08:00:03")
+        java.time.Instant.parse("2026-01-01T08:00:00Z"),
+        java.time.Instant.parse("2026-01-01T08:00:01Z"),
+        java.time.Instant.parse("2026-01-01T08:00:02Z"),
+        java.time.Instant.parse("2026-01-01T08:00:03Z")
       )
       val response = ExecutionClientResponse.forValue(ExecutionClientResponseTimestamps(history.timestampCommandReceived, history.timestampExecutionStarted, history.timestampExecutionFinished), command.json, command, AdditionalLoggingOutput("ok", ""))
 

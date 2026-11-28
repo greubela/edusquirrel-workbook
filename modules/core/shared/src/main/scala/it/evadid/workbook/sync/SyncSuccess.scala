@@ -1,8 +1,7 @@
 package it.evadid.workbook.sync
 
-import it.evadid.core.util.UtcTime
 
-import java.time.LocalDateTime
+import java.time.Instant
 
 import upickle.default.*
 import it.evadid.core.util.io.serializer.DefaultSerializer.given
@@ -12,7 +11,7 @@ import it.evadid.core.util.io.serializer.DefaultSerializer.given
   * A write acknowledgment is evidence of storage: every element in [[elementsStored]] was present when the write committed.
   */
 case class SyncSuccess[T](elementsAdded: Set[T], elementsChanged: Set[T], elementsUnchanged: Set[T], elementsRemoved: Set[T],
-    timestampCommitted: LocalDateTime) derives ReadWriter {
+    timestampCommitted: Instant) derives ReadWriter {
   def elementsStored: Set[T] = elementsAdded ++ elementsChanged ++ elementsUnchanged
 
   def combine(other: SyncSuccess[T]): SyncSuccess[T] = SyncSuccess(elementsAdded ++ other.elementsAdded,
@@ -32,7 +31,7 @@ case class SyncSuccess[T](elementsAdded: Set[T], elementsChanged: Set[T], elemen
 }
 
 object SyncSuccess {
-  def emptyNow[T](): SyncSuccess[T] = SyncSuccess(Set.empty, Set.empty, Set.empty, Set.empty, UtcTime.now())
+  def emptyNow[T](): SyncSuccess[T] = SyncSuccess(Set.empty, Set.empty, Set.empty, Set.empty, Instant.now())
 
   def removed[T](elements: Set[T]): SyncSuccess[T] = emptyNow[T]().copy(elementsRemoved = elements)
 

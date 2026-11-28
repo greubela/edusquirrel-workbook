@@ -5,7 +5,7 @@ import it.evadid.distribution.command.SerializedException
 import munit.FunSuite
 import upickle.default.*
 
-import java.time.LocalDateTime
+import java.time.Instant
 import scala.util.{Failure, Success, Try}
 
 class DefaultSerializerSpec extends FunSuite {
@@ -16,10 +16,10 @@ class DefaultSerializerSpec extends FunSuite {
     assertEquals(read[Try[Int]]("{}").failed.map(_.getMessage), Success("Unknown failure"))
   }
 
-  test("local date-times use their ISO text") {
-    val time = LocalDateTime.of(2026, 11, 20, 7, 5, 30)
-    assertEquals(write(time), "\"2026-11-20T07:05:30\"")
-    assertEquals(read[LocalDateTime](write(time)), time)
+  test("instants use their ISO text in UTC") {
+    val time = java.time.Instant.parse("2026-11-20T07:05:30Z")
+    assertEquals(write(time), "\"2026-11-20T07:05:30Z\"")
+    assertEquals(read[Instant](write(time)), time)
   }
 
   test("throwables are stored as serialized exceptions with their cause chain") {

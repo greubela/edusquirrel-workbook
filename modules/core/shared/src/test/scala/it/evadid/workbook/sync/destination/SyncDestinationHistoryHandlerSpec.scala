@@ -7,7 +7,7 @@ import it.evadid.workbook.abstractions.InteractionFormat
 import it.evadid.workbook.sync.{SyncContext, SyncSuccess, UpdateImportance, UsageContext}
 import it.evadid.workbook.history.{InteractionVariableHistory, InteractionVariableState}
 import it.evadid.workbook.sync.model.InteractionHistoryJson
-import java.time.LocalDateTime
+import java.time.Instant
 import munit.FunSuite
 import scala.concurrent.{ExecutionContext, Future, Promise}
 import upickle.default.*
@@ -16,7 +16,7 @@ class SyncDestinationHistoryHandlerSpec extends FunSuite {
   private given ExecutionContext = ExecutionContext.global
   private val context = UsageContext("program", "workbook", "user")
   private val key = context.toSyncContext("answer_history")
-  private val at = LocalDateTime.of(2026, 1, 1, 12, 0)
+  private val at = java.time.LocalDateTime.of(2026, 1, 1, 12, 0).toInstant(java.time.ZoneOffset.UTC)
   
   private val textFormat = InteractionFormat.TextInteractionFormat
   private val history = InteractionHistoryJson.fromHistory(textFormat,

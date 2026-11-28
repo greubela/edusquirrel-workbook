@@ -1,6 +1,5 @@
 package it.evadid.workbook.abstractions.scaffolding
 
-import it.evadid.core.util.UtcTime
 
 import it.evadid.core.util.io.serializer.DefaultSerializer
 import it.evadid.distribution.command.SerializedException
@@ -8,7 +7,7 @@ import it.evadid.workbook.abstractions.{FeedbackEntity, InteractionFormat, State
 import it.evadid.workbook.abstractions.scaffolding.ScaffoldingStatus.*
 import upickle.default.*
 
-import java.time.LocalDateTime
+import java.time.Instant
 import it.evadid.core.util.io.serializer.DefaultSerializer.given
 import it.evadid.workbook.abstractions.scaffolding.ScaffoldingStatus.ScaffoldingError
 
@@ -17,7 +16,7 @@ case class ScaffoldingResult[T, SA](
                                     scaffoldingStatus: ScaffoldingStatus,
                                     scaffoldingEntity: FeedbackEntity,
                                     additionalInformation: Option[SA],
-                                    scaffoldingTime: LocalDateTime = LocalDateTime.MIN
+                                    scaffoldingTime: Instant = Instant.MIN
                                   ) {
   /** This hint as saved in a history, with its answer's `state` reference. */
   def record(state: StateReference): ScaffoldingRecord[SA] =
@@ -37,7 +36,7 @@ case class ScaffoldingRecord[SA](
   scaffoldingStatus: ScaffoldingStatus,
   scaffoldingEntity: FeedbackEntity,
   additionalInformation: Option[SA],
-  scaffoldingTime: LocalDateTime
+  scaffoldingTime: Instant
 ) derives ReadWriter {
   def resolve[T](forState: T): ScaffoldingResult[T, SA] =
     ScaffoldingResult(forState, scaffoldingStatus, scaffoldingEntity, additionalInformation, scaffoldingTime)
@@ -53,7 +52,7 @@ object ScaffoldingResult {
   /** Two hints for one answer: feedback beats an error, then the later one wins; it keeps the other's feedback in
     * languages it lacks.
     */
-  private[scaffolding] def merged[R](first: R, second: R)(status: R => ScaffoldingStatus, time: R => LocalDateTime,
+  private[scaffolding] def merged[R](first: R, second: R)(status: R => ScaffoldingStatus, time: R => Instant,
       withStatus: (R, ScaffoldingStatus) => R): R = {
     val preferred = (status(first), status(second)) match {
       case (_: ScaffoldingFeedback, _: ScaffoldingFeedback) => if time(second).isAfter(time(first)) then second else first
@@ -75,7 +74,7 @@ object ScaffoldingResult {
   def apply[T, SA](forState: T,
                   scaffoldingStatus: ScaffoldingStatus,
                   scaffoldingEntity: FeedbackEntity,
-                  additionalInformation: Option[SA]): ScaffoldingResult[T, SA] = ScaffoldingResult[T, SA](forState, scaffoldingStatus, scaffoldingEntity, additionalInformation, UtcTime.now())
+                  additionalInformation: Option[SA]): ScaffoldingResult[T, SA] = ScaffoldingResult[T, SA](forState, scaffoldingStatus, scaffoldingEntity, additionalInformation, Instant.now())
 
   def forError[T, SA](state: T, errEither: Either[String, Throwable], entity: FeedbackEntity): ScaffoldingResult[T, SA] = {
     val error = errEither.fold(SerializedException(_), identity)

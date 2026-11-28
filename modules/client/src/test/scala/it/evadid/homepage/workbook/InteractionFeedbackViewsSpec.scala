@@ -1,6 +1,5 @@
 package it.evadid.homepage.workbook
 
-import it.evadid.core.util.UtcTime
 
 import it.evadid.core.datastructures.language.WorkbookContent
 
@@ -18,11 +17,11 @@ import it.evadid.workbook.interactions.programming.programmingExerciseRegular.{P
 import it.evadid.workbook.interactions.programming.state.ProgrammingState
 import it.evadid.workbook.abstractions.ExecutionContextInformation
 import it.evadid.homepage.control.info.interaction.GradingReporter
-import java.time.LocalDateTime
+import java.time.Instant
 import com.raquo.laminar.api.L.div
 
 class InteractionFeedbackViewsSpec extends EditorDomSuite {
-  private val date = LocalDateTime.parse("2026-11-15T12:30:00")
+  private val date = java.time.Instant.parse("2026-11-15T12:30:00Z")
   private def grader(id: String, hidden: Boolean = false) = ProgrammingUnitTestGrader(id, s"assert '$id'",
     if hidden then GradingImportance.HIDDEN_TEST else GradingImportance.REQUIRED_TEST)
   private def feedback = LanguageMap.mapBasedLanguageMap[HumanLanguage](Map(German -> "Öffentliche Rückmeldung", English -> "Public feedback"))
@@ -55,7 +54,7 @@ class InteractionFeedbackViewsSpec extends EditorDomSuite {
     inOpenWorkbook(exercise) {
       val source = fullInfo.interactions.currentValue(exercise)
       val publicResult = GradingResult(public, source, GradingStatus.Correct, Some(WorkbookContent(feedback)), None, date)
-      val hiddenResult = GradingResult(hidden, source, GradingStatus.Correct, Some(WorkbookContent(LanguageMap.universalMap[HumanLanguage]("SECRET-HIDDEN-FEEDBACK"))), None, LocalDateTime.parse("1999-01-01T01:02:03"))
+      val hiddenResult = GradingResult(hidden, source, GradingStatus.Correct, Some(WorkbookContent(LanguageMap.universalMap[HumanLanguage]("SECRET-HIDDEN-FEEDBACK"))), None, java.time.Instant.parse("1999-01-01T01:02:03Z"))
       fullInfo.interactions.updateHistory(exercise)(_.addGradings(List(publicResult, hiddenResult)))
       val sidebar = InteractionInfoSidebar(fullInfo, exercise,GradingReporter(exercise, fullInfo.interactions)).getDomElement()
       val previous = fullInfo.signals.currentLanguage.now()
@@ -77,7 +76,7 @@ class InteractionFeedbackViewsSpec extends EditorDomSuite {
         fullInfo.displayControl.changeLanguage(English)
         assert(sidebar.ref.textContent.contains("Public feedback"))
         details.removeAttribute("open")
-        val changed = publicResult.copy(gradingStatus = GradingStatus.Incorrect, gradingTime = date.plusMinutes(1))
+        val changed = publicResult.copy(gradingStatus = GradingStatus.Incorrect, gradingTime = date.plus(java.time.Duration.ofMinutes(1)))
         fullInfo.interactions.updateHistory(exercise)(_.addGrading(changed))
         assert(sidebar.ref.querySelector("details.feedback-grading") eq details)
         assert(!details.hasAttribute("open"), "a result update keeps the reader's disclosure choice")
@@ -127,14 +126,14 @@ class InteractionFeedbackViewsSpec extends EditorDomSuite {
     val test = grader("visible")
     val exercise = ProgrammingExercise("feedback-current-answer", Some(ProgrammingTestSuite(List(test))))
     inOpenWorkbook(exercise) {
-      fullInfo.interactions.updateHistory(exercise)(_.addGrading(GradingResult(test, fullInfo.interactions.currentValue(exercise), GradingStatus.Correct, Some(WorkbookContent(LanguageMap.universalMap[HumanLanguage]("FEEDBACK-FOR-OLD-ANSWER"))), None, UtcTime.now())))
+      fullInfo.interactions.updateHistory(exercise)(_.addGrading(GradingResult(test, fullInfo.interactions.currentValue(exercise), GradingStatus.Correct, Some(WorkbookContent(LanguageMap.universalMap[HumanLanguage]("FEEDBACK-FOR-OLD-ANSWER"))), None, Instant.now())))
       val sidebar = InteractionInfoSidebar(fullInfo, exercise,GradingReporter(exercise, fullInfo.interactions)).getDomElement()
       val close = mount(sidebar)
       try {
         assert(sidebar.ref.textContent.contains("FEEDBACK-FOR-OLD-ANSWER"))
         val next = it.evadid.workbook.interactions.programming.state.ProgrammingStateRaw(Python, "forward(20)")
         fullInfo.interactions.updateHistory(exercise)(_.addState(it.evadid.workbook.history.InteractionVariableState(
-          next, it.evadid.workbook.sync.UpdateImportance.MAJOR, date.plusHours(1))))
+          next, it.evadid.workbook.sync.UpdateImportance.MAJOR, date.plus(java.time.Duration.ofHours(1)))))
         assert(!sidebar.ref.textContent.contains("FEEDBACK-FOR-OLD-ANSWER"))
         assertEquals(sidebar.ref.querySelectorAll(".feedback-entry.feedback-status--neutral").length, 1)
         assertEquals(sidebar.ref.querySelectorAll(".feedback-entry .feedback-date").length, 0)

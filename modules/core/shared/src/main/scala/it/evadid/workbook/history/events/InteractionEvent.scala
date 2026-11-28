@@ -6,7 +6,7 @@ import it.evadid.workbook.abstractions.grading.{GradingRecord, GradingStatus}
 import it.evadid.workbook.abstractions.scaffolding.{ScaffoldingRecord, ScaffoldingStatus}
 import it.evadid.workbook.sync.UpdateImportance
 
-import java.time.LocalDateTime
+import java.time.Instant
 import upickle.default.*
 import upickle.implicits.key
 
@@ -16,7 +16,7 @@ import upickle.implicits.key
   */
 sealed trait InteractionEvent[F <: InteractionFormat] {
   def eventId: EventId
-  def timestamp: LocalDateTime
+  def timestamp: Instant
   def updateImportance: UpdateImportance
 }
 
@@ -28,7 +28,7 @@ sealed trait FeedbackEvent[F <: InteractionFormat] extends InteractionEvent[F] {
 @key("AnswerChangedEvent")
 case class AnswerChangedEvent[F <: InteractionFormat](
     newState: InteractionFormat.State[F],
-    timestamp: LocalDateTime,
+    timestamp: Instant,
     updateImportance: UpdateImportance,
     eventId: EventId = EventId.random()
 ) extends InteractionEvent[F]
@@ -40,7 +40,7 @@ sealed trait GradingEvent[F <: InteractionFormat] extends FeedbackEvent[F] {
 @key("GradingStartedEvent")
 case class GradingStartedEvent[F <: InteractionFormat](
     state: StateReference,
-    timestamp: LocalDateTime,
+    timestamp: Instant,
     grader: GraderReference,
     updateImportance: UpdateImportance = UpdateImportance.TEMPORARY,
     eventId: EventId = EventId.random()
@@ -56,7 +56,7 @@ case class GradingCompletedEvent[F <: InteractionFormat](
   require(record.gradingStatus != GradingStatus.NotRequested && record.gradingStatus != GradingStatus.NotFinished,
     "A completed grading event requires a completed assessment or execution error")
   override def state: StateReference = record.state
-  override def timestamp: LocalDateTime = record.gradingTime
+  override def timestamp: Instant = record.gradingTime
   override def grader: GraderReference = record.grader
 }
 
@@ -67,7 +67,7 @@ sealed trait ScaffoldingEvent[F <: InteractionFormat] extends FeedbackEvent[F] {
 @key("ScaffoldingStartedEvent")
 case class ScaffoldingStartedEvent[F <: InteractionFormat](
     state: StateReference,
-    timestamp: LocalDateTime,
+    timestamp: Instant,
     scaffoldingEntity: FeedbackEntity,
     updateImportance: UpdateImportance = UpdateImportance.TEMPORARY,
     eventId: EventId = EventId.random()
@@ -82,6 +82,6 @@ case class ScaffoldingCompletedEvent[F <: InteractionFormat](
   require(record.scaffoldingStatus != ScaffoldingStatus.ScaffoldingRequestedButNotFinished(),
     "A completed scaffolding event requires feedback or an execution error")
   override def state: StateReference = record.state
-  override def timestamp: LocalDateTime = record.scaffoldingTime
+  override def timestamp: Instant = record.scaffoldingTime
   override def scaffoldingEntity: FeedbackEntity = record.scaffoldingEntity
 }

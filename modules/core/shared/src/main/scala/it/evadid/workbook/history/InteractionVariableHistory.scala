@@ -8,7 +8,7 @@ import it.evadid.workbook.abstractions.grading.{GradedState, GradingResult, Grad
 import it.evadid.workbook.sync.EventSyncStrategy
 import it.evadid.workbook.history.events.*
 
-import java.time.LocalDateTime
+import java.time.Instant
 import upickle.default.*
 
 /** Canonical interaction history: all saved state and feedback live in timestamped events. The format derives the
@@ -62,7 +62,7 @@ case class InteractionVariableHistory[F <: InteractionFormat](
       (gradingEvents ++ scaffoldingEvents).filter(event => states(event.state))
   }
 
-  def timestampLastChanged: Option[LocalDateTime] = events.timestampLastChanged
+  def timestampLastChanged: Option[Instant] = events.timestampLastChanged
   def size: Int = events.values.size
 
   def addEvent(event: InteractionEvent[F]): InteractionVariableHistory[F] =
@@ -84,7 +84,7 @@ case class InteractionVariableHistory[F <: InteractionFormat](
   }
   /** Records that `grader` started grading `state`. */
   def addGradingStart(state: InteractionFormat.State[F],
-      grader: WorkbookInteractionGrader[InteractionFormat.State[F], InteractionFormat.Grading[F]], timestamp: LocalDateTime): InteractionVariableHistory[F] =
+      grader: WorkbookInteractionGrader[InteractionFormat.State[F], InteractionFormat.Grading[F]], timestamp: Instant): InteractionVariableHistory[F] =
     addEvent(GradingStartedEvent(referenceOf(state), timestamp, grader.reference))
   def addGrading(result: GradedState[InteractionFormat.State[F], InteractionFormat.Grading[F]]): InteractionVariableHistory[F] =
     result.graderResultMap.values.foldLeft(this)(_.addGrading(_))
@@ -133,7 +133,7 @@ case class InteractionVariableHistory[F <: InteractionFormat](
       val result = completed.reduceOption(_.merge(_)).getOrElse(GradingResult(
         grader, state,
         if latest.nonEmpty then GradingStatus.NotFinished else GradingStatus.NotRequested,
-        None, None, latestTime.getOrElse(LocalDateTime.MIN)))
+        None, None, latestTime.getOrElse(Instant.MIN)))
       grader -> result
     }.toMap
     GradedState(state, results)

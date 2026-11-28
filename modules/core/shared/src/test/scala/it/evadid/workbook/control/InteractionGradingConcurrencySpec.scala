@@ -1,6 +1,5 @@
 package it.evadid.workbook.control
 
-import it.evadid.core.util.UtcTime
 
 import it.evadid.workbook.model.*
 
@@ -21,7 +20,7 @@ import it.evadid.workbook.abstractions.ExecutionContextInformation
 import it.evadid.workbook.support.GatedHistoryStore
 import munit.FunSuite
 
-import java.time.LocalDateTime
+import java.time.Instant
 import scala.concurrent.{ExecutionContext, Future, Promise}
 
 /** Grading while answers change and other devices or the server record feedback events for the same history. */
@@ -86,7 +85,7 @@ class InteractionGradingConcurrencySpec extends FunSuite {
     val exercise = textExercise(grader)
     val answers = offline(exercise)
     answers.setStateFromUserInteraction(exercise, "wrong", MAJOR)
-    answers.setStateFromUserInteraction(exercise, "right", MAJOR, UtcTime.now().plusSeconds(1))
+    answers.setStateFromUserInteraction(exercise, "right", MAJOR, Instant.now().plusSeconds(1))
     assertEquals(grader.graded.now(), Vector("wrong", "right"), "each answer starts its own automatic grading")
     assertEquals(status(answers, exercise, "right"), GradingStatus.NotFinished)
     val earlier = answers.feedback(exercise).getOrCalculateGrading(false, "wrong")
@@ -124,7 +123,7 @@ class InteractionGradingConcurrencySpec extends FunSuite {
     answers.setStateFromUserInteraction(exercise, "draft", UpdateImportance.TEMPORARY)
     val pending = answers.feedback(exercise).getOrCalculateGrading(forceGrading = true)
     assert(answers.currentHistory(exercise).gradingEvents.exists(about(_, "draft")))
-    answers.setStateFromUserInteraction(exercise, "right", MAJOR, UtcTime.now().plusSeconds(1))
+    answers.setStateFromUserInteraction(exercise, "right", MAJOR, Instant.now().plusSeconds(1))
     grader.gate("draft").success(())
     pending.map { _ =>
       assert(answers.currentHistory(exercise).events.values.forall(!about(_, "draft")),
@@ -138,7 +137,7 @@ class InteractionGradingConcurrencySpec extends FunSuite {
     val answers = offline(exercise)
     answers.setStateFromUserInteraction(exercise, "right", MAJOR)
     val pending = answers.feedback(exercise).getOrCalculateGrading(forceGrading = true)
-    val earlier = GradingResult[String, MessengerModel](grader, "right", GradingStatus.Incorrect, None, None, UtcTime.now().minusSeconds(5))
+    val earlier = GradingResult[String, MessengerModel](grader, "right", GradingStatus.Incorrect, None, None, Instant.now().minusSeconds(5))
     answers.updateHistory(exercise)(_.mergeWith(InteractionVariableHistory.empty[Text](TextInputWithLlmGradingAndScaffoldingFormat).addGrading(earlier)))
     assertEquals(answers.feedback(exercise).getCurrentStateOfGrading("right").testsWithResults.head.gradingStatus, GradingStatus.NotFinished,
       "the newer local start is still running")
@@ -151,7 +150,7 @@ class InteractionGradingConcurrencySpec extends FunSuite {
 
   test("a new answer submitted while the server records a grading start for the previous one is not shown as pending") {
     val store = GatedHistoryStore(context)
-    val now = UtcTime.now()
+    val now = Instant.now()
     store.seed(choice, remote(AnswerChangedEvent[Choice](wrong, now.minusSeconds(10), MAJOR),
       GradingStartedEvent[Choice](ref(wrong), now.minusSeconds(5), grader.reference)))
     val answers = store.controllerFor(choice)
@@ -170,7 +169,7 @@ class InteractionGradingConcurrencySpec extends FunSuite {
 
   test("a grading start read for the current answer shows as pending until a request grades it here") {
     val store = GatedHistoryStore(context)
-    val now = UtcTime.now()
+    val now = Instant.now()
     store.seed(choice, remote(AnswerChangedEvent[Choice](wrong, now.minusSeconds(10), MAJOR),
       GradingStartedEvent[Choice](ref(wrong), now.minusSeconds(5), grader.reference)))
     val answers = store.controllerFor(choice)
@@ -191,7 +190,7 @@ class InteractionGradingConcurrencySpec extends FunSuite {
 
   test("a completed grading read from another device is reused instead of grading again") {
     val store = GatedHistoryStore(context)
-    val now = UtcTime.now()
+    val now = Instant.now()
     val completed = GradingResult(grader, right, GradingStatus.Correct, None, None, now.minusSeconds(5))
     store.seed(choice, remote(AnswerChangedEvent[Choice](right, now.minusSeconds(10), MAJOR), GradingCompletedEvent[Choice](completed.record(ref(right)))))
     val answers = store.controllerFor(choice)
